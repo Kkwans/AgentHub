@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import type {
   AgentRuntimeAdapter,
@@ -49,6 +49,31 @@ export interface CreateSessionInput {
 export interface StartRunInput {
   text: string;
   content?: Array<Record<string, unknown>> | undefined;
+  promptVariables?: Record<string, unknown> | undefined;
+}
+
+export interface PromptContextResolver {
+  resolveForRun(input: {
+    projectId: string;
+    agentId: string;
+    taskId?: string | null;
+    variables?: Record<string, unknown>;
+  }): Promise<{
+    ready: boolean;
+    finalContext: string;
+    missingVariables: string[];
+    items: Array<{
+      promptId: string;
+      versionId: string;
+      version: number;
+      label: string | null;
+      contentHash: string;
+      bindingId: string;
+      slot: string;
+      targetType: string;
+      targetId: string;
+    }>;
+  }>;
 }
 
 interface ActiveSession {
@@ -71,6 +96,7 @@ export class SessionService {
     private readonly agentService: AgentService,
     private readonly publisher: SessionEventPublisher,
     private readonly git: GitHeadProbe = new HostGitHeadProbe(),
+    private readonly promptContext?: PromptContextResolver,
   ) {}
 
   list(projectId?: string) {
@@ -186,6 +212,19 @@ export class SessionService {
     if (!active) throw new AppError(409, 'SESSION_NOT_CONNECTED', 'Session 尚未连接或需要恢复');
 
     const runId = randomUUID();
+    const promptContext = this.promptContext
+      ? await this.promptContext.resolveForRun({
+          projectId: session.projectId,
+          agentId: session.agentId,
+          taskId: session.taskId,
+          variables: input.promptVariables ?? {},
+        })
+      : undefined;
+    if (promptContext && !promptContext.ready) {
+      throw new AppError(409, 'PROMPT_VARIABLES_MISSING', 'PromptOS 缺少必填变量', {
+        missingVariables: promptContext.missingVariables,
+      });
+    }
     const gitBeforeSha = await this.git.readHead(session.cwd);
     await this.runs.create({
       id: runId,
@@ -195,6 +234,26 @@ export class SessionService {
       model: session.model,
       mode: session.mode,
       gitBeforeSha,
+      metadataJson: promptContext
+        ? {
+            promptContext: {
+              finalContextHash: createHash('sha256')
+                .update(promptContext.finalContext)
+                .digest('hex'),
+              items: promptContext.items.map((item) => ({
+                promptId: item.promptId,
+                versionId: item.versionId,
+                version: item.version,
+                label: item.label,
+                contentHash: item.contentHash,
+                bindingId: item.bindingId,
+                slot: item.slot,
+                targetType: item.targetType,
+                targetId: item.targetId,
+              })),
+            },
+          }
+        : {},
     });
     await this.captureGitSnapshot(runId, session.projectId, session.cwd, 'BEFORE');
     const userMessage = await this.messages.append({
@@ -203,7 +262,17 @@ export class SessionService {
       role: 'USER',
       kind: 'TEXT',
       text: input.text,
-      contentJson: { content: input.content ?? [] },
+      contentJson: {
+        content: input.content ?? [],
+        ...(promptContext
+          ? {
+              promptContext: {
+                itemCount: promptContext.items.length,
+                missingVariables: promptContext.missingVariables,
+              },
+            }
+          : {}),
+      },
     });
     await this.runs.patch(runId, { inputMessageId: userMessage.id });
     await this.runs.transition(runId, 'STARTING');
@@ -213,7 +282,9 @@ export class SessionService {
     try {
       const reference = await active.handle.sendTurn({
         runId,
-        text: input.text,
+        text: promptContext?.finalContext
+          ? `${promptContext.finalContext}\n\n[用户任务]\n${input.text}`
+          : input.text,
         ...(input.content ? { content: input.content } : {}),
       });
       const run = await this.runs.patch(runId, {

@@ -16,7 +16,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AgentService } from '../agents/agent-service.js';
 import type { AcpProcessLauncher } from '@agenthub/adapter-acp';
-import { SessionService, type GitHeadProbe } from './session-service.js';
+import {
+  SessionService,
+  type GitHeadProbe,
+  type PromptContextResolver,
+} from './session-service.js';
 
 describe('Session/Run/Approval 持久化闭环', () => {
   let database: Awaited<ReturnType<typeof createPgliteDatabase>>;
@@ -29,7 +33,10 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await database.close();
   });
 
-  async function createFixture(scenario: 'complete' | 'approval' | 'idle') {
+  async function createFixture(
+    scenario: 'complete' | 'approval' | 'idle',
+    promptContext?: PromptContextResolver,
+  ) {
     const agents = new AgentRepository(database.db);
     const targets = new ExecutionTargetRepository(database.db);
     const projects = new ProjectRepository(database.db);
@@ -83,6 +90,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
       agentService,
       { publish: (topic, event) => published.push({ topic, event }) },
       git,
+      promptContext,
     );
     return {
       service,
@@ -172,6 +180,75 @@ describe('Session/Run/Approval 持久化闭环', () => {
     expect((await fixture.repositories.runs.get(run.id))?.status).toBe('DISCONNECTED');
     expect(await fixture.repositories.approvals.listPending(session.id)).toHaveLength(0);
     await fixture.service.shutdown();
+  });
+
+  it('Run 缺 PromptOS 必填变量时阻断，成功时保存 resolved provenance', async () => {
+    const missingFixture = await createFixture('idle', {
+      resolveForRun: async () => ({
+        ready: false,
+        finalContext: '',
+        missingVariables: ['task.name'],
+        items: [],
+      }),
+    });
+    const missingSession = await missingFixture.service.create({
+      projectId: missingFixture.projectId,
+      agentId: missingFixture.agentId,
+      title: '变量阻断',
+      cwd: '/tmp',
+    });
+    await expect(
+      missingFixture.service.startRun(missingSession.id, { text: '不应启动' }),
+    ).rejects.toMatchObject({ code: 'PROMPT_VARIABLES_MISSING' });
+    expect(await missingFixture.repositories.runs.list(missingSession.id)).toHaveLength(0);
+    await missingFixture.service.shutdown();
+
+    const resolvedFixture = await createFixture('idle', {
+      resolveForRun: async () => ({
+        ready: true,
+        finalContext: '[PromptOS REVIEW]\n只修改必要代码',
+        missingVariables: [],
+        items: [
+          {
+            promptId: 'prompt-1',
+            versionId: 'version-2',
+            version: 2,
+            label: 'production',
+            contentHash: 'a'.repeat(64),
+            bindingId: 'binding-1',
+            slot: 'REVIEW',
+            targetType: 'PROJECT',
+            targetId: 'project-1',
+          },
+        ],
+      }),
+    });
+    const resolvedSession = await resolvedFixture.service.create({
+      projectId: resolvedFixture.projectId,
+      agentId: resolvedFixture.agentId,
+      title: 'Provenance 持久化',
+      cwd: '/tmp',
+    });
+    const run = await resolvedFixture.service.startRun(resolvedSession.id, {
+      text: '执行任务',
+    });
+    expect(run.metadataJson).toMatchObject({
+      promptContext: {
+        items: [
+          {
+            promptId: 'prompt-1',
+            version: 2,
+            label: 'production',
+            contentHash: 'a'.repeat(64),
+          },
+        ],
+      },
+    });
+    expect((run.metadataJson.promptContext as Record<string, unknown>).finalContextHash).toMatch(
+      /^[a-f0-9]{64}$/,
+    );
+    await resolvedFixture.service.cancelRun(resolvedSession.id, run.id);
+    await resolvedFixture.service.shutdown();
   });
 });
 

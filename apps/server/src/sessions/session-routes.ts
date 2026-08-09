@@ -20,6 +20,7 @@ const createSchema = z.object({
 const runSchema = z.object({
   text: z.string().min(1).max(1_000_000),
   content: z.array(z.record(z.string(), z.unknown())).max(64).optional(),
+  promptVariables: z.record(z.string(), z.unknown()).optional(),
 });
 
 export function createSessionRouter(service: SessionService): Router {

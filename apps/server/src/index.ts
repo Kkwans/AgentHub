@@ -10,8 +10,10 @@ import {
   GitSnapshotRepository,
   MessageRepository,
   ProjectRepository,
+  PromptRepository,
   RunRepository,
   SessionRepository,
+  SkillRepository,
   type DatabaseClient,
 } from '@agenthub/db';
 import pino from 'pino';
@@ -33,6 +35,7 @@ import { SessionService } from './sessions/session-service.js';
 import { ProjectService } from './projects/project-service.js';
 import { GitService } from './git/git-service.js';
 import { TerminalService } from './terminal/terminal-service.js';
+import { PromptService } from './promptos/prompt-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -65,6 +68,8 @@ export async function startServer(
   const messageRepository = new MessageRepository(database.db);
   const approvalRepository = new ApprovalRepository(database.db);
   const gitSnapshotRepository = new GitSnapshotRepository(database.db);
+  const promptRepository = new PromptRepository(database.db);
+  const skillRepository = new SkillRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const projects = new ProjectService(projectRepository, executionTargetRepository);
@@ -72,6 +77,7 @@ export async function startServer(
   const terminal = new TerminalService(projectRepository, {
     publish: (topic, event) => brokerRef.current?.publish(topic, event),
   });
+  const promptos = new PromptService(promptRepository, skillRepository, projectRepository);
   const acpLauncher = new RoutedAcpProcessLauncher(
     new HostAcpProcessLauncher(),
     new DockerAcpProcessLauncher(docker),
@@ -98,6 +104,7 @@ export async function startServer(
     agents,
     { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
     git,
+    promptos,
   );
   const recovery = await sessions.recoverAfterRestart();
   const app = createApp({
@@ -110,6 +117,7 @@ export async function startServer(
     projects,
     git,
     terminal,
+    promptos,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);

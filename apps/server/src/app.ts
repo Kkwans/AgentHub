@@ -23,6 +23,8 @@ import { createGitRouter } from './git/git-routes.js';
 import type { GitService } from './git/git-service.js';
 import { createTerminalRouter } from './terminal/terminal-routes.js';
 import type { TerminalService } from './terminal/terminal-service.js';
+import { createPromptOsRouter } from './promptos/prompt-routes.js';
+import type { PromptService } from './promptos/prompt-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -34,6 +36,7 @@ export interface AppOptions {
   projects?: ProjectService;
   git?: GitService;
   terminal?: TerminalService;
+  promptos?: PromptService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -108,6 +111,7 @@ export function createApp(options: AppOptions = {}): Express {
       }
     });
   }
+  if (options.promptos) app.use('/api/v1', createPromptOsRouter(options.promptos));
 
   app.get(
     '/api/v1/sessions/:sessionId/events',

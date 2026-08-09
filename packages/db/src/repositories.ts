@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, eq, inArray, max, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, max, or, sql } from 'drizzle-orm';
 import {
   transitionRun,
   transitionSession,
@@ -18,10 +18,14 @@ import {
   gitSnapshots,
   messages,
   projects,
+  promptBindings,
   promptLabels,
   prompts,
   promptVersions,
   runEvents,
+  skillBindings,
+  skills,
+  tasks,
 } from './schema.js';
 
 export class DatabaseInvariantError extends Error {
@@ -65,6 +69,176 @@ export class PromptRepository<TDatabase extends AgentHubDatabase> {
     return created;
   }
 
+  listPrompts(projectId?: string) {
+    const base = this.db.select().from(prompts);
+    return projectId
+      ? base
+          .where(
+            and(
+              isNull(prompts.archivedAt),
+              or(eq(prompts.projectId, projectId), isNull(prompts.projectId)),
+            ),
+          )
+          .orderBy(prompts.name)
+      : base.where(isNull(prompts.archivedAt)).orderBy(prompts.name);
+  }
+
+  async getPrompt(id: string) {
+    const [prompt] = await this.db.select().from(prompts).where(eq(prompts.id, id)).limit(1);
+    return prompt;
+  }
+
+  async updatePrompt(
+    id: string,
+    patch: { name?: string; description?: string | null; kind?: string },
+  ) {
+    const [updated] = await this.db
+      .update(prompts)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(and(eq(prompts.id, id), isNull(prompts.archivedAt)))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('PROMPT_NOT_FOUND', 'Prompt 不存在');
+    return updated;
+  }
+
+  async archivePrompt(id: string) {
+    const [archived] = await this.db
+      .update(prompts)
+      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(prompts.id, id), isNull(prompts.archivedAt)))
+      .returning();
+    if (!archived) throw new DatabaseInvariantError('PROMPT_NOT_FOUND', 'Prompt 不存在');
+    return archived;
+  }
+
+  listVersions(promptId: string) {
+    return this.db
+      .select()
+      .from(promptVersions)
+      .where(eq(promptVersions.promptId, promptId))
+      .orderBy(desc(promptVersions.version));
+  }
+
+  async getVersion(promptId: string, version: number) {
+    const [record] = await this.db
+      .select()
+      .from(promptVersions)
+      .where(and(eq(promptVersions.promptId, promptId), eq(promptVersions.version, version)))
+      .limit(1);
+    return record;
+  }
+
+  async getVersionById(promptId: string, versionId: string) {
+    const [record] = await this.db
+      .select()
+      .from(promptVersions)
+      .where(and(eq(promptVersions.promptId, promptId), eq(promptVersions.id, versionId)))
+      .limit(1);
+    return record;
+  }
+
+  listLabels(promptId: string) {
+    return this.db
+      .select({
+        promptId: promptLabels.promptId,
+        label: promptLabels.label,
+        versionId: promptLabels.versionId,
+        version: promptVersions.version,
+        updatedAt: promptLabels.updatedAt,
+      })
+      .from(promptLabels)
+      .innerJoin(promptVersions, eq(promptLabels.versionId, promptVersions.id))
+      .where(eq(promptLabels.promptId, promptId))
+      .orderBy(promptLabels.label);
+  }
+
+  async getLabel(promptId: string, label: string) {
+    const [record] = await this.db
+      .select({
+        promptId: promptLabels.promptId,
+        label: promptLabels.label,
+        versionId: promptLabels.versionId,
+        version: promptVersions.version,
+        updatedAt: promptLabels.updatedAt,
+      })
+      .from(promptLabels)
+      .innerJoin(promptVersions, eq(promptLabels.versionId, promptVersions.id))
+      .where(and(eq(promptLabels.promptId, promptId), eq(promptLabels.label, label)))
+      .limit(1);
+    return record;
+  }
+
+  async deleteLabel(promptId: string, label: string) {
+    const [deleted] = await this.db
+      .delete(promptLabels)
+      .where(and(eq(promptLabels.promptId, promptId), eq(promptLabels.label, label)))
+      .returning();
+    return deleted;
+  }
+
+  listBindings(
+    filters: {
+      targetType?: string | undefined;
+      targetId?: string | undefined;
+      promptId?: string | undefined;
+    } = {},
+  ) {
+    const conditions = [
+      ...(filters.targetType ? [eq(promptBindings.targetType, filters.targetType)] : []),
+      ...(filters.targetId ? [eq(promptBindings.targetId, filters.targetId)] : []),
+      ...(filters.promptId ? [eq(promptBindings.promptId, filters.promptId)] : []),
+    ];
+    const query = this.db.select().from(promptBindings);
+    return conditions.length
+      ? query.where(and(...conditions)).orderBy(asc(promptBindings.priority))
+      : query.orderBy(promptBindings.targetType, asc(promptBindings.priority));
+  }
+
+  async getBinding(id: string) {
+    const [binding] = await this.db
+      .select()
+      .from(promptBindings)
+      .where(eq(promptBindings.id, id))
+      .limit(1);
+    return binding;
+  }
+
+  async createBinding(input: typeof promptBindings.$inferInsert) {
+    const [created] = await this.db.insert(promptBindings).values(input).returning();
+    if (!created)
+      throw new DatabaseInvariantError('PROMPT_BINDING_CREATE_FAILED', 'Prompt Binding 创建失败');
+    return created;
+  }
+
+  async updateBinding(id: string, patch: Partial<typeof promptBindings.$inferInsert>) {
+    const [updated] = await this.db
+      .update(promptBindings)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(promptBindings.id, id))
+      .returning();
+    if (!updated)
+      throw new DatabaseInvariantError('PROMPT_BINDING_NOT_FOUND', 'Prompt Binding 不存在');
+    return updated;
+  }
+
+  async deleteBinding(id: string) {
+    const [deleted] = await this.db
+      .delete(promptBindings)
+      .where(eq(promptBindings.id, id))
+      .returning();
+    return deleted;
+  }
+
+  async targetExists(targetType: 'PROJECT' | 'AGENT' | 'TASK', targetId: string) {
+    const table = targetType === 'PROJECT' ? projects : targetType === 'AGENT' ? agents : tasks;
+    const [record] = await this.db
+      .select({ id: table.id })
+      .from(table)
+      .where(eq(table.id, targetId))
+      .limit(1);
+    return Boolean(record);
+  }
+
   async createVersion(input: CreatePromptVersionInput) {
     return this.db.transaction(async (transaction) => {
       const [created] = await transaction
@@ -85,6 +259,47 @@ export class PromptRepository<TDatabase extends AgentHubDatabase> {
       if (!created)
         throw new DatabaseInvariantError('PROMPT_VERSION_CREATE_FAILED', 'Prompt 版本创建失败');
 
+      await transaction
+        .insert(promptLabels)
+        .values({ promptId: input.promptId, label: 'latest', versionId: created.id })
+        .onConflictDoUpdate({
+          target: [promptLabels.promptId, promptLabels.label],
+          set: { versionId: created.id, updatedAt: new Date() },
+        });
+      return created;
+    });
+  }
+
+  async createNextVersion(input: Omit<CreatePromptVersionInput, 'version'>) {
+    return this.db.transaction(async (transaction) => {
+      const [prompt] = await transaction
+        .select({ id: prompts.id })
+        .from(prompts)
+        .where(eq(prompts.id, input.promptId))
+        .for('update')
+        .limit(1);
+      if (!prompt) throw new DatabaseInvariantError('PROMPT_NOT_FOUND', 'Prompt 不存在');
+      const [latest] = await transaction
+        .select({ version: max(promptVersions.version) })
+        .from(promptVersions)
+        .where(eq(promptVersions.promptId, input.promptId));
+      const [created] = await transaction
+        .insert(promptVersions)
+        .values({
+          id: randomUUID(),
+          promptId: input.promptId,
+          version: Number(latest?.version ?? 0) + 1,
+          contentJson: input.content,
+          variablesJson: input.variables ?? {},
+          configJson: input.config ?? {},
+          changelog: input.changelog,
+          source: input.source,
+          contentHash: input.contentHash,
+          createdBy: input.createdBy,
+        })
+        .returning();
+      if (!created)
+        throw new DatabaseInvariantError('PROMPT_VERSION_CREATE_FAILED', 'Prompt 版本创建失败');
       await transaction
         .insert(promptLabels)
         .values({ promptId: input.promptId, label: 'latest', versionId: created.id })
@@ -120,6 +335,61 @@ export class PromptRepository<TDatabase extends AgentHubDatabase> {
         .returning();
       return moved;
     });
+  }
+}
+
+export class SkillRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list(projectId?: string) {
+    const query = this.db.select().from(skills);
+    return projectId
+      ? query
+          .where(or(eq(skills.projectId, projectId), isNull(skills.projectId)))
+          .orderBy(skills.name)
+      : query.orderBy(skills.name);
+  }
+
+  async get(id: string) {
+    const [skill] = await this.db.select().from(skills).where(eq(skills.id, id)).limit(1);
+    return skill;
+  }
+
+  async upsert(input: typeof skills.$inferInsert) {
+    const [existing] = await this.db
+      .select({ id: skills.id })
+      .from(skills)
+      .where(
+        and(
+          input.projectId ? eq(skills.projectId, input.projectId) : isNull(skills.projectId),
+          eq(skills.rootPath, input.rootPath),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      const [updated] = await this.db
+        .update(skills)
+        .set({ ...input, id: existing.id, updatedAt: new Date() })
+        .where(eq(skills.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await this.db.insert(skills).values(input).returning();
+    return created;
+  }
+
+  listBindings(targetType?: string, targetId?: string) {
+    const conditions = [
+      ...(targetType ? [eq(skillBindings.targetType, targetType)] : []),
+      ...(targetId ? [eq(skillBindings.targetId, targetId)] : []),
+    ];
+    const query = this.db.select().from(skillBindings);
+    return conditions.length ? query.where(and(...conditions)) : query;
+  }
+
+  async createBinding(input: typeof skillBindings.$inferInsert) {
+    const [created] = await this.db.insert(skillBindings).values(input).returning();
+    return created;
   }
 }
 
