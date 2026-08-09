@@ -9,8 +9,8 @@
 | 里程碑 | 范围                                             | 状态   |
 | ------ | ------------------------------------------------ | ------ |
 | M0     | 仓库、Goal、工程基线、文档与 ADR                 | 已完成 |
-| M1     | 数据层、REST、WebSocket、核心领域与 fake adapter | 进行中 |
-| M2     | 进程监管、Docker、ACP、五类 Agent、Session 闭环  | 待开始 |
+| M1     | 数据层、REST、WebSocket、核心领域与 fake adapter | 已完成 |
+| M2     | 进程监管、Docker、ACP、五类 Agent、Session 闭环  | 进行中 |
 | M3     | Project、只读文件、Git、Terminal 能力            | 待开始 |
 | M4     | 中文 Web Shell 与 Coding Workspace               | 待开始 |
 | M5     | PromptOS 版本、标签、绑定与 UI                   | 待开始 |
