@@ -166,7 +166,7 @@ export function OverviewPage() {
             ))
           )}
         </section>
-        <section className="control-section">
+        <section className="control-section wide">
           <div className="section-heading">
             <div>
               <span className="section-kicker">运行基础</span>

@@ -23,7 +23,15 @@ export default defineConfig({
       name: 'tablet-768',
       use: { ...devices['Desktop Chrome'], viewport: { width: 768, height: 900 } },
     },
-    { name: 'mobile-390', use: { ...devices['iPhone 13'], viewport: { width: 390, height: 844 } } },
+    {
+      name: 'mobile-390',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
   webServer: {
     command: 'corepack pnpm --filter @agenthub/web preview --host 127.0.0.1',
