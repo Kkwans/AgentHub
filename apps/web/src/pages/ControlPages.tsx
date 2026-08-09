@@ -589,6 +589,18 @@ export function AgentsPage() {
                     {agent.agentKind} · {agent.adapterKind} · {agent.detectedVersion ?? '版本未知'}
                   </span>
                   <small>最近预检 {formatTime(agent.lastPreflightAt)}</small>
+                  <div className="capability-strip" aria-label="Agent capability">
+                    {capabilityLabels(agent.capabilitiesJson).map((label) => (
+                      <span key={label}>{label}</span>
+                    ))}
+                    {!capabilityLabels(agent.capabilitiesJson).length && (
+                      <span>尚未获取 capability</span>
+                    )}
+                  </div>
+                  <details className="debug-details">
+                    <summary>调试视图</summary>
+                    <pre>{JSON.stringify(agent.capabilitiesJson, null, 2)}</pre>
+                  </details>
                 </div>
                 <button
                   className="button secondary compact"
@@ -619,6 +631,16 @@ export function AgentsPage() {
                 </small>
                 {target.expectedContainerId && (
                   <code title={target.expectedContainerId}>ID {target.expectedContainerId}</code>
+                )}
+                {!!target.workspaceMappingsJson.length && (
+                  <details className="debug-details target-details">
+                    <summary>目录映射</summary>
+                    {target.workspaceMappingsJson.map((mapping) => (
+                      <code key={`${mapping.hostRoot}:${mapping.containerRoot}`}>
+                        {mapping.hostRoot} → {mapping.containerRoot}
+                      </code>
+                    ))}
+                  </details>
                 )}
               </div>
               <div>
@@ -659,10 +681,51 @@ export function AgentsPage() {
               description="Docker 容器必须以完整 container ID 显式注册。"
             />
           )}
+          {(lifecycle.error || targetPreflight.error) && (
+            <p className="inline-error">{(lifecycle.error ?? targetPreflight.error)?.message}</p>
+          )}
         </section>
       </div>
     </div>
   );
+}
+
+function capabilityLabels(capabilities: Record<string, unknown>): string[] {
+  const groups: Array<[string, Array<[string, string]>]> = [
+    ['sessions', [['resume', '恢复 Session']]],
+    [
+      'interaction',
+      [
+        ['streaming', '流式输出'],
+        ['approvals', 'Approval'],
+        ['plan', 'Plan'],
+      ],
+    ],
+    [
+      'workspace',
+      [
+        ['files', '文件'],
+        ['terminal', 'Terminal'],
+        ['mcpStdio', 'MCP stdio'],
+        ['mcpHttp', 'MCP HTTP'],
+      ],
+    ],
+    [
+      'configuration',
+      [
+        ['models', '模型'],
+        ['modes', '模式'],
+        ['reasoningEffort', '推理强度'],
+      ],
+    ],
+  ];
+  return groups.flatMap(([groupName, entries]) => {
+    const group = capabilities[groupName];
+    if (!group || typeof group !== 'object') return [];
+    return entries
+      .filter(([key]) => (group as Record<string, unknown>)[key] === true)
+      .map(([, label]) => label);
+  });
 }
 
 export function SessionsPage() {
