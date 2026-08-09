@@ -801,6 +801,14 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
       .orderBy(agentRuns.startedAt);
   }
 
+  listRecent(limit = 20) {
+    return this.db
+      .select()
+      .from(agentRuns)
+      .orderBy(desc(agentRuns.startedAt))
+      .limit(Math.min(Math.max(limit, 1), 100));
+  }
+
   async get(id: string) {
     const [run] = await this.db.select().from(agentRuns).where(eq(agentRuns.id, id)).limit(1);
     return run;

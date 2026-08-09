@@ -183,6 +183,14 @@ export interface TaskRecord {
   completedAt: string | null;
 }
 
+export interface DashboardSnapshot {
+  runningSessions: SessionRecord[];
+  attentionTasks: TaskRecord[];
+  pendingApprovals: ApprovalRecord[];
+  recentResults: Array<RunRecord & { gitOutcome: 'CHANGED' | 'UNCHANGED' | 'UNAVAILABLE' }>;
+  agentHealth: AgentRecord[];
+}
+
 export interface MessageRecord {
   id: string;
   runId: string | null;

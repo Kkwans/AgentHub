@@ -39,6 +39,7 @@ import { GitService } from './git/git-service.js';
 import { TerminalService } from './terminal/terminal-service.js';
 import { PromptService } from './promptos/prompt-service.js';
 import { TaskService } from './tasks/task-service.js';
+import { DashboardService } from './dashboard/dashboard-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -113,6 +114,13 @@ export async function startServer(
   );
   const tasks = new TaskService(goalRepository, taskRepository, projectRepository, sessions);
   sessions.setTaskLifecycleObserver(tasks);
+  const dashboard = new DashboardService(
+    sessionRepository,
+    taskRepository,
+    runRepository,
+    approvalRepository,
+    agentRepository,
+  );
   const recovery = await sessions.recoverAfterRestart();
   const app = createApp({
     logger,
@@ -126,6 +134,7 @@ export async function startServer(
     terminal,
     promptos,
     tasks,
+    dashboard,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);

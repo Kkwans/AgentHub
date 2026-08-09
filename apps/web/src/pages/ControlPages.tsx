@@ -21,7 +21,7 @@ import {
   api,
   type AgentCatalogEntry,
   type AgentRecord,
-  type ApprovalRecord,
+  type DashboardSnapshot,
   type ExecutionTargetRecord,
   type GoalRecord,
   type ProjectRecord,
@@ -38,30 +38,23 @@ import {
 } from '../components/Common';
 
 export function OverviewPage() {
-  const sessions = useQuery({
-    queryKey: ['sessions'],
-    queryFn: () => api.get<SessionRecord[]>('/sessions'),
-  });
-  const agents = useQuery({
-    queryKey: ['agents'],
-    queryFn: () => api.get<AgentRecord[]>('/agents'),
-  });
-  const approvals = useQuery({
-    queryKey: ['approvals'],
-    queryFn: () => api.get<ApprovalRecord[]>('/approvals'),
+  const dashboard = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => api.get<DashboardSnapshot>('/dashboard'),
   });
   const projects = useQuery({
     queryKey: ['projects'],
     queryFn: () => api.get<ProjectRecord[]>('/projects'),
   });
-  const loading =
-    sessions.isLoading || agents.isLoading || approvals.isLoading || projects.isLoading;
-  const error = sessions.error || agents.error || approvals.error || projects.error;
+  const loading = dashboard.isLoading || projects.isLoading;
+  const error = dashboard.error || projects.error;
   if (loading) return <LoadingState label="正在汇总运行与待处理状态" />;
   if (error) return <ErrorState error={error} />;
-  const running =
-    sessions.data?.filter((item) => ['RUNNING', 'WAITING_APPROVAL'].includes(item.status)) ?? [];
-  const unhealthy = agents.data?.filter((item) => item.status !== 'READY') ?? [];
+  const approvals = dashboard.data?.pendingApprovals ?? [];
+  const attentionTasks = dashboard.data?.attentionTasks ?? [];
+  const running = dashboard.data?.runningSessions ?? [];
+  const agents = dashboard.data?.agentHealth ?? [];
+  const unhealthy = agents.filter((item) => item.status !== 'READY');
 
   return (
     <div className="page-stack">
@@ -76,21 +69,42 @@ export function OverviewPage() {
               <span className="section-kicker">需要处理</span>
               <h3>等待你的决定</h3>
             </div>
-            <span className="count-token">{approvals.data?.length ?? 0}</span>
+            <span className="count-token">{approvals.length + attentionTasks.length}</span>
           </div>
-          {!approvals.data?.length ? (
-            <EmptyState title="没有待批准项" description="Agent 的原生权限请求会集中出现在这里。" />
+          {!approvals.length && !attentionTasks.length ? (
+            <EmptyState
+              title="没有待处理项"
+              description="Agent Approval 与 Task 审阅会集中出现在这里。"
+            />
           ) : (
-            approvals.data.map((approval) => (
-              <Link className="action-row" key={approval.id} to={`/sessions/${approval.sessionId}`}>
-                <ShieldAlert size={18} />
-                <div>
-                  <strong>{approval.title}</strong>
-                  <span>等待批准 · Session {approval.sessionId.slice(0, 8)}</span>
-                </div>
-                <ArrowRight size={16} />
-              </Link>
-            ))
+            <>
+              {approvals.map((approval) => (
+                <Link
+                  className="action-row"
+                  key={approval.id}
+                  to={`/sessions/${approval.sessionId}`}
+                >
+                  <ShieldAlert size={18} />
+                  <div>
+                    <strong>{approval.title}</strong>
+                    <span>等待批准 · Session {approval.sessionId.slice(0, 8)}</span>
+                  </div>
+                  <ArrowRight size={16} />
+                </Link>
+              ))}
+              {attentionTasks.map((task) => (
+                <Link className="action-row" key={task.id} to="/tasks">
+                  <ClipboardCheck size={18} />
+                  <div>
+                    <strong>{task.title}</strong>
+                    <span>
+                      {task.status === 'WAITING_REVIEW' ? '等待用户审阅' : 'Task 受阻，需要处理'}
+                    </span>
+                  </div>
+                  <ArrowRight size={16} />
+                </Link>
+              ))}
+            </>
           )}
         </section>
         <section className="control-section">
@@ -119,7 +133,37 @@ export function OverviewPage() {
             ))
           )}
         </section>
-        <section className="control-section wide">
+        <section className="control-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">最近结果</span>
+              <h3>Run 与 Git outcome</h3>
+            </div>
+            <GitBranch size={18} />
+          </div>
+          {!dashboard.data?.recentResults.length ? (
+            <EmptyState title="还没有运行结果" description="完成或失败的 Run 会显示在这里。" />
+          ) : (
+            dashboard.data.recentResults.slice(0, 6).map((run) => (
+              <Link className="action-row" key={run.id} to={`/sessions/${run.sessionId}`}>
+                <CheckCircle2 size={17} />
+                <div>
+                  <strong>Run {run.id.slice(0, 8)}</strong>
+                  <span>
+                    Git{' '}
+                    {run.gitOutcome === 'CHANGED'
+                      ? '有变更'
+                      : run.gitOutcome === 'UNCHANGED'
+                        ? '无变更'
+                        : '不可用'}
+                  </span>
+                </div>
+                <StatusBadge status={run.status} />
+              </Link>
+            ))
+          )}
+        </section>
+        <section className="control-section">
           <div className="section-heading">
             <div>
               <span className="section-kicker">运行基础</span>
@@ -128,7 +172,7 @@ export function OverviewPage() {
           </div>
           <div className="health-layout">
             <div className="health-list">
-              {(agents.data ?? []).map((agent) => (
+              {agents.map((agent) => (
                 <div className="health-row" key={agent.id}>
                   <span className="agent-glyph">
                     <Bot size={16} />
@@ -142,7 +186,7 @@ export function OverviewPage() {
                   <StatusBadge status={agent.status} />
                 </div>
               ))}
-              {!agents.data?.length && (
+              {!agents.length && (
                 <EmptyState
                   title="尚未注册 Agent"
                   description="先在 Agent 页面注册并完成 preflight。"
