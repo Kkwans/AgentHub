@@ -40,6 +40,7 @@ export function WorkspacePage() {
   const [tab, setTab] = useState<InspectorTab>('files');
   const [selectedFile, setSelectedFile] = useState<string>();
   const [terminalOpen, setTerminalOpen] = useState(false);
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => api.get<SessionRecord[]>('/sessions'),
@@ -106,6 +107,15 @@ export function WorkspacePage() {
     );
   }, [client, events.data, id]);
 
+  useEffect(() => {
+    if (!mobileInspectorOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileInspectorOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [mobileInspectorOpen]);
+
   if (session.isLoading) return <LoadingState label="正在打开 Coding Workspace" />;
   if (session.error) return <ErrorState error={session.error} />;
   if (!session.data)
@@ -129,6 +139,37 @@ export function WorkspacePage() {
           </span>
           <code title={session.data.cwd}>{session.data.cwd}</code>
         </div>
+      </div>
+      <div className="workspace-mobile-tabs" role="tablist" aria-label="Workspace 视图">
+        <button
+          className={!mobileInspectorOpen ? 'active' : ''}
+          onClick={() => setMobileInspectorOpen(false)}
+          role="tab"
+          aria-selected={!mobileInspectorOpen}
+        >
+          对话
+        </button>
+        {(
+          [
+            ['files', '文件'],
+            ['diff', 'Diff'],
+            ['git', 'Git'],
+            ['run', '运行'],
+          ] as Array<[InspectorTab, string]>
+        ).map(([item, label]) => (
+          <button
+            key={item}
+            className={mobileInspectorOpen && tab === item ? 'active' : ''}
+            onClick={() => {
+              setTab(item);
+              setMobileInspectorOpen(true);
+            }}
+            role="tab"
+            aria-selected={mobileInspectorOpen && tab === item}
+          >
+            {label}
+          </button>
+        ))}
       </div>
       <Group orientation="horizontal" className="workspace-panels">
         <Panel
@@ -160,7 +201,7 @@ export function WorkspacePage() {
           id="inspector"
           defaultSize="33%"
           minSize="300px"
-          className="workspace-panel inspector-panel"
+          className={`workspace-panel inspector-panel ${mobileInspectorOpen ? 'mobile-open' : ''}`}
         >
           <Inspector
             project={project}
@@ -173,6 +214,13 @@ export function WorkspacePage() {
           />
         </Panel>
       </Group>
+      {mobileInspectorOpen && (
+        <button
+          className="workspace-drawer-scrim"
+          aria-label="关闭检查器"
+          onClick={() => setMobileInspectorOpen(false)}
+        />
+      )}
       <Composer
         session={session.data}
         agent={agent}

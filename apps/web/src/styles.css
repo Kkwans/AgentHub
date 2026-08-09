@@ -1082,11 +1082,17 @@ select:focus-visible {
 }
 
 .workspace-shell {
+  position: relative;
   display: grid;
   grid-template-rows: 49px minmax(0, 1fr) auto auto;
   height: 100%;
   min-height: 0;
   background: #f4f6f9;
+}
+
+.workspace-mobile-tabs,
+.workspace-drawer-scrim {
+  display: none;
 }
 
 .workspace-contextbar {
@@ -1942,6 +1948,46 @@ select:focus-visible {
     height: calc(100vh - 76px);
   }
 
+  .workspace-shell {
+    grid-template-rows: 49px 39px minmax(0, 1fr) auto auto;
+  }
+
+  .workspace-mobile-tabs {
+    z-index: 8;
+    display: flex;
+    overflow-x: auto;
+    align-items: stretch;
+    padding: 0 8px;
+    background: #f8f9fb;
+    border-bottom: 1px solid #dce2ea;
+    scrollbar-width: none;
+  }
+
+  .workspace-mobile-tabs button {
+    position: relative;
+    min-width: 62px;
+    padding: 0 10px;
+    cursor: pointer;
+    color: #68768b;
+    font-size: 10px;
+    font-weight: 700;
+    background: transparent;
+  }
+
+  .workspace-mobile-tabs button.active {
+    color: #245fc5;
+  }
+
+  .workspace-mobile-tabs button.active::after {
+    position: absolute;
+    right: 9px;
+    bottom: 0;
+    left: 9px;
+    height: 2px;
+    background: #2b65cb;
+    content: '';
+  }
+
   .workspace-contextbar {
     padding-left: 12px;
   }
@@ -1963,6 +2009,30 @@ select:focus-visible {
   .workspace-panels > .resize-handle,
   .inspector-panel {
     display: none;
+  }
+
+  .inspector-panel.mobile-open {
+    position: absolute !important;
+    top: 88px;
+    right: 0;
+    bottom: 106px;
+    z-index: 10;
+    display: flex;
+    width: min(570px, 72vw) !important;
+    height: auto !important;
+    min-width: 0 !important;
+    background: white;
+    border-left: 1px solid #cbd4e1;
+    box-shadow: -18px 0 45px rgb(15 23 42 / 18%);
+  }
+
+  .workspace-drawer-scrim {
+    position: absolute;
+    inset: 88px 0 0;
+    z-index: 9;
+    display: block;
+    cursor: default;
+    background: rgb(15 23 42 / 22%);
   }
 }
 
@@ -2050,6 +2120,22 @@ select:focus-visible {
 
   .workspace-contextbar {
     height: 45px;
+  }
+
+  .workspace-shell {
+    grid-template-rows: 45px 39px minmax(0, 1fr) auto auto;
+  }
+
+  .inspector-panel.mobile-open {
+    top: 84px;
+    bottom: 102px;
+    width: 100% !important;
+    border-left: 0;
+    box-shadow: none;
+  }
+
+  .workspace-drawer-scrim {
+    inset: 84px 0 0;
   }
 
   .context-title strong {
