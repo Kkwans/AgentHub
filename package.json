@@ -11,7 +11,7 @@
     "dev": "corepack pnpm --parallel --filter @agenthub/server --filter @agenthub/web dev",
     "build": "corepack pnpm -r --if-present build",
     "lint": "eslint .",
-    "typecheck": "corepack pnpm -r --if-present typecheck",
+    "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

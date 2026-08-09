@@ -6,5 +6,12 @@
     "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/db" },
+    { "path": "../../packages/agent-core" },
+    { "path": "../../packages/adapter-acp" },
+    { "path": "../../packages/adapter-openclaw" }
+  ]
 }
