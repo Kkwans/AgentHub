@@ -1,0 +1,843 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Activity,
+  ArrowRight,
+  Bot,
+  Box,
+  CheckCircle2,
+  FolderGit2,
+  GitBranch,
+  Plus,
+  RefreshCw,
+  ShieldAlert,
+  SquareTerminal,
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+
+import {
+  api,
+  type AgentCatalogEntry,
+  type AgentRecord,
+  type ApprovalRecord,
+  type ExecutionTargetRecord,
+  type ProjectRecord,
+  type SessionRecord,
+} from '../lib/api';
+import {
+  EmptyState,
+  ErrorState,
+  formatTime,
+  LoadingState,
+  PageIntro,
+  StatusBadge,
+} from '../components/Common';
+
+export function OverviewPage() {
+  const sessions = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+  });
+  const agents = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => api.get<AgentRecord[]>('/agents'),
+  });
+  const approvals = useQuery({
+    queryKey: ['approvals'],
+    queryFn: () => api.get<ApprovalRecord[]>('/approvals'),
+  });
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get<ProjectRecord[]>('/projects'),
+  });
+  const loading =
+    sessions.isLoading || agents.isLoading || approvals.isLoading || projects.isLoading;
+  const error = sessions.error || agents.error || approvals.error || projects.error;
+  if (loading) return <LoadingState label="正在汇总运行与待处理状态" />;
+  if (error) return <ErrorState error={error} />;
+  const running =
+    sessions.data?.filter((item) => ['RUNNING', 'WAITING_APPROVAL'].includes(item.status)) ?? [];
+  const unhealthy = agents.data?.filter((item) => item.status !== 'READY') ?? [];
+
+  return (
+    <div className="page-stack">
+      <PageIntro
+        title="今天需要处理什么"
+        description="只展示正在运行、需要处理和最近工程结果，不堆叠无行动价值的指标。"
+      />
+      <div className="dashboard-grid">
+        <section className="control-section priority-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">需要处理</span>
+              <h3>等待你的决定</h3>
+            </div>
+            <span className="count-token">{approvals.data?.length ?? 0}</span>
+          </div>
+          {!approvals.data?.length ? (
+            <EmptyState title="没有待批准项" description="Agent 的原生权限请求会集中出现在这里。" />
+          ) : (
+            approvals.data.map((approval) => (
+              <Link className="action-row" key={approval.id} to={`/sessions/${approval.sessionId}`}>
+                <ShieldAlert size={18} />
+                <div>
+                  <strong>{approval.title}</strong>
+                  <span>等待批准 · Session {approval.sessionId.slice(0, 8)}</span>
+                </div>
+                <ArrowRight size={16} />
+              </Link>
+            ))
+          )}
+        </section>
+        <section className="control-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">运行态</span>
+              <h3>正在执行</h3>
+            </div>
+            <Activity size={18} />
+          </div>
+          {!running.length ? (
+            <EmptyState
+              title="当前没有运行中的 Session"
+              description="从任务或会话页选择 Agent 开始。"
+            />
+          ) : (
+            running.map((session) => (
+              <Link className="action-row" key={session.id} to={`/sessions/${session.id}`}>
+                <span className="pulse-marker" />
+                <div>
+                  <strong>{session.title}</strong>
+                  <span>{session.cwd}</span>
+                </div>
+                <StatusBadge status={session.status} />
+              </Link>
+            ))
+          )}
+        </section>
+        <section className="control-section wide">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">运行基础</span>
+              <h3>Agent 健康与 Project</h3>
+            </div>
+          </div>
+          <div className="health-layout">
+            <div className="health-list">
+              {(agents.data ?? []).map((agent) => (
+                <div className="health-row" key={agent.id}>
+                  <span className="agent-glyph">
+                    <Bot size={16} />
+                  </span>
+                  <div>
+                    <strong>{agent.name}</strong>
+                    <span>
+                      {agent.agentKind} · {agent.detectedVersion ?? '未检测版本'}
+                    </span>
+                  </div>
+                  <StatusBadge status={agent.status} />
+                </div>
+              ))}
+              {!agents.data?.length && (
+                <EmptyState
+                  title="尚未注册 Agent"
+                  description="先在 Agent 页面注册并完成 preflight。"
+                />
+              )}
+            </div>
+            <div className="project-strip">
+              {(projects.data ?? []).slice(0, 4).map((project) => (
+                <Link key={project.id} to="/projects">
+                  <FolderGit2 size={17} />
+                  <div>
+                    <strong>{project.name}</strong>
+                    <code>{project.realRootPath}</code>
+                  </div>
+                  <span>{project.repoKind}</span>
+                </Link>
+              ))}
+              {!!unhealthy.length && (
+                <p className="inline-warning">{unhealthy.length} 个 Agent 需要修复或授权。</p>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export function ProjectsPage() {
+  const client = useQueryClient();
+  const [adding, setAdding] = useState(false);
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get<ProjectRecord[]>('/projects'),
+  });
+  const targets = useQuery({
+    queryKey: ['targets'],
+    queryFn: () => api.get<ExecutionTargetRecord[]>('/execution-targets'),
+  });
+  const add = useMutation({
+    mutationFn: (body: Record<string, string>) => api.post('/projects', body),
+    onSuccess: () => {
+      setAdding(false);
+      void client.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+  return (
+    <div className="page-stack">
+      <PageIntro
+        title="Project 工作区"
+        description="添加真实目录并探测 Git、分支、规则文件与 package manager。文件浏览保持只读。"
+        action={
+          <button className="button primary" onClick={() => setAdding(!adding)}>
+            <Plus size={15} /> 添加 Project
+          </button>
+        }
+      />
+      {adding && (
+        <form
+          className="inline-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            add.mutate(Object.fromEntries(data) as Record<string, string>);
+          }}
+        >
+          <label>
+            名称
+            <input required name="name" placeholder="例如 AgentHub" />
+          </label>
+          <label>
+            Project root
+            <input
+              required
+              name="rootPath"
+              className="mono"
+              placeholder="/volume2/Project/AgentHub"
+            />
+          </label>
+          <label>
+            Execution Target
+            <select required name="targetId">
+              <option value="">请选择</option>
+              {targets.data?.map((target) => (
+                <option key={target.id} value={target.id}>
+                  {target.name} · {target.kind}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="button primary" disabled={add.isPending}>
+            {add.isPending ? '正在预检' : '预检并添加'}
+          </button>
+          {add.error && <span className="form-error">{add.error.message}</span>}
+        </form>
+      )}
+      {projects.isLoading ? (
+        <LoadingState />
+      ) : projects.error ? (
+        <ErrorState error={projects.error} />
+      ) : !projects.data?.length ? (
+        <EmptyState
+          title="尚未添加 Project"
+          description="添加 NAS 上的真实工程目录后，才能建立 Session 和 Git 闭环。"
+        />
+      ) : (
+        <div className="data-table project-table">
+          <div className="data-row header">
+            <span>Project</span>
+            <span>路径</span>
+            <span>Git</span>
+            <span>状态</span>
+            <span>操作</span>
+          </div>
+          {projects.data.map((project) => (
+            <div className="data-row" key={project.id}>
+              <span>
+                <strong>{project.name}</strong>
+                <small>{project.description || '暂无说明'}</small>
+              </span>
+              <code title={project.realRootPath}>{project.realRootPath}</code>
+              <span>
+                <GitBranch size={14} /> {project.repoKind}
+              </span>
+              <StatusBadge status={project.status} />
+              <Link className="text-link" to={`/sessions?projectId=${project.id}`}>
+                打开工作区 <ArrowRight size={14} />
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AgentsPage() {
+  const client = useQueryClient();
+  const [targetFormOpen, setTargetFormOpen] = useState(false);
+  const [agentFormOpen, setAgentFormOpen] = useState(false);
+  const [targetKind, setTargetKind] = useState<'LOCAL_HOST' | 'DOCKER_CONTAINER'>(
+    'DOCKER_CONTAINER',
+  );
+  const agents = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => api.get<AgentRecord[]>('/agents'),
+  });
+  const targets = useQuery({
+    queryKey: ['targets'],
+    queryFn: () => api.get<ExecutionTargetRecord[]>('/execution-targets'),
+  });
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get<ProjectRecord[]>('/projects'),
+  });
+  const catalog = useQuery({
+    queryKey: ['agent-catalog'],
+    queryFn: () => api.get<AgentCatalogEntry[]>('/agents/catalog'),
+  });
+  const registerTarget = useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post('/execution-targets', body),
+    onSuccess: () => {
+      setTargetFormOpen(false);
+      void client.invalidateQueries({ queryKey: ['targets'] });
+    },
+  });
+  const registerAgent = useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post('/agents', body),
+    onSuccess: () => {
+      setAgentFormOpen(false);
+      void client.invalidateQueries({ queryKey: ['agents'] });
+    },
+  });
+  const preflight = useMutation({
+    mutationFn: ({ id, cwd }: { id: string; cwd: string }) =>
+      api.post(`/agents/${id}/preflight`, { cwd, smokeSession: false }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['agents'] }),
+  });
+  const lifecycle = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: string }) =>
+      api.post(`/execution-targets/${id}/${action}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['targets'] }),
+  });
+  const targetPreflight = useMutation({
+    mutationFn: ({ id, cwd }: { id: string; cwd?: string }) =>
+      api.post(`/execution-targets/${id}/preflight`, cwd ? { cwd } : {}),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['targets'] }),
+  });
+  const cwd = projects.data?.[0]?.realRootPath ?? '/tmp';
+  return (
+    <div className="page-stack">
+      <PageIntro
+        title="Agent 与执行目标"
+        description="真实展示 Agent capability、认证和 Docker 状态；不会自动安装、重建或停止容器。"
+        action={
+          <div className="page-actions">
+            <button className="button secondary" onClick={() => setTargetFormOpen(!targetFormOpen)}>
+              <Box size={15} /> 注册 Execution Target
+            </button>
+            <button className="button primary" onClick={() => setAgentFormOpen(!agentFormOpen)}>
+              <Plus size={15} /> 添加 Agent
+            </button>
+          </div>
+        }
+      />
+      {targetFormOpen && (
+        <form
+          className="management-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const values = Object.fromEntries(new FormData(event.currentTarget));
+            const common = {
+              name: String(values.name),
+              kind: targetKind,
+              hostname: String(values.hostname),
+              os: String(values.os),
+              arch: String(values.arch),
+            };
+            registerTarget.mutate(
+              targetKind === 'LOCAL_HOST'
+                ? common
+                : {
+                    ...common,
+                    containerName: String(values.containerName),
+                    expectedContainerId: String(values.expectedContainerId),
+                    startPolicy: String(values.startPolicy),
+                    workspaceMappings:
+                      values.hostRoot && values.containerRoot
+                        ? [
+                            {
+                              hostRoot: String(values.hostRoot),
+                              containerRoot: String(values.containerRoot),
+                            },
+                          ]
+                        : [],
+                  },
+            );
+          }}
+        >
+          <div className="form-heading">
+            <div>
+              <span className="section-kicker">显式接管</span>
+              <h3>注册 Execution Target</h3>
+            </div>
+            <p>Docker target 注册时会核验完整 container ID；不会创建或修改容器。</p>
+          </div>
+          <div className="form-grid">
+            <label>
+              类型
+              <select
+                value={targetKind}
+                onChange={(event) => setTargetKind(event.target.value as typeof targetKind)}
+              >
+                <option value="DOCKER_CONTAINER">Docker 容器</option>
+                <option value="LOCAL_HOST">宿主机</option>
+              </select>
+            </label>
+            <label>
+              名称
+              <input required name="name" placeholder="例如 OpenClaw Runtime" />
+            </label>
+            <label>
+              hostname
+              <input
+                required
+                name="hostname"
+                defaultValue={targetKind === 'LOCAL_HOST' ? window.location.hostname : 'docker'}
+              />
+            </label>
+            <label>
+              os
+              <input required name="os" defaultValue="linux" />
+            </label>
+            <label>
+              arch
+              <input required name="arch" defaultValue="arm64" />
+            </label>
+            {targetKind === 'DOCKER_CONTAINER' && (
+              <>
+                <label>
+                  container name
+                  <input
+                    required
+                    name="containerName"
+                    className="mono"
+                    placeholder="openclaw-official"
+                  />
+                </label>
+                <label className="span-two">
+                  完整 container ID
+                  <input
+                    required
+                    name="expectedContainerId"
+                    className="mono"
+                    minLength={64}
+                    maxLength={64}
+                    pattern="[a-f0-9]{64}"
+                    placeholder="64 位十六进制 ID"
+                  />
+                </label>
+                <label>
+                  启动策略
+                  <select required name="startPolicy">
+                    <option value="MANUAL">手动启动</option>
+                    <option value="ON_DEMAND">按需启动</option>
+                  </select>
+                </label>
+                <label>
+                  host root
+                  <input name="hostRoot" className="mono" placeholder="/volume2/Project" />
+                </label>
+                <label>
+                  container root
+                  <input name="containerRoot" className="mono" placeholder="/workspace" />
+                </label>
+              </>
+            )}
+          </div>
+          <div className="form-footer">
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setTargetFormOpen(false)}
+            >
+              取消
+            </button>
+            <button className="button primary" disabled={registerTarget.isPending}>
+              {registerTarget.isPending ? '正在核验' : '核验并注册'}
+            </button>
+          </div>
+          {registerTarget.error && (
+            <span className="form-error">{registerTarget.error.message}</span>
+          )}
+        </form>
+      )}
+      {agentFormOpen && (
+        <form
+          className="management-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const values = Object.fromEntries(new FormData(event.currentTarget));
+            const selected = catalog.data?.find((item) => item.agentKind === values.agentKind);
+            registerAgent.mutate({
+              name: String(values.name || selected?.name || values.agentKind),
+              agentKind: String(values.agentKind),
+              targetId: String(values.targetId),
+              ...(values.defaultModel ? { defaultModel: String(values.defaultModel) } : {}),
+              ...(values.defaultMode ? { defaultMode: String(values.defaultMode) } : {}),
+            });
+          }}
+        >
+          <div className="form-heading">
+            <div>
+              <span className="section-kicker">Agent Profile</span>
+              <h3>添加内置 Agent</h3>
+            </div>
+            <p>使用服务端固定命令和 adapter 版本；不会临时执行 latest 安装。</p>
+          </div>
+          <div className="form-grid">
+            <label>
+              Agent 类型
+              <select required name="agentKind">
+                {catalog.data?.map((entry) => (
+                  <option key={entry.agentKind} value={entry.agentKind}>
+                    {entry.name} · {entry.adapterKind}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              名称
+              <input required name="name" placeholder="例如 Codex 主力" />
+            </label>
+            <label className="span-two">
+              Execution Target
+              <select required name="targetId">
+                <option value="">请选择</option>
+                {targets.data?.map((target) => (
+                  <option key={target.id} value={target.id}>
+                    {target.name} · {target.kind}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              默认模型
+              <input name="defaultModel" placeholder="由 Agent 决定" />
+            </label>
+            <label>
+              默认模式
+              <input name="defaultMode" placeholder="由 Agent 决定" />
+            </label>
+          </div>
+          <div className="catalog-notes">
+            {catalog.data?.map((entry) => (
+              <div key={entry.agentKind}>
+                <strong>{entry.name}</strong>
+                <code>{entry.command}</code>
+                <span>{entry.notes}</span>
+              </div>
+            ))}
+          </div>
+          <div className="form-footer">
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setAgentFormOpen(false)}
+            >
+              取消
+            </button>
+            <button className="button primary" disabled={registerAgent.isPending}>
+              {registerAgent.isPending ? '正在添加' : '添加 Agent'}
+            </button>
+          </div>
+          {registerAgent.error && <span className="form-error">{registerAgent.error.message}</span>}
+        </form>
+      )}
+      <div className="agent-layout">
+        <section className="control-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">Agent Profiles</span>
+              <h3>已注册 Agent</h3>
+            </div>
+            <RefreshCw size={17} />
+          </div>
+          {agents.isLoading ? (
+            <LoadingState />
+          ) : agents.error ? (
+            <ErrorState error={agents.error} />
+          ) : !agents.data?.length ? (
+            <EmptyState
+              title="尚未注册 Agent"
+              description="先注册 Execution Target，再选择内置 Agent Profile。"
+            />
+          ) : (
+            agents.data.map((agent) => (
+              <div className="agent-row" key={agent.id}>
+                <span className="agent-glyph large">
+                  <Bot size={19} />
+                </span>
+                <div className="grow">
+                  <div className="row-title">
+                    <strong>{agent.name}</strong>
+                    <StatusBadge status={agent.status} />
+                  </div>
+                  <span>
+                    {agent.agentKind} · {agent.adapterKind} · {agent.detectedVersion ?? '版本未知'}
+                  </span>
+                  <small>最近预检 {formatTime(agent.lastPreflightAt)}</small>
+                </div>
+                <button
+                  className="button secondary compact"
+                  onClick={() => preflight.mutate({ id: agent.id, cwd })}
+                  disabled={preflight.isPending}
+                >
+                  重新预检
+                </button>
+              </div>
+            ))
+          )}
+        </section>
+        <section className="control-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">Execution Targets</span>
+              <h3>宿主机与 Docker</h3>
+            </div>
+            <Box size={18} />
+          </div>
+          {targets.data?.map((target) => (
+            <div className="target-row" key={target.id}>
+              <div>
+                <strong>{target.name}</strong>
+                <code>{target.containerName ?? target.hostname}</code>
+                <small>
+                  {target.os}/{target.arch} · {target.startPolicy ?? 'HOST'}
+                </small>
+                {target.expectedContainerId && (
+                  <code title={target.expectedContainerId}>ID {target.expectedContainerId}</code>
+                )}
+              </div>
+              <div>
+                <StatusBadge status={target.status} />
+                <button
+                  className="button ghost compact"
+                  onClick={() =>
+                    targetPreflight.mutate({
+                      id: target.id,
+                      ...(projects.data?.[0]?.realRootPath
+                        ? { cwd: projects.data[0].realRootPath }
+                        : {}),
+                    })
+                  }
+                  disabled={targetPreflight.isPending}
+                >
+                  预检
+                </button>
+                {target.kind === 'DOCKER_CONTAINER' && (
+                  <button
+                    className="button ghost compact"
+                    onClick={() =>
+                      lifecycle.mutate({
+                        id: target.id,
+                        action: target.status === 'READY' ? 'stop' : 'start',
+                      })
+                    }
+                  >
+                    {target.status === 'READY' ? '停止' : '启动'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {!targets.data?.length && (
+            <EmptyState
+              title="没有 Execution Target"
+              description="Docker 容器必须以完整 container ID 显式注册。"
+            />
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export function SessionsPage() {
+  const navigate = useNavigate();
+  const sessions = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+  });
+  return (
+    <div className="page-stack">
+      <PageIntro
+        title="Coding Session"
+        description="进入多栏工作区查看对话、Approval、文件、Diff、Git 和运行上下文。"
+      />
+      {sessions.isLoading ? (
+        <LoadingState />
+      ) : sessions.error ? (
+        <ErrorState error={sessions.error} />
+      ) : !sessions.data?.length ? (
+        <EmptyState
+          title="还没有 Session"
+          description="从 Task 或 Project 选择 Agent 后开始第一次会话。"
+        />
+      ) : (
+        <div className="session-cards">
+          {sessions.data.map((session) => (
+            <button
+              key={session.id}
+              className="session-card"
+              onClick={() => navigate(`/sessions/${session.id}`)}
+            >
+              <div>
+                <span className="session-icon">
+                  <Bot size={17} />
+                </span>
+                <StatusBadge status={session.status} />
+              </div>
+              <strong>{session.title}</strong>
+              <code>{session.cwd}</code>
+              <span>
+                {session.branch || '无 Git 分支'} · {formatTime(session.lastActiveAt)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function TasksPage() {
+  return (
+    <div className="page-stack">
+      <PageIntro
+        title="Goal 与 Task"
+        description="任务进入 Agent Run 后先到待审阅，只有用户确认才会完成。"
+      />
+      <EmptyState
+        title="尚未创建 Task"
+        description="MVP 任务看板将在数据服务接通后展示 Backlog、进行中、待审阅和完成状态。"
+      />
+    </div>
+  );
+}
+
+export function PromptOsPlaceholderPage() {
+  return (
+    <div className="page-stack">
+      <PageIntro
+        title="PromptOS"
+        description="管理稳定 Prompt identity、不可变 Version、Label、Binding 与最终上下文。"
+      />
+      <div className="prompt-preview">
+        <div>
+          <span className="section-kicker">即将接通</span>
+          <h3>Prompt 版本与上下文解析</h3>
+          <p>保存操作会明确创建新版本，不覆盖历史。Playground 只做本地 render 和 Diff。</p>
+        </div>
+        <BracesPreview />
+      </div>
+    </div>
+  );
+}
+
+function BracesPreview() {
+  return (
+    <div className="code-preview">
+      <code>review@production</code>
+      <span>Project → Agent → Task</span>
+      <pre>{'{{ project_context }}\n{{ task.acceptance_criteria }}'}</pre>
+    </div>
+  );
+}
+
+export function SettingsPage() {
+  const capability = useQuery({
+    queryKey: ['capabilities'],
+    queryFn: () =>
+      api.get<{
+        terminal: {
+          available: boolean;
+          code: string;
+          message: string;
+          platform: string;
+          arch: string;
+        };
+        remoteNode: { available: boolean };
+      }>('/settings/capabilities'),
+  });
+  return (
+    <div className="page-stack">
+      <PageIntro
+        title="设置与诊断"
+        description="查看服务能力、安全边界和高权限 Docker 风险。凭据只保存引用。"
+      />
+      <div className="settings-grid">
+        <section className="control-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">平台能力</span>
+              <h3>Terminal</h3>
+            </div>
+            <SquareTerminal size={18} />
+          </div>
+          {capability.isLoading ? (
+            <LoadingState />
+          ) : capability.error ? (
+            <ErrorState error={capability.error} />
+          ) : (
+            <div className="capability-block">
+              <StatusBadge status={capability.data?.terminal.available ? 'READY' : 'MISSING'} />
+              <strong>{capability.data?.terminal.message}</strong>
+              <code>
+                {capability.data?.terminal.platform}/{capability.data?.terminal.arch} ·{' '}
+                {capability.data?.terminal.code}
+              </code>
+              <p>
+                {capability.data?.terminal.available
+                  ? '用户 PTY 可在 Workspace 中启用。'
+                  : 'Terminal 控件将隐藏，Agent core 不受影响。'}
+              </p>
+            </div>
+          )}
+        </section>
+        <section className="control-section warning-surface">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">高权限能力</span>
+              <h3>Docker 控制</h3>
+            </div>
+            <ShieldAlert size={18} />
+          </div>
+          <p>
+            Docker 权限等同主机高权限。AgentHub 只允许操作显式注册且完整 container ID 仍匹配的容器。
+          </p>
+          <ul>
+            <li>不会修改 Compose、镜像或 volume</li>
+            <li>不提供通用 Docker 命令入口</li>
+            <li>活动 Session 会阻止停止容器</li>
+          </ul>
+        </section>
+        <section className="control-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">服务模式</span>
+              <h3>本地可信</h3>
+            </div>
+            <CheckCircle2 size={18} />
+          </div>
+          <div className="capability-block">
+            <strong>监听 127.0.0.1</strong>
+            <p>非 loopback bind 必须配置 token auth；token 仅保存 hash。</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
