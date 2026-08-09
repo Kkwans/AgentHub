@@ -8,11 +8,11 @@
 
 | Agent       | 运行位置           | 主路径                            | 已知状态                                          |
 | ----------- | ------------------ | --------------------------------- | ------------------------------------------------- |
-| Codex       | 宿主机             | pinned `codex-acp`                | 宿主机 Codex 0.146.0 已登录；session smoke 待验收 |
-| Claude Code | `claude-code` 容器 | pinned `claude-agent-acp`         | 已部署未实战验证；缺 adapter 时标记 `BROKEN`      |
+| Codex       | 宿主机             | pinned `codex-acp`                | `codex-acp@1.1.14` initialize/session smoke 已通过 |
+| Claude Code | `claude-code` 容器 | pinned `claude-agent-acp`         | Claude CLI 可用但 adapter 缺失，当前 `BROKEN`      |
 | OpenCode    | 宿主机             | `opencode acp`                    | 未安装时 `MISSING`                                |
-| Hermes      | `hermes` 容器      | `hermes acp`                      | 当前 Project 未映射，标记 `WORKSPACE_UNMAPPED`    |
-| OpenClaw    | 既有 OpenClaw 容器 | `openclaw acp`，回退 `agent exec` | 既有部署已实战使用，ACP bridge 待逐项验收         |
+| Hermes      | `hermes` 容器      | `hermes acp`                      | ACP 命令存在；当前 Project 为 `WORKSPACE_UNMAPPED` |
+| OpenClaw    | 既有 OpenClaw 容器 | `openclaw acp`，回退 `agent exec` | ACP 需 scope approval；当前版本未确认回退命令      |
 
 ## Preflight 状态
 
@@ -21,3 +21,5 @@
 ## 认证
 
 Agent 原生认证归 Agent 自身所有。AgentHub 可调用只读状态或官方登录流程，但不得读取、复制或持久化原生凭据。
+
+OpenClaw Docker ACP 固定设置 `OPENCLAW_HIDE_BANNER=1` 与 `OPENCLAW_SUPPRESS_NOTES=1`，防止 banner/Doctor 文案污染 stdout NDJSON；这两个变量不含凭据。token/password 只能使用供应商配置、环境引用或文件引用，不进入 argv 和数据库原文。
