@@ -8,7 +8,8 @@
 - M1：已完成。
 - M2：已完成。
 - M3：已完成。
-- M4：进行中。
+- M4：已完成。
+- M5：进行中。
 - 已创建 durable Goal。
 - 已初始化 `main` 分支与 pnpm monorepo。
 - 已固定 Node.js 24、pnpm 11、TypeScript、ESLint、Prettier、Vitest、Playwright 与 CI 基线。
@@ -67,6 +68,17 @@ M3：
 - 当前 NAS runtime 诊断：`available=false`、`PTY_NATIVE_BINDING_UNAVAILABLE`、`linux/arm64`。
 - M3 聚焦回归：Project/Git/Terminal/Session 共 16 项测试通过；lint、typecheck、全仓 build 通过。
 
+M4：
+
+- 中文 Web Shell：概览、项目、任务、Agent、会话、PromptOS、设置一级导航与共享 TanStack Query/API/WebSocket 数据层：完成。
+- Dashboard 基线只呈现待批准、运行中、Agent 健康和 Project，不使用 KPI 卡片墙。
+- Coding Workspace：可调多栏 Session、对话/工具/Approval、只读文件/Monaco、Diff、Git、Run 上下文和固定 Composer：完成。
+- Composer 固定展示 Agent、模型、模式、Project/cwd、branch、PromptOS、Skill；无 capability 时隐藏模型、模式和 Terminal 控件。
+- 响应式：桌面多栏，900px 以下使用 Workspace tabs 和侧边检查器，390px 使用全宽 drawer；实现导航抽屉、键盘 Escape、焦点可见和 reduced-motion。
+- Agent UI：显式注册宿主机/Docker Execution Target、完整 container ID、工作区映射、启动策略、内置 Agent Profile、preflight、生命周期操作与 capability 调试视图：完成。
+- UI 文案：操作、说明、表单、状态、错误和空状态使用简体中文；Agent/PromptOS/Git/Terminal/model/mode/path/branch/command/protocol/vendor data 保留原文。
+- M4 回归：`pnpm lint`、`pnpm typecheck`、Web 单元测试、Web production build 均通过。
+
 ## 未验证项
 
 - Claude Code 需在镜像内固定安装 `@agentclientprotocol/claude-agent-acp@0.66.0` 后才能验证 auth/session。
@@ -74,3 +86,4 @@ M3：
 - OpenClaw 需在原生 Gateway 中批准 scope upgrade 后才能验证 `session/new` 和 prompt；本次未替用户批准授权请求。
 - 当前 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；未伪装 PTY。
 - UI 尚未通过 TX5Pro 或远程浏览器验证。
+- 当前 NAS 无本地浏览器/Computer Use；M4 仅完成代码、静态响应式审查和 production bundle 验证，未声明真实视觉验收完成。
