@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+AgentHub_Codex_Prompt.md
+AgentHub_PromptOS_MVP_技术方案.md

@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/db" },
+    { "path": "packages/agent-core" },
+    { "path": "packages/adapter-acp" },
+    { "path": "packages/adapter-openclaw" },
+    { "path": "packages/ui" },
+    { "path": "apps/server" },
+    { "path": "apps/web" },
+    { "path": "apps/cli" }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@agenthub/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@agenthub/adapter-acp": "workspace:*",
+    "@agenthub/adapter-openclaw": "workspace:*",
+    "@agenthub/agent-core": "workspace:*",
+    "@agenthub/db": "workspace:*",
+    "@agenthub/shared": "workspace:*",
+    "cors": "2.8.6",
+    "diff": "9.0.0",
+    "express": "5.2.1",
+    "helmet": "8.3.0",
+    "pino": "10.3.1",
+    "pino-http": "11.0.0",
+    "ws": "8.21.3",
+    "zod": "4.4.3"
+  },
+  "optionalDependencies": {
+    "node-pty": "1.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "@types/ws": "8.18.1"
+  }
+}
