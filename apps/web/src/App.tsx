@@ -5,12 +5,12 @@ import {
   AgentsPage,
   OverviewPage,
   ProjectsPage,
-  PromptOsPlaceholderPage,
   SessionsPage,
   SettingsPage,
   TasksPage,
 } from './pages/ControlPages';
 import { WorkspacePage } from './pages/WorkspacePage';
+import { PromptOsPage } from './pages/PromptOsPage';
 
 export function App() {
   return (
@@ -23,7 +23,7 @@ export function App() {
         <Route path="agents" element={<AgentsPage />} />
         <Route path="sessions" element={<SessionsPage />} />
         <Route path="sessions/:id" element={<WorkspacePage />} />
-        <Route path="promptos" element={<PromptOsPlaceholderPage />} />
+        <Route path="promptos" element={<PromptOsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate replace to="/overview" />} />
       </Route>

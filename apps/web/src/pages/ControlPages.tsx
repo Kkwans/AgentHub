@@ -791,35 +791,6 @@ export function TasksPage() {
   );
 }
 
-export function PromptOsPlaceholderPage() {
-  return (
-    <div className="page-stack">
-      <PageIntro
-        title="PromptOS"
-        description="管理稳定 Prompt identity、不可变 Version、Label、Binding 与最终上下文。"
-      />
-      <div className="prompt-preview">
-        <div>
-          <span className="section-kicker">即将接通</span>
-          <h3>Prompt 版本与上下文解析</h3>
-          <p>保存操作会明确创建新版本，不覆盖历史。Playground 只做本地 render 和 Diff。</p>
-        </div>
-        <BracesPreview />
-      </div>
-    </div>
-  );
-}
-
-function BracesPreview() {
-  return (
-    <div className="code-preview">
-      <code>review@production</code>
-      <span>Project → Agent → Task</span>
-      <pre>{'{{ project_context }}\n{{ task.acceptance_criteria }}'}</pre>
-    </div>
-  );
-}
-
 export function SettingsPage() {
   const capability = useQuery({
     queryKey: ['capabilities'],

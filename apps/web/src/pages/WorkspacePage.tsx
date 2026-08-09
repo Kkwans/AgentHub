@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Editor, { DiffEditor } from '@monaco-editor/react';
 import {
   Bot,
+  Braces,
   ChevronDown,
   ChevronRight,
   CircleStop,
@@ -27,6 +28,7 @@ import {
   type FileEntry,
   type MessageRecord,
   type ProjectRecord,
+  type ResolvedPromptContextRecord,
   type RunRecord,
   type SessionRecord,
 } from '../lib/api';
@@ -41,6 +43,7 @@ export function WorkspacePage() {
   const [selectedFile, setSelectedFile] = useState<string>();
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => api.get<SessionRecord[]>('/sessions'),
@@ -85,6 +88,25 @@ export function WorkspacePage() {
   const capability = useQuery({
     queryKey: ['capabilities'],
     queryFn: () => api.get<{ terminal: { available: boolean } }>('/settings/capabilities'),
+  });
+  const promptContext = useQuery({
+    queryKey: [
+      'prompt-context',
+      session.data?.projectId,
+      session.data?.agentId,
+      session.data?.taskId,
+      promptVariables,
+    ],
+    queryFn: () => {
+      if (!session.data) throw new Error('Session 尚未加载');
+      return api.post<ResolvedPromptContextRecord>('/prompt-context/resolve', {
+        projectId: session.data.projectId,
+        agentId: session.data.agentId,
+        ...(session.data.taskId ? { taskId: session.data.taskId } : {}),
+        variables: promptVariables,
+      });
+    },
+    enabled: Boolean(session.data),
   });
   const project = projects.data?.find((item) => item.id === session.data?.projectId);
   const agent = agents.data?.find((item) => item.id === session.data?.agentId);
@@ -229,6 +251,11 @@ export function WorkspacePage() {
         terminalAvailable={capability.data?.terminal.available === true}
         terminalOpen={terminalOpen}
         setTerminalOpen={setTerminalOpen}
+        promptContext={promptContext.data}
+        promptContextLoading={promptContext.isLoading}
+        promptContextError={promptContext.error}
+        promptVariables={promptVariables}
+        setPromptVariables={setPromptVariables}
       />
       {terminalOpen && capability.data?.terminal.available && (
         <div className="terminal-dock">
@@ -653,6 +680,11 @@ function Composer({
   terminalAvailable,
   terminalOpen,
   setTerminalOpen,
+  promptContext,
+  promptContextLoading,
+  promptContextError,
+  promptVariables,
+  setPromptVariables,
 }: {
   session: SessionRecord;
   agent: AgentRecord | undefined;
@@ -661,11 +693,21 @@ function Composer({
   terminalAvailable: boolean;
   terminalOpen: boolean;
   setTerminalOpen: (open: boolean) => void;
+  promptContext: ResolvedPromptContextRecord | undefined;
+  promptContextLoading: boolean;
+  promptContextError: Error | null;
+  promptVariables: Record<string, unknown>;
+  setPromptVariables: (variables: Record<string, unknown>) => void;
 }) {
   const [text, setText] = useState('');
+  const [contextOpen, setContextOpen] = useState(false);
+  const [variablesDraft, setVariablesDraft] = useState(() =>
+    JSON.stringify(promptVariables, null, 2),
+  );
+  const [variablesError, setVariablesError] = useState<string>();
   const client = useQueryClient();
   const send = useMutation({
-    mutationFn: () => api.post(`/sessions/${session.id}/runs`, { text }),
+    mutationFn: () => api.post(`/sessions/${session.id}/runs`, { text, promptVariables }),
     onSuccess: () => {
       setText('');
       void client.invalidateQueries({ queryKey: ['runs', session.id] });
@@ -676,6 +718,8 @@ function Composer({
     onSuccess: () => void client.invalidateQueries({ queryKey: ['runs', session.id] }),
   });
   const configuration = (agent?.capabilitiesJson.configuration ?? {}) as Record<string, boolean>;
+  const contextBlocked =
+    promptContextLoading || Boolean(promptContextError) || promptContext?.ready === false;
   return (
     <div className="composer">
       <div className="composer-context">
@@ -701,9 +745,21 @@ function Composer({
         <span>
           <GitBranch size={13} /> {session.branch || '无 Git'}
         </span>
-        <span>
-          PromptOS <strong>未绑定</strong>
-        </span>
+        <button
+          className={contextOpen ? 'active' : ''}
+          onClick={() => setContextOpen(!contextOpen)}
+        >
+          <Braces size={13} /> PromptOS{' '}
+          <strong>
+            {promptContextLoading
+              ? '解析中'
+              : promptContextError
+                ? '异常'
+                : promptContext?.ready === false
+                  ? `缺 ${promptContext.missingVariables.length} 项变量`
+                  : `${promptContext?.items.length ?? 0} 项`}
+          </strong>
+        </button>
         <span>
           Skill <strong>自动</strong>
         </span>
@@ -716,6 +772,68 @@ function Composer({
           </button>
         )}
       </div>
+      {contextOpen && (
+        <div className="composer-context-preview">
+          <div className="context-preview-heading">
+            <div>
+              <strong>PromptOS 上下文预览</strong>
+              <span>发送 Run 前解析，版本、标签与 content hash 会写入来源记录。</span>
+            </div>
+            <span className={promptContext?.ready === false ? 'missing' : 'ready'}>
+              {promptContext?.ready === false ? '缺少必填变量' : '已就绪'}
+            </span>
+          </div>
+          <div className="composer-context-grid">
+            <div className="composer-provenance">
+              {!promptContext?.items.length ? (
+                <p>当前 Project、Agent、Task 没有生效的绑定。</p>
+              ) : (
+                promptContext.items.map((item) => (
+                  <div key={item.bindingId}>
+                    <span>{item.slot}</span>
+                    <code>
+                      {item.promptKey}@{item.label ?? `v${item.version}`}
+                    </code>
+                    <small>
+                      {item.targetType} · v{item.version} · {item.contentHash.slice(0, 10)}
+                    </small>
+                  </div>
+                ))
+              )}
+            </div>
+            <label>
+              变量 JSON
+              <textarea
+                className="mono"
+                value={variablesDraft}
+                onChange={(event) => setVariablesDraft(event.target.value)}
+                rows={4}
+              />
+              <button
+                className="button secondary compact"
+                onClick={() => {
+                  try {
+                    const parsed = JSON.parse(variablesDraft) as unknown;
+                    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+                      throw new Error();
+                    setVariablesError(undefined);
+                    setPromptVariables(parsed as Record<string, unknown>);
+                  } catch {
+                    setVariablesError('变量必须是合法 JSON object');
+                  }
+                }}
+              >
+                应用并重新解析
+              </button>
+              {(variablesError || promptContext?.missingVariables.length) && (
+                <small className="context-variable-error">
+                  {variablesError ?? `缺少：${promptContext?.missingVariables.join('、')}`}
+                </small>
+              )}
+            </label>
+          </div>
+        </div>
+      )}
       <div className="composer-input">
         <textarea
           value={text}
@@ -731,7 +849,7 @@ function Composer({
         ) : (
           <button
             className="send-button"
-            disabled={!text.trim() || send.isPending}
+            disabled={!text.trim() || send.isPending || contextBlocked || Boolean(variablesError)}
             onClick={() => send.mutate()}
             aria-label="发送"
           >
