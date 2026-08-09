@@ -6,13 +6,13 @@
 
 ## v0.1 Profile
 
-| Agent       | 运行位置           | 主路径                            | 已知状态                                           |
-| ----------- | ------------------ | --------------------------------- | -------------------------------------------------- |
-| Codex       | 宿主机             | pinned `codex-acp`                | `codex-acp@1.1.14` initialize/session smoke 已通过 |
-| Claude Code | `claude-code` 容器 | pinned `claude-agent-acp`         | Claude CLI 可用但 adapter 缺失，当前 `BROKEN`      |
-| OpenCode    | 宿主机             | `opencode acp`                    | 未安装时 `MISSING`                                 |
-| Hermes      | `hermes` 容器      | `hermes acp`                      | ACP 命令存在；当前 Project 为 `WORKSPACE_UNMAPPED` |
-| OpenClaw    | 既有 OpenClaw 容器 | `openclaw acp`，回退 `agent exec` | ACP 需 scope approval；当前版本未确认回退命令      |
+| Agent       | 运行位置           | 主路径                            | 已知状态                                                  |
+| ----------- | ------------------ | --------------------------------- | --------------------------------------------------------- |
+| Codex       | 宿主机             | pinned `codex-acp`                | `codex-acp@1.1.14` preflight/session/stream/cancel 已通过 |
+| Claude Code | `claude-code` 容器 | pinned `claude-agent-acp`         | Claude CLI 可用但 adapter 缺失，当前 `BROKEN`             |
+| OpenCode    | 宿主机             | `opencode acp`                    | 未安装时 `MISSING`                                        |
+| Hermes      | `hermes` 容器      | `hermes acp`                      | ACP 命令存在；当前 Project 为 `WORKSPACE_UNMAPPED`        |
+| OpenClaw    | 既有 OpenClaw 容器 | `openclaw acp`，回退 `agent exec` | ACP 需 scope approval；当前版本未确认回退命令             |
 
 ## Preflight 状态
 

@@ -10,7 +10,7 @@
 - M3：已完成。
 - M4：已完成。
 - M5：已完成。
-- M6：进行中。
+- M6：已完成。
 - 已创建 durable Goal。
 - 已初始化 `main` 分支与 pnpm monorepo。
 - 已固定 Node.js 24、pnpm 11、TypeScript、ESLint、Prettier、Vitest、Playwright 与 CI 基线。
@@ -92,11 +92,22 @@ M5：
 - Workspace Composer：展示真实 PromptOS 生效项和 provenance，支持变量 JSON 重新解析，缺变量/解析异常时禁止发送 Run。
 - M5 聚焦回归：PromptOS service 7 项、Session/Run 4 项、REST 1 项、Web UI 3 项通过；`pnpm lint`、`pnpm typecheck`、全仓 build 通过。
 
+M6：
+
+- Goal/Task：完成 CRUD、Goal 状态、Task 看板排序与状态机、“交给 Agent 开始”、Run 完成进入待审阅、失败/取消进入受阻、用户 `APPROVE` 后才完成。
+- Dashboard：只聚合运行中 Session、待 Approval、待审阅/受阻 Task、最近终态 Run、Git outcome 与 Agent 健康。
+- Auth：loopback 默认 `local_trusted`；非 loopback 在监听前强制 `token`。API token 使用 256-bit 随机值，只在创建时显示一次，数据库只保存 SHA-256 hash；HTTP 与 `/ws` 统一认证。
+- Production：Server 自动托管 `apps/web/dist` 并提供 SPA fallback；临时 production Server 使用内存 PGlite 启动，`/api/v1/health` 返回 `web=true`，`/tasks` 返回 Web index。
+- 核心 E2E：确定性贯通 Project → PromptOS → Task → Agent → Approval exactly-once → Git BEFORE/AFTER → Dashboard → 人工审阅。
+- 浏览器 E2E：NAS 本地 Playwright Chromium 在 1440、1024、768、390 四种视口共 12 项通过；根据 1024 截图修复 Dashboard Agent 健康区挤压。
+- Live gate：Codex 真实 ACP preflight、Session、流式响应和 cancel notification 通过；Claude/Hermes/OpenClaw 容器固定命令验证通过；OpenCode 明确 `SKIP: MISSING`。
+- Live gate 后 `claude-code`、`hermes`、`openclaw-official` 均恢复原 `exited` 状态，完整 container ID 未变化。
+- 最终全仓 gate：`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm format:check` 通过；标准 Vitest 为 22 个文件通过、1 个 live 文件按环境 gate 跳过，82 项通过、5 项跳过；Playwright 12 项通过；live Vitest 5 项通过。
+
 ## 未验证项
 
 - Claude Code 需在镜像内固定安装 `@agentclientprotocol/claude-agent-acp@0.66.0` 后才能验证 auth/session。
 - Hermes 需增加覆盖 Project 的部署级 workspace mount 后才能验证项目 Session；本次未修改 Compose。
 - OpenClaw 需在原生 Gateway 中批准 scope upgrade 后才能验证 `session/new` 和 prompt；本次未替用户批准授权请求。
 - 当前 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；未伪装 PTY。
-- UI 尚未通过 TX5Pro 或远程浏览器验证。
-- 当前 NAS 无本地浏览器/Computer Use；M4/M5 仅完成代码、静态响应式审查和 production bundle 验证，未声明真实视觉验收完成。
+- UI 已通过 NAS 本地 Playwright Chromium 四视口验证，但尚未通过 TX5Pro 实机验证。

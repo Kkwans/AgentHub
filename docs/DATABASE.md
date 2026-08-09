@@ -10,7 +10,7 @@
 
 - Prompt Version 创建后不可更新；变更内容只能创建新版本。
 - Prompt Label 移动在事务中完成。
-- Approval exactly-once，重复响应必须返回稳定错误码。
+- Approval exactly-once，重复响应返回同一已决结果且不会再次投递给 Agent。
 - Agent Event 使用 `UNIQUE(session_id, seq)`，`seq` 在 Session 内单调递增。
 - Session、Run、Task 的非法状态跳转在 service 层拒绝。
 - Run 保存解析后的 Prompt version、label、hash 与 provenance。
@@ -24,3 +24,4 @@
 - migration 向前追加，不修改已经发布的 migration。
 - destructive migration 必须先备份并单独授权。
 - 恢复优先使用发布前数据库备份；down 脚本只在可无损恢复时提供。
+- v0.1 只有初始向前 migration，不提供破坏性 down；PGlite 恢复必须在服务停止后替换整个备份目录，PostgreSQL 使用数据库级备份恢复。

@@ -2,9 +2,9 @@
 
 AgentHub 是一个 host-native 的本地 AI Coding Agent 控制平面。v0.1 统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，并通过显式注册安全接管既有 Docker Agent 容器。
 
-## 当前阶段
+## 当前版本
 
-项目正在按 [`docs/implementation/PLAN.md`](docs/implementation/PLAN.md) 实施 v0.1 MVP。完成状态与已验证证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md)。
+当前版本为 v0.1.0。完成状态与已验证证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md)，部署与回滚见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
 
 ## 环境
 
@@ -21,6 +21,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm test:e2e
 ```
 
 本地开发：
@@ -29,7 +30,7 @@ pnpm build
 pnpm dev
 ```
 
-Server 默认监听 `127.0.0.1:3210`，Web 默认监听 `127.0.0.1:5173`。
+开发模式下 Server 默认监听 `127.0.0.1:3210`，Web 默认监听 `127.0.0.1:5173`。production build 后只需启动 Server，它会托管 `apps/web/dist`。
 
 ## 安全边界
 
