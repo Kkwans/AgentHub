@@ -18,16 +18,22 @@ const statusLabels: Record<string, string> = {
   ACTIVE: '使用中',
   UNVERIFIED: '未验证',
   CLOSED: '已关闭',
+  DRAFT: '草稿',
+  ACHIEVED: '已达成',
+  BACKLOG: '待规划',
+  IN_PROGRESS: '进行中',
+  DONE: '完成',
+  BLOCKED: '受阻',
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone = /READY|COMPLETED|ACTIVE/.test(status)
+  const tone = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED/.test(status)
     ? 'positive'
     : /RUNNING|STARTING/.test(status)
       ? 'active'
       : /WAITING|AUTH_REQUIRED|UNVERIFIED|UNMAPPED/.test(status)
         ? 'warning'
-        : /FAILED|BROKEN|MISSING|DISCONNECTED/.test(status)
+        : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED/.test(status)
           ? 'danger'
           : 'neutral';
   return <span className={`status-badge ${tone}`}>{statusLabels[status] ?? status}</span>;

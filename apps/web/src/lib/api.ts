@@ -151,6 +151,38 @@ export interface RunRecord {
   errorCode: string | null;
 }
 
+export interface GoalRecord {
+  id: string;
+  projectId: string;
+  parentId: string | null;
+  title: string;
+  description: string | null;
+  successCriteria: string | null;
+  status: 'DRAFT' | 'ACTIVE' | 'ACHIEVED' | 'CANCELED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskRecord {
+  id: string;
+  projectId: string;
+  goalId: string | null;
+  parentId: string | null;
+  title: string;
+  description: string | null;
+  acceptanceCriteria: string | null;
+  status: 'BACKLOG' | 'READY' | 'IN_PROGRESS' | 'WAITING_REVIEW' | 'DONE' | 'BLOCKED' | 'CANCELED';
+  priority: number;
+  assignedAgentId: string | null;
+  sessionId: string | null;
+  finalRunId: string | null;
+  branch: string | null;
+  position: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}
+
 export interface MessageRecord {
   id: string;
   runId: string | null;

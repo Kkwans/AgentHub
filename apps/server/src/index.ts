@@ -8,12 +8,14 @@ import {
   EventRepository,
   ExecutionTargetRepository,
   GitSnapshotRepository,
+  GoalRepository,
   MessageRepository,
   ProjectRepository,
   PromptRepository,
   RunRepository,
   SessionRepository,
   SkillRepository,
+  TaskRepository,
   type DatabaseClient,
 } from '@agenthub/db';
 import pino from 'pino';
@@ -36,6 +38,7 @@ import { ProjectService } from './projects/project-service.js';
 import { GitService } from './git/git-service.js';
 import { TerminalService } from './terminal/terminal-service.js';
 import { PromptService } from './promptos/prompt-service.js';
+import { TaskService } from './tasks/task-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -70,6 +73,8 @@ export async function startServer(
   const gitSnapshotRepository = new GitSnapshotRepository(database.db);
   const promptRepository = new PromptRepository(database.db);
   const skillRepository = new SkillRepository(database.db);
+  const goalRepository = new GoalRepository(database.db);
+  const taskRepository = new TaskRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const projects = new ProjectService(projectRepository, executionTargetRepository);
@@ -106,6 +111,8 @@ export async function startServer(
     git,
     promptos,
   );
+  const tasks = new TaskService(goalRepository, taskRepository, projectRepository, sessions);
+  sessions.setTaskLifecycleObserver(tasks);
   const recovery = await sessions.recoverAfterRestart();
   const app = createApp({
     logger,
@@ -118,6 +125,7 @@ export async function startServer(
     git,
     terminal,
     promptos,
+    tasks,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);

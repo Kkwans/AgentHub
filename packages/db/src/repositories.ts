@@ -4,8 +4,10 @@ import { and, asc, desc, eq, inArray, isNull, max, or, sql } from 'drizzle-orm';
 import {
   transitionRun,
   transitionSession,
+  transitionTask,
   type RunStatus,
   type SessionStatus,
+  type TaskStatus,
 } from '@agenthub/agent-core';
 
 import type { AgentHubDatabase } from './client.js';
@@ -16,6 +18,7 @@ import {
   approvalRequests,
   executionTargets,
   gitSnapshots,
+  goals,
   messages,
   projects,
   promptBindings,
@@ -630,6 +633,96 @@ export class ProjectRepository<TDatabase extends AgentHubDatabase> {
       .returning();
     if (!updated) throw new DatabaseInvariantError('PROJECT_NOT_FOUND', 'Project 不存在');
     return updated;
+  }
+}
+
+export class GoalRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list(projectId?: string) {
+    const query = this.db.select().from(goals);
+    return projectId
+      ? query.where(eq(goals.projectId, projectId)).orderBy(goals.createdAt)
+      : query.orderBy(goals.createdAt);
+  }
+
+  async get(id: string) {
+    const [goal] = await this.db.select().from(goals).where(eq(goals.id, id)).limit(1);
+    return goal;
+  }
+
+  async create(input: typeof goals.$inferInsert) {
+    const [created] = await this.db.insert(goals).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('GOAL_CREATE_FAILED', 'Goal 创建失败');
+    return created;
+  }
+
+  async update(id: string, patch: Partial<typeof goals.$inferInsert>) {
+    const [updated] = await this.db
+      .update(goals)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(goals.id, id))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('GOAL_NOT_FOUND', 'Goal 不存在');
+    return updated;
+  }
+}
+
+export class TaskRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list(filters: { projectId?: string; goalId?: string; status?: TaskStatus } = {}) {
+    const conditions = [
+      ...(filters.projectId ? [eq(tasks.projectId, filters.projectId)] : []),
+      ...(filters.goalId ? [eq(tasks.goalId, filters.goalId)] : []),
+      ...(filters.status ? [eq(tasks.status, filters.status)] : []),
+    ];
+    const query = this.db.select().from(tasks);
+    return conditions.length
+      ? query.where(and(...conditions)).orderBy(tasks.status, asc(tasks.position), tasks.createdAt)
+      : query.orderBy(tasks.status, asc(tasks.position), tasks.createdAt);
+  }
+
+  async get(id: string) {
+    const [task] = await this.db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    return task;
+  }
+
+  async create(input: typeof tasks.$inferInsert) {
+    const [created] = await this.db.insert(tasks).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('TASK_CREATE_FAILED', 'Task 创建失败');
+    return created;
+  }
+
+  async update(id: string, patch: Partial<typeof tasks.$inferInsert>) {
+    const [updated] = await this.db
+      .update(tasks)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+    return updated;
+  }
+
+  async transition(id: string, to: TaskStatus, patch: Partial<typeof tasks.$inferInsert> = {}) {
+    return this.db.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select({ status: tasks.status })
+        .from(tasks)
+        .where(eq(tasks.id, id))
+        .for('update')
+        .limit(1);
+      if (!current) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+      transitionTask(current.status as TaskStatus, to);
+      const [updated] = await transaction
+        .update(tasks)
+        .set({ ...patch, status: to, updatedAt: new Date() })
+        .where(and(eq(tasks.id, id), eq(tasks.status, current.status)))
+        .returning();
+      if (!updated)
+        throw new DatabaseInvariantError('TASK_CONCURRENT_UPDATE', 'Task 状态已被其他请求修改');
+      return updated;
+    });
   }
 }
 

@@ -6,9 +6,11 @@ import {
   Bot,
   Box,
   CheckCircle2,
+  ClipboardCheck,
   FolderGit2,
   GitBranch,
   Plus,
+  Play,
   RefreshCw,
   ShieldAlert,
   SquareTerminal,
@@ -21,8 +23,10 @@ import {
   type AgentRecord,
   type ApprovalRecord,
   type ExecutionTargetRecord,
+  type GoalRecord,
   type ProjectRecord,
   type SessionRecord,
+  type TaskRecord,
 } from '../lib/api';
 import {
   EmptyState,
@@ -777,16 +781,348 @@ export function SessionsPage() {
 }
 
 export function TasksPage() {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const [projectId, setProjectId] = useState('');
+  const [goalFormOpen, setGoalFormOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [selectedAgents, setSelectedAgents] = useState<Record<string, string>>({});
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get<ProjectRecord[]>('/projects'),
+  });
+  const effectiveProjectId = projectId || projects.data?.[0]?.id || '';
+  const goals = useQuery({
+    queryKey: ['goals', effectiveProjectId],
+    queryFn: () => api.get<GoalRecord[]>(`/goals?projectId=${effectiveProjectId}`),
+    enabled: Boolean(effectiveProjectId),
+  });
+  const tasks = useQuery({
+    queryKey: ['tasks', effectiveProjectId],
+    queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${effectiveProjectId}`),
+    enabled: Boolean(effectiveProjectId),
+  });
+  const agents = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => api.get<AgentRecord[]>('/agents'),
+  });
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ['tasks'] });
+    void client.invalidateQueries({ queryKey: ['goals'] });
+  };
+  const createGoal = useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post('/goals', body),
+    onSuccess: () => {
+      setGoalFormOpen(false);
+      refresh();
+    },
+  });
+  const createTask = useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post('/tasks', body),
+    onSuccess: () => {
+      setTaskFormOpen(false);
+      refresh();
+    },
+  });
+  const transition = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: TaskRecord['status'] }) =>
+      api.post(`/tasks/${id}/transition`, { status }),
+    onSuccess: refresh,
+  });
+  const start = useMutation({
+    mutationFn: ({ id, agentId }: { id: string; agentId: string }) =>
+      api.post<{ session: { id: string } }>(`/tasks/${id}/start`, { agentId }),
+    onSuccess: (result) => {
+      refresh();
+      void client.invalidateQueries({ queryKey: ['sessions'] });
+      navigate(`/sessions/${result.session.id}`);
+    },
+  });
+  const review = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: 'APPROVE' | 'REWORK' }) =>
+      api.post(`/tasks/${id}/review`, { decision }),
+    onSuccess: refresh,
+  });
+  const columns: Array<{
+    status: TaskRecord['status'];
+    title: string;
+    description: string;
+  }> = [
+    { status: 'BACKLOG', title: '待规划', description: '明确范围后设为就绪' },
+    { status: 'READY', title: '就绪', description: '可交给 Agent 开始' },
+    { status: 'IN_PROGRESS', title: '进行中', description: 'Agent 正在执行' },
+    { status: 'WAITING_REVIEW', title: '待审阅', description: '需要用户确认结果' },
+    { status: 'DONE', title: '完成', description: '已经人工确认' },
+  ];
+
   return (
     <div className="page-stack">
       <PageIntro
         title="Goal 与 Task"
         description="任务进入 Agent Run 后先到待审阅，只有用户确认才会完成。"
+        action={
+          <div className="page-actions">
+            <button className="button secondary" onClick={() => setGoalFormOpen(!goalFormOpen)}>
+              <Plus size={15} /> 创建 Goal
+            </button>
+            <button className="button primary" onClick={() => setTaskFormOpen(!taskFormOpen)}>
+              <Plus size={15} /> 创建 Task
+            </button>
+          </div>
+        }
       />
-      <EmptyState
-        title="尚未创建 Task"
-        description="MVP 任务看板将在数据服务接通后展示 Backlog、进行中、待审阅和完成状态。"
-      />
+      <div className="task-toolbar">
+        <label>
+          当前 Project
+          <select value={effectiveProjectId} onChange={(event) => setProjectId(event.target.value)}>
+            {projects.data?.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="goal-strip">
+          {(goals.data ?? []).map((goal) => (
+            <span key={goal.id}>
+              <StatusBadge status={goal.status} />
+              <strong>{goal.title}</strong>
+            </span>
+          ))}
+          {!goals.data?.length && <small>当前 Project 尚无 Goal</small>}
+        </div>
+      </div>
+      {goalFormOpen && (
+        <form
+          className="inline-form task-create-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const values = Object.fromEntries(new FormData(event.currentTarget));
+            createGoal.mutate({
+              projectId: effectiveProjectId,
+              title: String(values.title),
+              ...(values.description ? { description: String(values.description) } : {}),
+              ...(values.successCriteria
+                ? { successCriteria: String(values.successCriteria) }
+                : {}),
+            });
+          }}
+        >
+          <label>
+            Goal 标题
+            <input required name="title" placeholder="例如发布 AgentHub v0.1" />
+          </label>
+          <label>
+            说明
+            <input name="description" placeholder="目标范围与背景" />
+          </label>
+          <label>
+            成功标准
+            <input name="successCriteria" placeholder="可验证的完成条件" />
+          </label>
+          <button className="button primary" disabled={!effectiveProjectId || createGoal.isPending}>
+            创建 Goal
+          </button>
+        </form>
+      )}
+      {taskFormOpen && (
+        <form
+          className="inline-form task-create-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const values = Object.fromEntries(new FormData(event.currentTarget));
+            createTask.mutate({
+              projectId: effectiveProjectId,
+              title: String(values.title),
+              ...(values.goalId ? { goalId: String(values.goalId) } : {}),
+              ...(values.description ? { description: String(values.description) } : {}),
+              ...(values.acceptanceCriteria
+                ? { acceptanceCriteria: String(values.acceptanceCriteria) }
+                : {}),
+            });
+          }}
+        >
+          <label>
+            Task 标题
+            <input required name="title" placeholder="例如完成真实 Agent smoke" />
+          </label>
+          <label>
+            所属 Goal
+            <select name="goalId">
+              <option value="">不绑定 Goal</option>
+              {goals.data?.map((goal) => (
+                <option key={goal.id} value={goal.id}>
+                  {goal.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            任务与验收标准
+            <input name="description" placeholder="Agent 要完成的工作" />
+            <input name="acceptanceCriteria" placeholder="验收标准" />
+          </label>
+          <button className="button primary" disabled={!effectiveProjectId || createTask.isPending}>
+            创建 Task
+          </button>
+        </form>
+      )}
+      {projects.isLoading || tasks.isLoading ? (
+        <LoadingState label="正在加载任务看板" />
+      ) : projects.error || tasks.error ? (
+        <ErrorState error={(projects.error ?? tasks.error) as Error} />
+      ) : !projects.data?.length ? (
+        <EmptyState
+          title="尚未添加 Project"
+          description="先添加 Project，才能创建 Goal 与 Task。"
+        />
+      ) : (
+        <div className="task-board" aria-label="Task 看板">
+          {columns.map((column) => {
+            const entries = (tasks.data ?? []).filter((task) => task.status === column.status);
+            return (
+              <section className="task-column" key={column.status}>
+                <header>
+                  <div>
+                    <strong>{column.title}</strong>
+                    <span>{column.description}</span>
+                  </div>
+                  <small>{entries.length}</small>
+                </header>
+                <div className="task-column-body">
+                  {entries.map((task) => {
+                    const agentId = selectedAgents[task.id] || agents.data?.[0]?.id || '';
+                    return (
+                      <article className="task-card" key={task.id}>
+                        <div className="task-card-heading">
+                          <span>优先级 {task.priority}</span>
+                          <StatusBadge status={task.status} />
+                        </div>
+                        <strong>{task.title}</strong>
+                        <p>{task.description || '暂无任务说明'}</p>
+                        {task.branch && <code>{task.branch}</code>}
+                        {task.status === 'READY' && (
+                          <label className="task-agent-select">
+                            Agent
+                            <select
+                              value={agentId}
+                              onChange={(event) =>
+                                setSelectedAgents((current) => ({
+                                  ...current,
+                                  [task.id]: event.target.value,
+                                }))
+                              }
+                            >
+                              <option value="">请选择 Agent</option>
+                              {agents.data?.map((agent) => (
+                                <option
+                                  key={agent.id}
+                                  value={agent.id}
+                                  disabled={agent.status !== 'READY'}
+                                >
+                                  {agent.name} · {agent.status}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                        <div className="task-card-actions">
+                          {task.status === 'BACKLOG' && (
+                            <button
+                              className="button primary compact"
+                              onClick={() => transition.mutate({ id: task.id, status: 'READY' })}
+                            >
+                              设为就绪
+                            </button>
+                          )}
+                          {task.status === 'READY' && (
+                            <button
+                              className="button primary compact"
+                              disabled={!agentId || start.isPending}
+                              onClick={() => start.mutate({ id: task.id, agentId })}
+                            >
+                              <Play size={13} /> 交给 Agent
+                            </button>
+                          )}
+                          {task.status === 'IN_PROGRESS' && task.sessionId && (
+                            <button
+                              className="button secondary compact"
+                              onClick={() => navigate(`/sessions/${task.sessionId}`)}
+                            >
+                              打开 Session
+                            </button>
+                          )}
+                          {task.status === 'WAITING_REVIEW' && (
+                            <>
+                              <button
+                                className="button primary compact"
+                                onClick={() => review.mutate({ id: task.id, decision: 'APPROVE' })}
+                              >
+                                <ClipboardCheck size={13} /> 确认完成
+                              </button>
+                              <button
+                                className="button secondary compact"
+                                onClick={() => review.mutate({ id: task.id, decision: 'REWORK' })}
+                              >
+                                继续修改
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {!entries.length && <span className="task-column-empty">暂无 Task</span>}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+      {!!tasks.data?.some((task) => task.status === 'BLOCKED') && (
+        <section className="control-section blocked-tasks">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">需要处理</span>
+              <h3>受阻 Task</h3>
+            </div>
+          </div>
+          {tasks.data
+            .filter((task) => task.status === 'BLOCKED')
+            .map((task) => (
+              <div className="action-row" key={task.id}>
+                <ShieldAlert size={17} />
+                <div>
+                  <strong>{task.title}</strong>
+                  <span>上次 Run 未成功完成</span>
+                </div>
+                <button
+                  className="button secondary compact"
+                  onClick={() => transition.mutate({ id: task.id, status: 'READY' })}
+                >
+                  重新就绪
+                </button>
+              </div>
+            ))}
+        </section>
+      )}
+      {(createGoal.error ||
+        createTask.error ||
+        transition.error ||
+        start.error ||
+        review.error) && (
+        <p className="inline-error">
+          {
+            (
+              createGoal.error ??
+              createTask.error ??
+              transition.error ??
+              start.error ??
+              review.error
+            )?.message
+          }
+        </p>
+      )}
     </div>
   );
 }

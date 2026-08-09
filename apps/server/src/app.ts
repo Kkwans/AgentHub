@@ -25,6 +25,8 @@ import { createTerminalRouter } from './terminal/terminal-routes.js';
 import type { TerminalService } from './terminal/terminal-service.js';
 import { createPromptOsRouter } from './promptos/prompt-routes.js';
 import type { PromptService } from './promptos/prompt-service.js';
+import { createGoalRouter, createTaskRouter } from './tasks/task-routes.js';
+import type { TaskService } from './tasks/task-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -37,6 +39,7 @@ export interface AppOptions {
   git?: GitService;
   terminal?: TerminalService;
   promptos?: PromptService;
+  tasks?: TaskService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -112,6 +115,10 @@ export function createApp(options: AppOptions = {}): Express {
     });
   }
   if (options.promptos) app.use('/api/v1', createPromptOsRouter(options.promptos));
+  if (options.tasks) {
+    app.use('/api/v1/goals', createGoalRouter(options.tasks));
+    app.use('/api/v1/tasks', createTaskRouter(options.tasks));
+  }
 
   app.get(
     '/api/v1/sessions/:sessionId/events',

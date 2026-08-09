@@ -76,6 +76,11 @@ export interface PromptContextResolver {
   }>;
 }
 
+export interface TaskRunLifecycleObserver {
+  onRunCompleted(taskId: string, runId: string): Promise<void>;
+  onRunStopped?(taskId: string, runId: string, reason: 'FAILED' | 'CANCELED'): Promise<void>;
+}
+
 interface ActiveSession {
   handle: AgentSessionHandle;
   adapter: AgentRuntimeAdapter;
@@ -85,6 +90,7 @@ interface ActiveSession {
 
 export class SessionService {
   private readonly active = new Map<string, ActiveSession>();
+  private taskLifecycle?: TaskRunLifecycleObserver;
 
   constructor(
     private readonly sessions: SessionRepository<AgentHubDatabase>,
@@ -98,6 +104,10 @@ export class SessionService {
     private readonly git: GitHeadProbe = new HostGitHeadProbe(),
     private readonly promptContext?: PromptContextResolver,
   ) {}
+
+  setTaskLifecycleObserver(observer: TaskRunLifecycleObserver): void {
+    this.taskLifecycle = observer;
+  }
 
   list(projectId?: string) {
     return this.sessions.list(projectId);
@@ -490,10 +500,15 @@ export class SessionService {
         gitAfterSha: await this.git.readHead(session.cwd),
       });
       await this.safeSessionTransition(event.sessionId, 'READY');
+      const run = await this.runs.get(event.runId);
+      if (run?.taskId) await this.taskLifecycle?.onRunCompleted(run.taskId, event.runId);
     }
     if (event.type === 'run.cancelled' && event.runId) {
       await this.safeRunTransition(event.runId, 'CANCELED', { finishedAt: new Date() });
       await this.safeSessionTransition(event.sessionId, 'READY');
+      const run = await this.runs.get(event.runId);
+      if (run?.taskId)
+        await this.taskLifecycle?.onRunStopped?.(run.taskId, event.runId, 'CANCELED');
     }
     if (event.type === 'run.failed' && event.runId) {
       await this.safeRunTransition(event.runId, 'FAILED', {
@@ -502,6 +517,8 @@ export class SessionService {
         errorMessage: typeof payload.message === 'string' ? payload.message : 'Agent Run 失败',
       });
       await this.safeSessionTransition(event.sessionId, 'READY');
+      const run = await this.runs.get(event.runId);
+      if (run?.taskId) await this.taskLifecycle?.onRunStopped?.(run.taskId, event.runId, 'FAILED');
     }
     if (event.type === 'adapter.disconnected') {
       await this.safeSessionTransition(event.sessionId, 'DISCONNECTED');

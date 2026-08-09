@@ -24,6 +24,16 @@ afterEach(() => {
 
 describe('App', () => {
   it('使用中文导航并渲染目标路由', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: [], requestId: 'task-ui-test' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ),
+    );
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -39,7 +49,7 @@ describe('App', () => {
     expect(screen.getByRole('navigation', { name: '一级导航' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '任务' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Goal 与 Task' })).toBeInTheDocument();
-    expect(screen.getByText('尚未创建 Task')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建 Task' })).toBeInTheDocument();
   });
 
   it('PromptOS 空状态来自真实 API 数据层', async () => {

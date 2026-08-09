@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { InvalidStateTransitionError } from '@agenthub/agent-core';
 import { ZodError } from 'zod';
 
 export class AppError extends Error {
@@ -45,6 +46,13 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
 
 function normalizeError(error: unknown): AppError {
   if (error instanceof AppError) return error;
+  if (error instanceof InvalidStateTransitionError) {
+    return new AppError(409, error.code, error.message, {
+      entity: error.entity,
+      from: error.from,
+      to: error.to,
+    });
+  }
   if (error instanceof ZodError) {
     return new AppError(400, 'VALIDATION_FAILED', '请求参数不符合要求', {
       issues: error.issues.map((issue) => ({
