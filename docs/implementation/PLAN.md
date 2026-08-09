@@ -13,8 +13,8 @@
 | M2     | 进程监管、Docker、ACP、五类 Agent、Session 闭环  | 已完成 |
 | M3     | Project、只读文件、Git、Terminal 能力            | 已完成 |
 | M4     | 中文 Web Shell 与 Coding Workspace               | 已完成 |
-| M5     | PromptOS 版本、标签、绑定与 UI                   | 待开始 |
-| M6     | Goal/Task、Dashboard、安全、E2E 与发布           | 待开始 |
+| M5     | PromptOS 版本、标签、绑定与 UI                   | 已完成 |
+| M6     | Goal/Task、Dashboard、安全、E2E 与发布           | 进行中 |
 
 ## 每阶段门禁
 

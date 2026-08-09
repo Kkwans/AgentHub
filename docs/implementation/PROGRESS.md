@@ -9,7 +9,8 @@
 - M2：已完成。
 - M3：已完成。
 - M4：已完成。
-- M5：进行中。
+- M5：已完成。
+- M6：进行中。
 - 已创建 durable Goal。
 - 已初始化 `main` 分支与 pnpm monorepo。
 - 已固定 Node.js 24、pnpm 11、TypeScript、ESLint、Prettier、Vitest、Playwright 与 CI 基线。
@@ -79,6 +80,18 @@ M4：
 - UI 文案：操作、说明、表单、状态、错误和空状态使用简体中文；Agent/PromptOS/Git/Terminal/model/mode/path/branch/command/protocol/vendor data 保留原文。
 - M4 回归：`pnpm lint`、`pnpm typecheck`、Web 单元测试、Web production build 均通过。
 
+M5：
+
+- Prompt stable identity 与 immutable Version：每次保存由事务锁定 Prompt 并分配下一版本，自动移动 `latest`；变量模板必须在 object JSON Schema 中声明。
+- Label：`latest` 禁止手工移动/删除，`production` 与自定义标签支持事务移动和快速回退。
+- Diff/Render：TEXT 按文本、CHAT 按 role/message JSON 结构生成 Diff；Render 返回 resolved version、label、content hash、缺失变量和最终内容。
+- Binding：实现 Project → Agent → Task、同 slot priority、LABEL/VERSION selector、启停和完整 provenance。
+- Run 集成：发送前解析 Context Preview；缺 required variable 阻断，成功 Run 保存 prompt/version/label/hash/binding/target 来源和 final context hash。
+- Skill：只扫描 Project 内 `.agents/skills`/`.codex/skills` 的 `SKILL.md` metadata 并支持绑定；realpath containment 阻止 symlink escape，不复制 AGENTS.md/CLAUDE.md，不安装 Marketplace。
+- 中文 PromptOS UI：Prompt 列表/详情、版本、标签、差异、绑定、渲染演练、上下文预览、Skill 扫描/绑定；保存按钮明确为“创建新版本”。
+- Workspace Composer：展示真实 PromptOS 生效项和 provenance，支持变量 JSON 重新解析，缺变量/解析异常时禁止发送 Run。
+- M5 聚焦回归：PromptOS service 7 项、Session/Run 4 项、REST 1 项、Web UI 3 项通过；`pnpm lint`、`pnpm typecheck`、全仓 build 通过。
+
 ## 未验证项
 
 - Claude Code 需在镜像内固定安装 `@agentclientprotocol/claude-agent-acp@0.66.0` 后才能验证 auth/session。
@@ -86,4 +99,4 @@ M4：
 - OpenClaw 需在原生 Gateway 中批准 scope upgrade 后才能验证 `session/new` 和 prompt；本次未替用户批准授权请求。
 - 当前 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；未伪装 PTY。
 - UI 尚未通过 TX5Pro 或远程浏览器验证。
-- 当前 NAS 无本地浏览器/Computer Use；M4 仅完成代码、静态响应式审查和 production bundle 验证，未声明真实视觉验收完成。
+- 当前 NAS 无本地浏览器/Computer Use；M4/M5 仅完成代码、静态响应式审查和 production bundle 验证，未声明真实视觉验收完成。

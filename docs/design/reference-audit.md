@@ -18,8 +18,10 @@ AgentHub 是高密度、长时间使用的本地工程控制平面，不采用�
 
 ### Langfuse Prompt Management
 
-- 借鉴：Prompt identity/version/label 的清晰区分、版本 Diff、Binding 与上下文预览。
-- 不照搬：在线 Eval、Observability、计费与云端协作功能。
+- 当前参考：[Prompt Management 概览](https://langfuse.com/docs/prompt-management/overview)、[Version Control](https://langfuse.com/docs/prompt-management/features/prompt-version-control)、[Playground](https://langfuse.com/docs/prompt-management/features/playground)。
+- 借鉴：Prompt identity/version/label 的清晰区分；`latest` 自动维护、`production` 可移动/回退；版本 Diff、变量输入与 side-by-side Playground。
+- AgentHub 扩展：Binding、Project → Agent → Task Context Preview 与 Run provenance 属于 coding workflow，不照搬 Langfuse runtime。
+- 不照搬：在线模型调用、Eval、Observability、计费、云端协作、protected label 企业权限和独立部署。
 
 ## 视觉约束
 
