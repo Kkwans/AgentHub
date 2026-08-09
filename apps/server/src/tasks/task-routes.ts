@@ -85,12 +85,10 @@ export function createGoalRouter(service: TaskService): Router {
   });
   router.post('/', validate({ body: goalCreate }), async (request, response, next) => {
     try {
-      response
-        .status(201)
-        .json({
-          data: await service.createGoal(goalCreate.parse(request.body)),
-          requestId: String(request.id),
-        });
+      response.status(201).json({
+        data: await service.createGoal(goalCreate.parse(request.body)),
+        requestId: String(request.id),
+      });
     } catch (error) {
       next(error);
     }
@@ -156,12 +154,10 @@ export function createTaskRouter(service: TaskService): Router {
   });
   router.post('/', validate({ body: taskCreate }), async (request, response, next) => {
     try {
-      response
-        .status(201)
-        .json({
-          data: await service.createTask(taskCreate.parse(request.body)),
-          requestId: String(request.id),
-        });
+      response.status(201).json({
+        data: await service.createTask(taskCreate.parse(request.body)),
+        requestId: String(request.id),
+      });
     } catch (error) {
       next(error);
     }
@@ -215,15 +211,13 @@ export function createTaskRouter(service: TaskService): Router {
     validate({ params: idParams, body: taskStart }),
     async (request, response, next) => {
       try {
-        response
-          .status(201)
-          .json({
-            data: await service.startTask(
-              idParams.parse(request.params).id,
-              taskStart.parse(request.body),
-            ),
-            requestId: String(request.id),
-          });
+        response.status(201).json({
+          data: await service.startTask(
+            idParams.parse(request.params).id,
+            taskStart.parse(request.body),
+          ),
+          requestId: String(request.id),
+        });
       } catch (error) {
         next(error);
       }

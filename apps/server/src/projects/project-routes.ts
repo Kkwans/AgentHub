@@ -89,14 +89,14 @@ export function createProjectRouter(service: ProjectService): Router {
     '/:id',
     validate({ params: idParams, body: updateSchema }),
     async (request, response, next) => {
-        try {
-          const { id } = idParams.parse(request.params);
-          const input = updateSchema.parse(request.body);
-          response.json({
-            data: await service.update(id, {
-              ...(input.name !== undefined ? { name: input.name } : {}),
-              ...(input.description !== undefined ? { description: input.description } : {}),
-            }),
+      try {
+        const { id } = idParams.parse(request.params);
+        const input = updateSchema.parse(request.body);
+        response.json({
+          data: await service.update(id, {
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.description !== undefined ? { description: input.description } : {}),
+          }),
           requestId: String(request.id),
         });
       } catch (error) {
