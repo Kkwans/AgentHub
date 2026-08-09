@@ -118,22 +118,21 @@ export class AcpAdapter implements AgentRuntimeAdapter {
         checks,
       };
     } catch (error) {
-      const authRequired = /auth|required|login/i.test(error instanceof Error ? error.message : '');
+      const status = preflightStatusForError(error);
+      const message = preflightFailureMessage(status);
       return {
-        status: authRequired ? 'AUTH_REQUIRED' : 'BROKEN',
+        status,
         checkedAt,
         checks: [
           {
             id: 'initialize',
             label: 'ACP initialize',
             status: 'FAIL',
-            message: authRequired ? 'Agent 需要先完成原生登录' : 'ACP adapter 无法完成初始化',
+            message,
           },
         ],
         repair: {
-          summary: authRequired
-            ? '请使用供应商原生命令完成登录后重试'
-            : '请检查 pinned adapter、Agent executable 与运行日志',
+          summary: preflightRepairSummary(status, profile.config),
         },
       };
     } finally {
@@ -246,7 +245,14 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       return { process: launched, connection, agent: connection.agent, initialize, route };
     } catch (error) {
       connection.close(error);
-      await launched.cancel();
+      const result = await launched.cancel();
+      if (
+        /scope upgrade pending approval|authentication required|not logged in|unauthorized/i.test(
+          result.stderr,
+        )
+      ) {
+        throw new AcpAdapterError('AUTH_REQUIRED', 'Agent 原生授权尚未完成');
+      }
       throw error;
     }
   }
@@ -528,6 +534,55 @@ async function closeRuntime(runtime: AcpRuntime): Promise<void> {
 
 function safeErrorMessage(error: unknown): string {
   return error instanceof AcpAdapterError ? error.message : 'ACP 请求失败';
+}
+
+function errorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
+  return typeof error.code === 'string' ? error.code : undefined;
+}
+
+function preflightStatusForError(error: unknown): PreflightReport['status'] {
+  const code = errorCode(error);
+  if (code === 'EXECUTABLE_MISSING') return 'MISSING';
+  if (code === 'TARGET_STOPPED') return 'STOPPED';
+  if (code === 'WORKSPACE_UNMAPPED') return 'WORKSPACE_UNMAPPED';
+  if (code === 'CONTAINER_REPLACED') return 'CONTAINER_REPLACED';
+  if (code === 'ACP_PROTOCOL_UNSUPPORTED') return 'UNSUPPORTED_VERSION';
+  if (code === 'AUTH_REQUIRED') return 'AUTH_REQUIRED';
+  const message = error instanceof Error ? error.message : '';
+  if (/auth|required|login|not logged in|unauthorized/i.test(message)) return 'AUTH_REQUIRED';
+  return 'BROKEN';
+}
+
+function preflightFailureMessage(status: PreflightReport['status']): string {
+  const messages: Partial<Record<PreflightReport['status'], string>> = {
+    MISSING: 'Agent executable 不存在或不可执行',
+    STOPPED: 'Agent 所在容器已停止',
+    WORKSPACE_UNMAPPED: '当前 Project 路径未映射到 Agent 容器',
+    CONTAINER_REPLACED: '容器名称或 ID 已变化',
+    UNSUPPORTED_VERSION: 'Agent 返回了当前不支持的 ACP 版本',
+    AUTH_REQUIRED: 'Agent 需要先完成原生授权或登录',
+  };
+  return messages[status] ?? 'ACP adapter 无法完成初始化';
+}
+
+function preflightRepairSummary(
+  status: PreflightReport['status'],
+  config: Record<string, unknown>,
+): string {
+  const summaries: Partial<Record<PreflightReport['status'], string>> = {
+    MISSING: '请安装或修复已固定版本的 Agent adapter 后重试',
+    STOPPED: '请在 Execution Target 页面手动启动容器，或为该 Profile 开启 ON_DEMAND',
+    WORKSPACE_UNMAPPED: '请为该容器配置覆盖当前 Project 的只读核验 workspace mapping',
+    CONTAINER_REPLACED: '请核对新容器身份并显式重新注册，不会自动接管同名容器',
+    UNSUPPORTED_VERSION: '请使用与 AgentHub 锁定的 ACP v1 兼容 adapter',
+    AUTH_REQUIRED: '请使用供应商原生流程完成授权或登录后重试',
+  };
+  if (status === 'BROKEN' && typeof config.expectedPackage === 'string') {
+    const version = typeof config.expectedVersion === 'string' ? `@${config.expectedVersion}` : '';
+    return `请在容器镜像中固定安装 ${config.expectedPackage}${version} 后重试；AgentHub 不会临时运行 npx latest`;
+  }
+  return summaries[status] ?? '请检查 pinned adapter、Agent executable 与运行日志';
 }
 
 class AsyncEventQueue<T> implements AsyncIterable<T> {

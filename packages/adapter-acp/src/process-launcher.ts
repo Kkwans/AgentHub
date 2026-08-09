@@ -1,3 +1,5 @@
+import { constants } from 'node:fs';
+import { access } from 'node:fs/promises';
 import type { Readable, Writable } from 'node:stream';
 
 import {
@@ -28,6 +30,15 @@ export class HostAcpProcessLauncher implements AcpProcessLauncher {
     if (profile.launchSpec.kind !== 'HOST_PROCESS') {
       throw new AcpLauncherError('LAUNCH_KIND_UNSUPPORTED', 'Host launcher 只支持 HOST_PROCESS');
     }
+    try {
+      await access(profile.launchSpec.executable, constants.X_OK);
+    } catch (error) {
+      throw new AcpLauncherError(
+        'EXECUTABLE_MISSING',
+        `Agent executable 不存在或不可执行：${profile.launchSpec.executable}`,
+        { cause: error },
+      );
+    }
     const env = this.options.resolveEnvironment
       ? await this.options.resolveEnvironment(profile)
       : undefined;
@@ -54,8 +65,9 @@ export class AcpLauncherError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = 'AcpLauncherError';
   }
 }

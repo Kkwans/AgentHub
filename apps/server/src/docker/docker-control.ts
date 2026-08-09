@@ -30,6 +30,7 @@ export interface DockerContainerState {
   name: string;
   status: string;
   running: boolean;
+  health?: string | null;
   mounts: DockerMount[];
 }
 
@@ -53,7 +54,7 @@ export class DockerControlService {
   async inspect(target: DockerTarget): Promise<DockerContainerState> {
     validateTarget(target);
     const template =
-      '{"id":{{json .Id}},"name":{{json .Name}},"status":{{json .State.Status}},"running":{{json .State.Running}},"mounts":{{json .Mounts}}}';
+      '{"id":{{json .Id}},"name":{{json .Name}},"state":{{json .State}},"mounts":{{json .Mounts}}}';
     const result = await this.runner.run(
       ['inspect', '--format', template, target.expectedContainerId],
       {
@@ -66,7 +67,25 @@ export class DockerControlService {
 
     let state: DockerContainerState;
     try {
-      state = JSON.parse(result.stdout.trim()) as DockerContainerState;
+      const parsed = JSON.parse(result.stdout.trim()) as
+        | DockerContainerState
+        | {
+            id: string;
+            name: string;
+            state: { Status: string; Running: boolean; Health?: { Status?: string } };
+            mounts: DockerMount[];
+          };
+      state =
+        'state' in parsed
+          ? {
+              id: parsed.id,
+              name: parsed.name,
+              status: parsed.state.Status,
+              running: parsed.state.Running,
+              health: parsed.state.Health?.Status ?? null,
+              mounts: parsed.mounts,
+            }
+          : parsed;
     } catch (error) {
       throw new AppError(
         502,
@@ -92,12 +111,14 @@ export class DockerControlService {
     target: DockerTarget,
     hostCwd?: string,
   ): Promise<{
-    status: 'READY' | 'STOPPED' | 'WORKSPACE_UNMAPPED';
+    status: 'READY' | 'STOPPED' | 'STARTING' | 'UNHEALTHY' | 'WORKSPACE_UNMAPPED';
     container: DockerContainerState;
     containerCwd?: string;
   }> {
     const container = await this.inspect(target);
     if (!container.running) return { status: 'STOPPED', container };
+    if (container.health === 'starting') return { status: 'STARTING', container };
+    if (container.health === 'unhealthy') return { status: 'UNHEALTHY', container };
     if (!hostCwd) return { status: 'READY', container };
 
     const containerCwd = await mapWorkspacePath(hostCwd, target.workspaceMappings);
@@ -115,8 +136,11 @@ export class DockerControlService {
     if (result.exitCode !== 0) {
       throw new AppError(502, 'DOCKER_START_FAILED', 'Docker 容器启动失败');
     }
-    const after = await this.inspect(target);
+    let after = await this.inspect(target);
     if (!after.running) throw new AppError(502, 'DOCKER_START_FAILED', 'Docker 容器启动后仍未运行');
+    if (after.health === 'starting' || after.health === 'unhealthy') {
+      after = await this.waitUntilHealthy(target, 30_000);
+    }
     return after;
   }
 
@@ -143,6 +167,10 @@ export class DockerControlService {
       await this.start(target);
       preflight = await this.preflight(target, hostCwd);
     }
+    if (preflight.status === 'STARTING' || preflight.status === 'UNHEALTHY') {
+      await this.waitUntilHealthy(target, 30_000);
+      preflight = await this.preflight(target, hostCwd);
+    }
     if (preflight.status === 'STOPPED') {
       throw new AppError(409, 'DOCKER_CONTAINER_STOPPED', 'Docker 容器已停止，请先手动启动');
     }
@@ -150,6 +178,30 @@ export class DockerControlService {
       throw new AppError(409, 'WORKSPACE_UNMAPPED', '当前 Project 路径未映射到 Agent 容器');
     }
     return preflight.containerCwd;
+  }
+
+  private async waitUntilHealthy(
+    target: DockerTarget,
+    timeoutMs: number,
+  ): Promise<DockerContainerState> {
+    const startedAt = Date.now();
+    let state = await this.inspect(target);
+    while (state.running && state.health && state.health !== 'healthy') {
+      if (Date.now() - startedAt >= timeoutMs) {
+        throw new AppError(
+          503,
+          'DOCKER_CONTAINER_UNHEALTHY',
+          'Docker 容器健康检查未在限定时间内通过',
+          { health: state.health },
+        );
+      }
+      await delay(500);
+      state = await this.inspect(target);
+    }
+    if (!state.running) {
+      throw new AppError(503, 'DOCKER_CONTAINER_STOPPED', 'Docker 容器在等待健康检查时停止');
+    }
+    return state;
   }
 
   async execAgentCommand(
@@ -175,6 +227,10 @@ export class DockerControlService {
       input === undefined ? {} : { input },
     );
   }
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 export class DockerCliRunner implements DockerCommandRunner {

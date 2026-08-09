@@ -249,3 +249,39 @@ export class ExecutionTargetRepository<TDatabase extends AgentHubDatabase> {
     return Boolean(active);
   }
 }
+
+export class AgentRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list() {
+    return this.db.select().from(agents).orderBy(agents.createdAt);
+  }
+
+  async get(id: string) {
+    const [agent] = await this.db.select().from(agents).where(eq(agents.id, id)).limit(1);
+    return agent;
+  }
+
+  async create(input: typeof agents.$inferInsert) {
+    const [created] = await this.db.insert(agents).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('AGENT_CREATE_FAILED', 'Agent 创建失败');
+    return created;
+  }
+
+  async updatePreflight(
+    id: string,
+    input: {
+      status: string;
+      detectedVersion?: string | null;
+      capabilitiesJson?: Record<string, unknown>;
+    },
+  ) {
+    const [updated] = await this.db
+      .update(agents)
+      .set({ ...input, lastPreflightAt: new Date(), updatedAt: new Date() })
+      .where(eq(agents.id, id))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('AGENT_NOT_FOUND', 'Agent 不存在');
+    return updated;
+  }
+}

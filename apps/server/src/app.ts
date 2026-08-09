@@ -13,12 +13,15 @@ import { validate } from './validation.js';
 import type { ReplayEventSource } from './websocket.js';
 import { createExecutionTargetRouter } from './docker/execution-target-routes.js';
 import type { ExecutionTargetService } from './docker/execution-target-service.js';
+import { createAgentRouter } from './agents/agent-routes.js';
+import type { AgentService } from './agents/agent-service.js';
 
 export interface AppOptions {
   logger?: Logger;
   eventSource?: ReplayEventSource;
   health?: () => Promise<Record<string, unknown>>;
   executionTargets?: ExecutionTargetService;
+  agents?: AgentService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -73,6 +76,7 @@ export function createApp(options: AppOptions = {}): Express {
   if (options.executionTargets) {
     app.use('/api/v1/execution-targets', createExecutionTargetRouter(options.executionTargets));
   }
+  if (options.agents) app.use('/api/v1/agents', createAgentRouter(options.agents));
 
   app.get(
     '/api/v1/sessions/:sessionId/events',

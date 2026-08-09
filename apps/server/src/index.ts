@@ -2,6 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { pathToFileURL } from 'node:url';
 
 import {
+  AgentRepository,
   createDatabase,
   EventRepository,
   ExecutionTargetRepository,
@@ -14,6 +15,14 @@ import { AppError } from './errors.js';
 import { TopicBroker } from './websocket.js';
 import { DockerControlService } from './docker/docker-control.js';
 import { ExecutionTargetService } from './docker/execution-target-service.js';
+import { AcpAdapter, HostAcpProcessLauncher } from '@agenthub/adapter-acp';
+import { OpenClawAdapter } from '@agenthub/adapter-openclaw';
+import { AgentService } from './agents/agent-service.js';
+import {
+  DockerAcpProcessLauncher,
+  RoutedAcpProcessLauncher,
+} from './agents/docker-acp-launcher.js';
+import { DockerOpenClawExecLauncher } from './agents/docker-openclaw-exec.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -38,13 +47,31 @@ export async function startServer(
   });
   const eventRepository = new EventRepository(database.db);
   const executionTargetRepository = new ExecutionTargetRepository(database.db);
+  const agentRepository = new AgentRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
+  const acpLauncher = new RoutedAcpProcessLauncher(
+    new HostAcpProcessLauncher(),
+    new DockerAcpProcessLauncher(docker),
+  );
+  const openClawExec = new DockerOpenClawExecLauncher(docker);
+  const agents = new AgentService(
+    agentRepository,
+    executionTargetRepository,
+    acpLauncher,
+    (adapterKind, launcher) => {
+      const primary = new AcpAdapter({ launcher });
+      return adapterKind === 'OPENCLAW_GATEWAY'
+        ? new OpenClawAdapter({ primary, exec: openClawExec })
+        : primary;
+    },
+  );
   const app = createApp({
     logger,
     eventSource: eventRepository,
     health: async () => ({ database: database.mode }),
     executionTargets,
+    agents,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);

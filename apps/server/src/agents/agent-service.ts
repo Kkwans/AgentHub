@@ -1,0 +1,415 @@
+import { randomUUID } from 'node:crypto';
+import { constants } from 'node:fs';
+import { access } from 'node:fs/promises';
+import { delimiter, isAbsolute, join } from 'node:path';
+
+import {
+  AcpAdapter,
+  resolvePinnedAcpAdapter,
+  type AcpProcessLauncher,
+} from '@agenthub/adapter-acp';
+import type {
+  AgentCapabilities,
+  AgentKind,
+  AgentProfile,
+  AgentRuntimeAdapter,
+  PreflightReport,
+} from '@agenthub/agent-core';
+import { runProcess } from '@agenthub/agent-core';
+import type { AgentHubDatabase, AgentRepository, ExecutionTargetRepository } from '@agenthub/db';
+
+import { AppError } from '../errors.js';
+
+type AdapterKind = 'ACP_STDIO' | 'OPENCLAW_GATEWAY' | 'OPENCLAW_EXEC';
+
+export interface RegisterAgentInput {
+  name: string;
+  targetId: string;
+  agentKind: AgentKind;
+  defaultModel?: string | undefined;
+  defaultMode?: string | undefined;
+  executable?: string | undefined;
+  args?: string[] | undefined;
+  config?: Record<string, unknown> | undefined;
+}
+
+export interface AgentPreflightInput {
+  cwd: string;
+  smokeSession?: boolean | undefined;
+}
+
+export interface AgentCatalogEntry {
+  agentKind: AgentKind;
+  name: string;
+  recommendedTarget: 'LOCAL_HOST' | 'DOCKER_CONTAINER';
+  adapterKind: AdapterKind;
+  command: string;
+  notes: string;
+}
+
+const BUILTIN_CATALOG: AgentCatalogEntry[] = [
+  {
+    agentKind: 'CODEX',
+    name: 'Codex',
+    recommendedTarget: 'LOCAL_HOST',
+    adapterKind: 'ACP_STDIO',
+    command: '@agentclientprotocol/codex-acp@1.1.14',
+    notes: '使用 AgentHub 固定版本 adapter；宿主机 Codex 登录状态单独诊断。',
+  },
+  {
+    agentKind: 'CLAUDE_CODE',
+    name: 'Claude Code',
+    recommendedTarget: 'DOCKER_CONTAINER',
+    adapterKind: 'ACP_STDIO',
+    command: 'claude-agent-acp',
+    notes: '容器必须预装 @agentclientprotocol/claude-agent-acp@0.66.0。',
+  },
+  {
+    agentKind: 'OPENCODE',
+    name: 'OpenCode',
+    recommendedTarget: 'LOCAL_HOST',
+    adapterKind: 'ACP_STDIO',
+    command: 'opencode acp',
+    notes: '未安装时如实报告 MISSING。',
+  },
+  {
+    agentKind: 'HERMES',
+    name: 'Hermes',
+    recommendedTarget: 'DOCKER_CONTAINER',
+    adapterKind: 'ACP_STDIO',
+    command: 'hermes acp',
+    notes: 'Project 必须存在有效的 host/container workspace mapping。',
+  },
+  {
+    agentKind: 'OPENCLAW',
+    name: 'OpenClaw',
+    recommendedTarget: 'DOCKER_CONTAINER',
+    adapterKind: 'OPENCLAW_GATEWAY',
+    command: 'openclaw acp',
+    notes: '优先 Gateway-backed ACP；agent exec 仅作为单回合回退。',
+  },
+];
+
+export class AgentService {
+  constructor(
+    private readonly agents: AgentRepository<AgentHubDatabase>,
+    private readonly targets: ExecutionTargetRepository<AgentHubDatabase>,
+    private readonly acpLauncher: AcpProcessLauncher,
+    private readonly adapterFactory: (
+      adapterKind: AdapterKind,
+      launcher: AcpProcessLauncher,
+    ) => AgentRuntimeAdapter = (_adapterKind, launcher) => new AcpAdapter({ launcher }),
+  ) {}
+
+  list() {
+    return this.agents.list();
+  }
+
+  catalog(): AgentCatalogEntry[] {
+    return structuredClone(BUILTIN_CATALOG);
+  }
+
+  async register(input: RegisterAgentInput) {
+    const target = await this.targets.get(input.targetId);
+    if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
+    const launch = await resolveRegistrationLaunch(input, target.kind);
+    return this.agents.create({
+      id: randomUUID(),
+      targetId: input.targetId,
+      name: input.name,
+      agentKind: input.agentKind,
+      adapterKind: launch.adapterKind,
+      executable: launch.executable,
+      argsJson: launch.args,
+      configJson: { ...launch.config, ...input.config },
+      defaultModel: input.defaultModel,
+      defaultMode: input.defaultMode,
+      status: 'UNVERIFIED',
+    });
+  }
+
+  async preflight(id: string, input: AgentPreflightInput): Promise<PreflightReport> {
+    const agent = await this.agents.get(id);
+    if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+    const target = await this.targets.get(agent.targetId);
+    if (!target)
+      throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
+    const profile = toAgentProfile(agent, target, input);
+    const adapter = this.adapterFactory(agent.adapterKind as AdapterKind, this.acpLauncher);
+    const report = await adapter.preflight(profile);
+    const capabilities =
+      report.status === 'READY' ? await adapter.getCapabilities(profile) : undefined;
+    await this.agents.updatePreflight(id, {
+      status: report.status,
+      detectedVersion: report.detectedVersion ?? null,
+      ...(capabilities
+        ? { capabilitiesJson: capabilities as unknown as Record<string, unknown> }
+        : {}),
+    });
+    return report;
+  }
+
+  async getProfile(id: string, cwd: string): Promise<AgentProfile> {
+    const agent = await this.agents.get(id);
+    if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+    const target = await this.targets.get(agent.targetId);
+    if (!target)
+      throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
+    return toAgentProfile(agent, target, { cwd });
+  }
+
+  async hostDiagnostics(): Promise<Record<string, unknown>> {
+    const codexExecutable = await findExecutable('codex');
+    const opencodeExecutable = await findExecutable('opencode');
+    const diagnostics: Record<string, unknown> = {
+      node: { executable: process.execPath, version: process.version },
+      codex: { status: codexExecutable ? 'INSTALLED' : 'MISSING', executable: codexExecutable },
+      opencode: {
+        status: opencodeExecutable ? 'INSTALLED' : 'MISSING',
+        executable: opencodeExecutable,
+      },
+      pinnedAdapters: {
+        codex: resolvePinnedAcpAdapter('CODEX').version,
+        claudeCode: resolvePinnedAcpAdapter('CLAUDE_CODE').version,
+      },
+    };
+    if (codexExecutable) {
+      diagnostics.codex = {
+        ...(diagnostics.codex as Record<string, unknown>),
+        version: await readCommandLine(codexExecutable, ['--version']),
+        auth: await readCommandLine(codexExecutable, ['login', 'status']),
+      };
+    }
+    return diagnostics;
+  }
+}
+
+async function resolveRegistrationLaunch(
+  input: RegisterAgentInput,
+  targetKind: string,
+): Promise<{
+  adapterKind: AdapterKind;
+  executable: string;
+  args: string[];
+  config: Record<string, unknown>;
+}> {
+  if (input.agentKind === 'CUSTOM_ACP') {
+    if (!input.executable)
+      throw new AppError(400, 'AGENT_EXECUTABLE_REQUIRED', 'Custom ACP Agent 必须提供 executable');
+    if (targetKind === 'LOCAL_HOST' && !isAbsolute(input.executable)) {
+      throw new AppError(400, 'AGENT_EXECUTABLE_NOT_ABSOLUTE', '宿主机 executable 必须是绝对路径');
+    }
+    return {
+      adapterKind: 'ACP_STDIO',
+      executable: input.executable,
+      args: input.args ?? [],
+      config: {},
+    };
+  }
+
+  if (targetKind === 'LOCAL_HOST') {
+    if (input.agentKind === 'CODEX') {
+      const pinned = resolvePinnedAcpAdapter('CODEX');
+      return {
+        adapterKind: 'ACP_STDIO',
+        executable: pinned.executable,
+        args: pinned.args,
+        config: {
+          pinnedPackage: pinned.packageName,
+          pinnedVersion: pinned.version,
+          models: true,
+          modes: true,
+          reasoningEffort: true,
+          files: true,
+          terminal: true,
+        },
+      };
+    }
+    if (input.agentKind === 'CLAUDE_CODE') {
+      const pinned = resolvePinnedAcpAdapter('CLAUDE_CODE');
+      return {
+        adapterKind: 'ACP_STDIO',
+        executable: pinned.executable,
+        args: pinned.args,
+        config: {
+          pinnedPackage: pinned.packageName,
+          pinnedVersion: pinned.version,
+          models: true,
+          modes: true,
+          files: true,
+          terminal: true,
+        },
+      };
+    }
+    if (input.agentKind === 'OPENCODE') {
+      return {
+        adapterKind: 'ACP_STDIO',
+        executable: (await findExecutable('opencode')) ?? '/usr/local/bin/opencode',
+        args: ['acp'],
+        config: { models: true, modes: true, files: true, terminal: true },
+      };
+    }
+    throw new AppError(
+      409,
+      'AGENT_TARGET_KIND_UNSUPPORTED',
+      `${input.agentKind} 的内置 Profile 需要 Docker Execution Target`,
+    );
+  }
+
+  if (targetKind !== 'DOCKER_CONTAINER') {
+    throw new AppError(409, 'REMOTE_NODE_UNSUPPORTED', 'v0.1 不启用 Remote Node');
+  }
+
+  const definitions: Partial<
+    Record<
+      AgentKind,
+      {
+        adapterKind: AdapterKind;
+        executable: string;
+        args: string[];
+        config: Record<string, unknown>;
+      }
+    >
+  > = {
+    CODEX: {
+      adapterKind: 'ACP_STDIO',
+      executable: 'codex-acp',
+      args: [],
+      config: { files: true, terminal: true, models: true, modes: true },
+    },
+    CLAUDE_CODE: {
+      adapterKind: 'ACP_STDIO',
+      executable: 'claude-agent-acp',
+      args: [],
+      config: {
+        expectedPackage: '@agentclientprotocol/claude-agent-acp',
+        expectedVersion: '0.66.0',
+        files: true,
+        terminal: true,
+        models: true,
+        modes: true,
+      },
+    },
+    OPENCODE: {
+      adapterKind: 'ACP_STDIO',
+      executable: 'opencode',
+      args: ['acp'],
+      config: { files: true, terminal: true, models: true, modes: true },
+    },
+    HERMES: {
+      adapterKind: 'ACP_STDIO',
+      executable: 'hermes',
+      args: ['acp'],
+      config: { files: true, terminal: true, models: true },
+    },
+    OPENCLAW: {
+      adapterKind: 'OPENCLAW_GATEWAY',
+      executable: 'openclaw',
+      args: ['acp'],
+      config: {
+        files: false,
+        terminal: false,
+        mcpStdio: false,
+        mcpHttp: false,
+        openClawFallback: { executable: 'openclaw', args: ['agent', 'exec'] },
+      },
+    },
+  };
+  const definition = definitions[input.agentKind];
+  if (!definition) throw new AppError(400, 'AGENT_KIND_INVALID', '不支持的 Agent 类型');
+  return definition;
+}
+
+function toAgentProfile(
+  agent: {
+    id: string;
+    name: string;
+    agentKind: string;
+    adapterKind: string;
+    executable: string | null;
+    argsJson: string[];
+    defaultModel: string | null;
+    defaultMode: string | null;
+    configJson: Record<string, unknown>;
+  },
+  target: {
+    kind: string;
+    containerName: string | null;
+    expectedContainerId: string | null;
+    startPolicy: string | null;
+    workspaceMappingsJson: Array<{ hostRoot: string; containerRoot: string }>;
+  },
+  input: AgentPreflightInput,
+): AgentProfile {
+  if (!agent.executable) throw new AppError(500, 'AGENT_CONFIG_INVALID', 'Agent executable 未配置');
+  const config = {
+    ...agent.configJson,
+    preflightCwd: input.cwd,
+    preflightSession: input.smokeSession === true,
+  };
+  const common = {
+    id: agent.id,
+    name: agent.name,
+    agentKind: agent.agentKind as AgentKind,
+    adapterKind: agent.adapterKind,
+    ...(agent.defaultModel ? { defaultModel: agent.defaultModel } : {}),
+    ...(agent.defaultMode ? { defaultMode: agent.defaultMode } : {}),
+    config,
+  };
+  if (target.kind === 'LOCAL_HOST') {
+    return {
+      ...common,
+      targetKind: 'LOCAL_HOST',
+      launchSpec: { kind: 'HOST_PROCESS', executable: agent.executable, args: agent.argsJson },
+    };
+  }
+  if (
+    target.kind !== 'DOCKER_CONTAINER' ||
+    !target.containerName ||
+    !target.expectedContainerId ||
+    (target.startPolicy !== 'MANUAL' && target.startPolicy !== 'ON_DEMAND')
+  ) {
+    throw new AppError(500, 'AGENT_TARGET_CONFIG_INVALID', 'Agent Execution Target 配置不完整');
+  }
+  return {
+    ...common,
+    targetKind: 'DOCKER_CONTAINER',
+    launchSpec: {
+      kind: 'DOCKER_EXEC',
+      containerName: target.containerName,
+      expectedContainerId: target.expectedContainerId,
+      command: agent.executable,
+      args: agent.argsJson,
+      startPolicy: target.startPolicy,
+      workspaceMappings: target.workspaceMappingsJson,
+    },
+  };
+}
+
+async function findExecutable(name: string): Promise<string | undefined> {
+  const paths = (process.env.PATH ?? '').split(delimiter).filter(isAbsolute);
+  for (const directory of paths) {
+    const candidate = join(directory, name);
+    try {
+      await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // Continue through PATH without invoking a shell.
+    }
+  }
+  return undefined;
+}
+
+async function readCommandLine(executable: string, args: string[]): Promise<string> {
+  const result = await runProcess({ executable, args, timeoutMs: 10_000, maxOutputBytes: 64_000 });
+  const output = `${result.stdout}\n${result.stderr}`.trim();
+  return output || `exit ${String(result.exitCode)}`;
+}
+
+export function capabilitiesForRecord(
+  value: Record<string, unknown>,
+): AgentCapabilities | undefined {
+  return value.sessions && value.prompts && value.interaction && value.workspace
+    ? (value as unknown as AgentCapabilities)
+    : undefined;
+}
