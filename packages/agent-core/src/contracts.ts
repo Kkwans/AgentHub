@@ -128,7 +128,7 @@ export interface AgentRuntimeAdapter {
 }
 
 export interface AgentSessionHandle {
-  readonly externalSessionId?: string;
+  readonly externalSessionId: string | undefined;
   events(): AsyncIterable<NormalizedAgentEvent>;
   sendTurn(input: AgentTurnInput): Promise<AgentRunRef>;
   resolveApproval(id: string, decision: ApprovalDecision): Promise<void>;
