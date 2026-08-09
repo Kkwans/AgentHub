@@ -1,12 +1,19 @@
 import { createServer, type Server } from 'node:http';
 import { pathToFileURL } from 'node:url';
 
-import { createDatabase, EventRepository, type DatabaseClient } from '@agenthub/db';
+import {
+  createDatabase,
+  EventRepository,
+  ExecutionTargetRepository,
+  type DatabaseClient,
+} from '@agenthub/db';
 import pino from 'pino';
 
 import { createApp } from './app.js';
 import { AppError } from './errors.js';
 import { TopicBroker } from './websocket.js';
+import { DockerControlService } from './docker/docker-control.js';
+import { ExecutionTargetService } from './docker/execution-target-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -30,10 +37,14 @@ export async function startServer(
     dataDir: environment.AGENTHUB_DATA_DIR,
   });
   const eventRepository = new EventRepository(database.db);
+  const executionTargetRepository = new ExecutionTargetRepository(database.db);
+  const docker = new DockerControlService(undefined, executionTargetRepository);
+  const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const app = createApp({
     logger,
     eventSource: eventRepository,
     health: async () => ({ database: database.mode }),
+    executionTargets,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);

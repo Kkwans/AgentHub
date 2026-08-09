@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { eq, sql } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   createPgliteDatabase,
@@ -32,11 +32,11 @@ interface SeededRun {
 describe('数据库不变量', () => {
   let client: DatabaseClient<PgliteAgentHubDatabase>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     client = await createPgliteDatabase({ dataDir: 'memory://' });
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await client.close();
   });
 

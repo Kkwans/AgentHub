@@ -4,8 +4,10 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import type { AgentHubDatabase } from './client.js';
 import {
+  agents,
   agentSessions,
   approvalRequests,
+  executionTargets,
   promptLabels,
   prompts,
   promptVersions,
@@ -188,5 +190,62 @@ export class EventRepository<TDatabase extends AgentHubDatabase> {
       .where(and(eq(runEvents.sessionId, sessionId), sql`${runEvents.seq} > ${afterSeq}`))
       .orderBy(runEvents.seq)
       .limit(Math.min(Math.max(limit, 1), 1000));
+  }
+}
+
+export class ExecutionTargetRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list() {
+    return this.db.select().from(executionTargets).orderBy(executionTargets.createdAt);
+  }
+
+  async get(id: string) {
+    const [target] = await this.db
+      .select()
+      .from(executionTargets)
+      .where(eq(executionTargets.id, id))
+      .limit(1);
+    return target;
+  }
+
+  async create(input: typeof executionTargets.$inferInsert) {
+    const [created] = await this.db.insert(executionTargets).values(input).returning();
+    if (!created) {
+      throw new DatabaseInvariantError(
+        'EXECUTION_TARGET_CREATE_FAILED',
+        'Execution Target 创建失败',
+      );
+    }
+    return created;
+  }
+
+  async updateObservedState(
+    id: string,
+    input: { status: string; lastSeenAt?: Date; capabilitiesJson?: Record<string, unknown> },
+  ) {
+    const [updated] = await this.db
+      .update(executionTargets)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(executionTargets.id, id))
+      .returning();
+    if (!updated)
+      throw new DatabaseInvariantError('EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
+    return updated;
+  }
+
+  async hasActiveSessions(id: string): Promise<boolean> {
+    const [active] = await this.db
+      .select({ id: agentSessions.id })
+      .from(agentSessions)
+      .innerJoin(agents, eq(agentSessions.agentId, agents.id))
+      .where(
+        and(
+          eq(agents.targetId, id),
+          sql`${agentSessions.status} in ('STARTING', 'READY', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED')`,
+        ),
+      )
+      .limit(1);
+    return Boolean(active);
   }
 }

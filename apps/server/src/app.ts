@@ -11,11 +11,14 @@ import { z } from 'zod';
 import { AppError, errorHandler, notFoundHandler } from './errors.js';
 import { validate } from './validation.js';
 import type { ReplayEventSource } from './websocket.js';
+import { createExecutionTargetRouter } from './docker/execution-target-routes.js';
+import type { ExecutionTargetService } from './docker/execution-target-service.js';
 
 export interface AppOptions {
   logger?: Logger;
   eventSource?: ReplayEventSource;
   health?: () => Promise<Record<string, unknown>>;
+  executionTargets?: ExecutionTargetService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -66,6 +69,10 @@ export function createApp(options: AppOptions = {}): Express {
       requestId: String(request.id),
     });
   });
+
+  if (options.executionTargets) {
+    app.use('/api/v1/execution-targets', createExecutionTargetRouter(options.executionTargets));
+  }
 
   app.get(
     '/api/v1/sessions/:sessionId/events',
