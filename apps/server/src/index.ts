@@ -29,6 +29,7 @@ import {
 } from './agents/docker-acp-launcher.js';
 import { DockerOpenClawExecLauncher } from './agents/docker-openclaw-exec.js';
 import { SessionService } from './sessions/session-service.js';
+import { ProjectService } from './projects/project-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -61,6 +62,7 @@ export async function startServer(
   const approvalRepository = new ApprovalRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
+  const projects = new ProjectService(projectRepository, executionTargetRepository);
   const acpLauncher = new RoutedAcpProcessLauncher(
     new HostAcpProcessLauncher(),
     new DockerAcpProcessLauncher(docker),
@@ -96,6 +98,7 @@ export async function startServer(
     executionTargets,
     agents,
     sessions,
+    projects,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);

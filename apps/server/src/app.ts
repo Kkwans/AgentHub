@@ -17,6 +17,8 @@ import { createAgentRouter } from './agents/agent-routes.js';
 import type { AgentService } from './agents/agent-service.js';
 import { createApprovalRouter, createSessionRouter } from './sessions/session-routes.js';
 import type { SessionService } from './sessions/session-service.js';
+import { createProjectRouter } from './projects/project-routes.js';
+import type { ProjectService } from './projects/project-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -25,6 +27,7 @@ export interface AppOptions {
   executionTargets?: ExecutionTargetService;
   agents?: AgentService;
   sessions?: SessionService;
+  projects?: ProjectService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -84,6 +87,7 @@ export function createApp(options: AppOptions = {}): Express {
     app.use('/api/v1/sessions', createSessionRouter(options.sessions));
     app.use('/api/v1/approvals', createApprovalRouter(options.sessions));
   }
+  if (options.projects) app.use('/api/v1/projects', createProjectRouter(options.projects));
 
   app.get(
     '/api/v1/sessions/:sessionId/events',

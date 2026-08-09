@@ -350,6 +350,16 @@ export class ProjectRepository<TDatabase extends AgentHubDatabase> {
     if (!created) throw new DatabaseInvariantError('PROJECT_CREATE_FAILED', 'Project 创建失败');
     return created;
   }
+
+  async update(id: string, patch: Partial<typeof projects.$inferInsert>) {
+    const [updated] = await this.db
+      .update(projects)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(projects.id, id))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('PROJECT_NOT_FOUND', 'Project 不存在');
+    return updated;
+  }
 }
 
 export class SessionRepository<TDatabase extends AgentHubDatabase> {
