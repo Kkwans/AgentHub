@@ -19,8 +19,10 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import {
   api,
+  authTokenStore,
   type AgentCatalogEntry,
   type AgentRecord,
+  type ApiTokenRecord,
   type DashboardSnapshot,
   type ExecutionTargetRecord,
   type GoalRecord,
@@ -36,6 +38,7 @@ import {
   PageIntro,
   StatusBadge,
 } from '../components/Common';
+import { realtime } from '../lib/realtime';
 
 export function OverviewPage() {
   const dashboard = useQuery({
@@ -1172,6 +1175,14 @@ export function TasksPage() {
 }
 
 export function SettingsPage() {
+  const client = useQueryClient();
+  const [accessToken, setAccessToken] = useState(() => authTokenStore.get());
+  const [oneTimeToken, setOneTimeToken] = useState('');
+  const auth = useQuery({
+    queryKey: ['auth-status'],
+    queryFn: () =>
+      api.get<{ mode: 'local_trusted' | 'token'; localTrusted: boolean }>('/auth/status'),
+  });
   const capability = useQuery({
     queryKey: ['capabilities'],
     queryFn: () =>
@@ -1186,6 +1197,29 @@ export function SettingsPage() {
         remoteNode: { available: boolean };
       }>('/settings/capabilities'),
   });
+  const tokens = useQuery({
+    queryKey: ['api-tokens', Boolean(accessToken)],
+    queryFn: () => api.get<ApiTokenRecord[]>('/auth/tokens'),
+    enabled: auth.data?.localTrusted === true || Boolean(accessToken),
+  });
+  const createToken = useMutation({
+    mutationFn: (name: string) =>
+      api.post<ApiTokenRecord & { token: string }>('/auth/tokens', { name }),
+    onSuccess: (created) => {
+      setOneTimeToken(created.token);
+      void client.invalidateQueries({ queryKey: ['api-tokens'] });
+    },
+  });
+  const revokeToken = useMutation({
+    mutationFn: (id: string) => api.delete(`/auth/tokens/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['api-tokens'] }),
+  });
+  const saveAccessToken = (token: string) => {
+    authTokenStore.set(token);
+    setAccessToken(token.trim());
+    realtime.reconnect();
+    void client.invalidateQueries();
+  };
   return (
     <div className="page-stack">
       <PageIntro
@@ -1221,6 +1255,102 @@ export function SettingsPage() {
             </div>
           )}
         </section>
+        <section className="control-section auth-panel">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">访问认证</span>
+              <h3>当前浏览器 token</h3>
+            </div>
+            <ShieldAlert size={18} />
+          </div>
+          <form
+            className="auth-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = new FormData(event.currentTarget);
+              saveAccessToken(String(values.get('accessToken') ?? ''));
+            }}
+          >
+            <label>
+              Bearer token
+              <input
+                name="accessToken"
+                type="password"
+                defaultValue={accessToken}
+                autoComplete="off"
+                placeholder="仅保存在当前浏览器 Session"
+              />
+            </label>
+            <button className="button secondary">保存到当前 Session</button>
+            {accessToken && (
+              <button type="button" className="button ghost" onClick={() => saveAccessToken('')}>
+                清除
+              </button>
+            )}
+          </form>
+          <p>浏览器访问 token 只保存在 sessionStorage，关闭浏览器 Session 后失效。</p>
+        </section>
+        <section className="control-section auth-panel">
+          <div className="section-heading">
+            <div>
+              <span className="section-kicker">API tokens</span>
+              <h3>创建与撤销</h3>
+            </div>
+            <CheckCircle2 size={18} />
+          </div>
+          <form
+            className="auth-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = new FormData(event.currentTarget);
+              createToken.mutate(String(values.get('name') ?? ''));
+            }}
+          >
+            <label>
+              token 名称
+              <input required name="name" placeholder="例如 NAS 控制端" />
+            </label>
+            <button className="button primary" disabled={createToken.isPending}>
+              创建 token
+            </button>
+          </form>
+          {oneTimeToken && (
+            <div className="token-once">
+              <strong>只显示一次，请立即保存</strong>
+              <code>{oneTimeToken}</code>
+              <button
+                className="button secondary compact"
+                onClick={() => saveAccessToken(oneTimeToken)}
+              >
+                用于当前浏览器
+              </button>
+            </div>
+          )}
+          <div className="token-list">
+            {tokens.data?.map((token) => (
+              <div key={token.id}>
+                <span>
+                  <strong>{token.name}</strong>
+                  <small>最近使用 {formatTime(token.lastUsedAt)}</small>
+                </span>
+                <StatusBadge status={token.revokedAt ? 'CANCELED' : 'ACTIVE'} />
+                {!token.revokedAt && (
+                  <button
+                    className="button ghost compact"
+                    onClick={() => revokeToken.mutate(token.id)}
+                  >
+                    撤销
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {(tokens.error || createToken.error || revokeToken.error) && (
+            <p className="inline-error">
+              {(tokens.error ?? createToken.error ?? revokeToken.error)?.message}
+            </p>
+          )}
+        </section>
         <section className="control-section warning-surface">
           <div className="section-heading">
             <div>
@@ -1242,13 +1372,13 @@ export function SettingsPage() {
           <div className="section-heading">
             <div>
               <span className="section-kicker">服务模式</span>
-              <h3>本地可信</h3>
+              <h3>{auth.data?.localTrusted ? '本地可信' : 'token auth'}</h3>
             </div>
             <CheckCircle2 size={18} />
           </div>
           <div className="capability-block">
-            <strong>监听 127.0.0.1</strong>
-            <p>非 loopback bind 必须配置 token auth；token 仅保存 hash。</p>
+            <strong>{auth.data?.localTrusted ? 'loopback 默认模式' : '远程访问保护已启用'}</strong>
+            <p>非 loopback bind 必须配置 token auth；服务端 token 仅保存 SHA-256 hash。</p>
           </div>
         </section>
       </div>

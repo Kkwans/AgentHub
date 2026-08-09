@@ -7,6 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
+import { authTokenStore } from './lib/api';
 
 vi.mock('./lib/realtime', () => ({
   realtime: {
@@ -20,6 +21,7 @@ vi.mock('./lib/realtime', () => ({
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  authTokenStore.set('');
 });
 
 describe('App', () => {
@@ -129,5 +131,49 @@ describe('App', () => {
     expect(screen.getByRole('tab', { name: '标签' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '上下文预览' })).toBeInTheDocument();
     expect(screen.getByText('不可变版本历史')).toBeInTheDocument();
+  });
+
+  it('token auth 设置使用当前浏览器 Session 且 API 自动携带 Bearer token', async () => {
+    authTokenStore.set('ui-access-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = String(input);
+        const data = path.endsWith('/auth/status')
+          ? { mode: 'token', localTrusted: false }
+          : path.endsWith('/settings/capabilities')
+            ? {
+                terminal: {
+                  available: false,
+                  code: 'PTY_UNAVAILABLE',
+                  message: '当前平台不可用',
+                  platform: 'linux',
+                  arch: 'arm64',
+                },
+                remoteNode: { available: false },
+              }
+            : [];
+        return new Response(JSON.stringify({ data, requestId: 'auth-ui-test' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/settings']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '当前浏览器 token' })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/v1\//),
+      expect.objectContaining({
+        headers: expect.objectContaining({ authorization: 'Bearer ui-access-token' }),
+      }),
+    );
   });
 });

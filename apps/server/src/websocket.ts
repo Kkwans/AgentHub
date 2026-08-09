@@ -12,6 +12,10 @@ export interface ReplayEventSource {
   ): Promise<Array<Record<string, unknown>>>;
 }
 
+export interface WebSocketAuthenticator {
+  authorizeHeader(header: string | undefined): Promise<boolean>;
+}
+
 interface ClientState {
   readonly id: string;
   readonly socket: WebSocket;
@@ -25,8 +29,25 @@ export class TopicBroker {
   constructor(
     httpServer: Server,
     private readonly replaySource?: ReplayEventSource,
+    authenticator?: WebSocketAuthenticator,
   ) {
-    this.server = new WebSocketServer({ server: httpServer, path: '/ws', maxPayload: 1024 * 1024 });
+    this.server = new WebSocketServer({
+      server: httpServer,
+      path: '/ws',
+      maxPayload: 1024 * 1024,
+      ...(authenticator
+        ? {
+            verifyClient: (info, done) => {
+              const credential =
+                info.req.headers.authorization ?? info.req.headers['sec-websocket-protocol'];
+              void authenticator
+                .authorizeHeader(credential)
+                .then((allowed) => done(allowed, allowed ? undefined : 401, '需要有效 token'))
+                .catch(() => done(false, 401, '需要有效 token'));
+            },
+          }
+        : {}),
+    });
     this.server.on('connection', (socket) => this.onConnection(socket));
   }
 

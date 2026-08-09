@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 
 import {
   AgentRepository,
+  ApiTokenRepository,
   ApprovalRepository,
   createDatabase,
   EventRepository,
@@ -40,6 +41,7 @@ import { TerminalService } from './terminal/terminal-service.js';
 import { PromptService } from './promptos/prompt-service.js';
 import { TaskService } from './tasks/task-service.js';
 import { DashboardService } from './dashboard/dashboard-service.js';
+import { AuthService, resolveAuthMode } from './auth/auth-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -57,11 +59,34 @@ export async function startServer(
     throw new AppError(500, 'INVALID_SERVER_PORT', 'AGENTHUB_PORT 必须是合法端口');
   }
 
-  const logger = pino({ level: environment.LOG_LEVEL ?? 'info' });
+  const authMode = resolveAuthMode(host, environment.AGENTHUB_AUTH_MODE);
+
+  const logger = pino({
+    level: environment.LOG_LEVEL ?? 'info',
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'request.headers.authorization',
+        'headers.authorization',
+        '*.token',
+        '*.password',
+        '*.secret',
+      ],
+      censor: '[REDACTED]',
+    },
+  });
   const database = await createDatabase({
     databaseUrl: environment.DATABASE_URL,
     dataDir: environment.AGENTHUB_DATA_DIR,
   });
+  const apiTokenRepository = new ApiTokenRepository(database.db);
+  const auth = new AuthService(apiTokenRepository, authMode, environment.AGENTHUB_BOOTSTRAP_TOKEN);
+  try {
+    await auth.assertConfigured();
+  } catch (error) {
+    await database.close();
+    throw error;
+  }
   const eventRepository = new EventRepository(database.db);
   const executionTargetRepository = new ExecutionTargetRepository(database.db);
   const brokerRef: { current?: TopicBroker } = {};
@@ -135,9 +160,10 @@ export async function startServer(
     promptos,
     tasks,
     dashboard,
+    auth,
   });
   const server = createServer(app);
-  const broker = new TopicBroker(server, eventRepository);
+  const broker = new TopicBroker(server, eventRepository, auth);
   brokerRef.current = broker;
 
   await new Promise<void>((resolve, reject) => {

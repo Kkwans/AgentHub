@@ -37,12 +37,35 @@ const errorMessages: Record<string, string> = {
   PROMPT_VARIABLES_MISSING: 'PromptOS 缺少必填变量，请先完成上下文预览。',
   PROMPT_BINDING_TARGET_NOT_FOUND: '绑定目标不存在。',
   SKILL_PATH_ESCAPE: 'Skill 路径超出 Project root，已阻止扫描。',
+  API_TOKEN_NAME_EXISTS: 'API token 名称已存在。',
+  API_TOKEN_NOT_FOUND: 'API token 不存在或已经撤销。',
+};
+
+const accessTokenKey = 'agenthub.access-token';
+
+export const authTokenStore = {
+  get(): string {
+    return typeof window === 'undefined'
+      ? ''
+      : (window.sessionStorage.getItem(accessTokenKey) ?? '');
+  },
+  set(token: string): void {
+    if (typeof window === 'undefined') return;
+    const normalized = token.trim();
+    if (normalized) window.sessionStorage.setItem(accessTokenKey, normalized);
+    else window.sessionStorage.removeItem(accessTokenKey);
+  },
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = authTokenStore.get();
   const response = await fetch(`/api/v1${path}`, {
     ...init,
-    headers: { 'content-type': 'application/json', ...init?.headers },
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
   });
   const body = (await response.json()) as SuccessEnvelope<T> | ErrorEnvelope;
   if (!response.ok || 'error' in body) {
@@ -189,6 +212,14 @@ export interface DashboardSnapshot {
   pendingApprovals: ApprovalRecord[];
   recentResults: Array<RunRecord & { gitOutcome: 'CHANGED' | 'UNCHANGED' | 'UNAVAILABLE' }>;
   agentHealth: AgentRecord[];
+}
+
+export interface ApiTokenRecord {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
 }
 
 export interface MessageRecord {

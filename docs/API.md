@@ -19,6 +19,26 @@
 
 v0.1 资源包括 Project、Agent、Execution Target、Session、Run、Approval、PromptOS、Goal、Task、Git、Auth、Settings，以及只读文件树/内容接口。
 
+## Auth / Dashboard / Goal / Task
+
+```text
+GET        /api/v1/auth/status
+GET/POST   /api/v1/auth/tokens
+DELETE     /api/v1/auth/tokens/:id
+GET        /api/v1/dashboard
+
+GET/POST   /api/v1/goals
+GET/PATCH  /api/v1/goals/:id
+POST       /api/v1/goals/:id/transition
+GET/POST   /api/v1/tasks
+GET/PATCH  /api/v1/tasks/:id
+POST       /api/v1/tasks/:id/transition
+POST       /api/v1/tasks/:id/start
+POST       /api/v1/tasks/:id/review
+```
+
+Task 由 Agent Run 完成时进入 `WAITING_REVIEW`；只有 `/review` 的 `APPROVE` 决策会进入 `DONE`。Dashboard 只聚合可操作状态、终态 Run 与 Git outcome。
+
 ## Execution Target
 
 ```text
@@ -64,3 +84,5 @@ POST /api/v1/terminals/:id/close
 ## WebSocket
 
 所有实时数据使用 `/ws` 单连接，topic 为 Session、Project、Approval、Terminal。Session 事件包含单调 `seq`；客户端以 `afterSeq` 请求补流。Terminal 使用独立生命周期消息，不复用 Session 文本事件。
+
+token 模式下，非浏览器客户端使用 `Authorization: Bearer <token>`；浏览器客户端以 `agenthub-v1` 和 `agenthub-token.<token>` 两个 subprotocol 发起握手，服务只协商 `agenthub-v1`。

@@ -2,11 +2,13 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 
 import request from 'supertest';
+import { ApiTokenRepository, createPgliteDatabase } from '@agenthub/db';
 import pino from 'pino';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
 import { createApp } from './app.js';
+import { AuthService } from './auth/auth-service.js';
 import { TopicBroker, type ReplayEventSource } from './websocket.js';
 
 describe('HTTP 基线', () => {
@@ -47,6 +49,33 @@ describe('HTTP 基线', () => {
       message: '请求的接口不存在',
     });
   });
+});
+
+describe('HTTP token auth', () => {
+  it('认证状态公开，其余 API 拒绝无 token 请求并接受 Bearer token', async () => {
+    const database = await createPgliteDatabase({ dataDir: 'memory://' });
+    try {
+      const auth = new AuthService(
+        new ApiTokenRepository(database.db),
+        'token',
+        'test-bootstrap-token',
+      );
+      const app = createApp({ auth, logger: pino({ level: 'silent' }) });
+      expect((await request(app).get('/api/v1/auth/status')).body.data).toEqual({
+        mode: 'token',
+        localTrusted: false,
+      });
+      const unauthorized = await request(app).get('/api/v1');
+      expect(unauthorized.status).toBe(401);
+      expect(unauthorized.body.error.code).toBe('AUTH_REQUIRED');
+      const authorized = await request(app)
+        .get('/api/v1')
+        .set('authorization', 'Bearer test-bootstrap-token');
+      expect(authorized.status).toBe(200);
+    } finally {
+      await database.close();
+    }
+  }, 15_000);
 });
 
 describe('统一 WebSocket topic', () => {
@@ -118,6 +147,39 @@ describe('统一 WebSocket topic', () => {
 
     socket.close();
     await once(socket, 'close');
+    await broker.close();
+    openBrokers.length = 0;
+    await new Promise<void>((resolve, reject) => {
+      httpServer.close((error) => (error ? reject(error) : resolve()));
+    });
+  });
+
+  it('token 模式拒绝未认证连接并接受浏览器 subprotocol token', async () => {
+    const httpServer = createServer(createApp({ logger: pino({ level: 'silent' }) }));
+    const broker = new TopicBroker(httpServer, undefined, {
+      authorizeHeader: async (header) => Boolean(header?.includes('agenthub-token.good-token')),
+    });
+    openBrokers.push(broker);
+    httpServer.listen(0, '127.0.0.1');
+    await once(httpServer, 'listening');
+    const address = httpServer.address();
+    if (!address || typeof address === 'string') throw new Error('测试 Server 未取得 TCP 端口');
+
+    const rejected = new WebSocket(`ws://127.0.0.1:${address.port}/ws`);
+    rejected.on('error', () => undefined);
+    const rejection = once(rejected, 'unexpected-response');
+    const [, response] = await rejection;
+    expect((response as { statusCode: number }).statusCode).toBe(401);
+
+    const accepted = new WebSocket(`ws://127.0.0.1:${address.port}/ws`, [
+      'agenthub-v1',
+      'agenthub-token.good-token',
+    ]);
+    openSockets.push(accepted);
+    await once(accepted, 'open');
+    expect(accepted.protocol).toBe('agenthub-v1');
+    accepted.close();
+    await once(accepted, 'close');
     await broker.close();
     openBrokers.length = 0;
     await new Promise<void>((resolve, reject) => {

@@ -1,3 +1,5 @@
+import { authTokenStore } from './api';
+
 type Listener = (event: Record<string, unknown>) => void;
 
 class RealtimeClient {
@@ -28,6 +30,14 @@ class RealtimeClient {
     return () => this.stateListeners.delete(listener);
   }
 
+  reconnect(): void {
+    if (this.socket) {
+      this.socket.close(1000, '认证信息已更新');
+      return;
+    }
+    if (this.listeners.size) this.connect();
+  }
+
   private connect(): void {
     if (
       this.socket &&
@@ -36,7 +46,11 @@ class RealtimeClient {
       return;
     this.emitState('连接中');
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.socket = new WebSocket(`${protocol}//${location.host}/ws`);
+    const token = authTokenStore.get();
+    this.socket = new WebSocket(
+      `${protocol}//${location.host}/ws`,
+      token ? ['agenthub-v1', `agenthub-token.${token}`] : ['agenthub-v1'],
+    );
     this.socket.addEventListener('open', () => {
       this.attempts = 0;
       this.emitState('已连接');

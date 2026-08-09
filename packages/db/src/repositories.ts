@@ -15,6 +15,7 @@ import {
   agents,
   agentRuns,
   agentSessions,
+  apiTokens,
   approvalRequests,
   executionTargets,
   gitSnapshots,
@@ -38,6 +39,83 @@ export class DatabaseInvariantError extends Error {
   ) {
     super(message);
     this.name = 'DatabaseInvariantError';
+  }
+}
+
+export class ApiTokenRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list() {
+    return this.db
+      .select({
+        id: apiTokens.id,
+        name: apiTokens.name,
+        createdAt: apiTokens.createdAt,
+        lastUsedAt: apiTokens.lastUsedAt,
+        revokedAt: apiTokens.revokedAt,
+      })
+      .from(apiTokens)
+      .orderBy(apiTokens.createdAt);
+  }
+
+  async getByName(name: string) {
+    const [token] = await this.db
+      .select({ id: apiTokens.id })
+      .from(apiTokens)
+      .where(eq(apiTokens.name, name))
+      .limit(1);
+    return token;
+  }
+
+  async hasActive() {
+    const [token] = await this.db
+      .select({ id: apiTokens.id })
+      .from(apiTokens)
+      .where(isNull(apiTokens.revokedAt))
+      .limit(1);
+    return Boolean(token);
+  }
+
+  async findActiveByHash(tokenHash: string) {
+    const [token] = await this.db
+      .select({ id: apiTokens.id })
+      .from(apiTokens)
+      .where(and(eq(apiTokens.tokenHash, tokenHash), isNull(apiTokens.revokedAt)))
+      .limit(1);
+    return token;
+  }
+
+  async create(input: { id: string; name: string; tokenHash: string }) {
+    const [created] = await this.db.insert(apiTokens).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('API_TOKEN_CREATE_FAILED', 'API token 创建失败');
+    return {
+      id: created.id,
+      name: created.name,
+      createdAt: created.createdAt,
+      lastUsedAt: created.lastUsedAt,
+      revokedAt: created.revokedAt,
+    };
+  }
+
+  async markUsed(id: string) {
+    await this.db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.id, id));
+  }
+
+  async revoke(id: string) {
+    const [revoked] = await this.db
+      .update(apiTokens)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(apiTokens.id, id), isNull(apiTokens.revokedAt)))
+      .returning();
+    return revoked
+      ? {
+          id: revoked.id,
+          name: revoked.name,
+          createdAt: revoked.createdAt,
+          lastUsedAt: revoked.lastUsedAt,
+          revokedAt: revoked.revokedAt,
+        }
+      : undefined;
   }
 }
 
