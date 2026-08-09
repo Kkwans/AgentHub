@@ -178,6 +178,11 @@ describe('PromptOS service', () => {
           { role: 'user', content: '{{ task }}' },
         ],
       },
+      variables: {
+        type: 'object',
+        properties: { task: { type: 'string' } },
+        required: ['task'],
+      },
     });
     const diff = await service.diff(prompt.id, 1, 2);
     expect(diff.type).toBe('CHAT');
@@ -237,6 +242,21 @@ describe('PromptOS service', () => {
         versionId: version.id,
       }),
     ).resolves.toMatchObject({ targetId: taskId });
+  });
+
+  it('模板变量未在 schema 声明时拒绝创建 Version', async () => {
+    const prompt = await service.create({
+      key: `schema-${randomUUID()}`,
+      name: '变量约束',
+      kind: 'TEMPLATE',
+      type: 'TEXT',
+    });
+    await expect(
+      service.createVersion(prompt.id, {
+        content: { text: '执行 {{ task }}' },
+        variables: { type: 'object', properties: {}, required: [] },
+      }),
+    ).rejects.toMatchObject({ code: 'PROMPT_VARIABLE_UNDECLARED' });
   });
 
   it('Skill scan 阻止 symlink 逃逸 Project root', async () => {

@@ -130,6 +130,7 @@ export class PromptService {
     const prompt = await this.get(promptId);
     validateContent(prompt.type as PromptType, input.content);
     validateVariableSchema(input.variables ?? {});
+    validateDeclaredVariables(prompt.type as PromptType, input.content, input.variables ?? {});
     const contentHash = hashJson({
       content: input.content,
       variables: input.variables ?? {},
@@ -550,6 +551,26 @@ function validateVariableSchema(schema: Record<string, unknown>): void {
       'PROMPT_VARIABLE_SCHEMA_INVALID',
       '变量 schema required 必须是字符串数组',
     );
+  }
+}
+
+function validateDeclaredVariables(
+  type: PromptType,
+  content: Record<string, unknown>,
+  schema: Record<string, unknown>,
+): void {
+  const references = [
+    ...comparableText(type, content).matchAll(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g),
+  ].map((match) => match[1]!);
+  if (!references.length) return;
+  const properties = isRecord(schema.properties) ? schema.properties : {};
+  const undeclared = references.filter(
+    (reference) => !(reference in properties) && !(reference.split('.')[0]! in properties),
+  );
+  if (undeclared.length) {
+    throw new AppError(400, 'PROMPT_VARIABLE_UNDECLARED', 'Prompt 变量未在 schema 中声明', {
+      variables: [...new Set(undeclared)].sort(),
+    });
   }
 }
 
