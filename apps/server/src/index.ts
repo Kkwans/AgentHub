@@ -1,4 +1,6 @@
 import { createServer, type Server } from 'node:http';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -60,6 +62,11 @@ export async function startServer(
   }
 
   const authMode = resolveAuthMode(host, environment.AGENTHUB_AUTH_MODE);
+  const configuredWebDist = environment.AGENTHUB_WEB_DIST;
+  const webDist = configuredWebDist
+    ? resolve(configuredWebDist)
+    : resolve(import.meta.dirname, '../../web/dist');
+  const webAvailable = existsSync(resolve(webDist, 'index.html'));
 
   const logger = pino({
     level: environment.LOG_LEVEL ?? 'info',
@@ -150,7 +157,7 @@ export async function startServer(
   const app = createApp({
     logger,
     eventSource: eventRepository,
-    health: async () => ({ database: database.mode }),
+    health: async () => ({ database: database.mode, web: webAvailable }),
     executionTargets,
     agents,
     sessions,
@@ -161,6 +168,7 @@ export async function startServer(
     tasks,
     dashboard,
     auth,
+    ...(webAvailable ? { webDist } : {}),
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository, auth);
@@ -173,7 +181,10 @@ export async function startServer(
       resolve();
     });
   });
-  logger.info({ host, port, database: database.mode, recovery }, 'AgentHub server started');
+  logger.info(
+    { host, port, database: database.mode, web: webAvailable, recovery },
+    'AgentHub server started',
+  );
 
   return {
     server,

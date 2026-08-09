@@ -1,5 +1,8 @@
 import { once } from 'node:events';
 import { createServer } from 'node:http';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import request from 'supertest';
 import { ApiTokenRepository, createPgliteDatabase } from '@agenthub/db';
@@ -76,6 +79,26 @@ describe('HTTP token auth', () => {
       await database.close();
     }
   }, 15_000);
+});
+
+describe('Production Web 入口', () => {
+  it('托管静态资源并为前端路由返回 SPA index，不吞掉 API 404', async () => {
+    const webDist = await mkdtemp(join(tmpdir(), 'agenthub-web-'));
+    try {
+      await writeFile(join(webDist, 'index.html'), '<!doctype html><title>AgentHub Web</title>');
+      await writeFile(join(webDist, 'asset.txt'), 'asset-ok');
+      const app = createApp({ webDist, logger: pino({ level: 'silent' }) });
+      expect((await request(app).get('/asset.txt')).text).toBe('asset-ok');
+      const spa = await request(app).get('/tasks').set('accept', 'text/html');
+      expect(spa.status).toBe(200);
+      expect(spa.text).toContain('AgentHub Web');
+      const api = await request(app).get('/api/v1/not-real');
+      expect(api.status).toBe(404);
+      expect(api.body.error.code).toBe('ROUTE_NOT_FOUND');
+    } finally {
+      await rm(webDist, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('统一 WebSocket topic', () => {

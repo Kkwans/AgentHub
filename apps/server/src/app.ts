@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 
 import { AGENTHUB_VERSION } from '@agenthub/shared';
 import cors from 'cors';
@@ -46,6 +47,7 @@ export interface AppOptions {
   tasks?: TaskService;
   dashboard?: DashboardSnapshotProvider;
   auth?: AuthService;
+  webDist?: string;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -151,6 +153,24 @@ export function createApp(options: AppOptions = {}): Express {
       }
     },
   );
+
+  if (options.webDist) {
+    app.use(express.static(options.webDist, { index: false, fallthrough: true }));
+    app.use((request, response, next) => {
+      if (
+        request.method !== 'GET' ||
+        request.path.startsWith('/api/') ||
+        request.path === '/ws' ||
+        !request.accepts('html')
+      ) {
+        next();
+        return;
+      }
+      response.sendFile(join(options.webDist!, 'index.html'), (error) => {
+        if (error) next(error);
+      });
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);
