@@ -21,6 +21,8 @@ import { createProjectRouter } from './projects/project-routes.js';
 import type { ProjectService } from './projects/project-service.js';
 import { createGitRouter } from './git/git-routes.js';
 import type { GitService } from './git/git-service.js';
+import { createTerminalRouter } from './terminal/terminal-routes.js';
+import type { TerminalService } from './terminal/terminal-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -31,6 +33,7 @@ export interface AppOptions {
   sessions?: SessionService;
   projects?: ProjectService;
   git?: GitService;
+  terminal?: TerminalService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -92,6 +95,19 @@ export function createApp(options: AppOptions = {}): Express {
   }
   if (options.projects) app.use('/api/v1/projects', createProjectRouter(options.projects));
   if (options.git) app.use('/api/v1/projects/:id/git', createGitRouter(options.git));
+  if (options.terminal) {
+    app.use('/api/v1/terminals', createTerminalRouter(options.terminal));
+    app.get('/api/v1/settings/capabilities', async (request, response, next) => {
+      try {
+        response.json({
+          data: { terminal: await options.terminal!.diagnose(), remoteNode: { available: false } },
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    });
+  }
 
   app.get(
     '/api/v1/sessions/:sessionId/events',

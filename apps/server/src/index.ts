@@ -32,6 +32,7 @@ import { DockerOpenClawExecLauncher } from './agents/docker-openclaw-exec.js';
 import { SessionService } from './sessions/session-service.js';
 import { ProjectService } from './projects/project-service.js';
 import { GitService } from './git/git-service.js';
+import { TerminalService } from './terminal/terminal-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -56,6 +57,7 @@ export async function startServer(
   });
   const eventRepository = new EventRepository(database.db);
   const executionTargetRepository = new ExecutionTargetRepository(database.db);
+  const brokerRef: { current?: TopicBroker } = {};
   const agentRepository = new AgentRepository(database.db);
   const projectRepository = new ProjectRepository(database.db);
   const sessionRepository = new SessionRepository(database.db);
@@ -67,6 +69,9 @@ export async function startServer(
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const projects = new ProjectService(projectRepository, executionTargetRepository);
   const git = new GitService(projectRepository, gitSnapshotRepository);
+  const terminal = new TerminalService(projectRepository, {
+    publish: (topic, event) => brokerRef.current?.publish(topic, event),
+  });
   const acpLauncher = new RoutedAcpProcessLauncher(
     new HostAcpProcessLauncher(),
     new DockerAcpProcessLauncher(docker),
@@ -83,7 +88,6 @@ export async function startServer(
         : primary;
     },
   );
-  const brokerRef: { current?: TopicBroker } = {};
   const sessions = new SessionService(
     sessionRepository,
     runRepository,
@@ -105,6 +109,7 @@ export async function startServer(
     sessions,
     projects,
     git,
+    terminal,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);
@@ -124,6 +129,7 @@ export async function startServer(
     broker,
     database,
     close: async () => {
+      await terminal.shutdown();
       await sessions.shutdown();
       await broker.close();
       await new Promise<void>((resolve, reject) => {
