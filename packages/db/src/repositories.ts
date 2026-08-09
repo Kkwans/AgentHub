@@ -15,6 +15,7 @@ import {
   agentSessions,
   approvalRequests,
   executionTargets,
+  gitSnapshots,
   messages,
   projects,
   promptLabels,
@@ -544,5 +545,24 @@ export class MessageRepository<TDatabase extends AgentHubDatabase> {
       if (!created) throw new DatabaseInvariantError('MESSAGE_CREATE_FAILED', 'Message 创建失败');
       return created;
     });
+  }
+}
+
+export class GitSnapshotRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  async create(input: typeof gitSnapshots.$inferInsert) {
+    const [created] = await this.db.insert(gitSnapshots).values(input).returning();
+    if (!created)
+      throw new DatabaseInvariantError('GIT_SNAPSHOT_CREATE_FAILED', 'Git snapshot 创建失败');
+    return created;
+  }
+
+  list(runId: string) {
+    return this.db
+      .select()
+      .from(gitSnapshots)
+      .where(eq(gitSnapshots.runId, runId))
+      .orderBy(gitSnapshots.createdAt);
   }
 }

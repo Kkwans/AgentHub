@@ -19,6 +19,8 @@ import { createApprovalRouter, createSessionRouter } from './sessions/session-ro
 import type { SessionService } from './sessions/session-service.js';
 import { createProjectRouter } from './projects/project-routes.js';
 import type { ProjectService } from './projects/project-service.js';
+import { createGitRouter } from './git/git-routes.js';
+import type { GitService } from './git/git-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -28,6 +30,7 @@ export interface AppOptions {
   agents?: AgentService;
   sessions?: SessionService;
   projects?: ProjectService;
+  git?: GitService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -88,6 +91,7 @@ export function createApp(options: AppOptions = {}): Express {
     app.use('/api/v1/approvals', createApprovalRouter(options.sessions));
   }
   if (options.projects) app.use('/api/v1/projects', createProjectRouter(options.projects));
+  if (options.git) app.use('/api/v1/projects/:id/git', createGitRouter(options.git));
 
   app.get(
     '/api/v1/sessions/:sessionId/events',

@@ -7,6 +7,7 @@ import {
   createDatabase,
   EventRepository,
   ExecutionTargetRepository,
+  GitSnapshotRepository,
   MessageRepository,
   ProjectRepository,
   RunRepository,
@@ -30,6 +31,7 @@ import {
 import { DockerOpenClawExecLauncher } from './agents/docker-openclaw-exec.js';
 import { SessionService } from './sessions/session-service.js';
 import { ProjectService } from './projects/project-service.js';
+import { GitService } from './git/git-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -60,9 +62,11 @@ export async function startServer(
   const runRepository = new RunRepository(database.db);
   const messageRepository = new MessageRepository(database.db);
   const approvalRepository = new ApprovalRepository(database.db);
+  const gitSnapshotRepository = new GitSnapshotRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const projects = new ProjectService(projectRepository, executionTargetRepository);
+  const git = new GitService(projectRepository, gitSnapshotRepository);
   const acpLauncher = new RoutedAcpProcessLauncher(
     new HostAcpProcessLauncher(),
     new DockerAcpProcessLauncher(docker),
@@ -89,6 +93,7 @@ export async function startServer(
     projectRepository,
     agents,
     { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
+    git,
   );
   const recovery = await sessions.recoverAfterRestart();
   const app = createApp({
@@ -99,6 +104,7 @@ export async function startServer(
     agents,
     sessions,
     projects,
+    git,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);

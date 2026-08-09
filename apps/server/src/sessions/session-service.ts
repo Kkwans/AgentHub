@@ -27,6 +27,12 @@ export interface SessionEventPublisher {
 
 export interface GitHeadProbe {
   readHead(cwd: string): Promise<string | undefined>;
+  capture?(
+    runId: string,
+    projectId: string,
+    cwd: string,
+    type: 'BEFORE' | 'AFTER' | 'REVIEW',
+  ): Promise<unknown>;
 }
 
 export interface CreateSessionInput {
@@ -190,6 +196,7 @@ export class SessionService {
       mode: session.mode,
       gitBeforeSha,
     });
+    await this.captureGitSnapshot(runId, session.projectId, session.cwd, 'BEFORE');
     const userMessage = await this.messages.append({
       sessionId,
       runId,
@@ -406,6 +413,7 @@ export class SessionService {
     }
     if (event.type === 'run.completed' && event.runId) {
       const session = await this.get(event.sessionId);
+      await this.captureGitSnapshot(event.runId, session.projectId, session.cwd, 'AFTER');
       await this.safeRunTransition(event.runId, 'COMPLETED', {
         finishedAt: new Date(),
         gitAfterSha: await this.git.readHead(session.cwd),
@@ -456,6 +464,20 @@ export class SessionService {
     )
       return;
     await this.runs.transition(id, to, patch);
+  }
+
+  private async captureGitSnapshot(
+    runId: string,
+    projectId: string,
+    cwd: string,
+    type: 'BEFORE' | 'AFTER' | 'REVIEW',
+  ): Promise<void> {
+    if (!this.git.capture) return;
+    try {
+      await this.git.capture(runId, projectId, cwd, type);
+    } catch {
+      // Git snapshots are diagnostic and must not turn a successful Agent Run into a failure.
+    }
   }
 }
 
