@@ -7,7 +7,8 @@
 - M0：已完成。
 - M1：已完成。
 - M2：已完成。
-- M3：进行中。
+- M3：已完成。
+- M4：进行中。
 - 已创建 durable Goal。
 - 已初始化 `main` 分支与 pnpm monorepo。
 - 已固定 Node.js 24、pnpm 11、TypeScript、ESLint、Prettier、Vitest、Playwright 与 CI 基线。
@@ -56,9 +57,20 @@ M2：
 - OpenClaw live：OpenClaw `2026.6.11` 提供 `openclaw acp`；清洁 stdio 后 Gateway 返回 scope upgrade pending approval，状态 `AUTH_REQUIRED`；该版本未确认存在 `agent exec` 子命令，不启用回退。
 - live probe 后 `claude-code`、`hermes`、`openclaw-official` 均恢复原始 `exited` 状态。
 
+M3：
+
+- Project add/preflight：`realpath`、目录/读写权限、Git/branch/dirty、AGENTS.md/CLAUDE.md/OpenSpec 与 package manager hints：通过。
+- 只读文件树/内容：root lexical containment、realpath containment、symlink escape、`../`、绝对路径、单/双编码 traversal、大文件和二进制限制：通过。
+- Git：status、Diff、commits、branches、staged/selected-files commit；selected commit 不混入其他已 staged 文件：通过。
+- Run Git snapshot：BEFORE/AFTER 状态与 SHA 持久化，snapshot 失败不改变 Agent Run outcome：通过。
+- Terminal：真实 `node-pty` open/input/resize/output/close 生命周期和独立 `terminal:*` topic 已实现；无 native binding 时禁止 shell fallback。
+- 当前 NAS runtime 诊断：`available=false`、`PTY_NATIVE_BINDING_UNAVAILABLE`、`linux/arm64`。
+- M3 聚焦回归：Project/Git/Terminal/Session 共 16 项测试通过；lint、typecheck、全仓 build 通过。
+
 ## 未验证项
 
 - Claude Code 需在镜像内固定安装 `@agentclientprotocol/claude-agent-acp@0.66.0` 后才能验证 auth/session。
 - Hermes 需增加覆盖 Project 的部署级 workspace mount 后才能验证项目 Session；本次未修改 Compose。
 - OpenClaw 需在原生 Gateway 中批准 scope upgrade 后才能验证 `session/new` 和 prompt；本次未替用户批准授权请求。
+- 当前 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；未伪装 PTY。
 - UI 尚未通过 TX5Pro 或远程浏览器验证。
