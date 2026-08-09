@@ -15,6 +15,8 @@ import { createExecutionTargetRouter } from './docker/execution-target-routes.js
 import type { ExecutionTargetService } from './docker/execution-target-service.js';
 import { createAgentRouter } from './agents/agent-routes.js';
 import type { AgentService } from './agents/agent-service.js';
+import { createApprovalRouter, createSessionRouter } from './sessions/session-routes.js';
+import type { SessionService } from './sessions/session-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -22,6 +24,7 @@ export interface AppOptions {
   health?: () => Promise<Record<string, unknown>>;
   executionTargets?: ExecutionTargetService;
   agents?: AgentService;
+  sessions?: SessionService;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -77,6 +80,10 @@ export function createApp(options: AppOptions = {}): Express {
     app.use('/api/v1/execution-targets', createExecutionTargetRouter(options.executionTargets));
   }
   if (options.agents) app.use('/api/v1/agents', createAgentRouter(options.agents));
+  if (options.sessions) {
+    app.use('/api/v1/sessions', createSessionRouter(options.sessions));
+    app.use('/api/v1/approvals', createApprovalRouter(options.sessions));
+  }
 
   app.get(
     '/api/v1/sessions/:sessionId/events',

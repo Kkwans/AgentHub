@@ -14,6 +14,7 @@
     "db:check": "drizzle-kit check"
   },
   "dependencies": {
+    "@agenthub/agent-core": "workspace:*",
     "@agenthub/shared": "workspace:*",
     "@electric-sql/pglite": "0.5.4",
     "drizzle-orm": "0.45.2",

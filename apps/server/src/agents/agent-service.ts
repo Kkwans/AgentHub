@@ -158,6 +158,24 @@ export class AgentService {
     return toAgentProfile(agent, target, { cwd });
   }
 
+  async resolveRuntime(
+    id: string,
+    cwd: string,
+  ): Promise<{
+    profile: AgentProfile;
+    adapter: AgentRuntimeAdapter;
+  }> {
+    const agent = await this.agents.get(id);
+    if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+    const target = await this.targets.get(agent.targetId);
+    if (!target)
+      throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
+    return {
+      profile: toAgentProfile(agent, target, { cwd }),
+      adapter: this.adapterFactory(agent.adapterKind as AdapterKind, this.acpLauncher),
+    };
+  }
+
   async hostDiagnostics(): Promise<Record<string, unknown>> {
     const codexExecutable = await findExecutable('codex');
     const opencodeExecutable = await findExecutable('opencode');

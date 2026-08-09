@@ -1,13 +1,22 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, max, sql } from 'drizzle-orm';
+import {
+  transitionRun,
+  transitionSession,
+  type RunStatus,
+  type SessionStatus,
+} from '@agenthub/agent-core';
 
 import type { AgentHubDatabase } from './client.js';
 import {
   agents,
+  agentRuns,
   agentSessions,
   approvalRequests,
   executionTargets,
+  messages,
+  projects,
   promptLabels,
   prompts,
   promptVersions,
@@ -116,6 +125,32 @@ export class PromptRepository<TDatabase extends AgentHubDatabase> {
 export class ApprovalRepository<TDatabase extends AgentHubDatabase> {
   constructor(private readonly db: TDatabase) {}
 
+  listPending(sessionId?: string) {
+    const query = this.db.select().from(approvalRequests);
+    return sessionId
+      ? query
+          .where(
+            and(eq(approvalRequests.sessionId, sessionId), eq(approvalRequests.status, 'PENDING')),
+          )
+          .orderBy(approvalRequests.requestedAt)
+      : query.where(eq(approvalRequests.status, 'PENDING')).orderBy(approvalRequests.requestedAt);
+  }
+
+  async get(id: string) {
+    const [approval] = await this.db
+      .select()
+      .from(approvalRequests)
+      .where(eq(approvalRequests.id, id))
+      .limit(1);
+    return approval;
+  }
+
+  async create(input: typeof approvalRequests.$inferInsert) {
+    const [created] = await this.db.insert(approvalRequests).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('APPROVAL_CREATE_FAILED', 'Approval 创建失败');
+    return created;
+  }
+
   async resolveExactlyOnce(
     id: string,
     decision: 'APPROVED' | 'REJECTED' | 'CANCELED',
@@ -137,6 +172,18 @@ export class ApprovalRepository<TDatabase extends AgentHubDatabase> {
       if (!existing) throw new DatabaseInvariantError('APPROVAL_NOT_FOUND', 'Approval 不存在');
       return { changed: false as const, approval: existing };
     });
+  }
+
+  async cancelPendingForRestart() {
+    return this.db
+      .update(approvalRequests)
+      .set({
+        status: 'CANCELED',
+        responseJson: { reason: 'SERVER_RESTARTED' },
+        resolvedAt: new Date(),
+      })
+      .where(eq(approvalRequests.status, 'PENDING'))
+      .returning();
   }
 }
 
@@ -283,5 +330,209 @@ export class AgentRepository<TDatabase extends AgentHubDatabase> {
       .returning();
     if (!updated) throw new DatabaseInvariantError('AGENT_NOT_FOUND', 'Agent 不存在');
     return updated;
+  }
+}
+
+export class ProjectRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list() {
+    return this.db.select().from(projects).orderBy(projects.createdAt);
+  }
+
+  async get(id: string) {
+    const [project] = await this.db.select().from(projects).where(eq(projects.id, id)).limit(1);
+    return project;
+  }
+
+  async create(input: typeof projects.$inferInsert) {
+    const [created] = await this.db.insert(projects).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('PROJECT_CREATE_FAILED', 'Project 创建失败');
+    return created;
+  }
+}
+
+export class SessionRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list(projectId?: string) {
+    const query = this.db.select().from(agentSessions);
+    return projectId
+      ? query.where(eq(agentSessions.projectId, projectId)).orderBy(agentSessions.createdAt)
+      : query.orderBy(agentSessions.createdAt);
+  }
+
+  async get(id: string) {
+    const [session] = await this.db
+      .select()
+      .from(agentSessions)
+      .where(eq(agentSessions.id, id))
+      .limit(1);
+    return session;
+  }
+
+  async create(input: typeof agentSessions.$inferInsert) {
+    const [created] = await this.db.insert(agentSessions).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('SESSION_CREATE_FAILED', 'Session 创建失败');
+    return created;
+  }
+
+  async transition(
+    id: string,
+    to: SessionStatus,
+    patch: Partial<typeof agentSessions.$inferInsert> = {},
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select({ status: agentSessions.status })
+        .from(agentSessions)
+        .where(eq(agentSessions.id, id))
+        .for('update')
+        .limit(1);
+      if (!current) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
+      transitionSession(current.status as SessionStatus, to);
+      const [updated] = await transaction
+        .update(agentSessions)
+        .set({ ...patch, status: to, lastActiveAt: new Date() })
+        .where(and(eq(agentSessions.id, id), eq(agentSessions.status, current.status)))
+        .returning();
+      if (!updated)
+        throw new DatabaseInvariantError(
+          'SESSION_CONCURRENT_UPDATE',
+          'Session 状态已被其他请求修改',
+        );
+      return updated;
+    });
+  }
+
+  async recoverInterrupted() {
+    const activeSessionStates = ['STARTING', 'READY', 'RUNNING', 'WAITING_APPROVAL'] as const;
+    const recovered = await this.db
+      .update(agentSessions)
+      .set({ status: 'DISCONNECTED', lastActiveAt: new Date() })
+      .where(inArray(agentSessions.status, activeSessionStates))
+      .returning();
+    return recovered.map((row) => row.id);
+  }
+}
+
+export class RunRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list(sessionId: string) {
+    return this.db
+      .select()
+      .from(agentRuns)
+      .where(eq(agentRuns.sessionId, sessionId))
+      .orderBy(agentRuns.startedAt);
+  }
+
+  async get(id: string) {
+    const [run] = await this.db.select().from(agentRuns).where(eq(agentRuns.id, id)).limit(1);
+    return run;
+  }
+
+  async findActiveForSession(sessionId: string) {
+    const [run] = await this.db
+      .select()
+      .from(agentRuns)
+      .where(
+        and(
+          eq(agentRuns.sessionId, sessionId),
+          inArray(agentRuns.status, ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING']),
+        ),
+      )
+      .limit(1);
+    return run;
+  }
+
+  async create(input: typeof agentRuns.$inferInsert) {
+    const [created] = await this.db.insert(agentRuns).values(input).returning();
+    if (!created) throw new DatabaseInvariantError('RUN_CREATE_FAILED', 'Run 创建失败');
+    return created;
+  }
+
+  async patch(id: string, patch: Partial<typeof agentRuns.$inferInsert>) {
+    const [updated] = await this.db
+      .update(agentRuns)
+      .set(patch)
+      .where(eq(agentRuns.id, id))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('RUN_NOT_FOUND', 'Run 不存在');
+    return updated;
+  }
+
+  async transition(id: string, to: RunStatus, patch: Partial<typeof agentRuns.$inferInsert> = {}) {
+    return this.db.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select({ status: agentRuns.status })
+        .from(agentRuns)
+        .where(eq(agentRuns.id, id))
+        .for('update')
+        .limit(1);
+      if (!current) throw new DatabaseInvariantError('RUN_NOT_FOUND', 'Run 不存在');
+      transitionRun(current.status as RunStatus, to);
+      const [updated] = await transaction
+        .update(agentRuns)
+        .set({ ...patch, status: to })
+        .where(and(eq(agentRuns.id, id), eq(agentRuns.status, current.status)))
+        .returning();
+      if (!updated)
+        throw new DatabaseInvariantError('RUN_CONCURRENT_UPDATE', 'Run 状态已被其他请求修改');
+      return updated;
+    });
+  }
+
+  async recoverInterrupted() {
+    const recoverable = ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'] as const;
+    const disconnected = await this.db
+      .update(agentRuns)
+      .set({
+        status: 'DISCONNECTED',
+        finishedAt: new Date(),
+        errorCode: 'SERVER_RESTARTED',
+        errorMessage: 'AgentHub 重启导致运行连接中断',
+      })
+      .where(inArray(agentRuns.status, recoverable))
+      .returning();
+    const queued = await this.db
+      .update(agentRuns)
+      .set({
+        status: 'FAILED',
+        finishedAt: new Date(),
+        errorCode: 'SERVER_RESTARTED',
+        errorMessage: 'AgentHub 重启前 Run 尚未启动',
+      })
+      .where(eq(agentRuns.status, 'QUEUED'))
+      .returning();
+    return { disconnected: disconnected.map((row) => row.id), failed: queued.map((row) => row.id) };
+  }
+}
+
+export class MessageRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list(sessionId: string) {
+    return this.db
+      .select()
+      .from(messages)
+      .where(eq(messages.sessionId, sessionId))
+      .orderBy(messages.sequence);
+  }
+
+  async append(input: Omit<typeof messages.$inferInsert, 'id' | 'sequence'>) {
+    return this.db.transaction(async (transaction) => {
+      const [latest] = await transaction
+        .select({ sequence: max(messages.sequence) })
+        .from(messages)
+        .where(eq(messages.sessionId, input.sessionId));
+      const sequence = Number(latest?.sequence ?? 0) + 1;
+      const [created] = await transaction
+        .insert(messages)
+        .values({ id: randomUUID(), sequence, ...input })
+        .returning();
+      if (!created) throw new DatabaseInvariantError('MESSAGE_CREATE_FAILED', 'Message 创建失败');
+      return created;
+    });
   }
 }

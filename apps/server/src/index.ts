@@ -3,9 +3,14 @@ import { pathToFileURL } from 'node:url';
 
 import {
   AgentRepository,
+  ApprovalRepository,
   createDatabase,
   EventRepository,
   ExecutionTargetRepository,
+  MessageRepository,
+  ProjectRepository,
+  RunRepository,
+  SessionRepository,
   type DatabaseClient,
 } from '@agenthub/db';
 import pino from 'pino';
@@ -23,6 +28,7 @@ import {
   RoutedAcpProcessLauncher,
 } from './agents/docker-acp-launcher.js';
 import { DockerOpenClawExecLauncher } from './agents/docker-openclaw-exec.js';
+import { SessionService } from './sessions/session-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -48,6 +54,11 @@ export async function startServer(
   const eventRepository = new EventRepository(database.db);
   const executionTargetRepository = new ExecutionTargetRepository(database.db);
   const agentRepository = new AgentRepository(database.db);
+  const projectRepository = new ProjectRepository(database.db);
+  const sessionRepository = new SessionRepository(database.db);
+  const runRepository = new RunRepository(database.db);
+  const messageRepository = new MessageRepository(database.db);
+  const approvalRepository = new ApprovalRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const acpLauncher = new RoutedAcpProcessLauncher(
@@ -66,15 +77,29 @@ export async function startServer(
         : primary;
     },
   );
+  const brokerRef: { current?: TopicBroker } = {};
+  const sessions = new SessionService(
+    sessionRepository,
+    runRepository,
+    messageRepository,
+    eventRepository,
+    approvalRepository,
+    projectRepository,
+    agents,
+    { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
+  );
+  const recovery = await sessions.recoverAfterRestart();
   const app = createApp({
     logger,
     eventSource: eventRepository,
     health: async () => ({ database: database.mode }),
     executionTargets,
     agents,
+    sessions,
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository);
+  brokerRef.current = broker;
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -83,13 +108,14 @@ export async function startServer(
       resolve();
     });
   });
-  logger.info({ host, port, database: database.mode }, 'AgentHub server started');
+  logger.info({ host, port, database: database.mode, recovery }, 'AgentHub server started');
 
   return {
     server,
     broker,
     database,
     close: async () => {
+      await sessions.shutdown();
       await broker.close();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
