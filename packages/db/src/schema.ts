@@ -85,6 +85,51 @@ export const executionTargets = pgTable(
   ],
 );
 
+export const remoteNodes = pgTable(
+  'remote_nodes',
+  {
+    id: uuid('id').primaryKey(),
+    targetId: uuid('target_id')
+      .notNull()
+      .references(() => executionTargets.id),
+    publicKey: text('public_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    protocolVersion: text('protocol_version').notNull(),
+    daemonVersion: text('daemon_version').notNull(),
+    allowedRootsJson: jsonb('allowed_roots_json').$type<string[]>().notNull().default(emptyArray),
+    inventoryJson: jsonb('inventory_json')
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default(emptyArray),
+    status: text('status').notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex('remote_nodes_target_unique').on(table.targetId),
+    uniqueIndex('remote_nodes_fingerprint_unique').on(table.fingerprint),
+    check('remote_nodes_status_check', sql`${table.status} in ('ONLINE', 'OFFLINE', 'REVOKED')`),
+  ],
+);
+
+export const remoteNodeRegistrationTokens = pgTable(
+  'remote_node_registration_tokens',
+  {
+    id: uuid('id').primaryKey(),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    allowedRootsJson: jsonb('allowed_roots_json').$type<string[]>().notNull().default(emptyArray),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    usedByNodeId: uuid('used_by_node_id').references(() => remoteNodes.id),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (table) => [uniqueIndex('remote_node_registration_tokens_hash_unique').on(table.tokenHash)],
+);
+
 export const projects = pgTable(
   'projects',
   {
@@ -609,6 +654,8 @@ export const schema = {
   appSettings,
   apiTokens,
   executionTargets,
+  remoteNodes,
+  remoteNodeRegistrationTokens,
   projects,
   agents,
   agentSessions,
@@ -626,4 +673,5 @@ export const schema = {
   skills,
   skillBindings,
   gitSnapshots,
+  worktreeExecutions,
 };

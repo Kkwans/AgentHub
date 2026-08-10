@@ -9,7 +9,10 @@ describe('共享包基线', () => {
 
   it('统一 WebSocket 接受 Worktree 控制面 topic', () => {
     expect(
-      websocketClientMessageSchema.parse({ type: 'subscribe', topics: ['worktrees'] }),
-    ).toEqual({ type: 'subscribe', topics: ['worktrees'] });
+      websocketClientMessageSchema.parse({
+        type: 'subscribe',
+        topics: ['worktrees', 'remote-nodes'],
+      }),
+    ).toEqual({ type: 'subscribe', topics: ['worktrees', 'remote-nodes'] });
   });
 });

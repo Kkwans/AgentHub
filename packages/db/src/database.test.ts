@@ -104,6 +104,8 @@ describe('数据库不变量', () => {
     expect(names.has('projects')).toBe(true);
     expect(names.has('agent_runs')).toBe(true);
     expect(names.has('prompt_versions')).toBe(true);
+    expect(names.has('remote_nodes')).toBe(true);
+    expect(names.has('remote_node_registration_tokens')).toBe(true);
   });
 
   it('阻止更新 Prompt Version，并事务移动 Label', async () => {

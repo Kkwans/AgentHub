@@ -28,6 +28,8 @@ import {
   promptLabels,
   prompts,
   promptVersions,
+  remoteNodeRegistrationTokens,
+  remoteNodes,
   runEvents,
   skillBindings,
   skills,
@@ -649,6 +651,254 @@ export class ExecutionTargetRepository<TDatabase extends AgentHubDatabase> {
       )
       .limit(1);
     return Boolean(active);
+  }
+}
+
+export interface RegisterRemoteNodeRecord {
+  tokenHash: string;
+  nodeId: string;
+  targetId: string;
+  publicKey: string;
+  fingerprint: string;
+  protocolVersion: string;
+  metadata: { hostname: string; os: string; arch: string; daemonVersion: string };
+  roots: string[];
+  inventory: Array<Record<string, unknown>>;
+  now: Date;
+}
+
+export class RemoteNodeRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  async createRegistrationToken(input: {
+    id: string;
+    name: string;
+    tokenHash: string;
+    allowedRoots: string[];
+    expiresAt: Date;
+  }) {
+    const [created] = await this.db
+      .insert(remoteNodeRegistrationTokens)
+      .values({
+        id: input.id,
+        name: input.name,
+        tokenHash: input.tokenHash,
+        allowedRootsJson: input.allowedRoots,
+        expiresAt: input.expiresAt,
+      })
+      .returning();
+    if (!created) {
+      throw new DatabaseInvariantError(
+        'REMOTE_NODE_TOKEN_CREATE_FAILED',
+        'Remote Node registration token 创建失败',
+      );
+    }
+    return created;
+  }
+
+  async getRegistrationTokenByHash(tokenHash: string) {
+    const [token] = await this.db
+      .select()
+      .from(remoteNodeRegistrationTokens)
+      .where(eq(remoteNodeRegistrationTokens.tokenHash, tokenHash))
+      .limit(1);
+    return token;
+  }
+
+  async register(input: RegisterRemoteNodeRecord) {
+    return this.db.transaction(async (transaction) => {
+      const [token] = await transaction
+        .select()
+        .from(remoteNodeRegistrationTokens)
+        .where(eq(remoteNodeRegistrationTokens.tokenHash, input.tokenHash))
+        .for('update')
+        .limit(1);
+      if (!token) {
+        throw new DatabaseInvariantError(
+          'REMOTE_NODE_REGISTRATION_TOKEN_INVALID',
+          'Registration token 无效',
+        );
+      }
+      if (token.revokedAt) {
+        throw new DatabaseInvariantError(
+          'REMOTE_NODE_REGISTRATION_TOKEN_REVOKED',
+          'Registration token 已撤销',
+        );
+      }
+      if (token.usedAt) {
+        throw new DatabaseInvariantError(
+          'REMOTE_NODE_REGISTRATION_TOKEN_USED',
+          'Registration token 已使用',
+        );
+      }
+      if (token.expiresAt.getTime() <= input.now.getTime()) {
+        throw new DatabaseInvariantError(
+          'REMOTE_NODE_REGISTRATION_TOKEN_EXPIRED',
+          'Registration token 已过期',
+        );
+      }
+      if (
+        token.allowedRootsJson.length !== input.roots.length ||
+        token.allowedRootsJson.some((root, index) => root !== input.roots[index])
+      ) {
+        throw new DatabaseInvariantError(
+          'REMOTE_NODE_ROOTS_MISMATCH',
+          'Node roots 与注册码授权范围不一致',
+        );
+      }
+
+      const [target] = await transaction
+        .insert(executionTargets)
+        .values({
+          id: input.targetId,
+          name: token.name,
+          kind: 'REMOTE_NODE',
+          hostname: input.metadata.hostname,
+          os: input.metadata.os,
+          arch: input.metadata.arch,
+          status: 'READY',
+          capabilitiesJson: { remoteNode: true, inventory: input.inventory },
+          connectionJson: { protocolVersion: input.protocolVersion },
+          lastSeenAt: input.now,
+        })
+        .returning();
+      const [node] = await transaction
+        .insert(remoteNodes)
+        .values({
+          id: input.nodeId,
+          targetId: input.targetId,
+          publicKey: input.publicKey,
+          fingerprint: input.fingerprint,
+          protocolVersion: input.protocolVersion,
+          daemonVersion: input.metadata.daemonVersion,
+          allowedRootsJson: input.roots,
+          inventoryJson: input.inventory,
+          status: 'ONLINE',
+          lastSeenAt: input.now,
+        })
+        .returning();
+      await transaction
+        .update(remoteNodeRegistrationTokens)
+        .set({ usedAt: input.now, usedByNodeId: input.nodeId })
+        .where(
+          and(
+            eq(remoteNodeRegistrationTokens.id, token.id),
+            isNull(remoteNodeRegistrationTokens.usedAt),
+          ),
+        );
+      if (!target || !node) {
+        throw new DatabaseInvariantError(
+          'REMOTE_NODE_REGISTER_FAILED',
+          'Remote Node 注册事务未完成',
+        );
+      }
+      return { node, target };
+    });
+  }
+
+  list() {
+    return this.db
+      .select({
+        id: remoteNodes.id,
+        targetId: remoteNodes.targetId,
+        name: executionTargets.name,
+        hostname: executionTargets.hostname,
+        os: executionTargets.os,
+        arch: executionTargets.arch,
+        fingerprint: remoteNodes.fingerprint,
+        protocolVersion: remoteNodes.protocolVersion,
+        daemonVersion: remoteNodes.daemonVersion,
+        allowedRootsJson: remoteNodes.allowedRootsJson,
+        inventoryJson: remoteNodes.inventoryJson,
+        status: remoteNodes.status,
+        lastSeenAt: remoteNodes.lastSeenAt,
+        revokedAt: remoteNodes.revokedAt,
+        createdAt: remoteNodes.createdAt,
+        updatedAt: remoteNodes.updatedAt,
+      })
+      .from(remoteNodes)
+      .innerJoin(executionTargets, eq(remoteNodes.targetId, executionTargets.id))
+      .orderBy(remoteNodes.createdAt);
+  }
+
+  async get(id: string) {
+    const [node] = await this.db.select().from(remoteNodes).where(eq(remoteNodes.id, id)).limit(1);
+    return node;
+  }
+
+  async updateHeartbeat(
+    id: string,
+    input: {
+      metadata: { hostname: string; os: string; arch: string; daemonVersion: string };
+      roots: string[];
+      inventory: Array<Record<string, unknown>>;
+      now: Date;
+    },
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [node] = await transaction
+        .update(remoteNodes)
+        .set({
+          daemonVersion: input.metadata.daemonVersion,
+          allowedRootsJson: input.roots,
+          inventoryJson: input.inventory,
+          status: 'ONLINE',
+          lastSeenAt: input.now,
+          updatedAt: input.now,
+        })
+        .where(and(eq(remoteNodes.id, id), isNull(remoteNodes.revokedAt)))
+        .returning();
+      if (!node) {
+        throw new DatabaseInvariantError('REMOTE_NODE_NOT_FOUND', 'Remote Node 不存在或已撤销');
+      }
+      await transaction
+        .update(executionTargets)
+        .set({
+          hostname: input.metadata.hostname,
+          os: input.metadata.os,
+          arch: input.metadata.arch,
+          status: 'READY',
+          capabilitiesJson: { remoteNode: true, inventory: input.inventory },
+          lastSeenAt: input.now,
+          updatedAt: input.now,
+        })
+        .where(eq(executionTargets.id, node.targetId));
+      return node;
+    });
+  }
+
+  async markOffline(id: string, now = new Date()) {
+    return this.db.transaction(async (transaction) => {
+      const [node] = await transaction
+        .update(remoteNodes)
+        .set({ status: 'OFFLINE', updatedAt: now })
+        .where(and(eq(remoteNodes.id, id), isNull(remoteNodes.revokedAt)))
+        .returning();
+      if (!node) return undefined;
+      await transaction
+        .update(executionTargets)
+        .set({ status: 'OFFLINE', updatedAt: now })
+        .where(eq(executionTargets.id, node.targetId));
+      return node;
+    });
+  }
+
+  async revoke(id: string, now = new Date()) {
+    return this.db.transaction(async (transaction) => {
+      const [node] = await transaction
+        .update(remoteNodes)
+        .set({ status: 'REVOKED', revokedAt: now, updatedAt: now })
+        .where(and(eq(remoteNodes.id, id), isNull(remoteNodes.revokedAt)))
+        .returning();
+      if (!node) {
+        throw new DatabaseInvariantError('REMOTE_NODE_NOT_FOUND', 'Remote Node 不存在或已撤销');
+      }
+      await transaction
+        .update(executionTargets)
+        .set({ status: 'REVOKED', updatedAt: now })
+        .where(eq(executionTargets.id, node.targetId));
+      return node;
+    });
   }
 }
 
