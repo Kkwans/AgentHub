@@ -13,7 +13,12 @@
 - 移除无行为的 Session 筛选；未支持的新建 Terminal 明确 disabled 并说明 native PTY 限制；Approval 仍只展示 Agent 原始合法选项。
 - Web 单元测试 10 项通过；全仓非沙箱 Vitest 33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过；lint、typecheck 与 production build 通过。
 - TX5Pro 最终实机验收 20 项全部通过：1440/1024/768/390、真实 Codex Run、Task 人工确认、命令面板、移动导航、Workspace drawer、0 个 request/console/page/HTTP 错误和 0 外部请求。证据归档于 `docs/qa/tx5pro/2026-08-10-v03-ui/`。
-- 正式 host-native 部署、自身 Project 注册、最终发布提交与 GitHub push 正在进行。
+- v0.3.0 已正式部署为 `agenthub.service`：`Kkwans:admin`、`enabled`、`active/running`、仅监听 `127.0.0.1:3210`，健康返回 PGlite/Web 可用；不是 Docker 部署。
+- 持久目录为 `/volume2/Project/.agenthub/central/{data,worktrees}`，mode `0700`；env 为 `/etc/agenthub/agenthub.env`，mode `0640`。受控重启后健康与注册记录均恢复。
+- 正式数据库已注册 `AgentHub NAS 宿主机`（`LOCAL_HOST/READY`）和 AgentHub 自身 Project（`ACTIVE`）；Project preflight 路径、权限、Git/main、AGENTS.md 与 pnpm 全部 PASS。
+- 部署前后 Claude Code、Hermes、OpenClaw 容器保持原 `exited` 状态，未修改 Docker/Compose、镜像或 volume。
+- 版本元数据已统一为 v0.3.0；部署证据、校验和和回滚见 `docs/qa/nas/2026-08-10-v03-deployment/`。最终发布提交与 GitHub push 正在进行。
+- 最终全仓 gate 遇到 NAS `/tmp` tmpfs 100% 的 `ENOSPC` 后，没有删除其他项目缓存；改用 `/dev/shm/agenthub-test-tmp` 重跑，33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过。
 - 设计合同与回滚见 `docs/implementation/V0.3_UI_REDESIGN.md`。
 
 ## 当前

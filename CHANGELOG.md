@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 - 2026-08-10
+
+- 使用官方 Radix Themes 与 Phosphor 建立真实 UI 组件系统，统一中文 Web Shell 和核心控制页面；
+- 重构 Dashboard、Task、Agent/Remote Node、Workspace、PromptOS 与设置，减少卡片墙和重复基础控件；
+- 新增真实命令面板、标准 Dialog/AlertDialog/Tabs、键盘焦点、移动 drawer 和四视口响应式；
+- TX5Pro Chrome 20 项 UI/UX 实机检查与真实 Codex Run/Task 闭环通过；
+- 以 host-native systemd 常驻部署到 `127.0.0.1:3210`，正式注册 AgentHub 自身 Project；
+- 不增加数据库 migration，不修改现有 Agent Docker/Compose、镜像或 volume。
+
+升级、限制和回滚见 [v0.3.0 发布说明](docs/RELEASE-v0.3.0.md)。
+
 ## 0.2.0 - 2026-08-10
 
 - Worktree Task Runner：每 Project FIFO、managed worktree、真实 Agent Run、Review/Rework/Cancel 与显式 `--no-ff` merge gate；

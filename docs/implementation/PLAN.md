@@ -59,4 +59,4 @@ UI 阶段增加 `pnpm test:e2e`；真实 Agent 验收使用 `AGENTHUB_E2E_LIVE=1
 | U2     | App Shell、公共组件、概览与基础管理页面                | 已完成 |
 | U3     | Task/Worktree、Workspace 与 PromptOS 重构              | 已完成 |
 | U4     | 可访问性、四视口、TX5Pro 实机与 anti-slop pre-flight   | 已完成 |
-| D1     | host-native 常驻部署、健康检查与 AgentHub 自身 Project | 进行中 |
+| D1     | host-native 常驻部署、健康检查与 AgentHub 自身 Project | 已完成 |

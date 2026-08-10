@@ -1,10 +1,10 @@
 # AgentHub
 
-AgentHub 是一个 host-native 的 AI Coding Agent 控制平面。v0.2 统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。既有 Docker Agent 容器仍只允许显式、安全接管。
+AgentHub 是一个 host-native 的 AI Coding Agent 控制平面。v0.3 统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。Web Shell 使用 Radix Themes 与 Phosphor 构建中文专业控制界面；既有 Docker Agent 容器仍只允许显式、安全接管。
 
 ## 当前版本
 
-当前版本为 v0.2.0。完成状态与已验证证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md)，部署与回滚见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)，发布范围见 [`docs/RELEASE-v0.2.0.md`](docs/RELEASE-v0.2.0.md)。
+当前版本为 v0.3.0。完成状态与已验证证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md)，部署与回滚见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)，发布范围见 [`docs/RELEASE-v0.3.0.md`](docs/RELEASE-v0.3.0.md)。
 
 ## 环境
 
