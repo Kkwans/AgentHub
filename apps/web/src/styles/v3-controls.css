@@ -1,0 +1,773 @@
+/* v0.3 control-plane layer. Legacy selectors remain only while page components move to Radix. */
+
+.page-stack {
+  width: 100%;
+  gap: 22px;
+}
+
+.page-actions {
+  gap: 8px;
+}
+
+/* Native compatibility buttons are intentionally limited to page-specific controls. */
+.button {
+  min-height: 34px;
+  padding: 0 12px;
+  color: var(--app-graphite);
+  font-size: 12px;
+  font-weight: 620;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line-strong);
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.button.primary {
+  color: white;
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  box-shadow: none;
+}
+
+.button.primary:hover:not(:disabled) {
+  background: #bd561d;
+  border-color: #bd561d;
+}
+
+.button.secondary {
+  color: #475467;
+  background: #f2f3f4;
+  border-color: transparent;
+}
+
+.button.ghost {
+  color: #475467;
+  background: transparent;
+  border-color: transparent;
+}
+
+.button.compact {
+  min-height: 30px;
+  font-size: 11px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(340px, 0.88fr);
+  gap: 1px;
+  overflow: hidden;
+  background: var(--app-line);
+  border: 1px solid var(--app-line);
+  border-radius: 7px;
+}
+
+.control-section,
+.data-table,
+.inline-form,
+.prompt-preview,
+.management-form {
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.control-section {
+  min-width: 0;
+  padding: 18px;
+}
+
+.dashboard-grid > .control-section {
+  border: 0;
+  border-radius: 0;
+}
+
+.priority-section {
+  box-shadow: inset 3px 0 0 var(--app-accent);
+}
+
+.section-heading {
+  min-height: 42px;
+  color: var(--app-muted);
+  border-bottom: 1px solid var(--app-line);
+}
+
+.section-heading h3 {
+  margin: 3px 0 14px;
+  color: var(--app-graphite);
+  font-size: 14px;
+  font-weight: 660;
+  letter-spacing: -0.015em;
+}
+
+.count-token {
+  min-width: 26px;
+  height: 24px;
+  color: #94450e;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--app-accent-soft);
+  border: 0;
+  border-radius: 4px;
+}
+
+.action-row {
+  min-height: 62px;
+  margin: 0 -6px;
+  padding: 9px 7px;
+  border-color: #eceef0;
+}
+
+.action-row:hover {
+  background: #fafafa;
+}
+
+.action-row strong,
+.health-row strong,
+.project-strip strong {
+  color: var(--app-graphite);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.action-row span,
+.health-row span,
+.project-strip code {
+  color: var(--app-muted);
+  font-size: 10px;
+}
+
+.pulse-marker {
+  width: 8px;
+  height: 8px;
+  background: #228b61;
+  border: 0;
+  box-shadow: 0 0 0 4px #e8f5ef;
+}
+
+.health-layout {
+  grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
+  gap: 24px;
+}
+
+.health-row {
+  min-height: 57px;
+  border-color: #eceef0;
+}
+
+.agent-glyph,
+.session-icon,
+.tool-icon,
+.remote-node-icon {
+  color: #994614;
+  background: var(--app-accent-soft);
+  border: 0;
+  border-radius: 6px;
+}
+
+.project-strip {
+  border-color: var(--app-line);
+}
+
+.project-strip a {
+  min-height: 53px;
+  border-color: #eceef0;
+}
+
+.inline-warning,
+.inline-error {
+  border: 0;
+  border-radius: 5px;
+}
+
+.inline-form {
+  gap: 14px;
+  padding: 16px;
+}
+
+.inline-form label,
+.form-grid label,
+.auth-form label,
+.remote-node-registration label,
+.task-toolbar > label,
+.task-agent-select {
+  color: #475467;
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.inline-form input,
+.inline-form select,
+.management-form input,
+.management-form select,
+.management-form textarea,
+.auth-form input,
+.remote-node-registration input,
+.remote-node-registration select,
+.remote-node-registration textarea,
+.task-toolbar select,
+.task-agent-select select,
+.label-form input,
+.label-form select,
+.binding-form input,
+.binding-form select,
+.context-form input,
+.context-form select,
+.skill-binding-form input,
+.skill-binding-form select,
+.json-field textarea {
+  color: var(--app-graphite);
+  background: var(--app-surface);
+  border: 1px solid var(--app-line-strong);
+  border-radius: 5px;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 2%);
+}
+
+.inline-form input:hover,
+.inline-form select:hover,
+.management-form input:hover,
+.management-form select:hover,
+.management-form textarea:hover {
+  border-color: #b8bec7;
+}
+
+.management-form {
+  padding: 20px;
+  border-top: 1px solid var(--app-line);
+  box-shadow: inset 3px 0 0 var(--app-accent);
+}
+
+.form-heading {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-color: var(--app-line);
+}
+
+.form-heading h3 {
+  color: var(--app-graphite);
+  font-size: 15px;
+  font-weight: 660;
+}
+
+.form-heading p {
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+.form-grid {
+  gap: 14px;
+}
+
+.catalog-notes {
+  gap: 1px;
+  overflow: hidden;
+  background: var(--app-line);
+  border: 1px solid var(--app-line);
+  border-radius: 6px;
+}
+
+.catalog-notes > div {
+  min-height: 94px;
+  padding: 10px;
+  background: #fbfbfc;
+  border: 0;
+  border-radius: 0;
+}
+
+.catalog-notes strong,
+.catalog-notes span {
+  font-size: 10px;
+}
+
+.catalog-notes code {
+  color: #9c4917;
+  font-size: 9px;
+}
+
+.data-table {
+  overflow-x: auto;
+}
+
+.data-row {
+  min-width: 820px;
+  min-height: 66px;
+  border-color: #eceef0;
+}
+
+.data-row.header {
+  min-height: 38px;
+  color: var(--app-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0;
+  background: #f8f8f9;
+}
+
+.data-row strong {
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.data-row small,
+.data-row > code,
+.data-row > span:nth-child(3) {
+  font-size: 10px;
+}
+
+.text-link {
+  color: #a94d17;
+  font-size: 11px;
+  font-weight: 630;
+}
+
+.agent-layout,
+.settings-grid {
+  grid-template-columns: minmax(0, 1.12fr) minmax(330px, 0.88fr);
+  gap: 1px;
+  overflow: hidden;
+  background: var(--app-line);
+  border: 1px solid var(--app-line);
+  border-radius: 7px;
+}
+
+.agent-layout > .control-section,
+.settings-grid > .control-section {
+  border: 0;
+  border-radius: 0;
+}
+
+.agent-row {
+  min-height: 76px;
+  border-color: #eceef0;
+}
+
+.agent-row strong,
+.target-row strong {
+  color: var(--app-graphite);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.agent-row span,
+.agent-row small,
+.target-row small {
+  font-size: 10px;
+}
+
+.capability-strip > span {
+  padding: 3px 6px;
+  color: #475467;
+  font-size: 9px;
+  background: #f3f4f5;
+  border: 0;
+  border-radius: 4px;
+}
+
+.debug-details {
+  color: var(--app-muted);
+  font-size: 10px;
+}
+
+.debug-details summary {
+  color: #83502f;
+}
+
+.debug-details pre {
+  color: #d7dae0;
+  background: #25272b;
+}
+
+.target-row {
+  min-height: 82px;
+  border-color: #eceef0;
+}
+
+.target-row code {
+  font-size: 10px;
+}
+
+.session-cards {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.session-card {
+  min-height: 142px;
+  padding: 16px;
+  border-radius: 7px;
+  box-shadow: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.session-card:hover {
+  background: #fbfbfc;
+  border-color: var(--app-line-strong);
+  transform: none;
+}
+
+/* Task board and the signature execution spine. */
+.task-toolbar {
+  min-height: 60px;
+  gap: 18px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.goal-strip > span {
+  padding: 7px 9px;
+  background: #f7f7f8;
+  border: 0;
+  border-radius: 5px;
+}
+
+.goal-strip strong,
+.goal-strip small {
+  font-size: 10px;
+}
+
+.task-board {
+  grid-template-columns: repeat(5, minmax(230px, 1fr));
+  gap: 9px;
+}
+
+.task-column {
+  min-width: 230px;
+  min-height: 460px;
+  background: #f1f2f3;
+  border: 0;
+  border-radius: 7px;
+}
+
+.task-column > header {
+  min-height: 58px;
+  padding: 10px 12px;
+  background: #f8f8f9;
+  border-color: var(--app-line);
+}
+
+.task-column > header strong {
+  color: var(--app-graphite);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.task-column > header span,
+.task-column > header small,
+.task-column-empty {
+  font-size: 9px;
+}
+
+.task-card {
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--app-line);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 3%);
+}
+
+.task-card > strong {
+  color: var(--app-graphite);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.task-card > p {
+  font-size: 10px;
+}
+
+.task-card > code,
+.task-card-heading > span {
+  font-size: 9px;
+}
+
+.worktree-task-card {
+  border-left: 3px solid var(--app-accent);
+}
+
+.execution-rail {
+  position: relative;
+  padding: 14px 14px 12px;
+  background: #fbfbfc;
+  border: 1px solid var(--app-line);
+  border-radius: 6px;
+}
+
+.execution-rail > div {
+  color: var(--app-subtle);
+}
+
+.execution-rail > div::after {
+  height: 1px;
+  background: #d8dade;
+}
+
+.execution-rail > div > span {
+  width: 11px;
+  height: 11px;
+  border-color: #b9bdc5;
+}
+
+.execution-rail > div > small {
+  font-size: 9px;
+  font-weight: 620;
+}
+
+.execution-rail > div.complete::after,
+.execution-rail > div.complete > span {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+.execution-rail > div.current {
+  color: #92430f;
+}
+
+.execution-rail > div.current > span {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
+}
+
+.blocked-tasks,
+.merge-gate-control {
+  border-top: 1px solid var(--app-line) !important;
+  box-shadow: inset 3px 0 0 var(--red);
+}
+
+.worktree-review-panel.rt-DialogContent {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: min(760px, calc(100vw - 64px));
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  background: #f4f5f6;
+  border-radius: 0;
+  transform: none;
+}
+
+.worktree-review-header {
+  background: var(--app-surface);
+  border-color: var(--app-line);
+}
+
+.worktree-review-header .rt-DialogTitle {
+  margin: 5px 0 4px;
+  color: var(--app-graphite);
+  font-size: 20px;
+  font-weight: 670;
+  letter-spacing: -0.025em;
+}
+
+.worktree-review-header .rt-DialogDescription {
+  color: var(--app-muted);
+  font-size: 10px;
+}
+
+.worktree-review-body,
+.worktree-review-footer {
+  border-color: var(--app-line);
+}
+
+.worktree-identity-grid > div,
+.worktree-gate-message,
+.worktree-diff-docket,
+.worktree-review-actions > label {
+  border-color: var(--app-line);
+  box-shadow: none;
+}
+
+.worktree-diff {
+  color: #d9dce1;
+  background: #25272b;
+}
+
+/* Settings and Remote Node use rows instead of a second wall of cards. */
+.settings-grid > .control-section {
+  align-self: start;
+}
+
+.remote-node-section {
+  grid-column: 1 / -1;
+}
+
+.control-section > .empty-state,
+.prompt-list-panel .empty-state,
+.prompt-detail-panel > .empty-state {
+  min-height: 160px;
+  background: transparent;
+  border: 0;
+}
+
+.remote-node-heading h3 {
+  font-size: 15px;
+}
+
+.remote-node-heading p,
+.remote-node-form-copy span {
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+.remote-node-registration {
+  gap: 14px;
+  margin: 16px 0;
+  padding: 16px;
+  background: #f8f8f9;
+  border: 0;
+  border-radius: 6px;
+}
+
+.remote-node-secret {
+  margin: 16px 0;
+  background: #fff8ea;
+  border: 0;
+  border-radius: 6px;
+}
+
+.remote-node-copy-row code,
+.remote-node-command pre {
+  color: #34363b;
+  background: #f2f2f3;
+  border: 1px solid var(--app-line);
+}
+
+.token-once .rt-Button {
+  grid-row: 1 / 3;
+  grid-column: 2;
+}
+
+.remote-node-list {
+  gap: 0;
+  border-top: 1px solid var(--app-line);
+}
+
+.remote-node-card,
+.remote-node-card:nth-child(odd) {
+  padding: 18px 0;
+  background: transparent;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.remote-node-card header strong {
+  font-size: 12px;
+}
+
+.remote-node-card header span,
+.remote-node-card small,
+.remote-node-facts span {
+  font-size: 10px;
+}
+
+.remote-node-roots-list code,
+.remote-node-inventory > span {
+  background: #f7f7f8;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-grid,
+  .agent-layout,
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .project-strip {
+    padding: 12px 0 0;
+    border-top: 1px solid var(--app-line);
+    border-left: 0;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-notes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .control-section,
+  .management-form {
+    padding: 15px;
+  }
+
+  .page-actions {
+    width: 100%;
+  }
+
+  .page-actions .rt-Button {
+    min-height: 44px;
+    flex: 1;
+  }
+
+  .inline-form,
+  .form-grid,
+  .remote-node-registration {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid .span-two {
+    grid-column: auto;
+  }
+
+  .catalog-notes {
+    grid-template-columns: 1fr;
+  }
+
+  .form-heading,
+  .remote-node-heading {
+    flex-direction: column;
+  }
+
+  .form-footer {
+    position: sticky;
+    bottom: 0;
+    margin-right: -15px;
+    margin-left: -15px;
+    padding: 12px 15px 0;
+    background: var(--app-surface);
+  }
+
+  .remote-node-heading .rt-Button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .remote-node-card footer {
+    align-items: stretch;
+  }
+
+  .remote-node-card footer .rt-Button {
+    min-height: 40px;
+  }
+
+  .dashboard-grid,
+  .agent-layout,
+  .settings-grid {
+    gap: 1px;
+  }
+
+  .dashboard-grid > .control-section,
+  .agent-layout > .control-section,
+  .settings-grid > .control-section {
+    padding: 17px 15px;
+  }
+}

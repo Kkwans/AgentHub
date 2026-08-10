@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertDialog,
+  Button,
+  Copy,
+  Flex,
+  Fingerprint,
+  KeyRound,
+  Network,
+  RefreshCw,
+  Server,
+  ShieldAlert,
+} from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Fingerprint, KeyRound, Network, RefreshCw, Server, ShieldAlert } from 'lucide-react';
 
 import {
   EmptyState,
@@ -22,6 +33,7 @@ export function RemoteNodesPanel() {
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const [registration, setRegistration] = useState<RemoteNodeRegistration>();
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
+  const [revokeCandidate, setRevokeCandidate] = useState<RemoteNodeRecord>();
   const [copied, setCopied] = useState<'token' | 'command'>();
   const nodes = useQuery({
     queryKey: ['remote-nodes'],
@@ -44,6 +56,7 @@ export function RemoteNodesPanel() {
     mutationFn: (id: string) => api.post(`/remote-nodes/${id}/revoke`),
     onSuccess: () => {
       setSelectedNodeId(undefined);
+      setRevokeCandidate(undefined);
       void client.invalidateQueries({ queryKey: ['remote-nodes'] });
       void client.invalidateQueries({ queryKey: ['targets'] });
     },
@@ -82,15 +95,14 @@ export function RemoteNodesPanel() {
           <h3>Remote Node</h3>
           <p>Node 主动连接 AgentHub；Central Server 不使用 SSH，也不接收 Agent 登录凭据。</p>
         </div>
-        <button
-          className="button primary"
+        <Button
           onClick={() => {
             setRegistrationOpen((open) => !open);
             setRegistration(undefined);
           }}
         >
           <KeyRound size={15} /> 生成一次性注册码
-        </button>
+        </Button>
       </div>
 
       {registrationOpen && (
@@ -136,16 +148,17 @@ export function RemoteNodesPanel() {
             />
           </label>
           <div className="form-footer remote-node-form-actions">
-            <button
+            <Button
               type="button"
-              className="button secondary"
+              color="gray"
+              variant="soft"
               onClick={() => setRegistrationOpen(false)}
             >
               取消
-            </button>
-            <button className="button primary" disabled={createRegistration.isPending}>
+            </Button>
+            <Button disabled={createRegistration.isPending}>
               {createRegistration.isPending ? '正在生成' : '生成注册码'}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -164,22 +177,26 @@ export function RemoteNodesPanel() {
           </div>
           <div className="remote-node-copy-row">
             <code aria-label="一次性注册码">{registration.token}</code>
-            <button
-              className="button secondary compact"
+            <Button
+              color="gray"
+              size="1"
+              variant="soft"
               onClick={() => copy('token', registration.token)}
             >
               <Copy size={13} /> {copied === 'token' ? '已复制' : '复制注册码'}
-            </button>
+            </Button>
           </div>
           <div className="remote-node-command">
             <span>在已构建 AgentHub Node 的机器上运行</span>
             <pre>{daemonCommand}</pre>
-            <button
-              className="button secondary compact"
+            <Button
+              color="gray"
+              size="1"
+              variant="soft"
               onClick={() => copy('command', daemonCommand)}
             >
               <Copy size={13} /> {copied === 'command' ? '已复制' : '复制启动命令'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -240,8 +257,10 @@ export function RemoteNodesPanel() {
                   {!node.inventoryJson.length && <small>Node 尚未报告 Agent inventory</small>}
                 </div>
                 <footer>
-                  <button
-                    className="button secondary compact"
+                  <Button
+                    color="gray"
+                    size="1"
+                    variant="soft"
                     onClick={() => {
                       setSelectedNodeId(selected ? undefined : node.id);
                       if (selected) return;
@@ -251,19 +270,17 @@ export function RemoteNodesPanel() {
                     }}
                   >
                     <RefreshCw size={13} /> {selected ? '收起诊断' : '查看诊断'}
-                  </button>
+                  </Button>
                   {node.status !== 'REVOKED' && (
-                    <button
-                      className="button ghost danger compact"
+                    <Button
+                      color="red"
+                      size="1"
+                      variant="ghost"
                       disabled={revoke.isPending}
-                      onClick={() => {
-                        if (window.confirm(`撤销 ${node.name} 的设备身份？撤销后必须重新注册。`)) {
-                          revoke.mutate(node.id);
-                        }
-                      }}
+                      onClick={() => setRevokeCandidate(node)}
                     >
                       撤销设备身份
-                    </button>
+                    </Button>
                   )}
                 </footer>
                 {selected && (
@@ -278,6 +295,35 @@ export function RemoteNodesPanel() {
         </div>
       )}
       {failure && !nodes.error && <p className="inline-error">{failure.message}</p>}
+      <AlertDialog.Root
+        open={Boolean(revokeCandidate)}
+        onOpenChange={(open) => {
+          if (!open && !revoke.isPending) setRevokeCandidate(undefined);
+        }}
+      >
+        <AlertDialog.Content maxWidth="440px">
+          <AlertDialog.Title>撤销 Remote Node 身份</AlertDialog.Title>
+          <AlertDialog.Description size="2">
+            撤销 {revokeCandidate?.name} 后，该 Node 会立即断开，并且必须重新注册才能恢复连接。
+          </AlertDialog.Description>
+          <Flex gap="3" justify="end" mt="4">
+            <AlertDialog.Cancel>
+              <Button color="gray" variant="soft" disabled={revoke.isPending}>
+                取消
+              </Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action>
+              <Button
+                color="red"
+                disabled={revoke.isPending}
+                onClick={() => revokeCandidate && revoke.mutate(revokeCandidate.id)}
+              >
+                {revoke.isPending ? '正在撤销' : '确认撤销'}
+              </Button>
+            </AlertDialog.Action>
+          </Flex>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
     </section>
   );
 }

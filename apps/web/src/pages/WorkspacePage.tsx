@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Editor, { DiffEditor } from '@monaco-editor/react';
 import {
   Bot,
   Braces,
+  Button,
   ChevronDown,
   ChevronRight,
   CircleStop,
   FileCode2,
   Files,
   GitBranch,
+  IconButton,
   ListChecks,
   Send,
   ShieldCheck,
   SquareTerminal,
+  Tabs,
   Wrench,
-} from 'lucide-react';
+} from '@agenthub/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Editor, { DiffEditor } from '@monaco-editor/react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { Link, useParams } from 'react-router-dom';
 
@@ -163,37 +166,37 @@ export function WorkspacePage() {
           <code title={session.data.cwd}>{session.data.cwd}</code>
         </div>
       </div>
-      <div className="workspace-mobile-tabs" role="tablist" aria-label="Workspace 视图">
-        <button
-          className={!mobileInspectorOpen ? 'active' : ''}
-          onClick={() => setMobileInspectorOpen(false)}
-          role="tab"
-          aria-selected={!mobileInspectorOpen}
-        >
-          对话
-        </button>
-        {(
-          [
-            ['files', '文件'],
-            ['diff', 'Diff'],
-            ['git', 'Git'],
-            ['run', '运行'],
-          ] as Array<[InspectorTab, string]>
-        ).map(([item, label]) => (
-          <button
-            key={item}
-            className={mobileInspectorOpen && tab === item ? 'active' : ''}
-            onClick={() => {
-              setTab(item);
-              setMobileInspectorOpen(true);
-            }}
-            role="tab"
-            aria-selected={mobileInspectorOpen && tab === item}
+      <Tabs.Root value={mobileInspectorOpen ? tab : 'conversation'}>
+        <Tabs.List className="workspace-mobile-tabs" aria-label="Workspace 视图">
+          <Tabs.Trigger
+            value="conversation"
+            aria-label="对话"
+            onClick={() => setMobileInspectorOpen(false)}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            对话
+          </Tabs.Trigger>
+          {(
+            [
+              ['files', '文件'],
+              ['diff', 'Diff'],
+              ['git', 'Git'],
+              ['run', '运行'],
+            ] as Array<[InspectorTab, string]>
+          ).map(([item, label]) => (
+            <Tabs.Trigger
+              key={item}
+              value={item}
+              aria-label={label}
+              onClick={() => {
+                setTab(item);
+                setMobileInspectorOpen(true);
+              }}
+            >
+              {label}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+      </Tabs.Root>
       <Group orientation="horizontal" className="workspace-panels">
         <Panel
           id="sessions"
@@ -265,8 +268,16 @@ export function WorkspacePage() {
             <strong>Terminal</strong>
             <code>{session.data.cwd}</code>
           </div>
-          <p>点击“新建 Terminal”后将通过独立 terminal topic 接收 PTY 输出。</p>
-          <button className="button secondary compact">新建 Terminal</button>
+          <p>Terminal 会使用独立 topic；当前页面暂未开放新建 PTY。</p>
+          <Button
+            color="gray"
+            size="1"
+            variant="soft"
+            disabled
+            title="v0.3 尚未开放浏览器端新建 PTY"
+          >
+            新建 Terminal
+          </Button>
         </div>
       )}
     </div>
@@ -278,9 +289,7 @@ function SessionRail({ sessions, currentId }: { sessions: SessionRecord[]; curre
     <div className="session-rail">
       <div className="panel-title">
         <span>Session</span>
-        <button aria-label="会话筛选">
-          <ChevronDown size={15} />
-        </button>
+        <small>{sessions.length} 个</small>
       </div>
       <div className="session-list">
         {sessions.map((session) => (
@@ -400,14 +409,16 @@ function Conversation({
               {approval.optionsJson.map(
                 (option) =>
                   option.id && (
-                    <button
+                    <Button
                       key={option.id}
-                      className={`button compact ${/reject|deny/.test(option.kind ?? '') ? 'secondary' : 'primary'}`}
+                      color={/reject|deny/.test(option.kind ?? '') ? 'gray' : 'orange'}
+                      size="1"
+                      variant={/reject|deny/.test(option.kind ?? '') ? 'soft' : 'solid'}
                       onClick={() => resolve.mutate({ id: approval.id, optionId: option.id! })}
                       disabled={resolve.isPending}
                     >
                       {option.label ?? option.id}
-                    </button>
+                    </Button>
                   ),
               )}
             </div>
@@ -443,17 +454,15 @@ function Inspector({
   ];
   return (
     <div className="inspector">
-      <div className="inspector-tabs">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            className={tab === item.id ? 'active' : ''}
-            onClick={() => setTab(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs.Root value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
+        <Tabs.List className="inspector-tabs" aria-label="检查器视图">
+          {tabs.map((item) => (
+            <Tabs.Trigger key={item.id} value={item.id} aria-label={item.label}>
+              {item.label}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+      </Tabs.Root>
       <div className="inspector-body">
         {!project ? (
           <EmptyState title="Project 不可用" description="该 Session 关联的 Project 可能已归档。" />
@@ -810,8 +819,10 @@ function Composer({
                 onChange={(event) => setVariablesDraft(event.target.value)}
                 rows={4}
               />
-              <button
-                className="button secondary compact"
+              <Button
+                color="gray"
+                size="1"
+                variant="soft"
                 onClick={() => {
                   try {
                     const parsed = JSON.parse(variablesDraft) as unknown;
@@ -825,7 +836,7 @@ function Composer({
                 }}
               >
                 应用并重新解析
-              </button>
+              </Button>
               {(variablesError || promptContext?.missingVariables.length) && (
                 <small className="context-variable-error">
                   {variablesError ?? `缺少：${promptContext?.missingVariables.join('、')}`}
@@ -844,18 +855,23 @@ function Composer({
           disabled={Boolean(activeRun)}
         />
         {activeRun ? (
-          <button className="send-button stop" onClick={() => stop.mutate()} aria-label="停止 Run">
+          <IconButton
+            className="send-button stop"
+            color="red"
+            onClick={() => stop.mutate()}
+            aria-label="停止 Run"
+          >
             <CircleStop size={18} />
-          </button>
+          </IconButton>
         ) : (
-          <button
+          <IconButton
             className="send-button"
             disabled={!text.trim() || send.isPending || contextBlocked || Boolean(variablesError)}
             onClick={() => send.mutate()}
             aria-label="发送"
           >
             <Send size={18} />
-          </button>
+          </IconButton>
         )}
       </div>
       {send.error && <span className="composer-error">{send.error.message}</span>}

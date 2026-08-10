@@ -1,5 +1,17 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, Inbox, LoaderCircle, RefreshCw } from 'lucide-react';
+import {
+  AlertTriangle,
+  Badge,
+  Box,
+  Button,
+  Callout,
+  Flex,
+  Heading,
+  Inbox,
+  RefreshCw,
+  Skeleton,
+  Text,
+} from '@agenthub/ui';
 
 const statusLabels: Record<string, string> = {
   READY: '就绪',
@@ -36,16 +48,20 @@ const statusLabels: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED|ONLINE|AVAILABLE/.test(status)
-    ? 'positive'
+  const color = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED|ONLINE|AVAILABLE/.test(status)
+    ? 'green'
     : /RUNNING|STARTING|SETTING_UP|MERGING/.test(status)
-      ? 'active'
+      ? 'blue'
       : /WAITING|AWAITING|REVIEW|QUEUED|AUTH_REQUIRED|UNVERIFIED|UNMAPPED/.test(status)
-        ? 'warning'
+        ? 'orange'
         : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED|OFFLINE|REVOKED/.test(status)
-          ? 'danger'
-          : 'neutral';
-  return <span className={`status-badge ${tone}`}>{statusLabels[status] ?? status}</span>;
+          ? 'red'
+          : 'gray';
+  return (
+    <Badge color={color} variant="soft">
+      {statusLabels[status] ?? status}
+    </Badge>
+  );
 }
 
 export function PageIntro({
@@ -59,10 +75,14 @@ export function PageIntro({
 }) {
   return (
     <div className="page-intro">
-      <div>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
+      <Box>
+        <Heading as="h2" size="7">
+          {title}
+        </Heading>
+        <Text as="p" color="gray" size="3">
+          {description}
+        </Text>
+      </Box>
       {action}
     </div>
   );
@@ -70,27 +90,31 @@ export function PageIntro({
 
 export function LoadingState({ label = '正在加载真实状态' }: { label?: string }) {
   return (
-    <div className="state-panel compact">
-      <LoaderCircle className="spin" size={20} />
-      <span>{label}</span>
-    </div>
+    <Flex className="state-panel compact" align="center" gap="3" role="status">
+      <Skeleton height="18px" width="18px" />
+      <Skeleton height="18px" width="168px">
+        {label}
+      </Skeleton>
+    </Flex>
   );
 }
 
 export function ErrorState({ error, retry }: { error: Error; retry?: () => void }) {
   return (
-    <div className="state-panel error">
-      <AlertTriangle size={20} />
-      <div>
+    <Callout.Root className="state-panel" color="red" role="alert" size="2">
+      <Callout.Icon>
+        <AlertTriangle size={19} />
+      </Callout.Icon>
+      <Callout.Text>
         <strong>数据加载失败</strong>
-        <p>{error.message || '服务暂时不可用，请稍后重试。'}</p>
-      </div>
+        <span>{error.message || '服务暂时不可用，请稍后重试。'}</span>
+      </Callout.Text>
       {retry && (
-        <button className="button secondary" onClick={retry}>
+        <Button color="red" size="1" variant="soft" onClick={retry}>
           <RefreshCw size={15} /> 重试
-        </button>
+        </Button>
       )}
-    </div>
+    </Callout.Root>
   );
 }
 
@@ -105,9 +129,15 @@ export function EmptyState({
 }) {
   return (
     <div className="empty-state">
-      <Inbox size={25} />
-      <strong>{title}</strong>
-      <p>{description}</p>
+      <span className="empty-state-icon">
+        <Inbox size={22} />
+      </span>
+      <Heading as="h3" size="3">
+        {title}
+      </Heading>
+      <Text as="p" color="gray" size="2">
+        {description}
+      </Text>
       {action}
     </div>
   );

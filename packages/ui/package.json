@@ -4,11 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./dist/index.js"
+    ".": "./dist/index.js",
+    "./styles.css": "./src/styles.css"
   },
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
+    "@radix-ui/themes": "3.3.0"
   }
 }

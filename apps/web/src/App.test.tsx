@@ -34,6 +34,65 @@ afterEach(() => {
 });
 
 describe('App', () => {
+  it('命令面板支持键盘打开、筛选并跳转', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: [], requestId: 'command-ui-test' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/projects']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(await screen.findByRole('dialog', { name: '搜索与跳转' })).toBeInTheDocument();
+    const input = screen.getByRole('textbox', { name: '搜索页面' });
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: 'Prompt' } });
+    fireEvent.click(screen.getByRole('option', { name: /PromptOS/ }));
+    expect(await screen.findByRole('heading', { name: 'PromptOS', level: 2 })).toBeInTheDocument();
+  });
+
+  it('移动导航使用可关闭的焦点受控 Dialog', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: [], requestId: 'mobile-nav-test' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/projects']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '打开导航' }));
+    expect(await screen.findByRole('dialog', { name: '主导航' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '关闭导航' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '主导航' })).not.toBeInTheDocument(),
+    );
+  });
+
   it('使用中文导航并渲染目标路由', () => {
     vi.stubGlobal(
       'fetch',

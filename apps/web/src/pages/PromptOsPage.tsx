@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { DiffEditor } from '@monaco-editor/react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
   Braces,
+  Button,
   Check,
   GitCompareArrows,
   Layers3,
@@ -11,7 +10,10 @@ import {
   Plus,
   ScanSearch,
   Tag,
-} from 'lucide-react';
+  Tabs,
+} from '@agenthub/ui';
+import { DiffEditor } from '@monaco-editor/react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { EmptyState, ErrorState, formatTime, LoadingState, PageIntro } from '../components/Common';
 import {
@@ -76,9 +78,9 @@ export function PromptOsPage() {
         title="PromptOS"
         description="管理稳定 Prompt 标识、不可变版本、可移动标签、绑定与可复现的最终上下文。"
         action={
-          <button className="button primary" onClick={() => setCreateOpen(!createOpen)}>
+          <Button onClick={() => setCreateOpen(!createOpen)}>
             <Plus size={15} /> 新建 Prompt
-          </button>
+          </Button>
         }
       />
       {createOpen && (
@@ -148,12 +150,12 @@ export function PromptOsPage() {
             </label>
           </div>
           <div className="form-footer">
-            <button type="button" className="button secondary" onClick={() => setCreateOpen(false)}>
+            <Button type="button" color="gray" variant="soft" onClick={() => setCreateOpen(false)}>
               取消
-            </button>
-            <button className="button primary" disabled={createPrompt.isPending}>
+            </Button>
+            <Button disabled={createPrompt.isPending}>
               {createPrompt.isPending ? '正在创建' : '创建 Prompt 标识'}
-            </button>
+            </Button>
           </div>
           {createPrompt.error && <span className="form-error">{createPrompt.error.message}</span>}
         </form>
@@ -269,19 +271,15 @@ function PromptDetail({
           ))}
         </div>
       </header>
-      <div className="prompt-tabs" role="tablist" aria-label="PromptOS 功能">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            className={tab === item.id ? 'active' : ''}
-            onClick={() => setTab(item.id)}
-            role="tab"
-            aria-selected={tab === item.id}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs.Root value={tab} onValueChange={(value) => setTab(value as PromptTab)}>
+        <Tabs.List className="prompt-tabs" aria-label="PromptOS 功能">
+          {tabs.map((item) => (
+            <Tabs.Trigger key={item.id} value={item.id} aria-label={item.label}>
+              {item.label}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+      </Tabs.Root>
       <div className="prompt-tab-body">
         {tab === 'versions' ? (
           <VersionsTab prompt={prompt.data} versions={versions.data ?? []} />
@@ -337,9 +335,9 @@ function VersionsTab({
           <strong>不可变版本历史</strong>
           <span>每次保存都会 INSERT 新版本，并自动移动 latest。</span>
         </div>
-        <button className="button primary" onClick={() => setCreateOpen(!createOpen)}>
+        <Button onClick={() => setCreateOpen(!createOpen)}>
           <Plus size={14} /> 创建新版本
-        </button>
+        </Button>
       </div>
       {createOpen && (
         <VersionForm
@@ -445,12 +443,10 @@ function VersionForm({
         <span>此操作会创建新版本，历史内容不可修改。</span>
       </div>
       <div className="form-footer">
-        <button type="button" className="button secondary" onClick={onCancel}>
+        <Button type="button" color="gray" variant="soft" onClick={onCancel}>
           取消
-        </button>
-        <button className="button primary" disabled={pending}>
-          {pending ? '正在创建' : '创建新版本'}
-        </button>
+        </Button>
+        <Button disabled={pending}>{pending ? '正在创建' : '创建新版本'}</Button>
       </div>
       {(parseError || error) && <span className="form-error">{parseError ?? error?.message}</span>}
     </form>
@@ -503,9 +499,7 @@ function LabelsTab({
             ))}
           </select>
         </label>
-        <button className="button primary" disabled={move.isPending}>
-          移动标签
-        </button>
+        <Button disabled={move.isPending}>移动标签</Button>
       </form>
       {move.error && <span className="form-error">{move.error.message}</span>}
       <div className="label-list">
@@ -713,9 +707,9 @@ function BindingsTab({
           priority
           <input name="priority" type="number" defaultValue="0" />
         </label>
-        <button className="button primary" disabled={create.isPending}>
+        <Button disabled={create.isPending}>
           <Link2 size={14} /> 创建绑定
-        </button>
+        </Button>
       </form>
       {create.error && <span className="form-error">{create.error.message}</span>}
       {bindings.isLoading ? (
@@ -807,13 +801,9 @@ function PlaygroundTab({
             ))}
           </select>
         </label>
-        <button
-          className="button primary"
-          onClick={() => render.mutate()}
-          disabled={render.isPending || !versions.length}
-        >
+        <Button onClick={() => render.mutate()} disabled={render.isPending || !versions.length}>
           渲染
-        </button>
+        </Button>
       </div>
       <label className="json-field">
         变量 JSON
@@ -914,9 +904,7 @@ function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: A
           Task 标识
           <input name="taskId" className="mono" placeholder="可选 UUID" />
         </label>
-        <button className="button primary" disabled={resolve.isPending}>
-          解析上下文
-        </button>
+        <Button disabled={resolve.isPending}>解析上下文</Button>
       </form>
       <label className="json-field">
         变量 JSON
@@ -1012,13 +1000,9 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
             ))}
           </select>
         </label>
-        <button
-          className="button primary"
-          onClick={() => scan.mutate()}
-          disabled={!projectId || scan.isPending}
-        >
+        <Button onClick={() => scan.mutate()} disabled={!projectId || scan.isPending}>
           <ScanSearch size={14} /> {scan.isPending ? '正在扫描' : '扫描 Skill metadata'}
-        </button>
+        </Button>
         <p>
           只读取 `.agents/skills` 与 `.codex/skills`；不安装 Marketplace，不复制
           AGENTS.md/CLAUDE.md。
@@ -1074,9 +1058,9 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
               </select>
             )}
           </label>
-          <button className="button primary" disabled={bind.isPending}>
+          <Button disabled={bind.isPending}>
             <Link2 size={14} /> 创建 Skill 绑定
-          </button>
+          </Button>
         </form>
       )}
       {bind.error && <span className="form-error">{bind.error.message}</span>}

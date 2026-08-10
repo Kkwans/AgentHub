@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   ArrowRight,
   Bot,
-  Box,
+  Button,
   CheckCircle2,
   ClipboardCheck,
+  CubeIcon as Box,
+  Dialog,
   FolderGit2,
   GitBranch,
   GitMerge,
+  IconButton,
   Layers3,
   Plus,
   Play,
@@ -18,7 +20,8 @@ import {
   ShieldAlert,
   SquareTerminal,
   X,
-} from 'lucide-react';
+} from '@agenthub/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {
@@ -249,9 +252,9 @@ export function ProjectsPage() {
         title="Project 工作区"
         description="添加真实目录并探测 Git、分支、规则文件与 package manager。文件浏览保持只读。"
         action={
-          <button className="button primary" onClick={() => setAdding(!adding)}>
+          <Button onClick={() => setAdding(!adding)}>
             <Plus size={15} /> 添加 Project
-          </button>
+          </Button>
         }
       />
       {adding && (
@@ -287,9 +290,7 @@ export function ProjectsPage() {
               ))}
             </select>
           </label>
-          <button className="button primary" disabled={add.isPending}>
-            {add.isPending ? '正在预检' : '预检并添加'}
-          </button>
+          <Button disabled={add.isPending}>{add.isPending ? '正在预检' : '预检并添加'}</Button>
           {add.error && <span className="form-error">{add.error.message}</span>}
         </form>
       )}
@@ -392,12 +393,12 @@ export function AgentsPage() {
         description="真实展示 Agent capability、认证、Docker 与 Remote Node 状态；不会自动安装、重建或停止容器。"
         action={
           <div className="page-actions">
-            <button className="button secondary" onClick={() => setTargetFormOpen(!targetFormOpen)}>
+            <Button color="gray" variant="soft" onClick={() => setTargetFormOpen(!targetFormOpen)}>
               <Box size={15} /> 注册 Execution Target
-            </button>
-            <button className="button primary" onClick={() => setAgentFormOpen(!agentFormOpen)}>
+            </Button>
+            <Button onClick={() => setAgentFormOpen(!agentFormOpen)}>
               <Plus size={15} /> 添加 Agent
-            </button>
+            </Button>
           </div>
         }
       />
@@ -515,16 +516,17 @@ export function AgentsPage() {
             )}
           </div>
           <div className="form-footer">
-            <button
+            <Button
               type="button"
-              className="button secondary"
+              color="gray"
+              variant="soft"
               onClick={() => setTargetFormOpen(false)}
             >
               取消
-            </button>
-            <button className="button primary" disabled={registerTarget.isPending}>
+            </Button>
+            <Button disabled={registerTarget.isPending}>
               {registerTarget.isPending ? '正在核验' : '核验并注册'}
-            </button>
+            </Button>
           </div>
           {registerTarget.error && (
             <span className="form-error">{registerTarget.error.message}</span>
@@ -599,16 +601,17 @@ export function AgentsPage() {
             ))}
           </div>
           <div className="form-footer">
-            <button
+            <Button
               type="button"
-              className="button secondary"
+              color="gray"
+              variant="soft"
               onClick={() => setAgentFormOpen(false)}
             >
               取消
-            </button>
-            <button className="button primary" disabled={registerAgent.isPending}>
+            </Button>
+            <Button disabled={registerAgent.isPending}>
               {registerAgent.isPending ? '正在添加' : '添加 Agent'}
-            </button>
+            </Button>
           </div>
           {registerAgent.error && <span className="form-error">{registerAgent.error.message}</span>}
         </form>
@@ -659,8 +662,10 @@ export function AgentsPage() {
                     <pre>{JSON.stringify(agent.capabilitiesJson, null, 2)}</pre>
                   </details>
                 </div>
-                <button
-                  className="button secondary compact"
+                <Button
+                  color="gray"
+                  size="1"
+                  variant="soft"
                   title={
                     projects.data?.some((project) => project.targetId === agent.targetId)
                       ? undefined
@@ -678,7 +683,7 @@ export function AgentsPage() {
                   }
                 >
                   重新预检
-                </button>
+                </Button>
               </div>
             ))
           )}
@@ -715,8 +720,10 @@ export function AgentsPage() {
               </div>
               <div>
                 <StatusBadge status={target.status} />
-                <button
-                  className="button ghost compact"
+                <Button
+                  color="gray"
+                  size="1"
+                  variant="ghost"
                   onClick={() =>
                     targetPreflight.mutate({
                       id: target.id,
@@ -728,10 +735,12 @@ export function AgentsPage() {
                   disabled={targetPreflight.isPending}
                 >
                   预检
-                </button>
+                </Button>
                 {target.kind === 'DOCKER_CONTAINER' && (
-                  <button
-                    className="button ghost compact"
+                  <Button
+                    color="gray"
+                    size="1"
+                    variant="ghost"
                     onClick={() =>
                       lifecycle.mutate({
                         id: target.id,
@@ -740,7 +749,7 @@ export function AgentsPage() {
                     }
                   >
                     {target.status === 'READY' ? '停止' : '启动'}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -1434,32 +1443,32 @@ function WorktreeReviewPanel({
   onMerge: () => void;
   onCancel: () => void;
 }) {
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [onClose]);
   const canCancel = !['SETTING_UP', 'MERGING', 'DONE', 'CANCELED'].includes(execution.status);
   return (
-    <div className="worktree-review-scrim" onMouseDown={onClose}>
-      <section
-        aria-labelledby="worktree-review-title"
-        aria-modal="true"
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog.Content
         className="worktree-review-panel"
-        onMouseDown={(event) => event.stopPropagation()}
-        role="dialog"
+        aria-label={task?.title || '隔离执行详情'}
+        aria-describedby="worktree-review-copy"
       >
         <header className="worktree-review-header">
           <div>
             <span className="section-kicker">Worktree Execution</span>
-            <h2 id="worktree-review-title">{task?.title || '隔离执行详情'}</h2>
-            <p>检查真实 Diff 与分支身份后，再决定继续修改或合并。</p>
+            <Dialog.Title id="worktree-review-title">{task?.title || '隔离执行详情'}</Dialog.Title>
+            <Dialog.Description id="worktree-review-copy">
+              检查真实 Diff 与分支身份后，再决定继续修改或合并。
+            </Dialog.Description>
           </div>
-          <button aria-label="关闭执行详情" className="icon-button" onClick={onClose}>
-            <X size={17} />
-          </button>
+          <Dialog.Close>
+            <IconButton color="gray" variant="soft" aria-label="关闭执行详情">
+              <X size={17} />
+            </IconButton>
+          </Dialog.Close>
         </header>
 
         <div className="worktree-review-body">
@@ -1538,13 +1547,14 @@ function WorktreeReviewPanel({
                   rows={3}
                   value={reworkFeedback}
                 />
-                <button
-                  className="button secondary"
+                <Button
+                  color="gray"
+                  variant="soft"
                   disabled={busy || !reworkFeedback.trim()}
                   onClick={onRework}
                 >
                   <RotateCcw size={14} /> 继续修改
-                </button>
+                </Button>
               </label>
               <label className="merge-gate-control">
                 受管 Commit message
@@ -1555,13 +1565,9 @@ function WorktreeReviewPanel({
                   value={commitMessage}
                 />
                 <span>批准后才会暂存隔离变更、创建 commit，并以 `--no-ff` 合并。</span>
-                <button
-                  className="button primary"
-                  disabled={busy || loading || !!error}
-                  onClick={onMerge}
-                >
+                <Button disabled={busy || loading || !!error} onClick={onMerge}>
                   <GitMerge size={14} /> 批准并合并
-                </button>
+                </Button>
               </label>
             </div>
           )}
@@ -1571,19 +1577,19 @@ function WorktreeReviewPanel({
           <span>Worktree 与 task branch 会保留，不会自动清理。</span>
           <div>
             {execution.sessionId && (
-              <button className="button secondary" onClick={onOpenSession}>
+              <Button color="gray" variant="soft" onClick={onOpenSession}>
                 打开 Session
-              </button>
+              </Button>
             )}
             {canCancel && (
-              <button className="button ghost danger" disabled={busy} onClick={onCancel}>
+              <Button color="red" variant="ghost" disabled={busy} onClick={onCancel}>
                 取消隔离执行
-              </button>
+              </Button>
             )}
           </div>
         </footer>
-      </section>
-    </div>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
 
@@ -1695,11 +1701,18 @@ export function SettingsPage() {
                 placeholder="仅保存在当前浏览器 Session"
               />
             </label>
-            <button className="button secondary">保存到当前 Session</button>
+            <Button color="gray" variant="soft">
+              保存到当前 Session
+            </Button>
             {accessToken && (
-              <button type="button" className="button ghost" onClick={() => saveAccessToken('')}>
+              <Button
+                type="button"
+                color="gray"
+                variant="ghost"
+                onClick={() => saveAccessToken('')}
+              >
                 清除
-              </button>
+              </Button>
             )}
           </form>
           <p>浏览器访问 token 只保存在 sessionStorage，关闭浏览器 Session 后失效。</p>
@@ -1724,20 +1737,20 @@ export function SettingsPage() {
               token 名称
               <input required name="name" placeholder="例如 NAS 控制端" />
             </label>
-            <button className="button primary" disabled={createToken.isPending}>
-              创建 token
-            </button>
+            <Button disabled={createToken.isPending}>创建 token</Button>
           </form>
           {oneTimeToken && (
             <div className="token-once">
               <strong>只显示一次，请立即保存</strong>
               <code>{oneTimeToken}</code>
-              <button
-                className="button secondary compact"
+              <Button
+                color="gray"
+                size="1"
+                variant="soft"
                 onClick={() => saveAccessToken(oneTimeToken)}
               >
                 用于当前浏览器
-              </button>
+              </Button>
             </div>
           )}
           <div className="token-list">
@@ -1749,12 +1762,14 @@ export function SettingsPage() {
                 </span>
                 <StatusBadge status={token.revokedAt ? 'CANCELED' : 'ACTIVE'} />
                 {!token.revokedAt && (
-                  <button
-                    className="button ghost compact"
+                  <Button
+                    color="red"
+                    size="1"
+                    variant="ghost"
                     onClick={() => revokeToken.mutate(token.id)}
                   >
                     撤销
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}

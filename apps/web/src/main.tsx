@@ -1,10 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Theme } from '@agenthub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 
 import { App } from './App';
+import '@agenthub/ui/styles.css';
 import './styles.css';
+import './styles/v3-foundation.css';
+import './styles/v3-controls.css';
+import './styles/v3-promptos.css';
+import './styles/v3-workspace.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,10 +26,19 @@ const root = document.getElementById('root');
 if (!root) throw new Error('缺少应用根节点');
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <Theme
+      accentColor="orange"
+      appearance="light"
+      grayColor="slate"
+      panelBackground="solid"
+      radius="small"
+      scaling="95%"
+    >
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </Theme>
   </React.StrictMode>,
 );
