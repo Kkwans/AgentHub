@@ -15,6 +15,7 @@ import {
   MessageRepository,
   ProjectRepository,
   PromptRepository,
+  RemoteNodeRepository,
   RunRepository,
   SessionRepository,
   SkillRepository,
@@ -47,11 +48,14 @@ import { DashboardService } from './dashboard/dashboard-service.js';
 import { AuthService, resolveAuthMode } from './auth/auth-service.js';
 import { WorktreeGitService } from './worktrees/worktree-git-service.js';
 import { WorktreeTaskService } from './worktrees/worktree-task-service.js';
+import { RemoteNodeService } from './remote-nodes/remote-node-service.js';
+import { RemoteNodeGateway } from './remote-nodes/remote-node-gateway.js';
 
 export interface RunningServer {
   readonly server: Server;
   readonly broker: TopicBroker;
   readonly database: DatabaseClient;
+  readonly remoteNodes: RemoteNodeGateway;
   close(): Promise<void>;
 }
 
@@ -112,6 +116,7 @@ export async function startServer(
   const goalRepository = new GoalRepository(database.db);
   const taskRepository = new TaskRepository(database.db);
   const worktreeExecutionRepository = new WorktreeExecutionRepository(database.db);
+  const remoteNodeRepository = new RemoteNodeRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const projects = new ProjectService(projectRepository, executionTargetRepository);
@@ -186,6 +191,9 @@ export async function startServer(
     approvalRepository,
     agentRepository,
   );
+  const remoteNodes = new RemoteNodeService(remoteNodeRepository, {
+    publish: (topic, event) => brokerRef.current?.publish(topic, event),
+  });
   const recovery = {
     sessions: await sessions.recoverAfterRestart(),
     worktrees: await worktrees.recoverAfterRestart(),
@@ -205,10 +213,12 @@ export async function startServer(
     dashboard,
     auth,
     worktrees,
+    remoteNodes,
     ...(webAvailable ? { webDist } : {}),
   });
   const server = createServer(app);
   const broker = new TopicBroker(server, eventRepository, auth);
+  const remoteNodeGateway = new RemoteNodeGateway(server, remoteNodes);
   brokerRef.current = broker;
 
   await new Promise<void>((resolve, reject) => {
@@ -228,10 +238,12 @@ export async function startServer(
     server,
     broker,
     database,
+    remoteNodes: remoteNodeGateway,
     close: async () => {
       await terminal.shutdown();
       await worktrees.shutdown();
       await sessions.shutdown();
+      await remoteNodeGateway.close();
       await broker.close();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));

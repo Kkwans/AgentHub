@@ -34,6 +34,8 @@ import { createAuthRouter } from './auth/auth-routes.js';
 import type { AuthService } from './auth/auth-service.js';
 import { createWorktreeRouter } from './worktrees/worktree-routes.js';
 import type { WorktreeTaskService } from './worktrees/worktree-task-service.js';
+import { createRemoteNodeRouter } from './remote-nodes/remote-node-routes.js';
+import type { RemoteNodeService } from './remote-nodes/remote-node-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -50,6 +52,7 @@ export interface AppOptions {
   dashboard?: DashboardSnapshotProvider;
   auth?: AuthService;
   worktrees?: WorktreeTaskService;
+  remoteNodes?: RemoteNodeService;
   webDist?: string;
 }
 
@@ -139,6 +142,8 @@ export function createApp(options: AppOptions = {}): Express {
     app.use('/api/v1/tasks', createTaskRouter(options.tasks));
   }
   if (options.worktrees) app.use('/api/v1', createWorktreeRouter(options.worktrees));
+  if (options.remoteNodes)
+    app.use('/api/v1/remote-nodes', createRemoteNodeRouter(options.remoteNodes));
   if (options.dashboard) app.use('/api/v1/dashboard', createDashboardRouter(options.dashboard));
 
   app.get(

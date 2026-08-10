@@ -78,6 +78,12 @@ export class ExecutionTargetService {
       await this.repository.updateObservedState(id, { status: 'READY', lastSeenAt: new Date() });
       return { status: 'READY' as const, target };
     }
+    if (target.kind === 'REMOTE_NODE') {
+      return {
+        status: target.status === 'READY' ? ('READY' as const) : ('OFFLINE' as const),
+        target,
+      };
+    }
     const report = await this.docker.preflight(toDockerTarget(target), hostCwd);
     await this.repository.updateObservedState(id, {
       status: report.status,
