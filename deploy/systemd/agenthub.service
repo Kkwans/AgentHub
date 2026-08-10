@@ -1,0 +1,29 @@
+[Unit]
+Description=AgentHub AI Coding Agent Control Plane
+Documentation=https://github.com/Kkwans/AgentHub
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/opt/node24/bin/node
+ConditionPathExists=/volume2/Project/AgentHub/apps/server/dist/index.js
+ConditionPathExists=/volume2/Project/AgentHub/apps/web/dist/index.html
+
+[Service]
+Type=simple
+User=Kkwans
+Group=admin
+WorkingDirectory=/volume2/Project/AgentHub
+EnvironmentFile=/etc/agenthub/agenthub.env
+ExecStart=/opt/node24/bin/node /volume2/Project/AgentHub/apps/server/dist/index.js
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=60s
+TimeoutStopSec=30s
+KillMode=control-group
+UMask=0077
+LimitNOFILE=65536
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agenthub
+
+[Install]
+WantedBy=multi-user.target

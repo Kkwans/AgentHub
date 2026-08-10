@@ -1,6 +1,6 @@
 # 部署与升级
 
-AgentHub v0.2 由 host-native Central Server 与可选的 host-native Remote Node daemon 组成。Docker 只用于显式接管已有 Agent 容器；不要为部署 AgentHub 修改这些容器的 Compose、镜像或 volume。
+AgentHub v0.3 由 host-native Central Server 与可选的 host-native Remote Node daemon 组成。Docker 只用于显式接管已有 Agent 容器；不要为部署 AgentHub 修改这些容器的 Compose、镜像或 volume。
 
 ## 运行要求
 
@@ -40,7 +40,7 @@ AGENTHUB_WORKTREE_ROOT=/volume2/Project/.agenthub/worktrees
 
 ## Remote Node daemon
 
-Remote Node 无需开放入站管理端口。先在中央“设置 → Remote Node”创建一次性注册码，再在目标主机使用与中央相同的 v0.2.0 代码和锁定依赖：
+Remote Node 无需开放入站管理端口。先在中央“设置 → Remote Node”创建一次性注册码，再在目标主机使用与中央相同的 v0.3.0 代码和锁定依赖：
 
 ```bash
 corepack pnpm install --frozen-lockfile
@@ -60,7 +60,33 @@ corepack pnpm --filter @agenthub/node start
 - 非 loopback 只接受 `wss://`；`ws://` 仅允许 `localhost`、`127.0.0.1` 或 `::1` 开发连接。
 - 反向代理必须同时转发 `/ws` 与 `/node/ws` 的 WebSocket upgrade，并对外提供 TLS。Node 只执行协议 allow-list，不提供 SSH 或任意 shell。
 
-`.env` 不提交 Git。生产进程应由 NAS 已有的进程监管器托管；本项目不擅自安装或修改 systemd/开机任务。
+`.env` 不提交 Git。当前 NAS 经用户明确授权后使用仓库内 `deploy/systemd/` 模板安装常驻服务：
+
+```bash
+sudo install -d -m 0700 -o Kkwans -g admin \
+  /volume2/Project/.agenthub \
+  /volume2/Project/.agenthub/central \
+  /volume2/Project/.agenthub/central/data \
+  /volume2/Project/.agenthub/central/worktrees \
+  /volume2/Project/.agenthub/central/deployments
+sudo install -d -m 0750 -o root -g admin /etc/agenthub
+sudo install -m 0640 -o root -g admin \
+  deploy/systemd/agenthub.env.example /etc/agenthub/agenthub.env
+sudo install -m 0644 -o root -g root \
+  deploy/systemd/agenthub.service /etc/systemd/system/agenthub.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now agenthub.service
+```
+
+运行状态与日志：
+
+```bash
+systemctl status agenthub.service
+journalctl -u agenthub.service -n 100 --no-pager
+curl -fsS http://127.0.0.1:3210/api/v1/health
+```
+
+其他主机必须先核验实际路径、Node 位置、用户和进程监管器，不能直接照搬 NAS unit。
 
 ## 本地可信访问
 
@@ -108,7 +134,8 @@ curl -X POST http://127.0.0.1:3210/api/v1/auth/tokens \
 2. 优雅停止 AgentHub，不停止其接管的 Agent 容器。
 3. 备份 PGlite 目录或 PostgreSQL。
 4. 获取目标版本后执行 `pnpm install --frozen-lockfile`、`pnpm build`；从 v0.1 升级到 v0.2 会
-   依次向前应用 `0001_tidy_kinsey_walden.sql` 与 `0002_certain_squadron_supreme.sql`。
+   依次向前应用 `0001_tidy_kinsey_walden.sql` 与 `0002_certain_squadron_supreme.sql`。v0.2 升级
+   到 v0.3 不增加 migration。
 5. 运行 release gate，再启动 production Server。
 6. 检查 `/api/v1/health`、中文 Web Shell、Agent preflight 和现有 Session 历史。
 
@@ -120,3 +147,5 @@ curl -X POST http://127.0.0.1:3210/api/v1/auth/tokens \
   Execution 状态与 commit SHA，保留现场。
 - Remote Node：停止 daemon 不会删除远程 Project 或 Agent auth；中央会将 Node 标为离线。退役设备应先 revoke，再由设备管理员决定是否保留其身份目录。代码回退不删除 `remote_nodes` 或注册码历史。
 - Docker：AgentHub 回滚不修改 Compose、镜像或 volume，只确认明确接管容器仍保持升级前启动状态。
+- 当前 NAS：`sudo systemctl disable --now agenthub.service` 可恢复为无常驻进程状态；必须保留
+  `/volume2/Project/.agenthub/central`，不得把停止服务理解为删除数据库或 worktree 的授权。
