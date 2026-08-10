@@ -2,7 +2,7 @@ name: agenthub
 
 services:
   agenthub:
-    image: ${AGENTHUB_IMAGE:-agenthub:0.3.0-nas.5}
+    image: ${AGENTHUB_IMAGE:-agenthub:0.3.0-nas.6}
     build:
       context: ${AGENTHUB_SOURCE_DIR:-/volume2/Project/AgentHub}
       dockerfile: deploy/compose/Dockerfile
