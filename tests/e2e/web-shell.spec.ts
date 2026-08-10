@@ -147,7 +147,13 @@ test.beforeEach(async ({ page }) => {
                 : path.endsWith('/agents')
                   ? [agent]
                   : path.endsWith('/auth/status')
-                    ? { mode: 'local_trusted', localTrusted: true }
+                    ? {
+                        mode: 'local_trusted',
+                        localTrusted: true,
+                        setupRequired: false,
+                        authenticated: true,
+                        user: null,
+                      }
                     : path.endsWith('/remote-nodes')
                       ? [remoteNode]
                       : path.endsWith('/settings/capabilities')
@@ -195,7 +201,9 @@ test('任务看板明确保留人工审阅门禁', async ({ page }) => {
 test('设置页呈现认证与 Docker 高权限边界', async ({ page }) => {
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: '设置与诊断' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '当前浏览器 token' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '本机管理员' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '外部集成' })).toBeVisible();
+  await expect(page.getByText(/网页登录不需要 API token/)).toBeVisible();
   await expect(page.getByText('不会修改 Compose、镜像或 volume')).toBeVisible();
   await expect(page.getByText('loopback 默认模式')).toBeVisible();
 });

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { IncomingHttpHeaders } from 'node:http';
 
 import { websocketClientMessageSchema, type WebSocketServerMessage } from '@agenthub/shared';
 import { WebSocket, type WebSocketServer } from 'ws';
@@ -13,7 +14,7 @@ export interface ReplayEventSource {
 }
 
 export interface WebSocketAuthenticator {
-  authorizeHeader(header: string | undefined): Promise<boolean>;
+  authorize(headers: IncomingHttpHeaders): Promise<boolean>;
 }
 
 interface ClientState {
@@ -36,9 +37,7 @@ export class TopicBroker {
       ...(authenticator
         ? {
             authorize: async (request) => {
-              const credential =
-                request.headers.authorization ?? request.headers['sec-websocket-protocol'];
-              return authenticator.authorizeHeader(credential);
+              return authenticator.authorize(request.headers);
             },
           }
         : {}),

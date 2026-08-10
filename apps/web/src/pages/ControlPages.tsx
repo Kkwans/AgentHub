@@ -5,6 +5,7 @@ import {
   Bot,
   Button,
   CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   CubeIcon as Box,
   Dialog,
@@ -12,6 +13,7 @@ import {
   GitBranch,
   GitMerge,
   IconButton,
+  KeyRound,
   Layers3,
   Plus,
   Play,
@@ -26,7 +28,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import {
   api,
-  authTokenStore,
+  authSession,
   type AgentCatalogEntry,
   type AgentRecord,
   type ApiTokenRecord,
@@ -48,6 +50,7 @@ import {
   StatusBadge,
 } from '../components/Common';
 import { realtime } from '../lib/realtime';
+import type { AuthStatus } from '../components/AccessGate';
 import { RemoteNodesPanel } from './RemoteNodesPanel';
 
 export function OverviewPage() {
@@ -1595,12 +1598,11 @@ function WorktreeReviewPanel({
 
 export function SettingsPage() {
   const client = useQueryClient();
-  const [accessToken, setAccessToken] = useState(() => authTokenStore.get());
   const [oneTimeToken, setOneTimeToken] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
   const auth = useQuery({
     queryKey: ['auth-status'],
-    queryFn: () =>
-      api.get<{ mode: 'local_trusted' | 'token'; localTrusted: boolean }>('/auth/status'),
+    queryFn: () => api.get<AuthStatus>('/auth/status'),
   });
   const capability = useQuery({
     queryKey: ['capabilities'],
@@ -1617,9 +1619,9 @@ export function SettingsPage() {
       }>('/settings/capabilities'),
   });
   const tokens = useQuery({
-    queryKey: ['api-tokens', Boolean(accessToken)],
+    queryKey: ['api-tokens'],
     queryFn: () => api.get<ApiTokenRecord[]>('/auth/tokens'),
-    enabled: auth.data?.localTrusted === true || Boolean(accessToken),
+    enabled: auth.data?.localTrusted === true || auth.data?.authenticated === true,
   });
   const createToken = useMutation({
     mutationFn: (name: string) =>
@@ -1633,12 +1635,23 @@ export function SettingsPage() {
     mutationFn: (id: string) => api.delete(`/auth/tokens/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['api-tokens'] }),
   });
-  const saveAccessToken = (token: string) => {
-    authTokenStore.set(token);
-    setAccessToken(token.trim());
-    realtime.reconnect();
-    void client.invalidateQueries();
-  };
+  const changePassword = useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) =>
+      api.put<{ user: AuthStatus['user'] }>('/auth/account/password', body),
+    onSuccess: () => {
+      setPasswordMessage('密码已更新，其他浏览器登录已退出。');
+      void client.invalidateQueries({ queryKey: ['auth-status'] });
+      realtime.reconnect();
+    },
+  });
+  const logout = useMutation({
+    mutationFn: () => api.post<{ loggedOut: boolean }>('/auth/logout'),
+    onSuccess: () => {
+      client.clear();
+      realtime.disconnect();
+      authSession.notifyAuthorizationRequired();
+    },
+  });
   return (
     <div className="page-stack">
       <PageIntro
@@ -1647,169 +1660,254 @@ export function SettingsPage() {
       />
       <RemoteNodesPanel />
       <div className="settings-grid">
-        <section className="control-section">
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">平台能力</span>
-              <h3>Terminal</h3>
+        <div className="settings-column">
+          <section className="control-section">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">平台能力</span>
+                <h3>Terminal</h3>
+              </div>
+              <SquareTerminal size={18} />
             </div>
-            <SquareTerminal size={18} />
-          </div>
-          {capability.isLoading ? (
-            <LoadingState />
-          ) : capability.error ? (
-            <ErrorState error={capability.error} />
-          ) : (
-            <div className="capability-block">
-              <StatusBadge status={capability.data?.terminal.available ? 'READY' : 'MISSING'} />
-              <strong>{capability.data?.terminal.message}</strong>
-              <code>
-                {capability.data?.terminal.platform}/{capability.data?.terminal.arch} ·{' '}
-                {capability.data?.terminal.code}
-              </code>
-              <p>
-                {capability.data?.terminal.available
-                  ? '用户 PTY 可在 Workspace 中启用。'
-                  : 'Terminal 控件将隐藏，Agent core 不受影响。'}
-              </p>
-            </div>
-          )}
-        </section>
-        <section className="control-section auth-panel">
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">访问认证</span>
-              <h3>当前浏览器 token</h3>
-            </div>
-            <ShieldAlert size={18} />
-          </div>
-          <form
-            className="auth-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const values = new FormData(event.currentTarget);
-              saveAccessToken(String(values.get('accessToken') ?? ''));
-            }}
-          >
-            <label>
-              Bearer token
-              <input
-                name="accessToken"
-                type="password"
-                defaultValue={accessToken}
-                autoComplete="off"
-                placeholder="仅保存在当前浏览器 Session"
-              />
-            </label>
-            <Button color="gray" variant="soft">
-              保存到当前 Session
-            </Button>
-            {accessToken && (
-              <Button
-                type="button"
-                color="gray"
-                variant="ghost"
-                onClick={() => saveAccessToken('')}
-              >
-                清除
-              </Button>
+            {capability.isLoading ? (
+              <LoadingState />
+            ) : capability.error ? (
+              <ErrorState error={capability.error} />
+            ) : (
+              <div className="capability-block">
+                <StatusBadge status={capability.data?.terminal.available ? 'READY' : 'MISSING'} />
+                <strong>{capability.data?.terminal.message}</strong>
+                <code>
+                  {capability.data?.terminal.platform}/{capability.data?.terminal.arch} ·{' '}
+                  {capability.data?.terminal.code}
+                </code>
+                <p>
+                  {capability.data?.terminal.available
+                    ? '用户 PTY 可在 Workspace 中启用。'
+                    : 'Terminal 控件将隐藏，Agent core 不受影响。'}
+                </p>
+              </div>
             )}
-          </form>
-          <p>浏览器访问 token 只保存在 sessionStorage，关闭浏览器 Session 后失效。</p>
-        </section>
-        <section className="control-section auth-panel">
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">API tokens</span>
-              <h3>创建与撤销</h3>
+          </section>
+          <section className="control-section account-panel">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">账号安全</span>
+                <h3>{auth.data?.user?.username ?? '本机管理员'}</h3>
+              </div>
+              <KeyRound size={18} />
             </div>
-            <CheckCircle2 size={18} />
-          </div>
-          <form
-            className="auth-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const values = new FormData(event.currentTarget);
-              createToken.mutate(String(values.get('name') ?? ''));
-            }}
-          >
-            <label>
-              token 名称
-              <input required name="name" placeholder="例如 NAS 控制端" />
-            </label>
-            <Button disabled={createToken.isPending}>创建 token</Button>
-          </form>
-          {oneTimeToken && (
-            <div className="token-once">
-              <strong>只显示一次，请立即保存</strong>
-              <code>{oneTimeToken}</code>
-              <Button
-                color="gray"
-                size="1"
-                variant="soft"
-                onClick={() => saveAccessToken(oneTimeToken)}
-              >
-                用于当前浏览器
-              </Button>
-            </div>
-          )}
-          <div className="token-list">
-            {tokens.data?.map((token) => (
-              <div key={token.id}>
-                <span>
-                  <strong>{token.name}</strong>
-                  <small>最近使用 {formatTime(token.lastUsedAt)}</small>
-                </span>
-                <StatusBadge status={token.revokedAt ? 'CANCELED' : 'ACTIVE'} />
-                {!token.revokedAt && (
-                  <Button
-                    color="red"
-                    size="1"
-                    variant="ghost"
-                    onClick={() => revokeToken.mutate(token.id)}
+            {auth.data?.localTrusted ? (
+              <div className="capability-block">
+                <strong>当前为 loopback 本地可信模式</strong>
+                <p>服务没有开放到局域网，因此不要求账号登录。</p>
+              </div>
+            ) : (
+              <>
+                <form
+                  className="account-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    setPasswordMessage('');
+                    const values = new FormData(event.currentTarget);
+                    const currentPassword = String(values.get('currentPassword') ?? '');
+                    const newPassword = String(values.get('newPassword') ?? '');
+                    const confirmation = String(values.get('passwordConfirmation') ?? '');
+                    if (newPassword !== confirmation) {
+                      setPasswordMessage('两次输入的新密码不一致。');
+                      return;
+                    }
+                    const form = event.currentTarget;
+                    changePassword.mutate(
+                      { currentPassword, newPassword },
+                      { onSuccess: () => form.reset() },
+                    );
+                  }}
+                >
+                  <label>
+                    当前密码
+                    <input
+                      required
+                      minLength={12}
+                      maxLength={128}
+                      name="currentPassword"
+                      type="password"
+                      autoComplete="current-password"
+                    />
+                  </label>
+                  <div className="account-password-row">
+                    <label>
+                      新密码
+                      <input
+                        required
+                        minLength={12}
+                        maxLength={128}
+                        name="newPassword"
+                        type="password"
+                        autoComplete="new-password"
+                      />
+                    </label>
+                    <label>
+                      确认新密码
+                      <input
+                        required
+                        minLength={12}
+                        maxLength={128}
+                        name="passwordConfirmation"
+                        type="password"
+                        autoComplete="new-password"
+                      />
+                    </label>
+                  </div>
+                  <div className="account-actions">
+                    <Button disabled={changePassword.isPending}>
+                      {changePassword.isPending ? '正在更新…' : '更新密码'}
+                    </Button>
+                    <Button
+                      type="button"
+                      color="red"
+                      variant="soft"
+                      disabled={logout.isPending}
+                      onClick={() => logout.mutate()}
+                    >
+                      {logout.isPending ? '正在退出…' : '退出登录'}
+                    </Button>
+                  </div>
+                </form>
+                {(passwordMessage || changePassword.error || logout.error) && (
+                  <p
+                    className={
+                      changePassword.error || logout.error ? 'inline-error' : 'inline-success'
+                    }
+                    role="status"
                   >
-                    撤销
-                  </Button>
+                    {passwordMessage || changePassword.error?.message || logout.error?.message}
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+        <div className="settings-column">
+          <section className="control-section auth-panel">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">高级功能</span>
+                <h3>外部集成</h3>
+              </div>
+              <KeyRound size={18} />
+            </div>
+            <p className="section-help">
+              网页登录不需要 API token。CLI、自动化脚本或外部服务需要接入时，再展开管理。
+            </p>
+            <details className="advanced-disclosure">
+              <summary>
+                <span>
+                  <strong>管理 API token</strong>
+                  <small>仅供 CLI 与自动化集成</small>
+                </span>
+                <ChevronRight aria-hidden size={16} />
+              </summary>
+              <div className="advanced-disclosure-body">
+                <form
+                  className="auth-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const values = new FormData(event.currentTarget);
+                    createToken.mutate(String(values.get('name') ?? ''));
+                  }}
+                >
+                  <label>
+                    token 名称
+                    <input required name="name" placeholder="例如：自动化脚本" />
+                  </label>
+                  <Button disabled={createToken.isPending}>创建 token</Button>
+                </form>
+                {oneTimeToken && (
+                  <div className="token-once">
+                    <strong>只显示一次，请立即保存</strong>
+                    <code>{oneTimeToken}</code>
+                    <Button
+                      color="gray"
+                      size="1"
+                      variant="soft"
+                      onClick={() => setOneTimeToken('')}
+                    >
+                      我已保存
+                    </Button>
+                  </div>
+                )}
+                <div className="token-list">
+                  {tokens.isLoading ? (
+                    <p className="token-empty">正在读取外部集成…</p>
+                  ) : !tokens.data?.length ? (
+                    <p className="token-empty">还没有 API token。</p>
+                  ) : (
+                    tokens.data.map((token) => (
+                      <div key={token.id}>
+                        <span>
+                          <strong>{token.name}</strong>
+                          <small>最近使用 {formatTime(token.lastUsedAt)}</small>
+                        </span>
+                        <StatusBadge status={token.revokedAt ? 'CANCELED' : 'ACTIVE'} />
+                        {!token.revokedAt && (
+                          <Button
+                            color="red"
+                            size="1"
+                            variant="ghost"
+                            onClick={() => revokeToken.mutate(token.id)}
+                          >
+                            撤销
+                          </Button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+                {(tokens.error || createToken.error || revokeToken.error) && (
+                  <p className="inline-error">
+                    {(tokens.error ?? createToken.error ?? revokeToken.error)?.message}
+                  </p>
                 )}
               </div>
-            ))}
-          </div>
-          {(tokens.error || createToken.error || revokeToken.error) && (
-            <p className="inline-error">
-              {(tokens.error ?? createToken.error ?? revokeToken.error)?.message}
+            </details>
+          </section>
+          <section className="control-section warning-surface">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">高权限能力</span>
+                <h3>Docker 控制</h3>
+              </div>
+              <ShieldAlert size={18} />
+            </div>
+            <p>
+              Docker 权限等同主机高权限。AgentHub 只允许操作显式注册且完整 container ID
+              仍匹配的容器。
             </p>
-          )}
-        </section>
-        <section className="control-section warning-surface">
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">高权限能力</span>
-              <h3>Docker 控制</h3>
+            <ul>
+              <li>不会修改 Compose、镜像或 volume</li>
+              <li>不提供通用 Docker 命令入口</li>
+              <li>活动 Session 会阻止停止容器</li>
+            </ul>
+          </section>
+          <section className="control-section">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">服务模式</span>
+                <h3>{auth.data?.localTrusted ? '本地可信' : '账号登录'}</h3>
+              </div>
+              <CheckCircle2 size={18} />
             </div>
-            <ShieldAlert size={18} />
-          </div>
-          <p>
-            Docker 权限等同主机高权限。AgentHub 只允许操作显式注册且完整 container ID 仍匹配的容器。
-          </p>
-          <ul>
-            <li>不会修改 Compose、镜像或 volume</li>
-            <li>不提供通用 Docker 命令入口</li>
-            <li>活动 Session 会阻止停止容器</li>
-          </ul>
-        </section>
-        <section className="control-section">
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">服务模式</span>
-              <h3>{auth.data?.localTrusted ? '本地可信' : 'token auth'}</h3>
+            <div className="capability-block">
+              <strong>
+                {auth.data?.localTrusted ? 'loopback 默认模式' : '管理员登录保护已启用'}
+              </strong>
+              <p>
+                网页登录使用 HttpOnly Cookie；API token 仅供外部集成，并且只以 SHA-256 hash 保存。
+              </p>
             </div>
-            <CheckCircle2 size={18} />
-          </div>
-          <div className="capability-block">
-            <strong>{auth.data?.localTrusted ? 'loopback 默认模式' : '远程访问保护已启用'}</strong>
-            <p>非 loopback bind 必须配置 token auth；服务端 token 仅保存 SHA-256 hash。</p>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ import { createGoalRouter, createTaskRouter } from './tasks/task-routes.js';
 import type { TaskService } from './tasks/task-service.js';
 import { createDashboardRouter } from './dashboard/dashboard-routes.js';
 import type { DashboardSnapshotProvider } from './dashboard/dashboard-service.js';
-import { createAuthRouter } from './auth/auth-routes.js';
+import { createAuthRouter, createPublicAuthRouter } from './auth/auth-routes.js';
 import type { AuthService } from './auth/auth-service.js';
 import { createWorktreeRouter } from './worktrees/worktree-routes.js';
 import type { WorktreeTaskService } from './worktrees/worktree-task-service.js';
@@ -111,9 +111,7 @@ export function createApp(options: AppOptions = {}): Express {
   });
 
   if (options.auth) {
-    app.get('/api/v1/auth/status', (request, response) => {
-      response.json({ data: options.auth!.status(), requestId: String(request.id) });
-    });
+    app.use('/api/v1/auth', createPublicAuthRouter(options.auth));
     app.use('/api/v1', options.auth.middleware());
     app.use('/api/v1/auth', createAuthRouter(options.auth));
   }

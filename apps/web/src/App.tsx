@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppShell } from './components/AppShell';
+import { AccessGate } from './components/AccessGate';
 import {
   AgentsPage,
   OverviewPage,
@@ -14,19 +15,21 @@ import { PromptOsPage } from './pages/PromptOsPage';
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<AppShell />}>
-        <Route index element={<Navigate replace to="/overview" />} />
-        <Route path="overview" element={<OverviewPage />} />
-        <Route path="projects" element={<ProjectsPage />} />
-        <Route path="tasks" element={<TasksPage />} />
-        <Route path="agents" element={<AgentsPage />} />
-        <Route path="sessions" element={<SessionsPage />} />
-        <Route path="sessions/:id" element={<WorkspacePage />} />
-        <Route path="promptos" element={<PromptOsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate replace to="/overview" />} />
-      </Route>
-    </Routes>
+    <AccessGate>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route index element={<Navigate replace to="/overview" />} />
+          <Route path="overview" element={<OverviewPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="tasks" element={<TasksPage />} />
+          <Route path="agents" element={<AgentsPage />} />
+          <Route path="sessions" element={<SessionsPage />} />
+          <Route path="sessions/:id" element={<WorkspacePage />} />
+          <Route path="promptos" element={<PromptOsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate replace to="/overview" />} />
+        </Route>
+      </Routes>
+    </AccessGate>
   );
 }

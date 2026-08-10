@@ -12,6 +12,7 @@ import {
   ExecutionTargetRepository,
   GitSnapshotRepository,
   GoalRepository,
+  LocalAuthRepository,
   MessageRepository,
   ProjectRepository,
   PromptRepository,
@@ -85,8 +86,13 @@ export async function startServer(
         'req.headers.authorization',
         'request.headers.authorization',
         'headers.authorization',
+        'req.headers.cookie',
+        'request.headers.cookie',
+        'headers.cookie',
         '*.token',
         '*.password',
+        '*.currentPassword',
+        '*.newPassword',
         '*.secret',
       ],
       censor: '[REDACTED]',
@@ -97,7 +103,14 @@ export async function startServer(
     dataDir: environment.AGENTHUB_DATA_DIR,
   });
   const apiTokenRepository = new ApiTokenRepository(database.db);
-  const auth = new AuthService(apiTokenRepository, authMode, environment.AGENTHUB_BOOTSTRAP_TOKEN);
+  const localAuthRepository = new LocalAuthRepository(database.db);
+  const auth = new AuthService(
+    apiTokenRepository,
+    localAuthRepository,
+    authMode,
+    environment.AGENTHUB_BOOTSTRAP_TOKEN,
+    environment.AGENTHUB_SECURE_TRANSPORT === 'true',
+  );
   try {
     await auth.assertConfigured();
   } catch (error) {

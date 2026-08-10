@@ -1,5 +1,3 @@
-import { authTokenStore } from './api';
-
 type Listener = (event: Record<string, unknown>) => void;
 
 class RealtimeClient {
@@ -7,6 +5,7 @@ class RealtimeClient {
   private listeners = new Map<string, Set<Listener>>();
   private reconnectTimer: number | undefined;
   private attempts = 0;
+  private suspended = false;
   private stateListeners = new Set<(state: '连接中' | '已连接' | '已断开') => void>();
 
   subscribe(topic: string, listener: Listener, afterSeq = 0): () => void {
@@ -38,6 +37,8 @@ class RealtimeClient {
   }
 
   reconnect(): void {
+    this.suspended = false;
+    window.clearTimeout(this.reconnectTimer);
     if (this.socket) {
       this.socket.close(1000, '认证信息已更新');
       return;
@@ -45,7 +46,20 @@ class RealtimeClient {
     if (this.listeners.size) this.connect();
   }
 
+  disconnect(): void {
+    this.suspended = true;
+    this.attempts = 0;
+    window.clearTimeout(this.reconnectTimer);
+    const socket = this.socket;
+    this.socket = undefined;
+    if (socket && socket.readyState < WebSocket.CLOSING) {
+      socket.close(1000, '等待登录');
+    }
+    this.emitState('已断开');
+  }
+
   private connect(): void {
+    if (this.suspended) return;
     if (
       this.socket &&
       (this.socket.readyState === WebSocket.CONNECTING || this.socket.readyState === WebSocket.OPEN)
@@ -53,11 +67,7 @@ class RealtimeClient {
       return;
     this.emitState('连接中');
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const token = authTokenStore.get();
-    this.socket = new WebSocket(
-      `${protocol}//${location.host}/ws`,
-      token ? ['agenthub-v1', `agenthub-token.${token}`] : ['agenthub-v1'],
-    );
+    this.socket = new WebSocket(`${protocol}//${location.host}/ws`, ['agenthub-v1']);
     this.socket.addEventListener('open', () => {
       this.attempts = 0;
       this.emitState('已连接');
@@ -73,12 +83,15 @@ class RealtimeClient {
       for (const listener of this.listeners.get(decoded.topic) ?? []) listener(decoded.event);
     });
     this.socket.addEventListener('close', () => {
+      if (this.socket?.readyState === WebSocket.CLOSED) this.socket = undefined;
       this.emitState('已断开');
-      if (!this.listeners.size && !this.stateListeners.size) return;
+      if (this.suspended || (!this.listeners.size && !this.stateListeners.size)) return;
       this.attempts += 1;
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = window.setTimeout(
-        () => this.connect(),
+        () => {
+          if (!this.suspended) this.connect();
+        },
         Math.min(1_000 * 2 ** this.attempts, 15_000),
       );
     });

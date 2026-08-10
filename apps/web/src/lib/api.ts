@@ -24,7 +24,14 @@ const errorMessages: Record<string, string> = {
   VALIDATION_FAILED: '提交的数据不符合要求，请检查后重试。',
   NOT_FOUND: '请求的资源不存在。',
   INTERNAL_ERROR: '服务发生异常，请前往设置查看诊断信息。',
-  AUTH_REQUIRED: '当前 Agent 需要完成授权。',
+  AUTH_REQUIRED: '请先登录 AgentHub。',
+  AUTH_SETUP_REQUIRED: '请先创建管理员账号。',
+  AUTH_SETUP_COMPLETED: '管理员账号已经创建，请直接登录。',
+  AUTH_SETUP_NOT_REQUIRED: '当前为本地可信模式，不需要创建登录账号。',
+  AUTH_LOGIN_NOT_REQUIRED: '当前为本地可信模式，不需要登录。',
+  AUTH_INVALID_CREDENTIALS: '用户名或密码不正确。',
+  AUTH_LOGIN_RATE_LIMITED: '登录尝试过多，请 15 分钟后重试。',
+  AUTH_PASSWORD_LOGIN_REQUIRED: '请使用管理员账号登录后修改密码。',
   WORKSPACE_UNMAPPED: 'Project 目录未映射到目标容器。',
   EXECUTION_TARGET_NOT_FOUND: 'Execution Target 不存在。',
   AGENT_NOT_FOUND: 'Agent 不存在。',
@@ -67,35 +74,35 @@ const errorMessages: Record<string, string> = {
   REMOTE_GIT_UNSUPPORTED: 'v0.2 暂不提供 Remote Node Git 控制接口。',
 };
 
-const accessTokenKey = 'agenthub.access-token';
+const authorizationRequiredEvent = 'agenthub:authorization-required';
 
-export const authTokenStore = {
-  get(): string {
-    return typeof window === 'undefined'
-      ? ''
-      : (window.sessionStorage.getItem(accessTokenKey) ?? '');
+export const authSession = {
+  onAuthorizationRequired(listener: () => void): () => void {
+    if (typeof window === 'undefined') return () => undefined;
+    window.addEventListener(authorizationRequiredEvent, listener);
+    return () => window.removeEventListener(authorizationRequiredEvent, listener);
   },
-  set(token: string): void {
+  notifyAuthorizationRequired(): void {
     if (typeof window === 'undefined') return;
-    const normalized = token.trim();
-    if (normalized) window.sessionStorage.setItem(accessTokenKey, normalized);
-    else window.sessionStorage.removeItem(accessTokenKey);
+    window.dispatchEvent(new Event(authorizationRequiredEvent));
   },
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = authTokenStore.get();
   const response = await fetch(`/api/v1${path}`, {
     ...init,
+    credentials: 'same-origin',
     headers: {
       'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
   const body = (await response.json()) as SuccessEnvelope<T> | ErrorEnvelope;
   if (!response.ok || 'error' in body) {
     const error = 'error' in body ? body.error : { code: 'HTTP_ERROR', message: '请求失败' };
+    if (error.code === 'AUTH_REQUIRED') {
+      authSession.notifyAuthorizationRequired();
+    }
     throw new ApiError(
       error.code,
       errorMessages[error.code] ?? error.message,

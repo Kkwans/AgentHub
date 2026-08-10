@@ -40,6 +40,46 @@ export const apiTokens = pgTable(
   (table) => [uniqueIndex('api_tokens_name_unique').on(table.name)],
 );
 
+export const localAccounts = pgTable(
+  'local_accounts',
+  {
+    id: uuid('id').primaryKey(),
+    singletonKey: text('singleton_key').notNull().default('PRIMARY'),
+    username: text('username').notNull(),
+    normalizedUsername: text('normalized_username').notNull(),
+    passwordHash: text('password_hash').notNull(),
+    role: text('role').notNull().default('ADMIN'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex('local_accounts_singleton_unique').on(table.singletonKey),
+    uniqueIndex('local_accounts_username_unique').on(table.normalizedUsername),
+    check('local_accounts_singleton_check', sql`${table.singletonKey} = 'PRIMARY'`),
+    check('local_accounts_role_check', sql`${table.role} = 'ADMIN'`),
+  ],
+);
+
+export const browserSessions = pgTable(
+  'browser_sessions',
+  {
+    id: uuid('id').primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => localAccounts.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex('browser_sessions_token_hash_unique').on(table.tokenHash),
+    index('browser_sessions_account_idx').on(table.accountId),
+    index('browser_sessions_expires_idx').on(table.expiresAt),
+  ],
+);
+
 export const executionTargets = pgTable(
   'execution_targets',
   {

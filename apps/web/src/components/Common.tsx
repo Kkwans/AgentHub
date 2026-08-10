@@ -5,13 +5,12 @@ import {
   Box,
   Button,
   Callout,
-  Flex,
   Heading,
   Inbox,
   RefreshCw,
-  Skeleton,
   Text,
 } from '@agenthub/ui';
+import { ApiError } from '../lib/api';
 
 const statusLabels: Record<string, string> = {
   READY: '就绪',
@@ -90,28 +89,34 @@ export function PageIntro({
 
 export function LoadingState({ label = '正在加载真实状态' }: { label?: string }) {
   return (
-    <Flex className="state-panel compact" align="center" gap="3" role="status">
-      <Skeleton height="18px" width="18px" />
-      <Skeleton height="18px" width="168px">
-        {label}
-      </Skeleton>
-    </Flex>
+    <div className="loading-state" role="status" aria-live="polite">
+      <div className="loading-state-copy">
+        <strong>{label}…</strong>
+        <span>正在读取最新状态</span>
+      </div>
+      <div className="loading-state-lines" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
+    </div>
   );
 }
 
 export function ErrorState({ error, retry }: { error: Error; retry?: () => void }) {
+  const authorizationError = error instanceof ApiError && error.code === 'AUTH_REQUIRED';
   return (
-    <Callout.Root className="state-panel" color="red" role="alert" size="2">
-      <Callout.Icon>
-        <AlertTriangle size={19} />
-      </Callout.Icon>
-      <Callout.Text>
-        <strong>数据加载失败</strong>
-        <span>{error.message || '服务暂时不可用，请稍后重试。'}</span>
-      </Callout.Text>
+    <Callout.Root className="error-state" color="red" role="alert" size="2">
+      <span className="error-state-icon" aria-hidden>
+        <AlertTriangle size={18} />
+      </span>
+      <div className="error-state-copy">
+        <strong>{authorizationError ? '登录已失效' : '暂时无法加载'}</strong>
+        <span>{error.message || '服务暂时不可用。请检查连接后重试。'}</span>
+      </div>
       {retry && (
-        <Button color="red" size="1" variant="soft" onClick={retry}>
-          <RefreshCw size={15} /> 重试
+        <Button className="error-state-action" color="red" size="1" variant="soft" onClick={retry}>
+          <RefreshCw aria-hidden size={15} /> 重新加载
         </Button>
       )}
     </Callout.Root>

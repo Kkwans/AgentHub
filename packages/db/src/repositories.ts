@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, desc, eq, inArray, isNull, max, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, max, or, sql } from 'drizzle-orm';
 import {
   transitionRun,
   transitionSession,
@@ -19,10 +19,12 @@ import {
   agentSessions,
   apiTokens,
   approvalRequests,
+  browserSessions,
   executionTargets,
   gitSnapshots,
   goals,
   messages,
+  localAccounts,
   projects,
   promptBindings,
   promptLabels,
@@ -121,6 +123,111 @@ export class ApiTokenRepository<TDatabase extends AgentHubDatabase> {
           revokedAt: revoked.revokedAt,
         }
       : undefined;
+  }
+}
+
+export class LocalAuthRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  async hasAccount() {
+    const [account] = await this.db.select({ id: localAccounts.id }).from(localAccounts).limit(1);
+    return Boolean(account);
+  }
+
+  async findAccountByUsername(normalizedUsername: string) {
+    const [account] = await this.db
+      .select()
+      .from(localAccounts)
+      .where(eq(localAccounts.normalizedUsername, normalizedUsername))
+      .limit(1);
+    return account;
+  }
+
+  async createFirstAccount(input: {
+    id: string;
+    username: string;
+    normalizedUsername: string;
+    passwordHash: string;
+  }) {
+    return this.db.transaction(async (transaction) => {
+      const [existing] = await transaction
+        .select({ id: localAccounts.id })
+        .from(localAccounts)
+        .limit(1);
+      if (existing) return undefined;
+      const [created] = await transaction
+        .insert(localAccounts)
+        .values({ ...input, singletonKey: 'PRIMARY', role: 'ADMIN' })
+        .returning();
+      return created;
+    });
+  }
+
+  async updatePassword(accountId: string, passwordHash: string) {
+    const [updated] = await this.db
+      .update(localAccounts)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(localAccounts.id, accountId))
+      .returning();
+    return updated;
+  }
+
+  async createSession(input: {
+    id: string;
+    accountId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }) {
+    const [created] = await this.db.insert(browserSessions).values(input).returning();
+    if (!created)
+      throw new DatabaseInvariantError('BROWSER_SESSION_CREATE_FAILED', '浏览器 Session 创建失败');
+    return created;
+  }
+
+  async findActiveSession(tokenHash: string, now = new Date()) {
+    const [session] = await this.db
+      .select({
+        sessionId: browserSessions.id,
+        accountId: localAccounts.id,
+        username: localAccounts.username,
+        role: localAccounts.role,
+        expiresAt: browserSessions.expiresAt,
+        lastUsedAt: browserSessions.lastUsedAt,
+      })
+      .from(browserSessions)
+      .innerJoin(localAccounts, eq(localAccounts.id, browserSessions.accountId))
+      .where(
+        and(
+          eq(browserSessions.tokenHash, tokenHash),
+          isNull(browserSessions.revokedAt),
+          gt(browserSessions.expiresAt, now),
+        ),
+      )
+      .limit(1);
+    return session;
+  }
+
+  async markSessionUsed(id: string) {
+    await this.db
+      .update(browserSessions)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(browserSessions.id, id));
+  }
+
+  async revokeSessionByHash(tokenHash: string) {
+    const [revoked] = await this.db
+      .update(browserSessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(browserSessions.tokenHash, tokenHash), isNull(browserSessions.revokedAt)))
+      .returning();
+    return revoked;
+  }
+
+  async revokeAccountSessions(accountId: string) {
+    await this.db
+      .update(browserSessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(browserSessions.accountId, accountId), isNull(browserSessions.revokedAt)));
   }
 }
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global console, document, fetch, process, require, sessionStorage, URL */
+/* global console, document, fetch, process, require, URL */
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -12,9 +12,11 @@ const chromeExecutable =
 const outputDirectory = path.resolve(
   process.env.AGENTHUB_ACCEPTANCE_OUTPUT || path.join(process.cwd(), 'compose-evidence'),
 );
-const accessToken = fs.readFileSync(0, 'utf8').trim();
+const username = (process.env.AGENTHUB_ACCEPTANCE_USERNAME || '').trim();
+const password = fs.readFileSync(0, 'utf8').trim();
+const authenticatedRun = Boolean(username && password);
 
-assert.match(accessToken, /^ah_[A-Za-z0-9_-]{40,}$/, 'stdin 没有提供合法 AgentHub token');
+assert.equal(Boolean(username), Boolean(password), '账号验收必须同时提供用户名和 stdin 密码');
 fs.mkdirSync(outputDirectory, { recursive: true });
 
 const report = {
@@ -22,7 +24,7 @@ const report = {
   startedAt: new Date().toISOString(),
   finishedAt: null,
   baseURL,
-  access: 'direct-lan-token',
+  access: authenticatedRun ? 'account-login-through-ui' : 'first-run-setup-screen',
   browser: null,
   checks: [],
   runtimeIssues: [],
@@ -92,24 +94,34 @@ async function assertNoRootOverflow(page, name) {
 
 async function createContext(browser, viewport, label) {
   const context = await browser.newContext({ viewport });
-  await context.addInitScript(({ key, token }) => sessionStorage.setItem(key, token), {
-    key: 'agenthub.access-token',
-    token: accessToken,
-  });
   const page = await context.newPage();
   trackRuntime(page, label);
   return { context, page };
 }
 
+async function loginThroughUi(page) {
+  await page.goto(`${baseURL}/overview`, { waitUntil: 'networkidle' });
+  const setupHeading = page.getByRole('heading', { name: '创建管理员账号' });
+  if (await setupHeading.isVisible().catch(() => false)) {
+    throw new Error(
+      '正式服务尚未创建管理员账号；请先在页面完成首次设置，不要向 QA 脚本传部署 token',
+    );
+  }
+  await page.getByRole('heading', { name: '登录 AgentHub' }).waitFor();
+  await page.getByRole('textbox', { name: '用户名' }).fill(username);
+  await page.getByLabel('密码').fill(password);
+  await page.getByRole('button', { name: '登录' }).click();
+  await page.getByRole('heading', { name: '今天需要处理什么' }).waitFor();
+}
+
 async function openOverview(browser, width) {
   const label = `viewport-${width}`;
   const { context, page } = await createContext(browser, { width, height: 1000 }, label);
-  await page.goto(`${baseURL}/overview`, { waitUntil: 'networkidle' });
-  await page.getByRole('heading', { name: '今天需要处理什么' }).waitFor();
+  await loginThroughUi(page);
   await page.locator('.connection-pill.online').filter({ hasText: '已连接' }).waitFor({
     timeout: 15_000,
   });
-  recordCheck(`${width} token WebSocket 已连接`);
+  recordCheck(`${width} 账号 Cookie WebSocket 已连接`);
   await assertNoRootOverflow(page, `${width} 概览无根页面横向溢出`);
   await screenshot(page, `overview-${width}.png`);
   return { context, page };
@@ -132,6 +144,27 @@ async function run() {
   report.browser = browser.version();
 
   try {
+    if (!authenticatedRun) {
+      for (const width of [1440, 390]) {
+        const label = `first-run-${width}`;
+        const { context, page } = await createContext(browser, { width, height: 1000 }, label);
+        await page.goto(`${baseURL}/overview`, { waitUntil: 'networkidle' });
+        await page.getByRole('heading', { name: '创建管理员账号' }).waitFor();
+        await page.getByRole('textbox', { name: '用户名' }).waitFor();
+        await page.getByLabel('密码').waitFor();
+        await page.getByLabel('确认密码').waitFor();
+        await assertNoRootOverflow(page, `${width} 首次设置页无根页面横向溢出`);
+        await screenshot(page, `first-run-${width}.png`);
+        await context.close();
+      }
+      recordCheck('首次设置只要求用户名和密码，不展示 token、Session 或命令行');
+      assert.deepEqual(report.runtimeIssues, [], '发现 console/page/HTTP 错误');
+      assert.deepEqual(report.failedRequests, [], '发现 request failure');
+      assert.deepEqual(report.externalRequests, [], '发现外部请求');
+      report.result = 'PASS';
+      return;
+    }
+
     const desktop = await openOverview(browser, 1440);
     await desktop.page.getByRole('button', { name: /搜索与跳转/ }).click();
     const commandDialog = desktop.page.getByRole('dialog', { name: '搜索与跳转' });
@@ -149,14 +182,16 @@ async function run() {
 
     await desktop.page.goto(`${baseURL}/settings`, { waitUntil: 'networkidle' });
     await desktop.page.getByRole('heading', { name: '设置与诊断' }).waitFor();
-    await desktop.page.getByRole('heading', { name: '当前浏览器 token' }).waitFor();
-    await desktop.page.getByRole('heading', { name: 'token auth' }).waitFor();
-    await desktop.page.getByText('远程访问保护已启用').waitFor();
+    await desktop.page.getByRole('heading', { name: username }).waitFor();
+    await desktop.page.getByRole('heading', { name: '账号登录' }).waitFor();
+    await desktop.page.getByText('管理员登录保护已启用').waitFor();
+    await desktop.page.getByRole('heading', { name: '外部集成' }).waitFor();
+    await desktop.page.getByText(/网页登录不需要 API token/).waitFor();
     await desktop.page.getByText('不会修改 Compose、镜像或 volume').waitFor();
     await desktop.page.getByText('NAS LAN 浏览器', { exact: true }).waitFor();
     await assertNoRootOverflow(desktop.page, '1440 设置页无根页面横向溢出');
     await screenshot(desktop.page, 'settings-1440.png');
-    recordCheck('设置页呈现 token auth 与 Docker 高权限边界');
+    recordCheck('设置页呈现账号安全、折叠外部集成与 Docker 高权限边界');
     await desktop.context.close();
 
     for (const width of [1024, 768]) {
@@ -172,7 +207,7 @@ async function run() {
     await navigationDialog.getByRole('button', { name: '关闭导航' }).click();
     recordCheck('390 移动导航可打开并关闭');
     await mobile.page.goto(`${baseURL}/settings`, { waitUntil: 'networkidle' });
-    await mobile.page.getByRole('heading', { name: 'token auth' }).waitFor();
+    await mobile.page.getByRole('heading', { name: '账号登录' }).waitFor();
     await assertNoRootOverflow(mobile.page, '390 设置页无根页面横向溢出');
     await screenshot(mobile.page, 'settings-390.png');
     await mobile.context.close();

@@ -7,9 +7,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
-import { authTokenStore } from './lib/api';
 
 let realtimeListener: ((event: Record<string, unknown>) => void) | undefined;
+const localTrustedAuthStatus = {
+  mode: 'local_trusted',
+  localTrusted: true,
+  setupRequired: false,
+  authenticated: true,
+  user: null,
+};
 
 vi.mock('./lib/realtime', () => ({
   realtime: {
@@ -23,13 +29,14 @@ vi.mock('./lib/realtime', () => ({
         if (realtimeListener === listener) realtimeListener = undefined;
       };
     },
+    reconnect() {},
+    disconnect() {},
   },
 }));
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
-  authTokenStore.set('');
   realtimeListener = undefined;
 });
 
@@ -38,11 +45,17 @@ describe('App', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(JSON.stringify({ data: [], requestId: 'command-ui-test' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          }),
+        async (input: RequestInfo | URL) =>
+          new Response(
+            JSON.stringify({
+              data: String(input).endsWith('/auth/status') ? localTrustedAuthStatus : [],
+              requestId: 'command-ui-test',
+            }),
+            {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            },
+          ),
       ),
     );
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -55,6 +68,7 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
+    await screen.findByRole('heading', { name: 'Project 工作区' });
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     expect(await screen.findByRole('dialog', { name: '搜索与跳转' })).toBeInTheDocument();
     const input = screen.getByRole('textbox', { name: '搜索页面' });
@@ -68,11 +82,17 @@ describe('App', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(JSON.stringify({ data: [], requestId: 'mobile-nav-test' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          }),
+        async (input: RequestInfo | URL) =>
+          new Response(
+            JSON.stringify({
+              data: String(input).endsWith('/auth/status') ? localTrustedAuthStatus : [],
+              requestId: 'mobile-nav-test',
+            }),
+            {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            },
+          ),
       ),
     );
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -85,7 +105,7 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '打开导航' }));
+    fireEvent.click(await screen.findByRole('button', { name: '打开导航' }));
     expect(await screen.findByRole('dialog', { name: '主导航' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '关闭导航' }));
     await waitFor(() =>
@@ -93,15 +113,21 @@ describe('App', () => {
     );
   });
 
-  it('使用中文导航并渲染目标路由', () => {
+  it('使用中文导航并渲染目标路由', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(JSON.stringify({ data: [], requestId: 'task-ui-test' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          }),
+        async (input: RequestInfo | URL) =>
+          new Response(
+            JSON.stringify({
+              data: String(input).endsWith('/auth/status') ? localTrustedAuthStatus : [],
+              requestId: 'task-ui-test',
+            }),
+            {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            },
+          ),
       ),
     );
     const client = new QueryClient({
@@ -116,9 +142,9 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByRole('navigation', { name: '一级导航' })).toBeInTheDocument();
+    expect(await screen.findByRole('navigation', { name: '一级导航' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '任务' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Goal 与 Task' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Goal 与 Task' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '创建 Task' })).toBeInTheDocument();
   });
 
@@ -126,11 +152,17 @@ describe('App', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(JSON.stringify({ data: [], requestId: 'ui-test' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          }),
+        async (input: RequestInfo | URL) =>
+          new Response(
+            JSON.stringify({
+              data: String(input).endsWith('/auth/status') ? localTrustedAuthStatus : [],
+              requestId: 'ui-test',
+            }),
+            {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            },
+          ),
       ),
     );
     const client = new QueryClient({
@@ -209,27 +241,29 @@ describe('App', () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://agenthub.test').pathname;
         const data =
-          pathname === `/api/v1/sessions/${session.id}`
-            ? session
-            : pathname === '/api/v1/sessions'
-              ? [session]
-              : pathname === '/api/v1/agents'
-                ? [agent]
-                : pathname === '/api/v1/projects'
-                  ? [project]
-                  : pathname === '/api/v1/settings/capabilities'
-                    ? {
-                        terminal: {
-                          available: false,
-                          code: 'PTY_UNAVAILABLE',
-                          message: '当前平台不可用',
-                          platform: 'linux',
-                          arch: 'arm64',
-                        },
-                      }
-                    : pathname === '/api/v1/prompt-context/resolve'
-                      ? { ready: true, finalContext: '', missingVariables: [], items: [] }
-                      : [];
+          pathname === '/api/v1/auth/status'
+            ? localTrustedAuthStatus
+            : pathname === `/api/v1/sessions/${session.id}`
+              ? session
+              : pathname === '/api/v1/sessions'
+                ? [session]
+                : pathname === '/api/v1/agents'
+                  ? [agent]
+                  : pathname === '/api/v1/projects'
+                    ? [project]
+                    : pathname === '/api/v1/settings/capabilities'
+                      ? {
+                          terminal: {
+                            available: false,
+                            code: 'PTY_UNAVAILABLE',
+                            message: '当前平台不可用',
+                            platform: 'linux',
+                            arch: 'arm64',
+                          },
+                        }
+                      : pathname === '/api/v1/prompt-context/resolve'
+                        ? { ready: true, finalContext: '', missingVariables: [], items: [] }
+                        : [];
         return new Response(JSON.stringify({ data, requestId: 'workspace-realtime-test' }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -271,15 +305,17 @@ describe('App', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const path = String(input);
-        const data = path.endsWith('/prompts')
-          ? [prompt]
-          : path.endsWith(`/prompts/${prompt.id}`)
-            ? prompt
-            : path.endsWith(`/prompts/${prompt.id}/versions`)
-              ? []
-              : path.endsWith(`/prompts/${prompt.id}/labels`)
+        const data = path.endsWith('/auth/status')
+          ? localTrustedAuthStatus
+          : path.endsWith('/prompts')
+            ? [prompt]
+            : path.endsWith(`/prompts/${prompt.id}`)
+              ? prompt
+              : path.endsWith(`/prompts/${prompt.id}/versions`)
                 ? []
-                : [];
+                : path.endsWith(`/prompts/${prompt.id}/labels`)
+                  ? []
+                  : [];
         return new Response(JSON.stringify({ data, requestId: 'ui-version-test' }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -375,30 +411,32 @@ describe('App', () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://agenthub.test').pathname;
         const data =
-          pathname === '/api/v1/projects'
-            ? [project]
-            : pathname === '/api/v1/tasks'
-              ? [task]
-              : pathname === '/api/v1/goals'
-                ? []
-                : pathname === '/api/v1/agents'
-                  ? [agent]
-                  : pathname === '/api/v1/worktree-executions'
-                    ? [execution]
-                    : pathname === `/api/v1/worktree-executions/${execution.id}/review`
-                      ? {
-                          worktreePath: execution.worktreePath,
-                          baseSha: execution.baseSha,
-                          headSha: 'b'.repeat(40),
-                          taskBranch: execution.taskBranch,
-                          clean: false,
-                          aheadBy: 1,
-                          entries: [{ index: ' ', worktree: 'M', path: 'src/runner.ts' }],
-                          patch: 'diff --git a/src/runner.ts b/src/runner.ts\n+隔离执行',
-                          diffStat: '1 file changed',
-                          truncated: false,
-                        }
-                      : [];
+          pathname === '/api/v1/auth/status'
+            ? localTrustedAuthStatus
+            : pathname === '/api/v1/projects'
+              ? [project]
+              : pathname === '/api/v1/tasks'
+                ? [task]
+                : pathname === '/api/v1/goals'
+                  ? []
+                  : pathname === '/api/v1/agents'
+                    ? [agent]
+                    : pathname === '/api/v1/worktree-executions'
+                      ? [execution]
+                      : pathname === `/api/v1/worktree-executions/${execution.id}/review`
+                        ? {
+                            worktreePath: execution.worktreePath,
+                            baseSha: execution.baseSha,
+                            headSha: 'b'.repeat(40),
+                            taskBranch: execution.taskBranch,
+                            clean: false,
+                            aheadBy: 1,
+                            entries: [{ index: ' ', worktree: 'M', path: 'src/runner.ts' }],
+                            patch: 'diff --git a/src/runner.ts b/src/runner.ts\n+隔离执行',
+                            diffStat: '1 file changed',
+                            truncated: false,
+                          }
+                        : [];
         return new Response(JSON.stringify({ data, requestId: 'worktree-ui-test' }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -429,59 +467,61 @@ describe('App', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const pathname = new URL(String(input), 'http://agenthub.test').pathname;
       const data =
-        pathname === '/api/v1/projects'
-          ? [
-              {
-                id: projectId,
-                name: 'AgentHub',
-                targetId: '22222222-2222-4222-8222-222222222222',
-                rootPath: '/volume2/Project/AgentHub',
-                realRootPath: '/volume2/Project/AgentHub',
-                repoKind: 'GIT',
-                status: 'ACTIVE',
-              },
-            ]
-          : pathname === '/api/v1/tasks'
+        pathname === '/api/v1/auth/status'
+          ? localTrustedAuthStatus
+          : pathname === '/api/v1/projects'
             ? [
                 {
-                  id: taskId,
-                  projectId,
-                  goalId: null,
-                  parentId: null,
-                  title: '加入隔离队列',
-                  description: null,
-                  acceptanceCriteria: null,
-                  status: 'READY',
-                  priority: 0,
-                  assignedAgentId: null,
-                  sessionId: null,
-                  finalRunId: null,
-                  branch: null,
-                  position: '0',
-                  createdAt: '2026-08-10T00:00:00.000Z',
-                  updatedAt: '2026-08-10T00:00:00.000Z',
-                  completedAt: null,
+                  id: projectId,
+                  name: 'AgentHub',
+                  targetId: '22222222-2222-4222-8222-222222222222',
+                  rootPath: '/volume2/Project/AgentHub',
+                  realRootPath: '/volume2/Project/AgentHub',
+                  repoKind: 'GIT',
+                  status: 'ACTIVE',
                 },
               ]
-            : pathname === '/api/v1/agents'
+            : pathname === '/api/v1/tasks'
               ? [
                   {
-                    id: agentId,
-                    targetId: '22222222-2222-4222-8222-222222222222',
-                    name: 'Codex 主力',
-                    agentKind: 'CODEX',
-                    adapterKind: 'ACP_STDIO',
+                    id: taskId,
+                    projectId,
+                    goalId: null,
+                    parentId: null,
+                    title: '加入隔离队列',
+                    description: null,
+                    acceptanceCriteria: null,
                     status: 'READY',
-                    detectedVersion: '1.1.14',
-                    defaultModel: null,
-                    defaultMode: null,
-                    capabilitiesJson: {},
-                    lastPreflightAt: '2026-08-10T00:00:00.000Z',
+                    priority: 0,
+                    assignedAgentId: null,
+                    sessionId: null,
+                    finalRunId: null,
+                    branch: null,
+                    position: '0',
+                    createdAt: '2026-08-10T00:00:00.000Z',
+                    updatedAt: '2026-08-10T00:00:00.000Z',
+                    completedAt: null,
                   },
                 ]
-              : pathname === `/api/v1/tasks/${taskId}/worktree/queue` && init?.method === 'POST'
-                ? { execution: { id: '77777777-7777-4777-8777-777777777777', status: 'QUEUED' } }
-                : [];
+              : pathname === '/api/v1/agents'
+                ? [
+                    {
+                      id: agentId,
+                      targetId: '22222222-2222-4222-8222-222222222222',
+                      name: 'Codex 主力',
+                      agentKind: 'CODEX',
+                      adapterKind: 'ACP_STDIO',
+                      status: 'READY',
+                      detectedVersion: '1.1.14',
+                      defaultModel: null,
+                      defaultMode: null,
+                      capabilitiesJson: {},
+                      lastPreflightAt: '2026-08-10T00:00:00.000Z',
+                    },
+                  ]
+                : pathname === `/api/v1/tasks/${taskId}/worktree/queue` && init?.method === 'POST'
+                  ? { execution: { id: '77777777-7777-4777-8777-777777777777', status: 'QUEUED' } }
+                  : [];
       return new Response(JSON.stringify({ data, requestId: 'worktree-queue-ui-test' }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -510,14 +550,23 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /直接运行/ })).toBeVisible();
   });
 
-  it('token auth 设置使用当前浏览器 Session 且 API 自动携带 Bearer token', async () => {
-    authTokenStore.set('ui-access-token');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const path = String(input);
-        const data = path.endsWith('/auth/status')
-          ? { mode: 'token', localTrusted: false }
+  it('token auth 使用账号密码登录并由浏览器携带 HttpOnly Cookie', async () => {
+    let authenticated = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      const data = path.endsWith('/auth/status')
+        ? {
+            mode: 'token',
+            localTrusted: false,
+            setupRequired: false,
+            authenticated,
+            user: authenticated ? { id: 'account-1', username: 'admin', role: 'ADMIN' } : null,
+          }
+        : path.endsWith('/auth/login') && init?.method === 'POST'
+          ? ((authenticated = true),
+            {
+              user: { id: 'account-1', username: 'admin', role: 'ADMIN' },
+            })
           : path.endsWith('/settings/capabilities')
             ? {
                 terminal: {
@@ -530,12 +579,12 @@ describe('App', () => {
                 remoteNode: { available: false },
               }
             : [];
-        return new Response(JSON.stringify({ data, requestId: 'auth-ui-test' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }),
-    );
+      return new Response(JSON.stringify({ data, requestId: 'auth-ui-test' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
@@ -545,11 +594,89 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByRole('heading', { name: '当前浏览器 token' })).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/api\/v1\//),
+    expect(await screen.findByRole('heading', { name: '登录 AgentHub' })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: '用户名' }), {
+      target: { value: 'admin' },
+    });
+    fireEvent.change(screen.getByLabelText('密码'), {
+      target: { value: 'administrator-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+    expect(await screen.findByRole('heading', { name: '设置与诊断' })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/auth/login',
       expect.objectContaining({
-        headers: expect.objectContaining({ authorization: 'Bearer ui-access-token' }),
+        method: 'POST',
+        credentials: 'same-origin',
+      }),
+    );
+    expect(
+      fetchMock.mock.calls.some(([, init]) =>
+        Object.prototype.hasOwnProperty.call((init?.headers ?? {}) as object, 'authorization'),
+      ),
+    ).toBe(false);
+  });
+
+  it('首次访问只需在页面创建管理员账号', async () => {
+    let authenticated = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      const data = path.endsWith('/auth/status')
+        ? {
+            mode: 'token',
+            localTrusted: false,
+            setupRequired: !authenticated,
+            authenticated,
+            user: authenticated ? { id: 'account-1', username: 'Kkwans', role: 'ADMIN' } : null,
+          }
+        : path.endsWith('/auth/setup') && init?.method === 'POST'
+          ? ((authenticated = true),
+            {
+              user: { id: 'account-1', username: 'Kkwans', role: 'ADMIN' },
+            })
+          : path.endsWith('/dashboard')
+            ? {
+                pendingApprovals: [],
+                attentionTasks: [],
+                runningSessions: [],
+                recentResults: [],
+                agentHealth: [],
+              }
+            : [];
+      return new Response(JSON.stringify({ data, requestId: 'setup-ui-test' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/overview']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '创建管理员账号' })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: '用户名' }), {
+      target: { value: 'Kkwans' },
+    });
+    fireEvent.change(screen.getByLabelText('密码'), {
+      target: { value: 'administrator-password' },
+    });
+    fireEvent.change(screen.getByLabelText('确认密码'), {
+      target: { value: 'administrator-password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '创建账号并进入' }));
+
+    expect(await screen.findByRole('heading', { name: '今天需要处理什么' })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/auth/setup',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'same-origin',
+        body: JSON.stringify({ username: 'Kkwans', password: 'administrator-password' }),
       }),
     );
   });

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import request from 'supertest';
-import { ApiTokenRepository, createPgliteDatabase } from '@agenthub/db';
+import { ApiTokenRepository, createPgliteDatabase, LocalAuthRepository } from '@agenthub/db';
 import pino from 'pino';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
@@ -73,23 +73,36 @@ describe('HTTP 基线', () => {
   });
 });
 
-describe('HTTP token auth', () => {
-  it('认证状态公开，其余 API 拒绝无 token 请求并接受 Bearer token', async () => {
+describe('HTTP 账号认证', () => {
+  it('首次创建管理员后通过 HttpOnly Cookie 访问，Bearer token 保持兼容', async () => {
     const database = await createPgliteDatabase({ dataDir: 'memory://' });
     try {
       const auth = new AuthService(
         new ApiTokenRepository(database.db),
+        new LocalAuthRepository(database.db),
         'token',
         'test-bootstrap-token',
       );
       const app = createApp({ auth, logger: pino({ level: 'silent' }) });
-      expect((await request(app).get('/api/v1/auth/status')).body.data).toEqual({
+      const browser = request.agent(app);
+      expect((await browser.get('/api/v1/auth/status')).body.data).toEqual({
         mode: 'token',
         localTrusted: false,
+        setupRequired: true,
+        authenticated: false,
+        user: null,
       });
       const unauthorized = await request(app).get('/api/v1');
       expect(unauthorized.status).toBe(401);
       expect(unauthorized.body.error.code).toBe('AUTH_REQUIRED');
+      const setup = await browser.post('/api/v1/auth/setup').send({
+        username: 'admin',
+        password: 'administrator-password',
+      });
+      expect(setup.status).toBe(201);
+      expect(setup.headers['set-cookie']?.[0]).toContain('HttpOnly');
+      expect(setup.headers['set-cookie']?.[0]).toContain('SameSite=Strict');
+      expect((await browser.get('/api/v1')).status).toBe(200);
       const authorized = await request(app)
         .get('/api/v1')
         .set('authorization', 'Bearer test-bootstrap-token');
@@ -109,7 +122,7 @@ describe('Production Web 入口', () => {
       const app = createApp({ webDist, logger: pino({ level: 'silent' }) });
       expect((await request(app).get('/asset.txt')).text).toBe('asset-ok');
       const spa = await request(app).get('/tasks').set('accept', 'text/html');
-      expect(spa.status).toBe(200);
+      expect(spa.status, spa.text).toBe(200);
       expect(spa.text).toContain('AgentHub Web');
       const api = await request(app).get('/api/v1/not-real');
       expect(api.status).toBe(404);
@@ -207,7 +220,8 @@ describe('统一 WebSocket topic', () => {
     const httpServer = createServer(createApp({ logger: pino({ level: 'silent' }) }));
     const router = new WebSocketUpgradeRouter(httpServer);
     const broker = new TopicBroker(router, undefined, {
-      authorizeHeader: async (header) => Boolean(header?.includes('agenthub-token.good-token')),
+      authorize: async (headers) =>
+        Boolean(headers['sec-websocket-protocol']?.includes('agenthub-token.good-token')),
     });
     openRouters.push(router);
     openBrokers.push(broker);

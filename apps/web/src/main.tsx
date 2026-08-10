@@ -31,7 +31,7 @@ ReactDOM.createRoot(root).render(
       appearance="light"
       grayColor="slate"
       panelBackground="solid"
-      radius="small"
+      radius="large"
       scaling="95%"
     >
       <QueryClientProvider client={queryClient}>
