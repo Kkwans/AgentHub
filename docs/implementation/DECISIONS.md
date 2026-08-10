@@ -34,3 +34,10 @@
 状态：已接受。Worktree Execution 使用独立持久状态机，每 Project 单并发，Review 占用
 队列槽位。只有用户显式批准后才创建受管 commit 并执行 `--no-ff` merge；不自动清理
 worktree 或 task branch。详细依据见 `ADR-012`。
+
+## D-009：Remote Node 身份与传输
+
+状态：已接受。每个 Node 使用一次性 registration token 建立独立 Ed25519 设备身份，并主动连接
+中央 `/node/ws`。生产必须使用 `wss://`，仅 loopback 开发允许 `ws://`；provider credential、
+private key 与 auth 文件始终留在 Node。中央只发送固定 RPC allow-list，不提供 SSH 或通用 shell。
+详细依据见 `ADR-013`。
