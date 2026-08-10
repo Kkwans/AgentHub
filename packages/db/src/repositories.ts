@@ -5,9 +5,11 @@ import {
   transitionRun,
   transitionSession,
   transitionTask,
+  transitionWorktreeExecution,
   type RunStatus,
   type SessionStatus,
   type TaskStatus,
+  type WorktreeExecutionStatus,
 } from '@agenthub/agent-core';
 
 import type { AgentHubDatabase } from './client.js';
@@ -30,6 +32,7 @@ import {
   skillBindings,
   skills,
   tasks,
+  worktreeExecutions,
 } from './schema.js';
 
 export class DatabaseInvariantError extends Error {
@@ -801,6 +804,191 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
         throw new DatabaseInvariantError('TASK_CONCURRENT_UPDATE', 'Task 状态已被其他请求修改');
       return updated;
     });
+  }
+}
+
+const activeWorktreeExecutionStatuses: WorktreeExecutionStatus[] = [
+  'SETTING_UP',
+  'RUNNING',
+  'AWAITING_INPUT',
+  'REVIEW',
+  'MERGING',
+];
+
+export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  list(
+    filters: {
+      projectId?: string;
+      taskId?: string;
+      status?: WorktreeExecutionStatus;
+    } = {},
+  ) {
+    const conditions = [
+      ...(filters.projectId ? [eq(worktreeExecutions.projectId, filters.projectId)] : []),
+      ...(filters.taskId ? [eq(worktreeExecutions.taskId, filters.taskId)] : []),
+      ...(filters.status ? [eq(worktreeExecutions.status, filters.status)] : []),
+    ];
+    const query = this.db.select().from(worktreeExecutions);
+    return conditions.length
+      ? query
+          .where(and(...conditions))
+          .orderBy(asc(worktreeExecutions.queuedAt), asc(worktreeExecutions.id))
+      : query.orderBy(asc(worktreeExecutions.queuedAt), asc(worktreeExecutions.id));
+  }
+
+  async get(id: string) {
+    const [execution] = await this.db
+      .select()
+      .from(worktreeExecutions)
+      .where(eq(worktreeExecutions.id, id))
+      .limit(1);
+    return execution;
+  }
+
+  async getByRunId(runId: string) {
+    const [execution] = await this.db
+      .select()
+      .from(worktreeExecutions)
+      .where(eq(worktreeExecutions.runId, runId))
+      .limit(1);
+    return execution;
+  }
+
+  async getActiveForProject(projectId: string) {
+    const [execution] = await this.db
+      .select()
+      .from(worktreeExecutions)
+      .where(
+        and(
+          eq(worktreeExecutions.projectId, projectId),
+          inArray(worktreeExecutions.status, activeWorktreeExecutionStatuses),
+        ),
+      )
+      .limit(1);
+    return execution;
+  }
+
+  async create(input: typeof worktreeExecutions.$inferInsert) {
+    const [created] = await this.db.insert(worktreeExecutions).values(input).returning();
+    if (!created) {
+      throw new DatabaseInvariantError(
+        'WORKTREE_EXECUTION_CREATE_FAILED',
+        'Worktree Execution 创建失败',
+      );
+    }
+    return created;
+  }
+
+  async patch(id: string, patch: Partial<typeof worktreeExecutions.$inferInsert>) {
+    const [updated] = await this.db
+      .update(worktreeExecutions)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(worktreeExecutions.id, id))
+      .returning();
+    if (!updated) {
+      throw new DatabaseInvariantError('WORKTREE_EXECUTION_NOT_FOUND', 'Worktree Execution 不存在');
+    }
+    return updated;
+  }
+
+  async transition(
+    id: string,
+    to: WorktreeExecutionStatus,
+    patch: Partial<typeof worktreeExecutions.$inferInsert> = {},
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select({ status: worktreeExecutions.status })
+        .from(worktreeExecutions)
+        .where(eq(worktreeExecutions.id, id))
+        .for('update')
+        .limit(1);
+      if (!current) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_NOT_FOUND',
+          'Worktree Execution 不存在',
+        );
+      }
+      transitionWorktreeExecution(current.status as WorktreeExecutionStatus, to);
+      const [updated] = await transaction
+        .update(worktreeExecutions)
+        .set({ ...patch, status: to, updatedAt: new Date() })
+        .where(and(eq(worktreeExecutions.id, id), eq(worktreeExecutions.status, current.status)))
+        .returning();
+      if (!updated) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_CONCURRENT_UPDATE',
+          'Worktree Execution 状态已被其他请求修改',
+        );
+      }
+      return updated;
+    });
+  }
+
+  async claimNext(projectId: string) {
+    return this.db.transaction(async (transaction) => {
+      const [active] = await transaction
+        .select({ id: worktreeExecutions.id })
+        .from(worktreeExecutions)
+        .where(
+          and(
+            eq(worktreeExecutions.projectId, projectId),
+            inArray(worktreeExecutions.status, activeWorktreeExecutionStatuses),
+          ),
+        )
+        .for('update')
+        .limit(1);
+      if (active) return undefined;
+
+      const [queued] = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(
+          and(eq(worktreeExecutions.projectId, projectId), eq(worktreeExecutions.status, 'QUEUED')),
+        )
+        .orderBy(asc(worktreeExecutions.queuedAt), asc(worktreeExecutions.id))
+        .for('update')
+        .limit(1);
+      if (!queued) return undefined;
+
+      const [claimed] = await transaction
+        .update(worktreeExecutions)
+        .set({ status: 'SETTING_UP', startedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(worktreeExecutions.id, queued.id), eq(worktreeExecutions.status, 'QUEUED')))
+        .returning();
+      if (!claimed) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_CONCURRENT_UPDATE',
+          'Worktree Execution 已被其他调度器领取',
+        );
+      }
+      return claimed;
+    });
+  }
+
+  async recoverInterrupted() {
+    return this.db
+      .update(worktreeExecutions)
+      .set({
+        status: 'BLOCKED',
+        errorCode: 'SERVER_RESTARTED',
+        errorMessage: '服务重启中断了 Worktree Execution，请检查保留的工作区后重试',
+        updatedAt: new Date(),
+      })
+      .where(
+        inArray(worktreeExecutions.status, ['SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'MERGING']),
+      )
+      .returning();
+  }
+
+  async listQueuedProjectIds() {
+    const rows = await this.db
+      .selectDistinct({ projectId: worktreeExecutions.projectId })
+      .from(worktreeExecutions)
+      .where(eq(worktreeExecutions.status, 'QUEUED'));
+    return rows.map((row) => row.projectId);
   }
 }
 

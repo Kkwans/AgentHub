@@ -8,7 +8,12 @@ import {
   type DatabaseClient,
   type PgliteAgentHubDatabase,
 } from './client.js';
-import { ApprovalRepository, EventRepository, PromptRepository } from './repositories.js';
+import {
+  ApprovalRepository,
+  EventRepository,
+  PromptRepository,
+  WorktreeExecutionRepository,
+} from './repositories.js';
 import {
   agentRuns,
   agentSessions,
@@ -19,6 +24,7 @@ import {
   promptLabels,
   promptVersions,
   runEvents,
+  tasks,
 } from './schema.js';
 
 interface SeededRun {
@@ -231,5 +237,71 @@ describe('数据库不变量', () => {
       .from(agentSessions)
       .where(eq(agentSessions.id, sessionId));
     expect(session?.lastSeq).toBe(2);
+  });
+
+  it('Worktree Execution 持久化队列并限制每 Project 单活跃项', async () => {
+    const { projectId, agentId } = await seedRun();
+    const firstTaskId = randomUUID();
+    const secondTaskId = randomUUID();
+    await client.db.insert(tasks).values([
+      {
+        id: firstTaskId,
+        projectId,
+        title: '第一项',
+        status: 'IN_PROGRESS',
+      },
+      {
+        id: secondTaskId,
+        projectId,
+        title: '第二项',
+        status: 'IN_PROGRESS',
+      },
+    ]);
+    const repository = new WorktreeExecutionRepository(client.db);
+    const first = await repository.create({
+      id: randomUUID(),
+      taskId: firstTaskId,
+      projectId,
+      agentId,
+      status: 'QUEUED',
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `agenthub/task-${firstTaskId.slice(0, 8)}`,
+    });
+    const second = await repository.create({
+      id: randomUUID(),
+      taskId: secondTaskId,
+      projectId,
+      agentId,
+      status: 'QUEUED',
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `agenthub/task-${secondTaskId.slice(0, 8)}`,
+    });
+
+    await expect(
+      repository.create({
+        id: randomUUID(),
+        taskId: firstTaskId,
+        projectId,
+        agentId,
+        status: 'QUEUED',
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: `agenthub/retry-${firstTaskId.slice(0, 8)}`,
+      }),
+    ).rejects.toThrow();
+
+    expect((await repository.claimNext(projectId))?.id).toBe(first.id);
+    expect(await repository.claimNext(projectId)).toBeUndefined();
+    expect((await repository.get(second.id))?.status).toBe('QUEUED');
+    await expect(repository.transition(first.id, 'DONE')).rejects.toMatchObject({
+      code: 'INVALID_STATE_TRANSITION',
+    });
+    await repository.transition(first.id, 'RUNNING');
+    await repository.transition(first.id, 'REVIEW');
+    await repository.transition(first.id, 'MERGING');
+    await repository.transition(first.id, 'DONE');
+    expect((await repository.claimNext(projectId))?.id).toBe(second.id);
   });
 });

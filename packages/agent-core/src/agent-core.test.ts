@@ -8,6 +8,7 @@ import {
   transitionRun,
   transitionSession,
   transitionTask,
+  transitionWorktreeExecution,
 } from './state-machine.js';
 
 const profile: AgentProfile = {
@@ -64,6 +65,19 @@ describe('Agent 状态机', () => {
     expect(() => transitionTask('IN_PROGRESS', 'DONE')).toThrow(InvalidStateTransitionError);
     expect(transitionTask('IN_PROGRESS', 'WAITING_REVIEW')).toBe('WAITING_REVIEW');
     expect(transitionTask('WAITING_REVIEW', 'DONE')).toBe('DONE');
+  });
+
+  it('Worktree Execution 必须经过 Review 与 Merge gate', () => {
+    expect(transitionWorktreeExecution('QUEUED', 'SETTING_UP')).toBe('SETTING_UP');
+    expect(transitionWorktreeExecution('SETTING_UP', 'RUNNING')).toBe('RUNNING');
+    expect(transitionWorktreeExecution('RUNNING', 'AWAITING_INPUT')).toBe('AWAITING_INPUT');
+    expect(transitionWorktreeExecution('AWAITING_INPUT', 'RUNNING')).toBe('RUNNING');
+    expect(transitionWorktreeExecution('RUNNING', 'REVIEW')).toBe('REVIEW');
+    expect(() => transitionWorktreeExecution('REVIEW', 'DONE')).toThrowError(
+      InvalidStateTransitionError,
+    );
+    expect(transitionWorktreeExecution('REVIEW', 'MERGING')).toBe('MERGING');
+    expect(transitionWorktreeExecution('MERGING', 'DONE')).toBe('DONE');
   });
 });
 

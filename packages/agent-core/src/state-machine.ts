@@ -22,11 +22,22 @@ export type RunStatus =
 export type TaskStatus =
   'BACKLOG' | 'READY' | 'IN_PROGRESS' | 'WAITING_REVIEW' | 'DONE' | 'BLOCKED' | 'CANCELED';
 
+export type WorktreeExecutionStatus =
+  | 'QUEUED'
+  | 'SETTING_UP'
+  | 'RUNNING'
+  | 'AWAITING_INPUT'
+  | 'REVIEW'
+  | 'MERGING'
+  | 'DONE'
+  | 'BLOCKED'
+  | 'CANCELED';
+
 export class InvalidStateTransitionError<TState extends string> extends Error {
   readonly code = 'INVALID_STATE_TRANSITION';
 
   constructor(
-    readonly entity: 'SESSION' | 'RUN' | 'TASK',
+    readonly entity: 'SESSION' | 'RUN' | 'TASK' | 'WORKTREE_EXECUTION',
     readonly from: TState,
     readonly to: TState,
   ) {
@@ -68,6 +79,21 @@ const taskTransitions: Record<TaskStatus, readonly TaskStatus[]> = {
   CANCELED: [],
 };
 
+const worktreeExecutionTransitions: Record<
+  WorktreeExecutionStatus,
+  readonly WorktreeExecutionStatus[]
+> = {
+  QUEUED: ['SETTING_UP', 'BLOCKED', 'CANCELED'],
+  SETTING_UP: ['RUNNING', 'BLOCKED', 'CANCELED'],
+  RUNNING: ['AWAITING_INPUT', 'REVIEW', 'BLOCKED', 'CANCELED'],
+  AWAITING_INPUT: ['RUNNING', 'REVIEW', 'BLOCKED', 'CANCELED'],
+  REVIEW: ['RUNNING', 'MERGING', 'BLOCKED', 'CANCELED'],
+  MERGING: ['DONE', 'REVIEW', 'BLOCKED'],
+  BLOCKED: ['QUEUED', 'CANCELED'],
+  DONE: [],
+  CANCELED: [],
+};
+
 export function transitionSession(from: SessionStatus, to: SessionStatus): SessionStatus {
   return assertTransition('SESSION', sessionTransitions, from, to);
 }
@@ -80,8 +106,15 @@ export function transitionTask(from: TaskStatus, to: TaskStatus): TaskStatus {
   return assertTransition('TASK', taskTransitions, from, to);
 }
 
+export function transitionWorktreeExecution(
+  from: WorktreeExecutionStatus,
+  to: WorktreeExecutionStatus,
+): WorktreeExecutionStatus {
+  return assertTransition('WORKTREE_EXECUTION', worktreeExecutionTransitions, from, to);
+}
+
 function assertTransition<TState extends string>(
-  entity: 'SESSION' | 'RUN' | 'TASK',
+  entity: 'SESSION' | 'RUN' | 'TASK' | 'WORKTREE_EXECUTION',
   transitions: Record<TState, readonly TState[]>,
   from: TState,
   to: TState,

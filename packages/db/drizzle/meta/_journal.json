@@ -8,6 +8,13 @@
       "when": 1786280661968,
       "tag": "0000_brown_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786334488522,
+      "tag": "0001_tidy_kinsey_walden",
+      "breakpoints": true
     }
   ]
 }

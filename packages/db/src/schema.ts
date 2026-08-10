@@ -383,6 +383,73 @@ export const tasks = pgTable(
   ],
 );
 
+export const worktreeExecutions = pgTable(
+  'worktree_executions',
+  {
+    id: uuid('id').primaryKey(),
+    taskId: uuid('task_id')
+      .notNull()
+      .references(() => tasks.id),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id),
+    status: text('status').notNull(),
+    baseBranch: text('base_branch').notNull(),
+    baseSha: text('base_sha').notNull(),
+    taskBranch: text('task_branch').notNull(),
+    worktreePath: text('worktree_path'),
+    sessionId: uuid('session_id').references(() => agentSessions.id),
+    runId: uuid('run_id').references(() => agentRuns.id),
+    mergeCommitSha: text('merge_commit_sha'),
+    configJson: jsonb('config_json')
+      .$type<{
+        model?: string;
+        mode?: string;
+        promptVariables?: Record<string, unknown>;
+      }>()
+      .notNull()
+      .default(emptyObject),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+    queuedAt: timestamp('queued_at', { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    reviewReadyAt: timestamp('review_ready_at', { withTimezone: true }),
+    mergeStartedAt: timestamp('merge_started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index('worktree_executions_project_queue_idx').on(
+      table.projectId,
+      table.status,
+      table.queuedAt,
+    ),
+    index('worktree_executions_task_created_idx').on(table.taskId, table.createdAt),
+    unique('worktree_executions_project_branch_unique').on(table.projectId, table.taskBranch),
+    uniqueIndex('worktree_executions_path_unique')
+      .on(table.worktreePath)
+      .where(sql`${table.worktreePath} is not null`),
+    uniqueIndex('worktree_executions_task_active_unique')
+      .on(table.taskId)
+      .where(
+        sql`${table.status} in ('QUEUED', 'SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'REVIEW', 'MERGING')`,
+      ),
+    uniqueIndex('worktree_executions_project_active_unique')
+      .on(table.projectId)
+      .where(
+        sql`${table.status} in ('SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'REVIEW', 'MERGING')`,
+      ),
+    check(
+      'worktree_executions_status_check',
+      sql`${table.status} in ('QUEUED', 'SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'REVIEW', 'MERGING', 'DONE', 'BLOCKED', 'CANCELED')`,
+    ),
+  ],
+);
+
 export const prompts = pgTable(
   'prompts',
   {
