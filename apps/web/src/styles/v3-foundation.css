@@ -9,6 +9,7 @@
   --app-line-strong: #d0d5dd;
   --app-accent: #d66b28;
   --app-accent-soft: #fff1e8;
+  --focus-control: var(--app-accent);
   --app-sidebar: #f0f1f2;
   --app-mono: 'SFMono-Regular', 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
   --ink: var(--app-graphite);
@@ -128,15 +129,25 @@ textarea {
   border-bottom: 0;
 }
 
-.brand-mark {
+.agenthub-logo {
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  color: #ffffff;
+  background: #25272b;
+  border: 1px solid #34373c;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 14%);
+}
+
+.agenthub-logo svg {
   display: block;
+}
+
+.brand-mark {
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  background: none;
-  border: 0;
   border-radius: 9px;
-  box-shadow: none;
 }
 
 .brand-copy {
@@ -380,6 +391,37 @@ textarea {
 .empty-state p {
   max-width: 480px;
   margin-top: 5px;
+}
+
+.empty-state.compact {
+  min-height: 134px;
+  padding: 22px 18px 24px;
+  background: transparent;
+  border: 0;
+}
+
+.empty-state.compact .empty-state-icon {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 8px;
+  color: #676b72;
+  background: #f4f4f5;
+  border: 0;
+  border-radius: 9px;
+}
+
+.empty-state-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  color: #934516;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.empty-state-link:hover {
+  color: #71320e;
 }
 
 .mobile-navigation {

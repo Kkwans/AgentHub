@@ -2,6 +2,8 @@
 .github
 .agenthub
 .cache
+.tmp
+test-tmp
 .deploy-probe.*
 .deploy-legacy-probe.*
 .env

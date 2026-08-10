@@ -42,6 +42,7 @@ export { ArrowCounterClockwiseIcon as RotateCcw } from '@phosphor-icons/react/Ar
 export { ScanIcon as ScanSearch } from '@phosphor-icons/react/Scan';
 export { MagnifyingGlassIcon as Search } from '@phosphor-icons/react/MagnifyingGlass';
 export { PaperPlaneRightIcon as Send } from '@phosphor-icons/react/PaperPlaneRight';
+export { ShareNetworkIcon as ShareNetwork } from '@phosphor-icons/react/ShareNetwork';
 export { GearSixIcon as Settings } from '@phosphor-icons/react/GearSix';
 export { ShieldWarningIcon as ShieldAlert } from '@phosphor-icons/react/ShieldWarning';
 export { ShieldCheckIcon as ShieldCheck } from '@phosphor-icons/react/ShieldCheck';

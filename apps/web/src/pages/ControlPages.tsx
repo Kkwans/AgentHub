@@ -77,10 +77,10 @@ export function OverviewPage() {
     <div className="page-stack">
       <PageIntro
         title="今天需要处理什么"
-        description="只展示正在运行、需要处理和最近工程结果，不堆叠无行动价值的指标。"
+        description="待处理事项、实时执行与最近工程结果，都集中在一个清晰的工作视图中。"
       />
       <div className="dashboard-grid">
-        <section className="control-section priority-section">
+        <section className="control-section dashboard-panel dashboard-attention">
           <div className="section-heading">
             <div>
               <span className="section-kicker">需要处理</span>
@@ -90,8 +90,15 @@ export function OverviewPage() {
           </div>
           {!approvals.length && !attentionTasks.length ? (
             <EmptyState
+              compact
+              icon={<ClipboardCheck size={21} />}
               title="没有待处理项"
               description="Agent Approval 与 Task 审阅会集中出现在这里。"
+              action={
+                <Link className="empty-state-link" to="/tasks">
+                  查看任务 <ArrowRight size={14} />
+                </Link>
+              }
             />
           ) : (
             <>
@@ -124,7 +131,7 @@ export function OverviewPage() {
             </>
           )}
         </section>
-        <section className="control-section">
+        <section className="control-section dashboard-panel dashboard-running">
           <div className="section-heading">
             <div>
               <span className="section-kicker">运行态</span>
@@ -134,8 +141,15 @@ export function OverviewPage() {
           </div>
           {!running.length ? (
             <EmptyState
+              compact
+              icon={<Activity size={21} />}
               title="当前没有运行中的 Session"
               description="从任务或会话页选择 Agent 开始。"
+              action={
+                <Link className="empty-state-link" to="/sessions">
+                  打开会话 <ArrowRight size={14} />
+                </Link>
+              }
             />
           ) : (
             running.map((session) => (
@@ -150,16 +164,26 @@ export function OverviewPage() {
             ))
           )}
         </section>
-        <section className="control-section">
+        <section className="control-section dashboard-panel dashboard-results">
           <div className="section-heading">
             <div>
               <span className="section-kicker">最近结果</span>
-              <h3>Run 与 Git outcome</h3>
+              <h3>最近 Run 与 Git 结果</h3>
             </div>
             <GitBranch size={18} />
           </div>
           {!dashboard.data?.recentResults.length ? (
-            <EmptyState title="还没有运行结果" description="完成或失败的 Run 会显示在这里。" />
+            <EmptyState
+              compact
+              icon={<GitBranch size={21} />}
+              title="还没有运行结果"
+              description="完成或失败的 Run 会显示在这里。"
+              action={
+                <Link className="empty-state-link" to="/sessions">
+                  查看会话 <ArrowRight size={14} />
+                </Link>
+              }
+            />
           ) : (
             dashboard.data.recentResults.slice(0, 6).map((run) => (
               <Link className="action-row" key={run.id} to={`/sessions/${run.sessionId}`}>
@@ -180,7 +204,7 @@ export function OverviewPage() {
             ))
           )}
         </section>
-        <section className="control-section wide">
+        <section className="control-section dashboard-panel dashboard-foundation">
           <div className="section-heading">
             <div>
               <span className="section-kicker">运行基础</span>
@@ -205,8 +229,15 @@ export function OverviewPage() {
               ))}
               {!agents.length && (
                 <EmptyState
+                  compact
+                  icon={<Bot size={21} />}
                   title="尚未注册 Agent"
                   description="先在 Agent 页面注册并完成 preflight。"
+                  action={
+                    <Link className="empty-state-link" to="/agents">
+                      管理 Agent <ArrowRight size={14} />
+                    </Link>
+                  }
                 />
               )}
             </div>

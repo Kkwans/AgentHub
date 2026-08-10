@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global console, document, fetch, process, require, URL */
+/* global console, document, fetch, process, require, URL, window */
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -123,6 +123,24 @@ async function openOverview(browser, width) {
   });
   recordCheck(`${width} 账号 Cookie WebSocket 已连接`);
   await assertNoRootOverflow(page, `${width} 概览无根页面横向溢出`);
+  const overviewLayout = await page.locator('.dashboard-grid').evaluate((grid) => {
+    const panels = [...grid.querySelectorAll(':scope > .dashboard-panel')];
+    const gridStyle = window.getComputedStyle(grid);
+    const attention = grid.querySelector('.dashboard-attention');
+    const attentionStyle = attention ? window.getComputedStyle(attention) : null;
+    return {
+      panels: panels.length,
+      gap: gridStyle.gap,
+      background: gridStyle.backgroundColor,
+      attentionLeftBorder: attentionStyle?.borderLeftWidth ?? '',
+      attentionRightBorder: attentionStyle?.borderRightWidth ?? '',
+      attentionBoxShadow: attentionStyle?.boxShadow ?? '',
+    };
+  });
+  assert.equal(overviewLayout.panels, 4);
+  assert.equal(overviewLayout.attentionLeftBorder, overviewLayout.attentionRightBorder);
+  assert.ok(!overviewLayout.attentionBoxShadow.includes('inset'), '概览仍包含单边 inset 强调条');
+  recordCheck(`${width} 概览使用完整卡片边界且没有单边强调条`, overviewLayout);
   await screenshot(page, `overview-${width}.png`);
   return { context, page };
 }
@@ -150,17 +168,17 @@ async function run() {
         const { context, page } = await createContext(browser, { width, height: 1000 }, label);
         await page.goto(`${baseURL}/overview`, { waitUntil: 'networkidle' });
         await page.getByRole('heading', { name: '创建管理员账号' }).waitFor();
-        await page.locator('.access-brand svg').waitFor();
+        await page.locator('.access-heading .agenthub-logo svg').waitFor();
         await page.getByRole('textbox', { name: '用户名' }).waitFor();
         const passwordInput = page.getByLabel('密码', { exact: true });
         await passwordInput.waitFor();
         await page.getByLabel('确认密码').waitFor();
         assert.equal(await page.getByRole('button', { name: '显示密码' }).count(), 2);
         assert.equal(await page.locator('.access-hero-icon').count(), 0);
-        const brandBox = await page.locator('.access-brand').boundingBox();
+        const brandBox = await page.locator('.access-heading').boundingBox();
         const copyBox = await page.locator('.access-copy').boundingBox();
         assert.ok(brandBox && copyBox, '无法测量首次设置页顶部布局');
-        assert.ok(copyBox.y - (brandBox.y + brandBox.height) <= 36, '品牌区与说明区间距过大');
+        assert.ok(copyBox.x > brandBox.x, '品牌与登录说明没有形成紧凑的组合头部');
         const firstVisibilityButton = page.getByRole('button', { name: '显示密码' }).first();
         await firstVisibilityButton.click();
         assert.equal(await passwordInput.getAttribute('type'), 'text');
@@ -173,14 +191,19 @@ async function run() {
           const focusStyle = await passwordInput.evaluate((input) => {
             const root = input.closest('.rt-TextFieldRoot');
             return {
-              inputOutline: getComputedStyle(input).outlineStyle,
-              rootOutlineWidth: root ? getComputedStyle(root).outlineWidth : '',
-              rootBoxShadow: root ? getComputedStyle(root).boxShadow : '',
+              inputOutline: window.getComputedStyle(input).outlineStyle,
+              rootOutlineWidth: root ? window.getComputedStyle(root).outlineWidth : '',
+              rootBoxShadow: root ? window.getComputedStyle(root).boxShadow : '',
+              nativeReveal: window.getComputedStyle(input, '::-ms-reveal').display,
             };
           });
           assert.equal(focusStyle.inputOutline, 'none');
           assert.equal(focusStyle.rootOutlineWidth, '2px');
           assert.equal(focusStyle.rootBoxShadow, 'none');
+          assert.ok(
+            ['', 'none'].includes(focusStyle.nativeReveal),
+            `浏览器原生密码眼睛仍然可见：${focusStyle.nativeReveal}`,
+          );
           await screenshot(page, 'first-run-focus-1440.png');
           await page.locator('.access-form').screenshot({
             path: path.join(outputDirectory, 'first-run-focus-form-1440.png'),

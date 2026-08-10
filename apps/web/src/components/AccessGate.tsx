@@ -106,15 +106,22 @@ function AccessLoading() {
   return (
     <main className="access-gate" aria-busy="true" aria-label="正在连接 AgentHub">
       <section className="access-card access-card-loading" role="status" aria-live="polite">
-        <div className="access-brand" aria-hidden>
-          <AgentHubLogo />
-          <strong>AgentHub</strong>
-        </div>
-        <div className="access-loading-copy">
-          <span className="access-loading-icon" />
-          <span className="access-loading-line wide" />
-          <span className="access-loading-line" />
-        </div>
+        <header className="access-heading" aria-hidden>
+          <AgentHubLogo className="access-heading-logo" />
+          <div className="access-heading-content">
+            <div className="access-product">
+              <div>
+                <strong>AgentHub</strong>
+                <small>工程控制平面</small>
+              </div>
+              <span>正在连接</span>
+            </div>
+            <div className="access-loading-copy">
+              <span className="access-loading-line wide" />
+              <span className="access-loading-line" />
+            </div>
+          </div>
+        </header>
         <span className="visually-hidden">正在读取服务认证状态…</span>
       </section>
     </main>
@@ -137,6 +144,7 @@ function AccessPrompt({
   const [formError, setFormError] = useState<string>();
   const unavailable = mode === 'unavailable';
   const setup = mode === 'setup';
+  const contextLabel = setup ? '首次设置' : unavailable ? '服务状态' : '安全登录';
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -155,26 +163,30 @@ function AccessPrompt({
   return (
     <main className="access-gate">
       <section className="access-card" aria-labelledby="access-title">
-        <div className="access-brand">
-          <AgentHubLogo />
-          <div>
-            <strong>AgentHub</strong>
-            <small>工程控制平面</small>
+        <header className="access-heading">
+          <AgentHubLogo className="access-heading-logo" />
+          <div className="access-heading-content">
+            <div className="access-product">
+              <div>
+                <strong>AgentHub</strong>
+                <small>工程控制平面</small>
+              </div>
+              <span>{contextLabel}</span>
+            </div>
+            <div className="access-copy">
+              <h1 id="access-title">
+                {setup ? '创建管理员账号' : unavailable ? '暂时无法连接' : '登录 AgentHub'}
+              </h1>
+              <p>
+                {setup
+                  ? '设置本机管理员账号。创建完成后，其他人必须登录才能访问这个 AgentHub。'
+                  : unavailable
+                    ? 'AgentHub 没有返回可用状态。服务恢复后可以直接重试。'
+                    : '输入管理员账号和密码，继续管理 Project、Agent 与 Session。'}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="access-copy">
-          <span>{setup ? '首次使用' : unavailable ? '服务不可用' : '欢迎回来'}</span>
-          <h1 id="access-title">
-            {setup ? '创建管理员账号' : unavailable ? '暂时无法连接' : '登录 AgentHub'}
-          </h1>
-          <p>
-            {setup
-              ? '设置本机管理员账号。创建完成后，其他人必须登录才能访问这个 AgentHub。'
-              : unavailable
-                ? 'AgentHub 没有返回可用状态。服务恢复后可以直接重试。'
-                : '输入管理员账号和密码，继续管理 Project、Agent 与 Session。'}
-          </p>
-        </div>
+        </header>
         {(error || formError) && (
           <div className="access-inline-error" role="alert" aria-live="polite">
             <AlertTriangle aria-hidden size={17} />

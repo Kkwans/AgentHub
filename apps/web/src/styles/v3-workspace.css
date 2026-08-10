@@ -121,8 +121,7 @@
 
 .tool-card {
   background: var(--app-surface);
-  border-color: var(--app-line);
-  border-left-color: var(--app-accent);
+  border: 1px solid var(--app-line);
   border-radius: 6px;
 }
 
@@ -134,7 +133,6 @@
 .approval-card {
   background: #fff9ee;
   border: 1px solid #f1d5aa;
-  border-left: 3px solid #d48225;
   border-radius: 7px;
 }
 
@@ -227,8 +225,7 @@
 
 .composer-context-preview {
   background: #f7f7f8;
-  border-color: var(--app-line);
-  border-left-color: var(--app-accent);
+  border: 1px solid var(--app-line);
 }
 
 .context-preview-heading {

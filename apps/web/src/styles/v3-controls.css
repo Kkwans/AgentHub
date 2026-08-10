@@ -53,12 +53,10 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(340px, 0.88fr);
-  gap: 1px;
-  overflow: hidden;
-  background: var(--app-line);
-  border: 1px solid var(--app-line);
-  border-radius: 7px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  background: transparent;
+  border: 0;
 }
 
 .control-section,
@@ -74,26 +72,39 @@
 
 .control-section {
   min-width: 0;
-  padding: 18px;
+  padding: 20px;
 }
 
 .dashboard-grid > .control-section {
-  border: 0;
-  border-radius: 0;
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(28 35 48 / 4%);
 }
 
-.priority-section {
-  box-shadow: inset 3px 0 0 var(--app-accent);
+.dashboard-attention {
+  grid-column: span 7;
+}
+
+.dashboard-running {
+  grid-column: span 5;
+}
+
+.dashboard-results {
+  grid-column: span 5;
+}
+
+.dashboard-foundation {
+  grid-column: span 7;
 }
 
 .section-heading {
-  min-height: 42px;
+  min-height: 40px;
   color: var(--app-muted);
-  border-bottom: 1px solid var(--app-line);
+  border-bottom: 0;
 }
 
 .section-heading h3 {
-  margin: 3px 0 14px;
+  margin: 3px 0 0;
   color: var(--app-graphite);
   font-size: 14px;
   font-weight: 660;
@@ -108,7 +119,7 @@
   font-weight: 700;
   background: var(--app-accent-soft);
   border: 0;
-  border-radius: 4px;
+  border-radius: 7px;
 }
 
 .action-row {
@@ -166,7 +177,11 @@
 }
 
 .project-strip {
-  border-color: var(--app-line);
+  gap: 0;
+  padding: 8px 12px;
+  background: #f7f7f8;
+  border: 0;
+  border-radius: 10px;
 }
 
 .project-strip a {
@@ -233,8 +248,8 @@
 
 .management-form {
   padding: 20px;
-  border-top: 1px solid var(--app-line);
-  box-shadow: inset 3px 0 0 var(--app-accent);
+  border: 1px solid var(--app-line);
+  box-shadow: none;
 }
 
 .form-heading {
@@ -485,7 +500,8 @@
 }
 
 .worktree-task-card {
-  border-left: 3px solid var(--app-accent);
+  background: #fffaf7;
+  border-color: #edcfbb;
 }
 
 .execution-rail {
@@ -533,8 +549,9 @@
 
 .blocked-tasks,
 .merge-gate-control {
-  border-top: 1px solid var(--app-line) !important;
-  box-shadow: inset 3px 0 0 var(--red);
+  background: #fffafb;
+  border: 1px solid #efcfd3 !important;
+  box-shadow: none;
 }
 
 .worktree-review-panel.rt-DialogContent {
@@ -674,10 +691,22 @@
 }
 
 @media (max-width: 1100px) {
-  .dashboard-grid,
   .agent-layout,
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-attention,
+  .dashboard-running {
+    grid-column: span 6;
+  }
+
+  .dashboard-results {
+    grid-column: span 5;
+  }
+
+  .dashboard-foundation {
+    grid-column: span 7;
   }
 
   .health-layout {
@@ -702,6 +731,13 @@
 @media (max-width: 700px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-attention,
+  .dashboard-running,
+  .dashboard-results,
+  .dashboard-foundation {
+    grid-column: 1;
   }
 
   .control-section,

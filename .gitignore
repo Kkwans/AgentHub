@@ -6,6 +6,8 @@ coverage/
 playwright-report/
 test-results/
 .cache/
+.tmp/
+test-tmp/
 .DS_Store
 *.log
 .env

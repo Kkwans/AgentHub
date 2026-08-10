@@ -207,7 +207,7 @@
 }
 
 .version-form {
-  border-left: 3px solid var(--app-accent);
+  border: 1px solid var(--app-line);
 }
 
 .version-form-side label,

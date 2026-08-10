@@ -127,16 +127,18 @@ export function EmptyState({
   title,
   description,
   action,
+  icon,
+  compact = false,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  icon?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="empty-state">
-      <span className="empty-state-icon">
-        <Inbox size={22} />
-      </span>
+    <div className={compact ? 'empty-state compact' : 'empty-state'}>
+      <span className="empty-state-icon">{icon ?? <Inbox size={22} />}</span>
       <Heading as="h3" size="3">
         {title}
       </Heading>

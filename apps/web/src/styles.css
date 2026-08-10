@@ -103,6 +103,13 @@ select:focus-visible {
   width: 100%;
 }
 
+.ah-password-field .rt-TextFieldInput::-ms-reveal,
+.ah-password-field .rt-TextFieldInput::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .ah-password-toggle.rt-IconButton {
   width: 30px;
   height: 30px;
@@ -210,7 +217,6 @@ select:focus-visible {
   color: #ffffff;
   background: #1d3354;
   border-color: #2c476e;
-  box-shadow: inset 3px 0 0 #4c83ed;
 }
 
 .sidebar-foot {
@@ -1278,7 +1284,8 @@ select:focus-visible {
 
 /* Worktree Task Runner */
 .worktree-task-card {
-  border-left: 3px solid #3f72cd;
+  background: #f8fafc;
+  border-color: #cdd8e6;
 }
 
 .worktree-card-error {
@@ -2196,7 +2203,6 @@ select:focus-visible {
   padding: 14px;
   background: #f8fafc;
   border: 1px solid #d9e0e9;
-  border-left: 3px solid #3b71cf;
   border-radius: 6px;
 }
 
@@ -3330,7 +3336,6 @@ select:focus-visible {
   padding: 9px 11px;
   background: white;
   border: 1px solid #dce2ea;
-  border-left: 3px solid #7499d8;
   border-radius: 6px;
 }
 
@@ -3367,7 +3372,6 @@ select:focus-visible {
   padding: 14px;
   background: #fffcf5;
   border: 1px solid #e9d3a9;
-  border-left: 3px solid #cb8625;
   border-radius: 7px;
 }
 
@@ -3719,7 +3723,6 @@ select:focus-visible {
   overflow: hidden;
   background: #f8fafc;
   border: 1px solid #d5dde8;
-  border-left: 3px solid #4275cc;
   border-radius: 6px;
 }
 
@@ -4952,53 +4955,64 @@ select {
   backdrop-filter: blur(16px);
 }
 
-.access-brand {
+.access-heading {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.access-heading-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.access-heading-content {
+  min-width: 0;
+}
+
+.access-product {
   display: flex;
-  align-items: center;
-  gap: 11px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.access-brand > svg {
-  display: block;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  border-radius: 11px;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 25%),
-    0 7px 14px rgb(37 99 235 / 18%);
-}
-
-.access-brand > div {
+.access-product > div {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.access-brand strong {
+.access-product strong {
   color: #18263a;
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
 }
 
-.access-brand small {
+.access-product small {
   color: var(--muted);
   font-size: 10px;
 }
 
-.access-copy {
-  max-width: 36rem;
-  margin: 28px 0 22px;
+.access-product > span {
+  padding: 4px 7px;
+  color: #6f4c36;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #f7eee8;
+  border-radius: 6px;
 }
 
-.access-copy > span {
-  color: #5575aa;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+.access-copy {
+  max-width: 32rem;
+  margin: 22px 0 22px;
 }
 
 .access-copy h1 {
-  margin: 5px 0 8px;
+  margin: 0 0 8px;
   color: #152238;
   font-size: 25px;
   line-height: 1.2;
@@ -5066,22 +5080,13 @@ select {
 }
 
 .access-card-loading {
-  min-height: 270px;
+  min-height: 230px;
 }
 
 .access-loading-copy {
   display: grid;
   gap: 12px;
-  margin-top: 65px;
-}
-
-.access-loading-icon {
-  width: 42px;
-  height: 42px;
-  background: #eaf0f9;
-  border: 1px solid #dce5f1;
-  border-radius: 12px;
-  animation: state-pulse 1.35s ease-in-out infinite;
+  margin-top: 34px;
 }
 
 .access-loading-line {
@@ -5117,8 +5122,23 @@ select {
     padding: 24px 20px;
   }
 
+  .access-heading {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 13px;
+  }
+
+  .access-heading-logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+
+  .access-product {
+    gap: 10px;
+  }
+
   .access-copy {
-    margin-top: 24px;
+    margin-top: 20px;
   }
 
   .account-password-row {
