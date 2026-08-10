@@ -2,6 +2,15 @@
 
 最后更新：2026-08-10
 
+## v0.3 当前状态
+
+- 已创建新的 durable Goal，范围为 UI/UX 重构、真实浏览器验收、host-native 部署和自身 Project 注册。
+- 现场确认 AgentHub 当前未部署：无进程、Docker 容器、systemd unit 或 `3210` 监听。
+- production 默认契约仍为 `127.0.0.1:3210`；TX5Pro 截图来自已回收的临时验收 Server。
+- 已完成现有 UI 审计：Tailwind 4 已安装，但 Radix/shadcn 组件没有落地；`packages/ui` 为空壳，主要交互依赖手写 CSS 和原生控件。
+- 已锁定单一组件系统：`@radix-ui/themes@3.3.0`、`@phosphor-icons/react@2.1.10`、Tailwind 4、TanStack Query、Monaco 与 react-resizable-panels。
+- 设计合同与回滚见 `docs/implementation/V0.3_UI_REDESIGN.md`。
+
 ## 当前
 
 - M0：已完成。

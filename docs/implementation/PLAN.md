@@ -50,3 +50,13 @@ UI 阶段增加 `pnpm test:e2e`；真实 Agent 验收使用 `AGENTHUB_E2E_LIVE=1
 | R2     | Remote target、Agent inventory、repo roots 与执行闭环  | 已完成 |
 | R3     | 中文管理 UI、安全测试、live 与 TX5Pro 实机验收         | 已完成 |
 | R4     | v0.2 文档、release gate、版本标签与 GitHub 发布        | 已完成 |
+
+## v0.3 UI/UX 与 NAS 部署
+
+| 里程碑 | 范围                                                   | 状态   |
+| ------ | ------------------------------------------------------ | ------ |
+| U1     | 运行状态核验、设计审计、Radix/Phosphor 组件合同        | 进行中 |
+| U2     | App Shell、公共组件、概览与基础管理页面                | 待开始 |
+| U3     | Task/Worktree、Workspace 与 PromptOS 重构              | 待开始 |
+| U4     | 可访问性、四视口、TX5Pro 实机与 anti-slop pre-flight   | 待开始 |
+| D1     | host-native 常驻部署、健康检查与 AgentHub 自身 Project | 待开始 |
