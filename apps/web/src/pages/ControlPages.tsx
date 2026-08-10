@@ -45,6 +45,7 @@ import {
   StatusBadge,
 } from '../components/Common';
 import { realtime } from '../lib/realtime';
+import { RemoteNodesPanel } from './RemoteNodesPanel';
 
 export function OverviewPage() {
   const dashboard = useQuery({
@@ -384,12 +385,11 @@ export function AgentsPage() {
       api.post(`/execution-targets/${id}/preflight`, cwd ? { cwd } : {}),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['targets'] }),
   });
-  const cwd = projects.data?.[0]?.realRootPath ?? '/tmp';
   return (
     <div className="page-stack">
       <PageIntro
         title="Agent 与执行目标"
-        description="真实展示 Agent capability、认证和 Docker 状态；不会自动安装、重建或停止容器。"
+        description="真实展示 Agent capability、认证、Docker 与 Remote Node 状态；不会自动安装、重建或停止容器。"
         action={
           <div className="page-actions">
             <button className="button secondary" onClick={() => setTargetFormOpen(!targetFormOpen)}>
@@ -440,7 +440,7 @@ export function AgentsPage() {
               <span className="section-kicker">显式接管</span>
               <h3>注册 Execution Target</h3>
             </div>
-            <p>Docker target 注册时会核验完整 container ID；不会创建或修改容器。</p>
+            <p>Docker target 会核验完整 container ID；Remote Node 请在设置页使用一次性注册码。</p>
           </div>
           <div className="form-grid">
             <label>
@@ -661,8 +661,21 @@ export function AgentsPage() {
                 </div>
                 <button
                   className="button secondary compact"
-                  onClick={() => preflight.mutate({ id: agent.id, cwd })}
-                  disabled={preflight.isPending}
+                  title={
+                    projects.data?.some((project) => project.targetId === agent.targetId)
+                      ? undefined
+                      : '请先为同一 Execution Target 添加 Project'
+                  }
+                  onClick={() => {
+                    const project = projects.data?.find(
+                      (candidate) => candidate.targetId === agent.targetId,
+                    );
+                    if (project) preflight.mutate({ id: agent.id, cwd: project.realRootPath });
+                  }}
+                  disabled={
+                    preflight.isPending ||
+                    !projects.data?.some((project) => project.targetId === agent.targetId)
+                  }
                 >
                   重新预检
                 </button>
@@ -674,7 +687,7 @@ export function AgentsPage() {
           <div className="section-heading">
             <div>
               <span className="section-kicker">Execution Targets</span>
-              <h3>宿主机与 Docker</h3>
+              <h3>宿主机、Docker 与 Remote Node</h3>
             </div>
             <Box size={18} />
           </div>
@@ -735,7 +748,7 @@ export function AgentsPage() {
           {!targets.data?.length && (
             <EmptyState
               title="没有 Execution Target"
-              description="Docker 容器必须以完整 container ID 显式注册。"
+              description="Docker 容器需显式注册；Remote Node 由一次性注册码自动建立。"
             />
           )}
           {(lifecycle.error || targetPreflight.error) && (
@@ -1624,8 +1637,9 @@ export function SettingsPage() {
     <div className="page-stack">
       <PageIntro
         title="设置与诊断"
-        description="查看服务能力、安全边界和高权限 Docker 风险。凭据只保存引用。"
+        description="查看服务能力、Remote Node、安全边界和高权限 Docker 风险。凭据只保存引用。"
       />
+      <RemoteNodesPanel />
       <div className="settings-grid">
         <section className="control-section">
           <div className="section-heading">

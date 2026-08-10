@@ -66,6 +66,39 @@ const worktreeExecution = {
   createdAt: '2026-08-09T00:00:00.000Z',
   updatedAt: '2026-08-09T00:01:00.000Z',
 };
+const remoteNode = {
+  id: '88888888-8888-4888-8888-888888888888',
+  targetId: '99999999-9999-4999-8999-999999999999',
+  name: 'TX5Pro Remote Node',
+  hostname: 'tx5pro',
+  os: 'linux',
+  arch: 'arm64',
+  fingerprint: 'c'.repeat(64),
+  protocolVersion: 'agenthub-node-v1',
+  daemonVersion: '0.2.0',
+  allowedRootsJson: ['/srv/projects/AgentHub'],
+  inventoryJson: [
+    {
+      key: 'codex',
+      name: 'Codex',
+      agentKind: 'CODEX',
+      adapterKind: 'ACP_STDIO',
+      status: 'AVAILABLE',
+      capabilities: {
+        sessions: true,
+        streaming: true,
+        approvals: true,
+        files: true,
+        terminal: true,
+      },
+    },
+  ],
+  status: 'ONLINE',
+  lastSeenAt: '2026-08-10T01:00:00.000Z',
+  revokedAt: null,
+  createdAt: '2026-08-10T00:00:00.000Z',
+  updatedAt: '2026-08-10T01:00:00.000Z',
+};
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/**', async (route) => {
@@ -115,18 +148,20 @@ test.beforeEach(async ({ page }) => {
                   ? [agent]
                   : path.endsWith('/auth/status')
                     ? { mode: 'local_trusted', localTrusted: true }
-                    : path.endsWith('/settings/capabilities')
-                      ? {
-                          terminal: {
-                            available: false,
-                            code: 'PTY_NATIVE_BINDING_UNAVAILABLE',
-                            message: '当前平台未提供可用的 node-pty native binding',
-                            platform: 'linux',
-                            arch: 'arm64',
-                          },
-                          remoteNode: { available: false },
-                        }
-                      : [];
+                    : path.endsWith('/remote-nodes')
+                      ? [remoteNode]
+                      : path.endsWith('/settings/capabilities')
+                        ? {
+                            terminal: {
+                              available: false,
+                              code: 'PTY_NATIVE_BINDING_UNAVAILABLE',
+                              message: '当前平台未提供可用的 node-pty native binding',
+                              platform: 'linux',
+                              arch: 'arm64',
+                            },
+                            remoteNode: { available: true, transport: 'outbound_websocket' },
+                          }
+                        : [];
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -163,6 +198,17 @@ test('设置页呈现认证与 Docker 高权限边界', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '当前浏览器 token' })).toBeVisible();
   await expect(page.getByText('不会修改 Compose、镜像或 volume')).toBeVisible();
   await expect(page.getByText('loopback 默认模式')).toBeVisible();
+});
+
+test('Remote Node 管理在当前 viewport 无水平溢出', async ({ page }) => {
+  await page.goto('/settings');
+  await expect(page.getByRole('heading', { name: 'Remote Node' })).toBeVisible();
+  await expect(page.getByText('TX5Pro Remote Node')).toBeVisible();
+  await expect(page.getByText('/srv/projects/AgentHub')).toBeVisible();
+  await expect(page.getByText('Codex')).toBeVisible();
+  await page.getByRole('button', { name: '生成一次性注册码' }).click();
+  await expect(page.getByRole('textbox', { name: '授权 roots' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });
 
 async function expectNoHorizontalOverflow(page: Page) {

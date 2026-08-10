@@ -52,6 +52,19 @@ const errorMessages: Record<string, string> = {
   WORKTREE_BASE_DIVERGED: 'base branch 历史已替换，不能安全合并。',
   WORKTREE_PATH_ESCAPE: 'Worktree 路径超出受管目录，已阻止访问。',
   REMOTE_WORKTREE_NOT_AVAILABLE: 'Remote Node Worktree 将在下一阶段启用。',
+  REMOTE_NODE_NOT_FOUND: 'Remote Node 不存在。',
+  REMOTE_NODE_OFFLINE: 'Remote Node 当前离线，请检查 daemon 与网络连接。',
+  REMOTE_NODE_REVOKED: 'Remote Node 设备身份已撤销。',
+  REMOTE_NODE_ROOT_INVALID: 'Node root 包含非法字符。',
+  REMOTE_NODE_ROOT_NOT_ABSOLUTE: 'Node root 必须使用绝对路径。',
+  REMOTE_NODE_ROOT_TOO_BROAD: 'Node root 不能授权整个文件系统根目录。',
+  REMOTE_NODE_ROOT_REQUIRED: '至少需要配置一个 Node root。',
+  REMOTE_NODE_ROOTS_MISMATCH: 'Node daemon 的 roots 与注册码授权范围不一致。',
+  REMOTE_NODE_REGISTRATION_TOKEN_USED: 'Remote Node 注册码已经使用。',
+  REMOTE_NODE_REGISTRATION_TOKEN_EXPIRED: 'Remote Node 注册码已经过期。',
+  REMOTE_AGENT_NOT_AVAILABLE: 'Remote Node inventory 中没有可用的该类型 Agent。',
+  REMOTE_CUSTOM_AGENT_UNSUPPORTED: 'Remote Node 只允许 inventory 中的固定 Agent Profile。',
+  REMOTE_GIT_UNSUPPORTED: 'v0.2 暂不提供 Remote Node Git 控制接口。',
 };
 
 const accessTokenKey = 'agenthub.access-token';
@@ -126,6 +139,67 @@ export interface ExecutionTargetRecord {
   expectedContainerId: string | null;
   startPolicy: string | null;
   workspaceMappingsJson: Array<{ hostRoot: string; containerRoot: string }>;
+  capabilitiesJson: Record<string, unknown>;
+  connectionJson: Record<string, unknown>;
+  lastSeenAt: string | null;
+}
+
+export interface RemoteAgentInventoryRecord {
+  key: string;
+  name: string;
+  agentKind: string;
+  adapterKind: string;
+  status: 'AVAILABLE' | 'MISSING' | 'BROKEN';
+  detectedVersion?: string;
+  capabilities: {
+    sessions: boolean;
+    streaming: boolean;
+    approvals: boolean;
+    files: boolean;
+    terminal: boolean;
+  };
+}
+
+export interface RemoteNodeRecord {
+  id: string;
+  targetId: string;
+  name: string;
+  hostname: string;
+  os: string;
+  arch: string;
+  fingerprint: string;
+  protocolVersion: string;
+  daemonVersion: string;
+  allowedRootsJson: string[];
+  inventoryJson: RemoteAgentInventoryRecord[];
+  status: 'ONLINE' | 'OFFLINE' | 'REVOKED';
+  lastSeenAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RemoteNodeRegistration {
+  id: string;
+  name: string;
+  allowedRoots: string[];
+  expiresAt: string;
+  createdAt: string;
+  token: string;
+}
+
+export interface RemoteNodeDiagnostics {
+  id: string;
+  targetId: string;
+  status: 'ONLINE' | 'OFFLINE' | 'REVOKED';
+  connected: boolean;
+  fingerprint: string;
+  protocolVersion: string;
+  daemonVersion: string;
+  allowedRoots: string[];
+  inventory: RemoteAgentInventoryRecord[];
+  lastSeenAt: string | null;
+  revokedAt: string | null;
 }
 
 export interface AgentCatalogEntry {

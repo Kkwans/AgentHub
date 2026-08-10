@@ -29,16 +29,20 @@ const statusLabels: Record<string, string> = {
   AWAITING_INPUT: '等待输入',
   REVIEW: '待合并审阅',
   MERGING: '合并中',
+  ONLINE: '在线',
+  OFFLINE: '离线',
+  REVOKED: '已撤销',
+  AVAILABLE: '可用',
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED/.test(status)
+  const tone = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED|ONLINE|AVAILABLE/.test(status)
     ? 'positive'
     : /RUNNING|STARTING|SETTING_UP|MERGING/.test(status)
       ? 'active'
       : /WAITING|AWAITING|REVIEW|QUEUED|AUTH_REQUIRED|UNVERIFIED|UNMAPPED/.test(status)
         ? 'warning'
-        : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED/.test(status)
+        : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED|OFFLINE|REVOKED/.test(status)
           ? 'danger'
           : 'neutral';
   return <span className={`status-badge ${tone}`}>{statusLabels[status] ?? status}</span>;

@@ -494,4 +494,116 @@ describe('App', () => {
       }),
     );
   });
+
+  it('设置页展示 Remote Node 身份、inventory 并创建一次性注册码', async () => {
+    const nodeId = '11111111-1111-4111-8111-111111111111';
+    const fingerprint = 'a'.repeat(64);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const pathname = new URL(String(input), 'http://agenthub.test').pathname;
+      const data =
+        pathname === '/api/v1/auth/status'
+          ? { mode: 'local_trusted', localTrusted: true }
+          : pathname === '/api/v1/settings/capabilities'
+            ? {
+                terminal: {
+                  available: false,
+                  code: 'PTY_UNAVAILABLE',
+                  message: '当前平台不可用',
+                  platform: 'linux',
+                  arch: 'arm64',
+                },
+                remoteNode: { available: true, transport: 'outbound_websocket' },
+              }
+            : pathname === '/api/v1/remote-nodes/registration-tokens' && init?.method === 'POST'
+              ? {
+                  id: '22222222-2222-4222-8222-222222222222',
+                  name: 'TX5Pro 开发节点',
+                  allowedRoots: ['/srv/projects/AgentHub'],
+                  expiresAt: '2026-08-10T01:15:00.000Z',
+                  createdAt: '2026-08-10T01:00:00.000Z',
+                  token: 'ahrn_once_only_test_token_1234567890',
+                }
+              : pathname === '/api/v1/remote-nodes'
+                ? [
+                    {
+                      id: nodeId,
+                      targetId: '33333333-3333-4333-8333-333333333333',
+                      name: 'TX5Pro',
+                      hostname: 'tx5pro',
+                      os: 'linux',
+                      arch: 'arm64',
+                      fingerprint,
+                      protocolVersion: 'agenthub-node-v1',
+                      daemonVersion: '0.2.0',
+                      allowedRootsJson: ['/srv/projects/AgentHub'],
+                      inventoryJson: [
+                        {
+                          key: 'codex',
+                          name: 'Codex',
+                          agentKind: 'CODEX',
+                          adapterKind: 'ACP_STDIO',
+                          status: 'AVAILABLE',
+                          capabilities: {
+                            sessions: true,
+                            streaming: true,
+                            approvals: true,
+                            files: true,
+                            terminal: true,
+                          },
+                        },
+                      ],
+                      status: 'ONLINE',
+                      lastSeenAt: '2026-08-10T01:00:00.000Z',
+                      revokedAt: null,
+                      createdAt: '2026-08-10T00:00:00.000Z',
+                      updatedAt: '2026-08-10T01:00:00.000Z',
+                    },
+                  ]
+                : [];
+      return new Response(JSON.stringify({ data, requestId: 'remote-node-ui-test' }), {
+        status: pathname.endsWith('/registration-tokens') ? 201 : 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/settings']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Remote Node' })).toBeInTheDocument();
+    expect(await screen.findByText('TX5Pro')).toBeInTheDocument();
+    expect(screen.getByText('/srv/projects/AgentHub')).toBeInTheDocument();
+    expect(screen.getByText('Codex')).toBeInTheDocument();
+    expect(screen.getByTitle(fingerprint)).toHaveTextContent(fingerprint);
+
+    fireEvent.click(screen.getByRole('button', { name: '生成一次性注册码' }));
+    fireEvent.change(screen.getByLabelText('Node 名称'), {
+      target: { value: 'TX5Pro 开发节点' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: '授权 roots' }), {
+      target: { value: '/srv/projects/AgentHub' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '生成注册码' }));
+
+    expect(await screen.findByText('注册码只显示这一次')).toBeInTheDocument();
+    expect(screen.getByLabelText('一次性注册码')).toHaveTextContent(
+      'ahrn_once_only_test_token_1234567890',
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/remote-nodes/registration-tokens',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'TX5Pro 开发节点',
+          allowedRoots: ['/srv/projects/AgentHub'],
+          expiresInMinutes: 15,
+        }),
+      }),
+    );
+  });
 });
