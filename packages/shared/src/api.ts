@@ -22,7 +22,7 @@ export const websocketTopicSchema = z
   .string()
   .min(1)
   .max(160)
-  .regex(/^(session|project|terminal):[A-Za-z0-9_-]+$|^approvals$/);
+  .regex(/^(session|project|terminal):[A-Za-z0-9_-]+$|^(approvals|worktrees)$/);
 
 export const websocketClientMessageSchema = z.discriminatedUnion('type', [
   z.object({
