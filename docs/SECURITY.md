@@ -31,6 +31,16 @@
 - 拒绝 `..`、编码 traversal、绝对路径注入和 symlink escape。
 - Docker cwd 使用最长 workspace mapping 前缀换算，并在每次 Run 前重验。
 
+## Worktree 与 merge gate
+
+- managed worktree 路径只由 Server 在 `AGENTHUB_WORKTREE_ROOT` 下生成，不接受客户端路径。
+- Git executable 固定为 `/usr/bin/git`，所有 ref、路径和参数使用 argv 与 `shell: false`。
+- 每次 Review/Merge 重新验证 Project common dir、task branch、worktree identity 与 realpath
+  containment；拒绝非法 ref、traversal、symlink escape 和被替换的 worktree。
+- merge 前要求主工作区 clean、当前分支匹配、base ancestry 未失效并通过冲突预检。
+- 不自动执行 reset、rebase、force push、branch delete 或 worktree cleanup；merge 失败时只
+  abort 当前 merge 并回到 Review，现场保留供人工诊断。
+
 ## 日志与诊断
 
 - 对 token、cookie、Authorization header、常见 API key、Agent auth payload 与用户配置的敏感模式脱敏。

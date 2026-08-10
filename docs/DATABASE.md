@@ -14,6 +14,9 @@
 - Agent Event 使用 `UNIQUE(session_id, seq)`，`seq` 在 Session 内单调递增。
 - Session、Run、Task 的非法状态跳转在 service 层拒绝。
 - Run 保存解析后的 Prompt version、label、hash 与 provenance。
+- `worktree_executions` 以 partial unique index 保证每个 Task 只有一个活跃 Execution、
+  每个 Project 只有一个正在设置/运行/审阅/合并的 Execution；`QUEUED` 可按 FIFO 并存。
+- Worktree Execution 的状态更新带当前状态条件；Task 与 Execution 的关联状态在同一事务移动。
 
 ## JSON 使用边界
 
@@ -24,4 +27,7 @@
 - migration 向前追加，不修改已经发布的 migration。
 - destructive migration 必须先备份并单独授权。
 - 恢复优先使用发布前数据库备份；down 脚本只在可无损恢复时提供。
-- v0.1 只有初始向前 migration，不提供破坏性 down；PGlite 恢复必须在服务停止后替换整个备份目录，PostgreSQL 使用数据库级备份恢复。
+- `0000_brown_secret_warriors.sql` 为 v0.1 初始 migration；
+  `0001_tidy_kinsey_walden.sql` 仅向前增加 `worktree_executions`、约束与索引。
+- 应用回退不会自动删除 v0.2 表或磁盘 worktree。需要回退数据库时，先优雅停止服务并
+  恢复升级前的 PGlite 整目录/PostgreSQL 数据库备份；不手工删除 migration 记录。

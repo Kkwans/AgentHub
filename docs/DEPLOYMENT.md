@@ -28,6 +28,16 @@ set +a
 corepack pnpm --filter @agenthub/server start
 ```
 
+v0.2 Worktree Task Runner 默认把 managed worktree 放在数据库目录同级的 `worktrees/`。
+生产环境建议显式设置一个仅供 AgentHub 使用的绝对目录：
+
+```bash
+AGENTHUB_WORKTREE_ROOT=/volume2/Project/.agenthub/worktrees
+```
+
+该目录必须与业务 Project 分离并允许 AgentHub 用户创建目录。AgentHub 不自动清理已完成、
+受阻或取消的 worktree；清理前必须逐项核验数据库状态、Git worktree identity 和分支保留需求。
+
 `.env` 不提交 Git。生产进程应由 NAS 已有的进程监管器托管；本项目不擅自安装或修改 systemd/开机任务。
 
 ## 本地可信访问
@@ -75,7 +85,8 @@ curl -X POST http://127.0.0.1:3210/api/v1/auth/tokens \
 1. 记录当前 commit、环境变量和服务健康状态。
 2. 优雅停止 AgentHub，不停止其接管的 Agent 容器。
 3. 备份 PGlite 目录或 PostgreSQL。
-4. 获取目标版本后执行 `pnpm install --frozen-lockfile`、`pnpm build`。
+4. 获取目标版本后执行 `pnpm install --frozen-lockfile`、`pnpm build`；首次升级到 v0.2 会
+   向前应用 `0001_tidy_kinsey_walden.sql`。
 5. 运行 release gate，再启动 production Server。
 6. 检查 `/api/v1/health`、中文 Web Shell、Agent preflight 和现有 Session 历史。
 
@@ -83,4 +94,6 @@ curl -X POST http://127.0.0.1:3210/api/v1/auth/tokens \
 
 - 代码：停止服务，切回已验证 commit，重新安装锁定依赖并 build。
 - 数据库：只有新版本 migration 已执行且旧代码不兼容时，恢复升级前备份；不要手工删除 migration 记录。
+- Worktree：代码回退不会删除 managed worktree 或 task branch；人工回退前先记录其路径、
+  Execution 状态与 commit SHA，保留现场。
 - Docker：AgentHub 回滚不修改 Compose、镜像或 volume，只确认明确接管容器仍保持升级前启动状态。

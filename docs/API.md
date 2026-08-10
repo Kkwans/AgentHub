@@ -39,6 +39,23 @@ POST       /api/v1/tasks/:id/review
 
 Task 由 Agent Run 完成时进入 `WAITING_REVIEW`；只有 `/review` 的 `APPROVE` 决策会进入 `DONE`。Dashboard 只聚合可操作状态、终态 Run 与 Git outcome。
 
+## Worktree Task Runner
+
+```text
+GET  /api/v1/worktree-executions?projectId=&taskId=&status=
+GET  /api/v1/worktree-executions/:id
+GET  /api/v1/worktree-executions/:id/review
+POST /api/v1/tasks/:taskId/worktree/queue
+POST /api/v1/worktree-executions/:id/rework
+POST /api/v1/worktree-executions/:id/merge
+POST /api/v1/worktree-executions/:id/cancel
+```
+
+`queue` 仅接受 `READY` 的 Git Task 与已就绪 Agent。Run 完成只进入 `REVIEW`；`merge`
+必须由用户显式调用。merge gate 会验证主工作区 clean/current branch、base ancestry、
+worktree identity 与冲突预检。批准时可在隔离工作区执行受管 `git add -A`/commit，再以
+`--no-ff` 合入 base branch；不会自动删除 worktree 或 task branch。
+
 ## Execution Target
 
 ```text
@@ -67,7 +84,9 @@ GET  /api/v1/projects/:id/git/branches
 POST /api/v1/projects/:id/git/commit
 ```
 
-文件接口只读。Git commit 必须显式选择 `STAGED` 或 `SELECTED`；服务不会执行 `git add -A`，也不提供 destructive Git API。
+文件接口只读。通用 Git commit 必须显式选择 `STAGED` 或 `SELECTED`；只有上面的
+Worktree merge gate 可在已验证的 managed worktree 执行受管 `git add -A`。服务不提供
+destructive Git API。
 
 ## Terminal capability
 
@@ -83,6 +102,9 @@ POST /api/v1/terminals/:id/close
 
 ## WebSocket
 
-所有实时数据使用 `/ws` 单连接，topic 为 Session、Project、Approval、Terminal。Session 事件包含单调 `seq`；客户端以 `afterSeq` 请求补流。Terminal 使用独立生命周期消息，不复用 Session 文本事件。
+所有实时数据使用 `/ws` 单连接，topic 为 Session、Project、Approval、Worktree、Terminal。
+Worktree 控制面订阅 `worktrees`，Project 详情同时接收 `project:<id>`。Session 事件包含
+单调 `seq`；客户端以 `afterSeq` 请求补流。Terminal 使用独立生命周期消息，不复用
+Session 文本事件。
 
 token 模式下，非浏览器客户端使用 `Authorization: Bearer <token>`；浏览器客户端以 `agenthub-v1` 和 `agenthub-token.<token>` 两个 subprotocol 发起握手，服务只协商 `agenthub-v1`。

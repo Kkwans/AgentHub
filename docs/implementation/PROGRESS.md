@@ -117,6 +117,23 @@ TX5Pro 实机验收：
 - TX5Pro 修复后全量 gate：`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm format:check` 通过；非沙箱 Vitest 22 个文件通过、1 个 live 文件按 gate 跳过，84 项通过、5 项跳过；Playwright 12 项通过。
 - 最终验收进程与 SSH 隧道已回收，TX5Pro `43210` 和 NAS `3210` 无遗留监听。
 
+v0.2 Worktree Task Runner：
+
+- W1：独立 Execution 状态机、`worktree_executions` migration/repository、partial unique
+  index、并发状态移动和 restart recovery 已完成。
+- W2：每 Project 单并发 FIFO、managed Git worktree、Agent Session/Run、Approval 等待、
+  Review/Rework/Cancel、冲突预检和显式 `--no-ff` Merge Gate 已完成。
+- W3：中文 Task 控制面、Execution 轨道、Review evidence、Diff、继续修改、取消和批准合并
+  已完成；保留 v0.1“直接运行”入口。
+- Worktree UI：单元测试 7 项通过；Playwright 1440、1024、768、390 共 12 项通过。
+- Worktree live：独立临时 Git repository + PGlite + 宿主机 pinned Codex 完成真实修改、
+  Review Diff、受管 commit 与双亲 merge commit；1 项通过，耗时 64.41 秒。
+- Worktree 最终标准 gate：`pnpm format:check`、`pnpm lint`、`pnpm typecheck`、`pnpm build`
+  通过；Vitest 25 个文件通过、2 个 live 文件按环境 gate 跳过，97 项通过、6 项跳过。
+- live fixture 已在独立 Server 关闭后清理；未触碰现有 Project、Agent Docker、Compose、
+  镜像或 volume。
+- 下一阶段：Remote Node 注册、设备身份、outbound secure WebSocket 与远程执行闭环。
+
 ## 未验证项
 
 - Claude Code 需在镜像内固定安装 `@agentclientprotocol/claude-agent-acp@0.66.0` 后才能验证 auth/session。

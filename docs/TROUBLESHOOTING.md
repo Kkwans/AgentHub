@@ -37,6 +37,21 @@
 - Git selected-files commit 不会自动包含其他文件；检查所选路径和 staged 状态。
 - `PTY_NATIVE_BINDING_UNAVAILABLE`：当前平台没有可用 `node-pty` native binding。AgentHub 不使用普通 shell 模拟 PTY。
 
+## Worktree Task Runner
+
+- `WORKTREE_QUEUE_CONFLICT`：Task 已存在活跃隔离执行，或队列状态被并发请求改变；刷新 Task
+  和 Worktree Execution 后重试，不要直接操作数据库。
+- `WORKTREE_EXECUTION_CONCURRENT_UPDATE`：另一个请求已移动 Execution 状态；以 Server 最新
+  状态为准。
+- `WORKTREE_IDENTITY_MISMATCH` / 路径 containment 错误：磁盘 worktree、task branch 或
+  common dir 与登记信息不一致。保留现场，使用 `git worktree list --porcelain` 只读核验。
+- `PRIMARY_WORKTREE_DIRTY` / `PRIMARY_BRANCH_MISMATCH`：主工作区有未提交变更或不在记录的
+  base branch；处理用户自己的变更后再批准，不要让 AgentHub reset。
+- base ancestry 失效或 merge conflict：Execution 会回到 `REVIEW` 并保留 worktree；先人工
+  决定 rework/取消/更新策略，AgentHub 不自动 rebase 或解冲突。
+- Server 重启时 `QUEUED` 会恢复调度；原本正在设置、运行、等待批准、审阅或合并的项会标为
+  `BLOCKED` 并保留路径，避免盲目续跑。
+
 ## Docker 安全诊断
 
 - 只核验显式注册的 container name 与完整 ID。
