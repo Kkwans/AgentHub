@@ -50,7 +50,7 @@ docker compose --env-file deploy/compose/.env.example \
 `dubious ownership`；不会配置 `safe.directory=*`。只读挂载 `.gitconfig` 用于保留原 Git
 identity，AgentHub 不提供 push，因此不会把 credential helper 当作远端发布能力。
 
-首次浏览器访问会显示“创建管理员账号”，用户只需自行设置用户名和至少 12 位密码；以后
+首次浏览器访问会显示“创建管理员账号”，用户只需自行设置至少 3 个字符的用户名和至少 6 个字符的密码，不要求密码复杂度；以后
 只使用账号密码登录。不要向普通用户展示 `browser-token`、Session、命令行或 secret 文件路径。
 
 当前 LAN 入口是 HTTP，因此 `.env` 保持 `AGENTHUB_SECURE_TRANSPORT=false`，Server 不发送会被

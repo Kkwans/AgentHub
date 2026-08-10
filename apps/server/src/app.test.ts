@@ -96,8 +96,8 @@ describe('HTTP 账号认证', () => {
       expect(unauthorized.status).toBe(401);
       expect(unauthorized.body.error.code).toBe('AUTH_REQUIRED');
       const setup = await browser.post('/api/v1/auth/setup').send({
-        username: 'admin',
-        password: 'administrator-password',
+        username: 'abc',
+        password: '123456',
       });
       expect(setup.status).toBe(201);
       expect(setup.headers['set-cookie']?.[0]).toContain('HttpOnly');

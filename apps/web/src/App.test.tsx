@@ -660,14 +660,22 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: '创建管理员账号' })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('textbox', { name: '用户名' }), {
-      target: { value: 'Kkwans' },
+      target: { value: 'abc' },
     });
     fireEvent.change(screen.getByLabelText('密码'), {
-      target: { value: 'administrator-password' },
+      target: { value: '123456' },
     });
     fireEvent.change(screen.getByLabelText('确认密码'), {
-      target: { value: 'administrator-password' },
+      target: { value: '123456' },
     });
+    const visibilityButtons = screen.getAllByRole('button', { name: '显示密码' });
+    expect(visibilityButtons).toHaveLength(2);
+    fireEvent.click(visibilityButtons[0]!);
+    expect(screen.getByLabelText('密码')).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: '隐藏密码' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     fireEvent.click(screen.getByRole('button', { name: '创建账号并进入' }));
 
     expect(await screen.findByRole('heading', { name: '今天需要处理什么' })).toBeInTheDocument();
@@ -676,7 +684,7 @@ describe('App', () => {
       expect.objectContaining({
         method: 'POST',
         credentials: 'same-origin',
-        body: JSON.stringify({ username: 'Kkwans', password: 'administrator-password' }),
+        body: JSON.stringify({ username: 'abc', password: '123456' }),
       }),
     );
   });

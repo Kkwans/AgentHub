@@ -11,7 +11,7 @@ const username = z
   .min(3)
   .max(64)
   .regex(/^[\p{L}\p{N}._-]+$/u, '用户名只能包含文字、数字、点、下划线或连字符');
-const password = z.string().min(12).max(128);
+const password = z.string().min(6).max(128);
 const credentials = z.object({ username, password });
 const passwordChange = z.object({ currentPassword: password, newPassword: password });
 const createToken = z.object({ name: z.string().trim().min(1).max(120) });

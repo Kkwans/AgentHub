@@ -22,6 +22,7 @@ import {
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { realtime } from '../lib/realtime';
+import { AgentHubLogo } from './AgentHubLogo';
 
 type NavigationItem = {
   to: string;
@@ -61,9 +62,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <div className="brand-block">
-      <div className="brand-mark" aria-hidden>
-        A
-      </div>
+      <AgentHubLogo className="brand-mark" />
       <div className="brand-copy">
         <strong>AgentHub</strong>
         <span>工程控制平面</span>

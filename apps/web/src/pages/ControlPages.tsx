@@ -51,6 +51,7 @@ import {
 } from '../components/Common';
 import { realtime } from '../lib/realtime';
 import type { AuthStatus } from '../components/AccessGate';
+import { PasswordField } from '../components/PasswordField';
 import { RemoteNodesPanel } from './RemoteNodesPanel';
 
 export function OverviewPage() {
@@ -1726,35 +1727,35 @@ export function SettingsPage() {
                 >
                   <label>
                     当前密码
-                    <input
+                    <PasswordField
                       required
-                      minLength={12}
+                      minLength={6}
                       maxLength={128}
                       name="currentPassword"
-                      type="password"
+                      size="3"
                       autoComplete="current-password"
                     />
                   </label>
                   <div className="account-password-row">
                     <label>
                       新密码
-                      <input
+                      <PasswordField
                         required
-                        minLength={12}
+                        minLength={6}
                         maxLength={128}
                         name="newPassword"
-                        type="password"
+                        size="3"
                         autoComplete="new-password"
                       />
                     </label>
                     <label>
                       确认新密码
-                      <input
+                      <PasswordField
                         required
-                        minLength={12}
+                        minLength={6}
                         maxLength={128}
                         name="passwordConfirmation"
-                        type="password"
+                        size="3"
                         autoComplete="new-password"
                       />
                     </label>

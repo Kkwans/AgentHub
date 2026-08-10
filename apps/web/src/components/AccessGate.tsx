@@ -1,9 +1,11 @@
 import { type FormEvent, type PropsWithChildren, useEffect, useState } from 'react';
-import { AlertTriangle, Button, KeyRound, ShieldCheck, TextField } from '@agenthub/ui';
+import { AlertTriangle, Button, ShieldCheck, TextField } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError, api, authSession } from '../lib/api';
 import { realtime } from '../lib/realtime';
+import { AgentHubLogo } from './AgentHubLogo';
+import { PasswordField } from './PasswordField';
 
 export type AuthStatus = {
   mode: 'local_trusted' | 'token';
@@ -105,7 +107,7 @@ function AccessLoading() {
     <main className="access-gate" aria-busy="true" aria-label="正在连接 AgentHub">
       <section className="access-card access-card-loading" role="status" aria-live="polite">
         <div className="access-brand" aria-hidden>
-          <span>A</span>
+          <AgentHubLogo />
           <strong>AgentHub</strong>
         </div>
         <div className="access-loading-copy">
@@ -154,14 +156,11 @@ function AccessPrompt({
     <main className="access-gate">
       <section className="access-card" aria-labelledby="access-title">
         <div className="access-brand">
-          <span aria-hidden>A</span>
+          <AgentHubLogo />
           <div>
             <strong>AgentHub</strong>
             <small>工程控制平面</small>
           </div>
-        </div>
-        <div className="access-hero-icon" aria-hidden>
-          {unavailable ? <AlertTriangle size={24} /> : <KeyRound size={24} weight="duotone" />}
         </div>
         <div className="access-copy">
           <span>{setup ? '首次使用' : unavailable ? '服务不可用' : '欢迎回来'}</span>
@@ -197,32 +196,28 @@ function AccessPrompt({
               maxLength={64}
               required
             />
-            {setup && (
-              <small className="access-field-help">至少 12 个字符，建议使用密码管理器生成。</small>
-            )}
             <label htmlFor="password">密码</label>
-            <TextField.Root
+            <PasswordField
               id="password"
               name="password"
-              type="password"
               size="3"
               autoComplete={setup ? 'new-password' : 'current-password'}
-              placeholder="至少 12 个字符"
-              minLength={12}
+              placeholder="至少 6 个字符"
+              minLength={6}
               maxLength={128}
               required
             />
+            {setup && <small className="access-field-help">密码至少 6 个字符。</small>}
             {setup && (
               <>
                 <label htmlFor="password-confirmation">确认密码</label>
-                <TextField.Root
+                <PasswordField
                   id="password-confirmation"
                   name="passwordConfirmation"
-                  type="password"
                   size="3"
                   autoComplete="new-password"
                   placeholder="再次输入密码"
-                  minLength={12}
+                  minLength={6}
                   maxLength={128}
                   required
                 />

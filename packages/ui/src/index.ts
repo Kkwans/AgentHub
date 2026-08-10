@@ -15,6 +15,8 @@ export { CopyIcon as Copy } from '@phosphor-icons/react/Copy';
 export { CubeIcon } from '@phosphor-icons/react/Cube';
 export { FileCodeIcon as FileCode2 } from '@phosphor-icons/react/FileCode';
 export { FilesIcon as Files } from '@phosphor-icons/react/Files';
+export { EyeIcon as Eye } from '@phosphor-icons/react/Eye';
+export { EyeSlashIcon as EyeSlash } from '@phosphor-icons/react/EyeSlash';
 export { FingerprintIcon as Fingerprint } from '@phosphor-icons/react/Fingerprint';
 export { FolderSimpleIcon as FolderGit2 } from '@phosphor-icons/react/FolderSimple';
 export { FolderSimpleIcon as FolderKanban } from '@phosphor-icons/react/FolderSimple';
