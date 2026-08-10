@@ -52,6 +52,10 @@ identity，AgentHub 不提供 push，因此不会把 credential helper 当作远
 首次浏览器访问会进入认证状态。在“设置”中输入 `browser-token` 的内容；浏览器只保存到
 当前 `sessionStorage`。不要通过 URL query、聊天或日志传递 token。
 
+当前 LAN 入口是 HTTP，因此 `.env` 保持 `AGENTHUB_SECURE_TRANSPORT=false`，Server 不发送会被
+Chrome 忽略的 COOP，也不会用 CSP 把相对静态资源强制升级到 HTTPS。将来由可信反向代理提供
+HTTPS 后可设为 `true` 恢复 COOP；Bearer token 跨不可信网络必须使用 TLS。
+
 ## 回滚
 
 ```bash

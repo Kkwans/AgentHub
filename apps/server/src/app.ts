@@ -54,6 +54,7 @@ export interface AppOptions {
   worktrees?: WorktreeTaskService;
   remoteNodes?: RemoteNodeService;
   webDist?: string;
+  secureTransport?: boolean;
 }
 
 const eventParamsSchema = z.object({ sessionId: z.string().uuid() });
@@ -80,7 +81,18 @@ export function createApp(options: AppOptions = {}): Express {
       customProps: (request) => ({ requestId: request.id }),
     }),
   );
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          // Relative assets already inherit the page scheme. This directive breaks the supported
+          // HTTP LAN deployment by upgrading its JS/CSS requests to HTTPS.
+          upgradeInsecureRequests: null,
+        },
+      },
+      ...(options.secureTransport ? {} : { crossOriginOpenerPolicy: false }),
+    }),
+  );
   app.use(cors({ origin: false }));
   app.use(express.json({ limit: '1mb' }));
 

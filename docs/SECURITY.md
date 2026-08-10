@@ -30,6 +30,9 @@
   `safe.directory=*`，也不因此新增 push/credential API。
 - 当前 `192.168.5.110:3210` 是受 token 保护的 LAN HTTP 入口；不可信网络或跨网访问必须在
   前置代理终止 TLS，避免 Bearer token 被旁路观察。
+- HTTP 模式不发送仅适用于可信 origin 的 COOP，也不使用 `upgrade-insecure-requests` 强制
+  相对资源改成 HTTPS；TLS 入口设置 `AGENTHUB_SECURE_TRANSPORT=true` 后恢复 COOP，其余
+  Helmet CSP 与安全头在两种模式均保留。
 
 ## 路径
 

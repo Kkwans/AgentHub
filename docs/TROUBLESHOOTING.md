@@ -21,6 +21,8 @@
 - token 模式持续 401：在“设置”中更新当前浏览器 token；浏览器只保存于当前 `sessionStorage`。
 - LAN 拒绝连接：核验 Compose container health、`192.168.5.110:3210` published port 与 NAS
   实际地址；旧 systemd 仅监听 `127.0.0.1`，不能直接作为 LAN 部署。
+- HTTP HTML 能打开但 JS/CSS 请求被升级到 `https://...:3210`：确认运行版本已移除 CSP 的
+  `upgrade-insecure-requests`，且 HTTP LAN 使用 `AGENTHUB_SECURE_TRANSPORT=false`。
 - `/ws` 断开：确认反向代理允许 WebSocket upgrade，并透传 `Sec-WebSocket-Protocol`。
 
 ## Agent preflight

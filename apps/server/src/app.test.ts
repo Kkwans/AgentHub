@@ -35,6 +35,24 @@ describe('HTTP 基线', () => {
     });
   });
 
+  it('HTTP 模式保留安全头但不会把 LAN 静态资源强制升级为 HTTPS', async () => {
+    const response = await request(app).get('/api/v1/health');
+    const policy = String(response.headers['content-security-policy']);
+
+    expect(policy).toContain("default-src 'self'");
+    expect(policy).not.toContain('upgrade-insecure-requests');
+    expect(response.headers['cross-origin-opener-policy']).toBeUndefined();
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  it('显式安全传输模式恢复 Cross-Origin-Opener-Policy', async () => {
+    const response = await request(
+      createApp({ logger: pino({ level: 'silent' }), secureTransport: true }),
+    ).get('/api/v1/health');
+
+    expect(response.headers['cross-origin-opener-policy']).toBe('same-origin');
+  });
+
   it('使用稳定英文 code 与中文错误信息', async () => {
     const response = await request(app).get('/api/v1/sessions/not-a-uuid/events?afterSeq=-1');
 

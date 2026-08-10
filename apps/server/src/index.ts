@@ -227,6 +227,7 @@ export async function startServer(
     auth,
     worktrees,
     remoteNodes,
+    secureTransport: environment.AGENTHUB_SECURE_TRANSPORT === 'true',
     ...(webAvailable ? { webDist } : {}),
   });
   server.on('request', app);

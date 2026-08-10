@@ -28,6 +28,7 @@ services:
       AGENTHUB_HOST: 0.0.0.0
       AGENTHUB_PORT: 3210
       AGENTHUB_AUTH_MODE: token
+      AGENTHUB_SECURE_TRANSPORT: ${AGENTHUB_SECURE_TRANSPORT:-false}
       AGENTHUB_DATA_DIR: /volume2/Project/.agenthub/central/data
       AGENTHUB_WORKTREE_ROOT: /volume2/Project/.agenthub/central/worktrees
       AGENTHUB_WEB_DIST: /opt/agenthub/apps/web/dist

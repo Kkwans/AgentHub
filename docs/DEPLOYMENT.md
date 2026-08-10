@@ -28,6 +28,7 @@ AgentHub v0.3 由 Central Server 与可选的 host-native Remote Node daemon 组
 完整构建、切换和回滚步骤见 [`deploy/compose/README.md`](../deploy/compose/README.md)。上述挂载
 与 privileged 等同 NAS root 权限，不是安全隔离；跨不可信网络必须增加 TLS 反向代理。
 root 进程使用 `SUDO_UID=1000` 识别 Kkwans-owned Project，避免放宽到 `safe.directory=*`。
+HTTP LAN 保持 `AGENTHUB_SECURE_TRANSPORT=false`；TLS 反向代理上线后设为 `true` 恢复 COOP。
 
 ## 安装与构建
 
