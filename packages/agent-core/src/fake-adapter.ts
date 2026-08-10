@@ -18,6 +18,8 @@ export interface FakeAdapterOptions {
   capabilities?: AgentCapabilities;
   preflight?: PreflightReport;
   now?: () => Date;
+  includeExternalRunId?: boolean;
+  usagePayload?: Record<string, unknown>;
 }
 
 export const FAKE_AGENT_CAPABILITIES: AgentCapabilities = {
@@ -42,11 +44,15 @@ export class FakeAgentAdapter implements AgentRuntimeAdapter {
   private readonly capabilities: AgentCapabilities;
   private readonly preflightReport: PreflightReport;
   private readonly now: () => Date;
+  private readonly includeExternalRunId: boolean;
+  private readonly usagePayload: Record<string, unknown>;
 
   constructor(options: FakeAdapterOptions = {}) {
     this.scenario = options.scenario ?? 'complete';
     this.capabilities = options.capabilities ?? FAKE_AGENT_CAPABILITIES;
     this.now = options.now ?? (() => new Date());
+    this.includeExternalRunId = options.includeExternalRunId ?? true;
+    this.usagePayload = options.usagePayload ?? { inputTokens: 2, outputTokens: 4 };
     this.preflightReport = options.preflight ?? {
       status: 'READY',
       checkedAt: this.now().toISOString(),
@@ -76,6 +82,8 @@ export class FakeAgentAdapter implements AgentRuntimeAdapter {
       `fake-session-${this.sessionCounter}`,
       this.scenario,
       this.now,
+      this.includeExternalRunId,
+      this.usagePayload,
     );
   }
 }
@@ -103,6 +111,8 @@ class FakeAgentSession implements AgentSessionHandle {
     readonly externalSessionId: string,
     private readonly scenario: FakeAdapterScenario,
     private readonly now: () => Date,
+    private readonly includeExternalRunId: boolean,
+    private readonly usagePayload: Record<string, unknown>,
   ) {
     this.emit('session.created', { externalSessionId });
   }
@@ -152,7 +162,9 @@ class FakeAgentSession implements AgentSessionHandle {
       case 'idle':
         break;
     }
-    return { runId: input.runId, externalRunId: `fake-run-${input.runId}` };
+    return this.includeExternalRunId
+      ? { runId: input.runId, externalRunId: `fake-run-${input.runId}` }
+      : { runId: input.runId };
   }
 
   async resolveApproval(id: string, decision: ApprovalDecision): Promise<void> {
@@ -191,7 +203,7 @@ class FakeAgentSession implements AgentSessionHandle {
 
   private complete(runId: string): void {
     this.emit('assistant.message.completed', { text: '测试响应' }, runId);
-    this.emit('usage.updated', { inputTokens: 2, outputTokens: 4 }, runId);
+    this.emit('usage.updated', this.usagePayload, runId);
     this.emit('run.completed', { outcome: 'success' }, runId);
     this.activeRunId = undefined;
   }

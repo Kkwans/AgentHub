@@ -297,9 +297,10 @@ export class SessionService {
           : input.text,
         ...(input.content ? { content: input.content } : {}),
       });
-      const run = await this.runs.patch(runId, {
-        externalRunId: reference.externalRunId,
-      });
+      const run = reference.externalRunId
+        ? await this.runs.patch(runId, { externalRunId: reference.externalRunId })
+        : await this.runs.get(runId);
+      if (!run) throw new Error(`Run ${runId} 在启动后不存在`);
       return run;
     } catch (error) {
       await this.runs.transition(runId, 'FAILED', {
@@ -487,10 +488,14 @@ export class SessionService {
       });
     }
     if (event.type === 'usage.updated' && event.runId) {
-      await this.runs.patch(event.runId, {
-        inputTokens: numberValue(payload.inputTokens),
-        outputTokens: numberValue(payload.outputTokens),
-      });
+      const inputTokens = numberValue(payload.inputTokens);
+      const outputTokens = numberValue(payload.outputTokens);
+      if (inputTokens !== undefined || outputTokens !== undefined) {
+        await this.runs.patch(event.runId, {
+          ...(inputTokens !== undefined ? { inputTokens } : {}),
+          ...(outputTokens !== undefined ? { outputTokens } : {}),
+        });
+      }
     }
     if (event.type === 'run.completed' && event.runId) {
       const session = await this.get(event.sessionId);

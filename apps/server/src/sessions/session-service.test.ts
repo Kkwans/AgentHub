@@ -36,6 +36,10 @@ describe('Session/Run/Approval 持久化闭环', () => {
   async function createFixture(
     scenario: 'complete' | 'approval' | 'idle',
     promptContext?: PromptContextResolver,
+    adapterOptions: {
+      includeExternalRunId?: boolean;
+      usagePayload?: Record<string, unknown>;
+    } = {},
   ) {
     const agents = new AgentRepository(database.db);
     const targets = new ExecutionTargetRepository(database.db);
@@ -76,7 +80,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
       status: 'READY',
     });
 
-    const adapter = new FakeAgentAdapter({ scenario });
+    const adapter = new FakeAgentAdapter({ scenario, ...adapterOptions });
     const agentService = new AgentService(agents, targets, new NeverLaunch(), () => adapter);
     const published: Array<{ topic: string; event: Record<string, unknown> }> = [];
     const git = new SequenceGitProbe(['before-sha', 'after-sha']);
@@ -179,6 +183,30 @@ describe('Session/Run/Approval 持久化闭环', () => {
     expect((await fixture.repositories.sessions.get(session.id))?.status).toBe('DISCONNECTED');
     expect((await fixture.repositories.runs.get(run.id))?.status).toBe('DISCONNECTED');
     expect(await fixture.repositories.approvals.listPending(session.id)).toHaveLength(0);
+    await fixture.service.shutdown();
+  });
+
+  it('ACP 未返回 externalRunId 且 usage 只有 context 数据时仍完成 Run', async () => {
+    const fixture = await createFixture('complete', undefined, {
+      includeExternalRunId: false,
+      usagePayload: { used: 22_271, size: 258_400 },
+    });
+    const session = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: 'ACP 可选字段回归',
+      cwd: '/tmp',
+    });
+    const started = await fixture.service.startRun(session.id, { text: '执行真实 ACP 行为' });
+
+    expect(started.externalRunId).toBeNull();
+    await waitFor(
+      async () => (await fixture.repositories.runs.get(started.id))?.status === 'COMPLETED',
+    );
+    expect(await fixture.repositories.sessions.get(session.id)).toMatchObject({ status: 'READY' });
+    expect(await fixture.repositories.messages.list(session.id)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ role: 'ASSISTANT', text: '测试响应' })]),
+    );
     await fixture.service.shutdown();
   });
 
