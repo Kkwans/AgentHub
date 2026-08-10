@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-10T12:10:53.000Z",
+  "finishedAt": "2026-08-10T12:10:55.680Z",
+  "baseURL": "http://192.168.5.110:3210",
+  "access": "first-run-setup-screen",
+  "browser": "150.0.7871.182",
+  "checks": [
+    {
+      "name": "TX5Pro 直接访问 NAS LAN health",
+      "status": "ok",
+      "version": "0.3.0",
+      "database": "pglite",
+      "web": true
+    },
+    {
+      "name": "1440 首次设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "390 首次设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "首次设置只要求用户名和密码，不展示 token、Session 或命令行",
+      "status": "PASS"
+    }
+  ],
+  "runtimeIssues": [],
+  "failedRequests": [],
+  "externalRequests": [],
+  "screenshots": ["first-run-1440.png", "first-run-390.png"],
+  "result": "PASS"
+}

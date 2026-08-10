@@ -30,6 +30,14 @@
 - 401 根因已复现：浏览器没有旧部署 Bearer token，受保护 REST 和 `/ws` 均正确拒绝；旧前端
   又把平台登录错误误写成“Agent 需要授权”。当前登录门禁在任何受保护 Query 前完成，401
   显示“登录已失效”，加载态、错误态、设置页双列布局与 9/12/16px 圆角层级已统一。
+- 管理员登录版已以 `agenthub:0.3.0-nas.2` 部署；更新前冷备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260810T195343-pre-account-auth/`。受控
+  Compose 重启后容器恢复 healthy，首次设置状态、原 Project/Execution Target 均持久恢复，
+  三个既有 Agent 容器保持原完整 ID、镜像和 `exited` 状态。
+- TX5Pro Chrome 150 从 LAN 直连正式服务完成管理员首次设置页验收：1440/390 均无横向
+  溢出，0 request/console/page/HTTP 错误与 0 外部请求；页面只要求用户名、密码和确认密码，
+  不展示 token、Session 或命令行。证据归档于
+  `docs/qa/tx5pro/2026-08-10-account-auth/`。
 
 ## v0.3 当前状态
 

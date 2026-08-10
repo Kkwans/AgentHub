@@ -109,7 +109,7 @@ async function loginThroughUi(page) {
   }
   await page.getByRole('heading', { name: '登录 AgentHub' }).waitFor();
   await page.getByRole('textbox', { name: '用户名' }).fill(username);
-  await page.getByLabel('密码').fill(password);
+  await page.getByLabel('密码', { exact: true }).fill(password);
   await page.getByRole('button', { name: '登录' }).click();
   await page.getByRole('heading', { name: '今天需要处理什么' }).waitFor();
 }
@@ -151,7 +151,7 @@ async function run() {
         await page.goto(`${baseURL}/overview`, { waitUntil: 'networkidle' });
         await page.getByRole('heading', { name: '创建管理员账号' }).waitFor();
         await page.getByRole('textbox', { name: '用户名' }).waitFor();
-        await page.getByLabel('密码').waitFor();
+        await page.getByLabel('密码', { exact: true }).waitFor();
         await page.getByLabel('确认密码').waitFor();
         await assertNoRootOverflow(page, `${width} 首次设置页无根页面横向溢出`);
         await screenshot(page, `first-run-${width}.png`);

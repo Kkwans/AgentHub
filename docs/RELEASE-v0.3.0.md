@@ -19,10 +19,11 @@ v0.3.0 聚焦 UI/UX 和 NAS 可用部署。后续 NAS 登录体验更新增加�
 
 - `pnpm format:check`、`pnpm lint`、`pnpm typecheck`、production build：通过；
 - Web 单元测试：10 项通过；版本/健康/App 聚焦回归：19 项通过；
-- 全仓非沙箱 Vitest：33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过；
-- TX5Pro：20 项通过，0 request failure、console/page error、HTTP 4xx/5xx 和外部请求；
+- 全仓非沙箱 Vitest：33 个文件通过、3 个 live 文件按 gate 跳过，119 项通过、7 项跳过；
+- TX5Pro：原 v0.3 UI 20 项通过；现行首次管理员设置页在 1440/390 通过，0 request
+  failure、console/page error、HTTP 4xx/5xx 和外部请求；
 - Compose：Project `agenthub` 可由 `docker compose ls` 枚举；容器为 healthy，受控重启后
-  账号/Cookie auth、WebSocket、自身 Project 与 Execution Target 均持久恢复；原 systemd 已
+  首次设置状态、自身 Project 与 Execution Target 均持久恢复；原 systemd 已
   `disabled/inactive` 并保留为回滚路径。
 - GitHub Actions：main run [`31374423006`](https://github.com/Kkwans/AgentHub/actions/runs/31374423006) 完整通过 install、lint、typecheck、test、build 与 Playwright E2E。
 - NAS 全局 `/tmp` 已满；正式服务通过 `TMPDIR=/volume2/Project/.agenthub/central/tmp` 隔离，运行中进程已验证继承该值，不删除其他项目缓存。
@@ -38,5 +39,6 @@ v0.3.0 聚焦 UI/UX 和 NAS 可用部署。后续 NAS 登录体验更新增加�
 首次 systemd 部署见 [NAS v0.3 部署验收](qa/nas/2026-08-10-v03-deployment/README.md)，
 现行 Compose 部署、冷备份和回滚见
 [NAS Compose 迁移验收](qa/nas/2026-08-10-compose-migration/README.md)。UI 重构实机证据见
-[TX5Pro v0.3 UI 验收](qa/tx5pro/2026-08-10-v03-ui/README.md)，LAN token 入口证据见
-[TX5Pro Compose LAN 验收](qa/tx5pro/2026-08-10-compose-lan/README.md)。
+[TX5Pro v0.3 UI 验收](qa/tx5pro/2026-08-10-v03-ui/README.md)，LAN token 入口历史证据见
+[TX5Pro Compose LAN 验收](qa/tx5pro/2026-08-10-compose-lan/README.md)，现行网页登录证据见
+[管理员登录 TX5Pro 验收](qa/tx5pro/2026-08-10-account-auth/README.md)。
