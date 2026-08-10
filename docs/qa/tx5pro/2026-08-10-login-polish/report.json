@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-10T13:33:49.053Z",
+  "finishedAt": "2026-08-10T13:33:52.433Z",
+  "baseURL": "http://192.168.5.110:3210",
+  "access": "first-run-setup-screen",
+  "browser": "150.0.7871.182",
+  "checks": [
+    {
+      "name": "TX5Pro 直接访问 NAS LAN health",
+      "status": "ok",
+      "version": "0.3.0",
+      "database": "pglite",
+      "web": true
+    },
+    {
+      "name": "1440 首次设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "密码输入聚焦态仅保留单层描边",
+      "status": "PASS",
+      "inputOutline": "none",
+      "rootOutlineWidth": "2px",
+      "rootBoxShadow": "none"
+    },
+    {
+      "name": "390 首次设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "首次设置使用新品牌标志、紧凑顶部布局与统一密码可见性组件",
+      "status": "PASS"
+    },
+    {
+      "name": "首次设置只要求用户名和密码，不展示 token、Session 或命令行",
+      "status": "PASS"
+    }
+  ],
+  "runtimeIssues": [],
+  "failedRequests": [],
+  "externalRequests": [],
+  "screenshots": [
+    "first-run-1440.png",
+    "first-run-focus-1440.png",
+    "first-run-focus-form-1440.png",
+    "first-run-390.png"
+  ],
+  "result": "PASS"
+}

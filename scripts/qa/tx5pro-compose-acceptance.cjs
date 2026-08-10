@@ -150,13 +150,47 @@ async function run() {
         const { context, page } = await createContext(browser, { width, height: 1000 }, label);
         await page.goto(`${baseURL}/overview`, { waitUntil: 'networkidle' });
         await page.getByRole('heading', { name: '创建管理员账号' }).waitFor();
+        await page.locator('.access-brand svg').waitFor();
         await page.getByRole('textbox', { name: '用户名' }).waitFor();
-        await page.getByLabel('密码', { exact: true }).waitFor();
+        const passwordInput = page.getByLabel('密码', { exact: true });
+        await passwordInput.waitFor();
         await page.getByLabel('确认密码').waitFor();
+        assert.equal(await page.getByRole('button', { name: '显示密码' }).count(), 2);
+        assert.equal(await page.locator('.access-hero-icon').count(), 0);
+        const brandBox = await page.locator('.access-brand').boundingBox();
+        const copyBox = await page.locator('.access-copy').boundingBox();
+        assert.ok(brandBox && copyBox, '无法测量首次设置页顶部布局');
+        assert.ok(copyBox.y - (brandBox.y + brandBox.height) <= 36, '品牌区与说明区间距过大');
+        const firstVisibilityButton = page.getByRole('button', { name: '显示密码' }).first();
+        await firstVisibilityButton.click();
+        assert.equal(await passwordInput.getAttribute('type'), 'text');
+        await page.getByRole('button', { name: '隐藏密码' }).click();
+        assert.equal(await passwordInput.getAttribute('type'), 'password');
         await assertNoRootOverflow(page, `${width} 首次设置页无根页面横向溢出`);
         await screenshot(page, `first-run-${width}.png`);
+        if (width === 1440) {
+          await passwordInput.focus();
+          const focusStyle = await passwordInput.evaluate((input) => {
+            const root = input.closest('.rt-TextFieldRoot');
+            return {
+              inputOutline: getComputedStyle(input).outlineStyle,
+              rootOutlineWidth: root ? getComputedStyle(root).outlineWidth : '',
+              rootBoxShadow: root ? getComputedStyle(root).boxShadow : '',
+            };
+          });
+          assert.equal(focusStyle.inputOutline, 'none');
+          assert.equal(focusStyle.rootOutlineWidth, '2px');
+          assert.equal(focusStyle.rootBoxShadow, 'none');
+          await screenshot(page, 'first-run-focus-1440.png');
+          await page.locator('.access-form').screenshot({
+            path: path.join(outputDirectory, 'first-run-focus-form-1440.png'),
+          });
+          report.screenshots.push('first-run-focus-form-1440.png');
+          recordCheck('密码输入聚焦态仅保留单层描边', focusStyle);
+        }
         await context.close();
       }
+      recordCheck('首次设置使用新品牌标志、紧凑顶部布局与统一密码可见性组件');
       recordCheck('首次设置只要求用户名和密码，不展示 token、Session 或命令行');
       assert.deepEqual(report.runtimeIssues, [], '发现 console/page/HTTP 错误');
       assert.deepEqual(report.failedRequests, [], '发现 request failure');
