@@ -4,7 +4,7 @@
 
 所有实现适配 `AgentRuntimeAdapter`、`AgentSessionHandle`、`AgentCapabilities` 与 `NormalizedAgentEvent`。ACP、OpenClaw 与 Docker 类型停留在 adapter/execution 边界。
 
-## v0.1 Profile
+## 内置 Profile
 
 | Agent       | 运行位置           | 主路径                            | 已知状态                                                  |
 | ----------- | ------------------ | --------------------------------- | --------------------------------------------------------- |
@@ -23,3 +23,9 @@
 Agent 原生认证归 Agent 自身所有。AgentHub 可调用只读状态或官方登录流程，但不得读取、复制或持久化原生凭据。
 
 OpenClaw Docker ACP 固定设置 `OPENCLAW_HIDE_BANNER=1` 与 `OPENCLAW_SUPPRESS_NOTES=1`，防止 banner/Doctor 文案污染 stdout NDJSON；这两个变量不含凭据。token/password 只能使用供应商配置、环境引用或文件引用，不进入 argv 和数据库原文。
+
+## Remote Node
+
+Remote Node inventory 只上报 Agent 类型、固定 executable/args、版本与 capability，不上报 credential 或 provider environment。中央创建 Remote Agent 时只能选择该 inventory 中的 Profile；Node 在每次 preflight/Session 前重新校验 Project cwd 位于授权 root，并以 argv、`shell: false` 启动。
+
+v0.2 已真实验证 Remote Codex 的 preflight、Session、stream、Task 人工审阅闭环。其他 Agent 的可用性以各 Node 当次 inventory/preflight 为准，不从中央宿主机状态推断。Remote Git、Remote Worktree、Remote Terminal、Remote Docker 与通用 command 不在本版本能力矩阵中。

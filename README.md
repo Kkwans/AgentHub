@@ -1,10 +1,10 @@
 # AgentHub
 
-AgentHub 是一个 host-native 的本地 AI Coding Agent 控制平面。v0.1 统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，并通过显式注册安全接管既有 Docker Agent 容器。
+AgentHub 是一个 host-native 的 AI Coding Agent 控制平面。v0.2 统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。既有 Docker Agent 容器仍只允许显式、安全接管。
 
 ## 当前版本
 
-当前版本为 v0.1.0。完成状态与已验证证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md)，部署与回滚见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
+当前版本为 v0.2.0。完成状态与已验证证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md)，部署与回滚见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)，发布范围见 [`docs/RELEASE-v0.2.0.md`](docs/RELEASE-v0.2.0.md)。
 
 ## 环境
 
@@ -24,6 +24,12 @@ pnpm build
 pnpm test:e2e
 ```
 
+真实 Agent 测试受环境变量控制：
+
+```bash
+AGENTHUB_E2E_LIVE=1 pnpm test:live
+```
+
 本地开发：
 
 ```bash
@@ -36,8 +42,11 @@ pnpm dev
 
 - Docker 只允许操作显式注册且 container ID 仍匹配的目标。
 - Agent 命令使用固定 executable/args，不提供通用 Docker Shell。
-- 文件 API 在 v0.1 只读。
+- 本机与 Remote Node 文件 API 均只读，并在执行端重复做路径 containment 与 symlink escape 防护。
 - 非 loopback 监听必须启用 token auth。
 - Agent 原生凭据归 Agent 所有，AgentHub 不复制凭据。
+- Remote Node 使用一次性注册码与 Ed25519 设备身份，只主动连接中央 `/node/ws`；非 loopback 必须使用 `wss://`。
+
+Remote Node 不提供 SSH、任意 shell、远程 Terminal、远程 Docker 管理或 Remote Worktree merge。详细契约见 [`docs/implementation/V0.2_REMOTE_NODE.md`](docs/implementation/V0.2_REMOTE_NODE.md)。
 
 详细说明见 [`docs/SECURITY.md`](docs/SECURITY.md)。

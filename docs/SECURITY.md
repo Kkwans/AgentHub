@@ -41,9 +41,21 @@
 - 不自动执行 reset、rebase、force push、branch delete 或 worktree cleanup；merge 失败时只
   abort 当前 merge 并回到 Review，现场保留供人工诊断。
 
+## Remote Node
+
+- Node 只建立 outbound WebSocket，不开放 SSH、RPC HTTP 或其他入站管理端口；非 loopback 连接必须使用 `wss://`。
+- 首次注册使用 32-byte 随机一次性 token。中央只保存 SHA-256 hash，校验、过期检查与消费在事务中完成；明文只在创建响应中出现一次。
+- Node 本地生成 Ed25519 key pair，private key 以 `0600` 保存在 Node 数据目录；中央只保存 public key 与 SHA-256 fingerprint。
+- 每次连接由中央生成 challenge，Node 对固定域分离 payload 签名；revoke 后当前连接关闭，后续认证拒绝。
+- 中央注册码 roots 与 Node 本地 realpath roots 必须匹配。每次 Project、cwd、文件请求仍在 Node 上重新执行 lexical/realpath containment 与 symlink escape 防护。
+- Node 只接受 versioned RPC allow-list；Agent 必须来自本地 inventory，并用固定 Profile、argv 与 `shell: false` 启动。中央不能传入任意 executable、shell command 或 provider credential。
+- 协议限制单条消息为 1 MiB，并为 RPC 设置 request ID 与 timeout；断线不自动重放有副作用的 prompt、approval 或 cancel。
+- Remote Git、Remote Worktree、远程 Terminal 与远程 Docker 管理不属于 v0.2；服务返回明确的 unsupported 状态，不以本机能力代替远端执行。
+
 ## 日志与诊断
 
 - 对 token、cookie、Authorization header、常见 API key、Agent auth payload 与用户配置的敏感模式脱敏。
+- Remote Node 日志不得输出注册码、private/public key 原文、签名或 provider environment；诊断只展示 fingerprint、roots、inventory 和脱敏错误。
 - 默认日志不包含完整 Prompt、文件正文或供应商原始 payload。
 - 原始调试信息需要显式开启并在返回前脱敏。
 - 服务日志明确 redact `Authorization`、token、password 与 secret 字段；token 不允许通过 query string 传递。

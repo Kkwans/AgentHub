@@ -15,7 +15,7 @@
 - 已初始化 `main` 分支与 pnpm monorepo。
 - 已固定 Node.js 24、pnpm 11、TypeScript、ESLint、Prettier、Vitest、Playwright 与 CI 基线。
 - 已锁定 ACP v1 依赖：SDK `1.3.0`、codex-acp `1.1.14`、claude-agent-acp `0.66.0`。
-- TX5Pro 实机验收已完成；报告与截图归档于 `docs/qa/tx5pro/2026-08-10/`。
+- v0.1 与 v0.2 TX5Pro 实机验收均已完成；Remote Node 报告与截图归档于 `docs/qa/tx5pro/2026-08-10-remote-node/`。
 
 ## 环境事实
 
@@ -132,7 +132,35 @@ v0.2 Worktree Task Runner：
   通过；Vitest 25 个文件通过、2 个 live 文件按环境 gate 跳过，97 项通过、6 项跳过。
 - live fixture 已在独立 Server 关闭后清理；未触碰现有 Project、Agent Docker、Compose、
   镜像或 volume。
-- 下一阶段：Remote Node 注册、设备身份、outbound secure WebSocket 与远程执行闭环。
+
+v0.2 Remote Node：
+
+- R1：一次性 registration token、Ed25519 设备身份、challenge/signature、revoke、heartbeat、
+  reconnect、1 MiB message limit 与 `/node/ws` gateway 已完成。
+- R2：`REMOTE_NODE` Execution Target、授权 roots、Agent inventory、远程 Project preflight、
+  只读文件，以及 Session/Run/Approval/cancel/close 已完成；Remote Git/Worktree/Terminal 按
+  v0.2 范围明确返回 unsupported。
+- Remote Node 自动化：协议、identity、gateway、daemon、repository、workflow 与安全边界
+  已覆盖；v0.2 最终标准 Vitest 为 33 个文件通过、3 个 live 文件按 gate 跳过，112 项通过、
+  7 项跳过。
+- Remote Node UI：中文注册、一次性 secret、连接命令、在线状态、fingerprint、roots、
+  inventory、诊断与 revoke 完成；Web 单元 8 项、Playwright 四视口 16 项通过。
+- 真实 live：临时 PGlite + Central Server + Node daemon + 宿主机 pinned Codex 完成注册、
+  远程 Project、preflight、Session stream 与 close；Assistant 返回 `REMOTE_OK`。
+- TX5Pro：Windows 10 build 26200、Chrome `150.0.7871.182`，通过 SSH local forward 操作
+  中文 UI；26 项检查、1440/1024/768/390、0 request failure、0 console/page error、
+  0 HTTP 4xx/5xx、0 外部请求。证据见 `docs/qa/tx5pro/2026-08-10-remote-node/`。
+- 验收临时 Server、Node、PGlite 与隧道已回收，NAS `3210`、TX5Pro `43210` 无遗留监听；
+  未修改或启停现有 Agent Docker/Compose、镜像或 volume。
+- v0.2 最终 gate：`pnpm format:check`、`pnpm lint`、`pnpm typecheck`、`pnpm build` 全部通过；
+  Playwright 四视口 16 项通过；Remote Node 与 Worktree 真实 Codex live 2 项通过，耗时
+  100.08 秒。
+- 为遵守“不改动现有 Agent Docker/Compose/数据”的 v0.2 Goal，最终 live 只选择 Remote Node
+  与 Worktree 两个临时 fixture；会启动/停止现有 Agent 容器的 `agent-preflight.test.ts` 未重跑。
+  v0.1 已归档该容器 live 结果，本次相关 Docker/Agent Profile 代码未修改。
+- release gate 后临时 fixture 均已清理，NAS `3210`/TX5Pro `43210` 无遗留监听；Claude、
+  Hermes、OpenClaw 容器保持原 `exited` 状态及原完整 container ID。
+- v0.2.0 版本元数据、部署/API/数据库/安全/排障/发布说明、公开 GitHub main 与 tag 已完成。
 
 ## 未验证项
 

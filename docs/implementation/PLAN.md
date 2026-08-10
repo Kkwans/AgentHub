@@ -46,5 +46,7 @@ UI 阶段增加 `pnpm test:e2e`；真实 Agent 验收使用 `AGENTHUB_E2E_LIVE=1
 | W1     | Worktree 领域状态、迁移、repository 与安全 Git 服务    | 已完成 |
 | W2     | 持久队列、Agent Run、Review/Rework/Merge 编排          | 已完成 |
 | W3     | 中文任务控制面、E2E、真实 Git 验收与提交               | 已完成 |
-| R1     | Remote Node 注册、设备身份与 outbound secure WebSocket | 进行中 |
-| R2     | Remote target、Agent inventory、repo roots 与执行闭环  | 待开始 |
+| R1     | Remote Node 注册、设备身份与 outbound secure WebSocket | 已完成 |
+| R2     | Remote target、Agent inventory、repo roots 与执行闭环  | 已完成 |
+| R3     | 中文管理 UI、安全测试、live 与 TX5Pro 实机验收         | 已完成 |
+| R4     | v0.2 文档、release gate、版本标签与 GitHub 发布        | 已完成 |

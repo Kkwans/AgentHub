@@ -52,6 +52,18 @@
 - Server 重启时 `QUEUED` 会恢复调度；原本正在设置、运行、等待批准、审阅或合并的项会标为
   `BLOCKED` 并保留路径，避免盲目续跑。
 
+## Remote Node
+
+- daemon 启动时报“生产连接必须使用 `wss://`”：非 loopback 不能使用明文 `ws://`；为 Central Server 配置受信 TLS 与 WebSocket reverse proxy。loopback 开发连接可继续用 `ws://127.0.0.1`。
+- `REMOTE_NODE_REGISTRATION_TOKEN_EXPIRED` / `REMOTE_NODE_REGISTRATION_TOKEN_USED`：注册码已过期或已消费，不能复用；在中央重新创建一次性注册码。不要删除已有设备身份尝试绕过校验。
+- `REMOTE_NODE_SIGNATURE_INVALID` / `REMOTE_NODE_PUBLIC_KEY_INVALID`：本地 identity 与中央登记不一致或文件损坏。先核对页面 fingerprint 与 Node 数据目录归属；不要复制其他设备的 private key。确需重新注册时先 revoke 旧设备。
+- `REMOTE_NODE_ROOTS_MISMATCH`：中央注册码 roots 与 Node 上报的 absolute realpath roots 没有交集；同时核对 `allowedRoots` 与 `AGENTHUB_NODE_ROOTS_JSON`，不要扩大到 `/`、HOME 或不必要的父目录。
+- `REMOTE_NODE_ROOT_TOO_BROAD` / `REMOTE_ROOT_NOT_ALLOWED` / `REMOTE_SYMLINK_ESCAPE`：路径超出授权 root、root 过宽或 symlink 逃逸。修正最小授权 root/Project path，不关闭 containment。
+- `REMOTE_NODE_OFFLINE` / `REMOTE_NODE_DISCONNECTED`：检查 daemon 进程、DNS/TLS、反向代理 `/node/ws` upgrade 和中央诊断中的 `lastSeenAt`。未决 RPC 会失败，不会自动重放 prompt。
+- `REMOTE_NODE_RPC_TIMEOUT`：Node 在 deadline 内未返回固定命令结果；检查 Node 日志、Agent 进程与目标文件系统，但不要改成通用 shell 进行旁路执行。
+- Agent 显示 `REMOTE_AGENT_MISSING` 或 `BROKEN`：以 Node inventory 与远程 preflight 为准，在 Node 本机安装/修复固定版本运行时并重新连接；中央不会复制 credential 或执行 `npx latest`。
+- Remote Project 的 Git/Worktree/Terminal 操作显示 unsupported 是 v0.2 设计边界，不是连接故障。
+
 ## Docker 安全诊断
 
 - 只核验显式注册的 container name 与完整 ID。

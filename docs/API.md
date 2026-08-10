@@ -17,7 +17,7 @@
 
 `code` 为稳定英文契约；原始供应商 payload 只在显式调试视图返回，并先脱敏。
 
-v0.1 资源包括 Project、Agent、Execution Target、Session、Run、Approval、PromptOS、Goal、Task、Git、Auth、Settings，以及只读文件树/内容接口。
+v0.2 资源包括 Project、Agent、Execution Target、Remote Node、Session、Run、Approval、PromptOS、Goal、Task、Git、Auth、Settings，以及只读文件树/内容接口。
 
 ## Auth / Dashboard / Goal / Task
 
@@ -67,6 +67,34 @@ POST     /api/v1/execution-targets/:id/stop
 
 `stop` 在存在活动 Session/Run 时返回冲突；调用方需先取消并关闭相关 Run。
 
+## Remote Node
+
+```text
+GET  /api/v1/remote-nodes
+POST /api/v1/remote-nodes/registration-tokens
+GET  /api/v1/remote-nodes/:id/diagnostics
+POST /api/v1/remote-nodes/:id/revoke
+```
+
+创建注册码需要 `name`、`allowedRoots`，可选 `expiresInMinutes` 为 1..1440。响应中的明文 `token` 只出现一次；数据库、列表与诊断只保留 hash/指纹等安全摘要。成功注册会原子消费 token，并创建关联的 `REMOTE_NODE` Execution Target。revoke 会拒绝后续认证并关闭当前连接。
+
+Node daemon 主动连接 `/node/ws`，协议版本为 `agenthub-node-v1`。中央只可发送固定 RPC：
+
+```text
+project.preflight
+fs.list
+fs.read
+agent.preflight
+agent.capabilities
+session.create
+session.run
+session.approval
+session.cancel
+session.close
+```
+
+每条命令都有 UUID request ID、超时与 1 MiB 消息上限。Agent stream 使用独立 event 消息；断线会明确拒绝未决 RPC，不重放 prompt、approval 或 cancel。该协议不接受任意 executable、environment secret 或 shell command。
+
 ## Project / Files / Git
 
 ```text
@@ -102,9 +130,11 @@ POST /api/v1/terminals/:id/close
 
 ## WebSocket
 
-所有实时数据使用 `/ws` 单连接，topic 为 Session、Project、Approval、Worktree、Terminal。
+所有浏览器实时数据使用 `/ws` 单连接，topic 为 Session、Project、Approval、Worktree、Remote Node、Terminal。
 Worktree 控制面订阅 `worktrees`，Project 详情同时接收 `project:<id>`。Session 事件包含
 单调 `seq`；客户端以 `afterSeq` 请求补流。Terminal 使用独立生命周期消息，不复用
 Session 文本事件。
+
+Remote Node 控制面订阅 `remote-nodes`。`/node/ws` 是 daemon 的设备认证/RPC 通道，不是浏览器 topic 连接，也不接受 API bearer token 替代设备签名。
 
 token 模式下，非浏览器客户端使用 `Authorization: Bearer <token>`；浏览器客户端以 `agenthub-v1` 和 `agenthub-token.<token>` 两个 subprotocol 发起握手，服务只协商 `agenthub-v1`。
