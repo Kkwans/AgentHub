@@ -36,6 +36,7 @@ import {
   type SessionRecord,
 } from '../lib/api';
 import { realtime } from '../lib/realtime';
+import '../styles/v3-workspace.css';
 
 type InspectorTab = 'files' | 'diff' | 'git' | 'run';
 

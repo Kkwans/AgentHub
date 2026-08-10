@@ -1,17 +1,38 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { AppShell } from './components/AppShell';
 import { AccessGate } from './components/AccessGate';
-import {
-  AgentsPage,
-  OverviewPage,
-  ProjectsPage,
-  SessionsPage,
-  SettingsPage,
-  TasksPage,
-} from './pages/ControlPages';
-import { WorkspacePage } from './pages/WorkspacePage';
-import { PromptOsPage } from './pages/PromptOsPage';
+import { AppShell } from './components/AppShell';
+import { LoadingState } from './components/Common';
+
+const OverviewPage = lazy(() =>
+  import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })),
+);
+const ProjectsPage = lazy(() =>
+  import('./pages/ControlPages').then((module) => ({ default: module.ProjectsPage })),
+);
+const TasksPage = lazy(() =>
+  import('./pages/ControlPages').then((module) => ({ default: module.TasksPage })),
+);
+const AgentsPage = lazy(() =>
+  import('./pages/ControlPages').then((module) => ({ default: module.AgentsPage })),
+);
+const SessionsPage = lazy(() =>
+  import('./pages/ControlPages').then((module) => ({ default: module.SessionsPage })),
+);
+const SettingsPage = lazy(() =>
+  import('./pages/ControlPages').then((module) => ({ default: module.SettingsPage })),
+);
+const WorkspacePage = lazy(() =>
+  import('./pages/WorkspacePage').then((module) => ({ default: module.WorkspacePage })),
+);
+const PromptOsPage = lazy(() =>
+  import('./pages/PromptOsPage').then((module) => ({ default: module.PromptOsPage })),
+);
+
+function DeferredPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<LoadingState label="正在加载页面" />}>{children}</Suspense>;
+}
 
 export function App() {
   return (
@@ -19,14 +40,70 @@ export function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<Navigate replace to="/overview" />} />
-          <Route path="overview" element={<OverviewPage />} />
-          <Route path="projects" element={<ProjectsPage />} />
-          <Route path="tasks" element={<TasksPage />} />
-          <Route path="agents" element={<AgentsPage />} />
-          <Route path="sessions" element={<SessionsPage />} />
-          <Route path="sessions/:id" element={<WorkspacePage />} />
-          <Route path="promptos" element={<PromptOsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route
+            path="overview"
+            element={
+              <DeferredPage>
+                <OverviewPage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="projects"
+            element={
+              <DeferredPage>
+                <ProjectsPage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="tasks"
+            element={
+              <DeferredPage>
+                <TasksPage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="agents"
+            element={
+              <DeferredPage>
+                <AgentsPage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="sessions"
+            element={
+              <DeferredPage>
+                <SessionsPage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="sessions/:id"
+            element={
+              <DeferredPage>
+                <WorkspacePage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="promptos"
+            element={
+              <DeferredPage>
+                <PromptOsPage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <DeferredPage>
+                <SettingsPage />
+              </DeferredPage>
+            }
+          />
           <Route path="*" element={<Navigate replace to="/overview" />} />
         </Route>
       </Routes>

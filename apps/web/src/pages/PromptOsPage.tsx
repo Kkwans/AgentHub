@@ -29,6 +29,7 @@ import {
   type SkillBindingRecord,
   type SkillRecord,
 } from '../lib/api';
+import '../styles/v3-promptos.css';
 
 type PromptTab = 'versions' | 'labels' | 'diff' | 'bindings' | 'playground' | 'context' | 'skills';
 

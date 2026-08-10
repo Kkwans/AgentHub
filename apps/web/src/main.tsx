@@ -9,8 +9,6 @@ import '@agenthub/ui/styles.css';
 import './styles.css';
 import './styles/v3-foundation.css';
 import './styles/v3-controls.css';
-import './styles/v3-promptos.css';
-import './styles/v3-workspace.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
