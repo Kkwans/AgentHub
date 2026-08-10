@@ -55,6 +55,25 @@ importers:
 
   apps/cli: {}
 
+  apps/node:
+    dependencies:
+      '@agenthub/adapter-acp':
+        specifier: workspace:*
+        version: link:../../packages/adapter-acp
+      '@agenthub/agent-core':
+        specifier: workspace:*
+        version: link:../../packages/agent-core
+      '@agenthub/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      ws:
+        specifier: 8.21.3
+        version: 8.21.3
+    devDependencies:
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
+
   apps/server:
     dependencies:
       '@agenthub/adapter-acp':

@@ -9,6 +9,7 @@
     { "path": "packages/ui" },
     { "path": "apps/server" },
     { "path": "apps/web" },
-    { "path": "apps/cli" }
+    { "path": "apps/cli" },
+    { "path": "apps/node" }
   ]
 }
