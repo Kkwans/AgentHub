@@ -23,3 +23,14 @@
 ## D-006：UI 语言
 
 状态：已接受。用户操作与解释文案使用简体中文；Agent、PromptOS、Git、Terminal、模型、模式、路径、分支、命令、协议和供应商原始数据保留专业原文。
+
+## D-007：v0.2 实施顺序
+
+状态：已接受。先实现 Worktree Task Runner，再实现 Remote Node。Worktree 先固化任务隔离、
+队列、审阅和 merge gate 语义；Remote Node 随后复用这些领域契约，仅替换执行位置与传输层。
+
+## D-008：Worktree 生命周期与合并
+
+状态：已接受。Worktree Execution 使用独立持久状态机，每 Project 单并发，Review 占用
+队列槽位。只有用户显式批准后才创建受管 commit 并执行 `--no-ff` merge；不自动清理
+worktree 或 task branch。详细依据见 `ADR-012`。
