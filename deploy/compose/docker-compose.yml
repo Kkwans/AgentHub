@@ -1,0 +1,60 @@
+name: agenthub
+
+services:
+  agenthub:
+    image: ${AGENTHUB_IMAGE:-agenthub:0.3.0-nas.1}
+    build:
+      context: ${AGENTHUB_SOURCE_DIR:-/volume2/Project/AgentHub}
+      dockerfile: deploy/compose/Dockerfile
+      args:
+        AGENTHUB_VERSION: ${AGENTHUB_VERSION:-0.3.0}
+        AGENTHUB_REVISION: ${AGENTHUB_REVISION:-unknown}
+    container_name: agenthub
+    hostname: agenthub
+    user: '0:0'
+    privileged: true
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 45s
+    ports:
+      - '${AGENTHUB_BIND_ADDRESS:-192.168.5.110}:${AGENTHUB_PORT:-3210}:3210'
+    environment:
+      NODE_ENV: production
+      HOME: /home/Kkwans
+      SHELL: /bin/sh
+      TZ: Asia/Shanghai
+      TMPDIR: /volume2/Project/.agenthub/central/tmp
+      AGENTHUB_HOST: 0.0.0.0
+      AGENTHUB_PORT: 3210
+      AGENTHUB_AUTH_MODE: token
+      AGENTHUB_DATA_DIR: /volume2/Project/.agenthub/central/data
+      AGENTHUB_WORKTREE_ROOT: /volume2/Project/.agenthub/central/worktrees
+      AGENTHUB_WEB_DIST: /opt/agenthub/apps/web/dist
+      LOG_LEVEL: ${AGENTHUB_LOG_LEVEL:-info}
+    volumes:
+      - type: bind
+        source: ${AGENTHUB_PROJECT_ROOT:-/volume2/Project}
+        target: /volume2/Project
+      - type: bind
+        source: ${AGENTHUB_DATA_DIR:-/volume2/Project/.agenthub/central/data}
+        target: /volume2/Project/.agenthub/central/data
+      - type: bind
+        source: ${AGENTHUB_WORKTREE_ROOT:-/volume2/Project/.agenthub/central/worktrees}
+        target: /volume2/Project/.agenthub/central/worktrees
+      - type: bind
+        source: ${AGENTHUB_TMP_DIR:-/volume2/Project/.agenthub/central/tmp}
+        target: /volume2/Project/.agenthub/central/tmp
+      - type: bind
+        source: ${AGENTHUB_CODEX_HOME:-/home/Kkwans/.codex}
+        target: /home/Kkwans/.codex
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+      - type: bind
+        source: /usr/bin/docker
+        target: /usr/bin/docker
+        read_only: true
+    labels:
+      org.opencontainers.image.title: AgentHub
+      org.opencontainers.image.source: https://github.com/Kkwans/AgentHub
+      com.agenthub.deployment: ugreen-nas-compose

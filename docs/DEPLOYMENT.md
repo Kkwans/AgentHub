@@ -1,6 +1,8 @@
 # 部署与升级
 
-AgentHub v0.3 由 host-native Central Server 与可选的 host-native Remote Node daemon 组成。Docker 只用于显式接管已有 Agent 容器；不要为部署 AgentHub 修改这些容器的 Compose、镜像或 volume。
+AgentHub v0.3 由 Central Server 与可选的 host-native Remote Node daemon 组成。当前绿联 NAS
+的 Central Server 已由用户明确要求改为 root/privileged Docker Compose；既有 Agent 容器仍
+只允许显式接管，不修改它们的 Compose、镜像或 volume。
 
 ## 运行要求
 
@@ -9,6 +11,21 @@ AgentHub v0.3 由 host-native Central Server 与可选的 host-native Remote Nod
 - pnpm 11.11.0（通过 Corepack）
 - 可选 PostgreSQL；未配置时使用 PGlite
 - 可选 Docker CLI/socket；仅在接管 Docker Agent 时需要
+
+## 当前绿联 NAS Compose
+
+仓库配置位于 `deploy/compose/`，NAS 项目配置安装到
+`/volume2/DockerProject/agenthub/docker-compose.yml`。当前入口为
+`http://192.168.5.110:3210`，强制 token auth。Compose 显式配置：
+
+- ARM64 Node.js 24 固定 digest 与版本化镜像 tag；
+- `user: 0:0`、`privileged: true`、`restart: unless-stopped` 和 healthcheck；
+- `/volume2/Project`、PGlite、worktree、专用 TMPDIR、`/home/Kkwans/.codex`；
+- `/var/run/docker.sock` 与匹配 host Engine 的 `/usr/bin/docker`；
+- 只向 NAS 地址 `192.168.5.110` 发布 `3210`，不使用 host network。
+
+完整构建、切换和回滚步骤见 [`deploy/compose/README.md`](../deploy/compose/README.md)。上述挂载
+与 privileged 等同 NAS root 权限，不是安全隔离；跨不可信网络必须增加 TLS 反向代理。
 
 ## 安装与构建
 
@@ -60,7 +77,8 @@ corepack pnpm --filter @agenthub/node start
 - 非 loopback 只接受 `wss://`；`ws://` 仅允许 `localhost`、`127.0.0.1` 或 `::1` 开发连接。
 - 反向代理必须同时转发 `/ws` 与 `/node/ws` 的 WebSocket upgrade，并对外提供 TLS。Node 只执行协议 allow-list，不提供 SSH 或任意 shell。
 
-`.env` 不提交 Git。当前 NAS 经用户明确授权后使用仓库内 `deploy/systemd/` 模板安装常驻服务：
+`.env` 不提交 Git。以下 systemd 方式是当前 NAS 的保留回滚路径，也是其他 host-native
+部署的模板；当前 NAS 正常运行时不得与 Compose 同时启动：
 
 ```bash
 sudo install -d -m 0700 -o Kkwans -g admin \
@@ -148,5 +166,6 @@ curl -X POST http://127.0.0.1:3210/api/v1/auth/tokens \
   Execution 状态与 commit SHA，保留现场。
 - Remote Node：停止 daemon 不会删除远程 Project 或 Agent auth；中央会将 Node 标为离线。退役设备应先 revoke，再由设备管理员决定是否保留其身份目录。代码回退不删除 `remote_nodes` 或注册码历史。
 - Docker：AgentHub 回滚不修改 Compose、镜像或 volume，只确认明确接管容器仍保持升级前启动状态。
-- 当前 NAS：`sudo systemctl disable --now agenthub.service` 可恢复为无常驻进程状态；必须保留
-  `/volume2/Project/.agenthub/central`，不得把停止服务理解为删除数据库或 worktree 的授权。
+- 当前 NAS Compose 回滚：先 `docker compose stop agenthub`，确认 `3210` 已释放，再
+  `sudo systemctl enable --now agenthub.service`；必须保留 `/volume2/Project/.agenthub/central`，
+  不得把停止服务理解为删除数据库或 worktree 的授权。

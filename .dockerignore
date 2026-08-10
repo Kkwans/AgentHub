@@ -1,0 +1,17 @@
+.git
+.github
+.agenthub
+.cache
+.deploy-probe.*
+.deploy-legacy-probe.*
+.env
+.env.*
+!.env.example
+**/*.tsbuildinfo
+coverage
+docs/qa
+docs/design
+playwright-report
+test-results
+artifacts
+*.log

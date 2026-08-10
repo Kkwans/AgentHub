@@ -41,3 +41,10 @@ worktree 或 task branch。详细依据见 `ADR-012`。
 中央 `/node/ws`。生产必须使用 `wss://`，仅 loopback 开发允许 `ws://`；provider credential、
 private key 与 auth 文件始终留在 Node。中央只发送固定 RPC allow-list，不提供 SSH 或通用 shell。
 详细依据见 `ADR-013`。
+
+## D-010：当前 NAS 改用 privileged Compose
+
+状态：已接受。用户明确取代当前 NAS 的 host-native systemd 上线方式，固定使用绿联 Docker
+Compose、root 和 privileged；Project/PGlite/worktree/TMPDIR/Codex HOME/Docker socket 均显式
+挂载，局域网入口强制 token auth。systemd 与冷备份保留为回滚，不修改既有 Agent Compose。
+详细依据见 `ADR-014`。

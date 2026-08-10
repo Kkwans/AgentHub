@@ -2,6 +2,18 @@
 
 最后更新：2026-08-10
 
+## 当前 Goal：绿联 NAS Compose 迁移
+
+- 用户已明确要求把 v0.3.0 从 host-native systemd 改为绿联 Docker Compose，并授权
+  `user: 0:0` 与 `privileged: true`；新 durable Goal 已建立。
+- 已确认此前 `192.168.5.110:3210` 拒绝连接的直接原因是 systemd 只监听
+  `127.0.0.1:3210`，服务本身健康。
+- 已新增 ARM64 Compose、固定 digest Dockerfile、root-only token helper、部署/回滚说明和
+  ADR-014。镜像 `agenthub:0.3.0-nas.1` 已离线构建并通过隔离 PGlite、token auth、Web、
+  Project API 与 host Docker API 烟测。
+- 正式冷备份、systemd → Compose 切换、绿联项目列表、LAN/TX5Pro、重启恢复和 GitHub CI
+  尚待本 Goal 后续步骤完成；在这些证据完成前不声明 Compose 上线成功。
+
 ## v0.3 当前状态
 
 - 已创建新的 durable Goal，范围为 UI/UX 重构、真实浏览器验收、host-native 部署和自身 Project 注册。

@@ -1,6 +1,6 @@
 # AgentHub
 
-AgentHub 是一个 host-native 的 AI Coding Agent 控制平面。v0.3 统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。Web Shell 使用 Radix Themes 与 Phosphor 构建中文专业控制界面；既有 Docker Agent 容器仍只允许显式、安全接管。
+AgentHub 是一个 AI Coding Agent 控制平面。v0.3 统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。当前 NAS 使用 privileged Docker Compose 部署；Web Shell 使用 Radix Themes 与 Phosphor 构建中文专业控制界面，既有 Docker Agent 容器仍只允许显式、安全接管。
 
 ## 当前版本
 
@@ -11,7 +11,8 @@ AgentHub 是一个 host-native 的 AI Coding Agent 控制平面。v0.3 统一管
 - Node.js 24
 - pnpm 11
 - Linux（当前目标为 NAS ARM64）
-- 默认本地监听：`127.0.0.1`
+- 默认开发监听：`127.0.0.1`
+- 当前 NAS Compose 入口：`http://192.168.5.110:3210`（token auth）
 
 ## 开发命令
 

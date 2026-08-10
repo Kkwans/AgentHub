@@ -23,6 +23,11 @@
 - 每次 start/stop/exec 前重新 inspect 并比对 ID，避免同名替换。
 - Docker 接口只开放 inspect/start/stop/exec-fixed-agent-command，不提供通用命令入口。
 - Docker 权限等同主机高权限，设置页必须显示警告与诊断状态。
+- 当前 NAS 的 AgentHub Compose 经用户明确授权使用 root、privileged、Docker socket、Project
+  rw 和 Codex HOME rw；该组合等同 NAS root，不提供容器隔离保证。Compose 只应运行已验证的
+  AgentHub 镜像，并且不得因此扩大既有 Agent 容器的接管范围。
+- 当前 `192.168.5.110:3210` 是受 token 保护的 LAN HTTP 入口；不可信网络或跨网访问必须在
+  前置代理终止 TLS，避免 Bearer token 被旁路观察。
 
 ## 路径
 

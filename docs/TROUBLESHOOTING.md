@@ -7,12 +7,20 @@
 - `AUTH_TOKEN_NOT_CONFIGURED`：token 模式需要 bootstrap token 或数据库内至少一个未撤销 token。
 - PGlite 失败：检查 `AGENTHUB_DATA_DIR` 的父目录权限和剩余空间；不要删除现有数据库目录。
 - PostgreSQL 失败：检查 `DATABASE_URL`、网络、证书与 migration 权限。
+- Compose 报端口占用：确认 `agenthub.service` 已停止，且只有一个 AgentHub 进程打开 PGlite；
+  不要让 systemd 与 Compose 同时监听 `3210` 或访问同一 data 目录。
+- Compose health 为 `unhealthy`：先看 `docker compose logs --tail=100 agenthub`，再核验 data、
+  worktree、TMPDIR、Codex HOME、Docker socket 和 `/usr/bin/docker` bind mount；不要删除数据。
+- 绿联项目列表没有 AgentHub：确认从 `/volume2/DockerProject/agenthub/docker-compose.yml` 以
+  project name `agenthub` 启动，并用 `docker compose ls --all` 核验 Compose labels。
 
 ## Web 页面不可用
 
 - `/api/v1/health` 的 `web=false`：先执行 `pnpm build`，或用 `AGENTHUB_WEB_DIST` 指向包含 `index.html` 的绝对/可解析目录。
 - API 正常但前端路由 404：确认请求由 AgentHub Server 处理，而不是直接用没有代理配置的静态服务器。
 - token 模式持续 401：在“设置”中更新当前浏览器 token；浏览器只保存于当前 `sessionStorage`。
+- LAN 拒绝连接：核验 Compose container health、`192.168.5.110:3210` published port 与 NAS
+  实际地址；旧 systemd 仅监听 `127.0.0.1`，不能直接作为 LAN 部署。
 - `/ws` 断开：确认反向代理允许 WebSocket upgrade，并透传 `Sec-WebSocket-Protocol`。
 
 ## Agent preflight
