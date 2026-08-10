@@ -21,6 +21,7 @@ services:
     environment:
       NODE_ENV: production
       HOME: /home/Kkwans
+      SUDO_UID: ${AGENTHUB_PROJECT_OWNER_UID:-1000}
       SHELL: /bin/sh
       TZ: Asia/Shanghai
       TMPDIR: /volume2/Project/.agenthub/central/tmp
@@ -47,6 +48,10 @@ services:
       - type: bind
         source: ${AGENTHUB_CODEX_HOME:-/home/Kkwans/.codex}
         target: /home/Kkwans/.codex
+      - type: bind
+        source: ${AGENTHUB_GIT_CONFIG:-/home/Kkwans/.gitconfig}
+        target: /home/Kkwans/.gitconfig
+        read_only: true
       - type: bind
         source: /var/run/docker.sock
         target: /var/run/docker.sock

@@ -26,6 +26,8 @@
 - 当前 NAS 的 AgentHub Compose 经用户明确授权使用 root、privileged、Docker socket、Project
   rw 和 Codex HOME rw；该组合等同 NAS root，不提供容器隔离保证。Compose 只应运行已验证的
   AgentHub 镜像，并且不得因此扩大既有 Agent 容器的接管范围。
+- root Git 使用 `SUDO_UID` 识别明确的 Project owner，并只读挂载 Git identity 配置；不设置
+  `safe.directory=*`，也不因此新增 push/credential API。
 - 当前 `192.168.5.110:3210` 是受 token 保护的 LAN HTTP 入口；不可信网络或跨网访问必须在
   前置代理终止 TLS，避免 Bearer token 被旁路观察。
 

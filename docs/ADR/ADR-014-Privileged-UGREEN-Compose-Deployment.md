@@ -18,6 +18,8 @@ v0.3.0 最初以 `Kkwans` 用户的 systemd 服务部署在 `127.0.0.1:3210`。�
   容器安全隔离。
 - Project、PGlite、worktree、专用 TMPDIR 和 Codex HOME 使用显式 bind mount，并在容器内
   保持原绝对路径；不复制 Agent 原生凭据。
+- root Git 进程通过 `SUDO_UID=1000` 识别 `Kkwans` 拥有的 Project，并只读引用原
+  `.gitconfig` 保留 commit identity；不使用 `safe.directory=*`，不增加 push API。
 - Server 在容器内监听 `0.0.0.0:3210`，host 只发布 `192.168.5.110:3210`；强制 token auth。
   token 明文只保存在 root-only 部署文件，数据库仍只保存 SHA-256 hash。
 - 既有 systemd unit/env 保留但停用。切换前优雅停止服务并冷备份 PGlite；失败时停止

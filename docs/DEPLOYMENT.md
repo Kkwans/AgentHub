@@ -20,12 +20,14 @@ AgentHub v0.3 由 Central Server 与可选的 host-native Remote Node daemon 组
 
 - ARM64 Node.js 24 固定 digest 与版本化镜像 tag；
 - `user: 0:0`、`privileged: true`、`restart: unless-stopped` 和 healthcheck；
-- `/volume2/Project`、PGlite、worktree、专用 TMPDIR、`/home/Kkwans/.codex`；
+- `/volume2/Project`、PGlite、worktree、专用 TMPDIR、`/home/Kkwans/.codex` 和只读
+  `/home/Kkwans/.gitconfig`；
 - `/var/run/docker.sock` 与匹配 host Engine 的 `/usr/bin/docker`；
 - 只向 NAS 地址 `192.168.5.110` 发布 `3210`，不使用 host network。
 
 完整构建、切换和回滚步骤见 [`deploy/compose/README.md`](../deploy/compose/README.md)。上述挂载
 与 privileged 等同 NAS root 权限，不是安全隔离；跨不可信网络必须增加 TLS 反向代理。
+root 进程使用 `SUDO_UID=1000` 识别 Kkwans-owned Project，避免放宽到 `safe.directory=*`。
 
 ## 安装与构建
 
