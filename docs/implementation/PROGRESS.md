@@ -2,7 +2,30 @@
 
 最后更新：2026-08-10
 
-## 当前 Goal：绿联 NAS Compose 迁移
+## v0.4 当前 Goal：品牌、概览与性能收口
+
+- 登录/首次设置页已重构为同一张紧凑认证卡片：品牌、场景标题和状态在一个信息层级内，
+  不再保留独立钥匙区或大面积无意义留白。
+- 品牌标志改为官方 Phosphor `ShareNetwork`，Web favicon 与 React UI 使用同一图形语义；
+  项目不再维护手绘品牌 SVG。Phosphor Core 采用 MIT License。
+- 全站密码框继续复用 `PasswordField`，并隐藏 Edge/IE 原生 reveal 控件，确保只显示右侧
+  一个自定义可见性按钮；输入聚焦态统一为单层橙色描边。
+- 概览已改为响应式四面板控制面：桌面采用 7/5、5/7 的错位网格，移动端单列；移除灰色
+  空洞、贯穿式拼板和“等待你的决定”左侧单边强调条。项目记录只占自身内容宽度。
+- 已清理管理表单、Task、PromptOS、Workspace 等现存 3px 单边强调条样式，禁止再以
+  `border-left` 表达优先级。
+- Web 页面已改为路由级 lazy loading，PromptOS/Workspace 样式跟随路由加载；首屏 JS 从
+  645.07 kB 降至 337.15 kB，减少 47.7%，生产构建不再触发 500 kB chunk 警告。
+- `agenthub:0.3.0-nas.6` 已通过绿联 Compose 无 `down` 切换，容器以 root/privileged 运行并
+  恢复 healthy；旧 `nas.5` 镜像和配置备份保留，数据卷及既有 Agent 容器未修改。
+- TX5Pro Chrome 150 完成 1440/1024/768/390 实机视觉验收：登录/首次设置页只有一个密码
+  眼睛，概览没有灰色空洞或单边强调条，390px 卡片间距为 12px，全部尺寸无横向溢出，
+  0 request failure、console/page/HTTP error 和外部请求。证据归档于
+  `docs/qa/tx5pro/2026-08-10-nas6-ui-visual/`。
+- 当前视觉验收使用正式部署静态资源与真实 `/api/v1/health`；首次设置和概览业务数据使用
+  只读 Playwright fixture，以免创建账号或修改正式数据。该证据不替代真实后端测试。
+
+## v0.3 Compose 迁移记录
 
 - 用户已明确要求把 v0.3.0 从 host-native systemd 改为绿联 Docker Compose，并授权
   `user: 0:0` 与 `privileged: true`；新 durable Goal 已建立。
