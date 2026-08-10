@@ -1,6 +1,6 @@
 # 实施进度
 
-最后更新：2026-08-09
+最后更新：2026-08-10
 
 ## 当前
 
@@ -15,6 +15,7 @@
 - 已初始化 `main` 分支与 pnpm monorepo。
 - 已固定 Node.js 24、pnpm 11、TypeScript、ESLint、Prettier、Vitest、Playwright 与 CI 基线。
 - 已锁定 ACP v1 依赖：SDK `1.3.0`、codex-acp `1.1.14`、claude-agent-acp `0.66.0`。
+- TX5Pro 实机验收已完成；报告与截图归档于 `docs/qa/tx5pro/2026-08-10/`。
 
 ## 环境事实
 
@@ -104,10 +105,21 @@ M6：
 - Live gate 后 `claude-code`、`hermes`、`openclaw-official` 均恢复原 `exited` 状态，完整 container ID 未变化。
 - 最终全仓 gate：`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm format:check` 通过；标准 Vitest 为 22 个文件通过、1 个 live 文件按环境 gate 跳过，82 项通过、5 项跳过；Playwright 12 项通过；live Vitest 5 项通过。
 
+TX5Pro 实机验收：
+
+- TX5Pro：Windows NT `10.0.26200.0`、Node `24.0.0`、Playwright `1.62.1`、Google Chrome `150.0.7871.182`。
+- 通过 SSH local forward 访问仅监听 NAS loopback 的隔离 AgentHub，不创建 token、不复用跨项目凭据、不触碰 Docker/Compose。
+- 从空 PGlite 数据库完成 Execution Target → Project → Codex preflight → Goal/Task → Session/Run stream → 待审阅 → 人工确认完成闭环。
+- 修复真实 ACP 可选 `externalRunId` 与 context-only `usage_update` 导致的空 Drizzle patch；新增回归测试。
+- 修复 Workspace Session 列表状态滞后，并让 App Shell 建立和维持统一全局 `/ws` 连接。
+- 修复后最终单次验收 25 项全部通过；1440、1024、768、390 均无根页面横向溢出，全局 WebSocket 已连接。
+- 浏览器运行时结果：0 个 request failure、0 个 console error、0 个 page error、0 个 HTTP 4xx/5xx、0 个外部请求。
+- TX5Pro 修复后全量 gate：`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm format:check` 通过；非沙箱 Vitest 22 个文件通过、1 个 live 文件按 gate 跳过，84 项通过、5 项跳过；Playwright 12 项通过。
+- 最终验收进程与 SSH 隧道已回收，TX5Pro `43210` 和 NAS `3210` 无遗留监听。
+
 ## 未验证项
 
 - Claude Code 需在镜像内固定安装 `@agentclientprotocol/claude-agent-acp@0.66.0` 后才能验证 auth/session。
 - Hermes 需增加覆盖 Project 的部署级 workspace mount 后才能验证项目 Session；本次未修改 Compose。
 - OpenClaw 需在原生 Gateway 中批准 scope upgrade 后才能验证 `session/new` 和 prompt；本次未替用户批准授权请求。
 - 当前 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；未伪装 PTY。
-- UI 已通过 NAS 本地 Playwright Chromium 四视口验证，但尚未通过 TX5Pro 实机验证。
