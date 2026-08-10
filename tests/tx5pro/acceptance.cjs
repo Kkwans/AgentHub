@@ -14,6 +14,8 @@ const outputDirectory = path.resolve(
   process.env.AGENTHUB_ACCEPTANCE_OUTPUT || path.join(process.cwd(), 'artifacts'),
 );
 const projectRoot = process.env.AGENTHUB_PROJECT_ROOT || '/volume2/Project/AgentHub';
+const expectedRemoteNodeName = process.env.AGENTHUB_EXPECT_REMOTE_NODE_NAME || '';
+const executionTargetName = expectedRemoteNodeName || 'TX5Pro 验收宿主机';
 const marker = 'TX5PRO_AGENTHUB_OK';
 const startedAt = new Date().toISOString();
 
@@ -25,6 +27,7 @@ const report = {
   finishedAt: null,
   baseURL,
   projectRoot,
+  expectedRemoteNodeName: expectedRemoteNodeName || null,
   browser: null,
   tunnel: null,
   checks: [],
@@ -203,43 +206,69 @@ async function runDesktopFlow(browser) {
   recordCheck('1440 概览与中文一级导航可用');
   await assertNoRootOverflow(page, '1440 概览无根页面横向溢出');
 
-  await page.getByRole('link', { name: 'Agent' }).click();
-  await page.getByRole('heading', { name: 'Agent 与执行目标' }).waitFor();
-  await page.getByRole('button', { name: /注册 Execution Target/ }).click();
-  const targetForm = page
-    .locator('form.management-form')
-    .filter({ hasText: '注册 Execution Target' });
-  await targetForm.getByLabel('类型').selectOption('LOCAL_HOST');
-  await targetForm.getByLabel('名称').fill('TX5Pro 验收宿主机');
-  await targetForm.getByLabel('hostname', { exact: true }).fill('DH4300Plus');
-  await targetForm.getByLabel('os', { exact: true }).fill('linux');
-  await targetForm.getByLabel('arch', { exact: true }).fill('arm64');
-  await targetForm.getByRole('button', { name: '核验并注册' }).click();
-  await page.locator('.target-row').filter({ hasText: 'TX5Pro 验收宿主机' }).waitFor();
-  recordCheck('通过 UI 注册 LOCAL_HOST Execution Target');
+  if (expectedRemoteNodeName) {
+    await page.getByRole('link', { name: '设置' }).click();
+    await page.getByRole('heading', { name: 'Remote Node' }).waitFor();
+    const remoteNodeCard = page.locator('.remote-node-card').filter({
+      hasText: expectedRemoteNodeName,
+    });
+    await remoteNodeCard.waitFor();
+    await remoteNodeCard.getByText('在线', { exact: true }).waitFor();
+    await remoteNodeCard.getByText(projectRoot, { exact: true }).waitFor();
+    await remoteNodeCard.getByText('Codex', { exact: true }).waitFor();
+    await page.getByRole('button', { name: '生成一次性注册码' }).click();
+    await page.getByRole('textbox', { name: '授权 roots' }).waitFor();
+    await page.getByRole('button', { name: '取消' }).click();
+    await assertNoRootOverflow(page, '1440 Remote Node 管理页无根页面横向溢出');
+    await screenshot(page, 'remote-node-1440.png');
+    recordCheck('TX5Pro 实机展示在线 Remote Node、授权 roots 与 Codex inventory');
+  } else {
+    await page.getByRole('link', { name: 'Agent' }).click();
+    await page.getByRole('heading', { name: 'Agent 与执行目标' }).waitFor();
+    await page.getByRole('button', { name: /注册 Execution Target/ }).click();
+    const targetForm = page
+      .locator('form.management-form')
+      .filter({ hasText: '注册 Execution Target' });
+    await targetForm.getByLabel('类型').selectOption('LOCAL_HOST');
+    await targetForm.getByLabel('名称').fill(executionTargetName);
+    await targetForm.getByLabel('hostname', { exact: true }).fill('DH4300Plus');
+    await targetForm.getByLabel('os', { exact: true }).fill('linux');
+    await targetForm.getByLabel('arch', { exact: true }).fill('arm64');
+    await targetForm.getByRole('button', { name: '核验并注册' }).click();
+    await page.locator('.target-row').filter({ hasText: executionTargetName }).waitFor();
+    recordCheck('通过 UI 注册 LOCAL_HOST Execution Target');
+  }
 
   await page.getByRole('link', { name: '项目' }).click();
   await page.getByRole('button', { name: /添加 Project/ }).click();
   const projectForm = page.locator('form.inline-form');
   await projectForm.getByLabel('名称').fill('AgentHub TX5Pro 验收');
   await projectForm.getByLabel('Project root').fill(projectRoot);
-  await selectOptionContaining(projectForm.getByLabel('Execution Target'), 'TX5Pro 验收宿主机');
+  await selectOptionContaining(projectForm.getByLabel('Execution Target'), executionTargetName);
   await projectForm.getByRole('button', { name: '预检并添加' }).click();
   await page.locator('.data-row').filter({ hasText: 'AgentHub TX5Pro 验收' }).waitFor();
-  recordCheck('通过 UI 添加真实 NAS Project 并完成预检');
+  recordCheck(
+    expectedRemoteNodeName
+      ? '通过 UI 在 Remote Node 添加真实 Project 并完成预检'
+      : '通过 UI 添加真实 NAS Project 并完成预检',
+  );
 
   await page.getByRole('link', { name: 'Agent' }).click();
   await page.getByRole('button', { name: /添加 Agent/ }).click();
   const agentForm = page.locator('form.management-form').filter({ hasText: '添加内置 Agent' });
   await agentForm.getByLabel('Agent 类型').selectOption('CODEX');
   await agentForm.getByLabel('名称').fill('Codex TX5Pro 验收');
-  await selectOptionContaining(agentForm.getByLabel('Execution Target'), 'TX5Pro 验收宿主机');
+  await selectOptionContaining(agentForm.getByLabel('Execution Target'), executionTargetName);
   await agentForm.getByRole('button', { name: '添加 Agent' }).click();
   const agentRow = page.locator('.agent-row').filter({ hasText: 'Codex TX5Pro 验收' });
   await agentRow.waitFor();
   await agentRow.getByRole('button', { name: '重新预检' }).click();
   await agentRow.getByText('就绪', { exact: true }).waitFor({ timeout: 120_000 });
-  recordCheck('Codex pinned adapter 真实 preflight 达到就绪');
+  recordCheck(
+    expectedRemoteNodeName
+      ? 'Remote Node Codex pinned adapter 真实 preflight 达到就绪'
+      : 'Codex pinned adapter 真实 preflight 达到就绪',
+  );
 
   await page.getByRole('link', { name: '任务' }).click();
   await page.getByRole('button', { name: /创建 Goal/ }).click();
@@ -264,7 +293,7 @@ async function runDesktopFlow(browser) {
   const taskCard = page.locator('.task-card').filter({ hasText: 'TX5Pro 真实 Agent 链路' });
   await taskCard.getByRole('button', { name: '设为就绪' }).click();
   await selectOptionContaining(taskCard.getByLabel('Agent'), 'Codex TX5Pro 验收');
-  await taskCard.getByRole('button', { name: /交给 Agent/ }).click();
+  await taskCard.getByRole('button', { name: /直接运行/ }).click();
   await page.waitForURL(/\/sessions\//, { timeout: 30_000 });
   recordCheck('通过 UI 创建 Goal、Task 并交给 Codex Agent');
 
@@ -287,7 +316,12 @@ async function runDesktopFlow(browser) {
     .locator('.session-list a.current .status-badge')
     .getByText('就绪', { exact: true })
     .waitFor();
-  recordCheck('真实 Codex Session 流式响应并完成 Run', { sessionId });
+  recordCheck(
+    expectedRemoteNodeName
+      ? 'Remote Node 真实 Codex Session 流式响应并完成 Run'
+      : '真实 Codex Session 流式响应并完成 Run',
+    { sessionId },
+  );
   await screenshot(page, 'workspace-1440.png');
 
   await page.getByRole('link', { name: '任务' }).click();
@@ -308,6 +342,9 @@ async function runDesktopFlow(browser) {
   await page.getByRole('heading', { name: 'Terminal' }).waitFor();
   await page.getByText('不会修改 Compose、镜像或 volume').waitFor();
   await page.getByText('loopback 默认模式').waitFor();
+  if (expectedRemoteNodeName) {
+    await page.locator('.remote-node-card').filter({ hasText: expectedRemoteNodeName }).waitFor();
+  }
   await assertNoRootOverflow(page, '1440 设置页无根页面横向溢出');
   recordCheck('设置页呈现 Terminal、认证与 Docker 安全边界');
 
@@ -381,6 +418,12 @@ async function runResponsive(browser, sessionId) {
       await page.getByRole('navigation', { name: '一级导航' }).waitFor();
       await page.getByRole('link', { name: '设置' }).click();
       await page.getByRole('heading', { name: '设置与诊断' }).waitFor();
+      if (expectedRemoteNodeName) {
+        await page
+          .locator('.remote-node-card')
+          .filter({ hasText: expectedRemoteNodeName })
+          .waitFor();
+      }
       await page.waitForTimeout(250);
       const sidebarClosed = await page.locator('.sidebar').evaluate((element) => {
         const bounds = element.getBoundingClientRect();

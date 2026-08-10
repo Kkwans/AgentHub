@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-10T06:04:50.712Z",
+  "finishedAt": "2026-08-10T06:05:20.160Z",
+  "baseURL": "http://127.0.0.1:43210",
+  "projectRoot": "/volume2/Project/AgentHub",
+  "expectedRemoteNodeName": "TX5Pro Remote",
+  "browser": "150.0.7871.182",
+  "tunnel": {
+    "target": "Kkwans@192.168.5.110",
+    "localPort": 43210,
+    "remotePort": 3210,
+    "health": {
+      "status": "ok",
+      "version": "0.1.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "checks": [
+    {
+      "name": "TX5Pro 到 NAS 回环服务的 SSH 隧道健康",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 概览与中文一级导航可用",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "1440 Remote Node 管理页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "TX5Pro 实机展示在线 Remote Node、授权 roots 与 Codex inventory",
+      "status": "PASS"
+    },
+    {
+      "name": "通过 UI 在 Remote Node 添加真实 Project 并完成预检",
+      "status": "PASS"
+    },
+    {
+      "name": "Remote Node Codex pinned adapter 真实 preflight 达到就绪",
+      "status": "PASS"
+    },
+    {
+      "name": "通过 UI 创建 Goal、Task 并交给 Codex Agent",
+      "status": "PASS"
+    },
+    {
+      "name": "Remote Node 真实 Codex Session 流式响应并完成 Run",
+      "status": "PASS",
+      "sessionId": "802ffdeb-2f2e-4752-a272-ef1a103a17cb"
+    },
+    {
+      "name": "Run 完成后进入待审阅并由用户确认完成",
+      "status": "PASS"
+    },
+    {
+      "name": "PromptOS 中文管理页可访问",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "设置页呈现 Terminal、认证与 Docker 安全边界",
+      "status": "PASS"
+    },
+    {
+      "name": "1024 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "1024 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "1024 Workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "768 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "768 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "768 Workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "390 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "390 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 Workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 移动导航与设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 移动导航、Workspace tabs 与检查器 drawer 可用",
+      "status": "PASS"
+    },
+    {
+      "name": "无 requestfailed、console error、pageerror、HTTP 4xx/5xx 或外部请求",
+      "status": "PASS"
+    }
+  ],
+  "runtimeIssues": [],
+  "failedRequests": [],
+  "externalRequests": [],
+  "screenshots": [
+    "remote-node-1440.png",
+    "workspace-1440.png",
+    "tasks-done-1440.png",
+    "overview-1024.png",
+    "workspace-1024.png",
+    "overview-768.png",
+    "workspace-768.png",
+    "overview-390.png",
+    "workspace-390.png",
+    "settings-390.png"
+  ],
+  "result": "PASS"
+}
