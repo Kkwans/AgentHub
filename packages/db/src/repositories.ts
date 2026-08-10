@@ -758,7 +758,7 @@ export class RemoteNodeRepository<TDatabase extends AgentHubDatabase> {
           arch: input.metadata.arch,
           status: 'READY',
           capabilitiesJson: { remoteNode: true, inventory: input.inventory },
-          connectionJson: { protocolVersion: input.protocolVersion },
+          connectionJson: { protocolVersion: input.protocolVersion, nodeId: input.nodeId },
           lastSeenAt: input.now,
         })
         .returning();
@@ -823,6 +823,15 @@ export class RemoteNodeRepository<TDatabase extends AgentHubDatabase> {
 
   async get(id: string) {
     const [node] = await this.db.select().from(remoteNodes).where(eq(remoteNodes.id, id)).limit(1);
+    return node;
+  }
+
+  async getByTargetId(targetId: string) {
+    const [node] = await this.db
+      .select()
+      .from(remoteNodes)
+      .where(eq(remoteNodes.targetId, targetId))
+      .limit(1);
     return node;
   }
 

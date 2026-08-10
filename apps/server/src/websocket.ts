@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { Server } from 'node:http';
 
 import { websocketClientMessageSchema, type WebSocketServerMessage } from '@agenthub/shared';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocket, type WebSocketServer } from 'ws';
+import type { WebSocketUpgradeRouter } from './websocket-upgrade.js';
 
 export interface ReplayEventSource {
   listAfter(
@@ -27,28 +27,23 @@ export class TopicBroker {
   private readonly clients = new Set<ClientState>();
 
   constructor(
-    httpServer: Server,
+    upgradeRouter: WebSocketUpgradeRouter,
     private readonly replaySource?: ReplayEventSource,
     authenticator?: WebSocketAuthenticator,
   ) {
-    this.server = new WebSocketServer({
-      server: httpServer,
-      path: '/ws',
+    this.server = upgradeRouter.register('/ws', {
       maxPayload: 1024 * 1024,
       ...(authenticator
         ? {
-            verifyClient: (info, done) => {
+            authorize: async (request) => {
               const credential =
-                info.req.headers.authorization ?? info.req.headers['sec-websocket-protocol'];
-              void authenticator
-                .authorizeHeader(credential)
-                .then((allowed) => done(allowed, allowed ? undefined : 401, '需要有效 token'))
-                .catch(() => done(false, 401, '需要有效 token'));
+                request.headers.authorization ?? request.headers['sec-websocket-protocol'];
+              return authenticator.authorizeHeader(credential);
             },
           }
         : {}),
+      onConnection: (socket) => this.onConnection(socket),
     });
-    this.server.on('connection', (socket) => this.onConnection(socket));
   }
 
   publish(topic: string, event: Record<string, unknown>): void {

@@ -1,5 +1,4 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import type { Server } from 'node:http';
 
 import {
   REMOTE_NODE_PROTOCOL_VERSION,
@@ -7,9 +6,10 @@ import {
   type RemoteNodeCommandName,
   type RemoteNodeServerMessage,
 } from '@agenthub/shared';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocket, type WebSocketServer } from 'ws';
 
 import { AppError } from '../errors.js';
+import type { WebSocketUpgradeRouter } from '../websocket-upgrade.js';
 import type { RemoteNodeConnectionController, RemoteNodeService } from './remote-node-service.js';
 
 interface AuthenticatedConnection {
@@ -27,6 +27,12 @@ interface PendingRequest {
   timer: NodeJS.Timeout;
 }
 
+interface SessionListener {
+  nodeId: string;
+  onEvent(event: Record<string, unknown>): void;
+  onDisconnect(): void;
+}
+
 export class RemoteNodeRpcError extends Error {
   constructor(
     readonly code: string,
@@ -41,22 +47,17 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
   private readonly server: WebSocketServer;
   private readonly connections = new Map<string, AuthenticatedConnection>();
   private readonly pending = new Map<string, PendingRequest>();
-  private readonly sessionListeners = new Map<
-    string,
-    Set<(event: Record<string, unknown>) => void>
-  >();
+  private readonly sessionListeners = new Map<string, Set<SessionListener>>();
   private readonly staleTimer: NodeJS.Timeout;
 
   constructor(
-    httpServer: Server,
+    upgradeRouter: WebSocketUpgradeRouter,
     private readonly nodes: RemoteNodeService,
   ) {
-    this.server = new WebSocketServer({
-      server: httpServer,
-      path: '/node/ws',
+    this.server = upgradeRouter.register('/node/ws', {
       maxPayload: 1024 * 1024,
+      onConnection: (socket) => this.onConnection(socket),
     });
-    this.server.on('connection', (socket) => this.onConnection(socket));
     this.staleTimer = setInterval(() => this.closeStaleConnections(), 15_000);
     this.staleTimer.unref();
     nodes.attachController(this);
@@ -99,10 +100,13 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
   }
 
   subscribeSession(
+    nodeId: string,
     sessionId: string,
-    listener: (event: Record<string, unknown>) => void,
+    onEvent: (event: Record<string, unknown>) => void,
+    onDisconnect: () => void,
   ): () => void {
     const listeners = this.sessionListeners.get(sessionId) ?? new Set();
+    const listener = { nodeId, onEvent, onDisconnect };
     listeners.add(listener);
     this.sessionListeners.set(sessionId, listeners);
     return () => {
@@ -153,6 +157,7 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
       if (!authenticated || this.connections.get(authenticated.nodeId)?.socket !== socket) return;
       this.connections.delete(authenticated.nodeId);
       this.rejectPending(authenticated, 'REMOTE_NODE_DISCONNECTED', 'Remote Node 连接已断开');
+      this.disconnectSessionListeners(authenticated.nodeId);
       void this.nodes.markOffline(authenticated.nodeId);
     });
     socket.on('error', () => {
@@ -220,7 +225,7 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
     }
     if (message.type === 'node.event') {
       for (const listener of this.sessionListeners.get(message.sessionId) ?? []) {
-        listener(message.event);
+        if (listener.nodeId === state.authenticated.nodeId) listener.onEvent(message.event);
       }
       return;
     }
@@ -278,6 +283,17 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
     const cutoff = Date.now() - 45_000;
     for (const connection of this.connections.values()) {
       if (connection.lastSeenAt < cutoff) connection.socket.close(4000, 'Heartbeat 超时');
+    }
+  }
+
+  private disconnectSessionListeners(nodeId: string): void {
+    for (const [sessionId, listeners] of this.sessionListeners) {
+      for (const listener of [...listeners]) {
+        if (listener.nodeId !== nodeId) continue;
+        listeners.delete(listener);
+        listener.onDisconnect();
+      }
+      if (listeners.size === 0) this.sessionListeners.delete(sessionId);
     }
   }
 

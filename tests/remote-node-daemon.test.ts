@@ -9,6 +9,7 @@ import {
   type RemoteNodeRpcError,
 } from '../apps/server/src/remote-nodes/remote-node-gateway.js';
 import { RemoteNodeService } from '../apps/server/src/remote-nodes/remote-node-service.js';
+import { WebSocketUpgradeRouter } from '../apps/server/src/websocket-upgrade.js';
 import {
   createPgliteDatabase,
   RemoteNodeRepository,
@@ -22,6 +23,7 @@ describe('AgentHub Node daemon integration', () => {
   let httpServer: Server;
   let service: RemoteNodeService;
   let gateway: RemoteNodeGateway;
+  let upgradeRouter: WebSocketUpgradeRouter;
   let serverUrl: string;
 
   beforeAll(async () => {
@@ -29,7 +31,8 @@ describe('AgentHub Node daemon integration', () => {
     database = await createPgliteDatabase({ dataDir: 'memory://' });
     service = new RemoteNodeService(new RemoteNodeRepository(database.db));
     httpServer = createServer();
-    gateway = new RemoteNodeGateway(httpServer, service);
+    upgradeRouter = new WebSocketUpgradeRouter(httpServer);
+    gateway = new RemoteNodeGateway(upgradeRouter, service);
     await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
     const address = httpServer.address();
     if (!address || typeof address === 'string') throw new Error('测试端口不可用');
@@ -38,6 +41,7 @@ describe('AgentHub Node daemon integration', () => {
 
   afterAll(async () => {
     await gateway.close();
+    upgradeRouter.close();
     await new Promise<void>((resolve, reject) =>
       httpServer.close((error) => (error ? reject(error) : resolve())),
     );

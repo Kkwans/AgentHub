@@ -3,7 +3,12 @@ import { access, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { runProcess, type ProcessResult } from '@agenthub/agent-core';
-import type { AgentHubDatabase, GitSnapshotRepository, ProjectRepository } from '@agenthub/db';
+import type {
+  AgentHubDatabase,
+  ExecutionTargetRepository,
+  GitSnapshotRepository,
+  ProjectRepository,
+} from '@agenthub/db';
 
 import { AppError } from '../errors.js';
 import { assertContained, validateRelativePath } from '../projects/path-security.js';
@@ -30,6 +35,7 @@ export class GitService implements GitHeadProbe {
   constructor(
     private readonly projects: ProjectRepository<AgentHubDatabase>,
     private readonly snapshots: GitSnapshotRepository<AgentHubDatabase>,
+    private readonly targets?: ExecutionTargetRepository<AgentHubDatabase>,
   ) {}
 
   async status(projectId: string): Promise<GitStatusReport> {
@@ -143,6 +149,7 @@ export class GitService implements GitHeadProbe {
   ) {
     const project = await this.projects.get(projectId);
     if (!project || project.repoKind !== 'GIT') return undefined;
+    if (await this.isRemote(project.targetId)) return undefined;
     const status = await this.statusAt(cwd);
     return this.snapshots.create({
       id: randomUUID(),
@@ -199,7 +206,14 @@ export class GitService implements GitHeadProbe {
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
     if (project.repoKind !== 'GIT')
       throw new AppError(409, 'PROJECT_NOT_GIT', 'Project 不是 Git 仓库');
+    if (await this.isRemote(project.targetId)) {
+      throw new AppError(409, 'REMOTE_GIT_UNSUPPORTED', 'v0.2 暂不提供 Remote Node Git 控制接口');
+    }
     return project;
+  }
+
+  private async isRemote(targetId: string): Promise<boolean> {
+    return (await this.targets?.get(targetId))?.kind === 'REMOTE_NODE';
   }
 }
 

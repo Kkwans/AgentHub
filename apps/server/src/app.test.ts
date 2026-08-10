@@ -13,6 +13,7 @@ import { WebSocket } from 'ws';
 import { createApp } from './app.js';
 import { AuthService } from './auth/auth-service.js';
 import { TopicBroker, type ReplayEventSource } from './websocket.js';
+import { WebSocketUpgradeRouter } from './websocket-upgrade.js';
 
 describe('HTTP 基线', () => {
   const app = createApp({
@@ -104,12 +105,15 @@ describe('Production Web 入口', () => {
 describe('统一 WebSocket topic', () => {
   const openSockets: WebSocket[] = [];
   const openBrokers: TopicBroker[] = [];
+  const openRouters: WebSocketUpgradeRouter[] = [];
 
   afterEach(async () => {
     for (const socket of openSockets) socket.close();
     for (const broker of openBrokers) await broker.close();
+    for (const router of openRouters) router.close();
     openSockets.length = 0;
     openBrokers.length = 0;
+    openRouters.length = 0;
   });
 
   it('支持订阅、afterSeq 补流与实时事件', async () => {
@@ -121,7 +125,9 @@ describe('统一 WebSocket topic', () => {
     const httpServer = createServer(
       createApp({ eventSource: replaySource, logger: pino({ level: 'silent' }) }),
     );
-    const broker = new TopicBroker(httpServer, replaySource);
+    const router = new WebSocketUpgradeRouter(httpServer);
+    const broker = new TopicBroker(router, replaySource);
+    openRouters.push(router);
     openBrokers.push(broker);
     httpServer.listen(0, '127.0.0.1');
     await once(httpServer, 'listening');
@@ -172,6 +178,8 @@ describe('统一 WebSocket topic', () => {
     await once(socket, 'close');
     await broker.close();
     openBrokers.length = 0;
+    router.close();
+    openRouters.length = 0;
     await new Promise<void>((resolve, reject) => {
       httpServer.close((error) => (error ? reject(error) : resolve()));
     });
@@ -179,9 +187,11 @@ describe('统一 WebSocket topic', () => {
 
   it('token 模式拒绝未认证连接并接受浏览器 subprotocol token', async () => {
     const httpServer = createServer(createApp({ logger: pino({ level: 'silent' }) }));
-    const broker = new TopicBroker(httpServer, undefined, {
+    const router = new WebSocketUpgradeRouter(httpServer);
+    const broker = new TopicBroker(router, undefined, {
       authorizeHeader: async (header) => Boolean(header?.includes('agenthub-token.good-token')),
     });
+    openRouters.push(router);
     openBrokers.push(broker);
     httpServer.listen(0, '127.0.0.1');
     await once(httpServer, 'listening');
@@ -205,6 +215,8 @@ describe('统一 WebSocket topic', () => {
     await once(accepted, 'close');
     await broker.close();
     openBrokers.length = 0;
+    router.close();
+    openRouters.length = 0;
     await new Promise<void>((resolve, reject) => {
       httpServer.close((error) => (error ? reject(error) : resolve()));
     });

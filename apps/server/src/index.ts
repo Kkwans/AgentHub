@@ -50,6 +50,9 @@ import { WorktreeGitService } from './worktrees/worktree-git-service.js';
 import { WorktreeTaskService } from './worktrees/worktree-task-service.js';
 import { RemoteNodeService } from './remote-nodes/remote-node-service.js';
 import { RemoteNodeGateway } from './remote-nodes/remote-node-gateway.js';
+import { RemoteNodeOperations } from './remote-nodes/remote-node-operations.js';
+import { RemoteAgentAdapter } from './remote-nodes/remote-agent-adapter.js';
+import { WebSocketUpgradeRouter } from './websocket-upgrade.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -104,6 +107,8 @@ export async function startServer(
   const eventRepository = new EventRepository(database.db);
   const executionTargetRepository = new ExecutionTargetRepository(database.db);
   const brokerRef: { current?: TopicBroker } = {};
+  const server = createServer();
+  const upgradeRouter = new WebSocketUpgradeRouter(server);
   const agentRepository = new AgentRepository(database.db);
   const projectRepository = new ProjectRepository(database.db);
   const sessionRepository = new SessionRepository(database.db);
@@ -117,10 +122,20 @@ export async function startServer(
   const taskRepository = new TaskRepository(database.db);
   const worktreeExecutionRepository = new WorktreeExecutionRepository(database.db);
   const remoteNodeRepository = new RemoteNodeRepository(database.db);
+  const remoteNodes = new RemoteNodeService(remoteNodeRepository, {
+    publish: (topic, event) => brokerRef.current?.publish(topic, event),
+  });
+  const remoteNodeGateway = new RemoteNodeGateway(upgradeRouter, remoteNodes);
+  const remoteNodeOperations = new RemoteNodeOperations(remoteNodeRepository, remoteNodeGateway);
+  const remoteAgentAdapter = new RemoteAgentAdapter(remoteNodeGateway);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
-  const projects = new ProjectService(projectRepository, executionTargetRepository);
-  const git = new GitService(projectRepository, gitSnapshotRepository);
+  const projects = new ProjectService(
+    projectRepository,
+    executionTargetRepository,
+    remoteNodeOperations,
+  );
+  const git = new GitService(projectRepository, gitSnapshotRepository, executionTargetRepository);
   const terminal = new TerminalService(projectRepository, {
     publish: (topic, event) => brokerRef.current?.publish(topic, event),
   });
@@ -140,6 +155,7 @@ export async function startServer(
         ? new OpenClawAdapter({ primary, exec: openClawExec })
         : primary;
     },
+    remoteAgentAdapter,
   );
   const sessions = new SessionService(
     sessionRepository,
@@ -191,9 +207,6 @@ export async function startServer(
     approvalRepository,
     agentRepository,
   );
-  const remoteNodes = new RemoteNodeService(remoteNodeRepository, {
-    publish: (topic, event) => brokerRef.current?.publish(topic, event),
-  });
   const recovery = {
     sessions: await sessions.recoverAfterRestart(),
     worktrees: await worktrees.recoverAfterRestart(),
@@ -216,9 +229,8 @@ export async function startServer(
     remoteNodes,
     ...(webAvailable ? { webDist } : {}),
   });
-  const server = createServer(app);
-  const broker = new TopicBroker(server, eventRepository, auth);
-  const remoteNodeGateway = new RemoteNodeGateway(server, remoteNodes);
+  server.on('request', app);
+  const broker = new TopicBroker(upgradeRouter, eventRepository, auth);
   brokerRef.current = broker;
 
   await new Promise<void>((resolve, reject) => {
@@ -245,6 +257,7 @@ export async function startServer(
       await sessions.shutdown();
       await remoteNodeGateway.close();
       await broker.close();
+      upgradeRouter.close();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });

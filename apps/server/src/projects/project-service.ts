@@ -43,12 +43,35 @@ export interface FileTreeEntry {
   children?: FileTreeEntry[];
 }
 
+export interface RemoteProjectOperations {
+  preflight(targetId: string, rootPath: string): Promise<ProjectPreflightReport>;
+  listFiles(
+    targetId: string,
+    rootPath: string,
+    requestedPath: string,
+    depth: number,
+  ): Promise<FileTreeEntry[]>;
+  readFile(
+    targetId: string,
+    rootPath: string,
+    requestedPath: string,
+  ): Promise<{
+    path: string;
+    content: string;
+    size: number;
+    sha256: string;
+    modifiedAt: string;
+    readOnly: true;
+  }>;
+}
+
 const TREE_IGNORES = new Set(['.git', 'node_modules', 'dist', 'build', '.agenthub']);
 
 export class ProjectService {
   constructor(
     private readonly projects: ProjectRepository<AgentHubDatabase>,
     private readonly targets: ExecutionTargetRepository<AgentHubDatabase>,
+    private readonly remote?: RemoteProjectOperations,
   ) {}
 
   list() {
@@ -64,10 +87,10 @@ export class ProjectService {
   async add(input: AddProjectInput) {
     const target = await this.targets.get(input.targetId);
     if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
-    if (target.kind === 'REMOTE_NODE') {
-      throw new AppError(409, 'REMOTE_NODE_UNSUPPORTED', 'v0.1 不启用 Remote Node');
-    }
-    const report = await this.preflightPath(input.rootPath);
+    const report =
+      target.kind === 'REMOTE_NODE'
+        ? await this.requireRemote().preflight(target.id, input.rootPath)
+        : await this.preflightPath(input.rootPath);
     if (report.status !== 'READY') {
       throw new AppError(400, 'PROJECT_PREFLIGHT_FAILED', 'Project 路径预检未通过', {
         checks: report.checks,
@@ -97,6 +120,12 @@ export class ProjectService {
 
   async preflight(id: string): Promise<ProjectPreflightReport> {
     const project = await this.get(id);
+    const target = await this.targets.get(project.targetId);
+    if (!target)
+      throw new AppError(500, 'PROJECT_TARGET_MISSING', 'Project 的 Execution Target 不存在');
+    if (target.kind === 'REMOTE_NODE') {
+      return this.requireRemote().preflight(target.id, project.rootPath);
+    }
     return this.preflightPath(project.rootPath);
   }
 
@@ -162,6 +191,12 @@ export class ProjectService {
 
   async listFiles(id: string, requestedPath = '', depth = 2): Promise<FileTreeEntry[]> {
     const project = await this.get(id);
+    const target = await this.targets.get(project.targetId);
+    if (!target)
+      throw new AppError(500, 'PROJECT_TARGET_MISSING', 'Project 的 Execution Target 不存在');
+    if (target.kind === 'REMOTE_NODE') {
+      return this.requireRemote().listFiles(target.id, project.realRootPath, requestedPath, depth);
+    }
     const directory = await resolveContainedExistingPath(project.realRootPath, requestedPath);
     const directoryStat = await stat(directory);
     if (!directoryStat.isDirectory()) {
@@ -173,6 +208,12 @@ export class ProjectService {
 
   async readFile(id: string, requestedPath: string) {
     const project = await this.get(id);
+    const target = await this.targets.get(project.targetId);
+    if (!target)
+      throw new AppError(500, 'PROJECT_TARGET_MISSING', 'Project 的 Execution Target 不存在');
+    if (target.kind === 'REMOTE_NODE') {
+      return this.requireRemote().readFile(target.id, project.realRootPath, requestedPath);
+    }
     const file = await resolveContainedExistingPath(project.realRootPath, requestedPath);
     const fileStat = await stat(file);
     if (!fileStat.isFile()) throw new AppError(400, 'FILE_NOT_REGULAR', '请求路径不是普通文件');
@@ -190,6 +231,13 @@ export class ProjectService {
       modifiedAt: fileStat.mtime.toISOString(),
       readOnly: true,
     };
+  }
+
+  private requireRemote(): RemoteProjectOperations {
+    if (!this.remote) {
+      throw new AppError(503, 'REMOTE_NODE_GATEWAY_UNAVAILABLE', 'Remote Node Gateway 不可用');
+    }
+    return this.remote;
   }
 }
 

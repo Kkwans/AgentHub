@@ -12,19 +12,22 @@ import WebSocket from 'ws';
 
 import { RemoteNodeGateway } from './remote-node-gateway.js';
 import { RemoteNodeService } from './remote-node-service.js';
+import { WebSocketUpgradeRouter } from '../websocket-upgrade.js';
 
 describe('Remote Node WebSocket Gateway', () => {
   let database: DatabaseClient;
   let httpServer: Server;
   let service: RemoteNodeService;
   let gateway: RemoteNodeGateway;
+  let upgradeRouter: WebSocketUpgradeRouter;
   let apiRoot: string;
 
   beforeAll(async () => {
     database = await createPgliteDatabase({ dataDir: 'memory://' });
     service = new RemoteNodeService(new RemoteNodeRepository(database.db));
     httpServer = createServer();
-    gateway = new RemoteNodeGateway(httpServer, service);
+    upgradeRouter = new WebSocketUpgradeRouter(httpServer);
+    gateway = new RemoteNodeGateway(upgradeRouter, service);
     await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
     const address = httpServer.address();
     if (!address || typeof address === 'string') throw new Error('测试端口不可用');
@@ -33,6 +36,7 @@ describe('Remote Node WebSocket Gateway', () => {
 
   afterAll(async () => {
     await gateway.close();
+    upgradeRouter.close();
     await new Promise<void>((resolve, reject) =>
       httpServer.close((error) => (error ? reject(error) : resolve())),
     );
@@ -123,8 +127,11 @@ describe('Remote Node WebSocket Gateway', () => {
     await expect(rpc).resolves.toEqual({ status: 'READY' });
 
     const events: Array<Record<string, unknown>> = [];
-    const unsubscribe = gateway.subscribeSession('11111111-1111-4111-8111-111111111111', (event) =>
-      events.push(event),
+    const unsubscribe = gateway.subscribeSession(
+      registered.nodeId!,
+      '11111111-1111-4111-8111-111111111111',
+      (event) => events.push(event),
+      () => undefined,
     );
     socket.send(
       JSON.stringify({

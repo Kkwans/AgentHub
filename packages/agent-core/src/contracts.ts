@@ -9,6 +9,7 @@ export interface WorkspaceMapping {
 
 export type AgentLaunchSpec =
   | { kind: 'HOST_PROCESS'; executable: string; args: string[] }
+  | { kind: 'REMOTE_AGENT'; nodeId: string; inventoryKey: string }
   | {
       kind: 'DOCKER_EXEC';
       containerName: string;

@@ -15,7 +15,8 @@
     "@agenthub/adapter-acp": "workspace:*",
     "@agenthub/agent-core": "workspace:*",
     "@agenthub/shared": "workspace:*",
-    "ws": "8.21.3"
+    "ws": "8.21.3",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/ws": "8.18.1"

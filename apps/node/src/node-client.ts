@@ -17,6 +17,10 @@ export interface NodeCommandExecutor {
     command: RemoteNodeCommandName,
     payload: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
+  setEventSink?(
+    sink: ((sessionId: string, event: Record<string, unknown>) => void) | undefined,
+  ): void;
+  disconnect?(): Promise<void>;
 }
 
 const unsupportedExecutor: NodeCommandExecutor = {
@@ -42,6 +46,9 @@ export class RemoteNodeClient {
   constructor(
     private readonly config: NodeDaemonConfig,
     private readonly executor: NodeCommandExecutor = unsupportedExecutor,
+    private readonly inventoryProvider: () => Promise<
+      RemoteAgentInventoryEntry[]
+    > = discoverAgentInventory,
   ) {}
 
   async run(): Promise<void> {
@@ -69,10 +76,15 @@ export class RemoteNodeClient {
 
   private async connect(identity: NodeIdentity, roots: string[]): Promise<void> {
     let device = await identity.readDeviceRecord();
-    const inventory = await discoverAgentInventory();
+    const inventory = await this.inventoryProvider();
     const socket = new WebSocket(this.config.serverUrl, {
       maxPayload: 1024 * 1024,
       handshakeTimeout: 15_000,
+    });
+    this.executor.setEventSink?.((sessionId, event) => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'node.event', sessionId, event }));
+      }
     });
     this.socket = socket;
     await new Promise<void>((resolve, reject) => {
@@ -100,6 +112,8 @@ export class RemoteNodeClient {
       socket.once('close', (code, reason) => {
         if (heartbeat) clearInterval(heartbeat);
         this.socket = undefined;
+        this.executor.setEventSink?.(undefined);
+        void this.executor.disconnect?.();
         if (this.stopped || code === 1000) resolve();
         else reject(new Error(`连接关闭 ${String(code)} ${reason.toString()}`));
       });

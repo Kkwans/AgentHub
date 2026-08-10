@@ -99,6 +99,7 @@ export class AgentService {
       adapterKind: AdapterKind,
       launcher: AcpProcessLauncher,
     ) => AgentRuntimeAdapter = (_adapterKind, launcher) => new AcpAdapter({ launcher }),
+    private readonly remoteAdapter?: AgentRuntimeAdapter,
   ) {}
 
   list() {
@@ -112,7 +113,7 @@ export class AgentService {
   async register(input: RegisterAgentInput) {
     const target = await this.targets.get(input.targetId);
     if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
-    const launch = await resolveRegistrationLaunch(input, target.kind);
+    const launch = await resolveRegistrationLaunch(input, target);
     return this.agents.create({
       id: randomUUID(),
       targetId: input.targetId,
@@ -135,7 +136,7 @@ export class AgentService {
     if (!target)
       throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
     const profile = toAgentProfile(agent, target, input);
-    const adapter = this.adapterFactory(agent.adapterKind as AdapterKind, this.acpLauncher);
+    const adapter = this.adapterForTarget(target.kind, agent.adapterKind as AdapterKind);
     const report = await adapter.preflight(profile);
     const capabilities =
       report.status === 'READY' ? await adapter.getCapabilities(profile) : undefined;
@@ -172,8 +173,18 @@ export class AgentService {
       throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
     return {
       profile: toAgentProfile(agent, target, { cwd }),
-      adapter: this.adapterFactory(agent.adapterKind as AdapterKind, this.acpLauncher),
+      adapter: this.adapterForTarget(target.kind, agent.adapterKind as AdapterKind),
     };
+  }
+
+  private adapterForTarget(targetKind: string, adapterKind: AdapterKind): AgentRuntimeAdapter {
+    if (targetKind === 'REMOTE_NODE') {
+      if (!this.remoteAdapter) {
+        throw new AppError(503, 'REMOTE_NODE_GATEWAY_UNAVAILABLE', 'Remote Node Gateway 不可用');
+      }
+      return this.remoteAdapter;
+    }
+    return this.adapterFactory(adapterKind, this.acpLauncher);
   }
 
   async hostDiagnostics(): Promise<Record<string, unknown>> {
@@ -204,7 +215,7 @@ export class AgentService {
 
 async function resolveRegistrationLaunch(
   input: RegisterAgentInput,
-  targetKind: string,
+  target: { kind: string; capabilitiesJson: Record<string, unknown> },
 ): Promise<{
   adapterKind: AdapterKind;
   executable: string;
@@ -212,9 +223,16 @@ async function resolveRegistrationLaunch(
   config: Record<string, unknown>;
 }> {
   if (input.agentKind === 'CUSTOM_ACP') {
+    if (target.kind === 'REMOTE_NODE') {
+      throw new AppError(
+        409,
+        'REMOTE_CUSTOM_AGENT_UNSUPPORTED',
+        'Remote Node 只允许 inventory 中的固定 Agent Profile',
+      );
+    }
     if (!input.executable)
       throw new AppError(400, 'AGENT_EXECUTABLE_REQUIRED', 'Custom ACP Agent 必须提供 executable');
-    if (targetKind === 'LOCAL_HOST' && !isAbsolute(input.executable)) {
+    if (target.kind === 'LOCAL_HOST' && !isAbsolute(input.executable)) {
       throw new AppError(400, 'AGENT_EXECUTABLE_NOT_ABSOLUTE', '宿主机 executable 必须是绝对路径');
     }
     return {
@@ -225,7 +243,7 @@ async function resolveRegistrationLaunch(
     };
   }
 
-  if (targetKind === 'LOCAL_HOST') {
+  if (target.kind === 'LOCAL_HOST') {
     if (input.agentKind === 'CODEX') {
       const pinned = resolvePinnedAcpAdapter('CODEX');
       return {
@@ -274,8 +292,36 @@ async function resolveRegistrationLaunch(
     );
   }
 
-  if (targetKind !== 'DOCKER_CONTAINER') {
-    throw new AppError(409, 'REMOTE_NODE_UNSUPPORTED', 'v0.1 不启用 Remote Node');
+  if (target.kind === 'REMOTE_NODE') {
+    const inventory = Array.isArray(target.capabilitiesJson.inventory)
+      ? target.capabilitiesJson.inventory
+      : [];
+    const remote = inventory.find((candidate): candidate is Record<string, unknown> =>
+      Boolean(
+        candidate &&
+        typeof candidate === 'object' &&
+        (candidate as Record<string, unknown>).agentKind === input.agentKind,
+      ),
+    );
+    if (!remote || remote.status !== 'AVAILABLE' || typeof remote.key !== 'string') {
+      throw new AppError(
+        409,
+        'REMOTE_AGENT_NOT_AVAILABLE',
+        'Remote Node inventory 中没有可用的该类型 Agent',
+      );
+    }
+    const adapterKind =
+      remote.adapterKind === 'OPENCLAW_GATEWAY' ? 'OPENCLAW_GATEWAY' : 'ACP_STDIO';
+    return {
+      adapterKind,
+      executable: `remote:${remote.key}`,
+      args: [],
+      config: { remoteInventoryKey: remote.key },
+    };
+  }
+
+  if (target.kind !== 'DOCKER_CONTAINER') {
+    throw new AppError(409, 'AGENT_TARGET_KIND_UNSUPPORTED', '不支持的 Agent Execution Target');
   }
 
   const definitions: Partial<
@@ -356,6 +402,7 @@ function toAgentProfile(
     expectedContainerId: string | null;
     startPolicy: string | null;
     workspaceMappingsJson: Array<{ hostRoot: string; containerRoot: string }>;
+    connectionJson: Record<string, unknown>;
   },
   input: AgentPreflightInput,
 ): AgentProfile {
@@ -379,6 +426,18 @@ function toAgentProfile(
       ...common,
       targetKind: 'LOCAL_HOST',
       launchSpec: { kind: 'HOST_PROCESS', executable: agent.executable, args: agent.argsJson },
+    };
+  }
+  if (target.kind === 'REMOTE_NODE') {
+    const nodeId = target.connectionJson.nodeId;
+    const inventoryKey = agent.configJson.remoteInventoryKey;
+    if (typeof nodeId !== 'string' || typeof inventoryKey !== 'string') {
+      throw new AppError(500, 'REMOTE_AGENT_CONFIG_INVALID', 'Remote Agent 配置不完整');
+    }
+    return {
+      ...common,
+      targetKind: 'REMOTE_NODE',
+      launchSpec: { kind: 'REMOTE_AGENT', nodeId, inventoryKey },
     };
   }
   if (

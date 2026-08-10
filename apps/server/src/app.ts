@@ -128,7 +128,13 @@ export function createApp(options: AppOptions = {}): Express {
     app.get('/api/v1/settings/capabilities', async (request, response, next) => {
       try {
         response.json({
-          data: { terminal: await options.terminal!.diagnose(), remoteNode: { available: false } },
+          data: {
+            terminal: await options.terminal!.diagnose(),
+            remoteNode: {
+              available: Boolean(options.remoteNodes),
+              transport: options.remoteNodes ? 'outbound_websocket' : undefined,
+            },
+          },
           requestId: String(request.id),
         });
       } catch (error) {
