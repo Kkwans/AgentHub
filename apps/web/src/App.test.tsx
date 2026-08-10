@@ -2,18 +2,26 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
 import { authTokenStore } from './lib/api';
 
+let realtimeListener: ((event: Record<string, unknown>) => void) | undefined;
+
 vi.mock('./lib/realtime', () => ({
   realtime: {
     onState(listener: (state: '已连接') => void) {
       listener('已连接');
       return () => undefined;
+    },
+    subscribe(_topic: string, listener: (event: Record<string, unknown>) => void) {
+      realtimeListener = listener;
+      return () => {
+        if (realtimeListener === listener) realtimeListener = undefined;
+      };
     },
   },
 }));
@@ -22,6 +30,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   authTokenStore.set('');
+  realtimeListener = undefined;
 });
 
 describe('App', () => {
@@ -83,6 +92,108 @@ describe('App', () => {
       expect.stringMatching(/^\/api\/v1\/(prompts|projects|agents)$/),
       expect.any(Object),
     );
+  });
+
+  it('Workspace 收到实时事件时同步刷新 Session 详情与列表', async () => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    const session = {
+      id: '55555555-5555-4555-8555-555555555555',
+      projectId: '11111111-1111-4111-8111-111111111111',
+      agentId: '33333333-3333-4333-8333-333333333333',
+      taskId: null,
+      externalSessionId: 'external-session',
+      title: '实时状态回归',
+      cwd: '/volume2/Project/AgentHub',
+      branch: 'main',
+      status: 'RUNNING',
+      model: null,
+      mode: null,
+      lastSeq: 1,
+      createdAt: '2026-08-10T00:00:00.000Z',
+      startedAt: '2026-08-10T00:00:00.000Z',
+      lastActiveAt: '2026-08-10T00:00:00.000Z',
+      closedAt: null,
+      archivedAt: null,
+    };
+    const project = {
+      id: session.projectId,
+      name: 'AgentHub',
+      description: null,
+      targetId: '22222222-2222-4222-8222-222222222222',
+      rootPath: session.cwd,
+      realRootPath: session.cwd,
+      repoKind: 'GIT',
+      status: 'ACTIVE',
+    };
+    const agent = {
+      id: session.agentId,
+      targetId: project.targetId,
+      name: 'Codex 主力',
+      agentKind: 'CODEX',
+      adapterKind: 'ACP_STDIO',
+      status: 'READY',
+      detectedVersion: '1.1.14',
+      defaultModel: null,
+      defaultMode: null,
+      capabilitiesJson: {},
+      lastPreflightAt: '2026-08-10T00:00:00.000Z',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const pathname = new URL(String(input), 'http://agenthub.test').pathname;
+        const data =
+          pathname === `/api/v1/sessions/${session.id}`
+            ? session
+            : pathname === '/api/v1/sessions'
+              ? [session]
+              : pathname === '/api/v1/agents'
+                ? [agent]
+                : pathname === '/api/v1/projects'
+                  ? [project]
+                  : pathname === '/api/v1/settings/capabilities'
+                    ? {
+                        terminal: {
+                          available: false,
+                          code: 'PTY_UNAVAILABLE',
+                          message: '当前平台不可用',
+                          platform: 'linux',
+                          arch: 'arm64',
+                        },
+                      }
+                    : pathname === '/api/v1/prompt-context/resolve'
+                      ? { ready: true, finalContext: '', missingVariables: [], items: [] }
+                      : [];
+        return new Response(JSON.stringify({ data, requestId: 'workspace-realtime-test' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[`/sessions/${session.id}`]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect((await screen.findAllByText('实时状态回归')).length).toBeGreaterThanOrEqual(2);
+    await waitFor(() => expect(realtimeListener).toBeTypeOf('function'));
+    invalidate.mockClear();
+    act(() => realtimeListener?.({ type: 'run.completed' }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['sessions'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['session', session.id] });
   });
 
   it('PromptOS 明确呈现创建新版本与中文功能标签', async () => {

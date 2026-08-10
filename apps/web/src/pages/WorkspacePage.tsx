@@ -119,6 +119,7 @@ export function WorkspacePage() {
     return realtime.subscribe(
       `session:${id}`,
       () => {
+        void client.invalidateQueries({ queryKey: ['sessions'] });
         void client.invalidateQueries({ queryKey: ['messages', id] });
         void client.invalidateQueries({ queryKey: ['runs', id] });
         void client.invalidateQueries({ queryKey: ['events', id] });

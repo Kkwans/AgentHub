@@ -26,7 +26,14 @@ class RealtimeClient {
 
   onState(listener: (state: '连接中' | '已连接' | '已断开') => void): () => void {
     this.stateListeners.add(listener);
-    listener(this.socket?.readyState === WebSocket.OPEN ? '已连接' : '已断开');
+    this.connect();
+    listener(
+      this.socket?.readyState === WebSocket.OPEN
+        ? '已连接'
+        : this.socket?.readyState === WebSocket.CONNECTING
+          ? '连接中'
+          : '已断开',
+    );
     return () => this.stateListeners.delete(listener);
   }
 
@@ -67,7 +74,7 @@ class RealtimeClient {
     });
     this.socket.addEventListener('close', () => {
       this.emitState('已断开');
-      if (!this.listeners.size) return;
+      if (!this.listeners.size && !this.stateListeners.size) return;
       this.attempts += 1;
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = window.setTimeout(
