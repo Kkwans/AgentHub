@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-10T14:38:46.613Z",
+  "finishedAt": "2026-08-10T14:38:57.068Z",
+  "baseURL": "http://192.168.5.110:3210",
+  "browser": "150.0.7871.182",
+  "checks": [
+    {
+      "name": "正式服务健康",
+      "status": "ok",
+      "version": "0.3.0",
+      "database": "pglite",
+      "web": true
+    },
+    {
+      "name": "1440 登录页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "390 登录页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "1440 首次设置页仅保留统一密码眼睛",
+      "status": "PASS",
+      "type": "password",
+      "inputOutline": "none",
+      "rootOutlineWidth": "2px",
+      "rootBoxShadow": "none",
+      "nativeReveal": ""
+    },
+    {
+      "name": "1440 首次设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "390 首次设置页仅保留统一密码眼睛",
+      "status": "PASS",
+      "type": "password",
+      "inputOutline": "none",
+      "rootOutlineWidth": "2px",
+      "rootBoxShadow": "none",
+      "nativeReveal": ""
+    },
+    {
+      "name": "390 首次设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "1440 概览没有灰色空洞或单边强调条",
+      "status": "PASS",
+      "panels": 4,
+      "gap": "16px",
+      "background": "rgba(0, 0, 0, 0)",
+      "prioritySections": 0,
+      "attentionLeftBorder": "1px",
+      "attentionRightBorder": "1px",
+      "attentionBoxShadow": "rgba(28, 35, 48, 0.04) 0px 8px 24px 0px",
+      "maxPanelHeight": 278.796875
+    },
+    {
+      "name": "1440 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "1024 概览没有灰色空洞或单边强调条",
+      "status": "PASS",
+      "panels": 4,
+      "gap": "16px",
+      "background": "rgba(0, 0, 0, 0)",
+      "prioritySections": 0,
+      "attentionLeftBorder": "1px",
+      "attentionRightBorder": "1px",
+      "attentionBoxShadow": "rgba(28, 35, 48, 0.04) 0px 8px 24px 0px",
+      "maxPanelHeight": 368.796875
+    },
+    {
+      "name": "1024 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "768 概览没有灰色空洞或单边强调条",
+      "status": "PASS",
+      "panels": 4,
+      "gap": "16px",
+      "background": "rgba(0, 0, 0, 0)",
+      "prioritySections": 0,
+      "attentionLeftBorder": "1px",
+      "attentionRightBorder": "1px",
+      "attentionBoxShadow": "rgba(28, 35, 48, 0.04) 0px 8px 24px 0px",
+      "maxPanelHeight": 368.796875
+    },
+    {
+      "name": "768 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "390 概览没有灰色空洞或单边强调条",
+      "status": "PASS",
+      "panels": 4,
+      "gap": "12px",
+      "background": "rgba(0, 0, 0, 0)",
+      "prioritySections": 0,
+      "attentionLeftBorder": "1px",
+      "attentionRightBorder": "1px",
+      "attentionBoxShadow": "rgba(28, 35, 48, 0.04) 0px 8px 24px 0px",
+      "maxPanelHeight": 362.796875
+    },
+    {
+      "name": "390 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "0 个 request failure、console/page/HTTP 错误和外部请求",
+      "status": "PASS"
+    }
+  ],
+  "runtimeIssues": [],
+  "failedRequests": [],
+  "externalRequests": [],
+  "screenshots": [
+    "login-1440.jpg",
+    "login-390.jpg",
+    "setup-1440.jpg",
+    "setup-390.jpg",
+    "overview-1440.jpg",
+    "overview-1024.jpg",
+    "overview-768.jpg",
+    "overview-390.jpg"
+  ],
+  "result": "PASS"
+}
