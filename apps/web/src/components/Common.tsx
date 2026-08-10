@@ -24,14 +24,19 @@ const statusLabels: Record<string, string> = {
   IN_PROGRESS: '进行中',
   DONE: '完成',
   BLOCKED: '受阻',
+  QUEUED: '排队中',
+  SETTING_UP: '创建工作区',
+  AWAITING_INPUT: '等待输入',
+  REVIEW: '待合并审阅',
+  MERGING: '合并中',
 };
 
 export function StatusBadge({ status }: { status: string }) {
   const tone = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED/.test(status)
     ? 'positive'
-    : /RUNNING|STARTING/.test(status)
+    : /RUNNING|STARTING|SETTING_UP|MERGING/.test(status)
       ? 'active'
-      : /WAITING|AUTH_REQUIRED|UNVERIFIED|UNMAPPED/.test(status)
+      : /WAITING|AWAITING|REVIEW|QUEUED|AUTH_REQUIRED|UNVERIFIED|UNMAPPED/.test(status)
         ? 'warning'
         : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED/.test(status)
           ? 'danger'

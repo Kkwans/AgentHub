@@ -36,11 +36,35 @@ const task = {
   assignedAgentId: agent.id,
   sessionId: '55555555-5555-4555-8555-555555555555',
   finalRunId: '66666666-6666-4666-8666-666666666666',
-  branch: 'main',
+  branch: 'agenthub/task-44444444-77777777',
   position: '0',
   createdAt: '2026-08-09T00:00:00.000Z',
   updatedAt: '2026-08-09T00:00:00.000Z',
   completedAt: null,
+};
+const worktreeExecution = {
+  id: '77777777-7777-4777-8777-777777777777',
+  taskId: task.id,
+  projectId: project.id,
+  agentId: agent.id,
+  status: 'REVIEW',
+  baseBranch: 'main',
+  baseSha: 'a'.repeat(40),
+  taskBranch: task.branch,
+  worktreePath: '/volume2/Project/.agenthub/worktrees/77777777',
+  sessionId: task.sessionId,
+  runId: task.finalRunId,
+  mergeCommitSha: null,
+  configJson: {},
+  errorCode: null,
+  errorMessage: null,
+  queuedAt: '2026-08-09T00:00:00.000Z',
+  startedAt: '2026-08-09T00:00:01.000Z',
+  reviewReadyAt: '2026-08-09T00:01:00.000Z',
+  mergeStartedAt: null,
+  completedAt: null,
+  createdAt: '2026-08-09T00:00:00.000Z',
+  updatedAt: '2026-08-09T00:01:00.000Z',
 };
 
 test.beforeEach(async ({ page }) => {
@@ -68,26 +92,41 @@ test.beforeEach(async ({ page }) => {
         }
       : path.endsWith('/projects')
         ? [project]
-        : path.endsWith('/tasks')
-          ? [task]
-          : path.endsWith('/goals')
-            ? []
-            : path.endsWith('/agents')
-              ? [agent]
-              : path.endsWith('/auth/status')
-                ? { mode: 'local_trusted', localTrusted: true }
-                : path.endsWith('/settings/capabilities')
-                  ? {
-                      terminal: {
-                        available: false,
-                        code: 'PTY_NATIVE_BINDING_UNAVAILABLE',
-                        message: '当前平台未提供可用的 node-pty native binding',
-                        platform: 'linux',
-                        arch: 'arm64',
-                      },
-                      remoteNode: { available: false },
-                    }
-                  : [];
+        : path.endsWith(`/worktree-executions/${worktreeExecution.id}/review`)
+          ? {
+              worktreePath: worktreeExecution.worktreePath,
+              baseSha: worktreeExecution.baseSha,
+              headSha: 'b'.repeat(40),
+              taskBranch: worktreeExecution.taskBranch,
+              clean: false,
+              aheadBy: 1,
+              entries: [{ index: ' ', worktree: 'M', path: 'apps/web/src/App.tsx' }],
+              patch: 'diff --git a/apps/web/src/App.tsx b/apps/web/src/App.tsx\n+Worktree Review',
+              diffStat: '1 file changed',
+              truncated: false,
+            }
+          : path.endsWith('/worktree-executions')
+            ? [worktreeExecution]
+            : path.endsWith('/tasks')
+              ? [task]
+              : path.endsWith('/goals')
+                ? []
+                : path.endsWith('/agents')
+                  ? [agent]
+                  : path.endsWith('/auth/status')
+                    ? { mode: 'local_trusted', localTrusted: true }
+                    : path.endsWith('/settings/capabilities')
+                      ? {
+                          terminal: {
+                            available: false,
+                            code: 'PTY_NATIVE_BINDING_UNAVAILABLE',
+                            message: '当前平台未提供可用的 node-pty native binding',
+                            platform: 'linux',
+                            arch: 'arm64',
+                          },
+                          remoteNode: { available: false },
+                        }
+                      : [];
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -109,8 +148,13 @@ test('任务看板明确保留人工审阅门禁', async ({ page }) => {
   await page.goto('/tasks');
   await expect(page.getByRole('heading', { name: 'Goal 与 Task' })).toBeVisible();
   await expect(page.locator('[aria-label="Task 看板"]')).toBeVisible();
-  await expect(page.getByRole('button', { name: /确认完成/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: '继续修改' })).toBeVisible();
+  await page.getByRole('button', { name: /审阅并合并/ }).click();
+  await expect(page.getByRole('dialog', { name: task.title })).toBeVisible();
+  await expect(page.getByText('Review evidence')).toBeVisible();
+  await expect(page.getByText(/Worktree Review/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /批准并合并/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /继续修改/ })).toBeDisabled();
+  await expectNoHorizontalOverflow(page);
 });
 
 test('设置页呈现认证与 Docker 高权限边界', async ({ page }) => {

@@ -39,6 +39,19 @@ const errorMessages: Record<string, string> = {
   SKILL_PATH_ESCAPE: 'Skill 路径超出 Project root，已阻止扫描。',
   API_TOKEN_NAME_EXISTS: 'API token 名称已存在。',
   API_TOKEN_NOT_FOUND: 'API token 不存在或已经撤销。',
+  WORKTREE_EXECUTION_NOT_FOUND: 'Worktree Execution 不存在。',
+  WORKTREE_QUEUE_CONFLICT: 'Task 已有隔离执行，或队列状态已经变化。',
+  WORKTREE_NOT_READY: '隔离工作区尚未创建完成。',
+  WORKTREE_EXECUTION_NOT_IN_REVIEW: '当前隔离执行尚未进入待审阅状态。',
+  WORKTREE_EXECUTION_BUSY: 'Worktree 正在创建或合并，请等待当前步骤完成。',
+  WORKTREE_MERGE_CONFLICT: '任务分支与 base branch 存在冲突，请继续修改后重试。',
+  WORKTREE_MERGE_FAILED: '任务分支合并失败，主工作区已尝试恢复。',
+  WORKTREE_COMMIT_FAILED: '无法创建受管提交，请检查 Git user 配置与变更状态。',
+  PRIMARY_WORKTREE_DIRTY: 'Project 主工作区存在未提交变更，请先处理后再合并。',
+  PRIMARY_BRANCH_CHANGED: 'Project 当前分支已不是登记的 base branch。',
+  WORKTREE_BASE_DIVERGED: 'base branch 历史已替换，不能安全合并。',
+  WORKTREE_PATH_ESCAPE: 'Worktree 路径超出受管目录，已阻止访问。',
+  REMOTE_WORKTREE_NOT_AVAILABLE: 'Remote Node Worktree 将在下一阶段启用。',
 };
 
 const accessTokenKey = 'agenthub.access-token';
@@ -204,6 +217,55 @@ export interface TaskRecord {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+}
+
+export type WorktreeExecutionStatus =
+  | 'QUEUED'
+  | 'SETTING_UP'
+  | 'RUNNING'
+  | 'AWAITING_INPUT'
+  | 'REVIEW'
+  | 'MERGING'
+  | 'DONE'
+  | 'BLOCKED'
+  | 'CANCELED';
+
+export interface WorktreeExecutionRecord {
+  id: string;
+  taskId: string;
+  projectId: string;
+  agentId: string;
+  status: WorktreeExecutionStatus;
+  baseBranch: string;
+  baseSha: string;
+  taskBranch: string;
+  worktreePath: string | null;
+  sessionId: string | null;
+  runId: string | null;
+  mergeCommitSha: string | null;
+  configJson: { model?: string; mode?: string; promptVariables?: Record<string, unknown> };
+  errorCode: string | null;
+  errorMessage: string | null;
+  queuedAt: string;
+  startedAt: string | null;
+  reviewReadyAt: string | null;
+  mergeStartedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorktreeReviewRecord {
+  worktreePath: string;
+  baseSha: string;
+  headSha: string;
+  taskBranch: string;
+  clean: boolean;
+  aheadBy: number;
+  entries: Array<{ index: string; worktree: string; path: string; originalPath?: string }>;
+  patch: string;
+  diffStat: string;
+  truncated: boolean;
 }
 
 export interface DashboardSnapshot {

@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -242,6 +242,213 @@ describe('App', () => {
     expect(screen.getByRole('tab', { name: '标签' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '上下文预览' })).toBeInTheDocument();
     expect(screen.getByText('不可变版本历史')).toBeInTheDocument();
+  });
+
+  it('Task 页展示 Worktree 执行轨道与真实 Merge Review 证据', async () => {
+    const project = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'AgentHub',
+      description: null,
+      targetId: '22222222-2222-4222-8222-222222222222',
+      rootPath: '/volume2/Project/AgentHub',
+      realRootPath: '/volume2/Project/AgentHub',
+      repoKind: 'GIT',
+      status: 'ACTIVE',
+    };
+    const agent = {
+      id: '33333333-3333-4333-8333-333333333333',
+      targetId: project.targetId,
+      name: 'Codex 主力',
+      agentKind: 'CODEX',
+      adapterKind: 'ACP_STDIO',
+      status: 'READY',
+      detectedVersion: '1.1.14',
+      defaultModel: null,
+      defaultMode: null,
+      capabilitiesJson: {},
+      lastPreflightAt: '2026-08-10T00:00:00.000Z',
+    };
+    const task = {
+      id: '44444444-4444-4444-8444-444444444444',
+      projectId: project.id,
+      goalId: null,
+      parentId: null,
+      title: '隔离实现 Worktree Runner',
+      description: '在任务分支中实现并验证',
+      acceptanceCriteria: '人工审阅后合并',
+      status: 'WAITING_REVIEW',
+      priority: 10,
+      assignedAgentId: agent.id,
+      sessionId: '55555555-5555-4555-8555-555555555555',
+      finalRunId: '66666666-6666-4666-8666-666666666666',
+      branch: 'agenthub/task-44444444-77777777',
+      position: '0',
+      createdAt: '2026-08-10T00:00:00.000Z',
+      updatedAt: '2026-08-10T00:01:00.000Z',
+      completedAt: null,
+    };
+    const execution = {
+      id: '77777777-7777-4777-8777-777777777777',
+      taskId: task.id,
+      projectId: project.id,
+      agentId: agent.id,
+      status: 'REVIEW',
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: task.branch,
+      worktreePath: '/volume2/Project/.agenthub/worktrees/task',
+      sessionId: task.sessionId,
+      runId: task.finalRunId,
+      mergeCommitSha: null,
+      configJson: {},
+      errorCode: null,
+      errorMessage: null,
+      queuedAt: '2026-08-10T00:00:00.000Z',
+      startedAt: '2026-08-10T00:00:01.000Z',
+      reviewReadyAt: '2026-08-10T00:01:00.000Z',
+      mergeStartedAt: null,
+      completedAt: null,
+      createdAt: '2026-08-10T00:00:00.000Z',
+      updatedAt: '2026-08-10T00:01:00.000Z',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const pathname = new URL(String(input), 'http://agenthub.test').pathname;
+        const data =
+          pathname === '/api/v1/projects'
+            ? [project]
+            : pathname === '/api/v1/tasks'
+              ? [task]
+              : pathname === '/api/v1/goals'
+                ? []
+                : pathname === '/api/v1/agents'
+                  ? [agent]
+                  : pathname === '/api/v1/worktree-executions'
+                    ? [execution]
+                    : pathname === `/api/v1/worktree-executions/${execution.id}/review`
+                      ? {
+                          worktreePath: execution.worktreePath,
+                          baseSha: execution.baseSha,
+                          headSha: 'b'.repeat(40),
+                          taskBranch: execution.taskBranch,
+                          clean: false,
+                          aheadBy: 1,
+                          entries: [{ index: ' ', worktree: 'M', path: 'src/runner.ts' }],
+                          patch: 'diff --git a/src/runner.ts b/src/runner.ts\n+隔离执行',
+                          diffStat: '1 file changed',
+                          truncated: false,
+                        }
+                      : [];
+        return new Response(JSON.stringify({ data, requestId: 'worktree-ui-test' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/tasks']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /审阅并合并/ }));
+    expect(await screen.findByRole('dialog', { name: '隔离实现 Worktree Runner' })).toBeVisible();
+    expect(screen.getAllByText('agenthub/task-44444444-77777777').length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findByText(/\+隔离执行/)).toBeVisible();
+    expect(screen.getByRole('button', { name: /批准并合并/ })).toBeVisible();
+    expect(screen.getByText(/不会自动清理/)).toBeVisible();
+  });
+
+  it('Git Task 可从中文入口加入隔离执行队列', async () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+    const taskId = '44444444-4444-4444-8444-444444444444';
+    const agentId = '33333333-3333-4333-8333-333333333333';
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const pathname = new URL(String(input), 'http://agenthub.test').pathname;
+      const data =
+        pathname === '/api/v1/projects'
+          ? [
+              {
+                id: projectId,
+                name: 'AgentHub',
+                targetId: '22222222-2222-4222-8222-222222222222',
+                rootPath: '/volume2/Project/AgentHub',
+                realRootPath: '/volume2/Project/AgentHub',
+                repoKind: 'GIT',
+                status: 'ACTIVE',
+              },
+            ]
+          : pathname === '/api/v1/tasks'
+            ? [
+                {
+                  id: taskId,
+                  projectId,
+                  goalId: null,
+                  parentId: null,
+                  title: '加入隔离队列',
+                  description: null,
+                  acceptanceCriteria: null,
+                  status: 'READY',
+                  priority: 0,
+                  assignedAgentId: null,
+                  sessionId: null,
+                  finalRunId: null,
+                  branch: null,
+                  position: '0',
+                  createdAt: '2026-08-10T00:00:00.000Z',
+                  updatedAt: '2026-08-10T00:00:00.000Z',
+                  completedAt: null,
+                },
+              ]
+            : pathname === '/api/v1/agents'
+              ? [
+                  {
+                    id: agentId,
+                    targetId: '22222222-2222-4222-8222-222222222222',
+                    name: 'Codex 主力',
+                    agentKind: 'CODEX',
+                    adapterKind: 'ACP_STDIO',
+                    status: 'READY',
+                    detectedVersion: '1.1.14',
+                    defaultModel: null,
+                    defaultMode: null,
+                    capabilitiesJson: {},
+                    lastPreflightAt: '2026-08-10T00:00:00.000Z',
+                  },
+                ]
+              : pathname === `/api/v1/tasks/${taskId}/worktree/queue` && init?.method === 'POST'
+                ? { execution: { id: '77777777-7777-4777-8777-777777777777', status: 'QUEUED' } }
+                : [];
+      return new Response(JSON.stringify({ data, requestId: 'worktree-queue-ui-test' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/tasks']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /隔离执行/ }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v1/tasks/${taskId}/worktree/queue`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ agentId }),
+        }),
+      ),
+    );
+    expect(screen.getByRole('button', { name: /直接运行/ })).toBeVisible();
   });
 
   it('token auth 设置使用当前浏览器 Session 且 API 自动携带 Bearer token', async () => {

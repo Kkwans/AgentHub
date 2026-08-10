@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
@@ -9,11 +9,15 @@ import {
   ClipboardCheck,
   FolderGit2,
   GitBranch,
+  GitMerge,
+  Layers3,
   Plus,
   Play,
   RefreshCw,
+  RotateCcw,
   ShieldAlert,
   SquareTerminal,
+  X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -29,6 +33,8 @@ import {
   type ProjectRecord,
   type SessionRecord,
   type TaskRecord,
+  type WorktreeExecutionRecord,
+  type WorktreeReviewRecord,
 } from '../lib/api';
 import {
   EmptyState,
@@ -834,6 +840,9 @@ export function TasksPage() {
   const [goalFormOpen, setGoalFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Record<string, string>>({});
+  const [selectedExecutionId, setSelectedExecutionId] = useState('');
+  const [reworkFeedback, setReworkFeedback] = useState('');
+  const [commitMessage, setCommitMessage] = useState('');
   const projects = useQuery({
     queryKey: ['projects'],
     queryFn: () => api.get<ProjectRecord[]>('/projects'),
@@ -849,14 +858,44 @@ export function TasksPage() {
     queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${effectiveProjectId}`),
     enabled: Boolean(effectiveProjectId),
   });
+  const worktrees = useQuery({
+    queryKey: ['worktree-executions', effectiveProjectId],
+    queryFn: () =>
+      api.get<WorktreeExecutionRecord[]>(`/worktree-executions?projectId=${effectiveProjectId}`),
+    enabled: Boolean(effectiveProjectId),
+  });
   const agents = useQuery({
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
   });
+  const latestWorktreeByTask = new Map<string, WorktreeExecutionRecord>();
+  for (const execution of worktrees.data ?? [])
+    latestWorktreeByTask.set(execution.taskId, execution);
+  const selectedExecution = (worktrees.data ?? []).find(
+    (execution) => execution.id === selectedExecutionId,
+  );
+  const selectedTask = (tasks.data ?? []).find((task) => task.id === selectedExecution?.taskId);
+  const worktreeReview = useQuery({
+    queryKey: ['worktree-review', selectedExecutionId],
+    queryFn: () =>
+      api.get<WorktreeReviewRecord>(`/worktree-executions/${selectedExecutionId}/review`),
+    enabled: Boolean(selectedExecutionId && selectedExecution?.worktreePath),
+    retry: false,
+  });
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ['tasks'] });
     void client.invalidateQueries({ queryKey: ['goals'] });
+    void client.invalidateQueries({ queryKey: ['worktree-executions'] });
+    void client.invalidateQueries({ queryKey: ['worktree-review'] });
   };
+  useEffect(
+    () =>
+      realtime.subscribe('worktrees', () => {
+        refresh();
+        void client.invalidateQueries({ queryKey: ['sessions'] });
+      }),
+    [client],
+  );
   const createGoal = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post('/goals', body),
     onSuccess: () => {
@@ -885,11 +924,49 @@ export function TasksPage() {
       navigate(`/sessions/${result.session.id}`);
     },
   });
+  const queueWorktree = useMutation({
+    mutationFn: ({ id, agentId }: { id: string; agentId: string }) =>
+      api.post(`/tasks/${id}/worktree/queue`, { agentId }),
+    onSuccess: refresh,
+  });
   const review = useMutation({
     mutationFn: ({ id, decision }: { id: string; decision: 'APPROVE' | 'REWORK' }) =>
       api.post(`/tasks/${id}/review`, { decision }),
     onSuccess: refresh,
   });
+  const reworkWorktree = useMutation({
+    mutationFn: ({ id, feedback }: { id: string; feedback: string }) =>
+      api.post<WorktreeExecutionRecord>(`/worktree-executions/${id}/rework`, { feedback }),
+    onSuccess: (execution) => {
+      refresh();
+      setReworkFeedback('');
+      setSelectedExecutionId('');
+      if (execution.sessionId) navigate(`/sessions/${execution.sessionId}`);
+    },
+  });
+  const mergeWorktree = useMutation({
+    mutationFn: ({ id, message }: { id: string; message: string }) =>
+      api.post(`/worktree-executions/${id}/merge`, {
+        ...(message.trim() ? { commitMessage: message.trim() } : {}),
+      }),
+    onSuccess: () => {
+      refresh();
+      setCommitMessage('');
+      setSelectedExecutionId('');
+    },
+  });
+  const cancelWorktree = useMutation({
+    mutationFn: (id: string) => api.post(`/worktree-executions/${id}/cancel`),
+    onSuccess: () => {
+      refresh();
+      setSelectedExecutionId('');
+    },
+  });
+  const openExecution = (id: string) => {
+    setSelectedExecutionId(id);
+    setReworkFeedback('');
+    setCommitMessage('');
+  };
   const columns: Array<{
     status: TaskRecord['status'];
     title: string;
@@ -906,7 +983,7 @@ export function TasksPage() {
     <div className="page-stack">
       <PageIntro
         title="Goal 与 Task"
-        description="任务进入 Agent Run 后先到待审阅，只有用户确认才会完成。"
+        description="可直接运行，也可进入隔离 Worktree 队列；隔离任务只有经过 Review 与显式合并才会完成。"
         action={
           <div className="page-actions">
             <button className="button secondary" onClick={() => setGoalFormOpen(!goalFormOpen)}>
@@ -1014,10 +1091,10 @@ export function TasksPage() {
           </button>
         </form>
       )}
-      {projects.isLoading || tasks.isLoading ? (
+      {projects.isLoading || tasks.isLoading || worktrees.isLoading ? (
         <LoadingState label="正在加载任务看板" />
-      ) : projects.error || tasks.error ? (
-        <ErrorState error={(projects.error ?? tasks.error) as Error} />
+      ) : projects.error || tasks.error || worktrees.error ? (
+        <ErrorState error={(projects.error ?? tasks.error ?? worktrees.error) as Error} />
       ) : !projects.data?.length ? (
         <EmptyState
           title="尚未添加 Project"
@@ -1039,8 +1116,12 @@ export function TasksPage() {
                 <div className="task-column-body">
                   {entries.map((task) => {
                     const agentId = selectedAgents[task.id] || agents.data?.[0]?.id || '';
+                    const execution = latestWorktreeByTask.get(task.id);
                     return (
-                      <article className="task-card" key={task.id}>
+                      <article
+                        className={`task-card${execution ? ' worktree-task-card' : ''}`}
+                        key={task.id}
+                      >
                         <div className="task-card-heading">
                           <span>优先级 {task.priority}</span>
                           <StatusBadge status={task.status} />
@@ -1048,6 +1129,10 @@ export function TasksPage() {
                         <strong>{task.title}</strong>
                         <p>{task.description || '暂无任务说明'}</p>
                         {task.branch && <code>{task.branch}</code>}
+                        {execution && <ExecutionRail execution={execution} compact />}
+                        {execution?.errorMessage && (
+                          <span className="worktree-card-error">{execution.errorMessage}</span>
+                        )}
                         {task.status === 'READY' && (
                           <label className="task-agent-select">
                             Agent
@@ -1083,36 +1168,77 @@ export function TasksPage() {
                             </button>
                           )}
                           {task.status === 'READY' && (
-                            <button
-                              className="button primary compact"
-                              disabled={!agentId || start.isPending}
-                              onClick={() => start.mutate({ id: task.id, agentId })}
-                            >
-                              <Play size={13} /> 交给 Agent
-                            </button>
+                            <>
+                              {projects.data?.find((project) => project.id === task.projectId)
+                                ?.repoKind === 'GIT' && (
+                                <button
+                                  className="button primary compact"
+                                  disabled={!agentId || queueWorktree.isPending}
+                                  onClick={() => queueWorktree.mutate({ id: task.id, agentId })}
+                                >
+                                  <Layers3 size={13} /> 隔离执行
+                                </button>
+                              )}
+                              <button
+                                className="button secondary compact"
+                                disabled={!agentId || start.isPending}
+                                onClick={() => start.mutate({ id: task.id, agentId })}
+                              >
+                                <Play size={13} /> 直接运行
+                              </button>
+                            </>
                           )}
-                          {task.status === 'IN_PROGRESS' && task.sessionId && (
-                            <button
-                              className="button secondary compact"
-                              onClick={() => navigate(`/sessions/${task.sessionId}`)}
-                            >
-                              打开 Session
-                            </button>
+                          {task.status === 'IN_PROGRESS' && (
+                            <>
+                              {(execution?.sessionId || task.sessionId) && (
+                                <button
+                                  className="button secondary compact"
+                                  onClick={() =>
+                                    navigate(`/sessions/${execution?.sessionId || task.sessionId}`)
+                                  }
+                                >
+                                  打开 Session
+                                </button>
+                              )}
+                              {execution && (
+                                <button
+                                  className="button ghost compact"
+                                  onClick={() => openExecution(execution.id)}
+                                >
+                                  执行详情
+                                </button>
+                              )}
+                            </>
                           )}
                           {task.status === 'WAITING_REVIEW' && (
                             <>
-                              <button
-                                className="button primary compact"
-                                onClick={() => review.mutate({ id: task.id, decision: 'APPROVE' })}
-                              >
-                                <ClipboardCheck size={13} /> 确认完成
-                              </button>
-                              <button
-                                className="button secondary compact"
-                                onClick={() => review.mutate({ id: task.id, decision: 'REWORK' })}
-                              >
-                                继续修改
-                              </button>
+                              {execution?.status === 'REVIEW' ? (
+                                <button
+                                  className="button primary compact"
+                                  onClick={() => openExecution(execution.id)}
+                                >
+                                  <GitMerge size={13} /> 审阅并合并
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    className="button primary compact"
+                                    onClick={() =>
+                                      review.mutate({ id: task.id, decision: 'APPROVE' })
+                                    }
+                                  >
+                                    <ClipboardCheck size={13} /> 确认完成
+                                  </button>
+                                  <button
+                                    className="button secondary compact"
+                                    onClick={() =>
+                                      review.mutate({ id: task.id, decision: 'REWORK' })
+                                    }
+                                  >
+                                    继续修改
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                         </div>
@@ -1136,28 +1262,43 @@ export function TasksPage() {
           </div>
           {tasks.data
             .filter((task) => task.status === 'BLOCKED')
-            .map((task) => (
-              <div className="action-row" key={task.id}>
-                <ShieldAlert size={17} />
-                <div>
-                  <strong>{task.title}</strong>
-                  <span>上次 Run 未成功完成</span>
+            .map((task) => {
+              const execution = latestWorktreeByTask.get(task.id);
+              return (
+                <div className="action-row" key={task.id}>
+                  <ShieldAlert size={17} />
+                  <div>
+                    <strong>{task.title}</strong>
+                    <span>{execution?.errorMessage || '上次 Run 未成功完成'}</span>
+                  </div>
+                  {execution?.worktreePath && (
+                    <button
+                      className="button ghost compact"
+                      onClick={() => openExecution(execution.id)}
+                    >
+                      查看现场
+                    </button>
+                  )}
+                  <button
+                    className="button secondary compact"
+                    onClick={() => transition.mutate({ id: task.id, status: 'READY' })}
+                  >
+                    重新就绪
+                  </button>
                 </div>
-                <button
-                  className="button secondary compact"
-                  onClick={() => transition.mutate({ id: task.id, status: 'READY' })}
-                >
-                  重新就绪
-                </button>
-              </div>
-            ))}
+              );
+            })}
         </section>
       )}
       {(createGoal.error ||
         createTask.error ||
         transition.error ||
         start.error ||
-        review.error) && (
+        review.error ||
+        queueWorktree.error ||
+        reworkWorktree.error ||
+        mergeWorktree.error ||
+        cancelWorktree.error) && (
         <p className="inline-error">
           {
             (
@@ -1165,11 +1306,270 @@ export function TasksPage() {
               createTask.error ??
               transition.error ??
               start.error ??
-              review.error
+              review.error ??
+              queueWorktree.error ??
+              reworkWorktree.error ??
+              mergeWorktree.error ??
+              cancelWorktree.error
             )?.message
           }
         </p>
       )}
+      {selectedExecution && (
+        <WorktreeReviewPanel
+          execution={selectedExecution}
+          task={selectedTask}
+          review={worktreeReview.data}
+          loading={worktreeReview.isLoading}
+          error={worktreeReview.error as Error | null}
+          reworkFeedback={reworkFeedback}
+          commitMessage={commitMessage}
+          busy={reworkWorktree.isPending || mergeWorktree.isPending || cancelWorktree.isPending}
+          onClose={() => setSelectedExecutionId('')}
+          onReworkFeedback={setReworkFeedback}
+          onCommitMessage={setCommitMessage}
+          onOpenSession={() => {
+            if (selectedExecution.sessionId) {
+              navigate(`/sessions/${selectedExecution.sessionId}`);
+            }
+          }}
+          onRework={() =>
+            reworkWorktree.mutate({
+              id: selectedExecution.id,
+              feedback: reworkFeedback.trim(),
+            })
+          }
+          onMerge={() => mergeWorktree.mutate({ id: selectedExecution.id, message: commitMessage })}
+          onCancel={() => cancelWorktree.mutate(selectedExecution.id)}
+        />
+      )}
+    </div>
+  );
+}
+
+const executionStages: Array<{
+  label: string;
+  statuses: WorktreeExecutionRecord['status'][];
+}> = [
+  { label: '排队', statuses: ['QUEUED'] },
+  { label: '工作区', statuses: ['SETTING_UP'] },
+  { label: 'Agent Run', statuses: ['RUNNING', 'AWAITING_INPUT'] },
+  { label: 'Review', statuses: ['REVIEW'] },
+  { label: 'Merge', statuses: ['MERGING', 'DONE'] },
+];
+
+function ExecutionRail({
+  execution,
+  compact = false,
+}: {
+  execution: WorktreeExecutionRecord;
+  compact?: boolean;
+}) {
+  const stage = Math.max(
+    0,
+    executionStages.findIndex((item) => item.statuses.includes(execution.status)),
+  );
+  const terminalFailure = ['BLOCKED', 'CANCELED'].includes(execution.status);
+  return (
+    <div className={`execution-rail${compact ? ' compact' : ''}`} aria-label="Worktree 执行进度">
+      {executionStages.map((item, index) => (
+        <div
+          className={`${index < stage || execution.status === 'DONE' ? 'complete' : ''}${
+            index === stage && !terminalFailure ? ' current' : ''
+          }${index === stage && terminalFailure ? ' stopped' : ''}`}
+          key={item.label}
+        >
+          <span />
+          <small>{item.label}</small>
+        </div>
+      ))}
+      <StatusBadge status={execution.status} />
+    </div>
+  );
+}
+
+function WorktreeReviewPanel({
+  execution,
+  task,
+  review,
+  loading,
+  error,
+  reworkFeedback,
+  commitMessage,
+  busy,
+  onClose,
+  onReworkFeedback,
+  onCommitMessage,
+  onOpenSession,
+  onRework,
+  onMerge,
+  onCancel,
+}: {
+  execution: WorktreeExecutionRecord;
+  task?: TaskRecord | undefined;
+  review?: WorktreeReviewRecord | undefined;
+  loading: boolean;
+  error: Error | null;
+  reworkFeedback: string;
+  commitMessage: string;
+  busy: boolean;
+  onClose: () => void;
+  onReworkFeedback: (value: string) => void;
+  onCommitMessage: (value: string) => void;
+  onOpenSession: () => void;
+  onRework: () => void;
+  onMerge: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
+  const canCancel = !['SETTING_UP', 'MERGING', 'DONE', 'CANCELED'].includes(execution.status);
+  return (
+    <div className="worktree-review-scrim" onMouseDown={onClose}>
+      <section
+        aria-labelledby="worktree-review-title"
+        aria-modal="true"
+        className="worktree-review-panel"
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <header className="worktree-review-header">
+          <div>
+            <span className="section-kicker">Worktree Execution</span>
+            <h2 id="worktree-review-title">{task?.title || '隔离执行详情'}</h2>
+            <p>检查真实 Diff 与分支身份后，再决定继续修改或合并。</p>
+          </div>
+          <button aria-label="关闭执行详情" className="icon-button" onClick={onClose}>
+            <X size={17} />
+          </button>
+        </header>
+
+        <div className="worktree-review-body">
+          <ExecutionRail execution={execution} />
+          <div className="worktree-identity-grid">
+            <div>
+              <span>base branch</span>
+              <strong>{execution.baseBranch}</strong>
+              <code>{execution.baseSha.slice(0, 12)}</code>
+            </div>
+            <div>
+              <span>task branch</span>
+              <strong>{execution.taskBranch}</strong>
+              <code>{review?.headSha.slice(0, 12) || '—'}</code>
+            </div>
+            <div className="worktree-path-fact">
+              <span>worktree path</span>
+              <code>{execution.worktreePath || '尚未创建'}</code>
+            </div>
+          </div>
+
+          {execution.errorMessage && (
+            <div className="worktree-gate-message danger">
+              <ShieldAlert size={16} />
+              <div>
+                <strong>{execution.errorCode || '执行受阻'}</strong>
+                <span>{execution.errorMessage}</span>
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <LoadingState label="正在读取 Worktree status 与 Diff" />
+          ) : error ? (
+            <ErrorState error={error} />
+          ) : review ? (
+            <section className="worktree-diff-docket">
+              <header>
+                <div>
+                  <span className="section-kicker">Review evidence</span>
+                  <h3>变更清单</h3>
+                </div>
+                <div className="worktree-diff-facts">
+                  <span>{review.entries.length} 个路径</span>
+                  <span>{review.aheadBy} 个提交</span>
+                  <StatusBadge status={review.clean ? 'READY' : 'UNVERIFIED'} />
+                </div>
+              </header>
+              {review.entries.length > 0 && (
+                <div className="worktree-file-strip">
+                  {review.entries.map((entry) => (
+                    <span key={`${entry.path}-${entry.index}-${entry.worktree}`}>
+                      <code>{`${entry.index}${entry.worktree}`}</code>
+                      {entry.path}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <pre className="worktree-diff">{review.patch || '当前任务分支没有文件变更。'}</pre>
+              {review.truncated && <small>Diff 已达到输出上限，仅展示前 4 MiB。</small>}
+            </section>
+          ) : (
+            <div className="worktree-gate-message">
+              <Layers3 size={16} />
+              <span>Worktree 尚未生成可审阅的 Git 证据。</span>
+            </div>
+          )}
+
+          {execution.status === 'REVIEW' && (
+            <div className="worktree-review-actions">
+              <label>
+                继续修改说明
+                <textarea
+                  onChange={(event) => onReworkFeedback(event.target.value)}
+                  placeholder="指出需要补充或修正的内容；将复用当前 Session 启动新 Run。"
+                  rows={3}
+                  value={reworkFeedback}
+                />
+                <button
+                  className="button secondary"
+                  disabled={busy || !reworkFeedback.trim()}
+                  onClick={onRework}
+                >
+                  <RotateCcw size={14} /> 继续修改
+                </button>
+              </label>
+              <label className="merge-gate-control">
+                受管 Commit message
+                <input
+                  maxLength={240}
+                  onChange={(event) => onCommitMessage(event.target.value)}
+                  placeholder={`feat(task): ${task?.title || '完成隔离任务'}`}
+                  value={commitMessage}
+                />
+                <span>批准后才会暂存隔离变更、创建 commit，并以 `--no-ff` 合并。</span>
+                <button
+                  className="button primary"
+                  disabled={busy || loading || !!error}
+                  onClick={onMerge}
+                >
+                  <GitMerge size={14} /> 批准并合并
+                </button>
+              </label>
+            </div>
+          )}
+        </div>
+
+        <footer className="worktree-review-footer">
+          <span>Worktree 与 task branch 会保留，不会自动清理。</span>
+          <div>
+            {execution.sessionId && (
+              <button className="button secondary" onClick={onOpenSession}>
+                打开 Session
+              </button>
+            )}
+            {canCancel && (
+              <button className="button ghost danger" disabled={busy} onClick={onCancel}>
+                取消隔离执行
+              </button>
+            )}
+          </div>
+        </footer>
+      </section>
     </div>
   );
 }
