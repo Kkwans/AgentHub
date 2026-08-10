@@ -205,6 +205,18 @@ async function runDesktopFlow(browser) {
   }
   recordCheck('1440 概览与中文一级导航可用');
   await assertNoRootOverflow(page, '1440 概览无根页面横向溢出');
+  await screenshot(page, 'overview-1440.png');
+
+  await page.getByRole('button', { name: /搜索与跳转/ }).click();
+  const commandDialog = page.getByRole('dialog', { name: '搜索与跳转' });
+  await commandDialog.waitFor();
+  const commandInput = commandDialog.getByRole('textbox', { name: '搜索页面' });
+  await commandInput.fill('PromptOS');
+  await commandDialog.getByRole('option', { name: /PromptOS/ }).waitFor();
+  await screenshot(page, 'command-palette-1440.png');
+  await page.keyboard.press('Escape');
+  await commandDialog.waitFor({ state: 'detached' });
+  recordCheck('1440 命令面板可聚焦、筛选并关闭');
 
   if (expectedRemoteNodeName) {
     await page.getByRole('link', { name: '设置' }).click();
@@ -313,7 +325,7 @@ async function runDesktopFlow(browser) {
   );
   await page.getByText('AgentHub TX5Pro 验收', { exact: true }).first().waitFor();
   await page
-    .locator('.session-list a.current .status-badge')
+    .locator('.session-list a.current .rt-Badge')
     .getByText('就绪', { exact: true })
     .waitFor();
   recordCheck(
@@ -335,6 +347,7 @@ async function runDesktopFlow(browser) {
 
   await page.getByRole('link', { name: 'PromptOS' }).click();
   await page.getByRole('heading', { name: 'PromptOS', exact: true, level: 2 }).waitFor();
+  await screenshot(page, 'promptos-1440.png');
   recordCheck('PromptOS 中文管理页可访问');
 
   await page.getByRole('link', { name: '设置' }).click();
@@ -346,6 +359,7 @@ async function runDesktopFlow(browser) {
     await page.locator('.remote-node-card').filter({ hasText: expectedRemoteNodeName }).waitFor();
   }
   await assertNoRootOverflow(page, '1440 设置页无根页面横向溢出');
+  await screenshot(page, 'settings-1440.png');
   recordCheck('设置页呈现 Terminal、认证与 Docker 安全边界');
 
   await context.close();
@@ -357,9 +371,23 @@ async function runExistingSessionCoverage(browser, sessionId) {
   const page = await context.newPage();
   trackRuntime(page, 'desktop-1440-existing');
 
-  await page.goto(`${baseURL}/promptos`, { waitUntil: 'networkidle' });
+  await page.goto(`${baseURL}/overview`, { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: '今天需要处理什么' }).waitFor();
   await waitForRealtime(page, '复用 Session 覆盖时全局 WebSocket 已连接');
+  await assertNoRootOverflow(page, '1440 概览无根页面横向溢出');
+  await screenshot(page, 'overview-1440.png');
+  await page.getByRole('button', { name: /搜索与跳转/ }).click();
+  const commandDialog = page.getByRole('dialog', { name: '搜索与跳转' });
+  await commandDialog.getByRole('textbox', { name: '搜索页面' }).fill('PromptOS');
+  await commandDialog.getByRole('option', { name: /PromptOS/ }).waitFor();
+  await screenshot(page, 'command-palette-1440.png');
+  await page.keyboard.press('Escape');
+  await commandDialog.waitFor({ state: 'detached' });
+  recordCheck('1440 命令面板可聚焦、筛选并关闭');
+
+  await page.goto(`${baseURL}/promptos`, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'PromptOS', exact: true, level: 2 }).waitFor();
+  await screenshot(page, 'promptos-1440.png');
   recordCheck('PromptOS 中文管理页可访问');
 
   await page.getByRole('link', { name: '设置' }).click();
@@ -368,10 +396,29 @@ async function runExistingSessionCoverage(browser, sessionId) {
   await page.getByText('不会修改 Compose、镜像或 volume').waitFor();
   await page.getByText('loopback 默认模式').waitFor();
   await assertNoRootOverflow(page, '1440 设置页无根页面横向溢出');
+  await screenshot(page, 'settings-1440.png');
   recordCheck('设置页呈现 Terminal、认证与 Docker 安全边界');
 
   await page.goto(`${baseURL}/sessions/${sessionId}`, { waitUntil: 'networkidle' });
   await page.locator('.message.assistant .message-body').filter({ hasText: marker }).waitFor();
+  await page
+    .locator('.session-list a.current .rt-Badge')
+    .getByText('就绪', { exact: true })
+    .waitFor();
+  await screenshot(page, 'workspace-1440.png');
+
+  await page.getByRole('link', { name: '任务' }).click();
+  const reviewCard = page.locator('.task-card').filter({ hasText: 'TX5Pro 真实 Agent 链路' });
+  await reviewCard.waitFor();
+  const confirmButton = reviewCard.getByRole('button', { name: /确认完成/ });
+  if (!(await reviewCard.getByText('完成', { exact: true }).isVisible())) {
+    await confirmButton.waitFor();
+    await confirmButton.click();
+  }
+  await reviewCard.getByText('完成', { exact: true }).waitFor();
+  await screenshot(page, 'tasks-done-1440.png');
+  recordCheck('复用真实 Run 的 Task 已由浏览器确认完成');
+
   await context.close();
   return { sessionId };
 }
@@ -416,6 +463,7 @@ async function runResponsive(browser, sessionId) {
     if (viewport.width === 390) {
       await page.getByRole('button', { name: '打开导航' }).click();
       await page.getByRole('navigation', { name: '一级导航' }).waitFor();
+      await screenshot(page, 'navigation-390.png');
       await page.getByRole('link', { name: '设置' }).click();
       await page.getByRole('heading', { name: '设置与诊断' }).waitFor();
       if (expectedRemoteNodeName) {

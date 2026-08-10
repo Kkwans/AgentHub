@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-10T08:55:32.288Z",
+  "finishedAt": "2026-08-10T08:55:44.461Z",
+  "baseURL": "http://127.0.0.1:43210",
+  "projectRoot": "/volume2/Project/AgentHub",
+  "expectedRemoteNodeName": null,
+  "browser": "150.0.7871.182",
+  "tunnel": {
+    "target": "Kkwans@192.168.5.110",
+    "localPort": 43210,
+    "remotePort": 3210,
+    "health": {
+      "status": "ok",
+      "version": "0.2.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "checks": [
+    {
+      "name": "TX5Pro 到 NAS 回环服务的 SSH 隧道健康",
+      "status": "PASS"
+    },
+    {
+      "name": "复用 Session 覆盖时全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "1440 命令面板可聚焦、筛选并关闭",
+      "status": "PASS"
+    },
+    {
+      "name": "PromptOS 中文管理页可访问",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "设置页呈现 Terminal、认证与 Docker 安全边界",
+      "status": "PASS"
+    },
+    {
+      "name": "复用真实 Run 的 Task 已由浏览器确认完成",
+      "status": "PASS"
+    },
+    {
+      "name": "1024 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "1024 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "1024 Workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "768 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "768 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "768 Workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "390 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "390 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 Workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 移动导航与设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 移动导航、Workspace tabs 与检查器 drawer 可用",
+      "status": "PASS"
+    },
+    {
+      "name": "无 requestfailed、console error、pageerror、HTTP 4xx/5xx 或外部请求",
+      "status": "PASS"
+    }
+  ],
+  "runtimeIssues": [],
+  "failedRequests": [],
+  "externalRequests": [],
+  "screenshots": [
+    "overview-1440.png",
+    "command-palette-1440.png",
+    "promptos-1440.png",
+    "settings-1440.png",
+    "workspace-1440.png",
+    "tasks-done-1440.png",
+    "overview-1024.png",
+    "workspace-1024.png",
+    "overview-768.png",
+    "workspace-768.png",
+    "overview-390.png",
+    "workspace-390.png",
+    "navigation-390.png",
+    "settings-390.png"
+  ],
+  "result": "PASS"
+}

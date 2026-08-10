@@ -5,10 +5,15 @@
 ## v0.3 当前状态
 
 - 已创建新的 durable Goal，范围为 UI/UX 重构、真实浏览器验收、host-native 部署和自身 Project 注册。
-- 现场确认 AgentHub 当前未部署：无进程、Docker 容器、systemd unit 或 `3210` 监听。
-- production 默认契约仍为 `127.0.0.1:3210`；TX5Pro 截图来自已回收的临时验收 Server。
-- 已完成现有 UI 审计：Tailwind 4 已安装，但 Radix/shadcn 组件没有落地；`packages/ui` 为空壳，主要交互依赖手写 CSS 和原生控件。
-- 已锁定单一组件系统：`@radix-ui/themes@3.3.0`、`@phosphor-icons/react@2.1.10`、Tailwind 4、TanStack Query、Monaco 与 react-resizable-panels。
+- 现场确认重构前 AgentHub 未部署：无进程、Docker 容器、systemd unit 或 `3210` 监听。正式部署固定为 host-native `systemd` 服务、`127.0.0.1:3210`，不会创建 AgentHub Docker。
+- 已完成现有 UI 审计和重构：`packages/ui` 从空壳升级为官方 Radix Themes + Phosphor 组件层；移除 Web 的 Lucide 依赖，保留 Tailwind 4、TanStack Query、Monaco 与 react-resizable-panels。
+- App Shell 已改为石墨中性色中文工具界面；新增可用的 `Ctrl/Cmd+K` 命令面板、skip link、连接状态和 Radix 移动导航 Dialog。
+- 概览、Task、Agent、设置采用连续控制面和 1px 分隔，减少同质卡片墙；Task/Run 使用橙色“运行脊柱”表达执行阶段。
+- PromptOS 和 Workspace 使用 Radix Tabs；Remote Node revoke 使用 AlertDialog；Worktree Review 使用 Dialog；重点动作使用标准 Button、Badge、Callout、Skeleton 与 IconButton。
+- 移除无行为的 Session 筛选；未支持的新建 Terminal 明确 disabled 并说明 native PTY 限制；Approval 仍只展示 Agent 原始合法选项。
+- Web 单元测试 10 项通过；全仓非沙箱 Vitest 33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过；lint、typecheck 与 production build 通过。
+- TX5Pro 最终实机验收 20 项全部通过：1440/1024/768/390、真实 Codex Run、Task 人工确认、命令面板、移动导航、Workspace drawer、0 个 request/console/page/HTTP 错误和 0 外部请求。证据归档于 `docs/qa/tx5pro/2026-08-10-v03-ui/`。
+- 正式 host-native 部署、自身 Project 注册、最终发布提交与 GitHub push 正在进行。
 - 设计合同与回滚见 `docs/implementation/V0.3_UI_REDESIGN.md`。
 
 ## 当前
