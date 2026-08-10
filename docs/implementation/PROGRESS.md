@@ -17,8 +17,9 @@
 - 持久目录为 `/volume2/Project/.agenthub/central/{data,worktrees}`，mode `0700`；env 为 `/etc/agenthub/agenthub.env`，mode `0640`。受控重启后健康与注册记录均恢复。
 - 正式数据库已注册 `AgentHub NAS 宿主机`（`LOCAL_HOST/READY`）和 AgentHub 自身 Project（`ACTIVE`）；Project preflight 路径、权限、Git/main、AGENTS.md 与 pnpm 全部 PASS。
 - 部署前后 Claude Code、Hermes、OpenClaw 容器保持原 `exited` 状态，未修改 Docker/Compose、镜像或 volume。
-- 版本元数据已统一为 v0.3.0；部署证据、校验和和回滚见 `docs/qa/nas/2026-08-10-v03-deployment/`。最终发布提交与 GitHub push 正在进行。
+- 版本元数据已统一为 v0.3.0；部署证据、校验和和回滚见 `docs/qa/nas/2026-08-10-v03-deployment/`。公开 GitHub `main` 与 annotated tag `v0.3.0` 已推送。
 - 最终全仓 gate 遇到 NAS `/tmp` tmpfs 100% 的 `ENOSPC` 后，没有删除其他项目缓存；改用 `/dev/shm/agenthub-test-tmp` 重跑，33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过。
+- GitHub Actions run `31374423006` 用时 2m23s，install、lint、typecheck、test、build 和 Playwright E2E 全部通过。
 - 设计合同与回滚见 `docs/implementation/V0.3_UI_REDESIGN.md`。
 
 ## 当前

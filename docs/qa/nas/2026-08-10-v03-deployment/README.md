@@ -23,7 +23,7 @@
 - env：`/etc/agenthub/agenthub.env`，mode `0640`、owner `root:admin`；
 - PGlite：`/volume2/Project/.agenthub/central/data`，mode `0700`、owner `Kkwans:admin`；
 - Worktree：`/volume2/Project/.agenthub/central/worktrees`，mode `0700`、owner `Kkwans:admin`；
-- source commit：`913b34d39788d3bc2b51e1d679807ede4dd4fc84`；
+- runtime build source commit：`913b34d39788d3bc2b51e1d679807ede4dd4fc84`；release/documentation HEAD：`3f9d6e6c3fadeead5e7cd7f2bcefca97068f32ac`；
 - Server/runtime dist tree SHA-256：`34d21f31d6e218043a10e781d4b271fded9ec16e09c38ec1e397e3b98eee56a8`；
 - Web dist tree SHA-256：`5b054119dd4653bbe352b7c3a1433129025b6507fbdb5dd9bce40b5703fc9e44`；
 - installed unit SHA-256：`c397e39a339aed0d2db95f25f2ac07ee6f3cc15d44c8080bf34a15913c5ca8aa`；
@@ -59,4 +59,4 @@
 4. 代码回滚到已验证 commit 后重新 build，再安装对应 unit/env 并启动；
 5. 复核健康、Project、容器状态和 `127.0.0.1:3210`。
 
-本次没有执行删除、Compose 变更、容器生命周期操作或数据迁移。
+本次没有删除正式数据、systemd 配置、Project、worktree、容器、镜像或 volume，也没有执行 Compose 变更、容器生命周期操作或数据迁移。验收完成并确认无打开句柄后，只删除了本次创建且证据已归档的 `/dev/shm/agenthub-test-tmp`、`/volume2/Project/.agenthub/test-tmp` 和 `/tmp/agenthub-v03-tx5.Vxm3bw` 三个临时目录；不可恢复，但不包含正式数据。

@@ -20,6 +20,7 @@ v0.3.0 聚焦 UI/UX 和 NAS 可用部署，不修改 REST/WebSocket 公共契约
 - 全仓非沙箱 Vitest：33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过；
 - TX5Pro：20 项通过，0 request failure、console/page error、HTTP 4xx/5xx 和外部请求；
 - systemd：`enabled`、`active/running`；受控重启后健康与自身 Project 持久恢复。
+- GitHub Actions：main run [`31374423006`](https://github.com/Kkwans/AgentHub/actions/runs/31374423006) 完整通过 install、lint、typecheck、test、build 与 Playwright E2E。
 
 ## 已知限制
 
