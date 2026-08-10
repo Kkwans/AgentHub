@@ -20,8 +20,9 @@ v0.3.0 最初以 `Kkwans` 用户的 systemd 服务部署在 `127.0.0.1:3210`。�
   保持原绝对路径；不复制 Agent 原生凭据。
 - root Git 进程通过 `SUDO_UID=1000` 识别 `Kkwans` 拥有的 Project，并只读引用原
   `.gitconfig` 保留 commit identity；不使用 `safe.directory=*`，不增加 push API。
-- Server 在容器内监听 `0.0.0.0:3210`，host 只发布 `192.168.5.110:3210`；强制 token auth。
-  token 明文只保存在 root-only 部署文件，数据库仍只保存 SHA-256 hash。
+- Server 在容器内监听 `0.0.0.0:3210`，host 只发布 `192.168.5.110:3210`；强制认证。
+  首次迁移使用的 API token 明文只保存在 root-only 部署文件，后续网页登录方式由 ADR-015
+  修订为本机管理员账号和 HttpOnly Cookie。
 - 既有 systemd unit/env 保留但停用。切换前优雅停止服务并冷备份 PGlite；失败时停止
   AgentHub 容器并恢复 systemd，不执行 `compose down`，不删除镜像、容器、volume 或数据。
 - Claude Code、Hermes、OpenClaw 的 Compose、容器、镜像和数据继续受 ADR-011 保护，
@@ -36,7 +37,8 @@ workspace 安装结果与 production dist。这样发布不依赖构建时外网
 
 ## 后果
 
-- 优点：局域网地址可达、受 token 保护、绿联可见、重启策略与健康检查统一由 Compose 管理。
+- 优点：局域网地址可达、受登录保护、绿联可见、重启策略与健康检查统一由 Compose 管理。
 - 风险：privileged、Docker socket、Project rw 和 Codex HOME rw 的组合可获得宿主机高权限；
   只应部署可信 AgentHub 代码并限制 NAS/LAN 访问。
-- 当前 LAN 入口为 HTTP，token 可能被不可信网络观察；跨不可信网络必须在前置代理终止 TLS。
+- 当前 LAN 入口为 HTTP，登录密码、Cookie 或 API token 可能被不可信网络观察；跨不可信网络
+  必须在前置代理终止 TLS。

@@ -16,7 +16,8 @@ AgentHub v0.3 由 Central Server 与可选的 host-native Remote Node daemon 组
 
 仓库配置位于 `deploy/compose/`，NAS 项目配置安装到
 `/volume2/DockerProject/agenthub/docker-compose.yml`。当前入口为
-`http://192.168.5.110:3210`，强制 token auth。Compose 显式配置：
+`http://192.168.5.110:3210`，强制认证。首次打开页面创建唯一管理员账号，之后使用用户名和
+密码登录；浏览器凭据由 Server 通过 HttpOnly Cookie 管理。Compose 显式配置：
 
 - ARM64 Node.js 24 固定 digest 与版本化镜像 tag；
 - `user: 0:0`、`privileged: true`、`restart: unless-stopped` 和 healthcheck；
@@ -120,28 +121,30 @@ ssh -L 3210:127.0.0.1:3210 Kkwans@NAS_HOST
 
 然后访问 `http://127.0.0.1:3210`。该模式不向局域网直接暴露服务。
 
-## 非 loopback 与 token auth
+## 非 loopback 与账号登录
 
 如果确需监听局域网地址，必须配置：
 
 ```bash
 AGENTHUB_HOST=0.0.0.0
 AGENTHUB_AUTH_MODE=token
+```
+
+`AGENTHUB_AUTH_MODE=token` 是为兼容既有部署保留的内部模式名；面向浏览器的产品行为是
+账号密码登录，不要求用户取得或粘贴 token。未启用认证时服务会在监听端口前拒绝启动。
+首次访问页面时创建唯一管理员账号，密码至少 12 个字符；之后浏览器使用 7 天有效的
+HttpOnly、SameSite=Strict Cookie。远程访问必须在反向代理层启用 TLS。
+
+CLI、自动化脚本或外部服务确需调用 API 时，管理员可以在“设置 → 高级功能 → 外部集成”
+创建 API token。它只显示一次，并且不用于网页登录。为旧部署和灾难恢复保留的可选
+bootstrap token 仍可通过 secret manager 注入：
+
+```bash
 AGENTHUB_BOOTSTRAP_TOKEN=<至少 32 字节高熵随机值>
 ```
 
-未配置 token auth 时服务会在监听端口前拒绝启动。远程访问必须在反向代理层启用 TLS；不要通过 query string 传 token。
-
-首次启动后可使用 bootstrap token 创建数据库 token：
-
-```bash
-curl -X POST http://127.0.0.1:3210/api/v1/auth/tokens \
-  -H 'Authorization: Bearer <bootstrap-token>' \
-  -H 'Content-Type: application/json' \
-  --data '{"name":"NAS 控制端"}'
-```
-
-响应中的 token 只显示一次。验证新 token 可用并安全保存后，重启时可以移除 `AGENTHUB_BOOTSTRAP_TOKEN`；服务会使用数据库内有效 token。
+普通部署不需要 bootstrap token 即可完成首次账号设置。已有 Compose secret 暂时保留以兼容
+现行回滚路径，不向浏览器或普通设置页面展示。
 
 ## 数据库与备份
 
@@ -157,7 +160,8 @@ curl -X POST http://127.0.0.1:3210/api/v1/auth/tokens \
 3. 备份 PGlite 目录或 PostgreSQL。
 4. 获取目标版本后执行 `pnpm install --frozen-lockfile`、`pnpm build`；从 v0.1 升级到 v0.2 会
    依次向前应用 `0001_tidy_kinsey_walden.sql` 与 `0002_certain_squadron_supreme.sql`。v0.2 升级
-   到 v0.3 不增加 migration。
+   到最初的 v0.3 不增加 migration；账号登录更新会继续应用 `0003_sweet_owl.sql`，新增
+   `local_accounts` 与 `browser_sessions`，不改写现有 Project、Agent 或 Session 数据。
 5. 运行 release gate，再启动 production Server。
 6. 检查 `/api/v1/health`、中文 Web Shell、Agent preflight 和现有 Session 历史。
 

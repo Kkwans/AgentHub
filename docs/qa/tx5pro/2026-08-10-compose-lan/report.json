@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-10T10:42:35.102Z",
+  "finishedAt": "2026-08-10T10:42:43.007Z",
+  "baseURL": "http://192.168.5.110:3210",
+  "access": "direct-lan-token",
+  "browser": "150.0.7871.182",
+  "checks": [
+    {
+      "name": "TX5Pro 直接访问 NAS LAN health",
+      "status": "ok",
+      "version": "0.3.0",
+      "database": "pglite",
+      "web": true
+    },
+    {
+      "name": "1440 token WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "1440 命令面板可聚焦、筛选并关闭",
+      "status": "PASS"
+    },
+    {
+      "name": "正式 AgentHub Project 与路径可见",
+      "status": "PASS"
+    },
+    {
+      "name": "1440 设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1440,
+      "clientWidth": 1440
+    },
+    {
+      "name": "设置页呈现 token auth 与 Docker 高权限边界",
+      "status": "PASS"
+    },
+    {
+      "name": "1024 token WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "1024 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "768 token WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "768 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "390 token WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "390 概览无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 移动导航可打开并关闭",
+      "status": "PASS"
+    },
+    {
+      "name": "390 设置页无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "0 个 request failure、console/page/HTTP 错误和外部请求",
+      "status": "PASS"
+    }
+  ],
+  "runtimeIssues": [],
+  "failedRequests": [],
+  "externalRequests": [],
+  "screenshots": [
+    "overview-1440.png",
+    "command-palette-1440.png",
+    "settings-1440.png",
+    "overview-1024.png",
+    "overview-768.png",
+    "overview-390.png",
+    "navigation-390.png",
+    "settings-390.png"
+  ],
+  "result": "PASS"
+}

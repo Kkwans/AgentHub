@@ -4,7 +4,7 @@
 
 - `INVALID_SERVER_PORT`：检查 `AGENTHUB_PORT` 是否为 `0..65535` 的整数。
 - `AUTH_MODE_REQUIRED` / `INSECURE_NON_LOOPBACK_BIND`：非 loopback 必须设置 `AGENTHUB_AUTH_MODE=token`。
-- `AUTH_TOKEN_NOT_CONFIGURED`：token 模式需要 bootstrap token 或数据库内至少一个未撤销 token。
+- `AUTH_SETUP_REQUIRED`：当前还没有管理员账号，请直接在首次使用页面创建账号。
 - PGlite 失败：检查 `AGENTHUB_DATA_DIR` 的父目录权限和剩余空间；不要删除现有数据库目录。
 - PostgreSQL 失败：检查 `DATABASE_URL`、网络、证书与 migration 权限。
 - Compose 报端口占用：确认 `agenthub.service` 已停止，且只有一个 AgentHub 进程打开 PGlite；
@@ -18,12 +18,16 @@
 
 - `/api/v1/health` 的 `web=false`：先执行 `pnpm build`，或用 `AGENTHUB_WEB_DIST` 指向包含 `index.html` 的绝对/可解析目录。
 - API 正常但前端路由 404：确认请求由 AgentHub Server 处理，而不是直接用没有代理配置的静态服务器。
-- token 模式持续 401：在“设置”中更新当前浏览器 token；浏览器只保存于当前 `sessionStorage`。
+- 页面持续显示登录：确认用户名和密码正确、浏览器允许当前站点 Cookie，并检查系统时间；
+  不需要从 NAS 读取 token。连续输错 5 次会冷却 15 分钟。
+- 登录后 API 返回 401 或 `/ws` 断开：刷新页面并重新登录；若仍复现，检查响应是否设置
+  `agenthub_session` HttpOnly Cookie，以及反向代理是否透传 Cookie 与 WebSocket upgrade。
 - LAN 拒绝连接：核验 Compose container health、`192.168.5.110:3210` published port 与 NAS
   实际地址；旧 systemd 仅监听 `127.0.0.1`，不能直接作为 LAN 部署。
 - HTTP HTML 能打开但 JS/CSS 请求被升级到 `https://...:3210`：确认运行版本已移除 CSP 的
   `upgrade-insecure-requests`，且 HTTP LAN 使用 `AGENTHUB_SECURE_TRANSPORT=false`。
-- `/ws` 断开：确认反向代理允许 WebSocket upgrade，并透传 `Sec-WebSocket-Protocol`。
+- `/ws` 断开：确认反向代理允许 WebSocket upgrade，并透传同源 Cookie；API token 客户端的
+  兼容 subprotocol 仅用于外部集成，不是浏览器登录步骤。
 
 ## Agent preflight
 

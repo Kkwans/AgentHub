@@ -46,5 +46,13 @@ private key 与 auth 文件始终留在 Node。中央只发送固定 RPC allow-l
 
 状态：已接受。用户明确取代当前 NAS 的 host-native systemd 上线方式，固定使用绿联 Docker
 Compose、root 和 privileged；Project/PGlite/worktree/TMPDIR/Codex HOME/Docker socket 均显式
-挂载，局域网入口强制 token auth。systemd 与冷备份保留为回滚，不修改既有 Agent Compose。
+挂载，局域网入口强制认证。首次迁移的 API token 路径已由 D-011 修订为网页管理员账号；
+systemd 与冷备份保留为回滚，不修改既有 Agent Compose。
 详细依据见 `ADR-014`。
+
+## D-011：网页登录使用本机管理员账号
+
+状态：已接受。用户明确拒绝让普通用户从 NAS secret 文件复制 token。非 loopback 部署保留
+`AGENTHUB_AUTH_MODE=token` 配置名和 Bearer token API 兼容性，但 Web 产品路径改为首次创建
+唯一管理员、用户名/密码登录和 HttpOnly Cookie。API token 只出现在折叠的外部集成高级区域；
+不删除既有 bootstrap secret，以保留已验证的 CLI 与回滚路径。详细依据见 `ADR-015`。

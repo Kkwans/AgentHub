@@ -23,6 +23,10 @@ v0.2 资源包括 Project、Agent、Execution Target、Remote Node、Session、R
 
 ```text
 GET        /api/v1/auth/status
+POST       /api/v1/auth/setup
+POST       /api/v1/auth/login
+POST       /api/v1/auth/logout
+PUT        /api/v1/auth/account/password
 GET/POST   /api/v1/auth/tokens
 DELETE     /api/v1/auth/tokens/:id
 GET        /api/v1/dashboard
@@ -36,6 +40,11 @@ POST       /api/v1/tasks/:id/transition
 POST       /api/v1/tasks/:id/start
 POST       /api/v1/tasks/:id/review
 ```
+
+`status`、`login` 和零账号时的 `setup` 可匿名访问。`setup` 只创建唯一的本机管理员；成功
+setup/login 后 Server 设置 HttpOnly、SameSite=Strict Cookie。`logout` 撤销当前浏览器会话，
+修改密码会撤销该账号全部旧会话。API token 路由需要管理员 Cookie 或有效 Bearer token，
+只供 CLI 与外部集成。
 
 Task 由 Agent Run 完成时进入 `WAITING_REVIEW`；只有 `/review` 的 `APPROVE` 决策会进入 `DONE`。Dashboard 只聚合可操作状态、终态 Run 与 Git outcome。
 
@@ -137,4 +146,6 @@ Session 文本事件。
 
 Remote Node 控制面订阅 `remote-nodes`。`/node/ws` 是 daemon 的设备认证/RPC 通道，不是浏览器 topic 连接，也不接受 API bearer token 替代设备签名。
 
-token 模式下，非浏览器客户端使用 `Authorization: Bearer <token>`；浏览器客户端以 `agenthub-v1` 和 `agenthub-token.<token>` 两个 subprotocol 发起握手，服务只协商 `agenthub-v1`。
+非浏览器客户端可以使用 `Authorization: Bearer <token>`；浏览器 `/ws` 只请求 `agenthub-v1`，
+Server 从同源 HttpOnly Cookie 认证。既有 API token 客户端仍可附带
+`agenthub-token.<token>` subprotocol，服务只协商 `agenthub-v1`；该兼容路径不用于网页登录。

@@ -12,7 +12,7 @@ AgentHub 是一个 AI Coding Agent 控制平面。v0.3 统一管理 Project、Ag
 - pnpm 11
 - Linux（当前目标为 NAS ARM64）
 - 默认开发监听：`127.0.0.1`
-- 当前 NAS Compose 入口：`http://192.168.5.110:3210`（token auth）
+- 当前 NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）
 
 ## 开发命令
 
@@ -44,7 +44,7 @@ pnpm dev
 - Docker 只允许操作显式注册且 container ID 仍匹配的目标。
 - Agent 命令使用固定 executable/args，不提供通用 Docker Shell。
 - 本机与 Remote Node 文件 API 均只读，并在执行端重复做路径 containment 与 symlink escape 防护。
-- 非 loopback 监听必须启用 token auth。
+- 非 loopback 监听必须启用认证；网页使用管理员账号与 HttpOnly Cookie，API token 只供外部集成。
 - Agent 原生凭据归 Agent 所有，AgentHub 不复制凭据。
 - Remote Node 使用一次性注册码与 Ed25519 设备身份，只主动连接中央 `/node/ws`；非 loopback 必须使用 `wss://`。
 

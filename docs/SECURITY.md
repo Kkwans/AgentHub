@@ -3,18 +3,29 @@
 ## 默认暴露
 
 - 默认只监听 `127.0.0.1`，使用 `local_trusted`。
-- 任何非 loopback bind 都必须配置 token auth，否则服务拒绝启动。
-- token 只保存 hash；供应商 secret 只保存引用。
+- 任何非 loopback bind 都必须配置认证，否则服务拒绝启动。
+- 密码、浏览器会话 token 与 API token 都不保存明文；供应商 secret 只保存引用。
 - `AGENTHUB_HOST` 为非 loopback 时必须同时设置 `AGENTHUB_AUTH_MODE=token`，否则在监听端口前拒绝启动。
-- token 模式首次启动需要 `AGENTHUB_BOOTSTRAP_TOKEN`；已有数据库 token 后可移除 bootstrap secret。
-- 浏览器访问 token 只保存于 `sessionStorage`，HTTP 使用 Bearer header，WebSocket 使用受限 subprotocol credential；生产远程访问仍需 TLS 终止。
+- token 模式首次启动不要求 bootstrap secret；零账号时只开放一次性管理员设置流程，数据库
+  singleton constraint 在首个账号创建后关闭该路径。
+- 管理员密码使用 Node.js `scrypt` 加随机 salt 派生；网页认证使用 7 天有效的 HttpOnly、
+  SameSite=Strict Cookie，浏览器 JavaScript 不能读取会话 token，HTTP 与 WebSocket 自动复用同源 Cookie。
+- `AGENTHUB_BOOTSTRAP_TOKEN` 只作为可选 API/回滚兼容能力，不进入普通用户界面。
+
+## 本机管理员与浏览器会话
+
+- MVP 只支持一个本机 `ADMIN`，不伪装成多用户/RBAC 系统。用户名做 NFKC 规范化和大小写无关匹配。
+- 密码长度限制为 12..128；连续 5 次错误登录会对该客户端冷却 15 分钟。
+- 浏览器会话只保存 SHA-256 hash、到期时间、最近使用与撤销时间；退出登录和密码变更都会撤销会话。
+- 修改密码需要当前管理员密码；修改后除当前新会话外，其他浏览器全部退出。
 
 ## API token
 
 - `POST /api/v1/auth/tokens` 生成 256-bit 随机 token，只在创建响应中显示一次。
 - 数据库只保存带算法前缀的 SHA-256 hash；列表与撤销响应不返回 hash。
 - `DELETE /api/v1/auth/tokens/:id` 只做可追踪撤销，不物理删除记录。
-- `GET /api/v1/health` 与 `GET /api/v1/auth/status` 可匿名读取，其他 `/api/v1` 接口和 `/ws` 在 token 模式统一认证。
+- `GET /api/v1/health`、`GET /api/v1/auth/status`、login 与零账号时的 setup 入口可匿名访问；
+  其他 `/api/v1` 接口和 `/ws` 统一验证管理员 Cookie 或明确的 API token。
 
 ## 进程与 Docker
 
@@ -28,8 +39,8 @@
   AgentHub 镜像，并且不得因此扩大既有 Agent 容器的接管范围。
 - root Git 使用 `SUDO_UID` 识别明确的 Project owner，并只读挂载 Git identity 配置；不设置
   `safe.directory=*`，也不因此新增 push/credential API。
-- 当前 `192.168.5.110:3210` 是受 token 保护的 LAN HTTP 入口；不可信网络或跨网访问必须在
-  前置代理终止 TLS，避免 Bearer token 被旁路观察。
+- 当前 `192.168.5.110:3210` 是受账号登录保护的 LAN HTTP 入口；不可信网络或跨网访问必须在
+  前置代理终止 TLS，避免登录密码与 Cookie 被旁路观察。
 - HTTP 模式不发送仅适用于可信 origin 的 COOP，也不使用 `upgrade-insecure-requests` 强制
   相对资源改成 HTTPS；TLS 入口设置 `AGENTHUB_SECURE_TRANSPORT=true` 后恢复 COOP，其余
   Helmet CSP 与安全头在两种模式均保留。
@@ -68,4 +79,5 @@
 - Remote Node 日志不得输出注册码、private/public key 原文、签名或 provider environment；诊断只展示 fingerprint、roots、inventory 和脱敏错误。
 - 默认日志不包含完整 Prompt、文件正文或供应商原始 payload。
 - 原始调试信息需要显式开启并在返回前脱敏。
-- 服务日志明确 redact `Authorization`、token、password 与 secret 字段；token 不允许通过 query string 传递。
+- 服务日志明确 redact `Authorization`、Cookie、token、password、currentPassword、newPassword
+  与 secret 字段；任何凭据都不允许通过 query string 传递。

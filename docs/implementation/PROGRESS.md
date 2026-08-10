@@ -9,10 +9,27 @@
 - 已确认此前 `192.168.5.110:3210` 拒绝连接的直接原因是 systemd 只监听
   `127.0.0.1:3210`，服务本身健康。
 - 已新增 ARM64 Compose、固定 digest Dockerfile、root-only token helper、部署/回滚说明和
-  ADR-014。镜像 `agenthub:0.3.0-nas.1` 已离线构建并通过隔离 PGlite、token auth、Web、
-  Project API 与 host Docker API 烟测。
-- 正式冷备份、systemd → Compose 切换、绿联项目列表、LAN/TX5Pro、重启恢复和 GitHub CI
-  尚待本 Goal 后续步骤完成；在这些证据完成前不声明 Compose 上线成功。
+  ADR-014。镜像 `agenthub:0.3.0-nas.1` 已构建为 Linux ARM64 runtime，Node.js 24.19.0、
+  Git 2.39.5，OCI revision 固定到部署源码 commit。
+- 正式冷备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260810T102845Z-pre-compose/`；原
+  `agenthub.service` 已停止并禁用，但 unit/env 与数据快照均保留，可回滚。
+- Compose Project `agenthub` 已部署到 `/volume2/DockerProject/agenthub`，Compose 标签与
+  `docker compose ls` 均将其枚举为独立项目；容器以 `0:0`、`privileged=true`、
+  `restart=unless-stopped` 运行，只发布 `192.168.5.110:3210`。
+- LAN 入口启用强制认证。首次 Compose 验收使用 root-only API token 完成迁移验证；用户指出
+  这不适合作为普通用户登录流程后，Web 已改为首次创建唯一管理员、用户名/密码登录和
+  HttpOnly Cookie，API token 只保留为折叠的外部集成能力。账号、密码 hash 和浏览器会话由
+  `0003_sweet_owl.sql` 持久化，不改写既有 Project/Target/PGlite 数据。
+- 首次 TX5Pro LAN 验收发现 Helmet 默认 `upgrade-insecure-requests` 会把 HTTP 静态资源升级为
+  HTTPS，导致浏览器 `ERR_SSL_PROTOCOL_ERROR`；已增加显式 transport 配置并补回归测试。
+  修复后 1440/1024/768/390 共 16 项检查全部通过，0 request failure、console/page/HTTP
+  error 与外部请求，证据归档于 `docs/qa/tx5pro/2026-08-10-compose-lan/`。
+- 部署和恢复证据见 `docs/qa/nas/2026-08-10-compose-migration/`；Claude Code、Hermes、
+  OpenClaw 的 container ID、镜像和原 `exited` 状态在迁移及重启前后均未变化。
+- 401 根因已复现：浏览器没有旧部署 Bearer token，受保护 REST 和 `/ws` 均正确拒绝；旧前端
+  又把平台登录错误误写成“Agent 需要授权”。当前登录门禁在任何受保护 Query 前完成，401
+  显示“登录已失效”，加载态、错误态、设置页双列布局与 9/12/16px 圆角层级已统一。
 
 ## v0.3 当前状态
 
@@ -130,7 +147,8 @@ M6：
 
 - Goal/Task：完成 CRUD、Goal 状态、Task 看板排序与状态机、“交给 Agent 开始”、Run 完成进入待审阅、失败/取消进入受阻、用户 `APPROVE` 后才完成。
 - Dashboard：只聚合运行中 Session、待 Approval、待审阅/受阻 Task、最近终态 Run、Git outcome 与 Agent 健康。
-- Auth：loopback 默认 `local_trusted`；非 loopback 在监听前强制 `token`。API token 使用 256-bit 随机值，只在创建时显示一次，数据库只保存 SHA-256 hash；HTTP 与 `/ws` 统一认证。
+- Auth：M6 当时实现 loopback `local_trusted` 与非 loopback Bearer token。当前已由 ADR-015
+  扩展为唯一管理员账号、scrypt 密码、HttpOnly Cookie 和会话撤销；API token 退居外部集成兼容路径。
 - Production：Server 自动托管 `apps/web/dist` 并提供 SPA fallback；临时 production Server 使用内存 PGlite 启动，`/api/v1/health` 返回 `web=true`，`/tasks` 返回 Web index。
 - 核心 E2E：确定性贯通 Project → PromptOS → Task → Agent → Approval exactly-once → Git BEFORE/AFTER → Dashboard → 人工审阅。
 - 浏览器 E2E：NAS 本地 Playwright Chromium 在 1440、1024、768、390 四种视口共 12 项通过；根据 1024 截图修复 Dashboard Agent 健康区挤压。
