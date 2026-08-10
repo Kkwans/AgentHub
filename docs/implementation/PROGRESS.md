@@ -20,6 +20,7 @@
 - 版本元数据已统一为 v0.3.0；部署证据、校验和和回滚见 `docs/qa/nas/2026-08-10-v03-deployment/`。公开 GitHub `main` 与 annotated tag `v0.3.0` 已推送。
 - 最终全仓 gate 遇到 NAS `/tmp` tmpfs 100% 的 `ENOSPC` 后，没有删除其他项目缓存；改用 `/dev/shm/agenthub-test-tmp` 重跑，33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过。
 - GitHub Actions run `31374423006` 用时 2m23s，install、lint、typecheck、test、build 和 Playwright E2E 全部通过。
+- 正式服务已设置专用 `TMPDIR=/volume2/Project/.agenthub/central/tmp`，避免 NAS 全局 `/tmp` 100% 影响 Agent 子进程；更新前 env/unit 已备份，重启后进程环境、健康、Project 和容器未变性均通过。
 - 设计合同与回滚见 `docs/implementation/V0.3_UI_REDESIGN.md`。
 
 ## 当前

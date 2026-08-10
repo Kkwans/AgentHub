@@ -21,6 +21,7 @@ v0.3.0 聚焦 UI/UX 和 NAS 可用部署，不修改 REST/WebSocket 公共契约
 - TX5Pro：20 项通过，0 request failure、console/page error、HTTP 4xx/5xx 和外部请求；
 - systemd：`enabled`、`active/running`；受控重启后健康与自身 Project 持久恢复。
 - GitHub Actions：main run [`31374423006`](https://github.com/Kkwans/AgentHub/actions/runs/31374423006) 完整通过 install、lint、typecheck、test、build 与 Playwright E2E。
+- NAS 全局 `/tmp` 已满；正式服务通过 `TMPDIR=/volume2/Project/.agenthub/central/tmp` 隔离，运行中进程已验证继承该值，不删除其他项目缓存。
 
 ## 已知限制
 

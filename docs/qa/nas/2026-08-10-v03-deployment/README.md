@@ -23,11 +23,12 @@
 - env：`/etc/agenthub/agenthub.env`，mode `0640`、owner `root:admin`；
 - PGlite：`/volume2/Project/.agenthub/central/data`，mode `0700`、owner `Kkwans:admin`；
 - Worktree：`/volume2/Project/.agenthub/central/worktrees`，mode `0700`、owner `Kkwans:admin`；
+- 生产临时目录：`/volume2/Project/.agenthub/central/tmp`，mode `0700`、owner `Kkwans:admin`；运行中进程已确认 `TMPDIR` 指向该目录；
 - runtime build source commit：`913b34d39788d3bc2b51e1d679807ede4dd4fc84`；release/documentation HEAD：`3f9d6e6c3fadeead5e7cd7f2bcefca97068f32ac`；
 - Server/runtime dist tree SHA-256：`34d21f31d6e218043a10e781d4b271fded9ec16e09c38ec1e397e3b98eee56a8`；
 - Web dist tree SHA-256：`5b054119dd4653bbe352b7c3a1433129025b6507fbdb5dd9bce40b5703fc9e44`；
 - installed unit SHA-256：`c397e39a339aed0d2db95f25f2ac07ee6f3cc15d44c8080bf34a15913c5ca8aa`；
-- installed env SHA-256：`4a54096dc60900163391382c85df0bfeb47e6d35be46f3f734c85500a3cdf8a9`。
+- installed env SHA-256：`6d0349d33145856b6955bd3f02cf619cc14c60510039a345820c83772c951615`。
 
 健康接口返回：
 
@@ -45,7 +46,7 @@
 - preflight：路径、读写权限、Git/main、AGENTS.md 和 pnpm 探测全部 PASS；
 - 只读文件树：成功返回 29 个根条目。
 
-受控重启后 MainPID 从 `870876` 变为 `872644`，健康恢复；同一 target 和 Project ID 仍可查询，证明 PGlite 持久化与 systemd 重启恢复有效。
+受控重启后 MainPID 从 `870876` 变为 `872644`，健康恢复；同一 target 和 Project ID 仍可查询，证明 PGlite 持久化与 systemd 重启恢复有效。发现 NAS 全局 `/tmp` 已满后，又在 `/volume2/Project/.agenthub/central/deployments/20260810T0932Z-before-tmpdir/` 以 `0600 root:admin` 备份原 env/unit，设置专用 TMPDIR 并重启到 PID `893678`；进程环境、健康、回环监听和 Project 再次通过。
 
 最终全仓 Vitest 首次运行因 NAS `/tmp` tmpfs 已被其他项目缓存占到 100% 而出现 `ENOSPC`，不是断言回归；未删除这些缓存。改用非 dot-path 的 `/dev/shm/agenthub-test-tmp` 后，33 个文件通过、3 个 live 文件按 gate 跳过，114 项通过、7 项跳过。曾尝试的 `.agenthub/test-tmp` 因 Express `sendFile` 按设计忽略 dot-path，使 SPA fixture 单项返回 500；聚焦诊断后改用非 dot-path，7 项 HTTP 测试与全仓均通过。
 

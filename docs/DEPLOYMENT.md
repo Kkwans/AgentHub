@@ -68,6 +68,7 @@ sudo install -d -m 0700 -o Kkwans -g admin \
   /volume2/Project/.agenthub/central \
   /volume2/Project/.agenthub/central/data \
   /volume2/Project/.agenthub/central/worktrees \
+  /volume2/Project/.agenthub/central/tmp \
   /volume2/Project/.agenthub/central/deployments
 sudo install -d -m 0750 -o root -g admin /etc/agenthub
 sudo install -m 0640 -o root -g admin \
