@@ -107,9 +107,23 @@ describe('Session/Run/Approval 持久化闭环', () => {
 
   it('持久化 Approval 合法选项、exactly-once 决策、消息、事件与 Git 前后 SHA', async () => {
     const fixture = await createFixture('approval');
+    const lifecycle: string[] = [];
+    const taskId = randomUUID();
+    fixture.service.setTaskLifecycleObserver({
+      onRunCompleted: async () => {
+        lifecycle.push('completed');
+      },
+      onRunWaitingForInput: async () => {
+        lifecycle.push('waiting');
+      },
+      onRunResumed: async () => {
+        lifecycle.push('resumed');
+      },
+    });
     const session = await fixture.service.create({
       projectId: fixture.projectId,
       agentId: fixture.agentId,
+      taskId,
       title: 'Approval 测试',
       cwd: '/tmp',
     });
@@ -145,6 +159,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     expect(events.map((event) => event.seq)).toEqual(
       Array.from({ length: events.length }, (_, index) => index + 1),
     );
+    expect(lifecycle).toEqual(['waiting', 'resumed', 'completed']);
     expect(fixture.published.some((message) => message.topic === 'approvals')).toBe(true);
     await fixture.service.shutdown();
   });

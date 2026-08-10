@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -19,6 +19,7 @@ import {
   SessionRepository,
   SkillRepository,
   TaskRepository,
+  WorktreeExecutionRepository,
   type DatabaseClient,
 } from '@agenthub/db';
 import pino from 'pino';
@@ -44,6 +45,8 @@ import { PromptService } from './promptos/prompt-service.js';
 import { TaskService } from './tasks/task-service.js';
 import { DashboardService } from './dashboard/dashboard-service.js';
 import { AuthService, resolveAuthMode } from './auth/auth-service.js';
+import { WorktreeGitService } from './worktrees/worktree-git-service.js';
+import { WorktreeTaskService } from './worktrees/worktree-task-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -108,6 +111,7 @@ export async function startServer(
   const skillRepository = new SkillRepository(database.db);
   const goalRepository = new GoalRepository(database.db);
   const taskRepository = new TaskRepository(database.db);
+  const worktreeExecutionRepository = new WorktreeExecutionRepository(database.db);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
   const projects = new ProjectService(projectRepository, executionTargetRepository);
@@ -145,7 +149,36 @@ export async function startServer(
     promptos,
   );
   const tasks = new TaskService(goalRepository, taskRepository, projectRepository, sessions);
-  sessions.setTaskLifecycleObserver(tasks);
+  const dataPath = environment.AGENTHUB_DATA_DIR
+    ? resolve(environment.AGENTHUB_DATA_DIR)
+    : resolve(process.cwd(), '.agenthub/data/pgdata');
+  const worktreeRoot = environment.AGENTHUB_WORKTREE_ROOT
+    ? resolve(environment.AGENTHUB_WORKTREE_ROOT)
+    : resolve(dirname(dataPath), 'worktrees');
+  const worktrees = new WorktreeTaskService(
+    worktreeExecutionRepository,
+    taskRepository,
+    projectRepository,
+    agentRepository,
+    executionTargetRepository,
+    sessions,
+    new WorktreeGitService(worktreeRoot),
+    { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
+  );
+  sessions.setTaskLifecycleObserver({
+    onRunCompleted: async (taskId, runId) => {
+      if (!(await worktrees.onRunCompleted(taskId, runId))) {
+        await tasks.onRunCompleted(taskId, runId);
+      }
+    },
+    onRunStopped: async (taskId, runId, reason) => {
+      if (!(await worktrees.onRunStopped(taskId, runId, reason))) {
+        await tasks.onRunStopped(taskId, runId);
+      }
+    },
+    onRunWaitingForInput: (taskId, runId) => worktrees.onRunWaitingForInput(taskId, runId),
+    onRunResumed: (taskId, runId) => worktrees.onRunResumed(taskId, runId),
+  });
   const dashboard = new DashboardService(
     sessionRepository,
     taskRepository,
@@ -153,7 +186,10 @@ export async function startServer(
     approvalRepository,
     agentRepository,
   );
-  const recovery = await sessions.recoverAfterRestart();
+  const recovery = {
+    sessions: await sessions.recoverAfterRestart(),
+    worktrees: await worktrees.recoverAfterRestart(),
+  };
   const app = createApp({
     logger,
     eventSource: eventRepository,
@@ -168,6 +204,7 @@ export async function startServer(
     tasks,
     dashboard,
     auth,
+    worktrees,
     ...(webAvailable ? { webDist } : {}),
   });
   const server = createServer(app);
@@ -185,6 +222,7 @@ export async function startServer(
     { host, port, database: database.mode, web: webAvailable, recovery },
     'AgentHub server started',
   );
+  worktrees.resumeQueued(recovery.worktrees.queuedProjects);
 
   return {
     server,
@@ -192,6 +230,7 @@ export async function startServer(
     database,
     close: async () => {
       await terminal.shutdown();
+      await worktrees.shutdown();
       await sessions.shutdown();
       await broker.close();
       await new Promise<void>((resolve, reject) => {

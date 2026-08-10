@@ -856,6 +856,20 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
     return execution;
   }
 
+  async getActiveForTask(taskId: string) {
+    const [execution] = await this.db
+      .select()
+      .from(worktreeExecutions)
+      .where(
+        and(
+          eq(worktreeExecutions.taskId, taskId),
+          inArray(worktreeExecutions.status, ['QUEUED', ...activeWorktreeExecutionStatuses]),
+        ),
+      )
+      .limit(1);
+    return execution;
+  }
+
   async getActiveForProject(projectId: string) {
     const [execution] = await this.db
       .select()
@@ -879,6 +893,48 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
       );
     }
     return created;
+  }
+
+  async enqueue(
+    input: Omit<typeof worktreeExecutions.$inferInsert, 'status'> & { assignedAgentId: string },
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [task] = await transaction
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, input.taskId))
+        .for('update')
+        .limit(1);
+      if (!task) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+      transitionTask(task.status as TaskStatus, 'IN_PROGRESS');
+
+      const { assignedAgentId, ...executionInput } = input;
+      const [execution] = await transaction
+        .insert(worktreeExecutions)
+        .values({ ...executionInput, status: 'QUEUED' })
+        .returning();
+      if (!execution) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_CREATE_FAILED',
+          'Worktree Execution 创建失败',
+        );
+      }
+      const [updatedTask] = await transaction
+        .update(tasks)
+        .set({
+          status: 'IN_PROGRESS',
+          assignedAgentId,
+          branch: execution.taskBranch,
+          completedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tasks.id, task.id), eq(tasks.status, task.status)))
+        .returning();
+      if (!updatedTask) {
+        throw new DatabaseInvariantError('TASK_CONCURRENT_UPDATE', 'Task 状态已被其他请求修改');
+      }
+      return { execution, task: updatedTask };
+    });
   }
 
   async patch(id: string, patch: Partial<typeof worktreeExecutions.$inferInsert>) {
@@ -924,6 +980,56 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
         );
       }
       return updated;
+    });
+  }
+
+  async transitionWithTask(
+    id: string,
+    to: WorktreeExecutionStatus,
+    taskTo: TaskStatus,
+    executionPatch: Partial<typeof worktreeExecutions.$inferInsert> = {},
+    taskPatch: Partial<typeof tasks.$inferInsert> = {},
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(eq(worktreeExecutions.id, id))
+        .for('update')
+        .limit(1);
+      if (!current) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_NOT_FOUND',
+          'Worktree Execution 不存在',
+        );
+      }
+      const [task] = await transaction
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, current.taskId))
+        .for('update')
+        .limit(1);
+      if (!task) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+      transitionWorktreeExecution(current.status as WorktreeExecutionStatus, to);
+      transitionTask(task.status as TaskStatus, taskTo);
+
+      const [execution] = await transaction
+        .update(worktreeExecutions)
+        .set({ ...executionPatch, status: to, updatedAt: new Date() })
+        .where(and(eq(worktreeExecutions.id, id), eq(worktreeExecutions.status, current.status)))
+        .returning();
+      const [updatedTask] = await transaction
+        .update(tasks)
+        .set({ ...taskPatch, status: taskTo, updatedAt: new Date() })
+        .where(and(eq(tasks.id, task.id), eq(tasks.status, task.status)))
+        .returning();
+      if (!execution || !updatedTask) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_CONCURRENT_UPDATE',
+          'Worktree Execution 或 Task 状态已被其他请求修改',
+        );
+      }
+      return { execution, task: updatedTask };
     });
   }
 

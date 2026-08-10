@@ -77,8 +77,14 @@ export interface PromptContextResolver {
 }
 
 export interface TaskRunLifecycleObserver {
-  onRunCompleted(taskId: string, runId: string): Promise<void>;
-  onRunStopped?(taskId: string, runId: string, reason: 'FAILED' | 'CANCELED'): Promise<void>;
+  onRunCompleted(taskId: string, runId: string): Promise<boolean | void>;
+  onRunStopped?(
+    taskId: string,
+    runId: string,
+    reason: 'FAILED' | 'CANCELED' | 'DISCONNECTED',
+  ): Promise<boolean | void>;
+  onRunWaitingForInput?(taskId: string, runId: string): Promise<boolean | void>;
+  onRunResumed?(taskId: string, runId: string): Promise<boolean | void>;
 }
 
 interface ActiveSession {
@@ -361,6 +367,10 @@ export class SessionService {
         { cause: error },
       );
     }
+    const run = await this.runs.get(approval.runId);
+    if (run?.taskId) {
+      await this.taskLifecycle?.onRunResumed?.(run.taskId, approval.runId);
+    }
     this.publisher.publish('approvals', {
       type: 'approval.resolved',
       approvalId: id,
@@ -431,6 +441,13 @@ export class SessionService {
         await this.persistEvent(event, projectId);
       }
     } catch {
+      const activeRun = await this.runs.findActiveForSession(sessionId);
+      if (activeRun) {
+        await this.safeRunTransition(activeRun.id, 'DISCONNECTED');
+        if (activeRun.taskId) {
+          await this.taskLifecycle?.onRunStopped?.(activeRun.taskId, activeRun.id, 'DISCONNECTED');
+        }
+      }
       await this.safeSessionTransition(sessionId, 'DISCONNECTED');
     }
   }
@@ -458,6 +475,10 @@ export class SessionService {
       payload = { ...payload, approvalRequestId: approval.id };
       await this.safeRunTransition(event.runId, 'WAITING_APPROVAL');
       await this.safeSessionTransition(event.sessionId, 'WAITING_APPROVAL');
+      const run = await this.runs.get(event.runId);
+      if (run?.taskId) {
+        await this.taskLifecycle?.onRunWaitingForInput?.(run.taskId, event.runId);
+      }
       this.publisher.publish('approvals', {
         type: 'approval.requested',
         approvalId: approval.id,
@@ -530,7 +551,12 @@ export class SessionService {
       const activeRun = event.runId
         ? await this.runs.get(event.runId)
         : await this.runs.findActiveForSession(event.sessionId);
-      if (activeRun) await this.safeRunTransition(activeRun.id, 'DISCONNECTED');
+      if (activeRun) {
+        await this.safeRunTransition(activeRun.id, 'DISCONNECTED');
+        if (activeRun.taskId) {
+          await this.taskLifecycle?.onRunStopped?.(activeRun.taskId, activeRun.id, 'DISCONNECTED');
+        }
+      }
     }
   }
 
