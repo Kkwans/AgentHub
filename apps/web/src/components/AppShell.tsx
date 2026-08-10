@@ -132,7 +132,7 @@ export function AppShell() {
               {connection}
             </Badge>
             <Text as="span" color="gray" size="1">
-              LOCAL · v0.3
+              LOCAL · v0.3.0
             </Text>
           </div>
         </div>
