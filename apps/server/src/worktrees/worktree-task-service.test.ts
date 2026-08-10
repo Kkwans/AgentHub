@@ -74,6 +74,7 @@ describe('Worktree Task Runner 编排', () => {
       cwd: `/managed/${first.execution.id}`,
       branch: first.execution.taskBranch,
     });
+    expect((await tasks.get(firstTask.id))?.sessionId).toBe(firstRunning.sessionId);
 
     await service.onRunWaitingForInput(firstTask.id, firstRunning.runId!);
     expect((await executions.get(first.execution.id))?.status).toBe('AWAITING_INPUT');

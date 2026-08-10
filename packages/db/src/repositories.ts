@@ -1033,6 +1033,54 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
     });
   }
 
+  async transitionWithTaskPatch(
+    id: string,
+    to: WorktreeExecutionStatus,
+    executionPatch: Partial<typeof worktreeExecutions.$inferInsert>,
+    taskPatch: Partial<typeof tasks.$inferInsert>,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(eq(worktreeExecutions.id, id))
+        .for('update')
+        .limit(1);
+      if (!current) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_NOT_FOUND',
+          'Worktree Execution 不存在',
+        );
+      }
+      const [task] = await transaction
+        .select({ id: tasks.id, status: tasks.status })
+        .from(tasks)
+        .where(eq(tasks.id, current.taskId))
+        .for('update')
+        .limit(1);
+      if (!task) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+      transitionWorktreeExecution(current.status as WorktreeExecutionStatus, to);
+
+      const [execution] = await transaction
+        .update(worktreeExecutions)
+        .set({ ...executionPatch, status: to, updatedAt: new Date() })
+        .where(and(eq(worktreeExecutions.id, id), eq(worktreeExecutions.status, current.status)))
+        .returning();
+      const [updatedTask] = await transaction
+        .update(tasks)
+        .set({ ...taskPatch, updatedAt: new Date() })
+        .where(and(eq(tasks.id, task.id), eq(tasks.status, task.status)))
+        .returning();
+      if (!execution || !updatedTask) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_CONCURRENT_UPDATE',
+          'Worktree Execution 或 Task 已被其他请求修改',
+        );
+      }
+      return { execution, task: updatedTask };
+    });
+  }
+
   async claimNext(projectId: string) {
     return this.db.transaction(async (transaction) => {
       const [active] = await transaction

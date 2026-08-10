@@ -405,11 +405,16 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         ...(config.model ? { model: config.model } : {}),
         ...(config.mode ? { mode: config.mode } : {}),
       });
-      await this.executions.transition(id, 'RUNNING', {
-        sessionId: session.id,
-        errorCode: null,
-        errorMessage: null,
-      });
+      await this.executions.transitionWithTaskPatch(
+        id,
+        'RUNNING',
+        {
+          sessionId: session.id,
+          errorCode: null,
+          errorMessage: null,
+        },
+        { sessionId: session.id },
+      );
       const run = await this.sessions.startRun(session.id, {
         text: worktreePrompt(task, execution.baseBranch, execution.taskBranch),
         ...(config.promptVariables ? { promptVariables: config.promptVariables } : {}),
