@@ -66,7 +66,7 @@ export function AppShell() {
           <div className="environment-row">
             <span className={`connection-dot ${connection === '已连接' ? 'online' : ''}`} />
             <span>{connection}</span>
-            <code>v0.1</code>
+            <code>v0.2</code>
           </div>
         </div>
       </aside>

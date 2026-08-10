@@ -1047,7 +1047,7 @@ export function TasksPage() {
         >
           <label>
             Goal 标题
-            <input required name="title" placeholder="例如发布 AgentHub v0.1" />
+            <input required name="title" placeholder="例如发布 AgentHub v0.2" />
           </label>
           <label>
             说明

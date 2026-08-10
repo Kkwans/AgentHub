@@ -234,7 +234,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       const initialize = await connection.agent.request(AGENT_METHODS.initialize, {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: { plan: {} },
-        clientInfo: { name: 'agenthub', title: 'AgentHub', version: '0.1.0' },
+        clientInfo: { name: 'agenthub', title: 'AgentHub', version: '0.2.0' },
       });
       if (initialize.protocolVersion !== PROTOCOL_VERSION) {
         throw new AcpAdapterError(
