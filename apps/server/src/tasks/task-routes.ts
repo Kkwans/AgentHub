@@ -71,7 +71,13 @@ const taskStart = z.object({
   mode: z.string().max(80).optional(),
   promptVariables: z.record(z.string(), z.unknown()).optional(),
 });
-const taskReview = z.object({ decision: z.enum(['APPROVE', 'REWORK']) });
+const taskReview = z.discriminatedUnion('decision', [
+  z.object({ decision: z.literal('APPROVE') }),
+  z.object({
+    decision: z.literal('REWORK'),
+    feedback: z.string().trim().min(1).max(100_000),
+  }),
+]);
 
 export function createGoalRouter(service: TaskService): Router {
   const router = Router();
@@ -231,7 +237,7 @@ export function createTaskRouter(service: TaskService): Router {
         response.json({
           data: await service.reviewTask(
             idParams.parse(request.params).id,
-            taskReview.parse(request.body).decision,
+            taskReview.parse(request.body),
           ),
           requestId: String(request.id),
         });

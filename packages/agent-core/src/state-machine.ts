@@ -59,10 +59,21 @@ const sessionTransitions: Record<SessionStatus, readonly SessionStatus[]> = {
 
 const runTransitions: Record<RunStatus, readonly RunStatus[]> = {
   QUEUED: ['STARTING', 'CANCELED', 'FAILED'],
-  STARTING: ['RUNNING', 'CANCELING', 'CANCELED', 'FAILED', 'DISCONNECTED'],
+  STARTING: [
+    'RUNNING',
+    'WAITING_APPROVAL',
+    'CANCELING',
+    'CANCELED',
+    'COMPLETED',
+    'FAILED',
+    'DISCONNECTED',
+  ],
   RUNNING: ['WAITING_APPROVAL', 'CANCELING', 'CANCELED', 'COMPLETED', 'FAILED', 'DISCONNECTED'],
-  WAITING_APPROVAL: ['RUNNING', 'CANCELING', 'CANCELED', 'FAILED', 'DISCONNECTED'],
-  CANCELING: ['CANCELED', 'FAILED'],
+  WAITING_APPROVAL: ['RUNNING', 'CANCELING', 'CANCELED', 'COMPLETED', 'FAILED', 'DISCONNECTED'],
+  // Cancellation is a request, not a terminal verdict. An adapter may race
+  // the cancellation request with a normal completion or a disconnect; the
+  // first atomic terminal transition wins in the persistence layer.
+  CANCELING: ['CANCELED', 'COMPLETED', 'FAILED', 'DISCONNECTED'],
   DISCONNECTED: ['RUNNING', 'CANCELING', 'CANCELED', 'FAILED'],
   CANCELED: [],
   COMPLETED: [],

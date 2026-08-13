@@ -51,6 +51,10 @@ describe('Agent 状态机', () => {
     expect(transitionSession('CREATED', 'STARTING')).toBe('STARTING');
     expect(transitionSession('WAITING_APPROVAL', 'RUNNING')).toBe('RUNNING');
     expect(transitionRun('RUNNING', 'COMPLETED')).toBe('COMPLETED');
+    expect(transitionRun('CANCELING', 'CANCELED')).toBe('CANCELED');
+    expect(transitionRun('CANCELING', 'COMPLETED')).toBe('COMPLETED');
+    expect(transitionRun('CANCELING', 'FAILED')).toBe('FAILED');
+    expect(transitionRun('CANCELING', 'DISCONNECTED')).toBe('DISCONNECTED');
   });
 
   it('阻止终态回到运行态', () => {

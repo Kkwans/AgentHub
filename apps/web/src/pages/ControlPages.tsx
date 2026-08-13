@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  AlertDialog,
   ArrowRight,
   Bot,
   Button,
@@ -22,7 +23,7 @@ import {
   X,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   api,
@@ -33,6 +34,7 @@ import {
   type ExecutionTargetRecord,
   type GoalRecord,
   type ProjectRecord,
+  type RunRecord,
   type SessionRecord,
   type TaskRecord,
   type WorktreeExecutionRecord,
@@ -62,6 +64,7 @@ export function ProjectsPage() {
     queryKey: ['targets'],
     queryFn: () => api.get<ExecutionTargetRecord[]>('/execution-targets'),
   });
+  const hasTargets = Boolean(targets.data?.length);
   const add = useMutation({
     mutationFn: (body: Record<string, string>) => api.post('/projects', body),
     onSuccess: () => {
@@ -75,12 +78,41 @@ export function ProjectsPage() {
         title="Project 工作区"
         description="添加真实目录并探测 Git、分支、规则文件与 package manager。文件浏览保持只读。"
         action={
-          <Button onClick={() => setAdding(!adding)}>
-            <Plus size={15} /> 添加 Project
-          </Button>
+          targets.isLoading ? (
+            <Button disabled>
+              <RefreshCw size={15} /> 正在检查 Execution Target
+            </Button>
+          ) : targets.error ? (
+            <Button onClick={() => void targets.refetch()}>
+              <RefreshCw size={15} /> 重新检查 Execution Target
+            </Button>
+          ) : hasTargets ? (
+            <Button onClick={() => setAdding(!adding)}>
+              <Plus size={15} /> 添加 Project
+            </Button>
+          ) : (
+            <Link className="project-target-action" to="/agents">
+              <Plus size={15} /> 创建 Execution Target <ArrowRight size={14} />
+            </Link>
+          )
         }
       />
-      {adding && (
+      {targets.isLoading ? (
+        <LoadingState label="正在检查可用 Execution Target" />
+      ) : targets.error ? (
+        <ErrorState error={targets.error} retry={() => void targets.refetch()} />
+      ) : !hasTargets ? (
+        <EmptyState
+          title="尚未注册 Execution Target"
+          description="Project 必须连接一个可用的执行目标。先在 Agent 页面创建 Execution Target，再返回添加 Project。"
+          action={
+            <Link className="empty-state-link" to="/agents">
+              前往 Agent 页面创建 Execution Target <ArrowRight size={14} />
+            </Link>
+          }
+        />
+      ) : null}
+      {adding && hasTargets && (
         <form
           className="inline-form"
           onSubmit={(event) => {
@@ -117,10 +149,10 @@ export function ProjectsPage() {
           {add.error && <span className="form-error">{add.error.message}</span>}
         </form>
       )}
-      {projects.isLoading ? (
+      {!hasTargets && !projects.data?.length ? null : projects.isLoading ? (
         <LoadingState />
       ) : projects.error ? (
-        <ErrorState error={projects.error} />
+        <ErrorState error={projects.error} retry={() => void projects.refetch()} />
       ) : !projects.data?.length ? (
         <EmptyState
           title="尚未添加 Project"
@@ -136,7 +168,7 @@ export function ProjectsPage() {
             <span>操作</span>
           </div>
           {projects.data.map((project) => (
-            <div className="data-row" key={project.id}>
+            <div className="data-row project-row" key={project.id}>
               <span>
                 <strong>{project.name}</strong>
                 <small>{project.description || '暂无说明'}</small>
@@ -146,9 +178,14 @@ export function ProjectsPage() {
                 <GitBranch size={14} /> {project.repoKind}
               </span>
               <StatusBadge status={project.status} />
-              <Link className="text-link" to={`/sessions?projectId=${project.id}`}>
-                打开工作区 <ArrowRight size={14} />
-              </Link>
+              <span className="project-action-cell">
+                <Link
+                  className="text-link project-start-link"
+                  to={`/sessions?projectId=${encodeURIComponent(project.id)}&new=1`}
+                >
+                  开始会话 <ArrowRight size={14} />
+                </Link>
+              </span>
             </div>
           ))}
         </div>
@@ -632,48 +669,370 @@ function capabilityLabels(capabilities: Record<string, unknown>): string[] {
 
 export function SessionsPage() {
   const navigate = useNavigate();
+  const client = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectFilter = searchParams.get('projectId') ?? '';
+  const creating = searchParams.get('new') === '1';
   const sessions = useQuery({
-    queryKey: ['sessions'],
-    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+    queryKey: ['sessions', projectFilter || 'all'],
+    queryFn: () =>
+      api.get<SessionRecord[]>(
+        projectFilter ? `/sessions?projectId=${encodeURIComponent(projectFilter)}` : '/sessions',
+      ),
   });
+  const projects = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api.get<ProjectRecord[]>('/projects'),
+    enabled: creating,
+  });
+  const agents = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => api.get<AgentRecord[]>('/agents'),
+    enabled: creating,
+  });
+  const targets = useQuery({
+    queryKey: ['targets'],
+    queryFn: () => api.get<ExecutionTargetRecord[]>('/execution-targets'),
+    enabled: creating,
+  });
+  const activeProjects = (projects.data ?? []).filter((project) => project.status === 'ACTIVE');
+  const selectedProject =
+    activeProjects.find((project) => project.id === projectFilter) ?? activeProjects[0];
+  const selectedTarget = selectedProject
+    ? (targets.data ?? []).find((target) => target.id === selectedProject.targetId)
+    : undefined;
+  const compatibleAgents = selectedProject
+    ? (agents.data ?? []).filter(
+        (agent) =>
+          agent.targetId === selectedProject.targetId && agent.enabled && agent.status === 'READY',
+      )
+    : [];
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [title, setTitle] = useState('新 Session');
+  const [model, setModel] = useState('');
+  const [mode, setMode] = useState('');
+  const [sessionToClose, setSessionToClose] = useState<SessionRecord>();
+  const selectedAgent = compatibleAgents.find((agent) => agent.id === selectedAgentId);
+  useEffect(() => {
+    if (!compatibleAgents.some((agent) => agent.id === selectedAgentId)) {
+      setSelectedAgentId(compatibleAgents[0]?.id ?? '');
+    }
+  }, [compatibleAgents, selectedAgentId]);
+  useEffect(() => {
+    setModel(selectedAgent?.defaultModel ?? '');
+    setMode(selectedAgent?.defaultMode ?? '');
+  }, [selectedAgent]);
+  const createSession = useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.post<SessionRecord>('/sessions', body),
+    onSuccess: (session) => navigate(`/sessions/${session.id}`),
+  });
+  const resumeSession = useMutation({
+    mutationFn: (sessionId: string) => api.post<SessionRecord>(`/sessions/${sessionId}/resume`),
+    onSuccess: (session) => {
+      void client.invalidateQueries({ queryKey: ['sessions'] });
+      navigate(`/sessions/${session.id}`);
+    },
+  });
+  const closeSession = useMutation({
+    mutationFn: (sessionId: string) => api.post<SessionRecord>(`/sessions/${sessionId}/close`),
+    onSuccess: () => {
+      setSessionToClose(undefined);
+      void client.invalidateQueries({ queryKey: ['sessions'] });
+    },
+  });
+  const openCreate = (nextProjectId = projectFilter) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextProjectId) next.set('projectId', nextProjectId);
+    else next.delete('projectId');
+    next.set('new', '1');
+    setSearchParams(next);
+  };
+  const closeCreate = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('new');
+    setSearchParams(next);
+  };
+  const configuration = selectedAgent?.capabilitiesJson.configuration;
+  const hasModelCapability = Boolean(
+    selectedAgent?.defaultModel ||
+    (configuration && typeof configuration === 'object' && 'models' in configuration
+      ? configuration.models === true
+      : false),
+  );
+  const hasModeCapability = Boolean(
+    selectedAgent?.defaultMode ||
+    (configuration && typeof configuration === 'object' && 'modes' in configuration
+      ? configuration.modes === true
+      : false),
+  );
   return (
     <div className="page-stack">
       <PageIntro
         title="Coding Session"
         description="进入多栏工作区查看对话、Approval、文件、Diff、Git 和运行上下文。"
+        action={
+          <div className="page-actions session-page-actions">
+            {projectFilter && (
+              <Link className="text-link session-filter-clear" to="/sessions">
+                清除 Project 筛选
+              </Link>
+            )}
+            {creating ? (
+              <Button color="gray" variant="soft" onClick={closeCreate}>
+                返回 Session 列表
+              </Button>
+            ) : (
+              <Button onClick={() => openCreate()}>
+                <Plus size={15} /> 新建 Session
+              </Button>
+            )}
+          </div>
+        }
       />
+      {creating && (
+        <section className="session-create-panel" aria-labelledby="session-create-title">
+          <div className="session-create-heading">
+            <div>
+              <span className="section-kicker">新建 Session</span>
+              <h3 id="session-create-title">从可用 Agent 开始</h3>
+            </div>
+            <span>只展示当前 Project 可安全使用的执行环境。</span>
+          </div>
+          {projects.isLoading || agents.isLoading || targets.isLoading ? (
+            <LoadingState label="正在准备可用执行环境" />
+          ) : projects.error ? (
+            <ErrorState error={projects.error} retry={() => void projects.refetch()} />
+          ) : agents.error ? (
+            <ErrorState error={agents.error} retry={() => void agents.refetch()} />
+          ) : targets.error ? (
+            <ErrorState error={targets.error} retry={() => void targets.refetch()} />
+          ) : !activeProjects.length ? (
+            <EmptyState
+              title="还没有可用的 Project"
+              description="先添加一个处于 ACTIVE 状态的 Project，才能创建 Session。"
+              action={
+                <Link className="empty-state-link" to="/projects">
+                  前往 Project 管理 <ArrowRight size={14} />
+                </Link>
+              }
+            />
+          ) : !selectedTarget ? (
+            <EmptyState
+              title="Project 尚未连接 Execution Target"
+              description="当前 Project 的执行目标不存在或已经移除，请先在 Agent 页面检查目标。"
+              action={
+                <Link className="empty-state-link" to="/agents">
+                  检查 Execution Target <ArrowRight size={14} />
+                </Link>
+              }
+            />
+          ) : !compatibleAgents.length ? (
+            <EmptyState
+              title="没有可用的 Agent"
+              description="需要一个与当前 Project 使用同一 Execution Target、已启用且预检就绪的 Agent。"
+              action={
+                <Link className="empty-state-link" to="/agents">
+                  前往 Agent 管理 <ArrowRight size={14} />
+                </Link>
+              }
+            />
+          ) : (
+            <form
+              className="session-create-form"
+              aria-describedby={createSession.error ? 'session-create-error' : undefined}
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!selectedProject || !selectedAgentId) return;
+                createSession.mutate({
+                  projectId: selectedProject.id,
+                  agentId: selectedAgentId,
+                  title: title.trim() || '新 Session',
+                  cwd: selectedProject.realRootPath,
+                  ...(model.trim() ? { model: model.trim() } : {}),
+                  ...(mode.trim() ? { mode: mode.trim() } : {}),
+                });
+              }}
+            >
+              <label>
+                Project
+                <select
+                  value={selectedProject!.id}
+                  onChange={(event) => openCreate(event.target.value)}
+                >
+                  {activeProjects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Agent
+                <select
+                  value={selectedAgentId}
+                  onChange={(event) => setSelectedAgentId(event.target.value)}
+                >
+                  {compatibleAgents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name} · {agent.agentKind}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Session 标题
+                <input
+                  required
+                  maxLength={240}
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+              </label>
+              <label>
+                工作目录
+                <output className="session-readonly-field" aria-label="工作目录">
+                  <code title={selectedProject!.realRootPath}>{selectedProject!.realRootPath}</code>
+                </output>
+              </label>
+              {hasModelCapability && (
+                <label>
+                  model
+                  <input value={model} onChange={(event) => setModel(event.target.value)} />
+                </label>
+              )}
+              {hasModeCapability && (
+                <label>
+                  mode
+                  <input value={mode} onChange={(event) => setMode(event.target.value)} />
+                </label>
+              )}
+              {createSession.error && (
+                <p id="session-create-error" className="form-error" role="alert">
+                  {createSession.error.message}
+                </p>
+              )}
+              <div className="session-create-actions">
+                <Button type="button" color="gray" variant="soft" onClick={closeCreate}>
+                  取消
+                </Button>
+                <Button type="submit" disabled={createSession.isPending || !selectedAgentId}>
+                  {createSession.isPending ? '正在创建' : '创建并进入工作区'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </section>
+      )}
       {sessions.isLoading ? (
         <LoadingState />
       ) : sessions.error ? (
-        <ErrorState error={sessions.error} />
+        <ErrorState error={sessions.error} retry={() => void sessions.refetch()} />
       ) : !sessions.data?.length ? (
         <EmptyState
-          title="还没有 Session"
-          description="从 Task 或 Project 选择 Agent 后开始第一次会话。"
+          title={projectFilter ? '该 Project 还没有 Session' : '还没有 Session'}
+          description="从 Project 选择“开始会话”，或使用上方入口创建第一次会话。"
+          action={
+            projectFilter ? (
+              <Link className="empty-state-link" to="/sessions">
+                查看全部 Session <ArrowRight size={14} />
+              </Link>
+            ) : undefined
+          }
         />
       ) : (
         <div className="session-cards">
-          {sessions.data.map((session) => (
-            <button
-              key={session.id}
-              className="session-card"
-              onClick={() => navigate(`/sessions/${session.id}`)}
-            >
-              <div>
-                <span className="session-icon">
-                  <Bot size={17} />
-                </span>
-                <StatusBadge status={session.status} />
-              </div>
-              <strong>{session.title}</strong>
-              <code>{session.cwd}</code>
-              <span>
-                {session.branch || '无 Git 分支'} · {formatTime(session.lastActiveAt)}
-              </span>
-            </button>
-          ))}
+          {sessions.data.map((session) => {
+            const canClose = ['READY', 'DISCONNECTED', 'FAILED'].includes(session.status);
+            const resumeFailed =
+              resumeSession.error && resumeSession.variables === session.id
+                ? resumeSession.error
+                : undefined;
+            return (
+              <article key={session.id} className="session-card">
+                <Link className="session-card-link" to={`/sessions/${session.id}`}>
+                  <div className="session-card-status">
+                    <span className="session-icon">
+                      <Bot size={17} />
+                    </span>
+                    <StatusBadge status={session.status} />
+                  </div>
+                  <strong>{session.title}</strong>
+                  <code>{session.cwd}</code>
+                  <span>
+                    {session.branch || '无 Git 分支'} · {formatTime(session.lastActiveAt)}
+                  </span>
+                </Link>
+                {canClose && (
+                  <div className="session-card-actions">
+                    {session.status === 'DISCONNECTED' && (
+                      <Button
+                        size="1"
+                        disabled={resumeSession.isPending}
+                        onClick={() => resumeSession.mutate(session.id)}
+                      >
+                        <RotateCcw size={14} />
+                        {resumeSession.isPending && resumeSession.variables === session.id
+                          ? '正在恢复'
+                          : '恢复 Session'}
+                      </Button>
+                    )}
+                    <Button
+                      size="1"
+                      color="gray"
+                      variant="soft"
+                      onClick={() => {
+                        closeSession.reset();
+                        setSessionToClose(session);
+                      }}
+                    >
+                      关闭 Session
+                    </Button>
+                  </div>
+                )}
+                {resumeFailed && (
+                  <p className="session-card-error" role="alert">
+                    恢复失败：{resumeFailed.message}
+                  </p>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
+      <AlertDialog.Root
+        open={Boolean(sessionToClose)}
+        onOpenChange={(open) => {
+          if (!open && !closeSession.isPending) setSessionToClose(undefined);
+        }}
+      >
+        <AlertDialog.Content maxWidth="440px">
+          <AlertDialog.Title>关闭 Session</AlertDialog.Title>
+          <AlertDialog.Description size="2">
+            将关闭“{sessionToClose?.title}”。关闭后不能恢复，但已有消息、Run 与 Git 记录会保留。
+          </AlertDialog.Description>
+          {closeSession.error && (
+            <p className="session-dialog-error" role="alert">
+              关闭失败：{closeSession.error.message}
+            </p>
+          )}
+          <div className="session-dialog-actions">
+            <AlertDialog.Cancel>
+              <Button color="gray" variant="soft" disabled={closeSession.isPending}>
+                取消
+              </Button>
+            </AlertDialog.Cancel>
+            <Button
+              color="red"
+              disabled={!sessionToClose || closeSession.isPending}
+              onClick={() => {
+                if (sessionToClose) closeSession.mutate(sessionToClose.id);
+              }}
+            >
+              {closeSession.isPending ? '正在关闭' : '确认关闭'}
+            </Button>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
     </div>
   );
 }
@@ -681,13 +1040,41 @@ export function SessionsPage() {
 export function TasksPage() {
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [projectId, setProjectId] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectId = searchParams.get('projectId') ?? '';
+  const selectedExecutionId = searchParams.get('execution') ?? '';
+  const selectedTaskReviewId = searchParams.get('review') ?? '';
   const [goalFormOpen, setGoalFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Record<string, string>>({});
-  const [selectedExecutionId, setSelectedExecutionId] = useState('');
   const [reworkFeedback, setReworkFeedback] = useState('');
   const [commitMessage, setCommitMessage] = useState('');
+  const [taskReworkFeedback, setTaskReworkFeedback] = useState('');
+
+  const setProjectId = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('projectId', id);
+    else next.delete('projectId');
+    next.delete('execution');
+    next.delete('review');
+    setSearchParams(next);
+  };
+
+  const setSelectedExecutionId = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('execution', id);
+    else next.delete('execution');
+    next.delete('review');
+    setSearchParams(next);
+  };
+
+  const setSelectedTaskReviewId = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('review', id);
+    else next.delete('review');
+    next.delete('execution');
+    setSearchParams(next);
+  };
   const projects = useQuery({
     queryKey: ['projects'],
     queryFn: () => api.get<ProjectRecord[]>('/projects'),
@@ -702,6 +1089,8 @@ export function TasksPage() {
     queryKey: ['tasks', effectiveProjectId],
     queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${effectiveProjectId}`),
     enabled: Boolean(effectiveProjectId),
+    refetchInterval: (query) =>
+      query.state.data?.some((task) => task.status === 'IN_PROGRESS') ? 1_000 : false,
   });
   const worktrees = useQuery({
     queryKey: ['worktree-executions', effectiveProjectId],
@@ -720,6 +1109,36 @@ export function TasksPage() {
     (execution) => execution.id === selectedExecutionId,
   );
   const selectedTask = (tasks.data ?? []).find((task) => task.id === selectedExecution?.taskId);
+  const selectedTaskReview = (tasks.data ?? []).find((task) => task.id === selectedTaskReviewId);
+  const selectedTaskReviewProject = (projects.data ?? []).find(
+    (project) => project.id === selectedTaskReview?.projectId,
+  );
+  const selectedTaskRuns = useQuery({
+    queryKey: ['task-review-runs', selectedTaskReview?.sessionId],
+    queryFn: () => api.get<RunRecord[]>(`/sessions/${selectedTaskReview?.sessionId ?? ''}/runs`),
+    enabled: Boolean(selectedTaskReview?.sessionId),
+  });
+  const selectedTaskGitStatus = useQuery({
+    queryKey: ['task-review-git-status', selectedTaskReviewProject?.id],
+    queryFn: () =>
+      api.get<{
+        branch?: string;
+        headSha?: string;
+        clean: boolean;
+        entries: Array<{ index: string; worktree: string; path: string }>;
+      }>(`/projects/${selectedTaskReviewProject?.id ?? ''}/git/status`),
+    enabled: selectedTaskReviewProject?.repoKind === 'GIT',
+    retry: false,
+  });
+  const selectedTaskGitDiff = useQuery({
+    queryKey: ['task-review-git-diff', selectedTaskReviewProject?.id],
+    queryFn: () =>
+      api.get<{ patch: string; truncated: boolean }>(
+        `/projects/${selectedTaskReviewProject?.id ?? ''}/git/diff`,
+      ),
+    enabled: selectedTaskReviewProject?.repoKind === 'GIT',
+    retry: false,
+  });
   const worktreeReview = useQuery({
     queryKey: ['worktree-review', selectedExecutionId],
     queryFn: () =>
@@ -775,9 +1194,29 @@ export function TasksPage() {
     onSuccess: refresh,
   });
   const review = useMutation({
-    mutationFn: ({ id, decision }: { id: string; decision: 'APPROVE' | 'REWORK' }) =>
-      api.post(`/tasks/${id}/review`, { decision }),
-    onSuccess: refresh,
+    mutationFn: ({
+      id,
+      decision,
+      feedback,
+    }: {
+      id: string;
+      decision: 'APPROVE' | 'REWORK';
+      feedback?: string;
+    }) =>
+      api.post<{
+        task: TaskRecord;
+        session: { id: string } | null;
+        run: { id: string } | null;
+      }>(`/tasks/${id}/review`, {
+        decision,
+        ...(decision === 'REWORK' ? { feedback: feedback?.trim() ?? '' } : {}),
+      }),
+    onSuccess: (result) => {
+      refresh();
+      setSelectedTaskReviewId('');
+      setTaskReworkFeedback('');
+      if (result.session) navigate(`/sessions/${result.session.id}`);
+    },
   });
   const reworkWorktree = useMutation({
     mutationFn: ({ id, feedback }: { id: string; feedback: string }) =>
@@ -960,7 +1399,16 @@ export function TasksPage() {
                 </header>
                 <div className="task-column-body">
                   {entries.map((task) => {
-                    const agentId = selectedAgents[task.id] || agents.data?.[0]?.id || '';
+                    const taskProject = projects.data?.find(
+                      (project) => project.id === task.projectId,
+                    );
+                    const compatibleAgents = (agents.data ?? []).filter(
+                      (agent) =>
+                        agent.targetId === taskProject?.targetId &&
+                        agent.enabled !== false &&
+                        agent.status === 'READY',
+                    );
+                    const agentId = selectedAgents[task.id] || compatibleAgents[0]?.id || '';
                     const execution = latestWorktreeByTask.get(task.id);
                     return (
                       <article
@@ -973,6 +1421,12 @@ export function TasksPage() {
                         </div>
                         <strong>{task.title}</strong>
                         <p>{task.description || '暂无任务说明'}</p>
+                        {task.acceptanceCriteria && (
+                          <div className="task-acceptance">
+                            <span>验收标准</span>
+                            <p>{task.acceptanceCriteria}</p>
+                          </div>
+                        )}
                         {task.branch && <code>{task.branch}</code>}
                         {execution && <ExecutionRail execution={execution} compact />}
                         {execution?.errorMessage && (
@@ -991,13 +1445,9 @@ export function TasksPage() {
                               }
                             >
                               <option value="">请选择 Agent</option>
-                              {agents.data?.map((agent) => (
-                                <option
-                                  key={agent.id}
-                                  value={agent.id}
-                                  disabled={agent.status !== 'READY'}
-                                >
-                                  {agent.name} · {agent.status}
+                              {compatibleAgents.map((agent) => (
+                                <option key={agent.id} value={agent.id}>
+                                  {agent.name} · 就绪
                                 </option>
                               ))}
                             </select>
@@ -1065,24 +1515,15 @@ export function TasksPage() {
                                   <GitMerge size={13} /> 审阅并合并
                                 </button>
                               ) : (
-                                <>
-                                  <button
-                                    className="button primary compact"
-                                    onClick={() =>
-                                      review.mutate({ id: task.id, decision: 'APPROVE' })
-                                    }
-                                  >
-                                    <ClipboardCheck size={13} /> 确认完成
-                                  </button>
-                                  <button
-                                    className="button secondary compact"
-                                    onClick={() =>
-                                      review.mutate({ id: task.id, decision: 'REWORK' })
-                                    }
-                                  >
-                                    继续修改
-                                  </button>
-                                </>
+                                <button
+                                  className="button primary compact"
+                                  onClick={() => {
+                                    setSelectedTaskReviewId(task.id);
+                                    setTaskReworkFeedback('');
+                                  }}
+                                >
+                                  <ClipboardCheck size={13} /> 审阅结果
+                                </button>
                               )}
                             </>
                           )}
@@ -1160,6 +1601,47 @@ export function TasksPage() {
           }
         </p>
       )}
+      {selectedTaskReview && (
+        <TaskReviewPanel
+          task={selectedTaskReview}
+          project={selectedTaskReviewProject}
+          runs={selectedTaskRuns.data}
+          gitStatus={selectedTaskGitStatus.data}
+          gitDiff={selectedTaskGitDiff.data}
+          loading={
+            selectedTaskRuns.isLoading ||
+            selectedTaskGitStatus.isLoading ||
+            selectedTaskGitDiff.isLoading
+          }
+          error={
+            (selectedTaskRuns.error ??
+              selectedTaskGitStatus.error ??
+              selectedTaskGitDiff.error) as Error | null
+          }
+          actionError={review.error as Error | null}
+          feedback={taskReworkFeedback}
+          busy={review.isPending}
+          onFeedback={(value) => {
+            review.reset();
+            setTaskReworkFeedback(value);
+          }}
+          onClose={() => {
+            setSelectedTaskReviewId('');
+            setTaskReworkFeedback('');
+          }}
+          onOpenSession={() => {
+            if (selectedTaskReview.sessionId) navigate(`/sessions/${selectedTaskReview.sessionId}`);
+          }}
+          onApprove={() => review.mutate({ id: selectedTaskReview.id, decision: 'APPROVE' })}
+          onRework={() =>
+            review.mutate({
+              id: selectedTaskReview.id,
+              decision: 'REWORK',
+              feedback: taskReworkFeedback,
+            })
+          }
+        />
+      )}
       {selectedExecution && (
         <WorktreeReviewPanel
           execution={selectedExecution}
@@ -1189,6 +1671,202 @@ export function TasksPage() {
         />
       )}
     </div>
+  );
+}
+
+function TaskReviewPanel({
+  task,
+  project,
+  runs,
+  gitStatus,
+  gitDiff,
+  loading,
+  error,
+  actionError,
+  feedback,
+  busy,
+  onFeedback,
+  onClose,
+  onOpenSession,
+  onApprove,
+  onRework,
+}: {
+  task: TaskRecord;
+  project?: ProjectRecord | undefined;
+  runs?: RunRecord[] | undefined;
+  gitStatus?:
+    | {
+        branch?: string;
+        headSha?: string;
+        clean: boolean;
+        entries: Array<{ index: string; worktree: string; path: string }>;
+      }
+    | undefined;
+  gitDiff?: { patch: string; truncated: boolean } | undefined;
+  loading: boolean;
+  error: Error | null;
+  actionError: Error | null;
+  feedback: string;
+  busy: boolean;
+  onFeedback: (value: string) => void;
+  onClose: () => void;
+  onOpenSession: () => void;
+  onApprove: () => void;
+  onRework: () => void;
+}) {
+  const finalRun = runs?.find((run) => run.id === task.finalRunId) ?? runs?.at(-1);
+  const feedbackId = `task-review-feedback-${task.id}`;
+  const feedbackHelpId = `${feedbackId}-help`;
+  return (
+    <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Content
+        className="task-review-panel"
+        aria-labelledby="task-review-title"
+        aria-describedby="task-review-description"
+      >
+        <header className="task-review-header">
+          <div>
+            <span className="section-kicker">Task Review</span>
+            <Dialog.Title id="task-review-title">{task.title}</Dialog.Title>
+            <Dialog.Description id="task-review-description">
+              先核对验收标准、最终 Run 和 Git 现场，再确认完成或发起下一轮。
+            </Dialog.Description>
+          </div>
+          <Dialog.Close>
+            <IconButton color="gray" variant="ghost" aria-label="关闭审阅">
+              <X size={17} />
+            </IconButton>
+          </Dialog.Close>
+        </header>
+
+        <div className="task-review-body">
+          <section className="task-review-criteria">
+            <span>验收标准</span>
+            <p>{task.acceptanceCriteria || '未填写验收标准，请结合任务说明人工判断。'}</p>
+            {task.description && <small>{task.description}</small>}
+          </section>
+
+          {loading ? (
+            <LoadingState label="正在读取 Run 与 Git 证据" />
+          ) : error ? (
+            <ErrorState error={error} />
+          ) : (
+            <div className="task-review-evidence">
+              <section>
+                <div className="task-review-evidence-heading">
+                  <span>最终 Run</span>
+                  {finalRun && <StatusBadge status={finalRun.status} />}
+                </div>
+                {finalRun ? (
+                  <dl>
+                    <div>
+                      <dt>开始</dt>
+                      <dd>{formatTime(finalRun.startedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>Git before</dt>
+                      <dd>
+                        <code>{finalRun.gitBeforeSha?.slice(0, 12) || '—'}</code>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Git after</dt>
+                      <dd>
+                        <code>{finalRun.gitAfterSha?.slice(0, 12) || '—'}</code>
+                      </dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p>没有找到最终 Run 记录，不能把自动执行当作已验证证据。</p>
+                )}
+              </section>
+              <section>
+                <div className="task-review-evidence-heading">
+                  <span>当前 Git 现场</span>
+                  {gitStatus && <StatusBadge status={gitStatus.clean ? 'READY' : 'UNVERIFIED'} />}
+                </div>
+                {project?.repoKind !== 'GIT' ? (
+                  <p>当前 Project 不是 Git 仓库，没有可展示的 Diff。</p>
+                ) : gitStatus ? (
+                  <dl>
+                    <div>
+                      <dt>分支</dt>
+                      <dd>{gitStatus.branch || 'detached'}</dd>
+                    </div>
+                    <div>
+                      <dt>HEAD</dt>
+                      <dd>
+                        <code>{gitStatus.headSha?.slice(0, 12) || '—'}</code>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>变更</dt>
+                      <dd>{gitStatus.entries.length} 个路径</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p>Git 状态不可用。</p>
+                )}
+              </section>
+            </div>
+          )}
+
+          {project?.repoKind === 'GIT' && !loading && !error && (
+            <section className="task-review-diff">
+              <div>
+                <strong>未提交 Diff</strong>
+                {gitDiff?.truncated && <span>仅展示前 4 MiB</span>}
+              </div>
+              <pre>{gitDiff?.patch || '当前工作区没有未提交 Diff。'}</pre>
+            </section>
+          )}
+
+          <div className="task-review-decisions">
+            <label htmlFor={feedbackId}>
+              <span>继续修改说明</span>
+              <textarea
+                id={feedbackId}
+                value={feedback}
+                rows={3}
+                required
+                aria-describedby={feedbackHelpId}
+                onChange={(event) => onFeedback(event.target.value)}
+                placeholder="明确指出未通过的验收项；提交后会创建新的 Session 和 Run。"
+              />
+              <small id={feedbackHelpId}>继续修改必须说明未通过的验收项和期望结果。</small>
+              <Button
+                color="gray"
+                variant="soft"
+                disabled={busy || !feedback.trim()}
+                onClick={onRework}
+              >
+                <RotateCcw size={14} /> 继续修改并启动新 Run
+              </Button>
+            </label>
+            <div>
+              <span>确认完成后 Task 将进入“完成”，不会再自动启动 Agent。</span>
+              <Button disabled={busy || loading || Boolean(error)} onClick={onApprove}>
+                <ClipboardCheck size={14} /> 确认达到验收标准
+              </Button>
+            </div>
+            {actionError && (
+              <div className="workspace-query-error task-review-action-error" role="alert">
+                <span>{actionError.message}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <footer className="task-review-footer">
+          <span>审阅只改变当前 Task；Project 文件和 Git 历史不会被自动清理。</span>
+          {task.sessionId && (
+            <Button color="gray" variant="ghost" onClick={onOpenSession}>
+              打开原 Session
+            </Button>
+          )}
+        </footer>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
 

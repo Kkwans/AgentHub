@@ -36,7 +36,24 @@ const errorMessages: Record<string, string> = {
   EXECUTION_TARGET_NOT_FOUND: 'Execution Target 不存在。',
   AGENT_NOT_FOUND: 'Agent 不存在。',
   PROJECT_NOT_FOUND: 'Project 不存在。',
+  PROJECT_NOT_ACTIVE: 'Project 当前不可用，请先恢复为 ACTIVE 状态。',
   SESSION_NOT_FOUND: 'Session 不存在。',
+  SESSION_CWD_NOT_ABSOLUTE: '工作目录必须是绝对路径。',
+  SESSION_CWD_NOT_FOUND: '工作目录不存在，请检查 Project root。',
+  SESSION_CWD_OUTSIDE_PROJECT: '工作目录必须位于当前 Project root 内。',
+  APPROVAL_DECISION_CONFLICT: '这个权限请求已经记录了其他决定，请刷新查看最新状态。',
+  TASK_NOT_WAITING_REVIEW: '当前 Task 已不在待审阅状态，请刷新查看最新结果。',
+  TASK_REWORK_FEEDBACK_REQUIRED: '请填写需要 Agent 继续修改的具体内容。',
+  TASK_REWORK_AGENT_REQUIRED: '当前 Task 没有可继续执行的 Agent，请先重新分配。',
+  PROJECT_NOT_GIT: '当前 Project 不是可用的 Git 仓库。',
+  GIT_COMMIT_PATHS_REQUIRED: '请至少勾选一个需要提交的文件。',
+  GIT_ADD_SELECTED_FAILED: '所选文件暂存失败，请刷新 Git 状态后重试。',
+  GIT_COMMIT_FAILED: 'Git 提交失败，请检查提交说明、文件状态和 Git 配置。',
+  GIT_DIFF_FAILED: 'Git Diff 读取失败，请刷新后重试。',
+  GIT_LOG_FAILED: 'Git 提交历史读取失败，请刷新后重试。',
+  GIT_BRANCHES_FAILED: 'Git 分支读取失败，请刷新后重试。',
+  AGENT_NOT_READY: 'Agent 尚未预检就绪或已停用，请先前往 Agent 页面处理。',
+  AGENT_PROJECT_TARGET_MISMATCH: 'Agent 与当前 Project 使用的 Execution Target 不一致。',
   PROMPT_NOT_FOUND: 'Prompt 不存在。',
   PROMPT_VERSION_NOT_FOUND: 'Prompt 版本不存在。',
   PROMPT_LABEL_NOT_FOUND: 'Prompt 标签不存在。',
@@ -225,6 +242,7 @@ export interface AgentRecord {
   agentKind: string;
   adapterKind: string;
   status: string;
+  enabled: boolean;
   detectedVersion: string | null;
   defaultModel: string | null;
   defaultMode: string | null;
@@ -381,8 +399,15 @@ export interface ApprovalRecord {
   runId: string;
   title: string;
   description: string | null;
-  status: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELED' | 'EXPIRED';
   optionsJson: Array<{ id?: string; label?: string; kind?: string }>;
+  selectedOptionId: string | null;
+  deliveryId: string | null;
+  deliveryState:
+    'QUEUED' | 'CLAIMED' | 'DISPATCHING' | 'RETRY_WAIT' | 'DELIVERED' | 'UNKNOWN' | 'DEAD' | null;
+  deliveryAttemptCount: number | null;
+  deliveryErrorCode: string | null;
+  deliveryErrorMessage: string | null;
 }
 
 export interface EventRecord {

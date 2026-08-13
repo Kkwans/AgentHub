@@ -162,12 +162,23 @@ export class AgentService {
   async resolveRuntime(
     id: string,
     cwd: string,
+    expectedTargetId: string,
   ): Promise<{
     profile: AgentProfile;
     adapter: AgentRuntimeAdapter;
   }> {
     const agent = await this.agents.get(id);
     if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+    if (!agent.enabled || agent.status !== 'READY') {
+      throw new AppError(409, 'AGENT_NOT_READY', '只有就绪且已启用的 Agent 可以创建或恢复 Session');
+    }
+    if (agent.targetId !== expectedTargetId) {
+      throw new AppError(
+        409,
+        'AGENT_PROJECT_TARGET_MISMATCH',
+        'Agent 与 Project 的 Execution Target 不一致',
+      );
+    }
     const target = await this.targets.get(agent.targetId);
     if (!target)
       throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');

@@ -46,7 +46,23 @@ setup/login 后 Server 设置 HttpOnly、SameSite=Strict Cookie。`logout` 撤�
 修改密码会撤销该账号全部旧会话。API token 路由需要管理员 Cookie 或有效 Bearer token，
 只供 CLI 与外部集成。
 
-Task 由 Agent Run 完成时进入 `WAITING_REVIEW`；只有 `/review` 的 `APPROVE` 决策会进入 `DONE`。Dashboard 只聚合可操作状态、终态 Run 与 Git outcome。
+Task 由 Agent Run 完成时进入 `WAITING_REVIEW`。`POST /tasks/:id/review` 使用以下判别请求：
+
+```json
+{ "decision": "APPROVE" }
+```
+
+或：
+
+```json
+{ "decision": "REWORK", "feedback": "按验收标准补齐失败场景测试" }
+```
+
+只有 `APPROVE` 进入 `DONE`。`REWORK` 必须提供非空反馈且 Task 必须仍有关联 Agent；Server
+创建新的 Session 与 Run，在用户消息中保存反馈、原 Task 描述和 acceptance criteria，并让 Task
+重新进入 `IN_PROGRESS`。响应统一返回 `{ task, session, run }`；批准时后两项为 `null`，返工时为
+新建对象。Run 启动失败时 Task 进入 `BLOCKED`，保留新 Session 供诊断，不伪装成已经继续执行。
+Dashboard 只聚合可操作状态、终态 Run 与 Git outcome。
 
 ## Worktree Task Runner
 
@@ -104,6 +120,28 @@ session.close
 
 每条命令都有 UUID request ID、超时与 1 MiB 消息上限。Agent stream 使用独立 event 消息；断线会明确拒绝未决 RPC，不重放 prompt、approval 或 cancel。该协议不接受任意 executable、environment secret 或 shell command。
 
+## Session / Run / Approval
+
+```text
+GET/POST  /api/v1/sessions
+GET        /api/v1/sessions/:id
+POST       /api/v1/sessions/:id/resume
+POST       /api/v1/sessions/:id/close
+GET/POST   /api/v1/sessions/:id/runs
+POST       /api/v1/sessions/:id/runs/:runId/cancel
+GET        /api/v1/sessions/:id/messages
+GET        /api/v1/sessions/:id/events?afterSeq=&limit=
+
+GET        /api/v1/approvals?sessionId=
+GET        /api/v1/approvals/:id
+POST       /api/v1/approvals/:id/resolve
+```
+
+`resolve` 只接受 Agent 原始 option ID。用户决定、投递记录和审计事件原子写入；相同 option
+可安全重复请求，不同 option 返回 `APPROVAL_DECISION_CONFLICT`。列表除 `PENDING` 外还返回
+需要用户关注的 `QUEUED/DISPATCHING/UNKNOWN/DEAD` 投递状态。当前 adapter 没有跨重启的
+幂等回执；`UNKNOWN/DEAD` 不会自动重发，前端必须引导用户恢复 Session 或重新开始 Run。
+
 ## Project / Files / Git
 
 ```text
@@ -121,9 +159,19 @@ GET  /api/v1/projects/:id/git/branches
 POST /api/v1/projects/:id/git/commit
 ```
 
-文件接口只读。通用 Git commit 必须显式选择 `STAGED` 或 `SELECTED`；只有上面的
-Worktree merge gate 可在已验证的 managed worktree 执行受管 `git add -A`。服务不提供
-destructive Git API。
+文件接口只读。通用 Git commit 必须显式选择 `STAGED` 或 `SELECTED`。普通 Workspace 使用：
+
+```json
+{
+  "mode": "SELECTED",
+  "paths": ["apps/web/src/App.tsx"],
+  "message": "feat(workspace): 完成用户旅程"
+}
+```
+
+`paths` 只接受 Project root 内的相对路径，并通过 containment 与 symlink escape 防护；
+selected-files commit 不混入其他已暂存文件。只有上面的 Worktree merge gate 可在已验证的
+managed worktree 执行受管 `git add -A`。服务不提供 destructive Git API。
 
 ## Terminal capability
 

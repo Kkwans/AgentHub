@@ -1,8 +1,9 @@
 type Listener = (event: Record<string, unknown>) => void;
 
-class RealtimeClient {
+export class RealtimeClient {
   private socket: WebSocket | undefined;
   private listeners = new Map<string, Set<Listener>>();
+  private cursors = new Map<string, number>();
   private reconnectTimer: number | undefined;
   private attempts = 0;
   private suspended = false;
@@ -10,14 +11,17 @@ class RealtimeClient {
 
   subscribe(topic: string, listener: Listener, afterSeq = 0): () => void {
     const topicListeners = this.listeners.get(topic) ?? new Set<Listener>();
+    const firstListener = topicListeners.size === 0;
     topicListeners.add(listener);
     this.listeners.set(topic, topicListeners);
+    if (firstListener) this.cursors.set(topic, afterSeq);
     this.connect();
-    this.send({ type: 'subscribe', topics: [topic], afterSeq: { [topic]: afterSeq } });
+    this.sendSubscription([topic]);
     return () => {
       topicListeners.delete(listener);
       if (!topicListeners.size) {
         this.listeners.delete(topic);
+        this.cursors.delete(topic);
         this.send({ type: 'unsubscribe', topics: [topic] });
       }
     };
@@ -67,23 +71,30 @@ class RealtimeClient {
       return;
     this.emitState('连接中');
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.socket = new WebSocket(`${protocol}//${location.host}/ws`, ['agenthub-v1']);
-    this.socket.addEventListener('open', () => {
+    const socket = new WebSocket(`${protocol}//${location.host}/ws`, ['agenthub-v1']);
+    this.socket = socket;
+    socket.addEventListener('open', () => {
       this.attempts = 0;
       this.emitState('已连接');
-      for (const topic of this.listeners.keys()) this.send({ type: 'subscribe', topics: [topic] });
+      this.sendSubscription([...this.listeners.keys()]);
     });
-    this.socket.addEventListener('message', (message) => {
+    socket.addEventListener('message', (message) => {
       const decoded = JSON.parse(String(message.data)) as {
         type: string;
         topic?: string;
         event?: Record<string, unknown>;
       };
       if (decoded.type !== 'event' || !decoded.topic || !decoded.event) return;
+      const seq = decoded.event.seq;
+      if (typeof seq === 'number' && Number.isSafeInteger(seq) && seq >= 0) {
+        const cursor = this.cursors.get(decoded.topic) ?? 0;
+        if (seq <= cursor) return;
+        this.cursors.set(decoded.topic, seq);
+      }
       for (const listener of this.listeners.get(decoded.topic) ?? []) listener(decoded.event);
     });
-    this.socket.addEventListener('close', () => {
-      if (this.socket?.readyState === WebSocket.CLOSED) this.socket = undefined;
+    socket.addEventListener('close', () => {
+      if (this.socket === socket) this.socket = undefined;
       this.emitState('已断开');
       if (this.suspended || (!this.listeners.size && !this.stateListeners.size)) return;
       this.attempts += 1;
@@ -99,6 +110,15 @@ class RealtimeClient {
 
   private send(message: Record<string, unknown>): void {
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
+  }
+
+  private sendSubscription(topics: string[]): void {
+    if (!topics.length) return;
+    this.send({
+      type: 'subscribe',
+      topics,
+      afterSeq: Object.fromEntries(topics.map((topic) => [topic, this.cursors.get(topic) ?? 0])),
+    });
   }
 
   private emitState(state: '连接中' | '已连接' | '已断开'): void {

@@ -12,10 +12,11 @@ import {
   Tag,
   Tabs,
 } from '@agenthub/ui';
-import { DiffEditor } from '@monaco-editor/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 
 import { EmptyState, ErrorState, formatTime, LoadingState, PageIntro } from '../components/Common';
+import { SafeDiffEditor } from '../components/SafeDiffEditor';
 import {
   api,
   type AgentRecord,
@@ -28,7 +29,9 @@ import {
   type ResolvedPromptContextRecord,
   type SkillBindingRecord,
   type SkillRecord,
+  type TaskRecord,
 } from '../lib/api';
+import '../lib/monaco';
 import '../styles/v3-promptos.css';
 
 type PromptTab = 'versions' | 'labels' | 'diff' | 'bindings' | 'playground' | 'context' | 'skills';
@@ -45,8 +48,7 @@ const tabs: Array<{ id: PromptTab; label: string }> = [
 
 export function PromptOsPage() {
   const client = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string>();
-  const [tab, setTab] = useState<PromptTab>('versions');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
   const prompts = useQuery({
     queryKey: ['prompts'],
@@ -60,6 +62,25 @@ export function PromptOsPage() {
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
   });
+  const selectedParam = searchParams.get('prompt');
+  const selectedId = prompts.data?.some((prompt) => prompt.id === selectedParam)
+    ? selectedParam!
+    : prompts.data?.[0]?.id;
+  const tabParam = searchParams.get('tab');
+  const tab = tabs.some((item) => item.id === tabParam) ? (tabParam as PromptTab) : 'versions';
+
+  const setSelectedId = (promptId: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('prompt', promptId);
+    setSearchParams(next);
+  };
+
+  const setTab = (nextTab: PromptTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', nextTab);
+    setSearchParams(next);
+  };
+
   const createPrompt = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post<PromptRecord>('/prompts', body),
     onSuccess: (created) => {
@@ -70,8 +91,11 @@ export function PromptOsPage() {
   });
 
   useEffect(() => {
-    if (!selectedId && prompts.data?.[0]) setSelectedId(prompts.data[0].id);
-  }, [prompts.data, selectedId]);
+    if (!selectedId || selectedParam === selectedId) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('prompt', selectedId);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, selectedId, selectedParam, setSearchParams]);
 
   return (
     <div className="page-stack promptos-page">
@@ -574,7 +598,7 @@ function PromptDiffTab({
         <ErrorState error={diff.error} />
       ) : (
         <div className="prompt-diff-editor">
-          <DiffEditor
+          <SafeDiffEditor
             height="100%"
             original={JSON.stringify(diff.data?.fromContent, null, 2)}
             modified={JSON.stringify(diff.data?.toContent, null, 2)}
@@ -608,6 +632,14 @@ function BindingsTab({
   const client = useQueryClient();
   const [targetType, setTargetType] = useState<'PROJECT' | 'AGENT' | 'TASK'>('PROJECT');
   const [selector, setSelector] = useState<'LABEL' | 'VERSION'>('LABEL');
+  const [scopeProjectId, setScopeProjectId] = useState(projects[0]?.id ?? '');
+  useEffect(() => {
+    if (!scopeProjectId && projects[0]) setScopeProjectId(projects[0].id);
+  }, [projects, scopeProjectId]);
+  const tasks = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => api.get<TaskRecord[]>('/tasks'),
+  });
   const bindings = useQuery({
     queryKey: ['prompt-bindings', prompt.id],
     queryFn: () => api.get<PromptBindingRecord[]>(`/prompt-bindings?promptId=${prompt.id}`),
@@ -621,7 +653,26 @@ function BindingsTab({
       api.patch(`/prompt-bindings/${id}`, { enabled }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['prompt-bindings', prompt.id] }),
   });
-  const options = targetType === 'PROJECT' ? projects : targetType === 'AGENT' ? agents : [];
+  const scopeProject = projects.find((project) => project.id === scopeProjectId);
+  const options =
+    targetType === 'PROJECT'
+      ? projects.map((project) => ({ id: project.id, label: project.name }))
+      : targetType === 'AGENT'
+        ? agents
+            .filter((agent) => agent.targetId === scopeProject?.targetId)
+            .map((agent) => ({ id: agent.id, label: `${agent.name} · ${agent.status}` }))
+        : (tasks.data ?? [])
+            .filter((task) => task.projectId === scopeProjectId)
+            .map((task) => ({ id: task.id, label: `${task.title} · ${task.status}` }));
+  const bindingTargetLabel = (binding: PromptBindingRecord) => {
+    if (binding.targetType === 'PROJECT') {
+      return projects.find((project) => project.id === binding.targetId)?.name;
+    }
+    if (binding.targetType === 'AGENT') {
+      return agents.find((agent) => agent.id === binding.targetId)?.name;
+    }
+    return tasks.data?.find((task) => task.id === binding.targetId)?.title;
+  };
   return (
     <div className="prompt-section-stack">
       <form
@@ -653,20 +704,32 @@ function BindingsTab({
             <option>TASK</option>
           </select>
         </label>
-        <label>
-          目标标识
-          {targetType === 'TASK' ? (
-            <input required name="targetId" className="mono" placeholder="Task UUID" />
-          ) : (
-            <select required name="targetId">
-              <option value="">请选择</option>
-              {options.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
+        {targetType !== 'PROJECT' && (
+          <label>
+            Project 范围
+            <select
+              value={scopeProjectId}
+              onChange={(event) => setScopeProjectId(event.target.value)}
+            >
+              <option value="">请选择 Project</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
                 </option>
               ))}
             </select>
-          )}
+          </label>
+        )}
+        <label>
+          {targetType === 'PROJECT' ? 'Project' : targetType === 'AGENT' ? 'Agent' : 'Task'}
+          <select required name="targetId" disabled={targetType !== 'PROJECT' && !scopeProjectId}>
+            <option value="">请选择</option>
+            {options.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           Slot
@@ -727,7 +790,7 @@ function BindingsTab({
           {bindings.data.map((binding) => (
             <div key={binding.id}>
               <span className="binding-scope">{binding.targetType}</span>
-              <code>{binding.targetId}</code>
+              <strong>{bindingTargetLabel(binding) ?? '目标已删除或不在当前范围'}</strong>
               <strong>{binding.slot}</strong>
               <span>
                 {binding.selectorType === 'LABEL'
@@ -831,7 +894,7 @@ function PlaygroundTab({
             )}
           </div>
           <div className="playground-diff">
-            <DiffEditor
+            <SafeDiffEditor
               height="100%"
               original={render.data[0].text}
               modified={render.data[1].text}
@@ -978,6 +1041,10 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
     queryKey: ['skill-bindings'],
     queryFn: () => api.get<SkillBindingRecord[]>('/skill-bindings'),
   });
+  const tasks = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => api.get<TaskRecord[]>('/tasks'),
+  });
   const scan = useMutation({
     mutationFn: () => api.post<SkillRecord[]>('/skills/scan', { projectId }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['skills', projectId] }),
@@ -986,7 +1053,19 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
     mutationFn: (body: Record<string, unknown>) => api.post('/skill-bindings', body),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['skill-bindings'] }),
   });
-  const targetOptions = targetType === 'PROJECT' ? projects : targetType === 'AGENT' ? agents : [];
+  const scopeProject = projects.find((project) => project.id === projectId);
+  const targetOptions =
+    targetType === 'PROJECT'
+      ? scopeProject
+        ? [{ id: scopeProject.id, label: scopeProject.name }]
+        : []
+      : targetType === 'AGENT'
+        ? agents
+            .filter((agent) => agent.targetId === scopeProject?.targetId)
+            .map((agent) => ({ id: agent.id, label: `${agent.name} · ${agent.status}` }))
+        : (tasks.data ?? [])
+            .filter((task) => task.projectId === projectId)
+            .map((task) => ({ id: task.id, label: `${task.title} · ${task.status}` }));
   return (
     <div className="prompt-section-stack">
       <div className="skills-toolbar">
@@ -1045,19 +1124,15 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
             </select>
           </label>
           <label>
-            目标标识
-            {targetType === 'TASK' ? (
-              <input name="targetId" required className="mono" placeholder="Task UUID" />
-            ) : (
-              <select name="targetId" required>
-                <option value="">请选择</option>
-                {targetOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            )}
+            {targetType === 'PROJECT' ? 'Project' : targetType === 'AGENT' ? 'Agent' : 'Task'}
+            <select name="targetId" required disabled={!projectId}>
+              <option value="">请选择</option>
+              {targetOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
           </label>
           <Button disabled={bind.isPending}>
             <Link2 size={14} /> 创建 Skill 绑定

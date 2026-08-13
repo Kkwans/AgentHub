@@ -116,8 +116,44 @@ describe('Goal 与 Task service', () => {
       status: 'WAITING_REVIEW',
       finalRunId: runId,
     });
-    await service.reviewTask(task.id, 'APPROVE');
+    await service.reviewTask(task.id, { decision: 'APPROVE' });
     expect(await service.getTask(task.id)).toMatchObject({ status: 'DONE' });
+  });
+
+  it('继续修改必须填写反馈，并创建新的 Session/Run 形成下一轮', async () => {
+    const task = await service.createTask({
+      projectId,
+      title: '返工闭环',
+      description: '完成可审阅实现',
+      acceptanceCriteria: '补充边界测试后再次审阅',
+    });
+    await service.transitionTask(task.id, 'READY');
+    const first = await service.startTask(task.id, { agentId });
+    await service.onRunCompleted(task.id, first.run.id);
+
+    await expect(
+      service.reviewTask(task.id, { decision: 'REWORK', feedback: '   ' }),
+    ).rejects.toMatchObject({ code: 'TASK_REWORK_FEEDBACK_REQUIRED' });
+    const rework = await service.reviewTask(task.id, {
+      decision: 'REWORK',
+      feedback: '补充取消与 Approval 竞争测试',
+    });
+
+    expect(rework.session?.id).not.toBe(first.session.id);
+    expect(rework.run?.id).toBeTruthy();
+    expect(rework.task).toMatchObject({
+      status: 'IN_PROGRESS',
+      sessionId: rework.session?.id,
+      finalRunId: null,
+    });
+    expect(startedRuns.at(-1)?.text).toContain('补充取消与 Approval 竞争测试');
+    expect(startedRuns.at(-1)?.text).toContain('补充边界测试后再次审阅');
+
+    await service.onRunCompleted(task.id, rework.run!.id);
+    expect(await service.getTask(task.id)).toMatchObject({
+      status: 'WAITING_REVIEW',
+      finalRunId: rework.run!.id,
+    });
   });
 
   it('Run 失败时将 Task 标为阻塞，保留结果 Run', async () => {

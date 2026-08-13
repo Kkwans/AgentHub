@@ -62,3 +62,17 @@ UI 阶段增加 `pnpm test:e2e`；真实 Agent 验收使用 `AGENTHUB_E2E_LIVE=1
 | D1     | host-native 常驻部署、健康检查与 AgentHub 自身 Project | 已完成 |
 | D2     | privileged Compose 迁移、绿联项目注册与 LAN token 验收 | 已完成 |
 | D3     | 管理员登录、Cookie Session 与认证/UI 体验修订          | 已完成 |
+
+## v0.5 可用性闭环
+
+v0.5 以普通用户真实旅程为唯一完成标准，详细合同见
+`docs/implementation/V0.5_USABILITY_CLOSURE.md`。
+
+| 里程碑 | 范围                                              | 状态   |
+| ------ | ------------------------------------------------- | ------ |
+| V5.1   | 首次使用、兼容 Agent、Session 创建与服务端校验    | 已完成 |
+| V5.2   | Workspace 数据、事件、Approval、停止与恢复可靠性  | 已完成 |
+| V5.3   | Git、Task Review/Rework 与 PromptOS 可发现绑定    | 已完成 |
+| V5.4   | URL 状态、移动端、键盘、焦点、错误状态与 CSS 收敛 | 已完成 |
+| V5.5   | 真实后端 Playwright、live 与 TX5Pro 全旅程        | 已完成 |
+| V5.6   | Compose 发布、文档、GitHub 与 CI 终态             | 进行中 |

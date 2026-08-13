@@ -1,6 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, desc, eq, gt, inArray, isNull, max, or, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  gt,
+  inArray,
+  isNull,
+  max,
+  or,
+  sql,
+} from 'drizzle-orm';
 import {
   transitionRun,
   transitionSession,
@@ -18,6 +30,7 @@ import {
   agentRuns,
   agentSessions,
   apiTokens,
+  approvalDeliveryOutbox,
   approvalRequests,
   browserSessions,
   executionTargets,
@@ -600,10 +613,48 @@ export class ApprovalRepository<TDatabase extends AgentHubDatabase> {
       : query.where(eq(approvalRequests.status, 'PENDING')).orderBy(approvalRequests.requestedAt);
   }
 
+  listAttention(sessionId?: string) {
+    const attentionStates = ['QUEUED', 'CLAIMED', 'DISPATCHING', 'RETRY_WAIT', 'UNKNOWN', 'DEAD'];
+    const attention = or(
+      eq(approvalRequests.status, 'PENDING'),
+      inArray(approvalDeliveryOutbox.state, attentionStates),
+    );
+    return this.db
+      .select({
+        ...getTableColumns(approvalRequests),
+        deliveryId: approvalDeliveryOutbox.id,
+        deliveryState: approvalDeliveryOutbox.state,
+        deliveryAttemptCount: approvalDeliveryOutbox.attemptCount,
+        deliveryErrorCode: approvalDeliveryOutbox.lastErrorCode,
+        deliveryErrorMessage: approvalDeliveryOutbox.lastErrorMessage,
+      })
+      .from(approvalRequests)
+      .leftJoin(approvalDeliveryOutbox, eq(approvalDeliveryOutbox.approvalId, approvalRequests.id))
+      .where(sessionId ? and(eq(approvalRequests.sessionId, sessionId), attention) : attention)
+      .orderBy(approvalRequests.requestedAt);
+  }
+
   async get(id: string) {
     const [approval] = await this.db
       .select()
       .from(approvalRequests)
+      .where(eq(approvalRequests.id, id))
+      .limit(1);
+    return approval;
+  }
+
+  async getWithDelivery(id: string) {
+    const [approval] = await this.db
+      .select({
+        ...getTableColumns(approvalRequests),
+        deliveryId: approvalDeliveryOutbox.id,
+        deliveryState: approvalDeliveryOutbox.state,
+        deliveryAttemptCount: approvalDeliveryOutbox.attemptCount,
+        deliveryErrorCode: approvalDeliveryOutbox.lastErrorCode,
+        deliveryErrorMessage: approvalDeliveryOutbox.lastErrorMessage,
+      })
+      .from(approvalRequests)
+      .leftJoin(approvalDeliveryOutbox, eq(approvalDeliveryOutbox.approvalId, approvalRequests.id))
       .where(eq(approvalRequests.id, id))
       .limit(1);
     return approval;
@@ -638,6 +689,217 @@ export class ApprovalRepository<TDatabase extends AgentHubDatabase> {
     });
   }
 
+  async recordDecisionExactlyOnce(
+    id: string,
+    decision: 'APPROVED' | 'REJECTED' | 'CANCELED',
+    optionId: string,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [current] = await transaction
+        .select()
+        .from(approvalRequests)
+        .where(eq(approvalRequests.id, id))
+        .for('update')
+        .limit(1);
+      if (!current) throw new DatabaseInvariantError('APPROVAL_NOT_FOUND', 'Approval 不存在');
+
+      if (current.status !== 'PENDING') {
+        const [delivery] = await transaction
+          .select()
+          .from(approvalDeliveryOutbox)
+          .where(eq(approvalDeliveryOutbox.approvalId, id))
+          .limit(1);
+        if (current.selectedOptionId !== optionId || current.status !== decision) {
+          throw new DatabaseInvariantError('APPROVAL_DECISION_CONFLICT', 'Approval 已记录不同决定');
+        }
+        return { changed: false as const, approval: current, delivery, event: undefined };
+      }
+
+      const deliveryId = randomUUID();
+      const [approval] = await transaction
+        .update(approvalRequests)
+        .set({
+          status: decision,
+          selectedOptionId: optionId,
+          responseJson: { optionId },
+          resolvedAt: new Date(),
+        })
+        .where(and(eq(approvalRequests.id, id), eq(approvalRequests.status, 'PENDING')))
+        .returning();
+      if (!approval) {
+        throw new DatabaseInvariantError('APPROVAL_CONCURRENT_UPDATE', 'Approval 已被其他请求修改');
+      }
+      const [delivery] = await transaction
+        .insert(approvalDeliveryOutbox)
+        .values({
+          id: deliveryId,
+          approvalId: approval.id,
+          sessionId: approval.sessionId,
+          runId: approval.runId,
+          externalApprovalId: approval.externalId,
+          decisionStatus: decision,
+          optionId,
+          idempotencyScope: 'NONE',
+          state: 'QUEUED',
+        })
+        .returning();
+      if (!delivery) {
+        throw new DatabaseInvariantError(
+          'APPROVAL_DELIVERY_CREATE_FAILED',
+          'Approval delivery 创建失败',
+        );
+      }
+
+      const [session] = await transaction
+        .select({ lastSeq: agentSessions.lastSeq })
+        .from(agentSessions)
+        .where(eq(agentSessions.id, approval.sessionId))
+        .for('update')
+        .limit(1);
+      if (!session) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
+      const seq = Number(session.lastSeq) + 1;
+      await transaction
+        .update(agentSessions)
+        .set({ lastSeq: seq, lastActiveAt: new Date() })
+        .where(eq(agentSessions.id, approval.sessionId));
+      const [event] = await transaction
+        .insert(runEvents)
+        .values({
+          id: randomUUID(),
+          sessionId: approval.sessionId,
+          runId: approval.runId,
+          seq,
+          type: 'approval.decision_recorded',
+          payloadJson: {
+            approvalId: approval.id,
+            deliveryId,
+            decision,
+            optionId,
+          },
+        })
+        .returning();
+      if (!event) {
+        throw new DatabaseInvariantError(
+          'APPROVAL_DECISION_EVENT_CREATE_FAILED',
+          'Approval 决定事件创建失败',
+        );
+      }
+      return { changed: true as const, approval, delivery, event };
+    });
+  }
+
+  async getDelivery(id: string) {
+    const [delivery] = await this.db
+      .select()
+      .from(approvalDeliveryOutbox)
+      .where(eq(approvalDeliveryOutbox.id, id))
+      .limit(1);
+    return delivery;
+  }
+
+  async claimDelivery(id: string) {
+    const [delivery] = await this.db
+      .update(approvalDeliveryOutbox)
+      .set({
+        state: 'DISPATCHING',
+        attemptCount: sql`${approvalDeliveryOutbox.attemptCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(approvalDeliveryOutbox.id, id),
+          inArray(approvalDeliveryOutbox.state, ['QUEUED', 'RETRY_WAIT']),
+        ),
+      )
+      .returning();
+    return delivery;
+  }
+
+  async markDeliveryDelivered(id: string, receiptId?: string) {
+    const [delivery] = await this.db
+      .update(approvalDeliveryOutbox)
+      .set({
+        state: 'DELIVERED',
+        ...(receiptId ? { receiptId } : {}),
+        deliveredAt: new Date(),
+        leaseOwner: null,
+        leaseUntil: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(approvalDeliveryOutbox.id, id), eq(approvalDeliveryOutbox.state, 'DISPATCHING')),
+      )
+      .returning();
+    return delivery;
+  }
+
+  async markDeliveryDead(id: string, code: string, message: string) {
+    const [delivery] = await this.db
+      .update(approvalDeliveryOutbox)
+      .set({
+        state: 'DEAD',
+        lastErrorCode: code,
+        lastErrorMessage: message,
+        leaseOwner: null,
+        leaseUntil: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(approvalDeliveryOutbox.id, id),
+          inArray(approvalDeliveryOutbox.state, ['QUEUED', 'CLAIMED', 'RETRY_WAIT', 'DISPATCHING']),
+        ),
+      )
+      .returning();
+    return delivery;
+  }
+
+  async markDeliveryUnknown(id: string, code: string, message: string) {
+    const [delivery] = await this.db
+      .update(approvalDeliveryOutbox)
+      .set({
+        state: 'UNKNOWN',
+        lastErrorCode: code,
+        lastErrorMessage: message,
+        leaseOwner: null,
+        leaseUntil: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(approvalDeliveryOutbox.id, id), eq(approvalDeliveryOutbox.state, 'DISPATCHING')),
+      )
+      .returning();
+    return delivery;
+  }
+
+  async recoverInterruptedDeliveries() {
+    return this.db.transaction(async (transaction) => {
+      const neverDispatched = await transaction
+        .update(approvalDeliveryOutbox)
+        .set({
+          state: 'DEAD',
+          lastErrorCode: 'SERVER_RESTARTED_BEFORE_DELIVERY',
+          lastErrorMessage: '服务重启前尚未投递，请重新开始 Run',
+          updatedAt: new Date(),
+        })
+        .where(inArray(approvalDeliveryOutbox.state, ['QUEUED', 'CLAIMED', 'RETRY_WAIT']))
+        .returning();
+      const ambiguous = await transaction
+        .update(approvalDeliveryOutbox)
+        .set({
+          state: 'UNKNOWN',
+          lastErrorCode: 'DELIVERY_STATE_UNKNOWN_AFTER_RESTART',
+          lastErrorMessage: '服务重启时投递状态未知，不会自动重复发送',
+          updatedAt: new Date(),
+        })
+        .where(eq(approvalDeliveryOutbox.state, 'DISPATCHING'))
+        .returning();
+      return { dead: neverDispatched, unknown: ambiguous };
+    });
+  }
+
   async cancelPendingForRestart() {
     return this.db
       .update(approvalRequests)
@@ -647,6 +909,26 @@ export class ApprovalRepository<TDatabase extends AgentHubDatabase> {
         resolvedAt: new Date(),
       })
       .where(eq(approvalRequests.status, 'PENDING'))
+      .returning();
+  }
+
+  /**
+   * Cancel all approvals belonging to one Run in one conditional update.
+   *
+   * A cancellation request can race an adapter approval event. Keeping the
+   * `PENDING` predicate in the update makes this operation idempotent and
+   * prevents a stale request from reopening or rewriting a decision that has
+   * already been delivered.
+   */
+  async cancelPendingForRun(runId: string, reason = 'USER_CANCELED') {
+    return this.db
+      .update(approvalRequests)
+      .set({
+        status: 'CANCELED',
+        responseJson: { reason },
+        resolvedAt: new Date(),
+      })
+      .where(and(eq(approvalRequests.runId, runId), eq(approvalRequests.status, 'PENDING')))
       .returning();
   }
 }
@@ -1648,6 +1930,45 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
       if (!updated)
         throw new DatabaseInvariantError('RUN_CONCURRENT_UPDATE', 'Run 状态已被其他请求修改');
       return updated;
+    });
+  }
+
+  /**
+   * Atomically transition a Run when its current status is one of the
+   * expected statuses. The conditional UPDATE is the source of truth for
+   * the winner; callers must only perform terminal side effects when
+   * `changed === true`.
+   */
+  async tryTransition(
+    id: string,
+    expected: RunStatus | readonly RunStatus[],
+    to: RunStatus,
+    patch: Partial<typeof agentRuns.$inferInsert> = {},
+  ) {
+    const expectedStatuses = Array.isArray(expected) ? [...expected] : [expected];
+    if (!expectedStatuses.length)
+      throw new DatabaseInvariantError('RUN_EXPECTED_EMPTY', 'Run 预期状态不能为空');
+    for (const from of expectedStatuses) transitionRun(from, to);
+
+    return this.db.transaction(async (transaction) => {
+      const statusPredicate =
+        expectedStatuses.length === 1
+          ? eq(agentRuns.status, expectedStatuses[0]!)
+          : inArray(agentRuns.status, expectedStatuses);
+      const [updated] = await transaction
+        .update(agentRuns)
+        .set({ ...patch, status: to })
+        .where(and(eq(agentRuns.id, id), statusPredicate))
+        .returning();
+      if (updated) return { changed: true as const, run: updated };
+
+      const [current] = await transaction
+        .select()
+        .from(agentRuns)
+        .where(eq(agentRuns.id, id))
+        .limit(1);
+      if (!current) throw new DatabaseInvariantError('RUN_NOT_FOUND', 'Run 不存在');
+      return { changed: false as const, run: current };
     });
   }
 

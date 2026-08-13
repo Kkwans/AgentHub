@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 2,
+  "startedAt": "2026-08-11T05:24:22.642Z",
+  "finishedAt": "2026-08-11T05:24:59.546Z",
+  "baseURL": "http://127.0.0.1:43210",
+  "access": "ephemeral-account-login-through-ui",
+  "projectRoot": "/dev/shm/agenthub-test-tmp/agenthub-tx5-v05-XD843M/project",
+  "browser": "150.0.7871.182",
+  "tunnel": {
+    "target": "Kkwans@192.168.5.110",
+    "localPort": 43210,
+    "remotePort": 3220,
+    "health": {
+      "status": "ok",
+      "version": "0.3.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "checks": [
+    {
+      "name": "TX5Pro 到 NAS 隔离实例的 SSH 隧道健康",
+      "status": "PASS"
+    },
+    {
+      "name": "首次设置后 Cookie 与 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "普通用户仅用三字符用户名和六字符密码完成首次设置",
+      "status": "PASS"
+    },
+    {
+      "name": "通过 UI 注册宿主机 Execution Target 与隔离 Git Project",
+      "status": "PASS"
+    },
+    {
+      "name": "通过 UI 添加 pinned Codex 并完成真实 preflight",
+      "status": "PASS"
+    },
+    {
+      "name": "通过 UI 创建 Prompt v1、Task Binding 并完成本地渲染",
+      "status": "PASS"
+    },
+    {
+      "name": "真实 ACP 子进程完成 Approval 并写入 fixture-output.md",
+      "status": "PASS"
+    },
+    {
+      "name": "通过 Workspace Git 面板选择文件并创建提交",
+      "status": "PASS"
+    },
+    {
+      "name": "Run 完成后进入待审阅，用户查看证据后确认 Task 完成",
+      "status": "PASS"
+    },
+    {
+      "name": "API 持久化状态与 UI 旅程一致",
+      "status": "PASS"
+    },
+    {
+      "name": "退出后仅凭账号密码恢复原页面与管理员会话",
+      "status": "PASS"
+    },
+    {
+      "name": "1024 overview 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "1024 tasks 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "1024 promptos 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "1024 workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "1024 settings 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 1024,
+      "clientWidth": 1024
+    },
+    {
+      "name": "1024 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "768 overview 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "768 tasks 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "768 promptos 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "768 workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "768 settings 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    {
+      "name": "768 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "390 overview 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 tasks 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 promptos 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 workspace 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 settings 无根页面横向溢出",
+      "status": "PASS",
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "name": "390 全局 WebSocket 已连接",
+      "status": "PASS"
+    },
+    {
+      "name": "390 触控视口的移动导航可用",
+      "status": "PASS"
+    },
+    {
+      "name": "0 request failure、0 console/page error、0 HTTP 4xx/5xx、0 外部请求",
+      "status": "PASS"
+    }
+  ],
+  "runtimeIssues": [],
+  "failedRequests": [],
+  "externalRequests": [],
+  "screenshots": [
+    "account-setup-1440.png",
+    "agents-ready-1440.png",
+    "promptos-binding-1440.png",
+    "approval-pending-1440.png",
+    "workspace-git-1440.png",
+    "task-done-1440.png",
+    "overview-1024.png",
+    "tasks-1024.png",
+    "promptos-1024.png",
+    "workspace-1024.png",
+    "settings-1024.png",
+    "overview-768.png",
+    "tasks-768.png",
+    "promptos-768.png",
+    "workspace-768.png",
+    "workspace-git-drawer-768.png",
+    "settings-768.png",
+    "overview-390.png",
+    "tasks-390.png",
+    "promptos-390.png",
+    "workspace-390.png",
+    "workspace-git-drawer-390.png",
+    "settings-390.png",
+    "navigation-390.png"
+  ],
+  "result": "PASS"
+}

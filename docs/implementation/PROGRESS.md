@@ -1,6 +1,48 @@
 # 实施进度
 
-最后更新：2026-08-10
+最后更新：2026-08-11
+
+## v0.5 当前 Goal：可用性闭环
+
+- 已建立新的 durable Goal：从普通用户真实旅程出发，完成首次使用、Project → Agent →
+  Session/Run → Approval → Git → PromptOS → Task Review 闭环，并完成真实后端浏览器、
+  TX5Pro、Compose、GitHub 与 CI 验收。
+- 已完成代码、后端、可访问性和 TX5Pro 四路只读审计。正式 Compose 与真实数据基线共捕获
+  11 个桌面/移动页面状态，没有拦截 API 或伪造 WebSocket；证据见
+  `docs/qa/tx5pro/2026-08-11-v05-baseline/`。
+- 基线审计识别出的首次使用依赖死路、Project → Session 断链、Session 服务端安全校验、
+  Workspace 分区错误、长会话事件、Approval/取消/断线恢复、Git/Task/PromptOS 审阅闭环，
+  以及 URL/移动端/键盘/焦点/CSS 问题已在 V5.1–V5.4 修复。
+- v0.5 产品、交互、安全、测试和回滚合同已固化为
+  `docs/implementation/V0.5_USABILITY_CLOSURE.md`。
+- V5.1 已完成：Project 直接进入受约束的 Session 创建；服务端重新验证 Project、Agent、
+  Execution Target、cwd containment 与 symlink escape；概览补齐首次使用路径。
+- V5.2 已完成：Workspace 分区错误/重试、长 Session event cursor、断线恢复/关闭、Run 取消
+  deadline 已完成。Approval 已改为原子决定 + Outbox + 审计事件；含糊回执收敛为
+  `UNKNOWN/DEAD` 且不盲目重投，中文界面给出下一步。
+- V5.3 已完成实现：普通 Session 的 Git 面板提供 status、Diff、历史、分支和
+  selected-files commit；Task Review 显示 acceptance criteria、Run/Git evidence，返工必须填写
+  反馈并创建新 Session/Run；PromptOS/Skill 的 Agent/Task Binding 使用按 Project 过滤的可发现
+  名称。Web、Task 与 Git 聚焦测试、typecheck 和聚焦 lint 已通过。
+- V5.4 已完成：Workspace 的 Files/Diff/Git/Run 与文件路径、PromptOS 的 Prompt/Tab、Task 的
+  Project/Execution/Review 均写入 URL，刷新、前进/后退和分享链接可恢复上下文；命令面板补齐
+  combobox/listbox 键盘模型，Task Review 与 Session 表单错误关联字段，390 px 核心触控目标
+  达到 44 px，并修复窄屏可访问名称与颜色对比度。
+- V5.4 最终门禁：Web typecheck、聚焦 ESLint、production build 通过；fixture Playwright 在
+  1440/1024/768/390 四档视口共 24 项全部通过，覆盖 URL 恢复、键盘返回、移动端触控、无横向
+  溢出，以及 Overview/Task/Settings 的 axe serious/critical 零违规。fixture 预览没有真实
+  Server，因此日志中的 `/ws` proxy `ECONNREFUSED` 是预期隔离噪声，不作为真实后端证据。
+- V5.5 已完成：ephemeral Express/PGlite real-backend Playwright 3/3 通过；live gate 7/7
+  通过，覆盖真实 Codex、五类 Agent preflight 与 Worktree；TX5Pro Chrome 150 最终 31/31
+  通过，共 24 张截图，0 request failure、console/page error、HTTP 4xx/5xx 与外部请求。
+- TX5Pro 旅程真实完成账号登录、Execution Target、Project、Codex preflight、Goal/Task、Prompt
+  v1/Binding、ACP Approval、文件写入、selected-files Git commit、Task Review 与重新登录；
+  确定性写入使用 CUSTOM_ACP fixture，与真实 Codex preflight 证据明确分离。证据见
+  `docs/qa/tx5pro/2026-08-11-v05-closure/`。
+- 实机验收发现并修复移动 Git drawer 内容收缩、Monaco 外部 CDN/CSP、DiffEditor 模型清理和
+  Git commit 成功回执提前消失。最终隔离 Server、临时目录与 SSH tunnel 均已回收。
+- V5.6 进行中：执行全量 release gate、v0.5 Compose 备份与升级、正式 LAN 验收、GitHub 推送
+  和 CI 终态确认。
 
 ## v0.4 当前 Goal：品牌、概览与性能收口
 

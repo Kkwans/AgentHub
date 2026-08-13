@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 const project = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -181,7 +182,7 @@ test('概览展示待审阅、Agent 健康和 Git outcome', async ({ page }) => 
   await expect(page.getByRole('heading', { name: '今天需要处理什么' })).toBeVisible();
   await expect(page.getByText('等待用户审阅')).toBeVisible();
   await expect(page.getByText('Git 有变更')).toBeVisible();
-  await expect(page.getByText('Codex 主力')).toBeVisible();
+  await expect(page.locator('.health-row').getByText('Codex 主力')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
@@ -217,6 +218,80 @@ test('Remote Node 管理在当前 viewport 无水平溢出', async ({ page }) =>
   await page.getByRole('button', { name: '生成一次性注册码' }).click();
   await expect(page.getByRole('textbox', { name: '授权 roots' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
+});
+
+test('关键视图可由 URL 恢复并支持键盘返回主流程', async ({ page }) => {
+  test.slow();
+  await page.goto(`/tasks?projectId=${project.id}&execution=${worktreeExecution.id}`);
+  const reviewDialog = page.getByRole('dialog', { name: task.title });
+  await expect(reviewDialog).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Review evidence')).toBeVisible();
+
+  if ((page.viewportSize()?.width ?? 1_000) <= 620) {
+    const targetSizes = await page
+      .locator('.worktree-review-header button:visible, .worktree-review-actions button:visible')
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const rect = element.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        }),
+      );
+    expect(targetSizes.length).toBeGreaterThan(0);
+    for (const size of targetSizes) {
+      expect(size.width).toBeGreaterThanOrEqual(44);
+      expect(size.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+
+  await page.getByRole('button', { name: '关闭执行详情' }).click();
+  await expect(page).not.toHaveURL(/execution=/);
+  await expect(reviewDialog).toBeHidden();
+
+  await page.keyboard.press('Control+k');
+  await expect(page.getByRole('dialog', { name: '搜索与跳转' })).toBeVisible();
+  const search = page.getByRole('combobox', { name: '搜索页面' });
+  await expect(search).toBeFocused();
+  await search.fill('PromptOS');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/promptos$/);
+  await expect(page.getByRole('heading', { name: 'PromptOS', level: 2 })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('核心控制面没有 serious 或 critical axe 问题', async ({ page }, testInfo) => {
+  test.slow();
+  const routes = ['/overview', '/tasks', '/settings'];
+  const violations: Array<Record<string, unknown>> = [];
+
+  for (const route of routes) {
+    await page.goto(route);
+    await page.locator('#main-content').waitFor();
+    const result = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    violations.push(
+      ...result.violations
+        .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
+        .map((violation) => ({
+          route,
+          id: violation.id,
+          impact: violation.impact,
+          help: violation.help,
+          nodes: violation.nodes.map((node) => ({
+            target: node.target,
+            summary: node.failureSummary,
+          })),
+        })),
+    );
+  }
+
+  if (violations.length) {
+    await testInfo.attach('axe-serious-critical.json', {
+      body: Buffer.from(JSON.stringify(violations, null, 2)),
+      contentType: 'application/json',
+    });
+  }
+  expect(violations).toEqual([]);
 });
 
 async function expectNoHorizontalOverflow(page: Page) {

@@ -380,6 +380,7 @@ export const approvalRequests = pgTable(
       .notNull()
       .default(emptyObject),
     responseJson: jsonb('response_json').$type<Record<string, unknown>>(),
+    selectedOptionId: text('selected_option_id'),
     requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   },
@@ -388,6 +389,55 @@ export const approvalRequests = pgTable(
     check(
       'approval_requests_status_check',
       sql`${table.status} in ('PENDING', 'APPROVED', 'REJECTED', 'CANCELED', 'EXPIRED')`,
+    ),
+  ],
+);
+
+export const approvalDeliveryOutbox = pgTable(
+  'approval_delivery_outbox',
+  {
+    id: uuid('id').primaryKey(),
+    approvalId: uuid('approval_id')
+      .notNull()
+      .references(() => approvalRequests.id),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => agentSessions.id),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => agentRuns.id),
+    externalApprovalId: text('external_approval_id').notNull(),
+    decisionStatus: text('decision_status').notNull(),
+    optionId: text('option_id').notNull(),
+    idempotencyScope: text('idempotency_scope').notNull().default('NONE'),
+    state: text('state').notNull().default('QUEUED'),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    availableAt: timestamp('available_at', { withTimezone: true }).notNull().defaultNow(),
+    leaseOwner: text('lease_owner'),
+    leaseUntil: timestamp('lease_until', { withTimezone: true }),
+    receiptId: text('receipt_id'),
+    lastErrorCode: text('last_error_code'),
+    lastErrorMessage: text('last_error_message'),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex('approval_delivery_outbox_approval_unique').on(table.approvalId),
+    index('approval_delivery_outbox_session_created_idx').on(table.sessionId, table.createdAt),
+    index('approval_delivery_outbox_due_idx').on(table.state, table.availableAt),
+    index('approval_delivery_outbox_lease_idx').on(table.state, table.leaseUntil),
+    check(
+      'approval_delivery_outbox_decision_check',
+      sql`${table.decisionStatus} in ('APPROVED', 'REJECTED', 'CANCELED')`,
+    ),
+    check(
+      'approval_delivery_outbox_scope_check',
+      sql`${table.idempotencyScope} in ('NONE', 'RUNTIME', 'DURABLE')`,
+    ),
+    check(
+      'approval_delivery_outbox_state_check',
+      sql`${table.state} in ('QUEUED', 'CLAIMED', 'DISPATCHING', 'RETRY_WAIT', 'DELIVERED', 'UNKNOWN', 'DEAD')`,
     ),
   ],
 );

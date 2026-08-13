@@ -137,6 +137,17 @@ export function createApprovalRouter(service: SessionService): Router {
       next(error);
     }
   });
+  router.get('/:id', validate({ params: approvalParams }), async (request, response, next) => {
+    try {
+      const { id } = approvalParams.parse(request.params);
+      response.json({
+        data: await service.getApproval(id),
+        requestId: String(request.id),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
   router.post(
     '/:id/resolve',
     validate({ params: approvalParams, body: decisionSchema }),

@@ -12,6 +12,7 @@ export interface ProcessSpec {
   timeoutMs?: number;
   protocolCancelGraceMs?: number;
   cancelGraceMs?: number;
+  killGraceMs?: number;
   maxOutputBytes?: number;
   captureStdout?: boolean;
   redactValues?: string[];
@@ -31,7 +32,11 @@ export interface ProcessResult {
 
 export class ProcessSupervisorError extends Error {
   constructor(
-    readonly code: 'EXECUTABLE_NOT_ABSOLUTE' | 'INVALID_PROCESS_OPTION' | 'SPAWN_FAILED',
+    readonly code:
+      | 'EXECUTABLE_NOT_ABSOLUTE'
+      | 'INVALID_PROCESS_OPTION'
+      | 'SPAWN_FAILED'
+      | 'PROCESS_TERMINATION_TIMEOUT',
     message: string,
     options?: ErrorOptions,
   ) {
@@ -51,6 +56,9 @@ export class SupervisedProcess {
   private timedOut = false;
   private canceled = false;
   private finished = false;
+  private completionSettled = false;
+  private completionReject: ((error: unknown) => void) | undefined;
+  private cancellation: Promise<ProcessResult> | undefined;
   private timeout: NodeJS.Timeout | undefined;
 
   constructor(private readonly spec: ProcessSpec) {
@@ -71,6 +79,7 @@ export class SupervisedProcess {
     this.child.stderr.on('data', (chunk: Buffer) => this.capture(this.stderrChunks, chunk));
 
     this.completion = new Promise<ProcessResult>((resolve, reject) => {
+      this.completionReject = reject;
       let spawnError: Error | undefined;
       this.child.once('error', (error) => {
         spawnError = error;
@@ -78,6 +87,9 @@ export class SupervisedProcess {
       this.child.once('close', (exitCode, signal) => {
         this.finished = true;
         if (this.timeout) clearTimeout(this.timeout);
+        this.timeout = undefined;
+        if (this.completionSettled) return;
+        this.completionSettled = true;
         if (spawnError) {
           reject(
             new ProcessSupervisorError('SPAWN_FAILED', `无法启动进程：${spec.executable}`, {
@@ -110,8 +122,11 @@ export class SupervisedProcess {
     }
     if (spec.timeoutMs !== undefined) {
       this.timeout = setTimeout(() => {
+        this.timeout = undefined;
         this.timedOut = true;
-        void this.cancel();
+        // A timeout is an internally initiated cancellation. It must not
+        // create an unhandled rejection when termination observation fails.
+        void this.cancel().catch(() => undefined);
       }, spec.timeoutMs);
       this.timeout.unref();
     }
@@ -121,30 +136,40 @@ export class SupervisedProcess {
     return this.completion;
   }
 
-  async cancel(protocolCancel?: () => Promise<void>): Promise<ProcessResult> {
+  cancel(protocolCancel?: () => Promise<void>): Promise<ProcessResult> {
     if (this.finished) return this.completion;
+    if (this.cancellation) return this.cancellation;
     this.canceled = true;
+    this.cancellation = this.performCancel(protocolCancel);
+    return this.cancellation;
+  }
+
+  private async performCancel(protocolCancel?: () => Promise<void>): Promise<ProcessResult> {
     if (protocolCancel) {
-      try {
-        await protocolCancel();
-      } catch {
-        // Protocol cancellation is best-effort; process termination remains authoritative.
-      }
-      if (this.finished) return this.completion;
-      await Promise.race([
-        this.completion.catch(() => undefined),
-        delay(this.spec.protocolCancelGraceMs ?? 500),
-      ]);
+      await runWithGrace(protocolCancel, this.spec.protocolCancelGraceMs ?? 500);
       if (this.finished) return this.completion;
     }
 
     this.signal('SIGTERM');
-    await Promise.race([
-      this.completion.catch(() => undefined),
-      delay(this.spec.cancelGraceMs ?? 2_000),
-    ]);
-    if (!this.finished) this.signal('SIGKILL');
-    return this.completion;
+    await waitForCompletion(this.completion, this.spec.cancelGraceMs ?? 2_000);
+    if (this.finished) return this.completion;
+
+    this.signal('SIGKILL');
+    await waitForCompletion(this.completion, this.spec.killGraceMs ?? 2_000);
+    if (this.finished) return this.completion;
+
+    const error = new ProcessSupervisorError(
+      'PROCESS_TERMINATION_TIMEOUT',
+      '进程在 SIGKILL 后仍未确认退出',
+    );
+    this.rejectCompletion(error);
+    throw error;
+  }
+
+  private rejectCompletion(error: unknown): void {
+    if (this.completionSettled) return;
+    this.completionSettled = true;
+    this.completionReject?.(error);
   }
 
   private capture(destination: Buffer[], chunk: Buffer): void {
@@ -187,6 +212,7 @@ function validateSpec(spec: ProcessSpec): void {
     ['timeoutMs', spec.timeoutMs],
     ['protocolCancelGraceMs', spec.protocolCancelGraceMs],
     ['cancelGraceMs', spec.cancelGraceMs],
+    ['killGraceMs', spec.killGraceMs],
     ['maxOutputBytes', spec.maxOutputBytes],
   ] as const) {
     if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
@@ -195,9 +221,38 @@ function validateSpec(spec: ProcessSpec): void {
   }
 }
 
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(resolve, milliseconds);
-    timeout.unref();
-  });
+async function runWithGrace(operation: () => Promise<void>, milliseconds: number): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([
+      Promise.resolve()
+        .then(operation)
+        .catch(() => undefined),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, milliseconds);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function waitForCompletion(
+  completion: Promise<ProcessResult>,
+  milliseconds: number,
+): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([
+      completion.then(
+        () => undefined,
+        () => undefined,
+      ),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, milliseconds);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }

@@ -75,6 +75,7 @@ export function AppShell() {
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [activeResult, setActiveResult] = useState(0);
   const [connection, setConnection] = useState<'连接中' | '已连接' | '已断开'>('已断开');
   const searchRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
@@ -101,6 +102,12 @@ export function AppShell() {
       `${item.label} ${item.description}`.toLowerCase().includes(normalizedQuery),
     );
   }, [query]);
+  const commandShortcut =
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+      ? '⌘ K'
+      : 'Ctrl K';
+
+  useEffect(() => setActiveResult(0), [query, commandOpen]);
 
   function openCommand() {
     setQuery('');
@@ -114,7 +121,7 @@ export function AppShell() {
 
   function submitCommand(event: FormEvent) {
     event.preventDefault();
-    if (results[0]) goTo(results[0]);
+    if (results[activeResult]) goTo(results[activeResult]);
   }
 
   return (
@@ -127,11 +134,15 @@ export function AppShell() {
         <Navigation />
         <div className="sidebar-foot">
           <div className="environment-row">
-            <Badge color={connection === '已连接' ? 'green' : 'gray'} variant="soft">
+            <Badge
+              aria-hidden="true"
+              color={connection === '已连接' ? 'green' : 'gray'}
+              variant="soft"
+            >
               {connection}
             </Badge>
             <Text as="span" color="gray" size="1">
-              LOCAL · v0.3.0
+              LOCAL
             </Text>
           </div>
         </div>
@@ -154,10 +165,15 @@ export function AppShell() {
             </Box>
           </Flex>
           <div className="topbar-actions">
-            <button className="command-trigger" type="button" onClick={openCommand}>
+            <button
+              aria-label="搜索与跳转"
+              className="command-trigger"
+              type="button"
+              onClick={openCommand}
+            >
               <Search aria-hidden size={16} />
               <span>搜索与跳转</span>
-              <kbd>⌘ K</kbd>
+              <kbd>{commandShortcut}</kbd>
             </button>
             <Badge
               className={`connection-pill${connection === '已连接' ? ' online' : ''}`}
@@ -165,6 +181,9 @@ export function AppShell() {
                 connection === '已连接' ? 'green' : connection === '连接中' ? 'orange' : 'gray'
               }
               variant="soft"
+              role="status"
+              aria-live="polite"
+              aria-label={`实时连接${connection}`}
             >
               {connection}
             </Badge>
@@ -211,22 +230,56 @@ export function AppShell() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="例如：Agent、PromptOS 或设置"
               aria-label="搜索页面"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={commandOpen}
+              aria-controls="command-results"
+              aria-activedescendant={
+                results[activeResult] ? `command-option-${activeResult}` : undefined
+              }
+              onKeyDown={(event) => {
+                if (!results.length) return;
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setActiveResult((current) => (current + 1) % results.length);
+                } else if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setActiveResult((current) => (current - 1 + results.length) % results.length);
+                } else if (event.key === 'Home') {
+                  event.preventDefault();
+                  setActiveResult(0);
+                } else if (event.key === 'End') {
+                  event.preventDefault();
+                  setActiveResult(results.length - 1);
+                } else if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (results[activeResult]) goTo(results[activeResult]);
+                }
+              }}
             >
               <TextField.Slot>
                 <Search size={18} />
               </TextField.Slot>
             </TextField.Root>
           </form>
-          <div className="command-results" role="listbox" aria-label="页面搜索结果">
+          <div
+            className="command-results"
+            id="command-results"
+            role="listbox"
+            aria-label="页面搜索结果"
+          >
             {results.map((item, index) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.to}
+                  id={`command-option-${index}`}
                   className="command-result"
                   type="button"
                   role="option"
-                  aria-selected={index === 0}
+                  aria-selected={index === activeResult}
+                  onMouseMove={() => setActiveResult(index)}
+                  onFocus={() => setActiveResult(index)}
                   onClick={() => goTo(item)}
                 >
                   <span className="command-result-icon">
@@ -236,7 +289,7 @@ export function AppShell() {
                     <strong>{item.label}</strong>
                     <small>{item.description}</small>
                   </span>
-                  <kbd>{index === 0 ? '↵' : ''}</kbd>
+                  <kbd>{index === activeResult ? '↵' : ''}</kbd>
                 </button>
               );
             })}

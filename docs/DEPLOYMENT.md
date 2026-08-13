@@ -1,6 +1,6 @@
 # 部署与升级
 
-AgentHub v0.3 由 Central Server 与可选的 host-native Remote Node daemon 组成。当前绿联 NAS
+AgentHub v0.5 由 Central Server 与可选的 host-native Remote Node daemon 组成。当前绿联 NAS
 的 Central Server 已由用户明确要求改为 root/privileged Docker Compose；既有 Agent 容器仍
 只允许显式接管，不修改它们的 Compose、镜像或 volume。
 
@@ -25,6 +25,12 @@ AgentHub v0.3 由 Central Server 与可选的 host-native Remote Node daemon 组
   `/home/Kkwans/.gitconfig`；
 - `/var/run/docker.sock` 与匹配 host Engine 的 `/usr/bin/docker`；
 - 只向 NAS 地址 `192.168.5.110` 发布 `3210`，不使用 host network。
+- `AGENTHUB_RUN_CANCEL_TIMEOUT_MS` 控制取消收敛等待时间（1000-120000 毫秒，默认 10000）。
+- `AGENTHUB_APPROVAL_DELIVERY_TIMEOUT_MS` 控制等待 Agent 确认收到 Approval 决定的时间
+  （1000-120000 毫秒，默认 10000）。超时后状态记为 `UNKNOWN`，系统不会盲目重发。
+  HTTP 取消请求不会等待 Agent；若 Agent 没有返回终态事件，超时任务会原子地收敛为
+  `CANCELED`，记录 `CANCEL_CONFIRMATION_TIMEOUT`，关闭当前激活并将 Session 标记为
+  `DISCONNECTED`。取消与完成/失败/断开事件竞争时，以数据库原子状态转换的先写入者为准。
 
 完整构建、切换和回滚步骤见 [`deploy/compose/README.md`](../deploy/compose/README.md)。上述挂载
 与 privileged 等同 NAS root 权限，不是安全隔离；跨不可信网络必须增加 TLS 反向代理。
@@ -61,7 +67,7 @@ AGENTHUB_WORKTREE_ROOT=/volume2/Project/.agenthub/worktrees
 
 ## Remote Node daemon
 
-Remote Node 无需开放入站管理端口。先在中央“设置 → Remote Node”创建一次性注册码，再在目标主机使用与中央相同的 v0.3.0 代码和锁定依赖：
+Remote Node 无需开放入站管理端口。先在中央“设置 → Remote Node”创建一次性注册码，再在目标主机使用与中央相同的 v0.5.0 代码和锁定依赖：
 
 ```bash
 corepack pnpm install --frozen-lockfile
@@ -161,7 +167,9 @@ AGENTHUB_BOOTSTRAP_TOKEN=<至少 32 字节高熵随机值>
 4. 获取目标版本后执行 `pnpm install --frozen-lockfile`、`pnpm build`；从 v0.1 升级到 v0.2 会
    依次向前应用 `0001_tidy_kinsey_walden.sql` 与 `0002_certain_squadron_supreme.sql`。v0.2 升级
    到最初的 v0.3 不增加 migration；账号登录更新会继续应用 `0003_sweet_owl.sql`，新增
-   `local_accounts` 与 `browser_sessions`，不改写现有 Project、Agent 或 Session 数据。
+   `local_accounts` 与 `browser_sessions`，不改写现有 Project、Agent 或 Session 数据。v0.5
+   继续向前应用 `0004_freezing_speed.sql`，为 Approval outbox 与投递审计增加可查询状态；
+   migration 不删除或重写既有 Project、Agent、Session、Run、Task、Prompt 或账号记录。
 5. 运行 release gate，再启动 production Server。
 6. 检查 `/api/v1/health`、中文 Web Shell、Agent preflight 和现有 Session 历史。
 

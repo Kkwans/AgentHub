@@ -7,12 +7,19 @@ import {
   FolderGit2,
   GitBranch,
   ShieldAlert,
+  SquareTerminal,
 } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
 import { EmptyState, ErrorState, LoadingState, PageIntro, StatusBadge } from '../components/Common';
-import { api, type DashboardSnapshot, type ProjectRecord } from '../lib/api';
+import {
+  api,
+  type DashboardSnapshot,
+  type ExecutionTargetRecord,
+  type ProjectRecord,
+  type SessionRecord,
+} from '../lib/api';
 
 export function OverviewPage() {
   const dashboard = useQuery({
@@ -23,15 +30,74 @@ export function OverviewPage() {
     queryKey: ['projects'],
     queryFn: () => api.get<ProjectRecord[]>('/projects'),
   });
-  const loading = dashboard.isLoading || projects.isLoading;
-  const error = dashboard.error || projects.error;
+  const targets = useQuery({
+    queryKey: ['targets'],
+    queryFn: () => api.get<ExecutionTargetRecord[]>('/execution-targets'),
+  });
+  const sessions = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+  });
+  const loading =
+    dashboard.isLoading || projects.isLoading || targets.isLoading || sessions.isLoading;
+  const error = dashboard.error || projects.error || targets.error || sessions.error;
   if (loading) return <LoadingState label="正在汇总运行与待处理状态" />;
-  if (error) return <ErrorState error={error} />;
+  if (error)
+    return (
+      <ErrorState
+        error={error}
+        retry={() => {
+          void dashboard.refetch();
+          void projects.refetch();
+          void targets.refetch();
+          void sessions.refetch();
+        }}
+      />
+    );
   const approvals = dashboard.data?.pendingApprovals ?? [];
   const attentionTasks = dashboard.data?.attentionTasks ?? [];
   const running = dashboard.data?.runningSessions ?? [];
   const agents = dashboard.data?.agentHealth ?? [];
   const unhealthy = agents.filter((item) => item.status !== 'READY');
+  const readyTarget = targets.data?.find((target) => target.status === 'READY');
+  const activeProject = projects.data?.find((project) => project.status === 'ACTIVE');
+  const readyAgent = agents.find((agent) => agent.status === 'READY');
+  const firstSession = sessions.data?.[0];
+  const setupComplete = Boolean(readyTarget && activeProject && readyAgent && firstSession);
+  const sessionStartPath = activeProject
+    ? `/sessions?projectId=${activeProject.id}&new=1`
+    : '/sessions?new=1';
+  const setupSteps = [
+    {
+      title: '准备 Execution Target',
+      description: readyTarget ? readyTarget.name : '确认 Agent 将在哪里运行',
+      complete: Boolean(readyTarget),
+      href: '/agents',
+      icon: <SquareTerminal size={18} />,
+    },
+    {
+      title: '添加 Project',
+      description: activeProject ? activeProject.name : '选择要交给 Agent 的工程目录',
+      complete: Boolean(activeProject),
+      href: '/projects',
+      icon: <FolderGit2 size={18} />,
+    },
+    {
+      title: '接入 Agent',
+      description: readyAgent ? readyAgent.name : '注册并完成一次 preflight',
+      complete: Boolean(readyAgent),
+      href: '/agents',
+      icon: <Bot size={18} />,
+    },
+    {
+      title: '开始第一个 Session',
+      description: firstSession ? firstSession.title : '选择 Project 与 Agent 进入 Workspace',
+      complete: Boolean(firstSession),
+      href: sessionStartPath,
+      icon: <Activity size={18} />,
+    },
+  ];
+  const nextStepIndex = setupSteps.findIndex((step) => !step.complete);
 
   return (
     <div className="page-stack">
@@ -39,6 +105,55 @@ export function OverviewPage() {
         title="今天需要处理什么"
         description="待处理事项、实时执行与最近工程结果，都集中在一个清晰的工作视图中。"
       />
+      {!setupComplete && (
+        <section className="setup-guide" aria-labelledby="setup-guide-title">
+          <div className="setup-guide-heading">
+            <div>
+              <span className="section-kicker">开始使用</span>
+              <h3 id="setup-guide-title">完成运行准备</h3>
+              <p>按依赖顺序完成一次配置，之后即可直接从 Project 开始 Session。</p>
+            </div>
+            <span className="setup-progress" role="status">
+              {setupSteps.filter((step) => step.complete).length} / {setupSteps.length} 已完成
+            </span>
+          </div>
+          <nav className="setup-steps" aria-label="首次使用进度">
+            {setupSteps.map((step, index) => {
+              const current = index === nextStepIndex;
+              const unavailable = index > nextStepIndex;
+              const content = (
+                <>
+                  <span className="setup-step-icon" aria-hidden>
+                    {step.complete ? <CheckCircle2 size={18} /> : step.icon}
+                  </span>
+                  <span>
+                    <strong>{step.title}</strong>
+                    <small>{step.description}</small>
+                  </span>
+                  <span className="setup-step-state">
+                    {step.complete ? '已完成' : current ? '下一步' : '待完成'}
+                  </span>
+                </>
+              );
+              const className = `setup-step${current ? ' current' : ''}${step.complete ? ' complete' : ''}`;
+              return unavailable ? (
+                <div className={className} key={step.title} aria-disabled="true">
+                  {content}
+                </div>
+              ) : (
+                <Link
+                  className={className}
+                  key={step.title}
+                  to={step.href}
+                  aria-current={current ? 'step' : undefined}
+                >
+                  {content}
+                </Link>
+              );
+            })}
+          </nav>
+        </section>
+      )}
       <div className="dashboard-grid">
         <section className="control-section dashboard-panel dashboard-attention">
           <div className="section-heading">

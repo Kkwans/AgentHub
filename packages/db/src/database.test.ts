@@ -14,10 +14,12 @@ import {
   PromptRepository,
   WorktreeExecutionRepository,
 } from './repositories.js';
+import type { DatabaseInvariantError } from './repositories.js';
 import {
   agentRuns,
   agentSessions,
   agents,
+  approvalDeliveryOutbox,
   approvalRequests,
   executionTargets,
   projects,
@@ -108,6 +110,7 @@ describe('数据库不变量', () => {
     expect(names.has('remote_node_registration_tokens')).toBe(true);
     expect(names.has('local_accounts')).toBe(true);
     expect(names.has('browser_sessions')).toBe(true);
+    expect(names.has('approval_delivery_outbox')).toBe(true);
   });
 
   it('阻止更新 Prompt Version，并事务移动 Label', async () => {
@@ -206,6 +209,132 @@ describe('数据库不变量', () => {
     expect(duplicate.changed).toBe(false);
     expect(duplicate.approval.status).toBe('APPROVED');
     expect(duplicate.approval.responseJson).toEqual({ optionId: 'allow' });
+  });
+
+  it('Approval 决定、投递 Outbox 与审计事件在同一事务中只记录一次', async () => {
+    const { sessionId, runId } = await seedRun();
+    const approvalId = randomUUID();
+    await client.db.insert(approvalRequests).values({
+      id: approvalId,
+      sessionId,
+      runId,
+      externalId: 'permission-outbox-1',
+      kind: 'TOOL_PERMISSION',
+      status: 'PENDING',
+      title: '允许执行测试命令吗？',
+      optionsJson: [
+        { id: 'allow', kind: 'allow_once', label: '允许一次' },
+        { id: 'reject', kind: 'reject_once', label: '拒绝' },
+      ],
+    });
+
+    const repository = new ApprovalRepository(client.db);
+    const first = await repository.recordDecisionExactlyOnce(approvalId, 'APPROVED', 'allow');
+    const duplicate = await repository.recordDecisionExactlyOnce(approvalId, 'APPROVED', 'allow');
+
+    expect(first.changed).toBe(true);
+    if (!first.changed) throw new Error('首次 Approval 决定必须创建投递记录');
+    expect(first.approval.selectedOptionId).toBe('allow');
+    expect(first.delivery.state).toBe('QUEUED');
+    expect(first.event.type).toBe('approval.decision_recorded');
+    expect(duplicate.changed).toBe(false);
+    expect(duplicate.delivery?.id).toBe(first.delivery.id);
+
+    const persistedDeliveries = await client.db
+      .select()
+      .from(approvalDeliveryOutbox)
+      .where(eq(approvalDeliveryOutbox.approvalId, approvalId));
+    const persistedEvents = await client.db
+      .select()
+      .from(runEvents)
+      .where(eq(runEvents.type, 'approval.decision_recorded'));
+    expect(persistedDeliveries).toHaveLength(1);
+    expect(persistedEvents.filter((event) => event.runId === runId)).toHaveLength(1);
+    expect((await repository.listAttention(sessionId))[0]).toMatchObject({
+      id: approvalId,
+      deliveryState: 'QUEUED',
+    });
+  });
+
+  it('Approval 拒绝覆盖已记录决定，并以 CAS 收敛投递状态', async () => {
+    const { sessionId, runId } = await seedRun();
+    const approvalId = randomUUID();
+    await client.db.insert(approvalRequests).values({
+      id: approvalId,
+      sessionId,
+      runId,
+      externalId: 'permission-outbox-2',
+      kind: 'TOOL_PERMISSION',
+      status: 'PENDING',
+      title: '允许写入文件吗？',
+    });
+    const repository = new ApprovalRepository(client.db);
+    const recorded = await repository.recordDecisionExactlyOnce(approvalId, 'APPROVED', 'allow');
+    if (!recorded.changed) throw new Error('首次 Approval 决定必须创建投递记录');
+
+    await expect(
+      repository.recordDecisionExactlyOnce(approvalId, 'REJECTED', 'reject'),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<DatabaseInvariantError>>({
+        code: 'APPROVAL_DECISION_CONFLICT',
+      }),
+    );
+
+    const claimed = await repository.claimDelivery(recorded.delivery.id);
+    expect(claimed).toMatchObject({ state: 'DISPATCHING', attemptCount: 1 });
+    expect(await repository.claimDelivery(recorded.delivery.id)).toBeUndefined();
+    expect(await repository.markDeliveryDelivered(recorded.delivery.id, 'receipt-1')).toMatchObject(
+      {
+        state: 'DELIVERED',
+        receiptId: 'receipt-1',
+      },
+    );
+    expect(
+      await repository.markDeliveryUnknown(
+        recorded.delivery.id,
+        'LATE_ERROR',
+        '晚到错误不得覆盖成功回执',
+      ),
+    ).toBeUndefined();
+    expect(await repository.listAttention(sessionId)).toEqual([]);
+  });
+
+  it('服务重启后不盲目重投无幂等回执的 Approval', async () => {
+    const firstRun = await seedRun();
+    const secondRun = await seedRun();
+    const repository = new ApprovalRepository(client.db);
+    const createRecorded = async (sessionId: string, runId: string, suffix: string) => {
+      const approvalId = randomUUID();
+      await client.db.insert(approvalRequests).values({
+        id: approvalId,
+        sessionId,
+        runId,
+        externalId: `permission-restart-${suffix}`,
+        kind: 'TOOL_PERMISSION',
+        status: 'PENDING',
+        title: '允许继续吗？',
+      });
+      return repository.recordDecisionExactlyOnce(approvalId, 'APPROVED', 'allow');
+    };
+    const queued = await createRecorded(firstRun.sessionId, firstRun.runId, 'queued');
+    const dispatching = await createRecorded(secondRun.sessionId, secondRun.runId, 'dispatching');
+    if (!queued.changed || !dispatching.changed) {
+      throw new Error('首次 Approval 决定必须创建投递记录');
+    }
+    await repository.claimDelivery(dispatching.delivery.id);
+
+    const recovered = await repository.recoverInterruptedDeliveries();
+
+    expect(recovered.dead.map((delivery) => delivery.id)).toContain(queued.delivery.id);
+    expect(recovered.unknown.map((delivery) => delivery.id)).toContain(dispatching.delivery.id);
+    expect(await repository.getDelivery(queued.delivery.id)).toMatchObject({
+      state: 'DEAD',
+      lastErrorCode: 'SERVER_RESTARTED_BEFORE_DELIVERY',
+    });
+    expect(await repository.getDelivery(dispatching.delivery.id)).toMatchObject({
+      state: 'UNKNOWN',
+      lastErrorCode: 'DELIVERY_STATE_UNKNOWN_AFTER_RESTART',
+    });
   });
 
   it('Session seq 单调递增并拒绝重复序号', async () => {

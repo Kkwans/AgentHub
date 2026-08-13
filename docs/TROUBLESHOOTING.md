@@ -41,7 +41,13 @@
 
 - `SESSION_NOT_READY`：等待当前 Run 结束或恢复断开的 Session。
 - `APPROVAL_OPTION_INVALID`：只能提交 Agent 原始返回的合法 option ID。
-- Approval 重复提交返回同一已决结果，不会再次发送给 Agent。
+- `APPROVAL_DECISION_CONFLICT`：这个 Approval 已保存其他选项；刷新查看原决定，不要覆盖。
+- Approval 同一选项重复提交会返回已保存结果，不会创建第二条投递。
+- “无法确认 Agent 是否收到”：用户决定已经保存，但 adapter 没有可靠回执。AgentHub 会将
+  Run 与 Session 标记为断线，并拒绝自动重发，避免同一高权限操作执行两次。请在 Session
+  列表恢复或重新开始 Run。
+- “决定没有发送给 Agent”：服务重启或 Session 在发送前断开；原 Run 不再继续，请恢复
+  Session 后重新开始。
 - Run 完成而 Task 未完成是正常门禁：Task 会进入“待审阅”，必须由用户确认。
 - Run 失败/取消会把关联 Task 标为“受阻”，修复原因后再设为“就绪”。
 

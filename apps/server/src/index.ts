@@ -39,7 +39,11 @@ import {
   RoutedAcpProcessLauncher,
 } from './agents/docker-acp-launcher.js';
 import { DockerOpenClawExecLauncher } from './agents/docker-openclaw-exec.js';
-import { SessionService } from './sessions/session-service.js';
+import {
+  resolveApprovalDeliveryTimeout,
+  resolveCancelConvergenceTimeout,
+  SessionService,
+} from './sessions/session-service.js';
 import { ProjectService } from './projects/project-service.js';
 import { GitService } from './git/git-service.js';
 import { TerminalService } from './terminal/terminal-service.js';
@@ -71,6 +75,14 @@ export async function startServer(
   if (!Number.isInteger(port) || port < 0 || port > 65_535) {
     throw new AppError(500, 'INVALID_SERVER_PORT', 'AGENTHUB_PORT 必须是合法端口');
   }
+  const cancelTimeoutRaw = environment.AGENTHUB_RUN_CANCEL_TIMEOUT_MS;
+  const cancelConvergenceTimeoutMs = resolveCancelConvergenceTimeout(
+    cancelTimeoutRaw === undefined ? undefined : Number(cancelTimeoutRaw),
+  );
+  const approvalDeliveryTimeoutRaw = environment.AGENTHUB_APPROVAL_DELIVERY_TIMEOUT_MS;
+  const approvalDeliveryTimeoutMs = resolveApprovalDeliveryTimeout(
+    approvalDeliveryTimeoutRaw === undefined ? undefined : Number(approvalDeliveryTimeoutRaw),
+  );
 
   const authMode = resolveAuthMode(host, environment.AGENTHUB_AUTH_MODE);
   const configuredWebDist = environment.AGENTHUB_WEB_DIST;
@@ -181,6 +193,7 @@ export async function startServer(
     { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
     git,
     promptos,
+    { cancelConvergenceTimeoutMs, approvalDeliveryTimeoutMs },
   );
   const tasks = new TaskService(goalRepository, taskRepository, projectRepository, sessions);
   const dataPath = environment.AGENTHUB_DATA_DIR

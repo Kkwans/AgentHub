@@ -96,6 +96,7 @@ export function RemoteNodesPanel() {
           <p>Node 主动连接 AgentHub；Central Server 不使用 SSH，也不接收 Agent 登录凭据。</p>
         </div>
         <Button
+          className="remote-node-register-button"
           onClick={() => {
             setRegistrationOpen((open) => !open);
             setRegistration(undefined);

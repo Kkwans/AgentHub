@@ -39,7 +39,7 @@ describe('Dashboard service', () => {
           },
         ],
       },
-      { listPending: async () => [{ id: 'a1' }] },
+      { listAttention: async () => [{ id: 'a1' }] },
       { list: async () => [{ id: 'agent1', status: 'READY' }] },
     );
 

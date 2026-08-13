@@ -5,6 +5,7 @@ export default defineConfig({
     fileParallelism: false,
     hookTimeout: 30_000,
     testTimeout: 30_000,
+    setupFiles: ['apps/web/src/test-setup.ts'],
     include: [
       'apps/**/*.test.ts',
       'apps/**/*.test.tsx',

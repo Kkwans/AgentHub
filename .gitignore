@@ -5,6 +5,8 @@ dist/
 coverage/
 playwright-report/
 test-results/
+real-playwright-report/
+real-test-results/
 .cache/
 .tmp/
 test-tmp/

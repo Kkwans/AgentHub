@@ -211,13 +211,53 @@ export class TaskService implements TaskRunLifecycleObserver {
     }
   }
 
-  async reviewTask(id: string, decision: 'APPROVE' | 'REWORK') {
+  async reviewTask(
+    id: string,
+    input: { decision: 'APPROVE' } | { decision: 'REWORK'; feedback: string },
+  ) {
     const task = await this.getTask(id);
     if (task.status !== 'WAITING_REVIEW')
       throw new AppError(409, 'TASK_NOT_WAITING_REVIEW', '只有待审阅的 Task 可以确认结果');
-    return this.tasks.transition(id, decision === 'APPROVE' ? 'DONE' : 'IN_PROGRESS', {
-      ...(decision === 'APPROVE' ? { completedAt: new Date() } : { completedAt: null }),
+    if (input.decision === 'APPROVE') {
+      const approved = await this.tasks.transition(id, 'DONE', { completedAt: new Date() });
+      return { task: approved, session: null, run: null };
+    }
+
+    const feedback = input.feedback.trim();
+    if (!feedback) throw new AppError(400, 'TASK_REWORK_FEEDBACK_REQUIRED', '请填写继续修改说明');
+    if (!task.assignedAgentId) {
+      throw new AppError(409, 'TASK_REWORK_AGENT_REQUIRED', 'Task 没有可用于继续修改的 Agent');
+    }
+    const project = await this.requireProject(task.projectId);
+    const session = await this.sessions.create({
+      projectId: task.projectId,
+      agentId: task.assignedAgentId,
+      taskId: task.id,
+      title: `${task.title} · 继续修改`,
+      cwd: project.realRootPath,
+      ...(task.branch ? { branch: task.branch } : {}),
     });
+    await this.tasks.transition(id, 'IN_PROGRESS', {
+      sessionId: session.id,
+      finalRunId: null,
+      completedAt: null,
+    });
+    const text = [
+      '请根据以下审阅反馈继续修改：',
+      feedback,
+      '',
+      `原任务：${task.description || task.title}`,
+      task.acceptanceCriteria ? `验收标准：${task.acceptanceCriteria}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+    try {
+      const run = await this.sessions.startRun(session.id, { text });
+      return { task: await this.getTask(id), session, run };
+    } catch (error) {
+      await this.tasks.transition(id, 'BLOCKED');
+      throw error;
+    }
   }
 
   async onRunCompleted(taskId: string, runId: string): Promise<void> {

@@ -1,5 +1,7 @@
 /* global process */
 import { createRequire } from 'node:module';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import { pathToFileURL, URL } from 'node:url';
 
@@ -39,7 +41,10 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
   })
   .onRequest(AGENT_METHODS.session_load, () => ({}))
   .onRequest(AGENT_METHODS.session_resume, () => ({}))
-  .onRequest(AGENT_METHODS.session_close, () => ({}))
+  .onRequest(AGENT_METHODS.session_close, async () => {
+    if (process.argv.includes('--hang-close')) await new Promise(() => {});
+    return {};
+  })
   .onRequest(AGENT_METHODS.session_set_mode, ({ params }) => {
     currentMode = params.modeId;
     return {};
@@ -78,6 +83,13 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     });
     if (permission.outcome.outcome !== 'selected' || permission.outcome.optionId !== 'allow-once') {
       return { stopReason: 'refusal' };
+    }
+    if (process.argv.includes('--write-fixture')) {
+      await writeFile(
+        join(process.cwd(), 'fixture-output.md'),
+        '# AgentHub real E2E\n\nApproval 已确认，真实 ACP fixture 已写入此文件。\n',
+        'utf8',
+      );
     }
     await client.notify(CLIENT_METHODS.session_update, {
       sessionId: params.sessionId,

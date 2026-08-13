@@ -21,6 +21,7 @@ import type { WorktreeGitService } from './worktree-git-service.js';
 
 export interface WorktreeSessionController {
   create(input: CreateSessionInput): Promise<{ id: string }>;
+  createManagedWorktree(input: CreateSessionInput, managedRoot: string): Promise<{ id: string }>;
   startRun(sessionId: string, input: StartRunInput): Promise<{ id: string }>;
   cancelRun(sessionId: string, runId: string): Promise<unknown>;
 }
@@ -395,16 +396,19 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       });
       await this.executions.patch(id, { worktreePath });
       const config = execution.configJson;
-      const session = await this.sessions.create({
-        projectId: execution.projectId,
-        agentId: execution.agentId,
-        taskId: execution.taskId,
-        title: task.title,
-        cwd: worktreePath,
-        branch: execution.taskBranch,
-        ...(config.model ? { model: config.model } : {}),
-        ...(config.mode ? { mode: config.mode } : {}),
-      });
+      const session = await this.sessions.createManagedWorktree(
+        {
+          projectId: execution.projectId,
+          agentId: execution.agentId,
+          taskId: execution.taskId,
+          title: task.title,
+          cwd: worktreePath,
+          branch: execution.taskBranch,
+          ...(config.model ? { model: config.model } : {}),
+          ...(config.mode ? { mode: config.mode } : {}),
+        },
+        worktreePath,
+      );
       await this.executions.transitionWithTaskPatch(
         id,
         'RUNNING',

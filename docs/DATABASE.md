@@ -10,7 +10,11 @@
 
 - Prompt Version 创建后不可更新；变更内容只能创建新版本。
 - Prompt Label 移动在事务中完成。
-- Approval exactly-once，重复响应返回同一已决结果且不会再次投递给 Agent。
+- Approval 的用户决定、投递记录和 `approval.decision_recorded` 审计事件在同一事务中写入。
+  同一 option 重复提交返回同一结果；不同 option 会被 `APPROVAL_DECISION_CONFLICT` 拒绝。
+- `approval_delivery_outbox` 单独保存 Agent 投递状态。当前 ACP/Remote adapter 没有跨重启的
+  幂等回执，因此仅保证用户决定 exactly-once；投递成功为 `DELIVERED`，无法确认回执时为
+  `UNKNOWN`，从未发送且不能安全继续时为 `DEAD`。`UNKNOWN/DEAD` 永不自动重投。
 - Agent Event 使用 `UNIQUE(session_id, seq)`，`seq` 在 Session 内单调递增。
 - Session、Run、Task 的非法状态跳转在 service 层拒绝。
 - `local_accounts.singleton_key` 由 unique/check constraint 限制为唯一 `PRIMARY` 管理员；

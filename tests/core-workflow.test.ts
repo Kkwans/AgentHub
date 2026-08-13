@@ -161,7 +161,7 @@ describe('AgentHub 核心工程闭环', () => {
     ]);
     expect((await approvals.get(pending.id))?.status).toBe('APPROVED');
 
-    await taskService.reviewTask(task.id, 'APPROVE');
+    await taskService.reviewTask(task.id, { decision: 'APPROVE' });
     expect(await taskService.getTask(task.id)).toMatchObject({ status: 'DONE' });
     const dashboard = await new DashboardService(
       sessions,

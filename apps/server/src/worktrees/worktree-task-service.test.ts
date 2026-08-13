@@ -267,6 +267,23 @@ function createRuntime(database: Awaited<ReturnType<typeof createPgliteDatabase>
       });
       return { id };
     },
+    createManagedWorktree: async (input) => {
+      created.push(input);
+      const id = randomUUID();
+      await database.db.insert(agentSessions).values({
+        id,
+        projectId: input.projectId,
+        agentId: input.agentId,
+        taskId: input.taskId,
+        title: input.title,
+        cwd: input.cwd,
+        branch: input.branch,
+        status: 'READY',
+        model: input.model,
+        mode: input.mode,
+      });
+      return { id };
+    },
     startRun: async (sessionId, input) => {
       const runId = randomUUID();
       await database.db.insert(agentRuns).values({ id: runId, sessionId, status: 'RUNNING' });

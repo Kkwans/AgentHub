@@ -57,7 +57,7 @@ export function StatusBadge({ status }: { status: string }) {
           ? 'red'
           : 'gray';
   return (
-    <Badge color={color} variant="soft">
+    <Badge className="status-badge" color={color} variant="soft">
       {statusLabels[status] ?? status}
     </Badge>
   );

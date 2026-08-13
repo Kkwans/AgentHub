@@ -76,6 +76,85 @@ describe('Process Supervisor', () => {
     expect(calls).toEqual(['protocol']);
     expect(result.canceled).toBe(true);
   });
+
+  it('protocol cancel 永不返回时仍在 deadline 后进入 TERM', async () => {
+    const processHandle = spawnSupervisedProcess({
+      executable: process.execPath,
+      args: ['-e', 'setInterval(() => {}, 1000)'],
+      protocolCancelGraceMs: 5,
+      cancelGraceMs: 100,
+      killGraceMs: 100,
+    });
+    const startedAt = Date.now();
+    const result = await processHandle.cancel(() => new Promise<void>(() => {}));
+
+    expect(result.canceled).toBe(true);
+    expect(Date.now() - startedAt).toBeLessThan(500);
+  });
+
+  it('并发 cancel 共享同一个 escalation promise 且 protocol 只调用一次', async () => {
+    const processHandle = spawnSupervisedProcess({
+      executable: process.execPath,
+      args: ['-e', 'setInterval(() => {}, 1000)'],
+      protocolCancelGraceMs: 5,
+      cancelGraceMs: 100,
+      killGraceMs: 100,
+    });
+    let calls = 0;
+    const protocolCancel = async () => {
+      calls += 1;
+    };
+
+    const first = processHandle.cancel(protocolCancel);
+    const second = processHandle.cancel(protocolCancel);
+    expect(second).toBe(first);
+    await Promise.all([first, second]);
+    expect(calls).toBe(1);
+  });
+
+  it('SIGKILL 后未观察到 close 时以 PROCESS_TERMINATION_TIMEOUT 拒绝', async () => {
+    const processHandle = spawnSupervisedProcess({
+      executable: process.execPath,
+      args: ['-e', 'setInterval(() => {}, 1000)'],
+      cancelGraceMs: 5,
+      killGraceMs: 5,
+    });
+    const originalKill = process.kill;
+    const childPid = processHandle.child.pid;
+    if (!childPid) throw new Error('测试进程未返回 pid');
+    const closed = new Promise<void>((resolve) =>
+      processHandle.child.once('close', () => resolve()),
+    );
+    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
+      if (pid === -childPid) return true;
+      return originalKill(pid, signal as NodeJS.Signals);
+    }) as typeof process.kill;
+    try {
+      await expect(processHandle.cancel()).rejects.toMatchObject({
+        code: 'PROCESS_TERMINATION_TIMEOUT',
+      });
+      await expect(processHandle.wait()).rejects.toMatchObject({
+        code: 'PROCESS_TERMINATION_TIMEOUT',
+      });
+    } finally {
+      process.kill = originalKill;
+      originalKill(-childPid, 'SIGKILL');
+      await closed;
+    }
+  });
+
+  it('timeout 触发的 cancellation rejection 不产生未处理 Promise', async () => {
+    const processHandle = spawnSupervisedProcess({
+      executable: process.execPath,
+      args: ['-e', 'setInterval(() => {}, 1000)'],
+      timeoutMs: 5,
+      cancelGraceMs: 5,
+      killGraceMs: 5,
+    });
+    const result = await processHandle.wait();
+    expect(result.timedOut).toBe(true);
+    expect(result.canceled).toBe(true);
+  });
 });
 
 describe('日志脱敏', () => {

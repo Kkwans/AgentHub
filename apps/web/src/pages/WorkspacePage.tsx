@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  AlertTriangle,
   Bot,
   Braces,
   Button,
@@ -9,21 +10,27 @@ import {
   FileCode2,
   Files,
   GitBranch,
+  GitCompareArrows,
   IconButton,
   ListChecks,
+  LoaderCircle,
+  RefreshCw,
   Send,
   ShieldCheck,
   SquareTerminal,
   Tabs,
   Wrench,
+  X,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Editor, { DiffEditor } from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from '../components/Common';
+import { SafeDiffEditor } from '../components/SafeDiffEditor';
 import {
+  ApiError,
   api,
   type AgentRecord,
   type ApprovalRecord,
@@ -35,19 +42,80 @@ import {
   type RunRecord,
   type SessionRecord,
 } from '../lib/api';
+import '../lib/monaco';
 import { realtime } from '../lib/realtime';
 import '../styles/v3-workspace.css';
 
 type InspectorTab = 'files' | 'diff' | 'git' | 'run';
 
+type QueryState<T> = {
+  data: T | undefined;
+  error: Error | null;
+  isLoading: boolean;
+  refetch: () => unknown;
+};
+
+const EVENT_PAGE_SIZE = 500;
+
+export async function fetchSessionEventPages(
+  sessionId: string,
+  afterSeq = 0,
+): Promise<EventRecord[]> {
+  const collected: EventRecord[] = [];
+  let cursor = afterSeq;
+  while (true) {
+    const page = await api.get<EventRecord[]>(
+      `/sessions/${sessionId}/events?afterSeq=${cursor}&limit=${EVENT_PAGE_SIZE}`,
+    );
+    const next = page.filter((event) => event.seq > cursor).sort((a, b) => a.seq - b.seq);
+    collected.push(...next);
+    const nextCursor = next.at(-1)?.seq ?? cursor;
+    if (page.length < EVENT_PAGE_SIZE || nextCursor === cursor) break;
+    cursor = nextCursor;
+  }
+  return collected;
+}
+
+export function mergeSessionEvents(
+  existing: EventRecord[],
+  incoming: EventRecord[],
+): EventRecord[] {
+  const bySeq = new Map<number, EventRecord>();
+  for (const event of [...existing, ...incoming]) bySeq.set(event.seq, event);
+  return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
+}
+
 export function WorkspacePage() {
   const { id = '' } = useParams();
   const client = useQueryClient();
-  const [tab, setTab] = useState<InspectorTab>('files');
-  const [selectedFile, setSelectedFile] = useState<string>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get('view');
+  const tab: InspectorTab = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '')
+    ? (viewParam as InspectorTab)
+    : 'files';
+  const selectedFile = searchParams.get('file') || undefined;
   const [terminalOpen, setTerminalOpen] = useState(false);
-  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const mobileInspectorOpen = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '');
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
+
+  const setTab = (nextTab: InspectorTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', nextTab);
+    setSearchParams(next);
+  };
+
+  const setSelectedFile = (path: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', 'files');
+    next.set('file', path);
+    setSearchParams(next);
+  };
+
+  const closeMobileInspector = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('view');
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => api.get<SessionRecord[]>('/sessions'),
@@ -75,9 +143,14 @@ export function WorkspacePage() {
     enabled: Boolean(id),
     refetchInterval: 3_000,
   });
+  const eventQueryKey = ['events', id] as const;
   const events = useQuery({
-    queryKey: ['events', id],
-    queryFn: () => api.get<EventRecord[]>(`/sessions/${id}/events?afterSeq=0&limit=500`),
+    queryKey: eventQueryKey,
+    queryFn: async () => {
+      const existing = client.getQueryData<EventRecord[]>(eventQueryKey) ?? [];
+      const incoming = await fetchSessionEventPages(id, existing.at(-1)?.seq ?? 0);
+      return mergeSessionEvents(existing, incoming);
+    },
     enabled: Boolean(id),
     refetchInterval: 3_000,
   });
@@ -114,9 +187,13 @@ export function WorkspacePage() {
   });
   const project = projects.data?.find((item) => item.id === session.data?.projectId);
   const agent = agents.data?.find((item) => item.id === session.data?.agentId);
-  const activeRun = [...(runs.data ?? [])]
-    .reverse()
-    .find((run) => ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'].includes(run.status));
+  const activeRun = runs.error
+    ? undefined
+    : [...(runs.data ?? [])]
+        .reverse()
+        .find((run) =>
+          ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'].includes(run.status),
+        );
 
   useEffect(() => {
     if (!id) return;
@@ -137,11 +214,11 @@ export function WorkspacePage() {
   useEffect(() => {
     if (!mobileInspectorOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileInspectorOpen(false);
+      if (event.key === 'Escape') closeMobileInspector();
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [mobileInspectorOpen]);
+  }, [closeMobileInspector, mobileInspectorOpen]);
 
   if (session.isLoading) return <LoadingState label="正在打开 Coding Workspace" />;
   if (session.error) return <ErrorState error={session.error} />;
@@ -166,14 +243,18 @@ export function WorkspacePage() {
           </span>
           <code title={session.data.cwd}>{session.data.cwd}</code>
         </div>
+        {agents.error && (
+          <div className="workspace-query-error-inline" role="alert">
+            Agent 信息加载失败：{agents.error.message}
+            <button type="button" onClick={() => agents.refetch()}>
+              重试
+            </button>
+          </div>
+        )}
       </div>
       <Tabs.Root value={mobileInspectorOpen ? tab : 'conversation'}>
         <Tabs.List className="workspace-mobile-tabs" aria-label="Workspace 视图">
-          <Tabs.Trigger
-            value="conversation"
-            aria-label="对话"
-            onClick={() => setMobileInspectorOpen(false)}
-          >
+          <Tabs.Trigger value="conversation" aria-label="对话" onClick={closeMobileInspector}>
             对话
           </Tabs.Trigger>
           {(
@@ -190,7 +271,6 @@ export function WorkspacePage() {
               aria-label={label}
               onClick={() => {
                 setTab(item);
-                setMobileInspectorOpen(true);
               }}
             >
               {label}
@@ -206,7 +286,7 @@ export function WorkspacePage() {
           maxSize="320px"
           className="workspace-panel session-rail-panel"
         >
-          <SessionRail sessions={sessions.data ?? []} currentId={id} />
+          <SessionRail sessions={sessions} currentId={id} />
         </Panel>
         <Separator className="resize-handle" />
         <Panel
@@ -217,9 +297,9 @@ export function WorkspacePage() {
         >
           <Conversation
             session={session.data}
-            messages={messages.data ?? []}
-            events={events.data ?? []}
-            approvals={approvals.data ?? []}
+            messages={messages}
+            events={events}
+            approvals={approvals}
             activeRun={activeRun}
           />
         </Panel>
@@ -230,22 +310,35 @@ export function WorkspacePage() {
           minSize="300px"
           className={`workspace-panel inspector-panel ${mobileInspectorOpen ? 'mobile-open' : ''}`}
         >
+          {mobileInspectorOpen && (
+            <button
+              type="button"
+              className="workspace-drawer-close"
+              aria-label="关闭检查器"
+              onClick={closeMobileInspector}
+            >
+              <X size={18} />
+            </button>
+          )}
           <Inspector
             project={project}
+            projects={projects}
             session={session.data}
             tab={tab}
             setTab={setTab}
             selectedFile={selectedFile}
             setSelectedFile={setSelectedFile}
-            runs={runs.data ?? []}
+            runs={runs}
           />
         </Panel>
       </Group>
       {mobileInspectorOpen && (
         <button
+          type="button"
           className="workspace-drawer-scrim"
-          aria-label="关闭检查器"
-          onClick={() => setMobileInspectorOpen(false)}
+          aria-hidden="true"
+          tabIndex={-1}
+          onClick={closeMobileInspector}
         />
       )}
       <Composer
@@ -253,16 +346,18 @@ export function WorkspacePage() {
         agent={agent}
         project={project}
         activeRun={activeRun}
-        terminalAvailable={capability.data?.terminal.available === true}
+        terminalAvailable={capability.data?.terminal?.available === true}
+        capabilityQuery={capability}
         terminalOpen={terminalOpen}
         setTerminalOpen={setTerminalOpen}
         promptContext={promptContext.data}
         promptContextLoading={promptContext.isLoading}
         promptContextError={promptContext.error}
+        promptContextRetry={() => promptContext.refetch()}
         promptVariables={promptVariables}
         setPromptVariables={setPromptVariables}
       />
-      {terminalOpen && capability.data?.terminal.available && (
+      {terminalOpen && capability.data?.terminal?.available && (
         <div className="terminal-dock">
           <div>
             <SquareTerminal size={15} />
@@ -275,7 +370,7 @@ export function WorkspacePage() {
             size="1"
             variant="soft"
             disabled
-            title="v0.3 尚未开放浏览器端新建 PTY"
+            title="当前版本尚未开放浏览器端新建 PTY"
           >
             新建 Terminal
           </Button>
@@ -285,30 +380,42 @@ export function WorkspacePage() {
   );
 }
 
-function SessionRail({ sessions, currentId }: { sessions: SessionRecord[]; currentId: string }) {
+function SessionRail({
+  sessions,
+  currentId,
+}: {
+  sessions: QueryState<SessionRecord[]>;
+  currentId: string;
+}) {
   return (
     <div className="session-rail">
       <div className="panel-title">
         <span>Session</span>
-        <small>{sessions.length} 个</small>
+        <small>{sessions.data?.length ?? 0} 个</small>
       </div>
       <div className="session-list">
-        {sessions.map((session) => (
-          <Link
-            className={session.id === currentId ? 'current' : ''}
-            to={`/sessions/${session.id}`}
-            key={session.id}
-          >
-            <span className="session-state-dot" />
-            <div>
-              <strong>{session.title}</strong>
-              <code>
-                {session.branch || '无 Git'} · {session.cwd.split('/').at(-1)}
-              </code>
-            </div>
-            <StatusBadge status={session.status} />
-          </Link>
-        ))}
+        {sessions.isLoading ? (
+          <LoadingState label="正在读取 Session" />
+        ) : sessions.error ? (
+          <ErrorState error={sessions.error} retry={() => sessions.refetch()} />
+        ) : (
+          (sessions.data ?? []).map((session) => (
+            <Link
+              className={session.id === currentId ? 'current' : ''}
+              to={`/sessions/${session.id}`}
+              key={session.id}
+            >
+              <span className="session-state-dot" />
+              <div>
+                <strong>{session.title}</strong>
+                <code>
+                  {session.branch || '无 Git'} · {session.cwd.split('/').at(-1)}
+                </code>
+              </div>
+              <StatusBadge status={session.status} />
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );
@@ -322,22 +429,46 @@ function Conversation({
   activeRun,
 }: {
   session: SessionRecord;
-  messages: MessageRecord[];
-  events: EventRecord[];
-  approvals: ApprovalRecord[];
+  messages: QueryState<MessageRecord[]>;
+  events: QueryState<EventRecord[]>;
+  approvals: QueryState<ApprovalRecord[]>;
   activeRun: RunRecord | undefined;
 }) {
   const client = useQueryClient();
+  const [approvalFeedback, setApprovalFeedback] = useState<string>();
   const resolve = useMutation({
     mutationFn: ({ id, optionId }: { id: string; optionId: string }) =>
-      api.post(`/approvals/${id}/resolve`, { optionId }),
-    onSuccess: () => {
+      api.post<ApprovalRecord>(`/approvals/${id}/resolve`, { optionId }),
+    onMutate: () => setApprovalFeedback(undefined),
+    onSuccess: (approval) => {
+      setApprovalFeedback(
+        approval.deliveryState === 'UNKNOWN'
+          ? '决定已保存，但 Agent 是否收到仍无法确认。'
+          : approval.deliveryState === 'DEAD'
+            ? '决定已保存，但没有发送给 Agent。'
+            : '决定已安全保存，正在确认 Agent 接收状态。',
+      );
+    },
+    onSettled: () => {
       void client.invalidateQueries({ queryKey: ['approvals', session.id] });
+      void client.invalidateQueries({ queryKey: ['runs', session.id] });
+      void client.invalidateQueries({ queryKey: ['session', session.id] });
     },
   });
-  const toolEvents = events.filter(
-    (event) => event.type.startsWith('tool.') || event.type === 'agent.plan.updated',
+  const toolEvents = (events.data ?? []).filter(
+    (event) =>
+      event.payloadJson.ignored !== true &&
+      (event.type.startsWith('tool.') || event.type === 'agent.plan.updated'),
   );
+  const showEmpty =
+    !messages.isLoading &&
+    !events.isLoading &&
+    !approvals.isLoading &&
+    !messages.error &&
+    !events.error &&
+    !approvals.error &&
+    !messages.data?.length &&
+    !events.data?.length;
   return (
     <div className="conversation">
       <div className="panel-title conversation-title">
@@ -347,14 +478,32 @@ function Conversation({
         </div>
         {activeRun && <StatusBadge status={activeRun.status} />}
       </div>
-      <div className="conversation-scroll">
-        {!messages.length && !events.length && (
+      <div
+        className="conversation-scroll"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
+        {approvals.isLoading && <LoadingState label="正在读取 Approval" />}
+        {approvals.error && (
+          <ErrorState error={approvals.error} retry={() => approvals.refetch()} />
+        )}
+        {approvalFeedback && (
+          <div className="workspace-query-status" role="status" aria-live="polite">
+            {approvalFeedback}
+          </div>
+        )}
+        {messages.isLoading && <LoadingState label="正在读取消息" />}
+        {messages.error && <ErrorState error={messages.error} retry={() => messages.refetch()} />}
+        {events.isLoading && <LoadingState label="正在读取工具事件" />}
+        {events.error && <ErrorState error={events.error} retry={() => events.refetch()} />}
+        {showEmpty && (
           <EmptyState
             title="等待第一条指令"
             description="Composer 会固定带上 Agent、Project、cwd、branch 与 PromptOS 上下文。"
           />
         )}
-        {messages.map((message) => (
+        {(messages.data ?? []).map((message) => (
           <article className={`message ${message.role.toLowerCase()}`} key={message.id}>
             <div className="message-meta">
               <span>
@@ -394,37 +543,134 @@ function Conversation({
             )}
           </article>
         ))}
-        {approvals.map((approval) => (
-          <article className="approval-card" key={approval.id}>
-            <div className="approval-heading">
-              <span>
-                <ShieldCheck size={17} />
-              </span>
-              <div>
-                <small>Agent 原生权限请求</small>
-                <strong>{approval.title}</strong>
+        {(approvals.data ?? []).map((approval) => {
+          const awaitingDecision = approval.status === 'PENDING';
+          const deliveryInProgress = ['QUEUED', 'CLAIMED', 'DISPATCHING', 'RETRY_WAIT'].includes(
+            approval.deliveryState ?? '',
+          );
+          const deliveryUnconfirmed = approval.deliveryState === 'UNKNOWN';
+          const deliveryAborted = approval.deliveryState === 'DEAD';
+          const selectedOption = approval.optionsJson.find(
+            (option) => option.id === approval.selectedOptionId,
+          );
+          return (
+            <article
+              className={`approval-card${deliveryUnconfirmed || deliveryAborted ? ' approval-card-attention' : ''}`}
+              key={approval.id}
+            >
+              <div className="approval-heading">
+                <span>
+                  {deliveryInProgress ? (
+                    <LoaderCircle className="spin" size={17} />
+                  ) : deliveryUnconfirmed || deliveryAborted ? (
+                    <AlertTriangle size={17} />
+                  ) : (
+                    <ShieldCheck size={17} />
+                  )}
+                </span>
+                <div>
+                  <small>
+                    {awaitingDecision
+                      ? 'Agent 请求你的决定'
+                      : deliveryInProgress
+                        ? '正在交给 Agent'
+                        : '需要处理投递状态'}
+                  </small>
+                  <strong>{approval.title}</strong>
+                </div>
               </div>
-            </div>
-            {approval.description && <p>{approval.description}</p>}
-            <div className="approval-actions">
-              {approval.optionsJson.map(
-                (option) =>
-                  option.id && (
-                    <Button
-                      key={option.id}
-                      color={/reject|deny/.test(option.kind ?? '') ? 'gray' : 'orange'}
-                      size="1"
-                      variant={/reject|deny/.test(option.kind ?? '') ? 'soft' : 'solid'}
-                      onClick={() => resolve.mutate({ id: approval.id, optionId: option.id! })}
-                      disabled={resolve.isPending}
-                    >
-                      {option.label ?? option.id}
-                    </Button>
-                  ),
+              {approval.description && <p>{approval.description}</p>}
+              {awaitingDecision && (
+                <div className="approval-actions">
+                  {approval.optionsJson.map(
+                    (option) =>
+                      option.id && (
+                        <Button
+                          key={option.id}
+                          color={
+                            /reject|deny|refuse/i.test(
+                              `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
+                            )
+                              ? 'gray'
+                              : 'orange'
+                          }
+                          size="1"
+                          variant={
+                            /reject|deny|refuse/i.test(
+                              `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
+                            )
+                              ? 'soft'
+                              : 'solid'
+                          }
+                          onClick={() => resolve.mutate({ id: approval.id, optionId: option.id! })}
+                          disabled={resolve.isPending}
+                        >
+                          {option.label ?? option.id}
+                        </Button>
+                      ),
+                  )}
+                </div>
               )}
-            </div>
-          </article>
-        ))}
+              {deliveryInProgress && (
+                <div className="approval-delivery-status" role="status" aria-live="polite">
+                  <strong>决定已保存</strong>
+                  <span>
+                    已选择“{selectedOption?.label ?? approval.selectedOptionId ?? '已记录选项'}”，
+                    正在等待 Agent 确认接收，请勿重复操作。
+                  </span>
+                </div>
+              )}
+              {deliveryUnconfirmed && (
+                <div
+                  className="approval-delivery-status approval-delivery-status-danger"
+                  role="alert"
+                >
+                  <strong>无法确认 Agent 是否收到</strong>
+                  <span>
+                    {approval.deliveryErrorMessage ??
+                      '为避免同一权限操作执行两次，系统不会自动重发这个决定。'}
+                  </span>
+                  <Link to="/sessions">前往 Session 列表恢复或重新开始</Link>
+                </div>
+              )}
+              {deliveryAborted && (
+                <div
+                  className="approval-delivery-status approval-delivery-status-danger"
+                  role="alert"
+                >
+                  <strong>决定没有发送给 Agent</strong>
+                  <span>
+                    {approval.deliveryErrorMessage ??
+                      '当前 Run 已断开，请恢复 Session 后重新开始。'}
+                  </span>
+                  <Link to="/sessions">前往 Session 列表处理</Link>
+                </div>
+              )}
+              {resolve.variables?.id === approval.id && resolve.isError && (
+                <div className="workspace-query-error" role="alert">
+                  <span>{resolve.error?.message ?? 'Approval 提交失败。'}</span>
+                  {!(
+                    resolve.error instanceof ApiError &&
+                    resolve.error.code === 'APPROVAL_DECISION_CONFLICT'
+                  ) && (
+                    <Button
+                      color="red"
+                      size="1"
+                      variant="soft"
+                      disabled={resolve.isPending}
+                      onClick={() => {
+                        const variables = resolve.variables;
+                        if (variables) resolve.mutate(variables);
+                      }}
+                    >
+                      重试此选项
+                    </Button>
+                  )}
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
@@ -432,6 +678,7 @@ function Conversation({
 
 function Inspector({
   project,
+  projects,
   session,
   tab,
   setTab,
@@ -440,12 +687,13 @@ function Inspector({
   runs,
 }: {
   project: ProjectRecord | undefined;
+  projects: QueryState<ProjectRecord[]>;
   session: SessionRecord;
   tab: InspectorTab;
   setTab: (tab: InspectorTab) => void;
   selectedFile: string | undefined;
   setSelectedFile: (path: string) => void;
-  runs: RunRecord[];
+  runs: QueryState<RunRecord[]>;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string }> = [
     { id: 'files', label: '文件' },
@@ -465,7 +713,11 @@ function Inspector({
         </Tabs.List>
       </Tabs.Root>
       <div className="inspector-body">
-        {!project ? (
+        {projects.isLoading ? (
+          <LoadingState label="正在读取 Project" />
+        ) : projects.error ? (
+          <ErrorState error={projects.error} retry={() => projects.refetch()} />
+        ) : !project ? (
           <EmptyState title="Project 不可用" description="该 Session 关联的 Project 可能已归档。" />
         ) : tab === 'files' ? (
           <FileInspector project={project} selected={selectedFile} onSelect={setSelectedFile} />
@@ -511,7 +763,7 @@ function FileInspector({
         {files.isLoading ? (
           <LoadingState />
         ) : files.error ? (
-          <ErrorState error={files.error} />
+          <ErrorState error={files.error} retry={() => files.refetch()} />
         ) : (
           <FileNodes entries={files.data ?? []} selected={selected} onSelect={onSelect} />
         )}
@@ -522,7 +774,7 @@ function FileInspector({
         ) : content.isLoading ? (
           <LoadingState />
         ) : content.error ? (
-          <ErrorState error={content.error} />
+          <ErrorState error={content.error} retry={() => content.refetch()} />
         ) : (
           <Editor
             height="100%"
@@ -586,11 +838,11 @@ function DiffInspector({ project }: { project: ProjectRecord }) {
       {diff.isLoading ? (
         <LoadingState />
       ) : diff.error ? (
-        <ErrorState error={diff.error} />
+        <ErrorState error={diff.error} retry={() => diff.refetch()} />
       ) : !diff.data?.patch ? (
         <EmptyState title="没有未提交 Diff" description="工作区当前没有可展示的差异。" />
       ) : (
-        <DiffEditor
+        <SafeDiffEditor
           height="100%"
           original=""
           modified={diff.data.patch}
@@ -608,17 +860,107 @@ function DiffInspector({ project }: { project: ProjectRecord }) {
 }
 
 function GitInspector({ project }: { project: ProjectRecord }) {
+  type GitView = 'changes' | 'diff' | 'history' | 'branches';
+  const client = useQueryClient();
+  const [view, setView] = useState<GitView>('changes');
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+  const [commitMessage, setCommitMessage] = useState('');
+  const [stagedDiff, setStagedDiff] = useState(false);
+  const [commitReceipt, setCommitReceipt] = useState<string>();
   const status = useQuery({
     queryKey: ['git-status', project.id],
     queryFn: () =>
       api.get<{
         branch?: string;
+        upstream?: string;
+        ahead?: number;
+        behind?: number;
         headSha?: string;
         clean: boolean;
-        entries: Array<{ index: string; worktree: string; path: string }>;
+        entries: Array<{
+          index: string;
+          worktree: string;
+          path: string;
+          originalPath?: string;
+        }>;
       }>(`/projects/${project.id}/git/status`),
     refetchInterval: 5_000,
   });
+  const diff = useQuery({
+    queryKey: ['git-diff', project.id, stagedDiff],
+    queryFn: () =>
+      api.get<{ patch: string; truncated: boolean; staged: boolean }>(
+        `/projects/${project.id}/git/diff?staged=${stagedDiff}`,
+      ),
+    enabled: view === 'diff',
+  });
+  const commits = useQuery({
+    queryKey: ['git-commits', project.id],
+    queryFn: () =>
+      api.get<
+        Array<{
+          sha: string;
+          shortSha: string;
+          authorName: string;
+          authoredAt: string;
+          subject: string;
+        }>
+      >(`/projects/${project.id}/git/commits?limit=30`),
+    enabled: view === 'history',
+  });
+  const branches = useQuery({
+    queryKey: ['git-branches', project.id],
+    queryFn: () =>
+      api.get<
+        Array<{
+          name: string;
+          sha: string;
+          current: boolean;
+          upstream?: string;
+          committedAt: string;
+        }>
+      >(`/projects/${project.id}/git/branches`),
+    enabled: view === 'branches',
+  });
+  const commit = useMutation({
+    mutationFn: () =>
+      api.post<{ beforeSha?: string; sha?: string; output: string }>(
+        `/projects/${project.id}/git/commit`,
+        { mode: 'SELECTED', paths: selectedPaths, message: commitMessage.trim() },
+      ),
+    onSuccess: async (receipt) => {
+      setSelectedPaths([]);
+      setCommitMessage('');
+      setCommitReceipt(receipt.sha ? `提交完成 · ${receipt.sha.slice(0, 12)}` : '提交完成');
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['git-status', project.id] }),
+        client.invalidateQueries({ queryKey: ['git-diff', project.id] }),
+        client.invalidateQueries({ queryKey: ['git-commits', project.id] }),
+        client.invalidateQueries({ queryKey: ['git-branches', project.id] }),
+      ]);
+    },
+  });
+
+  useEffect(() => {
+    if (!status.data) return;
+    const available = new Set(status.data.entries.map((entry) => entry.path));
+    setSelectedPaths((current) => current.filter((path) => available.has(path)));
+  }, [status.data]);
+
+  const togglePath = (path: string) => {
+    setCommitReceipt(undefined);
+    setSelectedPaths((current) =>
+      current.includes(path) ? current.filter((item) => item !== path) : [...current, path],
+    );
+  };
+
+  const refetchCurrentView = () => {
+    if (view === 'diff') void diff.refetch();
+    else if (view === 'history') void commits.refetch();
+    else if (view === 'branches') void branches.refetch();
+    else void status.refetch();
+  };
+
   return (
     <div className="git-inspector">
       <div className="git-summary">
@@ -626,33 +968,232 @@ function GitInspector({ project }: { project: ProjectRecord }) {
         <div>
           <strong>{status.data?.branch ?? 'Git'}</strong>
           <code>{status.data?.headSha?.slice(0, 12) ?? '无 HEAD'}</code>
+          {status.data?.upstream && (
+            <small>
+              {status.data.upstream}
+              {status.data.ahead ? ` · ahead ${status.data.ahead}` : ''}
+              {status.data.behind ? ` · behind ${status.data.behind}` : ''}
+            </small>
+          )}
         </div>
         {status.data && <StatusBadge status={status.data.clean ? 'READY' : 'UNVERIFIED'} />}
       </div>
-      {status.isLoading ? (
-        <LoadingState />
-      ) : status.error ? (
-        <ErrorState error={status.error} />
-      ) : status.data?.clean ? (
-        <EmptyState title="工作区干净" description="没有 staged、unstaged 或 untracked 文件。" />
-      ) : (
-        <div className="change-list">
-          {status.data?.entries.map((entry) => (
-            <div key={`${entry.path}-${entry.index}-${entry.worktree}`}>
-              <code>
-                {entry.index}
-                {entry.worktree}
-              </code>
-              <span>{entry.path}</span>
+
+      <div className="git-viewbar">
+        <Tabs.Root value={view} onValueChange={(value) => setView(value as GitView)}>
+          <Tabs.List aria-label="Git 工作区视图">
+            <Tabs.Trigger value="changes" aria-label="变更">
+              变更
+            </Tabs.Trigger>
+            <Tabs.Trigger value="diff" aria-label="Diff">
+              Diff
+            </Tabs.Trigger>
+            <Tabs.Trigger value="history" aria-label="历史">
+              历史
+            </Tabs.Trigger>
+            <Tabs.Trigger value="branches" aria-label="分支">
+              分支
+            </Tabs.Trigger>
+          </Tabs.List>
+        </Tabs.Root>
+        <IconButton
+          type="button"
+          size="1"
+          variant="ghost"
+          aria-label="刷新 Git 数据"
+          onClick={refetchCurrentView}
+        >
+          <RefreshCw size={15} />
+        </IconButton>
+      </div>
+
+      {commitReceipt && (
+        <p className="git-commit-receipt" role="status">
+          {commitReceipt}
+        </p>
+      )}
+
+      {view === 'changes' &&
+        (status.isLoading ? (
+          <LoadingState label="正在读取 Git 状态" />
+        ) : status.error ? (
+          <ErrorState error={status.error} retry={() => status.refetch()} />
+        ) : status.data?.clean ? (
+          <EmptyState title="工作区干净" description="没有 staged、unstaged 或 untracked 文件。" />
+        ) : (
+          <>
+            <div className="git-selection-heading">
+              <span>{status.data?.entries.length ?? 0} 个变更</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedPaths(
+                    selectedPaths.length === status.data?.entries.length
+                      ? []
+                      : (status.data?.entries.map((entry) => entry.path) ?? []),
+                  )
+                }
+              >
+                {selectedPaths.length === status.data?.entries.length ? '取消全选' : '全选'}
+              </button>
             </div>
-          ))}
+            <div className="change-list git-change-list">
+              {status.data?.entries.map((entry) => (
+                <label key={`${entry.path}-${entry.index}-${entry.worktree}`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedPaths.includes(entry.path)}
+                    onChange={() => togglePath(entry.path)}
+                    aria-label={`选择 ${entry.path}`}
+                  />
+                  <code>
+                    {entry.index}
+                    {entry.worktree}
+                  </code>
+                  <span title={entry.path}>{entry.path}</span>
+                  <small>{describeGitChange(entry.index, entry.worktree)}</small>
+                </label>
+              ))}
+            </div>
+            <form
+              className="git-commit-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (selectedPaths.length && commitMessage.trim()) commit.mutate();
+              }}
+            >
+              <label>
+                <span>提交说明</span>
+                <textarea
+                  value={commitMessage}
+                  maxLength={10_000}
+                  rows={3}
+                  placeholder="说明这次变更解决了什么"
+                  onChange={(event) => {
+                    setCommitReceipt(undefined);
+                    commit.reset();
+                    setCommitMessage(event.target.value);
+                  }}
+                />
+              </label>
+              <Button
+                type="submit"
+                size="2"
+                disabled={!selectedPaths.length || !commitMessage.trim() || commit.isPending}
+              >
+                <GitCompareArrows size={16} />
+                {commit.isPending ? '正在提交…' : `提交所选文件 (${selectedPaths.length})`}
+              </Button>
+              <small>只提交勾选文件，不会混入其他已暂存变更。</small>
+              {commit.error && (
+                <div className="workspace-query-error" role="alert">
+                  <span>{commit.error.message}</span>
+                  <button type="button" onClick={() => commit.mutate()}>
+                    重试提交
+                  </button>
+                </div>
+              )}
+            </form>
+          </>
+        ))}
+
+      {view === 'diff' && (
+        <div className="git-view-content git-diff-view">
+          <label className="git-diff-toggle">
+            <input
+              type="checkbox"
+              checked={stagedDiff}
+              onChange={(event) => setStagedDiff(event.target.checked)}
+            />
+            查看 staged Diff
+          </label>
+          {diff.isLoading ? (
+            <LoadingState label="正在读取 Diff" />
+          ) : diff.error ? (
+            <ErrorState error={diff.error} retry={() => diff.refetch()} />
+          ) : !diff.data?.patch ? (
+            <EmptyState
+              title={stagedDiff ? '没有 staged Diff' : '没有未暂存 Diff'}
+              description="切换范围或返回变更列表查看当前状态。"
+            />
+          ) : (
+            <pre>{diff.data.patch}</pre>
+          )}
+          {diff.data?.truncated && <small>Diff 过大，当前仅显示前 4 MiB。</small>}
+        </div>
+      )}
+
+      {view === 'history' && (
+        <div className="git-view-content">
+          {commits.isLoading ? (
+            <LoadingState label="正在读取提交历史" />
+          ) : commits.error ? (
+            <ErrorState error={commits.error} retry={() => commits.refetch()} />
+          ) : !commits.data?.length ? (
+            <EmptyState title="还没有提交" description="这个 Git 仓库尚无提交历史。" />
+          ) : (
+            <div className="git-history-list">
+              {commits.data.map((item) => (
+                <article key={item.sha}>
+                  <strong>{item.subject}</strong>
+                  <span>
+                    <code>{item.shortSha}</code> · {item.authorName}
+                  </span>
+                  <time dateTime={item.authoredAt}>{formatGitTime(item.authoredAt)}</time>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'branches' && (
+        <div className="git-view-content">
+          {branches.isLoading ? (
+            <LoadingState label="正在读取分支" />
+          ) : branches.error ? (
+            <ErrorState error={branches.error} retry={() => branches.refetch()} />
+          ) : !branches.data?.length ? (
+            <EmptyState title="没有本地分支" description="这个 Git 仓库尚无可展示的分支。" />
+          ) : (
+            <div className="git-branch-list">
+              {branches.data.map((item) => (
+                <article key={item.name} className={item.current ? 'current' : undefined}>
+                  <GitBranch size={15} />
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span>{item.upstream ?? '未跟踪远端分支'}</span>
+                  </div>
+                  <code>{item.sha.slice(0, 8)}</code>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function RunInspector({ session, runs }: { session: SessionRecord; runs: RunRecord[] }) {
+function describeGitChange(index: string, worktree: string): string {
+  if (index === '?' && worktree === '?') return '未跟踪';
+  if (index !== ' ' && worktree !== ' ') return '已暂存 + 未暂存';
+  if (index !== ' ') return '已暂存';
+  return '未暂存';
+}
+
+function formatGitTime(value: string): string {
+  const time = new Date(value);
+  return Number.isNaN(time.getTime()) ? value : time.toLocaleString('zh-CN', { hour12: false });
+}
+
+function RunInspector({
+  session,
+  runs,
+}: {
+  session: SessionRecord;
+  runs: QueryState<RunRecord[]>;
+}) {
   return (
     <div className="run-inspector">
       <div className="run-context">
@@ -666,18 +1207,24 @@ function RunInspector({ session, runs }: { session: SessionRecord; runs: RunReco
         <code>{session.cwd}</code>
       </div>
       <div className="run-history">
-        {[...runs].reverse().map((run) => (
-          <div key={run.id}>
-            <span className="run-dot" />
-            <div>
-              <strong>Run {run.id.slice(0, 8)}</strong>
-              <code>
-                {run.gitBeforeSha?.slice(0, 8) ?? '—'} → {run.gitAfterSha?.slice(0, 8) ?? '—'}
-              </code>
+        {runs.isLoading ? (
+          <LoadingState label="正在读取 Run" />
+        ) : runs.error ? (
+          <ErrorState error={runs.error} retry={() => runs.refetch()} />
+        ) : (
+          [...(runs.data ?? [])].reverse().map((run) => (
+            <div key={run.id}>
+              <span className="run-dot" />
+              <div>
+                <strong>Run {run.id.slice(0, 8)}</strong>
+                <code>
+                  {run.gitBeforeSha?.slice(0, 8) ?? '—'} → {run.gitAfterSha?.slice(0, 8) ?? '—'}
+                </code>
+              </div>
+              <StatusBadge status={run.status} />
             </div>
-            <StatusBadge status={run.status} />
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -689,11 +1236,13 @@ function Composer({
   project,
   activeRun,
   terminalAvailable,
+  capabilityQuery,
   terminalOpen,
   setTerminalOpen,
   promptContext,
   promptContextLoading,
   promptContextError,
+  promptContextRetry,
   promptVariables,
   setPromptVariables,
 }: {
@@ -702,11 +1251,13 @@ function Composer({
   project: ProjectRecord | undefined;
   activeRun: RunRecord | undefined;
   terminalAvailable: boolean;
+  capabilityQuery: QueryState<{ terminal: { available: boolean } }>;
   terminalOpen: boolean;
   setTerminalOpen: (open: boolean) => void;
   promptContext: ResolvedPromptContextRecord | undefined;
   promptContextLoading: boolean;
   promptContextError: Error | null;
+  promptContextRetry: () => unknown;
   promptVariables: Record<string, unknown>;
   setPromptVariables: (variables: Record<string, unknown>) => void;
 }) {
@@ -726,11 +1277,31 @@ function Composer({
   });
   const stop = useMutation({
     mutationFn: () => api.post(`/sessions/${session.id}/runs/${activeRun!.id}/cancel`),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['runs', session.id] }),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ['runs', session.id] });
+      void client.invalidateQueries({ queryKey: ['session', session.id] });
+    },
   });
   const configuration = (agent?.capabilitiesJson.configuration ?? {}) as Record<string, boolean>;
   const contextBlocked =
-    promptContextLoading || Boolean(promptContextError) || promptContext?.ready === false;
+    promptContextLoading ||
+    Boolean(promptContextError) ||
+    !promptContext ||
+    Boolean(variablesError) ||
+    promptContext.ready === false;
+  const contextStatus = promptContextLoading
+    ? { label: '解析中', kind: 'loading' }
+    : variablesError
+      ? { label: '解析失败', kind: 'error' }
+      : promptContextError
+        ? { label: '服务失败', kind: 'error' }
+        : !promptContext
+          ? { label: '等待解析', kind: 'loading' }
+          : promptContext.ready === false
+            ? { label: `缺 ${promptContext.missingVariables.length} 项变量`, kind: 'missing' }
+            : promptContext.items.length === 0
+              ? { label: '无绑定', kind: 'empty' }
+              : { label: `${promptContext.items.length} 项`, kind: 'ready' };
   return (
     <div className="composer">
       <div className="composer-context">
@@ -759,17 +1330,9 @@ function Composer({
         <button
           className={contextOpen ? 'active' : ''}
           onClick={() => setContextOpen(!contextOpen)}
+          aria-expanded={contextOpen}
         >
-          <Braces size={13} /> PromptOS{' '}
-          <strong>
-            {promptContextLoading
-              ? '解析中'
-              : promptContextError
-                ? '异常'
-                : promptContext?.ready === false
-                  ? `缺 ${promptContext.missingVariables.length} 项变量`
-                  : `${promptContext?.items.length ?? 0} 项`}
-          </strong>
+          <Braces size={13} /> PromptOS <strong>{contextStatus.label}</strong>
         </button>
         <span>
           Skill <strong>自动</strong>
@@ -782,6 +1345,14 @@ function Composer({
             <SquareTerminal size={13} /> Terminal
           </button>
         )}
+        {capabilityQuery.error && (
+          <span className="workspace-query-error-inline" role="alert">
+            能力状态加载失败：{capabilityQuery.error.message}
+            <button type="button" onClick={() => capabilityQuery.refetch()}>
+              重试
+            </button>
+          </span>
+        )}
       </div>
       {contextOpen && (
         <div className="composer-context-preview">
@@ -790,61 +1361,75 @@ function Composer({
               <strong>PromptOS 上下文预览</strong>
               <span>发送 Run 前解析，版本、标签与 content hash 会写入来源记录。</span>
             </div>
-            <span className={promptContext?.ready === false ? 'missing' : 'ready'}>
-              {promptContext?.ready === false ? '缺少必填变量' : '已就绪'}
-            </span>
+            <span className={contextStatus.kind}>{contextStatus.label}</span>
           </div>
-          <div className="composer-context-grid">
-            <div className="composer-provenance">
-              {!promptContext?.items.length ? (
-                <p>当前 Project、Agent、Task 没有生效的绑定。</p>
-              ) : (
-                promptContext.items.map((item) => (
-                  <div key={item.bindingId}>
-                    <span>{item.slot}</span>
-                    <code>
-                      {item.promptKey}@{item.label ?? `v${item.version}`}
-                    </code>
-                    <small>
-                      {item.targetType} · v{item.version} · {item.contentHash.slice(0, 10)}
-                    </small>
-                  </div>
-                ))
-              )}
-            </div>
-            <label>
-              变量 JSON
-              <textarea
-                className="mono"
-                value={variablesDraft}
-                onChange={(event) => setVariablesDraft(event.target.value)}
-                rows={4}
-              />
-              <Button
-                color="gray"
-                size="1"
-                variant="soft"
-                onClick={() => {
-                  try {
-                    const parsed = JSON.parse(variablesDraft) as unknown;
-                    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-                      throw new Error();
-                    setVariablesError(undefined);
-                    setPromptVariables(parsed as Record<string, unknown>);
-                  } catch {
-                    setVariablesError('变量必须是合法 JSON object');
-                  }
-                }}
-              >
-                应用并重新解析
+          {promptContextLoading ? (
+            <LoadingState label="正在解析 PromptOS 上下文" />
+          ) : promptContextError ? (
+            <div className="prompt-context-error">
+              <ErrorState error={promptContextError} />
+              <Button color="red" size="1" variant="soft" onClick={() => promptContextRetry()}>
+                重新解析
               </Button>
-              {(variablesError || promptContext?.missingVariables.length) && (
-                <small className="context-variable-error">
-                  {variablesError ?? `缺少：${promptContext?.missingVariables.join('、')}`}
-                </small>
-              )}
-            </label>
-          </div>
+            </div>
+          ) : (
+            <div className="composer-context-grid">
+              <div className="composer-provenance">
+                {!promptContext?.items.length ? (
+                  <p>当前 Project、Agent、Task 没有生效的绑定。</p>
+                ) : (
+                  promptContext.items.map((item) => (
+                    <div key={item.bindingId}>
+                      <span>{item.slot}</span>
+                      <code>
+                        {item.promptKey}@{item.label ?? `v${item.version}`}
+                      </code>
+                      <small>
+                        {item.targetType} · v{item.version} · {item.contentHash.slice(0, 10)}
+                      </small>
+                    </div>
+                  ))
+                )}
+              </div>
+              <label>
+                变量 JSON
+                <textarea
+                  className="mono"
+                  value={variablesDraft}
+                  onChange={(event) => setVariablesDraft(event.target.value)}
+                  rows={4}
+                />
+                <Button
+                  color="gray"
+                  size="1"
+                  variant="soft"
+                  onClick={() => {
+                    try {
+                      const parsed = JSON.parse(variablesDraft) as unknown;
+                      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+                        throw new Error();
+                      setVariablesError(undefined);
+                      setPromptVariables(parsed as Record<string, unknown>);
+                    } catch {
+                      setVariablesError('变量必须是合法 JSON object');
+                    }
+                  }}
+                >
+                  应用并重新解析
+                </Button>
+                {variablesError && (
+                  <small className="context-variable-error" role="alert">
+                    {variablesError}
+                  </small>
+                )}
+                {promptContext?.ready === false && !variablesError && (
+                  <small className="context-variable-error">
+                    缺少：{promptContext.missingVariables.join('、')}
+                  </small>
+                )}
+              </label>
+            </div>
+          )}
         </div>
       )}
       <div className="composer-input">
@@ -860,7 +1445,8 @@ function Composer({
             className="send-button stop"
             color="red"
             onClick={() => stop.mutate()}
-            aria-label="停止 Run"
+            disabled={stop.isPending}
+            aria-label={stop.isPending ? '正在停止 Run' : '停止 Run'}
           >
             <CircleStop size={18} />
           </IconButton>
@@ -875,7 +1461,25 @@ function Composer({
           </IconButton>
         )}
       </div>
-      {send.error && <span className="composer-error">{send.error.message}</span>}
+      {stop.error && (
+        <div className="workspace-query-error" role="alert">
+          <span>停止 Run 失败：{stop.error.message}</span>
+          <Button
+            color="red"
+            size="1"
+            variant="soft"
+            disabled={stop.isPending}
+            onClick={() => stop.mutate()}
+          >
+            重试停止
+          </Button>
+        </div>
+      )}
+      {send.error && (
+        <span className="composer-error" role="alert">
+          {send.error.message}
+        </span>
+      )}
     </div>
   );
 }

@@ -22,6 +22,16 @@ const profile: AgentProfile = {
   },
 };
 
+const hangingCloseProfile: AgentProfile = {
+  ...profile,
+  id: 'acp-fixture-hanging-close',
+  launchSpec: {
+    kind: 'HOST_PROCESS',
+    executable: process.execPath,
+    args: [fixturePath, '--hang-close'],
+  },
+};
+
 const openSessions: AgentSessionHandle[] = [];
 
 afterEach(async () => {
@@ -106,5 +116,29 @@ describe('ACP v1 adapter wire fixture', () => {
     expect(all.map((event) => event.seq)).toEqual(
       Array.from({ length: all.length }, (_, index) => index + 1),
     );
+  });
+
+  it('session/close 挂起时仍在短 grace 后关闭 connection、process 与 event queue', async () => {
+    const adapter = new AcpAdapter({ sessionCloseGraceMs: 10 });
+    const session = await adapter.createSession({
+      sessionId: 'hub-session-hanging-close',
+      projectId: 'project-1',
+      profile: hangingCloseProfile,
+      cwd: process.cwd(),
+    });
+    openSessions.push(session);
+
+    const startedAt = Date.now();
+    await Promise.all([session.close(), session.close(), session.close()]);
+
+    expect(Date.now() - startedAt).toBeLessThan(500);
+    const iterator = session.events()[Symbol.asyncIterator]();
+    const drained: NormalizedAgentEvent[] = [];
+    while (true) {
+      const next = await iterator.next();
+      if (next.done) break;
+      drained.push(next.value);
+    }
+    expect(drained.map((event) => event.type)).toContain('session.closed');
   });
 });

@@ -3,11 +3,11 @@
   --app-canvas: #f6f7f8;
   --app-surface: #ffffff;
   --app-graphite: #202124;
-  --app-muted: #667085;
-  --app-subtle: #98a2b3;
+  --app-muted: #5f6875;
+  --app-subtle: #667085;
   --app-line: #e2e4e8;
   --app-line-strong: #d0d5dd;
-  --app-accent: #d66b28;
+  --app-accent: #b84e16;
   --app-accent-soft: #fff1e8;
   --focus-control: var(--app-accent);
   --app-sidebar: #f0f1f2;
@@ -21,7 +21,7 @@
   --surface-soft: var(--app-canvas);
   --surface-raised: #fbfbfc;
   --blue: var(--app-accent);
-  --blue-dark: #b84e16;
+  --blue-dark: #9f3f0f;
   --blue-soft: var(--app-accent-soft);
   --green: #178357;
   --green-soft: #eaf7f0;
@@ -179,7 +179,7 @@ textarea {
 
 .main-nav a {
   display: flex;
-  min-height: 38px;
+  min-height: 44px;
   align-items: center;
   gap: 10px;
   padding: 0 10px;
@@ -270,7 +270,7 @@ textarea {
 .command-trigger {
   display: flex;
   min-width: 220px;
-  height: 34px;
+  height: 44px;
   align-items: center;
   gap: 8px;
   padding: 0 8px 0 10px;
@@ -302,6 +302,14 @@ textarea {
 
 .connection-pill {
   display: inline-flex;
+}
+
+.rt-Badge[data-accent-color='orange'] {
+  color: #9f3f0f;
+}
+
+.status-badge.rt-Badge {
+  color: var(--accent-12);
 }
 
 .mobile-menu {
@@ -338,6 +346,142 @@ textarea {
   margin: 7px 0 0;
   color: var(--app-muted);
   line-height: 1.65;
+}
+
+.setup-guide {
+  padding: 18px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.setup-guide-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 2px 2px 16px;
+}
+
+.setup-guide-heading h3,
+.setup-guide-heading p {
+  margin: 0;
+}
+
+.setup-guide-heading h3 {
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.setup-guide-heading p {
+  margin-top: 5px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.setup-progress {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 650;
+  background: var(--app-canvas);
+  border-radius: 999px;
+}
+
+.setup-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.setup-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  min-height: 68px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  color: var(--app-graphite);
+  background: var(--app-canvas);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.setup-step:hover {
+  background: #f1f2f4;
+  border-color: var(--app-line-strong);
+}
+
+.setup-step.current {
+  background: var(--app-accent-soft);
+  border-color: #f0c3a7;
+}
+
+.setup-step[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.setup-step-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--app-muted);
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+}
+
+.setup-step.complete .setup-step-icon {
+  color: var(--green);
+  background: var(--green-soft);
+  border-color: transparent;
+}
+
+.setup-step.current .setup-step-icon {
+  color: var(--app-accent);
+  border-color: #f0c3a7;
+}
+
+.setup-step > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.setup-step strong {
+  font-size: 12px;
+  font-weight: 670;
+}
+
+.setup-step small {
+  overflow: hidden;
+  color: var(--app-muted);
+  font-size: 10px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setup-step-state {
+  grid-column: 2;
+  color: var(--app-subtle);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.setup-step.current .setup-step-state {
+  color: #934516;
 }
 
 .state-panel,
@@ -388,9 +532,14 @@ textarea {
   margin: 0;
 }
 
+.empty-state h3 {
+  color: var(--app-graphite);
+}
+
 .empty-state p {
   max-width: 480px;
   margin-top: 5px;
+  color: var(--app-muted);
 }
 
 .empty-state.compact {
@@ -418,6 +567,14 @@ textarea {
   color: #934516;
   font-size: 11px;
   font-weight: 650;
+}
+
+.empty-state-link:focus-visible,
+.setup-step:focus-visible,
+.command-result:focus-visible,
+.command-trigger:focus-visible {
+  outline: 2px solid var(--focus-control);
+  outline-offset: 2px;
 }
 
 .empty-state-link:hover {
@@ -522,8 +679,8 @@ textarea {
 
   .mobile-menu {
     display: inline-flex !important;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     margin-left: -8px;
   }
 
@@ -567,6 +724,10 @@ textarea {
   .page-body {
     padding: 22px 20px 42px;
   }
+
+  .setup-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 620px) {
@@ -584,9 +745,9 @@ textarea {
   }
 
   .command-trigger {
-    min-width: 40px;
-    width: 40px;
-    height: 40px;
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
     justify-content: center;
     padding: 0;
   }
@@ -613,6 +774,28 @@ textarea {
 
   .page-intro > :last-child:not(:first-child) {
     width: 100%;
+  }
+
+  .setup-guide {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .setup-guide-heading {
+    gap: 12px;
+    padding-bottom: 14px;
+  }
+
+  .setup-guide-heading p {
+    max-width: 240px;
+  }
+
+  .setup-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-step {
+    min-height: 64px;
   }
 
   .command-dialog {

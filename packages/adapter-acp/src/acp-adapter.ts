@@ -52,17 +52,23 @@ interface AcpRuntime {
 export interface AcpAdapterOptions {
   launcher?: AcpProcessLauncher;
   now?: () => Date;
+  /** session/close is best effort; transport shutdown remains authoritative. */
+  sessionCloseGraceMs?: number;
 }
+
+const DEFAULT_SESSION_CLOSE_GRACE_MS = 250;
 
 export class AcpAdapter implements AgentRuntimeAdapter {
   readonly kind = 'ACP_STDIO';
   private readonly launcher: AcpProcessLauncher;
   private readonly now: () => Date;
+  private readonly sessionCloseGraceMs: number;
   private readonly capabilityCache = new Map<string, AgentCapabilities>();
 
   constructor(options: AcpAdapterOptions = {}) {
     this.launcher = options.launcher ?? new HostAcpProcessLauncher();
     this.now = options.now ?? (() => new Date());
+    this.sessionCloseGraceMs = options.sessionCloseGraceMs ?? DEFAULT_SESSION_CLOSE_GRACE_MS;
   }
 
   async preflight(profile: AgentProfile): Promise<PreflightReport> {
@@ -72,7 +78,11 @@ export class AcpAdapter implements AgentRuntimeAdapter {
     let runtime: AcpRuntime | undefined;
     try {
       runtime = await this.open(profile, cwd);
-      const capabilities = mapAcpCapabilities(runtime.initialize.agentCapabilities, profile.config);
+      const activeRuntime = runtime;
+      const capabilities = mapAcpCapabilities(
+        activeRuntime.initialize.agentCapabilities,
+        profile.config,
+      );
       this.capabilityCache.set(profile.id, capabilities);
       const checks: PreflightReport['checks'] = [
         { id: 'process', label: 'ACP adapter 进程', status: 'PASS', message: '已启动' },
@@ -80,12 +90,12 @@ export class AcpAdapter implements AgentRuntimeAdapter {
           id: 'initialize',
           label: 'ACP initialize',
           status: 'PASS',
-          message: `协议版本 ${runtime.initialize.protocolVersion}`,
+          message: `协议版本 ${activeRuntime.initialize.protocolVersion}`,
         },
       ];
 
       if (profile.config.preflightSession === true) {
-        const response = await runtime.agent.request(AGENT_METHODS.session_new, {
+        const response = await activeRuntime.agent.request(AGENT_METHODS.session_new, {
           cwd,
           mcpServers: [],
         });
@@ -95,10 +105,14 @@ export class AcpAdapter implements AgentRuntimeAdapter {
           status: 'PASS',
           message: '已创建测试 Session',
         });
-        if (runtime.initialize.agentCapabilities?.sessionCapabilities?.close) {
-          await runtime.agent.request(AGENT_METHODS.session_close, {
-            sessionId: response.sessionId,
-          });
+        if (activeRuntime.initialize.agentCapabilities?.sessionCapabilities?.close) {
+          await requestWithGrace(
+            () =>
+              activeRuntime.agent.request(AGENT_METHODS.session_close, {
+                sessionId: response.sessionId,
+              }),
+            this.sessionCloseGraceMs,
+          );
         }
       } else {
         checks.push({
@@ -112,8 +126,8 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       return {
         status: 'READY',
         checkedAt,
-        ...(runtime.initialize.agentInfo?.version
-          ? { detectedVersion: runtime.initialize.agentInfo.version }
+        ...(activeRuntime.initialize.agentInfo?.version
+          ? { detectedVersion: activeRuntime.initialize.agentInfo.version }
           : {}),
         checks,
       };
@@ -150,7 +164,12 @@ export class AcpAdapter implements AgentRuntimeAdapter {
 
   async createSession(input: CreateAgentSessionInput): Promise<AgentSessionHandle> {
     const runtime = await this.open(input.profile, input.cwd);
-    const handle = new AcpSessionHandle(input.sessionId, runtime, this.now);
+    const handle = new AcpSessionHandle(
+      input.sessionId,
+      runtime,
+      this.now,
+      this.sessionCloseGraceMs,
+    );
     runtime.route.handle = handle;
     try {
       const response = await runtime.agent.request(AGENT_METHODS.session_new, {
@@ -195,7 +214,12 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       throw new AcpAdapterError('CAPABILITY_UNSUPPORTED', 'Agent 不支持 session/resume');
     }
 
-    const handle = new AcpSessionHandle(input.sessionId, runtime, this.now);
+    const handle = new AcpSessionHandle(
+      input.sessionId,
+      runtime,
+      this.now,
+      this.sessionCloseGraceMs,
+    );
     runtime.route.handle = handle;
     const request = {
       sessionId: input.externalSessionId,
@@ -234,7 +258,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       const initialize = await connection.agent.request(AGENT_METHODS.initialize, {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: { plan: {} },
-        clientInfo: { name: 'agenthub', title: 'AgentHub', version: '0.3.0' },
+        clientInfo: { name: 'agenthub', title: 'AgentHub', version: '0.5.0' },
       });
       if (initialize.protocolVersion !== PROTOCOL_VERSION) {
         throw new AcpAdapterError(
@@ -245,8 +269,14 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       return { process: launched, connection, agent: connection.agent, initialize, route };
     } catch (error) {
       connection.close(error);
-      const result = await launched.cancel();
+      let result: Awaited<ReturnType<LaunchedAcpProcess['cancel']>> | undefined;
+      try {
+        result = await launched.cancel();
+      } catch {
+        // Preserve the initialize/protocol error when process observation also fails.
+      }
       if (
+        result &&
         /scope upgrade pending approval|authentication required|not logged in|unauthorized/i.test(
           result.stderr,
         )
@@ -274,11 +304,13 @@ class AcpSessionHandle implements AgentSessionHandle {
   private activeRunId: string | undefined;
   private messageText = '';
   private closed = false;
+  private closePromise: Promise<void> | undefined;
 
   constructor(
     private readonly agentHubSessionId: string,
     private readonly runtime: AcpRuntime,
     private readonly now: () => Date,
+    private readonly sessionCloseGraceMs: number,
   ) {
     void runtime.process.wait().then(
       (result) => {
@@ -382,6 +414,7 @@ class AcpSessionHandle implements AgentSessionHandle {
   }
 
   async cancel(runId?: string): Promise<void> {
+    if (this.closed) throw new AcpAdapterError('SESSION_CLOSED', 'Session 已关闭');
     if (!this.activeRunId || (runId && runId !== this.activeRunId)) {
       throw new AcpAdapterError('RUN_NOT_ACTIVE', '没有可取消的 Run');
     }
@@ -394,25 +427,41 @@ class AcpSessionHandle implements AgentSessionHandle {
     });
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return;
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
     this.closed = true;
+    this.closePromise = this.performClose();
+    return this.closePromise;
+  }
+
+  private async performClose(): Promise<void> {
     for (const pending of this.approvals.values()) {
       pending.resolve({ outcome: { outcome: 'cancelled' } });
     }
     this.approvals.clear();
-    const sessionId = this.sessionId;
-    if (sessionId && this.capabilities?.sessionCapabilities?.close) {
+    try {
+      const sessionId = this.sessionId;
+      if (sessionId && this.capabilities?.sessionCapabilities?.close) {
+        await requestWithGrace(
+          () => this.runtime.agent.request(AGENT_METHODS.session_close, { sessionId }),
+          this.sessionCloseGraceMs,
+        );
+      }
+    } finally {
+      this.emit('session.closed', {});
       try {
-        await this.runtime.agent.request(AGENT_METHODS.session_close, { sessionId });
+        this.runtime.connection.close();
       } catch {
-        // Connection shutdown below remains authoritative.
+        // Transport shutdown is best effort; process cancellation remains authoritative.
+      }
+      try {
+        await this.runtime.process.cancel();
+      } catch {
+        // A process termination timeout is reported by the supervisor; the queue still closes.
+      } finally {
+        this.queue.close();
       }
     }
-    this.emit('session.closed', {});
-    this.runtime.connection.close();
-    await this.runtime.process.cancel();
-    this.queue.close();
   }
 
   onPermission(requestId: string, request: RequestPermissionRequest) {
@@ -528,8 +577,34 @@ export function mapAcpCapabilities(
 }
 
 async function closeRuntime(runtime: AcpRuntime): Promise<void> {
-  runtime.connection.close();
-  await runtime.process.cancel();
+  try {
+    runtime.connection.close();
+  } finally {
+    try {
+      await runtime.process.cancel();
+    } catch {
+      // Preserve the original ACP operation error while still attempting cleanup.
+    }
+  }
+}
+
+async function requestWithGrace<T>(
+  request: () => Promise<T>,
+  graceMs: number,
+): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | number | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve()
+        .then(request)
+        .catch(() => undefined),
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(resolve, graceMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function safeErrorMessage(error: unknown): string {

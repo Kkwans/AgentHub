@@ -6,8 +6,8 @@ interface RecentRunRepository<T> {
   listRecent(limit?: number): Promise<T[]>;
 }
 
-interface PendingApprovalRepository<T> {
-  listPending(): Promise<T[]>;
+interface AttentionApprovalRepository<T> {
+  listAttention(): Promise<T[]>;
 }
 
 interface SessionSummary {
@@ -47,7 +47,7 @@ export class DashboardService<
     private readonly sessions: ListRepository<TSession>,
     private readonly tasks: ListRepository<TTask>,
     private readonly runs: RecentRunRepository<TRun>,
-    private readonly approvals: PendingApprovalRepository<TApproval>,
+    private readonly approvals: AttentionApprovalRepository<TApproval>,
     private readonly agents: ListRepository<TAgent>,
   ) {}
 
@@ -56,7 +56,7 @@ export class DashboardService<
       this.sessions.list(),
       this.tasks.list(),
       this.runs.listRecent(12),
-      this.approvals.listPending(),
+      this.approvals.listAttention(),
       this.agents.list(),
     ]);
     return {
