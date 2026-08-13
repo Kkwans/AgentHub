@@ -75,4 +75,4 @@ v0.5 以普通用户真实旅程为唯一完成标准，详细合同见
 | V5.3   | Git、Task Review/Rework 与 PromptOS 可发现绑定    | 已完成 |
 | V5.4   | URL 状态、移动端、键盘、焦点、错误状态与 CSS 收敛 | 已完成 |
 | V5.5   | 真实后端 Playwright、live 与 TX5Pro 全旅程        | 已完成 |
-| V5.6   | Compose 发布、文档、GitHub 与 CI 终态             | 进行中 |
+| V5.6   | Compose 发布、文档、GitHub 与 CI 终态             | 已完成 |

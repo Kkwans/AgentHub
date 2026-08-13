@@ -1,6 +1,6 @@
 # 实施进度
 
-最后更新：2026-08-11
+最后更新：2026-08-13
 
 ## v0.5 当前 Goal：可用性闭环
 
@@ -41,8 +41,13 @@
   `docs/qa/tx5pro/2026-08-11-v05-closure/`。
 - 实机验收发现并修复移动 Git drawer 内容收缩、Monaco 外部 CDN/CSP、DiffEditor 模型清理和
   Git commit 成功回执提前消失。最终隔离 Server、临时目录与 SSH tunnel 均已回收。
-- V5.6 进行中：执行全量 release gate、v0.5 Compose 备份与升级、正式 LAN 验收、GitHub 推送
-  和 CI 终态确认。
+- V5.6 已完成：全量 release gate、v0.5 Compose 备份与升级、正式 NAS health/容器验收、GitHub
+  推送和 CI 成功终态均已完成。正式容器当前为 `agenthub:0.5.0-nas.1`、`running/healthy`，
+  回滚备份见 `docs/qa/nas/2026-08-13-v05-deployment/`；本次没有执行 `compose down`，也没有
+  删除镜像、卷、用户数据或既有 Agent 容器。
+- CI run `31666597711` 的 `pnpm test` 已通过 37 个文件（165 passed、7 skipped）；此前同一
+  commit 的 CI 发现 `react-resizable-panels` 测试环境竞态，已由 `483bd3a` 固定统一
+  `ResizeObserver` setup 后重新通过完整 CI。
 
 ## v0.4 当前 Goal：品牌、概览与性能收口
 

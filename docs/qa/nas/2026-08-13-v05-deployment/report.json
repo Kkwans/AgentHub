@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-13T04:09:18Z",
+  "finishedAt": "2026-08-13T04:25:00Z",
+  "result": "PASS",
+  "repository": {
+    "commit": "483bd3a",
+    "imageRevision": "9ca6fb2",
+    "remote": "https://github.com/Kkwans/AgentHub.git",
+    "branch": "main"
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.5.0-nas.1",
+    "oldImage": "agenthub:0.3.0-nas.6",
+    "containerId": "c06c6eb1df7a18665d3448f5e4021b2bd990e7fc076f2e09320bf2264232e0a8",
+    "oldContainerId": "11f6b8d1aee01d5f2542f779047a059147cc406eb9aa186670095eeb01cb9442",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "composeDownUsed": false
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260813T040918Z-pre-v05",
+    "composeSha256": "184e868fc6c6948fb190330d3d761b04eed5a276b8d703919495c77791ae5096",
+    "envSha256": "974e16b70f94cefd0eb0c88bcc448d13d4eebc61cd15ec54f5b70df2c62ea89e",
+    "dataWorktreesSha256": "2e99cb86532491af632dbce91bdbfaddf679d3794bc904cb4485d22a151d84de",
+    "scope": ["compose", "env", "pglite-data", "worktrees", "container-state"]
+  },
+  "agentContainersUnchanged": true,
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.5.0",
+    "database": "pglite",
+    "web": true
+  },
+  "gates": {
+    "formatCheck": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "vitest": { "filesPassed": 37, "filesSkipped": 3, "testsPassed": 165, "testsSkipped": 7 },
+    "fixturePlaywright": "24/24 PASS",
+    "realBackendPlaywright": "3/3 PASS",
+    "live": "7/7 PASS",
+    "tx5pro": "31/31 PASS",
+    "githubActions": { "runId": 31666597711, "status": "success" }
+  },
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}
