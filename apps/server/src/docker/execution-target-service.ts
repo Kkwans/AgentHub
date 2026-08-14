@@ -4,6 +4,7 @@ import type { AgentHubDatabase, ExecutionTargetRepository } from '@agenthub/db';
 
 import { AppError } from '../errors.js';
 import type { DockerControlService, DockerTarget } from './docker-control.js';
+import type { DockerEngineContainerInspect } from '../discovery/docker-engine-client.js';
 
 export interface RegisterExecutionTargetInput {
   name: string;
@@ -64,6 +65,39 @@ export class ExecutionTargetService {
       os: input.os,
       arch: input.arch,
       status: state.running ? 'READY' : 'STOPPED',
+      containerName: input.containerName,
+      expectedContainerId: input.expectedContainerId,
+      startPolicy: input.startPolicy,
+      workspaceMappingsJson: input.workspaceMappings ?? [],
+      lastSeenAt: new Date(),
+    });
+  }
+
+  /** Register a freshly inspected Docker candidate without invoking a second CLI inspect. */
+  async registerDiscovered(
+    input: RegisterExecutionTargetInput,
+    inspected: DockerEngineContainerInspect,
+  ) {
+    if (input.kind !== 'DOCKER_CONTAINER') {
+      return this.register(input);
+    }
+    if (
+      !input.containerName ||
+      !input.expectedContainerId ||
+      !input.startPolicy ||
+      inspected.id !== input.expectedContainerId ||
+      inspected.name !== input.containerName
+    ) {
+      throw new AppError(409, 'CONTAINER_REPLACED', '容器身份已变化，请重新扫描');
+    }
+    return this.repository.create({
+      id: randomUUID(),
+      name: input.name,
+      kind: input.kind,
+      hostname: input.hostname,
+      os: input.os,
+      arch: input.arch,
+      status: inspected.state.running ? 'READY' : 'STOPPED',
       containerName: input.containerName,
       expectedContainerId: input.expectedContainerId,
       startPolicy: input.startPolicy,

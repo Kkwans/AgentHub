@@ -11,6 +11,7 @@ const addSchema = z.object({
   targetId: z.string().uuid(),
   rootPath: z.string().min(1).max(4_096),
 });
+const preflightPathSchema = z.object({ rootPath: z.string().min(1).max(4_096) });
 const updateSchema = z
   .object({
     name: z.string().trim().min(1).max(160).optional(),
@@ -44,6 +45,22 @@ export function createProjectRouter(service: ProjectService): Router {
       next(error);
     }
   });
+
+  router.post(
+    '/preflight-path',
+    validate({ body: preflightPathSchema }),
+    async (request, response, next) => {
+      try {
+        const { rootPath } = preflightPathSchema.parse(request.body);
+        response.json({
+          data: await service.preflightPath(rootPath),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get(
     '/:id/files/content',

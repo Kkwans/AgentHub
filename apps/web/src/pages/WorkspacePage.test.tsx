@@ -250,7 +250,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
         { status: 409, headers: { 'content-type': 'application/json' } },
       ),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent('Approval 已被其他操作拒绝');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '这个权限请求已经被其他操作处理，请刷新查看最新状态。',
+    );
 
     fireEvent.click(screen.getByRole('button', { name: '重试此选项' }));
     await waitFor(() => expect(attempts).toBe(2));

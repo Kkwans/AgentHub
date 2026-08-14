@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
   ArrowRight,
+  AdvancedSection,
   Braces,
   Button,
   Check,
   GitCompareArrows,
+  FormDialog,
+  FormTextArea,
+  FormTextField,
   Layers3,
   Link2,
   Plus,
   ScanSearch,
+  SelectField,
   Tag,
   Tabs,
 } from '@agenthub/ui';
@@ -33,8 +38,25 @@ import {
 } from '../lib/api';
 import '../lib/monaco';
 import '../styles/v3-promptos.css';
+import {
+  labelAgentStatus,
+  labelPromptBindingSlot,
+  labelPromptBindingTarget,
+  labelPromptKind,
+  labelPromptSelector,
+  labelPromptType,
+  labelTaskStatus,
+} from '../presentation/domain-labels';
 
 type PromptTab = 'versions' | 'labels' | 'diff' | 'bindings' | 'playground' | 'context' | 'skills';
+
+function createPromptKey(name: string): string {
+  const normalized = name
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized ? `prompt/${normalized}` : `prompt/${Date.now()}`;
+}
 
 const tabs: Array<{ id: PromptTab; label: string }> = [
   { id: 'versions', label: '版本' },
@@ -50,6 +72,9 @@ export function PromptOsPage() {
   const client = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
+  const [promptKind, setPromptKind] = useState('TASK');
+  const [promptType, setPromptType] = useState('TEXT');
+  const [promptProjectId, setPromptProjectId] = useState('');
   const prompts = useQuery({
     queryKey: ['prompts'],
     queryFn: () => api.get<PromptRecord[]>('/prompts'),
@@ -109,81 +134,111 @@ export function PromptOsPage() {
         }
       />
       {createOpen && (
-        <form
-          className="management-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const values = Object.fromEntries(new FormData(event.currentTarget));
-            createPrompt.mutate({
-              key: String(values.key),
-              name: String(values.name),
-              kind: String(values.kind),
-              type: String(values.type),
-              ...(values.projectId ? { projectId: String(values.projectId) } : {}),
-              ...(values.description ? { description: String(values.description) } : {}),
-            });
-          }}
+        <FormDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          title="创建 Prompt"
+          description="先创建稳定身份，再通过“创建新版本”追加内容；历史版本不会被覆盖。"
+          size="medium"
+          footer={
+            <>
+              <Button
+                type="button"
+                color="gray"
+                variant="soft"
+                onClick={() => setCreateOpen(false)}
+              >
+                取消
+              </Button>
+              <Button
+                type="submit"
+                form="v06-create-prompt-form"
+                disabled={createPrompt.isPending}
+                loading={createPrompt.isPending}
+              >
+                创建 Prompt
+              </Button>
+            </>
+          }
         >
-          <div className="form-heading">
-            <div>
-              <span className="section-kicker">稳定标识</span>
-              <h3>创建 Prompt 资产</h3>
-            </div>
-            <p>稳定标识创建后，内容通过“创建新版本”追加；不会覆盖历史版本。</p>
-          </div>
-          <div className="form-grid">
-            <label>
-              key
-              <input required name="key" className="mono" placeholder="review/safe-change" />
-            </label>
-            <label>
-              名称
-              <input required name="name" placeholder="安全变更审阅" />
-            </label>
-            <label>
-              Kind
-              <select name="kind" defaultValue="TASK">
-                <option>SYSTEM</option>
-                <option>TASK</option>
-                <option>REVIEW</option>
-                <option>COMMIT</option>
-                <option>RULE</option>
-                <option>TEMPLATE</option>
-              </select>
-            </label>
-            <label>
-              Type
-              <select name="type" defaultValue="TEXT">
-                <option>TEXT</option>
-                <option>CHAT</option>
-              </select>
-            </label>
-            <label className="span-two">
-              Project 范围
-              <select name="projectId">
-                <option value="">全局</option>
-                {projects.data?.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="span-two">
-              说明
-              <input name="description" placeholder="说明用途和适用范围" />
-            </label>
-          </div>
-          <div className="form-footer">
-            <Button type="button" color="gray" variant="soft" onClick={() => setCreateOpen(false)}>
-              取消
-            </Button>
-            <Button disabled={createPrompt.isPending}>
-              {createPrompt.isPending ? '正在创建' : '创建 Prompt 标识'}
-            </Button>
-          </div>
-          {createPrompt.error && <span className="form-error">{createPrompt.error.message}</span>}
-        </form>
+          <form
+            id="v06-create-prompt-form"
+            className="v06-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = Object.fromEntries(new FormData(event.currentTarget));
+              const name = String(values.name).trim();
+              const explicitKey = String(values.key ?? '').trim();
+              createPrompt.mutate({
+                key: explicitKey || createPromptKey(name),
+                name,
+                kind: promptKind,
+                type: promptType,
+                ...(promptProjectId ? { projectId: promptProjectId } : {}),
+                ...(values.description ? { description: String(values.description) } : {}),
+              });
+            }}
+          >
+            <FormTextField
+              label="名称"
+              id="v06-prompt-name"
+              name="name"
+              required
+              placeholder="例如安全变更审阅"
+            />
+            <SelectField
+              label="用途"
+              id="v06-prompt-kind"
+              value={promptKind}
+              onValueChange={setPromptKind}
+              options={['SYSTEM', 'TASK', 'REVIEW', 'COMMIT', 'RULE', 'TEMPLATE'].map((value) => ({
+                value,
+                label: labelPromptKind(value),
+              }))}
+            />
+            <SelectField
+              label="内容格式"
+              id="v06-prompt-type"
+              value={promptType}
+              onValueChange={setPromptType}
+              options={['TEXT', 'CHAT'].map((value) => ({ value, label: labelPromptType(value) }))}
+            />
+            <SelectField
+              label="Project 范围"
+              id="v06-prompt-project"
+              value={promptProjectId || '__global__'}
+              options={[
+                { value: '__global__', label: '全局' },
+                ...(projects.data ?? []).map((project) => ({
+                  value: project.id,
+                  label: project.name,
+                })),
+              ]}
+              onValueChange={(value) => setPromptProjectId(value === '__global__' ? '' : value)}
+            />
+            <FormTextArea
+              label="说明"
+              id="v06-prompt-description"
+              name="description"
+              placeholder="说明用途和适用范围"
+            />
+            <AdvancedSection
+              title="稳定 key"
+              description="普通用户无需填写；留空时会根据名称自动生成。"
+            >
+              <FormTextField
+                label="key"
+                id="v06-prompt-key"
+                name="key"
+                className="mono"
+                placeholder="自动生成"
+              />
+            </AdvancedSection>
+            {createPrompt.error ? (
+              <span className="v06-form-error">{createPrompt.error.message}</span>
+            ) : null}
+          </form>
+        </FormDialog>
       )}
       <div className="promptos-layout">
         <aside className="prompt-list-panel">
@@ -214,7 +269,7 @@ export function PromptOsPage() {
                     <strong>{prompt.name}</strong>
                     <code>{prompt.key}</code>
                     <small>
-                      {prompt.kind} · {prompt.type}
+                      {labelPromptKind(prompt.kind)} · {labelPromptType(prompt.type)}
                     </small>
                   </div>
                   <ArrowRight size={14} />
@@ -281,7 +336,7 @@ function PromptDetail({
       <header className="prompt-detail-header">
         <div>
           <span className="section-kicker">
-            {prompt.data.kind} / {prompt.data.type}
+            {labelPromptKind(prompt.data.kind)} / {labelPromptType(prompt.data.type)}
           </span>
           <h2>{prompt.data.name}</h2>
           <code>{prompt.data.key}</code>
@@ -416,65 +471,254 @@ function VersionForm({
   onSubmit: (body: Record<string, unknown>) => void;
 }) {
   const [parseError, setParseError] = useState<string>();
+  const [variableRows, setVariableRows] = useState<PromptVariableRow[]>([]);
+  const [rawVariables, setRawVariables] = useState(
+    '{\n  "type": "object",\n  "properties": {},\n  "required": []\n}',
+  );
+  const [variablesMode, setVariablesMode] = useState<'builder' | 'raw'>('builder');
   const initialContent =
     prompt.type === 'TEXT'
       ? ''
       : JSON.stringify({ messages: [{ role: 'system', content: '' }] }, null, 2);
   return (
-    <form
-      className="version-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const values = Object.fromEntries(new FormData(event.currentTarget));
-        try {
-          setParseError(undefined);
-          onSubmit({
-            content:
-              prompt.type === 'TEXT'
-                ? { text: String(values.content) }
-                : parseJsonObject(String(values.content), 'CHAT content'),
-            variables: parseJsonObject(String(values.variables), '变量 schema'),
-            changelog: String(values.changelog || ''),
-          });
-        } catch (parseError) {
-          setParseError(parseError instanceof Error ? parseError.message : 'JSON 解析失败');
-        }
+    <FormDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel();
       }}
+      title="创建新版本"
+      description="版本创建后不可覆盖或删除，latest 会自动指向这次创建的版本。"
+      size="large"
     >
-      <div className="editor-label">
-        <strong>{prompt.type} content</strong>
-        <span>
-          {prompt.type === 'TEXT' ? '使用 {{ variable }} 插值' : '输入包含 messages 的 JSON'}
-        </span>
-      </div>
-      <textarea name="content" required defaultValue={initialContent} rows={9} className="mono" />
-      <div className="version-form-side">
-        <label>
-          变量 JSON Schema
-          <textarea
-            name="variables"
-            className="mono"
-            rows={7}
-            defaultValue={'{\n  "type": "object",\n  "properties": {},\n  "required": []\n}'}
+      <form
+        className="version-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const values = Object.fromEntries(new FormData(event.currentTarget));
+          try {
+            setParseError(undefined);
+            onSubmit({
+              content:
+                prompt.type === 'TEXT'
+                  ? { text: String(values.content) }
+                  : parseJsonObject(String(values.content), 'CHAT content'),
+              variables:
+                variablesMode === 'raw'
+                  ? parseJsonObject(rawVariables, '变量 schema')
+                  : buildVariableSchema(variableRows),
+              changelog: String(values.changelog || ''),
+            });
+          } catch (parseError) {
+            setParseError(parseError instanceof Error ? parseError.message : 'JSON 解析失败');
+          }
+        }}
+      >
+        <div className="editor-label">
+          <strong>{labelPromptType(prompt.type)}内容</strong>
+          <span>
+            {prompt.type === 'TEXT' ? '使用 {{ variable }} 插值' : '输入包含 messages 的 JSON'}
+          </span>
+        </div>
+        <textarea name="content" required defaultValue={initialContent} rows={9} className="mono" />
+        <div className="version-form-side">
+          <PromptVariableEditor
+            rows={variableRows}
+            mode={variablesMode}
+            rawValue={rawVariables}
+            onModeChange={setVariablesMode}
+            onRowsChange={setVariableRows}
+            onRawChange={setRawVariables}
           />
-        </label>
-        <label>
-          变更说明
-          <input name="changelog" placeholder="说明本次变化" />
-        </label>
+          <label>
+            变更说明
+            <input name="changelog" placeholder="说明本次变化" />
+          </label>
+        </div>
+        <div className="version-warning">
+          <Layers3 size={15} />
+          <span>此操作会创建新版本，历史内容不可修改。</span>
+        </div>
+        <div className="form-footer">
+          <Button type="button" color="gray" variant="soft" onClick={onCancel}>
+            取消
+          </Button>
+          <Button disabled={pending}>{pending ? '正在创建' : '创建新版本'}</Button>
+        </div>
+        {(parseError || error) && (
+          <span className="form-error">{parseError ?? error?.message}</span>
+        )}
+      </form>
+    </FormDialog>
+  );
+}
+
+type PromptVariableType = 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
+
+interface PromptVariableRow {
+  id: string;
+  name: string;
+  type: PromptVariableType;
+  required: boolean;
+  defaultValue: string;
+  description: string;
+}
+
+const promptVariableTypes: Array<{ value: PromptVariableType; label: string }> = [
+  { value: 'string', label: '文本' },
+  { value: 'number', label: '数字' },
+  { value: 'integer', label: '整数' },
+  { value: 'boolean', label: '布尔值' },
+  { value: 'object', label: '对象' },
+  { value: 'array', label: '列表' },
+];
+
+function buildVariableSchema(rows: PromptVariableRow[]): Record<string, unknown> {
+  const properties: Record<string, Record<string, unknown>> = {};
+  const required: string[] = [];
+  for (const row of rows) {
+    const name = row.name.trim();
+    if (!name) continue;
+    const property: Record<string, unknown> = { type: row.type };
+    if (row.description.trim()) property.description = row.description.trim();
+    if (row.defaultValue.trim()) property.default = row.defaultValue;
+    properties[name] = property;
+    if (row.required) required.push(name);
+  }
+  return { type: 'object', properties, required };
+}
+
+function PromptVariableEditor({
+  rows,
+  mode,
+  rawValue,
+  onModeChange,
+  onRowsChange,
+  onRawChange,
+}: {
+  rows: PromptVariableRow[];
+  mode: 'builder' | 'raw';
+  rawValue: string;
+  onModeChange: (mode: 'builder' | 'raw') => void;
+  onRowsChange: (rows: PromptVariableRow[]) => void;
+  onRawChange: (value: string) => void;
+}) {
+  const updateRow = (id: string, patch: Partial<PromptVariableRow>) =>
+    onRowsChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  return (
+    <section className="prompt-variable-editor" aria-labelledby="prompt-variable-editor-title">
+      <div className="prompt-variable-editor-heading">
+        <div>
+          <strong id="prompt-variable-editor-title">变量</strong>
+          <span>用结构化字段声明模板需要的变量，发送前会自动检查必填项。</span>
+        </div>
+        <div className="prompt-variable-mode" role="group" aria-label="变量编辑方式">
+          <button
+            type="button"
+            className={mode === 'builder' ? 'active' : ''}
+            onClick={() => onModeChange('builder')}
+          >
+            字段编辑
+          </button>
+          <button
+            type="button"
+            className={mode === 'raw' ? 'active' : ''}
+            onClick={() => onModeChange('raw')}
+          >
+            Raw JSON
+          </button>
+        </div>
       </div>
-      <div className="version-warning">
-        <Layers3 size={15} />
-        <span>此操作会创建新版本，历史内容不可修改。</span>
-      </div>
-      <div className="form-footer">
-        <Button type="button" color="gray" variant="soft" onClick={onCancel}>
-          取消
-        </Button>
-        <Button disabled={pending}>{pending ? '正在创建' : '创建新版本'}</Button>
-      </div>
-      {(parseError || error) && <span className="form-error">{parseError ?? error?.message}</span>}
-    </form>
+      {mode === 'raw' ? (
+        <FormTextArea
+          label="变量 JSON Schema"
+          id="prompt-variables-raw"
+          className="mono"
+          rows={8}
+          value={rawValue}
+          onChange={(event) => onRawChange(event.target.value)}
+          description="高级模式：必须是 object JSON Schema。"
+        />
+      ) : (
+        <div className="prompt-variable-rows">
+          {rows.map((row) => (
+            <div className="prompt-variable-row" key={row.id}>
+              <input
+                aria-label="变量名称"
+                placeholder="变量名称"
+                value={row.name}
+                onChange={(event) => updateRow(row.id, { name: event.target.value })}
+              />
+              <select
+                aria-label={`${row.name || '变量'}类型`}
+                value={row.type}
+                onChange={(event) =>
+                  updateRow(row.id, { type: event.target.value as PromptVariableType })
+                }
+              >
+                {promptVariableTypes.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                aria-label={`${row.name || '变量'}默认值`}
+                placeholder="默认值（可选）"
+                value={row.defaultValue}
+                onChange={(event) => updateRow(row.id, { defaultValue: event.target.value })}
+              />
+              <input
+                aria-label={`${row.name || '变量'}说明`}
+                placeholder="说明（可选）"
+                value={row.description}
+                onChange={(event) => updateRow(row.id, { description: event.target.value })}
+              />
+              <label className="prompt-variable-required">
+                <input
+                  type="checkbox"
+                  checked={row.required}
+                  onChange={(event) => updateRow(row.id, { required: event.target.checked })}
+                />
+                必填
+              </label>
+              <Button
+                type="button"
+                size="1"
+                variant="ghost"
+                color="gray"
+                onClick={() => onRowsChange(rows.filter((item) => item.id !== row.id))}
+              >
+                删除
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            size="2"
+            variant="soft"
+            color="gray"
+            onClick={() =>
+              onRowsChange([
+                ...rows,
+                {
+                  id: `variable-${Date.now()}-${rows.length}`,
+                  name: '',
+                  type: 'string',
+                  required: false,
+                  defaultValue: '',
+                  description: '',
+                },
+              ])
+            }
+          >
+            <Plus size={14} /> 添加变量
+          </Button>
+          {!rows.length ? (
+            <span className="prompt-variable-empty">暂无变量，直接创建也可以。</span>
+          ) : null}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -488,11 +732,18 @@ function LabelsTab({
   labels: PromptLabelRecord[];
 }) {
   const client = useQueryClient();
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [versionId, setVersionId] = useState(versions[0]?.id ?? '');
   const move = useMutation({
     mutationFn: ({ label, versionId }: { label: string; versionId: string }) =>
       api.put(`/prompts/${promptId}/labels/${encodeURIComponent(label)}`, { versionId }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['prompt-labels', promptId] }),
   });
+  useEffect(() => {
+    if (!versions.some((version) => version.id === versionId)) {
+      setVersionId(versions[0]?.id ?? '');
+    }
+  }, [versionId, versions]);
   return (
     <div className="prompt-section-stack">
       <div className="prompt-callout">
@@ -502,31 +753,70 @@ function LabelsTab({
           <span>latest 由系统维护；production 或自定义标签可快速回退到旧版本。</span>
         </div>
       </div>
-      <form
-        className="label-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const values = Object.fromEntries(new FormData(event.currentTarget));
-          move.mutate({ label: String(values.label), versionId: String(values.versionId) });
-        }}
+      <Button onClick={() => setMoveOpen(true)} disabled={!versions.length}>
+        <Tag size={14} /> 移动标签
+      </Button>
+      <FormDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        title="移动 Prompt 标签"
+        description="标签是可移动指针；保存后会立即指向选中的不可变版本。latest 由系统维护，不能手动移动。"
+        footer={
+          <>
+            <Button type="button" color="gray" variant="soft" onClick={() => setMoveOpen(false)}>
+              取消
+            </Button>
+            <Button
+              type="submit"
+              form="prompt-label-form"
+              disabled={move.isPending || !versions.length || !versionId}
+              loading={move.isPending}
+            >
+              移动标签
+            </Button>
+          </>
+        }
       >
-        <label>
-          标签
-          <input name="label" required placeholder="production" pattern="[A-Za-z0-9._-]+" />
-        </label>
-        <label>
-          目标版本
-          <select name="versionId" required>
-            {versions.map((version) => (
-              <option key={version.id} value={version.id}>
-                v{version.version} · {version.changelog || '无说明'}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button disabled={move.isPending}>移动标签</Button>
-      </form>
-      {move.error && <span className="form-error">{move.error.message}</span>}
+        <form
+          id="prompt-label-form"
+          className="v06-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const values = Object.fromEntries(new FormData(event.currentTarget));
+            move.mutate(
+              { label: String(values.label).trim(), versionId },
+              { onSuccess: () => setMoveOpen(false) },
+            );
+          }}
+        >
+          <FormTextField
+            label="标签"
+            id="prompt-label-name"
+            name="label"
+            required
+            pattern="[A-Za-z0-9._-]+"
+            placeholder="production"
+            description="使用英文、数字、点、下划线或短横线。"
+          />
+          <SelectField
+            label="目标版本"
+            id="prompt-label-version"
+            value={versionId || '__none__'}
+            onValueChange={(value) => setVersionId(value === '__none__' ? '' : value)}
+            options={
+              versions.length
+                ? versions.map((version) => ({
+                    value: version.id,
+                    label: `v${version.version}`,
+                    description: version.changelog || '无说明',
+                  }))
+                : [{ value: '__none__', label: '暂无版本', disabled: true }]
+            }
+            required
+          />
+          {move.error ? <span className="v06-form-error">{move.error.message}</span> : null}
+        </form>
+      </FormDialog>
       <div className="label-list">
         {labels.map((label) => (
           <div key={label.label}>
@@ -534,7 +824,6 @@ function LabelsTab({
               <Tag size={13} /> {label.label}
             </span>
             <strong>v{label.version}</strong>
-            <code>{label.versionId}</code>
             <small>{label.label === 'latest' ? '系统维护' : formatTime(label.updatedAt)}</small>
           </div>
         ))}
@@ -630,9 +919,14 @@ function BindingsTab({
   agents: AgentRecord[];
 }) {
   const client = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
   const [targetType, setTargetType] = useState<'PROJECT' | 'AGENT' | 'TASK'>('PROJECT');
   const [selector, setSelector] = useState<'LABEL' | 'VERSION'>('LABEL');
   const [scopeProjectId, setScopeProjectId] = useState(projects[0]?.id ?? '');
+  const [targetId, setTargetId] = useState('');
+  const [slot, setSlot] = useState('SYSTEM');
+  const [selectorValue, setSelectorValue] = useState(labels[0]?.label ?? '');
+  const [priority, setPriority] = useState('0');
   useEffect(() => {
     if (!scopeProjectId && projects[0]) setScopeProjectId(projects[0].id);
   }, [projects, scopeProjectId]);
@@ -646,7 +940,10 @@ function BindingsTab({
   });
   const create = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post('/prompt-bindings', body),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['prompt-bindings', prompt.id] }),
+    onSuccess: () => {
+      setCreateOpen(false);
+      void client.invalidateQueries({ queryKey: ['prompt-bindings', prompt.id] });
+    },
   });
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
@@ -654,16 +951,52 @@ function BindingsTab({
     onSuccess: () => void client.invalidateQueries({ queryKey: ['prompt-bindings', prompt.id] }),
   });
   const scopeProject = projects.find((project) => project.id === scopeProjectId);
-  const options =
+  const targetOptions =
     targetType === 'PROJECT'
-      ? projects.map((project) => ({ id: project.id, label: project.name }))
+      ? projects.map((project) => ({ value: project.id, label: project.name }))
       : targetType === 'AGENT'
         ? agents
             .filter((agent) => agent.targetId === scopeProject?.targetId)
-            .map((agent) => ({ id: agent.id, label: `${agent.name} · ${agent.status}` }))
+            .map((agent) => ({
+              value: agent.id,
+              label: agent.name,
+              description: labelAgentStatus(agent.status),
+            }))
         : (tasks.data ?? [])
             .filter((task) => task.projectId === scopeProjectId)
-            .map((task) => ({ id: task.id, label: `${task.title} · ${task.status}` }));
+            .map((task) => ({
+              value: task.id,
+              label: task.title,
+              description: labelTaskStatus(task.status),
+            }));
+  const selectorOptions =
+    selector === 'LABEL'
+      ? labels.map((label) => ({
+          value: label.label,
+          label: label.label,
+          description: `当前指向 v${label.version}`,
+        }))
+      : versions.map((version) => ({
+          value: version.id,
+          label: `v${version.version}`,
+          description: version.changelog || '未填写变更说明',
+        }));
+  const targetSelectOptions = targetOptions.length
+    ? targetOptions
+    : [{ value: '__none__', label: '暂无可选目标', disabled: true }];
+  const selectorSelectOptions = selectorOptions.length
+    ? selectorOptions
+    : [{ value: '__none__', label: '暂无版本或标签', disabled: true }];
+  useEffect(() => {
+    if (!targetOptions.some((option) => option.value === targetId)) {
+      setTargetId(targetOptions[0]?.value ?? '');
+    }
+  }, [targetId, targetOptions]);
+  useEffect(() => {
+    if (!selectorOptions.some((option) => option.value === selectorValue)) {
+      setSelectorValue(selectorOptions[0]?.value ?? '');
+    }
+  }, [selectorOptions, selectorValue]);
   const bindingTargetLabel = (binding: PromptBindingRecord) => {
     if (binding.targetType === 'PROJECT') {
       return projects.find((project) => project.id === binding.targetId)?.name;
@@ -675,106 +1008,129 @@ function BindingsTab({
   };
   return (
     <div className="prompt-section-stack">
-      <form
-        className="binding-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const values = Object.fromEntries(new FormData(event.currentTarget));
-          create.mutate({
-            targetType,
-            targetId: String(values.targetId),
-            slot: String(values.slot),
-            promptId: prompt.id,
-            selectorType: selector,
-            ...(selector === 'LABEL'
-              ? { label: String(values.selectorValue) }
-              : { versionId: String(values.selectorValue) }),
-            priority: Number(values.priority),
-          });
-        }}
-      >
-        <label>
-          目标类型
-          <select
-            value={targetType}
-            onChange={(event) => setTargetType(event.target.value as typeof targetType)}
-          >
-            <option>PROJECT</option>
-            <option>AGENT</option>
-            <option>TASK</option>
-          </select>
-        </label>
-        {targetType !== 'PROJECT' && (
-          <label>
-            Project 范围
-            <select
-              value={scopeProjectId}
-              onChange={(event) => setScopeProjectId(event.target.value)}
-            >
-              <option value="">请选择 Project</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label>
-          {targetType === 'PROJECT' ? 'Project' : targetType === 'AGENT' ? 'Agent' : 'Task'}
-          <select required name="targetId" disabled={targetType !== 'PROJECT' && !scopeProjectId}>
-            <option value="">请选择</option>
-            {options.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Slot
-          <select name="slot">
-            <option>SYSTEM</option>
-            <option>TASK_PRIMER</option>
-            <option>REVIEW</option>
-            <option>COMMIT</option>
-            <option>RULES</option>
-          </select>
-        </label>
-        <label>
-          选择方式
-          <select
-            value={selector}
-            onChange={(event) => setSelector(event.target.value as typeof selector)}
-          >
-            <option>LABEL</option>
-            <option>VERSION</option>
-          </select>
-        </label>
-        <label>
-          {selector === 'LABEL' ? '标签' : '版本'}
-          <select required name="selectorValue">
-            {selector === 'LABEL'
-              ? labels.map((label) => (
-                  <option key={label.label} value={label.label}>
-                    {label.label} → v{label.version}
-                  </option>
-                ))
-              : versions.map((version) => (
-                  <option key={version.id} value={version.id}>
-                    v{version.version}
-                  </option>
-                ))}
-          </select>
-        </label>
-        <label>
-          priority
-          <input name="priority" type="number" defaultValue="0" />
-        </label>
-        <Button disabled={create.isPending}>
-          <Link2 size={14} /> 创建绑定
+      <div className="prompt-actionbar">
+        <div>
+          <strong>绑定生效范围</strong>
+          <span>按 Project → Agent → Task 和优先级解析 Prompt 来源。</span>
+        </div>
+        <Button onClick={() => setCreateOpen(true)} disabled={!projects.length}>
+          <Plus size={14} /> 新建绑定
         </Button>
-      </form>
+      </div>
+      <FormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        title="新建 Prompt 绑定"
+        description="选择绑定目标和版本来源；保存后会参与后续上下文解析。"
+        size="medium"
+        footer={
+          <>
+            <Button type="button" color="gray" variant="soft" onClick={() => setCreateOpen(false)}>
+              取消
+            </Button>
+            <Button
+              type="submit"
+              form="prompt-binding-form"
+              disabled={create.isPending || !targetId || !selectorValue}
+              loading={create.isPending}
+            >
+              创建绑定
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="prompt-binding-form"
+          className="v06-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            create.mutate({
+              targetType,
+              targetId,
+              slot,
+              promptId: prompt.id,
+              selectorType: selector,
+              ...(selector === 'LABEL' ? { label: selectorValue } : { versionId: selectorValue }),
+              priority: Number(priority) || 0,
+            });
+          }}
+        >
+          <SelectField
+            label="绑定目标"
+            id="prompt-binding-target-type"
+            value={targetType}
+            onValueChange={(value) => {
+              setTargetType(value as typeof targetType);
+              setTargetId('');
+            }}
+            options={(['PROJECT', 'AGENT', 'TASK'] as const).map((value) => ({
+              value,
+              label: labelPromptBindingTarget(value),
+            }))}
+          />
+          {targetType !== 'PROJECT' ? (
+            <SelectField
+              label="Project 范围"
+              id="prompt-binding-project-scope"
+              value={scopeProjectId || '__none__'}
+              onValueChange={(value) => setScopeProjectId(value === '__none__' ? '' : value)}
+              options={projects.map((project) => ({ value: project.id, label: project.name }))}
+              disabled={!projects.length}
+            />
+          ) : null}
+          <SelectField
+            label={labelPromptBindingTarget(targetType)}
+            id="prompt-binding-target"
+            value={targetId || '__none__'}
+            onValueChange={(value) => setTargetId(value === '__none__' ? '' : value)}
+            options={targetSelectOptions}
+            disabled={!targetOptions.length}
+            required
+            {...(!targetOptions.length ? { description: '当前范围没有可选目标。' } : {})}
+          />
+          <SelectField
+            label="提示位"
+            id="prompt-binding-slot"
+            value={slot}
+            onValueChange={setSlot}
+            options={['SYSTEM', 'TASK_PRIMER', 'REVIEW', 'COMMIT', 'RULES'].map((value) => ({
+              value,
+              label: labelPromptBindingSlot(value),
+            }))}
+          />
+          <SelectField
+            label="选择方式"
+            id="prompt-binding-selector"
+            value={selector}
+            onValueChange={(value) => {
+              setSelector(value as typeof selector);
+              setSelectorValue('');
+            }}
+            options={(['LABEL', 'VERSION'] as const).map((value) => ({
+              value,
+              label: labelPromptSelector(value),
+            }))}
+          />
+          <SelectField
+            label={selector === 'LABEL' ? '标签' : '固定版本'}
+            id="prompt-binding-selector-value"
+            value={selectorValue || '__none__'}
+            onValueChange={(value) => setSelectorValue(value === '__none__' ? '' : value)}
+            options={selectorSelectOptions}
+            disabled={!selectorOptions.length}
+            required
+            {...(!selectorOptions.length ? { description: '请先创建版本或标签。' } : {})}
+          />
+          <FormTextField
+            label="优先级"
+            type="number"
+            value={priority}
+            onChange={(event) => setPriority(event.target.value)}
+            description="数字越大，解析时优先级越高。"
+          />
+          {create.error ? <span className="v06-form-error">{create.error.message}</span> : null}
+        </form>
+      </FormDialog>
       {create.error && <span className="form-error">{create.error.message}</span>}
       {bindings.isLoading ? (
         <LoadingState />
@@ -789,9 +1145,9 @@ function BindingsTab({
         <div className="binding-list">
           {bindings.data.map((binding) => (
             <div key={binding.id}>
-              <span className="binding-scope">{binding.targetType}</span>
+              <span className="binding-scope">{labelPromptBindingTarget(binding.targetType)}</span>
               <strong>{bindingTargetLabel(binding) ?? '目标已删除或不在当前范围'}</strong>
-              <strong>{binding.slot}</strong>
+              <strong>{labelPromptBindingSlot(binding.slot)}</strong>
               <span>
                 {binding.selectorType === 'LABEL'
                   ? `${binding.label}`
@@ -918,6 +1274,25 @@ function PlaygroundTab({
 function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: AgentRecord[] }) {
   const [variables, setVariables] = useState('{}');
   const [parseError, setParseError] = useState<string>();
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
+  const [agentId, setAgentId] = useState('');
+  const [taskId, setTaskId] = useState('');
+  useEffect(() => {
+    if (!projectId && projects[0]) setProjectId(projects[0].id);
+  }, [projectId, projects]);
+  const project = projects.find((item) => item.id === projectId);
+  const projectAgents = agents.filter((agent) => agent.targetId === project?.targetId);
+  const tasks = useQuery({
+    queryKey: ['prompt-context-tasks', projectId],
+    queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${encodeURIComponent(projectId)}`),
+    enabled: Boolean(projectId),
+  });
+  useEffect(() => {
+    if (!projectAgents.some((agent) => agent.id === agentId)) setAgentId('');
+  }, [agentId, projectAgents]);
+  useEffect(() => {
+    if (!tasks.data?.some((task) => task.id === taskId)) setTaskId('');
+  }, [taskId, tasks.data]);
   const resolve = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       api.post<ResolvedPromptContextRecord>('/prompt-context/resolve', body),
@@ -928,13 +1303,12 @@ function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: A
         className="context-form"
         onSubmit={(event) => {
           event.preventDefault();
-          const values = Object.fromEntries(new FormData(event.currentTarget));
           try {
             setParseError(undefined);
             resolve.mutate({
-              projectId: String(values.projectId),
-              ...(values.agentId ? { agentId: String(values.agentId) } : {}),
-              ...(values.taskId ? { taskId: String(values.taskId) } : {}),
+              projectId,
+              ...(agentId ? { agentId } : {}),
+              ...(taskId ? { taskId } : {}),
               variables: parseJsonObject(variables, '变量'),
             });
           } catch (error) {
@@ -942,33 +1316,47 @@ function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: A
           }
         }}
       >
-        <label>
-          Project
-          <select name="projectId" required>
-            <option value="">请选择</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Agent
-          <select name="agentId">
-            <option value="">不指定</option>
-            {agents.map((agent) => (
-              <option key={agent.id} value={agent.id}>
-                {agent.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Task 标识
-          <input name="taskId" className="mono" placeholder="可选 UUID" />
-        </label>
-        <Button disabled={resolve.isPending}>解析上下文</Button>
+        <SelectField
+          label="Project"
+          id="prompt-context-project"
+          value={projectId || '__none__'}
+          onValueChange={(value) => {
+            setProjectId(value === '__none__' ? '' : value);
+            setAgentId('');
+            setTaskId('');
+          }}
+          options={
+            projects.length
+              ? projects.map((item) => ({ value: item.id, label: item.name }))
+              : [{ value: '__none__', label: '暂无 Project', disabled: true }]
+          }
+          required
+          disabled={!projects.length}
+        />
+        <SelectField
+          label="Agent"
+          id="prompt-context-agent"
+          value={agentId || '__none__'}
+          onValueChange={(value) => setAgentId(value === '__none__' ? '' : value)}
+          options={[
+            { value: '__none__', label: '不指定' },
+            ...projectAgents.map((agent) => ({ value: agent.id, label: agent.name })),
+          ]}
+          disabled={!projectAgents.length}
+        />
+        <SelectField
+          label="Task"
+          id="prompt-context-task"
+          value={taskId || '__none__'}
+          onValueChange={(value) => setTaskId(value === '__none__' ? '' : value)}
+          options={[
+            { value: '__none__', label: '不指定' },
+            ...(tasks.data ?? []).map((task) => ({ value: task.id, label: task.title })),
+          ]}
+          description="通过任务名称选择，不需要复制内部 ID。"
+          disabled={!tasks.data?.length}
+        />
+        <Button disabled={resolve.isPending || !projectId}>解析上下文</Button>
       </form>
       <label className="json-field">
         变量 JSON
@@ -997,8 +1385,8 @@ function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: A
             {resolve.data.items.map((item) => (
               <article key={item.bindingId}>
                 <div>
-                  <span>{item.targetType}</span>
-                  <strong>{item.slot}</strong>
+                  <span>{labelPromptBindingTarget(item.targetType)}</span>
+                  <strong>{labelPromptBindingSlot(item.slot)}</strong>
                   <code>
                     {item.promptKey}@{item.label ?? `v${item.version}`}
                   </code>
@@ -1028,7 +1416,10 @@ function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: A
 function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: AgentRecord[] }) {
   const client = useQueryClient();
   const [projectId, setProjectId] = useState(projects[0]?.id ?? '');
+  const [bindOpen, setBindOpen] = useState(false);
   const [targetType, setTargetType] = useState<'PROJECT' | 'AGENT' | 'TASK'>('PROJECT');
+  const [skillId, setSkillId] = useState('');
+  const [targetId, setTargetId] = useState('');
   useEffect(() => {
     if (!projectId && projects[0]) setProjectId(projects[0].id);
   }, [projectId, projects]);
@@ -1051,37 +1442,61 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
   });
   const bind = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post('/skill-bindings', body),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['skill-bindings'] }),
+    onSuccess: () => {
+      setBindOpen(false);
+      void client.invalidateQueries({ queryKey: ['skill-bindings'] });
+    },
   });
   const scopeProject = projects.find((project) => project.id === projectId);
   const targetOptions =
     targetType === 'PROJECT'
       ? scopeProject
-        ? [{ id: scopeProject.id, label: scopeProject.name }]
+        ? [{ value: scopeProject.id, label: scopeProject.name }]
         : []
       : targetType === 'AGENT'
         ? agents
             .filter((agent) => agent.targetId === scopeProject?.targetId)
-            .map((agent) => ({ id: agent.id, label: `${agent.name} · ${agent.status}` }))
+            .map((agent) => ({
+              value: agent.id,
+              label: `${agent.name} · ${labelAgentStatus(agent.status)}`,
+            }))
         : (tasks.data ?? [])
             .filter((task) => task.projectId === projectId)
-            .map((task) => ({ id: task.id, label: `${task.title} · ${task.status}` }));
+            .map((task) => ({
+              value: task.id,
+              label: `${task.title} · ${labelTaskStatus(task.status)}`,
+            }));
+  useEffect(() => {
+    if (!skillId && skills.data?.[0]) setSkillId(skills.data[0].id);
+  }, [skillId, skills.data]);
+  useEffect(() => {
+    if (!targetOptions.some((option) => option.value === targetId)) {
+      setTargetId(targetOptions[0]?.value ?? '');
+    }
+  }, [targetId, targetOptions]);
   return (
     <div className="prompt-section-stack">
       <div className="skills-toolbar">
-        <label>
-          Project
-          <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
-            <option value="">请选择</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label="Project"
+          id="skill-project"
+          value={projectId || '__none__'}
+          onValueChange={(value) => {
+            setProjectId(value === '__none__' ? '' : value);
+            setTargetId('');
+          }}
+          options={
+            projects.length
+              ? projects.map((project) => ({ value: project.id, label: project.name }))
+              : [{ value: '__none__', label: '暂无 Project', disabled: true }]
+          }
+          disabled={!projects.length}
+        />
         <Button onClick={() => scan.mutate()} disabled={!projectId || scan.isPending}>
           <ScanSearch size={14} /> {scan.isPending ? '正在扫描' : '扫描 Skill metadata'}
+        </Button>
+        <Button onClick={() => setBindOpen(true)} disabled={!skills.data?.length} variant="soft">
+          <Link2 size={14} /> 新建绑定
         </Button>
         <p>
           只读取 `.agents/skills` 与 `.codex/skills`；不安装 Marketplace，不复制
@@ -1089,56 +1504,77 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
         </p>
       </div>
       {scan.error && <span className="form-error">{scan.error.message}</span>}
-      {!!skills.data?.length && (
+      <FormDialog
+        open={bindOpen}
+        onOpenChange={setBindOpen}
+        title="新建 Skill 绑定"
+        description="将已扫描的 Skill metadata 绑定到 Project、Agent 或 Task。不会安装 Skill。"
+        footer={
+          <>
+            <Button type="button" color="gray" variant="soft" onClick={() => setBindOpen(false)}>
+              取消
+            </Button>
+            <Button
+              type="submit"
+              form="skill-binding-form"
+              disabled={bind.isPending || !skillId || !targetId}
+              loading={bind.isPending}
+            >
+              创建绑定
+            </Button>
+          </>
+        }
+      >
         <form
-          className="skill-binding-form"
+          id="skill-binding-form"
+          className="v06-form"
           onSubmit={(event) => {
             event.preventDefault();
-            const values = Object.fromEntries(new FormData(event.currentTarget));
-            bind.mutate({
-              skillId: String(values.skillId),
-              targetType,
-              targetId: String(values.targetId),
-            });
+            bind.mutate({ skillId, targetType, targetId });
           }}
         >
-          <label>
-            Skill
-            <select name="skillId" required>
-              {skills.data.map((skill) => (
-                <option key={skill.id} value={skill.id}>
-                  {skill.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            目标类型
-            <select
-              value={targetType}
-              onChange={(event) => setTargetType(event.target.value as typeof targetType)}
-            >
-              <option>PROJECT</option>
-              <option>AGENT</option>
-              <option>TASK</option>
-            </select>
-          </label>
-          <label>
-            {targetType === 'PROJECT' ? 'Project' : targetType === 'AGENT' ? 'Agent' : 'Task'}
-            <select name="targetId" required disabled={!projectId}>
-              <option value="">请选择</option>
-              {targetOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button disabled={bind.isPending}>
-            <Link2 size={14} /> 创建 Skill 绑定
-          </Button>
+          <SelectField
+            label="Skill"
+            id="skill-binding-skill"
+            value={skillId || '__none__'}
+            onValueChange={(value) => setSkillId(value === '__none__' ? '' : value)}
+            options={
+              skills.data?.length
+                ? skills.data.map((skill) => ({ value: skill.id, label: skill.name }))
+                : [{ value: '__none__', label: '暂无 Skill', disabled: true }]
+            }
+            required
+          />
+          <SelectField
+            label="绑定目标"
+            id="skill-binding-target-type"
+            value={targetType}
+            onValueChange={(value) => {
+              setTargetType(value as typeof targetType);
+              setTargetId('');
+            }}
+            options={(['PROJECT', 'AGENT', 'TASK'] as const).map((value) => ({
+              value,
+              label: labelPromptBindingTarget(value),
+            }))}
+          />
+          <SelectField
+            label={labelPromptBindingTarget(targetType)}
+            id="skill-binding-target"
+            value={targetId || '__none__'}
+            onValueChange={(value) => setTargetId(value === '__none__' ? '' : value)}
+            options={
+              targetOptions.length
+                ? targetOptions
+                : [{ value: '__none__', label: '暂无可选目标', disabled: true }]
+            }
+            disabled={!targetOptions.length}
+            required
+            {...(!targetOptions.length ? { description: '当前范围没有可选目标。' } : {})}
+          />
+          {bind.error ? <span className="v06-form-error">{bind.error.message}</span> : null}
         </form>
-      )}
+      </FormDialog>
       {bind.error && <span className="form-error">{bind.error.message}</span>}
       {skills.isLoading ? (
         <LoadingState />

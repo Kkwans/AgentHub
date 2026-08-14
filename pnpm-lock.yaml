@@ -144,6 +144,9 @@ importers:
       '@agenthub/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@hookform/resolvers':
+        specifier: 5.2.2
+        version: 5.2.2(react-hook-form@7.62.0(react@19.2.8))
       '@monaco-editor/react':
         specifier: 4.7.0
         version: 4.7.0(monaco-editor@0.56.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -168,6 +171,9 @@ importers:
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      react-hook-form:
+        specifier: 7.62.0
+        version: 7.62.0(react@19.2.8)
       react-resizable-panels:
         specifier: 4.12.2
         version: 4.12.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -266,6 +272,19 @@ importers:
       '@radix-ui/themes':
         specifier: 3.3.0
         version: 3.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 19.2.4
+        version: 19.2.4(@types/react@19.2.18)
 
 packages:
   '@adobe/css-tools@4.5.0':
@@ -1323,6 +1342,14 @@ packages:
     engines: { node: '>=20' }
     peerDependencies:
       hono: ^4
+
+  '@hookform/resolvers@5.2.2':
+    resolution:
+      {
+        integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==,
+      }
+    peerDependencies:
+      react-hook-form: ^7.55.0
 
   '@humanfs/core@0.19.2':
     resolution:
@@ -2564,6 +2591,12 @@ packages:
     resolution:
       {
         integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==,
+      }
+
+  '@standard-schema/utils@0.3.0':
+    resolution:
+      {
+        integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==,
       }
 
   '@tailwindcss/node@4.3.3':
@@ -5065,6 +5098,15 @@ packages:
     peerDependencies:
       react: ^19.2.8
 
+  react-hook-form@7.62.0:
+    resolution:
+      {
+        integrity: sha512-7KWFejc98xqG/F4bAxpL41NB3o1nnvQO1RWZT3TqRZYL8RryQETGfEdVnJN2fy1crCiBLLjkRBVK05j24FxJGA==,
+      }
+    engines: { node: '>=18.0.0' }
+    peerDependencies:
+      react: ^16.8.0 || ^17 || ^18 || ^19
+
   react-is@17.0.2:
     resolution:
       {
@@ -6278,6 +6320,11 @@ snapshots:
     dependencies:
       hono: 4.13.1
 
+  '@hookform/resolvers@5.2.2(react-hook-form@7.62.0(react@19.2.8))':
+    dependencies:
+      '@standard-schema/utils': 0.3.0
+      react-hook-form: 7.62.0(react@19.2.8)
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -7200,6 +7247,8 @@ snapshots:
   '@stablelib/base64@1.0.1': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@standard-schema/utils@0.3.0': {}
 
   '@tailwindcss/node@4.3.3':
     dependencies:
@@ -8687,6 +8736,10 @@ snapshots:
     dependencies:
       react: 19.2.8
       scheduler: 0.27.0
+
+  react-hook-form@7.62.0(react@19.2.8):
+    dependencies:
+      react: 19.2.8
 
   react-is@17.0.2: {}
 

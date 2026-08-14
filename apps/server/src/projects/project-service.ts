@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { access, lstat, readdir, readFile, realpath, stat } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
 
 import { runProcess } from '@agenthub/agent-core';
 import type { AgentHubDatabase, ExecutionTargetRepository, ProjectRepository } from '@agenthub/db';
@@ -72,6 +72,7 @@ export class ProjectService {
     private readonly projects: ProjectRepository<AgentHubDatabase>,
     private readonly targets: ExecutionTargetRepository<AgentHubDatabase>,
     private readonly remote?: RemoteProjectOperations,
+    private readonly workspaceRoots: string[] = [],
   ) {}
 
   list() {
@@ -136,6 +137,23 @@ export class ProjectService {
       canonicalRoot = await realpath(rootPath);
     } catch {
       return failedPreflight(rootPath, checks, 'Project 路径不存在或无法 canonicalize');
+    }
+    if (this.workspaceRoots.length) {
+      const allowedRoots = await Promise.all(
+        this.workspaceRoots.map((root) => realpath(root).catch(() => undefined)),
+      );
+      if (
+        !allowedRoots.some(
+          (root): root is string => root !== undefined && isWithin(root, canonicalRoot),
+        )
+      ) {
+        return failedPreflight(
+          rootPath,
+          checks,
+          'Project 路径不在 AgentHub 已授权的工作区范围内',
+          canonicalRoot,
+        );
+      }
     }
     const rootStat = await stat(canonicalRoot);
     if (!rootStat.isDirectory()) {
@@ -359,6 +377,14 @@ async function canAccess(path: string, mode: number): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function isWithin(root: string, candidate: string): boolean {
+  const pathFromRoot = relative(root, candidate);
+  return (
+    pathFromRoot === '' ||
+    (!isAbsolute(pathFromRoot) && pathFromRoot !== '..' && !pathFromRoot.startsWith(`..${sep}`))
+  );
 }
 
 function failedPreflight(

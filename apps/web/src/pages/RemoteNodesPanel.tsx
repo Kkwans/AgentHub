@@ -5,10 +5,14 @@ import {
   Copy,
   Flex,
   Fingerprint,
+  FormDialog,
+  FormTextArea,
+  FormTextField,
   KeyRound,
   Network,
   RefreshCw,
   Server,
+  SelectField,
   ShieldAlert,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +30,7 @@ import {
   type RemoteNodeRecord,
   type RemoteNodeRegistration,
 } from '../lib/api';
+import { labelDiscoveryStatus } from '../presentation/domain-labels';
 import { realtime } from '../lib/realtime';
 
 export function RemoteNodesPanel() {
@@ -35,6 +40,7 @@ export function RemoteNodesPanel() {
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
   const [revokeCandidate, setRevokeCandidate] = useState<RemoteNodeRecord>();
   const [copied, setCopied] = useState<'token' | 'command'>();
+  const [expiresInMinutes, setExpiresInMinutes] = useState('15');
   const nodes = useQuery({
     queryKey: ['remote-nodes'],
     queryFn: () => api.get<RemoteNodeRecord[]>('/remote-nodes'),
@@ -49,6 +55,7 @@ export function RemoteNodesPanel() {
       api.post<RemoteNodeRegistration>('/remote-nodes/registration-tokens', body),
     onSuccess: (created) => {
       setRegistration(created);
+      setRegistrationOpen(false);
       setCopied(undefined);
     },
   });
@@ -100,15 +107,47 @@ export function RemoteNodesPanel() {
           onClick={() => {
             setRegistrationOpen((open) => !open);
             setRegistration(undefined);
+            setExpiresInMinutes('15');
           }}
         >
           <KeyRound size={15} /> 生成一次性注册码
         </Button>
       </div>
 
-      {registrationOpen && (
+      <FormDialog
+        open={registrationOpen}
+        onOpenChange={(open) => {
+          setRegistrationOpen(open);
+          if (!open) {
+            createRegistration.reset();
+          }
+        }}
+        title="授权一台新 Node"
+        description="每行一个绝对路径。只授权 Agent 实际需要访问的 Project 根目录。注册码只显示一次。"
+        footer={
+          <>
+            <Button
+              type="button"
+              color="gray"
+              variant="soft"
+              onClick={() => setRegistrationOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              type="submit"
+              form="remote-node-registration-form"
+              disabled={createRegistration.isPending}
+              loading={createRegistration.isPending}
+            >
+              生成注册码
+            </Button>
+          </>
+        }
+      >
         <form
-          className="remote-node-registration"
+          id="remote-node-registration-form"
+          className="v06-form remote-node-dialog-form"
           onSubmit={(event) => {
             event.preventDefault();
             const values = new FormData(event.currentTarget);
@@ -119,50 +158,43 @@ export function RemoteNodesPanel() {
             createRegistration.mutate({
               name: String(values.get('name') ?? '').trim(),
               allowedRoots: [...new Set(allowedRoots)],
-              expiresInMinutes: Number(values.get('expiresInMinutes') ?? 15),
+              expiresInMinutes: Number(expiresInMinutes),
             });
           }}
         >
-          <div className="remote-node-form-copy">
-            <strong>授权一台新 Node</strong>
-            <span>每行一个绝对路径。请只授权 Agent 实际需要访问的 Project 根目录。</span>
-          </div>
-          <label>
-            Node 名称
-            <input required maxLength={120} name="name" placeholder="例如 TX5Pro 开发节点" />
-          </label>
-          <label>
-            有效期
-            <select defaultValue="15" name="expiresInMinutes">
-              <option value="5">5 分钟</option>
-              <option value="15">15 分钟</option>
-              <option value="60">1 小时</option>
-            </select>
-          </label>
-          <label className="remote-node-roots">
-            授权 roots
-            <textarea
-              required
-              name="allowedRoots"
-              placeholder={'/srv/projects/AgentHub\n/volume2/Project/example'}
-              rows={3}
-            />
-          </label>
-          <div className="form-footer remote-node-form-actions">
-            <Button
-              type="button"
-              color="gray"
-              variant="soft"
-              onClick={() => setRegistrationOpen(false)}
-            >
-              取消
-            </Button>
-            <Button disabled={createRegistration.isPending}>
-              {createRegistration.isPending ? '正在生成' : '生成注册码'}
-            </Button>
-          </div>
+          <FormTextField
+            label="Node 名称"
+            id="remote-node-name"
+            name="name"
+            required
+            maxLength={120}
+            placeholder="例如 TX5Pro 开发节点"
+          />
+          <SelectField
+            label="有效期"
+            id="remote-node-expiry"
+            value={expiresInMinutes}
+            options={[
+              { value: '5', label: '5 分钟' },
+              { value: '15', label: '15 分钟' },
+              { value: '60', label: '1 小时' },
+            ]}
+            onValueChange={setExpiresInMinutes}
+          />
+          <FormTextArea
+            label="授权 roots"
+            id="remote-node-roots"
+            name="allowedRoots"
+            required
+            placeholder={'/srv/projects/AgentHub\n/volume2/Project/example'}
+            rows={4}
+            description="仅允许浏览和执行这些根目录内的 Project。"
+          />
+          {createRegistration.error ? (
+            <p className="v06-form-error">{createRegistration.error.message}</p>
+          ) : null}
         </form>
-      )}
+      </FormDialog>
 
       {registration && (
         <div className="remote-node-secret" role="status">
@@ -250,7 +282,8 @@ export function RemoteNodesPanel() {
                     <span key={agent.key}>
                       <strong>{agent.name}</strong>
                       <small>
-                        {agent.adapterKind} · {agent.detectedVersion ?? agent.status}
+                        {agent.adapterKind} ·{' '}
+                        {agent.detectedVersion ?? labelDiscoveryStatus(agent.status)}
                       </small>
                       <StatusBadge status={agent.status} />
                     </span>

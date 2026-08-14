@@ -9,6 +9,7 @@ import '@agenthub/ui/styles.css';
 import './styles.css';
 import './styles/v3-foundation.css';
 import './styles/v3-controls.css';
+import './styles/v06-discovery.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

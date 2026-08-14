@@ -86,6 +86,7 @@ export class TerminalService {
       rows: input.rows ?? 32,
       cwd,
       env: sanitizedEnvironment(),
+      ...ownerIds(),
     });
     const record: TerminalRecord = {
       id,
@@ -194,9 +195,38 @@ async function validateShell(shell: string): Promise<void> {
 }
 
 function sanitizedEnvironment(): Record<string, string> {
+  const allow = new Set([
+    'COLORTERM',
+    'HOME',
+    'LANG',
+    'LOGNAME',
+    'PATH',
+    'PWD',
+    'SHELL',
+    'TERM',
+    'TERM_PROGRAM',
+    'TMPDIR',
+    'USER',
+  ]);
   return Object.fromEntries(
     Object.entries(process.env).filter(
-      (entry): entry is [string, string] => entry[1] !== undefined,
+      (entry): entry is [string, string] =>
+        entry[1] !== undefined && (allow.has(entry[0]) || entry[0].startsWith('LC_')),
     ),
   );
+}
+
+function ownerIds(): Pick<IPtyForkOptions, 'uid' | 'gid'> {
+  const uid = parseOwnerId(process.env.AGENTHUB_PROJECT_OWNER_UID);
+  const gid = parseOwnerId(process.env.AGENTHUB_PROJECT_OWNER_GID);
+  return {
+    ...(uid === undefined ? {} : { uid }),
+    ...(gid === undefined ? {} : { gid }),
+  };
+}
+
+function parseOwnerId(value: string | undefined): number | undefined {
+  if (!value || !/^\d+$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined;
 }

@@ -9,6 +9,7 @@ export { CheckIcon as Check } from '@phosphor-icons/react/Check';
 export { CheckCircleIcon as CheckCircle2 } from '@phosphor-icons/react/CheckCircle';
 export { CaretDownIcon as ChevronDown } from '@phosphor-icons/react/CaretDown';
 export { CaretRightIcon as ChevronRight } from '@phosphor-icons/react/CaretRight';
+export { CaretLeftIcon as ChevronLeft } from '@phosphor-icons/react/CaretLeft';
 export { StopCircleIcon as CircleStop } from '@phosphor-icons/react/StopCircle';
 export { ClipboardTextIcon as ClipboardCheck } from '@phosphor-icons/react/ClipboardText';
 export { CopyIcon as Copy } from '@phosphor-icons/react/Copy';
@@ -36,6 +37,8 @@ export { ListIcon as Menu } from '@phosphor-icons/react/List';
 export { ChatCircleIcon as MessageSquare } from '@phosphor-icons/react/ChatCircle';
 export { NetworkIcon as Network } from '@phosphor-icons/react/Network';
 export { PlusIcon as Plus } from '@phosphor-icons/react/Plus';
+export { PencilSimpleIcon as Pencil } from '@phosphor-icons/react/PencilSimple';
+export { ArchiveIcon as Archive } from '@phosphor-icons/react/Archive';
 export { PlayIcon as Play } from '@phosphor-icons/react/Play';
 export { ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react/ArrowsClockwise';
 export { ArrowCounterClockwiseIcon as RotateCcw } from '@phosphor-icons/react/ArrowCounterClockwise';
@@ -50,5 +53,7 @@ export { TerminalWindowIcon as SquareTerminal } from '@phosphor-icons/react/Term
 export { TagIcon as Tag } from '@phosphor-icons/react/Tag';
 export { WrenchIcon as Wrench } from '@phosphor-icons/react/Wrench';
 export { XIcon as X } from '@phosphor-icons/react/X';
+
+export * from './components/index.js';
 
 export const uiPackage = '@agenthub/ui';

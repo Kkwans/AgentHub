@@ -19,6 +19,12 @@ const preflightSchema = z.object({
   cwd: z.string().min(1).max(4_096),
   smokeSession: z.boolean().optional(),
 });
+const defaultsSchema = z
+  .object({
+    defaultModel: z.string().trim().max(160).nullable().optional(),
+    defaultMode: z.string().trim().max(80).nullable().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: '至少提供一个默认设置字段' });
 
 export function createAgentRouter(service: AgentService): Router {
   const router = Router();
@@ -62,6 +68,24 @@ export function createAgentRouter(service: AgentService): Router {
         const { id } = idParams.parse(request.params);
         const input = preflightSchema.parse(request.body);
         response.json({ data: await service.preflight(id, input), requestId: String(request.id) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.patch(
+    '/:id',
+    validate({ params: idParams, body: defaultsSchema }),
+    async (request, response, next) => {
+      try {
+        response.json({
+          data: await service.updateDefaults(
+            idParams.parse(request.params).id,
+            defaultsSchema.parse(request.body),
+          ),
+          requestId: String(request.id),
+        });
       } catch (error) {
         next(error);
       }

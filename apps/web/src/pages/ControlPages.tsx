@@ -9,12 +9,19 @@ import {
   ClipboardCheck,
   CubeIcon as Box,
   Dialog,
+  AdvancedSection,
+  FormDialog,
+  Field,
+  FormTextArea,
+  FormTextField,
+  SelectField,
   GitBranch,
   GitMerge,
   IconButton,
   KeyRound,
   Layers3,
   Plus,
+  Pencil,
   Play,
   RefreshCw,
   RotateCcw,
@@ -51,9 +58,17 @@ import {
 import { realtime } from '../lib/realtime';
 import type { AuthStatus } from '../components/AccessGate';
 import { PasswordField } from '../components/PasswordField';
+import { labelAgentKind } from '../presentation/domain-labels';
 import { RemoteNodesPanel } from './RemoteNodesPanel';
+import { AgentsDiscoveryPage, ProjectsDiscoveryPage } from './v06/DiscoveryPages';
 
-export function ProjectsPage() {
+// v0.6 replaces the manual registration flows with discovery-first pages. The legacy
+// implementations stay in this module temporarily for incremental migration of the other
+// control pages, but are no longer reachable from the application router.
+export const ProjectsPage = ProjectsDiscoveryPage;
+export const AgentsPage = AgentsDiscoveryPage;
+
+export function ProjectsPageLegacy() {
   const client = useQueryClient();
   const [adding, setAdding] = useState(false);
   const projects = useQuery({
@@ -194,7 +209,7 @@ export function ProjectsPage() {
   );
 }
 
-export function AgentsPage() {
+export function AgentsPageLegacy() {
   const client = useQueryClient();
   const [targetFormOpen, setTargetFormOpen] = useState(false);
   const [agentFormOpen, setAgentFormOpen] = useState(false);
@@ -790,14 +805,29 @@ export function SessionsPage() {
         }
       />
       {creating && (
-        <section className="session-create-panel" aria-labelledby="session-create-title">
-          <div className="session-create-heading">
-            <div>
-              <span className="section-kicker">新建 Session</span>
-              <h3 id="session-create-title">从可用 Agent 开始</h3>
-            </div>
-            <span>只展示当前 Project 可安全使用的执行环境。</span>
-          </div>
+        <FormDialog
+          open={creating}
+          onOpenChange={(open) => {
+            if (!open) closeCreate();
+          }}
+          title="新建 Session"
+          description="选择 Project 和已就绪的 Agent，其他运行参数会按能力自动填充。"
+          footer={
+            <>
+              <Button type="button" color="gray" variant="soft" onClick={closeCreate}>
+                取消
+              </Button>
+              <Button
+                type="submit"
+                form="v06-create-session-form"
+                disabled={createSession.isPending || !selectedAgentId}
+                loading={createSession.isPending}
+              >
+                创建并进入工作区
+              </Button>
+            </>
+          }
+        >
           {projects.isLoading || agents.isLoading || targets.isLoading ? (
             <LoadingState label="正在准备可用执行环境" />
           ) : projects.error ? (
@@ -838,6 +868,7 @@ export function SessionsPage() {
             />
           ) : (
             <form
+              id="v06-create-session-form"
               className="session-create-form"
               aria-describedby={createSession.error ? 'session-create-error' : undefined}
               onSubmit={(event) => {
@@ -853,75 +884,66 @@ export function SessionsPage() {
                 });
               }}
             >
-              <label>
-                Project
-                <select
-                  value={selectedProject!.id}
-                  onChange={(event) => openCreate(event.target.value)}
-                >
-                  {activeProjects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Agent
-                <select
-                  value={selectedAgentId}
-                  onChange={(event) => setSelectedAgentId(event.target.value)}
-                >
-                  {compatibleAgents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name} · {agent.agentKind}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Session 标题
-                <input
-                  required
-                  maxLength={240}
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                />
-              </label>
-              <label>
-                工作目录
-                <output className="session-readonly-field" aria-label="工作目录">
+              <SelectField
+                label="Project"
+                value={selectedProject!.id}
+                options={activeProjects.map((project) => ({
+                  value: project.id,
+                  label: project.name,
+                }))}
+                onValueChange={openCreate}
+              />
+              <SelectField
+                label="Agent"
+                value={selectedAgentId}
+                options={compatibleAgents.map((agent) => ({
+                  value: agent.id,
+                  label: agent.name,
+                  description: labelAgentKind(agent.agentKind),
+                }))}
+                onValueChange={setSelectedAgentId}
+              />
+              <FormTextField
+                label="Session 标题"
+                id="v06-session-title"
+                required
+                maxLength={240}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+              <AdvancedSection
+                title="运行参数"
+                description="默认值来自 Project 和 Agent 能力，通常不需要修改。"
+              >
+                <div className="session-readonly-field" aria-label="工作目录">
+                  <span>工作目录</span>
                   <code title={selectedProject!.realRootPath}>{selectedProject!.realRootPath}</code>
-                </output>
-              </label>
-              {hasModelCapability && (
-                <label>
-                  model
-                  <input value={model} onChange={(event) => setModel(event.target.value)} />
-                </label>
-              )}
-              {hasModeCapability && (
-                <label>
-                  mode
-                  <input value={mode} onChange={(event) => setMode(event.target.value)} />
-                </label>
-              )}
+                </div>
+                {hasModelCapability ? (
+                  <FormTextField
+                    label="model"
+                    id="v06-session-model"
+                    value={model}
+                    onChange={(event) => setModel(event.target.value)}
+                  />
+                ) : null}
+                {hasModeCapability ? (
+                  <FormTextField
+                    label="mode"
+                    id="v06-session-mode"
+                    value={mode}
+                    onChange={(event) => setMode(event.target.value)}
+                  />
+                ) : null}
+              </AdvancedSection>
               {createSession.error && (
                 <p id="session-create-error" className="form-error" role="alert">
                   {createSession.error.message}
                 </p>
               )}
-              <div className="session-create-actions">
-                <Button type="button" color="gray" variant="soft" onClick={closeCreate}>
-                  取消
-                </Button>
-                <Button type="submit" disabled={createSession.isPending || !selectedAgentId}>
-                  {createSession.isPending ? '正在创建' : '创建并进入工作区'}
-                </Button>
-              </div>
             </form>
           )}
-        </section>
+        </FormDialog>
       )}
       {sessions.isLoading ? (
         <LoadingState />
@@ -1046,6 +1068,9 @@ export function TasksPage() {
   const selectedTaskReviewId = searchParams.get('review') ?? '';
   const [goalFormOpen, setGoalFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<GoalRecord | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
+  const [selectedTaskGoalId, setSelectedTaskGoalId] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<Record<string, string>>({});
   const [reworkFeedback, setReworkFeedback] = useState('');
   const [commitMessage, setCommitMessage] = useState('');
@@ -1174,6 +1199,22 @@ export function TasksPage() {
       refresh();
     },
   });
+  const updateGoal = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+      api.patch<GoalRecord>(`/goals/${id}`, body),
+    onSuccess: () => {
+      setEditingGoal(null);
+      refresh();
+    },
+  });
+  const updateTask = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+      api.patch<TaskRecord>(`/tasks/${id}`, body),
+    onSuccess: () => {
+      setEditingTask(null);
+      refresh();
+    },
+  });
   const transition = useMutation({
     mutationFn: ({ id, status }: { id: string; status: TaskRecord['status'] }) =>
       api.post(`/tasks/${id}/transition`, { status }),
@@ -1292,88 +1333,295 @@ export function TasksPage() {
         </label>
         <div className="goal-strip">
           {(goals.data ?? []).map((goal) => (
-            <span key={goal.id}>
+            <span key={goal.id} className="goal-strip-item">
               <StatusBadge status={goal.status} />
               <strong>{goal.title}</strong>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={`编辑 Goal ${goal.title}`}
+                onClick={() => setEditingGoal(goal)}
+              >
+                <Pencil size={13} />
+              </button>
             </span>
           ))}
           {!goals.data?.length && <small>当前 Project 尚无 Goal</small>}
         </div>
       </div>
       {goalFormOpen && (
-        <form
-          className="inline-form task-create-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const values = Object.fromEntries(new FormData(event.currentTarget));
-            createGoal.mutate({
-              projectId: effectiveProjectId,
-              title: String(values.title),
-              ...(values.description ? { description: String(values.description) } : {}),
-              ...(values.successCriteria
-                ? { successCriteria: String(values.successCriteria) }
-                : {}),
-            });
-          }}
+        <FormDialog
+          open={goalFormOpen}
+          onOpenChange={setGoalFormOpen}
+          title="创建 Goal"
+          description="把一个可验证的结果交给后续 Task 追踪。"
+          footer={
+            <>
+              <Button
+                type="button"
+                color="gray"
+                variant="soft"
+                onClick={() => setGoalFormOpen(false)}
+              >
+                取消
+              </Button>
+              <Button
+                type="submit"
+                form="v06-create-goal-form"
+                disabled={!effectiveProjectId || createGoal.isPending}
+                loading={createGoal.isPending}
+              >
+                创建 Goal
+              </Button>
+            </>
+          }
         >
-          <label>
-            Goal 标题
-            <input required name="title" placeholder="例如发布 AgentHub v0.2" />
-          </label>
-          <label>
-            说明
-            <input name="description" placeholder="目标范围与背景" />
-          </label>
-          <label>
-            成功标准
-            <input name="successCriteria" placeholder="可验证的完成条件" />
-          </label>
-          <button className="button primary" disabled={!effectiveProjectId || createGoal.isPending}>
-            创建 Goal
-          </button>
-        </form>
+          <form
+            id="v06-create-goal-form"
+            className="v06-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = Object.fromEntries(new FormData(event.currentTarget));
+              createGoal.mutate({
+                projectId: effectiveProjectId,
+                title: String(values.title),
+                ...(values.description ? { description: String(values.description) } : {}),
+                ...(values.successCriteria
+                  ? { successCriteria: String(values.successCriteria) }
+                  : {}),
+              });
+            }}
+          >
+            <FormTextField
+              label="Goal 标题"
+              id="v06-goal-title"
+              name="title"
+              required
+              placeholder="例如发布 AgentHub v0.6"
+            />
+            <FormTextArea
+              label="说明"
+              id="v06-goal-description"
+              name="description"
+              placeholder="目标范围与背景"
+            />
+            <FormTextArea
+              label="成功标准"
+              id="v06-goal-success"
+              name="successCriteria"
+              placeholder="可验证的完成条件"
+            />
+          </form>
+        </FormDialog>
       )}
       {taskFormOpen && (
-        <form
-          className="inline-form task-create-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const values = Object.fromEntries(new FormData(event.currentTarget));
-            createTask.mutate({
-              projectId: effectiveProjectId,
-              title: String(values.title),
-              ...(values.goalId ? { goalId: String(values.goalId) } : {}),
-              ...(values.description ? { description: String(values.description) } : {}),
-              ...(values.acceptanceCriteria
-                ? { acceptanceCriteria: String(values.acceptanceCriteria) }
-                : {}),
-            });
-          }}
+        <FormDialog
+          open={taskFormOpen}
+          onOpenChange={setTaskFormOpen}
+          title="创建 Task"
+          description="为当前 Project 创建一个可执行、可审阅的工作项。"
+          footer={
+            <>
+              <Button
+                type="button"
+                color="gray"
+                variant="soft"
+                onClick={() => setTaskFormOpen(false)}
+              >
+                取消
+              </Button>
+              <Button
+                type="submit"
+                form="v06-create-task-form"
+                disabled={!effectiveProjectId || createTask.isPending}
+                loading={createTask.isPending}
+              >
+                创建 Task
+              </Button>
+            </>
+          }
         >
-          <label>
-            Task 标题
-            <input required name="title" placeholder="例如完成真实 Agent smoke" />
-          </label>
-          <label>
-            所属 Goal
-            <select name="goalId">
-              <option value="">不绑定 Goal</option>
-              {goals.data?.map((goal) => (
-                <option key={goal.id} value={goal.id}>
-                  {goal.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            任务与验收标准
-            <input name="description" placeholder="Agent 要完成的工作" />
-            <input name="acceptanceCriteria" placeholder="验收标准" />
-          </label>
-          <button className="button primary" disabled={!effectiveProjectId || createTask.isPending}>
-            创建 Task
-          </button>
-        </form>
+          <form
+            id="v06-create-task-form"
+            className="v06-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = Object.fromEntries(new FormData(event.currentTarget));
+              createTask.mutate({
+                projectId: effectiveProjectId,
+                title: String(values.title),
+                ...(values.goalId ? { goalId: String(values.goalId) } : {}),
+                ...(values.description ? { description: String(values.description) } : {}),
+                ...(values.acceptanceCriteria
+                  ? { acceptanceCriteria: String(values.acceptanceCriteria) }
+                  : {}),
+              });
+            }}
+          >
+            <FormTextField
+              label="Task 标题"
+              id="v06-task-title"
+              name="title"
+              required
+              placeholder="例如完成真实 Agent smoke"
+            />
+            <SelectField
+              label="所属 Goal"
+              id="v06-task-goal"
+              value={selectedTaskGoalId || '__none__'}
+              options={[
+                { value: '__none__', label: '不绑定 Goal' },
+                ...(goals.data ?? []).map((goal) => ({ value: goal.id, label: goal.title })),
+              ]}
+              onValueChange={(value) => setSelectedTaskGoalId(value === '__none__' ? '' : value)}
+            />
+            <input type="hidden" name="goalId" value={selectedTaskGoalId} readOnly />
+            <FormTextArea
+              label="任务描述"
+              id="v06-task-description"
+              name="description"
+              placeholder="Agent 要完成的工作"
+            />
+            <FormTextArea
+              label="验收标准"
+              id="v06-task-acceptance"
+              name="acceptanceCriteria"
+              placeholder="验收标准"
+            />
+          </form>
+        </FormDialog>
+      )}
+      {editingGoal && (
+        <FormDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingGoal(null);
+              updateGoal.reset();
+            }
+          }}
+          title="编辑 Goal"
+          description="修改目标说明和成功标准，不会改变已有 Task 记录。"
+          footer={
+            <>
+              <Button
+                type="button"
+                color="gray"
+                variant="soft"
+                onClick={() => setEditingGoal(null)}
+              >
+                取消
+              </Button>
+              <Button type="submit" form="v06-edit-goal-form" loading={updateGoal.isPending}>
+                保存修改
+              </Button>
+            </>
+          }
+        >
+          <form
+            id="v06-edit-goal-form"
+            className="v06-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = Object.fromEntries(new FormData(event.currentTarget));
+              updateGoal.mutate({
+                id: editingGoal.id,
+                body: {
+                  title: String(values.title),
+                  description: String(values.description || ''),
+                  successCriteria: String(values.successCriteria || ''),
+                },
+              });
+            }}
+          >
+            <FormTextField
+              label="Goal 标题"
+              id="v06-edit-goal-title"
+              name="title"
+              required
+              defaultValue={editingGoal.title}
+            />
+            <FormTextArea
+              label="说明"
+              id="v06-edit-goal-description"
+              name="description"
+              defaultValue={editingGoal.description ?? ''}
+            />
+            <FormTextArea
+              label="成功标准"
+              id="v06-edit-goal-success"
+              name="successCriteria"
+              defaultValue={editingGoal.successCriteria ?? ''}
+            />
+            {updateGoal.error ? <p className="form-error">{updateGoal.error.message}</p> : null}
+          </form>
+        </FormDialog>
+      )}
+      {editingTask && (
+        <FormDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingTask(null);
+              updateTask.reset();
+            }
+          }}
+          title="编辑 Task"
+          description="调整任务描述和验收标准；当前执行状态与历史 Run 不会被覆盖。"
+          footer={
+            <>
+              <Button
+                type="button"
+                color="gray"
+                variant="soft"
+                onClick={() => setEditingTask(null)}
+              >
+                取消
+              </Button>
+              <Button type="submit" form="v06-edit-task-form" loading={updateTask.isPending}>
+                保存修改
+              </Button>
+            </>
+          }
+        >
+          <form
+            id="v06-edit-task-form"
+            className="v06-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const values = Object.fromEntries(new FormData(event.currentTarget));
+              updateTask.mutate({
+                id: editingTask.id,
+                body: {
+                  title: String(values.title),
+                  description: String(values.description || ''),
+                  acceptanceCriteria: String(values.acceptanceCriteria || ''),
+                },
+              });
+            }}
+          >
+            <FormTextField
+              label="Task 标题"
+              id="v06-edit-task-title"
+              name="title"
+              required
+              defaultValue={editingTask.title}
+            />
+            <FormTextArea
+              label="任务描述"
+              id="v06-edit-task-description"
+              name="description"
+              defaultValue={editingTask.description ?? ''}
+            />
+            <FormTextArea
+              label="验收标准"
+              id="v06-edit-task-acceptance"
+              name="acceptanceCriteria"
+              defaultValue={editingTask.acceptanceCriteria ?? ''}
+            />
+            {updateTask.error ? <p className="form-error">{updateTask.error.message}</p> : null}
+          </form>
+        </FormDialog>
       )}
       {projects.isLoading || tasks.isLoading || worktrees.isLoading ? (
         <LoadingState label="正在加载任务看板" />
@@ -1454,6 +1702,13 @@ export function TasksPage() {
                           </label>
                         )}
                         <div className="task-card-actions">
+                          <button
+                            className="button ghost compact"
+                            onClick={() => setEditingTask(task)}
+                            aria-label={`编辑 Task ${task.title}`}
+                          >
+                            <Pencil size={13} /> 编辑
+                          </button>
                           {task.status === 'BACKLOG' && (
                             <button
                               className="button primary compact"
@@ -2098,6 +2353,9 @@ export function SettingsPage() {
   const client = useQueryClient();
   const [oneTimeToken, setOneTimeToken] = useState('');
   const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+  const [tokenName, setTokenName] = useState('');
   const auth = useQuery({
     queryKey: ['auth-status'],
     queryFn: () => api.get<AuthStatus>('/auth/status'),
@@ -2126,6 +2384,8 @@ export function SettingsPage() {
       api.post<ApiTokenRecord & { token: string }>('/auth/tokens', { name }),
     onSuccess: (created) => {
       setOneTimeToken(created.token);
+      setTokenDialogOpen(false);
+      setTokenName('');
       void client.invalidateQueries({ queryKey: ['api-tokens'] });
     },
   });
@@ -2138,6 +2398,7 @@ export function SettingsPage() {
       api.put<{ user: AuthStatus['user'] }>('/auth/account/password', body),
     onSuccess: () => {
       setPasswordMessage('密码已更新，其他浏览器登录已退出。');
+      setPasswordDialogOpen(false);
       void client.invalidateQueries({ queryKey: ['auth-status'] });
       realtime.reconnect();
     },
@@ -2181,8 +2442,8 @@ export function SettingsPage() {
                 </code>
                 <p>
                   {capability.data?.terminal.available
-                    ? '用户 PTY 可在 Workspace 中启用。'
-                    : 'Terminal 控件将隐藏，Agent core 不受影响。'}
+                    ? '当前版本只完成 Local Project Terminal 的能力诊断与安全边界；浏览器端 PTY 交互将在后续版本开放。'
+                    : '当前环境缺少可加载的 node-pty native binding，Terminal 交互已明确关闭；Agent core 不受影响。'}
                 </p>
               </div>
             )}
@@ -2202,41 +2463,85 @@ export function SettingsPage() {
               </div>
             ) : (
               <>
-                <form
-                  className="account-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    setPasswordMessage('');
-                    const values = new FormData(event.currentTarget);
-                    const currentPassword = String(values.get('currentPassword') ?? '');
-                    const newPassword = String(values.get('newPassword') ?? '');
-                    const confirmation = String(values.get('passwordConfirmation') ?? '');
-                    if (newPassword !== confirmation) {
-                      setPasswordMessage('两次输入的新密码不一致。');
-                      return;
+                <div className="account-actions">
+                  <Button onClick={() => setPasswordDialogOpen(true)}>修改密码</Button>
+                  <Button
+                    type="button"
+                    color="red"
+                    variant="soft"
+                    disabled={logout.isPending}
+                    onClick={() => logout.mutate()}
+                  >
+                    {logout.isPending ? '正在退出…' : '退出登录'}
+                  </Button>
+                </div>
+                <FormDialog
+                  open={passwordDialogOpen}
+                  onOpenChange={(open) => {
+                    setPasswordDialogOpen(open);
+                    if (!open) {
+                      setPasswordMessage('');
+                      changePassword.reset();
                     }
-                    const form = event.currentTarget;
-                    changePassword.mutate(
-                      { currentPassword, newPassword },
-                      { onSuccess: () => form.reset() },
-                    );
                   }}
+                  title="修改管理员密码"
+                  description="修改成功后，其他浏览器中的登录会话会立即失效。"
+                  footer={
+                    <>
+                      <Button
+                        type="button"
+                        color="gray"
+                        variant="soft"
+                        onClick={() => setPasswordDialogOpen(false)}
+                      >
+                        取消
+                      </Button>
+                      <Button
+                        type="submit"
+                        form="settings-password-form"
+                        disabled={changePassword.isPending}
+                        loading={changePassword.isPending}
+                      >
+                        更新密码
+                      </Button>
+                    </>
+                  }
                 >
-                  <label>
-                    当前密码
-                    <PasswordField
-                      required
-                      minLength={6}
-                      maxLength={128}
-                      name="currentPassword"
-                      size="3"
-                      autoComplete="current-password"
-                    />
-                  </label>
-                  <div className="account-password-row">
-                    <label>
-                      新密码
+                  <form
+                    id="settings-password-form"
+                    className="v06-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      setPasswordMessage('');
+                      const form = event.currentTarget;
+                      const values = new FormData(form);
+                      const currentPassword = String(values.get('currentPassword') ?? '');
+                      const newPassword = String(values.get('newPassword') ?? '');
+                      const confirmation = String(values.get('passwordConfirmation') ?? '');
+                      if (newPassword !== confirmation) {
+                        setPasswordMessage('两次输入的新密码不一致。');
+                        return;
+                      }
+                      changePassword.mutate(
+                        { currentPassword, newPassword },
+                        { onSuccess: () => form.reset() },
+                      );
+                    }}
+                  >
+                    <Field label="当前密码" htmlFor="settings-current-password" required>
                       <PasswordField
+                        id="settings-current-password"
+                        required
+                        minLength={6}
+                        maxLength={128}
+                        name="currentPassword"
+                        size="3"
+                        autoComplete="current-password"
+                      />
+                    </Field>
+                    <Field label="新密码" htmlFor="settings-new-password" required>
+                      <PasswordField
+                        id="settings-new-password"
                         required
                         minLength={6}
                         maxLength={128}
@@ -2244,10 +2549,10 @@ export function SettingsPage() {
                         size="3"
                         autoComplete="new-password"
                       />
-                    </label>
-                    <label>
-                      确认新密码
+                    </Field>
+                    <Field label="确认新密码" htmlFor="settings-password-confirmation" required>
                       <PasswordField
+                        id="settings-password-confirmation"
                         required
                         minLength={6}
                         maxLength={128}
@@ -2255,23 +2560,13 @@ export function SettingsPage() {
                         size="3"
                         autoComplete="new-password"
                       />
-                    </label>
-                  </div>
-                  <div className="account-actions">
-                    <Button disabled={changePassword.isPending}>
-                      {changePassword.isPending ? '正在更新…' : '更新密码'}
-                    </Button>
-                    <Button
-                      type="button"
-                      color="red"
-                      variant="soft"
-                      disabled={logout.isPending}
-                      onClick={() => logout.mutate()}
-                    >
-                      {logout.isPending ? '正在退出…' : '退出登录'}
-                    </Button>
-                  </div>
-                </form>
+                    </Field>
+                    {passwordMessage ? <p className="v06-form-error">{passwordMessage}</p> : null}
+                    {changePassword.error ? (
+                      <p className="v06-form-error">{changePassword.error.message}</p>
+                    ) : null}
+                  </form>
+                </FormDialog>
                 {(passwordMessage || changePassword.error || logout.error) && (
                   <p
                     className={
@@ -2307,20 +2602,62 @@ export function SettingsPage() {
                 <ChevronRight aria-hidden size={16} />
               </summary>
               <div className="advanced-disclosure-body">
-                <form
-                  className="auth-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const values = new FormData(event.currentTarget);
-                    createToken.mutate(String(values.get('name') ?? ''));
+                <Button onClick={() => setTokenDialogOpen(true)}>
+                  <Plus size={15} /> 创建 token
+                </Button>
+                <FormDialog
+                  open={tokenDialogOpen}
+                  onOpenChange={(open) => {
+                    setTokenDialogOpen(open);
+                    if (!open) {
+                      setTokenName('');
+                      createToken.reset();
+                    }
                   }}
+                  title="创建 API token"
+                  description="token 只显示一次，仅供 CLI、自动化脚本或外部服务使用。"
+                  footer={
+                    <>
+                      <Button
+                        type="button"
+                        color="gray"
+                        variant="soft"
+                        onClick={() => setTokenDialogOpen(false)}
+                      >
+                        取消
+                      </Button>
+                      <Button
+                        type="submit"
+                        form="settings-token-form"
+                        disabled={createToken.isPending || !tokenName.trim()}
+                        loading={createToken.isPending}
+                      >
+                        创建 token
+                      </Button>
+                    </>
+                  }
                 >
-                  <label>
-                    token 名称
-                    <input required name="name" placeholder="例如：自动化脚本" />
-                  </label>
-                  <Button disabled={createToken.isPending}>创建 token</Button>
-                </form>
+                  <form
+                    id="settings-token-form"
+                    className="v06-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      createToken.mutate(tokenName.trim());
+                    }}
+                  >
+                    <FormTextField
+                      label="token 名称"
+                      id="settings-token-name"
+                      value={tokenName}
+                      onChange={(event) => setTokenName(event.target.value)}
+                      placeholder="例如：自动化脚本"
+                      required
+                    />
+                    {createToken.error ? (
+                      <p className="v06-form-error">{createToken.error.message}</p>
+                    ) : null}
+                  </form>
+                </FormDialog>
                 {oneTimeToken && (
                   <div className="token-once">
                     <strong>只显示一次，请立即保存</strong>

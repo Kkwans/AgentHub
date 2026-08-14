@@ -20,6 +20,7 @@ import {
   type ProjectRecord,
   type SessionRecord,
 } from '../lib/api';
+import { labelAgentKind } from '../presentation/domain-labels';
 
 export function OverviewPage() {
   const dashboard = useQuery({
@@ -296,7 +297,7 @@ export function OverviewPage() {
                   <div>
                     <strong>{agent.name}</strong>
                     <span>
-                      {agent.agentKind} · {agent.detectedVersion ?? '未检测版本'}
+                      {labelAgentKind(agent.agentKind)} · {agent.detectedVersion ?? '未检测版本'}
                     </span>
                   </div>
                   <StatusBadge status={agent.status} />

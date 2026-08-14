@@ -5,6 +5,13 @@ if (typeof document !== 'undefined' && typeof document.queryCommandSupported !==
   });
 }
 
+if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView !== 'function') {
+  Object.defineProperty(Element.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: () => undefined,
+  });
+}
+
 // `react-resizable-panels` resolves ResizeObserver from the mounted document's
 // window. Keep a constructor available across lazy Workspace mounts so a test
 // finishing during route navigation cannot leave an unhandled `new undefined`

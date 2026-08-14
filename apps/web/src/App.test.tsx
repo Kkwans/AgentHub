@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -129,7 +129,7 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    await screen.findByRole('heading', { name: 'Project 工作区' }, { timeout: 5_000 });
+    await screen.findByRole('heading', { name: '项目' }, { timeout: 5_000 });
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     expect(await screen.findByRole('dialog', { name: '搜索与跳转' })).toBeInTheDocument();
     const input = await screen.findByRole('combobox', { name: '搜索页面' });
@@ -392,10 +392,11 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    expect(
-      (await screen.findAllByRole('button', { name: '创建新版本' })).length,
-    ).toBeGreaterThanOrEqual(2);
-    expect(screen.getByRole('tab', { name: '标签' })).toBeInTheDocument();
+    await screen.findByText('不可变版本历史');
+    expect(screen.getByRole('dialog').textContent).toContain('此操作会创建新版本');
+    expect((await screen.findAllByRole('button', { name: '创建新版本' })).length).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    expect(await screen.findByRole('tab', { name: '标签' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '上下文预览' })).toBeInTheDocument();
     expect(screen.getByText('不可变版本历史')).toBeInTheDocument();
   });
@@ -513,16 +514,42 @@ describe('App', () => {
     );
 
     await screen.findByRole('heading', { name: 'PromptOS', level: 2 }, { timeout: 5_000 });
-    fireEvent.change(await screen.findByLabelText('目标类型'), { target: { value: 'TASK' } });
-    expect(await screen.findByRole('option', { name: '可发现绑定目标 · READY' })).toBeVisible();
-    expect(screen.getByText('可发现绑定目标')).toBeVisible();
+    await screen.findByRole('tab', { name: '绑定' });
+    fireEvent.click(screen.getByRole('button', { name: '新建绑定' }));
+    const bindingDialog = await screen.findByRole('dialog');
+    const bindingTargetType = within(bindingDialog).getByRole('combobox', { name: '绑定目标' });
+    fireEvent.change(bindingTargetType, { target: { value: 'TASK' } });
+    const taskOption = await within(bindingDialog).findByRole('option', {
+      name: /可发现绑定目标/,
+    });
+    expect(taskOption).toBeVisible();
+    fireEvent.change(within(bindingDialog).getByRole('combobox', { name: /Task/ }), {
+      target: { value: taskId },
+    });
+    expect(within(bindingDialog).getByText('可发现绑定目标')).toBeVisible();
     expect(screen.queryByPlaceholderText('Task UUID')).not.toBeInTheDocument();
     expect(screen.queryByText(taskId)).not.toBeInTheDocument();
 
+    fireEvent.click(within(bindingDialog).getByRole('button', { name: '取消' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '新建 Prompt 绑定' })).not.toBeInTheDocument(),
+    );
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Skill' }), { button: 0 });
-    expect(await screen.findByRole('option', { name: 'Review Skill' })).toBeVisible();
-    fireEvent.change(screen.getByLabelText('目标类型'), { target: { value: 'TASK' } });
-    expect(await screen.findByRole('option', { name: '可发现绑定目标 · READY' })).toBeVisible();
+    await screen.findByText('扫描 Skill metadata');
+    fireEvent.click(await screen.findByRole('button', { name: '新建绑定' }));
+    const skillDialog = await screen.findByRole('dialog');
+    const skillSelect = within(skillDialog).getByRole('combobox', { name: /Skill/ });
+    expect(await within(skillDialog).findByRole('option', { name: 'Review Skill' })).toBeVisible();
+    fireEvent.change(skillSelect, { target: { value: skill.id } });
+    const skillTargetType = within(skillDialog).getByRole('combobox', { name: '绑定目标' });
+    fireEvent.change(skillTargetType, { target: { value: 'TASK' } });
+    const skillTaskOption = await within(skillDialog).findByRole('option', {
+      name: /可发现绑定目标/,
+    });
+    expect(skillTaskOption).toBeVisible();
+    fireEvent.change(within(skillDialog).getByRole('combobox', { name: /Task/ }), {
+      target: { value: taskId },
+    });
     expect(screen.queryByPlaceholderText('Task UUID')).not.toBeInTheDocument();
   });
 
@@ -1165,13 +1192,17 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByRole('heading', { name: '从可用 Agent 开始' })).toBeInTheDocument();
-    expect(await screen.findByRole('combobox', { name: 'Project' })).toHaveValue(journeyProject.id);
+    expect(
+      await screen.findByRole('heading', { name: '新建 Session' }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('combobox', { name: 'Project' }, { timeout: 5_000 }),
+    ).toHaveValue(journeyProject.id);
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/v1/sessions?projectId=${journeyProject.id}`,
       expect.any(Object),
     );
-    fireEvent.click(screen.getByRole('button', { name: '返回 Session 列表' }));
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
     expect(screen.getByLabelText('当前地址')).toHaveTextContent(
       `/sessions?projectId=${journeyProject.id}`,
     );
@@ -1229,7 +1260,7 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    const agentSelect = await screen.findByRole('combobox', { name: 'Agent' });
+    const agentSelect = await screen.findByRole('combobox', { name: 'Agent' }, { timeout: 5_000 });
     expect(agentSelect).toHaveValue(journeyAgent.id);
     expect(screen.getByRole('option', { name: /Codex 主力/ })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /已停用 Agent/ })).not.toBeInTheDocument();
@@ -1279,9 +1310,13 @@ describe('App', () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Session 标题' }), {
-      target: { value: '首次真实会话' },
-    });
+    await screen.findByRole('dialog', { name: '新建 Session' }, { timeout: 5_000 });
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Session 标题' }, { timeout: 5_000 }),
+      {
+        target: { value: '首次真实会话' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: '创建并进入工作区' }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(

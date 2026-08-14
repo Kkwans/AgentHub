@@ -1,1 +1,367 @@
 @import '@radix-ui/themes/styles.css';
+
+.ah-dialog {
+  width: min(100% - 32px, 640px);
+  max-height: min(760px, calc(100dvh - 32px));
+  overflow: auto;
+}
+
+.ah-dialog-small {
+  max-width: 420px;
+}
+
+.ah-dialog-large {
+  max-width: 960px;
+}
+
+.ah-dialog-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--gray-a5);
+}
+
+.ah-dialog-header p {
+  max-width: 62ch;
+  margin: 6px 0 0;
+}
+
+.ah-dialog-close,
+.ah-dialog-primary,
+.ah-dialog-secondary,
+.ah-dialog-danger {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ah-dialog-close {
+  width: 32px;
+  padding: 0;
+  color: var(--gray-10);
+  background: transparent;
+}
+
+.ah-dialog-close:hover,
+.ah-dialog-secondary:hover {
+  background: var(--gray-a3);
+}
+
+.ah-dialog-primary {
+  color: var(--accent-contrast);
+  background: var(--accent-9);
+}
+
+.ah-dialog-primary:hover {
+  background: var(--accent-10);
+}
+
+.ah-dialog-danger {
+  color: var(--red-contrast);
+  background: var(--red-9);
+}
+
+.ah-dialog-danger:hover {
+  background: var(--red-10);
+}
+
+.ah-dialog-secondary {
+  color: var(--gray-11);
+  background: var(--gray-a2);
+}
+
+.ah-dialog-close:disabled,
+.ah-dialog-primary:disabled,
+.ah-dialog-secondary:disabled,
+.ah-dialog-danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ah-dialog-body {
+  display: grid;
+  gap: 16px;
+  padding: 20px 0;
+}
+
+.ah-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gray-a5);
+}
+
+.ah-field {
+  display: grid;
+  gap: 7px;
+}
+
+.ah-field-label {
+  color: var(--gray-12);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ah-field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ah-required {
+  color: var(--gray-9);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.ah-field-description,
+.ah-field-error {
+  margin: 0;
+}
+
+.ah-field-error {
+  font-weight: 500;
+}
+
+.ah-field[data-invalid='true'] .rt-TextFieldRoot,
+.ah-field[data-invalid='true'] .rt-TextArea,
+.ah-field[data-invalid='true'] .ah-select-trigger,
+.ah-field[data-invalid='true'] .ah-select-native,
+.ah-field[data-invalid='true'] .ah-combobox-control {
+  border-color: var(--red-9);
+  box-shadow: 0 0 0 1px var(--red-9);
+}
+
+.ah-select-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.ah-select-native {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--gray-12);
+  background: var(--color-surface);
+  border: 1px solid var(--gray-7);
+  border-radius: 6px;
+  outline: 0;
+  font: inherit;
+  font-size: 14px;
+}
+
+.ah-select-native:focus {
+  border-color: var(--accent-9);
+  box-shadow: 0 0 0 1px var(--accent-9);
+}
+
+.ah-select-native:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ah-combobox {
+  position: relative;
+}
+
+.ah-combobox-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 8px 0 10px;
+  color: var(--gray-10);
+  background: var(--color-surface);
+  border: 1px solid var(--gray-7);
+  border-radius: 6px;
+}
+
+.ah-combobox-control:focus-within {
+  border-color: var(--accent-9);
+  box-shadow: 0 0 0 1px var(--accent-9);
+}
+
+.ah-combobox-control input {
+  min-width: 0;
+  flex: 1;
+  height: 34px;
+  padding: 0;
+  color: var(--gray-12);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 14px;
+}
+
+.ah-combobox-toggle {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--gray-10);
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ah-combobox-toggle:hover {
+  background: var(--gray-a3);
+}
+
+.ah-combobox-options {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 4px;
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a6);
+  border-radius: 8px;
+  box-shadow: var(--shadow-5);
+}
+
+.ah-combobox-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  color: var(--gray-12);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.ah-combobox-option:hover,
+.ah-combobox-option.active,
+.ah-combobox-option[aria-selected='true'] {
+  background: var(--gray-a3);
+}
+
+.ah-combobox-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.ah-combobox-option small {
+  color: var(--gray-10);
+  font-size: 11px;
+}
+
+.ah-combobox-empty {
+  padding: 12px;
+  color: var(--gray-10);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ah-advanced {
+  padding: 12px 0;
+  border-top: 1px solid var(--gray-a4);
+}
+
+.ah-advanced summary {
+  color: var(--gray-12);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ah-advanced > p {
+  margin: 6px 0 0;
+}
+
+.ah-advanced-body {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.ah-page-header,
+.ah-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.ah-page-header h1,
+.ah-section-header h2,
+.ah-page-header p,
+.ah-section-header p {
+  margin: 0;
+}
+
+.ah-page-header p,
+.ah-section-header p {
+  max-width: 68ch;
+  margin-top: 6px;
+}
+
+.ah-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--gray-9);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ah-page-header-action {
+  flex: 0 0 auto;
+}
+
+.ah-skeleton {
+  display: block;
+  min-height: 12px;
+  overflow: hidden;
+  background: linear-gradient(90deg, var(--gray-a3), var(--gray-a5), var(--gray-a3));
+  background-size: 220% 100%;
+  border-radius: 5px;
+  animation: ah-skeleton 1.5s ease-in-out infinite;
+}
+
+@keyframes ah-skeleton {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ah-skeleton {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ah-dialog {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .ah-page-header,
+  .ah-section-header {
+    flex-direction: column;
+  }
+
+  .ah-page-header-action {
+    width: 100%;
+  }
+}

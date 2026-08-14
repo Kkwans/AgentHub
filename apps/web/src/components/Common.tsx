@@ -14,21 +14,36 @@ import { ApiError } from '../lib/api';
 
 const statusLabels: Record<string, string> = {
   READY: '就绪',
+  PENDING: '待处理',
   RUNNING: '运行中',
+  STARTING: '正在启动',
   WAITING_APPROVAL: '等待批准',
   WAITING_REVIEW: '待审阅',
   STOPPED: '已停止',
+  ARCHIVED: '已归档',
+  DISABLED: '已停用',
   MISSING: '未安装',
+  MISSING_DEPENDENCY: '缺少依赖',
+  INSTALLED: '已发现',
+  UNSUPPORTED: '暂不支持',
+  UNAVAILABLE: '不可用',
   BROKEN: '异常',
   AUTH_REQUIRED: '需要授权',
   WORKSPACE_UNMAPPED: '工作区未映射',
+  UNHEALTHY: '健康检查失败',
+  CANCELING: '正在停止',
   DISCONNECTED: '已断开',
   COMPLETED: '已完成',
   FAILED: '失败',
   CANCELED: '已取消',
+  REJECTED: '已拒绝',
+  EXPIRED: '已过期',
   ACTIVE: '使用中',
   UNVERIFIED: '未验证',
   CLOSED: '已关闭',
+  IDLE: '未运行',
+  UNKNOWN: '状态未确认',
+  DEAD: '已终止',
   DRAFT: '草稿',
   ACHIEVED: '已达成',
   BACKLOG: '待规划',
@@ -49,16 +64,16 @@ const statusLabels: Record<string, string> = {
 export function StatusBadge({ status }: { status: string }) {
   const color = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED|ONLINE|AVAILABLE/.test(status)
     ? 'green'
-    : /RUNNING|STARTING|SETTING_UP|MERGING/.test(status)
+    : /RUNNING|STARTING|SETTING_UP|MERGING|CANCELING/.test(status)
       ? 'blue'
       : /WAITING|AWAITING|REVIEW|QUEUED|AUTH_REQUIRED|UNVERIFIED|UNMAPPED/.test(status)
         ? 'orange'
-        : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED|OFFLINE|REVOKED/.test(status)
+        : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED|OFFLINE|REVOKED|UNHEALTHY/.test(status)
           ? 'red'
           : 'gray';
   return (
     <Badge className="status-badge" color={color} variant="soft">
-      {statusLabels[status] ?? status}
+      {statusLabels[status] ?? '状态待确认'}
     </Badge>
   );
 }

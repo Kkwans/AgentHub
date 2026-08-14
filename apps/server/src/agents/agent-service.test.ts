@@ -91,6 +91,29 @@ describe('Agent 注册与预检', () => {
     expect(report.status).toBe('STOPPED');
     expect(report.repair?.summary).toContain('手动启动');
   });
+
+  it('允许普通用户只修改 Agent 默认模型和模式，不触碰启动配置', async () => {
+    const target = await seedTarget('LOCAL_HOST');
+    const service = new AgentService(agents, targets, new NeverLaunch());
+    const created = await service.register({
+      name: 'Codex defaults',
+      targetId: target.id,
+      agentKind: 'CODEX',
+    });
+
+    const updated = await service.updateDefaults(created.id, {
+      defaultModel: 'gpt-5-codex',
+      defaultMode: 'review',
+    });
+
+    expect(updated).toMatchObject({
+      id: created.id,
+      defaultModel: 'gpt-5-codex',
+      defaultMode: 'review',
+      executable: created.executable,
+      argsJson: created.argsJson,
+    });
+  });
 });
 
 class NeverLaunch implements AcpProcessLauncher {

@@ -144,6 +144,139 @@
   gap: 16px;
 }
 
+.prompt-variable-editor {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--gray-a6);
+  border-radius: 10px;
+  background: var(--gray-a2);
+}
+
+.prompt-variable-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prompt-variable-editor-heading > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.prompt-variable-editor-heading strong {
+  color: var(--gray-12);
+  font-size: 14px;
+}
+
+.prompt-variable-editor-heading span {
+  color: var(--gray-10);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.prompt-variable-mode {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 1px solid var(--gray-a6);
+  border-radius: 7px;
+  background: var(--color-panel-solid);
+}
+
+.prompt-variable-mode button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--gray-10);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.prompt-variable-mode button.active {
+  color: var(--gray-12);
+  background: var(--gray-a4);
+  font-weight: 600;
+}
+
+.prompt-variable-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.prompt-variable-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 120px minmax(120px, 1fr) minmax(140px, 1.2fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-variable-row input:not([type='checkbox']),
+.prompt-variable-row select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--gray-a7);
+  border-radius: 6px;
+  color: var(--gray-12);
+  background: var(--color-panel-solid);
+  font: inherit;
+  font-size: 13px;
+}
+
+.prompt-variable-row input:not([type='checkbox']):focus,
+.prompt-variable-row select:focus,
+.prompt-variable-mode button:focus-visible {
+  outline: 2px solid var(--accent-a7);
+  outline-offset: 1px;
+}
+
+.prompt-variable-required {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gray-11);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.prompt-variable-required input {
+  accent-color: var(--accent-9);
+}
+
+.prompt-variable-empty {
+  color: var(--gray-9);
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .prompt-variable-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .prompt-variable-required {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .prompt-variable-editor-heading {
+    display: grid;
+  }
+
+  .prompt-variable-mode {
+    justify-self: start;
+  }
+
+  .prompt-variable-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .prompt-actionbar,
 .playground-toolbar,
 .skills-toolbar {

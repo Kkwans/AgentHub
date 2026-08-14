@@ -42,6 +42,7 @@ const errorMessages: Record<string, string> = {
   SESSION_CWD_NOT_FOUND: '工作目录不存在，请检查 Project root。',
   SESSION_CWD_OUTSIDE_PROJECT: '工作目录必须位于当前 Project root 内。',
   APPROVAL_DECISION_CONFLICT: '这个权限请求已经记录了其他决定，请刷新查看最新状态。',
+  APPROVAL_ALREADY_RESOLVED: '这个权限请求已经被其他操作处理，请刷新查看最新状态。',
   TASK_NOT_WAITING_REVIEW: '当前 Task 已不在待审阅状态，请刷新查看最新结果。',
   TASK_REWORK_FEEDBACK_REQUIRED: '请填写需要 Agent 继续修改的具体内容。',
   TASK_REWORK_AGENT_REQUIRED: '当前 Task 没有可继续执行的 Agent，请先重新分配。',
@@ -84,11 +85,83 @@ const errorMessages: Record<string, string> = {
   REMOTE_NODE_ROOT_TOO_BROAD: 'Node root 不能授权整个文件系统根目录。',
   REMOTE_NODE_ROOT_REQUIRED: '至少需要配置一个 Node root。',
   REMOTE_NODE_ROOTS_MISMATCH: 'Node daemon 的 roots 与注册码授权范围不一致。',
+  RUNTIME_CANDIDATE_NOT_FOUND: 'Runtime 候选不存在，请重新扫描。',
+  RUNTIME_CANDIDATE_NOT_ADOPTABLE: '当前 Runtime 不能接管，请先处理其状态。',
+  RUNTIME_CANDIDATE_INVALID: 'Runtime 候选信息不完整，请重新扫描。',
+  RUNTIME_NOT_ADOPTED: '请先接管 Runtime。',
+  DOCKER_ENGINE_UNAVAILABLE: 'Docker Engine 当前不可用，请检查 Docker 服务与权限。',
+  AGENT_CANDIDATE_NOT_FOUND: 'Agent 候选不存在，请重新扫描。',
+  AGENT_PROFILE_NOT_DETECTED: '尚未识别出支持的 Agent。',
+  REMOTE_FILESYSTEM_UNSUPPORTED: 'Remote Node 文件浏览将在后续版本开放。',
+  FILESYSTEM_ROOT_NOT_FOUND: '文件根目录不存在或当前无权访问。',
+  SYMLINK_ESCAPE: '该目录链接超出允许范围，已阻止访问。',
   REMOTE_NODE_REGISTRATION_TOKEN_USED: 'Remote Node 注册码已经使用。',
   REMOTE_NODE_REGISTRATION_TOKEN_EXPIRED: 'Remote Node 注册码已经过期。',
   REMOTE_AGENT_NOT_AVAILABLE: 'Remote Node inventory 中没有可用的该类型 Agent。',
   REMOTE_CUSTOM_AGENT_UNSUPPORTED: 'Remote Node 只允许 inventory 中的固定 Agent Profile。',
   REMOTE_GIT_UNSUPPORTED: 'v0.2 暂不提供 Remote Node Git 控制接口。',
+  AGENT_CONFIG_INVALID: 'Agent 配置不完整，请重新检查接入状态。',
+  AGENT_EXECUTABLE_NOT_ABSOLUTE: 'Agent 启动程序路径必须是绝对路径。',
+  AGENT_EXECUTABLE_REQUIRED: '该 Agent 缺少启动程序配置。',
+  AGENT_KIND_INVALID: 'Agent 类型不受支持。',
+  AGENT_RUN_START_FAILED: 'Agent Run 启动失败，请查看 Agent 诊断。',
+  AGENT_SESSION_CREATE_FAILED: 'Agent Session 创建失败，请先完成 preflight。',
+  AGENT_SESSION_RESUME_FAILED: 'Agent Session 恢复失败，请重新检查连接。',
+  AGENT_TARGET_CONFIG_INVALID: 'Agent 的执行环境配置不完整。',
+  AGENT_TARGET_KIND_UNSUPPORTED: '当前执行环境不支持该 Agent。',
+  AGENT_TARGET_MISSING: 'Agent 绑定的执行环境不存在。',
+  APPROVAL_NOT_FOUND: '权限请求不存在或已经结束。',
+  APPROVAL_OPTION_INVALID: 'Agent 返回的权限选项无法识别。',
+  BINARY_FILE_UNSUPPORTED: '二进制文件不提供文本预览。',
+  CONTAINER_REPLACED: '容器身份已经变化，请重新扫描并接入。',
+  CWD_NOT_ABSOLUTE: '工作目录必须使用绝对路径。',
+  DOCKER_CONTAINER_NOT_FOUND: '已接入的 Docker 容器不存在。',
+  DOCKER_CONTAINER_STOPPED: 'Docker 容器已停止，请先启动运行环境。',
+  DOCKER_ENGINE_INVALID: 'Docker Engine 返回了无法识别的状态。',
+  DOCKER_START_FAILED: 'Docker 容器启动失败。',
+  DOCKER_STOP_FAILED: 'Docker 容器停止失败。',
+  DOCKER_TARGET_CONFIG_INVALID: 'Docker 运行环境配置不完整。',
+  EVENT_STORE_UNAVAILABLE: '事件记录暂时不可用，请稍后重试。',
+  FILE_NOT_DIRECTORY: '选择的路径不是目录。',
+  FILE_NOT_FOUND: '文件或目录不存在。',
+  FILE_NOT_REGULAR: '该路径不是普通文件。',
+  FILE_TOO_LARGE: '文件过大，暂不提供浏览器预览。',
+  FILE_TREE_TOO_LARGE: '目录内容过多，请缩小浏览范围。',
+  GOAL_NOT_FOUND: 'Goal 不存在或已被移除。',
+  HEALTH_CHECK_FAILED: '服务健康检查未通过。',
+  INVALID_AGENT_COMMAND: 'Agent 命令不合法。',
+  INVALID_CONTAINER_NAME: 'Docker 容器名称不合法。',
+  PATH_ABSOLUTE_FORBIDDEN: '路径不能越过当前 Project 根目录。',
+  PATH_ENCODING_INVALID: '路径编码无效，请重新选择目录。',
+  PATH_INVALID: '路径格式无效，请重新选择目录。',
+  PATH_TRAVERSAL: '路径包含越界访问，已被阻止。',
+  PROJECT_PREFLIGHT_FAILED: 'Project 预检未通过，请处理检查项后重试。',
+  PROJECT_TARGET_MISSING: 'Project 绑定的执行环境不存在。',
+  PROMPT_BINDING_NOT_FOUND: 'Prompt 绑定不存在或已被移除。',
+  PROMPT_BINDING_SELECTOR_INVALID: 'Prompt 绑定的版本来源无效。',
+  PROMPT_CHAT_CONTENT_INVALID: '对话消息内容不是有效 JSON。',
+  PROMPT_TEXT_CONTENT_INVALID: 'Prompt 文本内容无效。',
+  PROMPT_VARIABLE_UNDECLARED: 'Prompt 使用了未声明的变量。',
+  RUN_NOT_CANCELABLE: '当前 Run 已不能停止。',
+  RUN_NOT_FOUND: 'Run 不存在或已被移除。',
+  SESSION_HAS_ACTIVE_RUN: 'Session 仍有运行中的 Run，请先停止它。',
+  SESSION_NOT_CONNECTED: 'Session 当前未连接 Agent。',
+  SESSION_NOT_DISCONNECTED: 'Session 当前不处于可恢复状态。',
+  SESSION_NOT_READY: 'Session 尚未准备好运行。',
+  SESSION_NOT_RESUMABLE: 'Session 当前不能恢复。',
+  TASK_NOT_FOUND: 'Task 不存在或已被移除。',
+  TASK_NOT_READY: 'Task 当前还不能开始执行。',
+  TERMINAL_NOT_FOUND: 'Terminal 不存在或已关闭。',
+  TERMINAL_SHELL_MISSING: 'Terminal Shell 不可用。',
+  TERMINAL_SHELL_NOT_ABSOLUTE: 'Terminal Shell 配置必须是绝对路径。',
+  TERMINAL_SHELL_NOT_ALLOWED: 'Terminal Shell 不在允许列表内。',
+  WORKSPACE_MAPPING_ESCAPE: '工作区映射超出允许范围，已被阻止。',
+  WORKSPACE_MAPPING_STALE: '容器实际挂载已变化，请重新扫描运行环境。',
+  WORKTREE_DIFF_FAILED: '隔离工作区 Diff 读取失败。',
+  WORKTREE_EXECUTION_NOT_CANCELABLE: '当前隔离执行不能取消。',
+  WORKTREE_NOT_FOUND: '隔离工作区不存在或已被移除。',
+  WORKTREE_PATH_EXISTS: '隔离工作区目录已存在。',
+  WORKTREE_ROOT_NOT_ABSOLUTE: '隔离工作区根目录必须是绝对路径。',
 };
 
 const authorizationRequiredEvent = 'agenthub:authorization-required';
@@ -122,7 +195,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(
       error.code,
-      errorMessages[error.code] ?? error.message,
+      errorMessages[error.code] ?? '请求失败，请查看设置中的诊断信息。',
       response.status,
       'details' in error ? error.details : undefined,
     );
@@ -166,6 +239,76 @@ export interface ExecutionTargetRecord {
   capabilitiesJson: Record<string, unknown>;
   connectionJson: Record<string, unknown>;
   lastSeenAt: string | null;
+}
+
+export type RuntimeCandidateState = 'READY' | 'STOPPED' | 'UNAVAILABLE' | 'UNSUPPORTED' | 'BROKEN';
+
+export interface RuntimeCandidateRecord {
+  candidateId: string;
+  kind: 'LOCAL_HOST' | 'DOCKER_CONTAINER';
+  displayName: string;
+  state: RuntimeCandidateState;
+  targetId?: string;
+  containerId?: string;
+  image?: string;
+  statusText?: string;
+  workspaceMappings: Array<{ hostRoot: string; containerRoot: string }>;
+  adoptable: boolean;
+  reasonCode?: string;
+}
+
+export type AgentCandidateState =
+  | 'READY'
+  | 'AUTH_REQUIRED'
+  | 'INSTALLED'
+  | 'MISSING_DEPENDENCY'
+  | 'STOPPED'
+  | 'UNSUPPORTED'
+  | 'BROKEN';
+
+export interface AgentCandidateRecord {
+  candidateId: string;
+  agentKind: string;
+  displayName: string;
+  targetCandidateId: string;
+  targetId?: string;
+  state: AgentCandidateState;
+  adapterKind: string;
+  detectedVersion?: string;
+  reasonCode?: string;
+  registeredAgentId?: string;
+  adoptable: boolean;
+}
+
+export interface WorkspaceRootRecord {
+  rootId: string;
+  label: string;
+  path: string;
+  targetId: string;
+  source: 'CONFIGURED' | 'DOCKER_MOUNT';
+}
+
+export interface DirectoryEntryRecord {
+  name: string;
+  path: string;
+  type: 'DIRECTORY' | 'SYMLINK' | 'FILE';
+  accessible: boolean;
+}
+
+export interface DirectoryListingRecord {
+  root: WorkspaceRootRecord;
+  path: string;
+  entries: DirectoryEntryRecord[];
+}
+
+export interface ProjectCandidateRecord {
+  name: string;
+  rootPath: string;
+  relativePath: string;
+  markers: string[];
+  git: boolean;
+  packageManagers: string[];
+  readable: boolean;
 }
 
 export interface RemoteAgentInventoryRecord {

@@ -9,25 +9,35 @@ const OverviewPage = lazy(() =>
   import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })),
 );
 const ProjectsPage = lazy(() =>
-  import('./pages/ControlPages').then((module) => ({ default: module.ProjectsPage })),
+  import('./features/projects/pages/ProjectsPage').then((module) => ({
+    default: module.ProjectsPage,
+  })),
 );
 const TasksPage = lazy(() =>
-  import('./pages/ControlPages').then((module) => ({ default: module.TasksPage })),
+  import('./features/tasks/pages/TasksPage').then((module) => ({ default: module.TasksPage })),
 );
 const AgentsPage = lazy(() =>
-  import('./pages/ControlPages').then((module) => ({ default: module.AgentsPage })),
+  import('./features/agents/pages/AgentsPage').then((module) => ({ default: module.AgentsPage })),
 );
 const SessionsPage = lazy(() =>
-  import('./pages/ControlPages').then((module) => ({ default: module.SessionsPage })),
+  import('./features/sessions/pages/SessionsPage').then((module) => ({
+    default: module.SessionsPage,
+  })),
 );
 const SettingsPage = lazy(() =>
-  import('./pages/ControlPages').then((module) => ({ default: module.SettingsPage })),
+  import('./features/settings/pages/SettingsPage').then((module) => ({
+    default: module.SettingsPage,
+  })),
 );
 const WorkspacePage = lazy(() =>
-  import('./pages/WorkspacePage').then((module) => ({ default: module.WorkspacePage })),
+  import('./features/workspace/pages/WorkspacePage').then((module) => ({
+    default: module.WorkspacePage,
+  })),
 );
 const PromptOsPage = lazy(() =>
-  import('./pages/PromptOsPage').then((module) => ({ default: module.PromptOsPage })),
+  import('./features/promptos/pages/PromptOsPage').then((module) => ({
+    default: module.PromptOsPage,
+  })),
 );
 
 function DeferredPage({ children }: { children: ReactNode }) {

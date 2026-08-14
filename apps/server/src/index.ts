@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -58,6 +58,9 @@ import { RemoteNodeGateway } from './remote-nodes/remote-node-gateway.js';
 import { RemoteNodeOperations } from './remote-nodes/remote-node-operations.js';
 import { RemoteAgentAdapter } from './remote-nodes/remote-agent-adapter.js';
 import { WebSocketUpgradeRouter } from './websocket-upgrade.js';
+import { RuntimeDiscoveryService } from './discovery/runtime-discovery.js';
+import { AgentDiscoveryService } from './discovery/agent-discovery.js';
+import { FilesystemService } from './filesystem/filesystem-service.js';
 
 export interface RunningServer {
   readonly server: Server;
@@ -155,11 +158,21 @@ export async function startServer(
   const remoteAgentAdapter = new RemoteAgentAdapter(remoteNodeGateway);
   const docker = new DockerControlService(undefined, executionTargetRepository);
   const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
+  const workspaceRoots = resolveWorkspaceRoots(environment);
   const projects = new ProjectService(
     projectRepository,
     executionTargetRepository,
     remoteNodeOperations,
+    workspaceRoots,
   );
+  const runtimeDiscovery = new RuntimeDiscoveryService(
+    executionTargetRepository,
+    executionTargets,
+    {
+      workspaceRoots,
+    },
+  );
+  const filesystem = new FilesystemService(executionTargetRepository, workspaceRoots);
   const git = new GitService(projectRepository, gitSnapshotRepository, executionTargetRepository);
   const terminal = new TerminalService(projectRepository, {
     publish: (topic, event) => brokerRef.current?.publish(topic, event),
@@ -181,6 +194,12 @@ export async function startServer(
         : primary;
     },
     remoteAgentAdapter,
+  );
+  const agentDiscovery = new AgentDiscoveryService(
+    agents,
+    agentRepository,
+    runtimeDiscovery,
+    workspaceRoots,
   );
   const sessions = new SessionService(
     sessionRepository,
@@ -253,6 +272,9 @@ export async function startServer(
     auth,
     worktrees,
     remoteNodes,
+    runtimeDiscovery,
+    agentDiscovery,
+    filesystem,
     secureTransport: environment.AGENTHUB_SECURE_TRANSPORT === 'true',
     ...(webAvailable ? { webDist } : {}),
   });
@@ -291,6 +313,26 @@ export async function startServer(
       await database.close();
     },
   };
+}
+
+function resolveWorkspaceRoots(environment: NodeJS.ProcessEnv): string[] {
+  const configured = environment.AGENTHUB_WORKSPACE_ROOTS_JSON;
+  if (configured) {
+    try {
+      const parsed: unknown = JSON.parse(configured);
+      if (Array.isArray(parsed)) {
+        const roots = parsed.filter(
+          (value): value is string =>
+            typeof value === 'string' && value.length > 0 && isAbsolute(value),
+        );
+        if (roots.length) return [...new Set(roots.map((root) => resolve(root)))];
+      }
+    } catch {
+      // Fall back to safe local defaults; malformed optional configuration must not expose '/'.
+    }
+  }
+  const defaults = ['/volume2/Project', process.cwd()];
+  return [...new Set(defaults.filter((root) => existsSync(root)).map((root) => resolve(root)))];
 }
 
 async function main(): Promise<void> {

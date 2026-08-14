@@ -1318,6 +1318,16 @@ export class AgentRepository<TDatabase extends AgentHubDatabase> {
     return created;
   }
 
+  async update(id: string, patch: Partial<typeof agents.$inferInsert>) {
+    const [updated] = await this.db
+      .update(agents)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(agents.id, id))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('AGENT_NOT_FOUND', 'Agent 不存在');
+    return updated;
+  }
+
   async updatePreflight(
     id: string,
     input: {

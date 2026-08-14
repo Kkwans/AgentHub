@@ -73,6 +73,37 @@ describe('Project 预检与只读文件边界', () => {
     expect(content).toMatchObject({ content: 'export const value = 1;\n', readOnly: true });
   });
 
+  it('在配置工作区根目录后拒绝越界 Project 路径', async () => {
+    const restricted = new ProjectService(
+      new ProjectRepository(database.db),
+      new ExecutionTargetRepository(database.db),
+      undefined,
+      [outside],
+    );
+    const report = await restricted.preflightPath(root);
+    expect(report).toMatchObject({ status: 'BROKEN', canonicalRoot: root });
+    expect(report.checks.at(-1)?.message).toContain('授权的工作区范围');
+  });
+
+  it('编辑只更新用户说明，归档不会删除 Project 数据', async () => {
+    const [project] = await service.list();
+    if (!project) throw new Error('Project fixture 不存在');
+    const updated = await service.update(project.id, {
+      name: 'Project Fixture Updated',
+      description: '由 v0.6 Dialog 修改',
+    });
+    expect(updated).toMatchObject({
+      id: project.id,
+      name: 'Project Fixture Updated',
+      description: '由 v0.6 Dialog 修改',
+      realRootPath: project.realRootPath,
+      targetId: project.targetId,
+    });
+    const archived = await service.archive(project.id);
+    expect(archived).toMatchObject({ id: project.id, status: 'ARCHIVED' });
+    expect((await service.get(project.id)).realRootPath).toBe(project.realRootPath);
+  });
+
   it.each([
     ['../secret.txt', 'PATH_TRAVERSAL'],
     ['/etc/passwd', 'PATH_ABSOLUTE_FORBIDDEN'],

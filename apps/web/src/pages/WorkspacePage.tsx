@@ -44,6 +44,7 @@ import {
 } from '../lib/api';
 import '../lib/monaco';
 import { realtime } from '../lib/realtime';
+import { labelPromptBindingSlot, labelPromptBindingTarget } from '../presentation/domain-labels';
 import '../styles/v3-workspace.css';
 
 type InspectorTab = 'files' | 'diff' | 'git' | 'run';
@@ -94,7 +95,6 @@ export function WorkspacePage() {
     ? (viewParam as InspectorTab)
     : 'files';
   const selectedFile = searchParams.get('file') || undefined;
-  const [terminalOpen, setTerminalOpen] = useState(false);
   const mobileInspectorOpen = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '');
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
 
@@ -348,8 +348,6 @@ export function WorkspacePage() {
         activeRun={activeRun}
         terminalAvailable={capability.data?.terminal?.available === true}
         capabilityQuery={capability}
-        terminalOpen={terminalOpen}
-        setTerminalOpen={setTerminalOpen}
         promptContext={promptContext.data}
         promptContextLoading={promptContext.isLoading}
         promptContextError={promptContext.error}
@@ -357,25 +355,6 @@ export function WorkspacePage() {
         promptVariables={promptVariables}
         setPromptVariables={setPromptVariables}
       />
-      {terminalOpen && capability.data?.terminal?.available && (
-        <div className="terminal-dock">
-          <div>
-            <SquareTerminal size={15} />
-            <strong>Terminal</strong>
-            <code>{session.data.cwd}</code>
-          </div>
-          <p>Terminal 会使用独立 topic；当前页面暂未开放新建 PTY。</p>
-          <Button
-            color="gray"
-            size="1"
-            variant="soft"
-            disabled
-            title="当前版本尚未开放浏览器端新建 PTY"
-          >
-            新建 Terminal
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1237,8 +1216,6 @@ function Composer({
   activeRun,
   terminalAvailable,
   capabilityQuery,
-  terminalOpen,
-  setTerminalOpen,
   promptContext,
   promptContextLoading,
   promptContextError,
@@ -1252,8 +1229,6 @@ function Composer({
   activeRun: RunRecord | undefined;
   terminalAvailable: boolean;
   capabilityQuery: QueryState<{ terminal: { available: boolean } }>;
-  terminalOpen: boolean;
-  setTerminalOpen: (open: boolean) => void;
   promptContext: ResolvedPromptContextRecord | undefined;
   promptContextLoading: boolean;
   promptContextError: Error | null;
@@ -1337,14 +1312,11 @@ function Composer({
         <span>
           Skill <strong>自动</strong>
         </span>
-        {terminalAvailable && (
-          <button
-            className={terminalOpen ? 'active' : ''}
-            onClick={() => setTerminalOpen(!terminalOpen)}
-          >
-            <SquareTerminal size={13} /> Terminal
-          </button>
-        )}
+        {terminalAvailable ? (
+          <span className="capability-note" title="v0.6 暂不开放浏览器端 PTY">
+            <SquareTerminal size={13} /> Local Terminal（后续版本）
+          </span>
+        ) : null}
         {capabilityQuery.error && (
           <span className="workspace-query-error-inline" role="alert">
             能力状态加载失败：{capabilityQuery.error.message}
@@ -1380,12 +1352,13 @@ function Composer({
                 ) : (
                   promptContext.items.map((item) => (
                     <div key={item.bindingId}>
-                      <span>{item.slot}</span>
+                      <span>{labelPromptBindingSlot(item.slot)}</span>
                       <code>
                         {item.promptKey}@{item.label ?? `v${item.version}`}
                       </code>
                       <small>
-                        {item.targetType} · v{item.version} · {item.contentHash.slice(0, 10)}
+                        {labelPromptBindingTarget(item.targetType)} · v{item.version} ·{' '}
+                        {item.contentHash.slice(0, 10)}
                       </small>
                     </div>
                   ))

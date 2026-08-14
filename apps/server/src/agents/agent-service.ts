@@ -129,6 +129,21 @@ export class AgentService {
     });
   }
 
+  async updateDefaults(
+    id: string,
+    patch: {
+      defaultModel?: string | null | undefined;
+      defaultMode?: string | null | undefined;
+    },
+  ) {
+    const agent = await this.agents.get(id);
+    if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+    return this.agents.update(id, {
+      ...(patch.defaultModel !== undefined ? { defaultModel: patch.defaultModel } : {}),
+      ...(patch.defaultMode !== undefined ? { defaultMode: patch.defaultMode } : {}),
+    });
+  }
+
   async preflight(id: string, input: AgentPreflightInput): Promise<PreflightReport> {
     const agent = await this.agents.get(id);
     if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');

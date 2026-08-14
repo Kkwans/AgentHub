@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { createPgliteDatabase, executionTargets, ProjectRepository, projects } from '@agenthub/db';
-import type { IPty } from 'node-pty';
+import type { IPty, IPtyForkOptions } from 'node-pty';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TerminalService } from './terminal-service.js';
@@ -60,11 +60,21 @@ describe('Terminal capability 与 PTY 生命周期', () => {
 
   it('可用时分离 open/input/resize/output/close 生命周期', async () => {
     const pty = new FakePty();
+    let spawnOptions: IPtyForkOptions | undefined;
+    process.env.AGENTHUB_TEST_SECRET = 'do-not-forward';
+    process.env.AGENTHUB_PROJECT_OWNER_UID = '1234';
+    process.env.AGENTHUB_PROJECT_OWNER_GID = '2345';
     const published: Array<{ topic: string; event: Record<string, unknown> }> = [];
     const service = new TerminalService(
       new ProjectRepository(database.db),
       { publish: (topic, event) => published.push({ topic, event }) },
-      async () => ({ spawn: () => pty as unknown as IPty }) as never,
+      async () =>
+        ({
+          spawn: (_file: string, _args: string[], options: IPtyForkOptions) => {
+            spawnOptions = options;
+            return pty as unknown as IPty;
+          },
+        }) as never,
     );
     const terminal = await service.open({ projectId, cols: 100, rows: 28 });
     await service.input(terminal.id, 'pwd\r');
@@ -75,6 +85,10 @@ describe('Terminal capability 与 PTY 生命周期', () => {
     expect(pty.writes).toEqual(['pwd\r']);
     expect(pty.resizes).toEqual([[140, 40]]);
     expect(pty.killed).toBe(true);
+    expect(spawnOptions?.uid).toBe(1234);
+    expect(spawnOptions?.gid).toBe(2345);
+    expect(spawnOptions?.env).toHaveProperty('PATH');
+    expect(spawnOptions?.env).not.toHaveProperty('AGENTHUB_TEST_SECRET');
     expect(published).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -83,6 +97,9 @@ describe('Terminal capability 与 PTY 生命周期', () => {
         }),
       ]),
     );
+    delete process.env.AGENTHUB_TEST_SECRET;
+    delete process.env.AGENTHUB_PROJECT_OWNER_UID;
+    delete process.env.AGENTHUB_PROJECT_OWNER_GID;
   });
 });
 

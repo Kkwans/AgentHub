@@ -1,6 +1,56 @@
 # 实施进度
 
-最后更新：2026-08-13
+最后更新：2026-08-14
+
+## v0.6 当前 Goal：产品化与可用性重构
+
+状态：`M5-M7 / UX_DIALOGS_IN_PROGRESS · M10 / AUTOMATED_REGRESSION_READY`，尚未声明真实集成或视觉验收完成。
+
+- 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
+- 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
+  build 通过；build 仍报告管理页与 CSS chunk 偏大。
+- 已确认主要产品债务：`ControlPages.tsx` God Component、页面 inline form、手填 Project path/
+  container ID/adapter、raw enum、缺少 discovery、PromptOS JSON/UUID 暴露和 Terminal 产品/安全缺口。
+- M0 输出已落盘到 `docs/implementation/v0.6/BASELINE.md` 与
+  `docs/implementation/v0.6/PRODUCT_DOD.md`，包含迁移地图、API/路径安全契约、首批十个逻辑提交
+  计划与部署回滚边界。
+- 当前运行环境可以执行非沙箱测试，但无法读取 root-only 正式 Compose 目录，也没有浏览器/Computer
+  Use 通道；因此没有伪称 NAS v0.6 部署或 TX5Pro 视觉验收完成。
+
+### 已完成切片
+
+- M1 UI 基础层：`@agenthub/ui` 新增 `FormDialog`、`ConfirmDialog`、Field/TextField/TextArea、SelectField、Combobox、AdvancedSection、PageHeader、SectionHeader、Skeleton；继续复用 Radix Themes 与 Phosphor，没有引入第二套组件框架。
+- M1 presentation layer：`apps/web/src/presentation/domain-labels.ts` 集中映射 Agent、Runtime、Prompt、Task、Run、Approval 状态，主界面不直接显示内部枚举。
+- M2 discovery/backend：新增 Docker Engine socket 只读 list/inspect client、Runtime/Agent candidate/rescan/adopt API、允许根目录 filesystem API、Project candidate 扫描和 `preflight-path` 接口；adopt 时重新 inspect 并保留 container ID pinning。
+- M2 UI 首段：Project 改为目录选择器 + discovered candidate Dialog；Agent 改为 Runtime/Agent 扫描、接入、启动/停止和自动 preflight；Session、Goal、Task、Prompt 创建入口改为统一 Dialog；Prompt 创建与 Version 创建改为 Dialog，key 默认为名称生成。
+- M5-M7 UX：Project 支持编辑/归档 Dialog；Goal/Task 支持编辑 Dialog；已接入 Agent 支持默认模型/模式 Dialog；Prompt Version 增加结构化变量编辑器，Raw JSON 仅保留为高级模式；路由改从 `features/*/pages` 边界加载，避免新路由继续依赖 `ControlPages.tsx`。
+- Agent defaults backend：新增 `PATCH /api/v1/agents/:id`，只允许更新 `defaultModel`/`defaultMode`，启动命令、adapter、target 和凭据不在此契约内。
+- 自动化证据：新增 Runtime discovery、filesystem symlink/traversal、Web ordinary-user contract 测试；聚焦测试
+  6 files/24 tests 通过；Remote Node App 测试覆盖 Dialog 注册、roots 和一次性注册码。
+- M2/M3 安全边界：Project path preflight 现在在 UI 先展示“添加前检查”，服务端再按
+  `AGENTHUB_WORKSPACE_ROOTS_JSON` 的 canonical root 做 containment；Docker mount 只接受已允许的
+  realpath 根目录，未配置 allow-list 或越界 mount 不会进入文件浏览/Agent 映射。
+- M5-M7 交互收口：Remote Node 注册、PromptOS Label 移动均迁移到共享 `FormDialog`；Workspace
+  PromptOS provenance、PromptOS binding target/Task 状态、Overview Agent 类型和 Runtime status
+  使用集中 presentation label，不再把 raw enum 直接交给普通用户。共享 Field 的必填标记与 label
+  语义分离，保证 Dialog 表单可访问名称稳定。
+- 错误体验：扩展前端稳定 error code 到中文下一步提示，保留原始状态只用于调试视图；Remote Node
+  和 Project 的错误不再依赖 raw backend wording。
+- Settings 体验：管理员密码更新与外部 API token 创建已迁移到共享 Dialog；普通用户不再在设置页
+  直接面对长表单，密码字段继续复用单一可见性按钮。
+
+### 当前进行中
+
+- M2/M3：补齐 Docker/Remote Node 的真实 mount/target 行为和 Project preflight→add 回执；继续清理遗留页面代码与 raw enum 展示。
+- M5-M7：继续把 Session/Task/Settings/PromptOS 内部组件从兼容模块迁入 feature 目录，并补齐 Prompt Label/Review/Merge 的统一 Dialog 交互。
+- M8-M9：收紧 Terminal 环境变量白名单、明确 Local-only Terminal DoD，并继续收敛 legacy CSS 与表格密度。
+
+### 下一步
+
+- 非沙箱全仓回归：`TMPDIR=/dev/shm/agenthub-v06-release-test2 corepack pnpm test` 通过 43 个文件、178 tests passed、7 skipped；受限沙箱的 `listen EPERM` 不作为代码失败。
+- 代码门禁：共享 UI 包重建后，`corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm build` 通过；production build 完成 1706 modules 转换。针对仓库代码与 v0.6 实施文档的 Prettier check 通过；根目录两份用户提供的 v0.6 方案文档仍保持原样，因此完整 `pnpm format:check` 只会对其中一份报告既有格式警告。
+- 最终非沙箱回归：`TMPDIR=/dev/shm/agenthub-v06-release-test4 corepack pnpm test` 通过 43 个文件、178 tests passed、7 skipped；Approval 错误映射、Remote Node Dialog、Settings Dialog 均在此回归中通过。没有把受限沙箱的 `listen EPERM` 当作代码失败。
+- 仍需补齐 discovery route/service contract tests 与 CI gate；再进行真实 Codex discovery/adopt/session smoke、四视口视觉审查和 NAS Compose release（当前环境没有浏览器通道且 root-only Compose 不可读，不伪称完成）。
 
 ## v0.5 当前 Goal：可用性闭环
 

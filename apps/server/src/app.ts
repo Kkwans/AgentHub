@@ -36,6 +36,11 @@ import { createWorktreeRouter } from './worktrees/worktree-routes.js';
 import type { WorktreeTaskService } from './worktrees/worktree-task-service.js';
 import { createRemoteNodeRouter } from './remote-nodes/remote-node-routes.js';
 import type { RemoteNodeService } from './remote-nodes/remote-node-service.js';
+import { createDiscoveryRouter } from './discovery/discovery-routes.js';
+import type { AgentDiscoveryService } from './discovery/agent-discovery.js';
+import type { RuntimeDiscoveryService } from './discovery/runtime-discovery.js';
+import { createFilesystemRouter } from './filesystem/filesystem-routes.js';
+import type { FilesystemService } from './filesystem/filesystem-service.js';
 
 export interface AppOptions {
   logger?: Logger;
@@ -53,6 +58,9 @@ export interface AppOptions {
   auth?: AuthService;
   worktrees?: WorktreeTaskService;
   remoteNodes?: RemoteNodeService;
+  runtimeDiscovery?: RuntimeDiscoveryService;
+  agentDiscovery?: AgentDiscoveryService;
+  filesystem?: FilesystemService;
   webDist?: string;
   secureTransport?: boolean;
 }
@@ -125,6 +133,15 @@ export function createApp(options: AppOptions = {}): Express {
 
   if (options.executionTargets) {
     app.use('/api/v1/execution-targets', createExecutionTargetRouter(options.executionTargets));
+  }
+  if (options.filesystem) {
+    app.use('/api/v1/execution-targets', createFilesystemRouter(options.filesystem));
+  }
+  if (options.runtimeDiscovery && options.agentDiscovery) {
+    app.use(
+      '/api/v1/discovery',
+      createDiscoveryRouter(options.runtimeDiscovery, options.agentDiscovery),
+    );
   }
   if (options.agents) app.use('/api/v1/agents', createAgentRouter(options.agents));
   if (options.sessions) {
