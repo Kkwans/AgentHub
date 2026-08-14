@@ -5,6 +5,7 @@ import { RuntimeDiscoveryService } from './runtime-discovery.js';
 
 describe('RuntimeDiscoveryService', () => {
   it('discovers the host and Docker containers without exposing registration fields', async () => {
+    const hostRoot = process.cwd();
     const docker: DockerEngineClient = {
       listContainers: vi.fn(async () => [
         {
@@ -24,7 +25,7 @@ describe('RuntimeDiscoveryService', () => {
         mounts: [
           {
             type: 'bind',
-            source: '/volume2/Project/AgentHub',
+            source: hostRoot,
             destination: '/workspace/AgentHub',
             rw: true,
           },
@@ -48,7 +49,7 @@ describe('RuntimeDiscoveryService', () => {
     }));
     const service = new RuntimeDiscoveryService(targetRepository as never, { register } as never, {
       docker,
-      workspaceRoots: ['/volume2/Project'],
+      workspaceRoots: [hostRoot],
     });
 
     const candidates = await service.list();
@@ -57,7 +58,7 @@ describe('RuntimeDiscoveryService', () => {
       `docker:${'a'.repeat(64)}`,
     ]);
     expect(candidates[1]?.workspaceMappings).toEqual([
-      { hostRoot: '/volume2/Project/AgentHub', containerRoot: '/workspace/AgentHub' },
+      { hostRoot, containerRoot: '/workspace/AgentHub' },
     ]);
     expect(candidates[1]).not.toHaveProperty('expectedContainerId');
 
@@ -112,7 +113,7 @@ describe('RuntimeDiscoveryService', () => {
         mounts: [
           {
             type: 'bind',
-            source: '/volume2/Project/AgentHub',
+            source: process.cwd(),
             destination: '/workspace',
             rw: true,
           },
