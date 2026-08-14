@@ -269,13 +269,18 @@ function VersionForm({
           }
         }}
       >
-        <div className="editor-label">
-          <strong>{labelPromptType(prompt.type)}内容</strong>
-          <span>
-            {prompt.type === 'TEXT' ? '使用 {{ variable }} 插值' : '输入包含 messages 的 JSON'}
-          </span>
-        </div>
-        <textarea name="content" required defaultValue={initialContent} rows={9} className="mono" />
+        <FormTextArea
+          label={`${labelPromptType(prompt.type)}内容`}
+          id="prompt-version-content"
+          name="content"
+          required
+          defaultValue={initialContent}
+          rows={9}
+          className="mono"
+          description={
+            prompt.type === 'TEXT' ? '使用 {{ variable }} 插值。' : '输入包含 messages 的 JSON。'
+          }
+        />
         <div className="version-form-side">
           <PromptVariableEditor
             rows={variableRows}
@@ -285,10 +290,12 @@ function VersionForm({
             onRowsChange={setVariableRows}
             onRawChange={setRawVariables}
           />
-          <label>
-            变更说明
-            <input name="changelog" placeholder="说明本次变化" />
-          </label>
+          <FormTextField
+            label="变更说明"
+            id="prompt-version-changelog"
+            name="changelog"
+            placeholder="说明本次变化"
+          />
         </div>
         <div className="version-warning">
           <Layers3 size={15} />
@@ -611,27 +618,27 @@ function PromptDiffTab({
     <div className="prompt-section-stack">
       <div className="compare-controls">
         <GitCompareArrows size={16} />
-        <label>
-          起始版本
-          <select value={from} onChange={(event) => setFrom(Number(event.target.value))}>
-            {versions.map((version) => (
-              <option key={version.id} value={version.version}>
-                v{version.version}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label="起始版本"
+          id="prompt-diff-from"
+          value={String(from)}
+          onValueChange={(value) => setFrom(Number(value))}
+          options={versions.map((version) => ({
+            value: String(version.version),
+            label: `v${version.version}`,
+          }))}
+        />
         <ArrowRight size={14} />
-        <label>
-          目标版本
-          <select value={to} onChange={(event) => setTo(Number(event.target.value))}>
-            {versions.map((version) => (
-              <option key={version.id} value={version.version}>
-                v{version.version}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label="目标版本"
+          id="prompt-diff-to"
+          value={String(to)}
+          onValueChange={(value) => setTo(Number(value))}
+          options={versions.map((version) => ({
+            value: String(version.version),
+            label: `v${version.version}`,
+          }))}
+        />
       </div>
       {versions.length < 2 ? (
         <EmptyState title="至少需要两个版本" description="创建新版本后才能比较差异。" />
@@ -957,39 +964,39 @@ function PlaygroundTab({
           <strong>本地渲染对比</strong>
           <span>不调用 Agent，不会修改 Project。</span>
         </div>
-        <label>
-          左侧
-          <select value={left} onChange={(event) => setLeft(Number(event.target.value))}>
-            {versions.map((version) => (
-              <option key={version.id} value={version.version}>
-                v{version.version}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          右侧
-          <select value={right} onChange={(event) => setRight(Number(event.target.value))}>
-            {versions.map((version) => (
-              <option key={version.id} value={version.version}>
-                v{version.version}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label="左侧版本"
+          id="prompt-playground-left"
+          value={String(left)}
+          onValueChange={(value) => setLeft(Number(value))}
+          options={versions.map((version) => ({
+            value: String(version.version),
+            label: `v${version.version}`,
+          }))}
+        />
+        <SelectField
+          label="右侧版本"
+          id="prompt-playground-right"
+          value={String(right)}
+          onValueChange={(value) => setRight(Number(value))}
+          options={versions.map((version) => ({
+            value: String(version.version),
+            label: `v${version.version}`,
+          }))}
+        />
         <Button onClick={() => render.mutate()} disabled={render.isPending || !versions.length}>
           渲染
         </Button>
       </div>
-      <label className="json-field">
-        变量 JSON
-        <textarea
-          value={variables}
-          onChange={(event) => setVariables(event.target.value)}
-          className="mono"
-          rows={5}
-        />
-      </label>
+      <FormTextArea
+        label="变量 JSON"
+        id="prompt-playground-variables"
+        value={variables}
+        onChange={(event) => setVariables(event.target.value)}
+        className="mono"
+        rows={5}
+        description="请输入 object JSON；渲染演练不会调用 Agent。"
+      />
       {render.error && <span className="form-error">{render.error.message}</span>}
       {render.data ? (
         <>
@@ -1114,15 +1121,15 @@ function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: A
         />
         <Button disabled={resolve.isPending || !projectId}>解析上下文</Button>
       </form>
-      <label className="json-field">
-        变量 JSON
-        <textarea
-          value={variables}
-          onChange={(event) => setVariables(event.target.value)}
-          className="mono"
-          rows={5}
-        />
-      </label>
+      <FormTextArea
+        label="变量 JSON"
+        id="prompt-context-variables"
+        value={variables}
+        onChange={(event) => setVariables(event.target.value)}
+        className="mono"
+        rows={5}
+        description="请输入 object JSON；只用于本地解析上下文。"
+      />
       {(parseError || resolve.error) && (
         <span className="form-error">{parseError ?? resolve.error?.message}</span>
       )}

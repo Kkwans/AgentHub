@@ -343,6 +343,20 @@
   border: 1px solid var(--app-line);
 }
 
+.version-form > .ah-field {
+  grid-column: 1;
+}
+
+.version-form > .ah-field textarea {
+  min-height: 230px;
+}
+
+.compare-controls .ah-field,
+.playground-toolbar .ah-field {
+  min-width: 118px;
+  margin: 0;
+}
+
 .version-form-side label,
 .json-field,
 .label-form label,

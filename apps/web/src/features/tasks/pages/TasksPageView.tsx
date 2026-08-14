@@ -292,26 +292,28 @@ export function TasksPage() {
         description="可直接运行，也可进入隔离 Worktree 队列；隔离任务只有经过 Review 与显式合并才会完成。"
         action={
           <div className="page-actions">
-            <button className="button secondary" onClick={() => setGoalFormOpen(!goalFormOpen)}>
+            <Button color="gray" variant="soft" onClick={() => setGoalFormOpen(!goalFormOpen)}>
               <Plus size={15} /> 创建 Goal
-            </button>
-            <button className="button primary" onClick={() => setTaskFormOpen(!taskFormOpen)}>
+            </Button>
+            <Button onClick={() => setTaskFormOpen(!taskFormOpen)}>
               <Plus size={15} /> 创建 Task
-            </button>
+            </Button>
           </div>
         }
       />
       <div className="task-toolbar">
-        <label>
-          当前 Project
-          <select value={effectiveProjectId} onChange={(event) => setProjectId(event.target.value)}>
-            {projects.data?.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label="当前 Project"
+          id="tasks-project-filter"
+          value={effectiveProjectId || '__none__'}
+          onValueChange={(value) => setProjectId(value === '__none__' ? '' : value)}
+          options={
+            projects.data?.length
+              ? projects.data.map((project) => ({ value: project.id, label: project.name }))
+              : [{ value: '__none__', label: '暂无 Project', disabled: true }]
+          }
+          disabled={!projects.data?.length}
+        />
         <div className="goal-strip">
           {(goals.data ?? []).map((goal) => (
             <span key={goal.id} className="goal-strip-item">

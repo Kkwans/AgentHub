@@ -42,6 +42,10 @@
   PromptOS 保留 route shell，PromptDetail、Versions、Labels、Diff、Bindings、Playground、Context
   与 Skills 区块迁入 `features/promptos/components/PromptOsSections.tsx`。普通用户契约测试已同步
   读取 route shell 与 PromptOS sections，避免结构迁移后测试失真。
+- 表单控件收口：Task 看板的 Project 筛选与 Goal/Task 主操作改用共享 `SelectField`/Radix `Button`；
+  PromptOS 版本、Diff、Playground 与 Context 的写入/选择控件改用共享 Field/FormTextArea/SelectField，
+  保留变量 builder 的紧凑编辑布局。新增 v0.6 feature boundary contract，防止旧 God Component、原生
+  写入入口和 raw binding label 回归。
 
 ### 当前进行中
 
