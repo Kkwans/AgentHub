@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import '@agenthub/ui/styles.css';
 import './styles.css';
+import './styles/design-system.css';
 import './styles/v3-foundation.css';
 import './styles/v3-controls.css';
 import './styles/v06-discovery.css';
