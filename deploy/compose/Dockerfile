@@ -4,7 +4,7 @@ ARG NODE_IMAGE=node:24-bookworm@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1
 
 FROM ${NODE_IMAGE} AS runtime
 
-ARG AGENTHUB_VERSION=0.5.0
+ARG AGENTHUB_VERSION=0.6.0
 ARG AGENTHUB_REVISION=unknown
 
 LABEL org.opencontainers.image.title="AgentHub" \

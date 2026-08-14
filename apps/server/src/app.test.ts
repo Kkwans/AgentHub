@@ -30,7 +30,7 @@ describe('HTTP 基线', () => {
     expect(response.status).toBe(200);
     expect(response.headers['x-request-id']).toBe('req-test-1');
     expect(response.body).toEqual({
-      data: { status: 'ok', version: '0.5.0', database: 'pglite' },
+      data: { status: 'ok', version: '0.6.0', database: 'pglite' },
       requestId: 'req-test-1',
     });
   });
