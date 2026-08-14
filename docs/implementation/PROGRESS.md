@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M5-M7 / UX_DIALOGS_IN_PROGRESS · M10 / AUTOMATED_REGRESSION_READY`，尚未声明真实集成或视觉验收完成。
+状态：`M1 / FEATURE_SPLIT_COMPLETE · M5-M7 / UX_DIALOGS_IN_PROGRESS · M10 / AUTOMATED_REGRESSION_READY`，尚未声明真实集成或视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -38,11 +38,16 @@
   和 Project 的错误不再依赖 raw backend wording。
 - Settings 体验：管理员密码更新与外部 API token 创建已迁移到共享 Dialog；普通用户不再在设置页
   直接面对长表单，密码字段继续复用单一可见性按钮。
+- Feature 拆分：删除 `ControlPages.tsx`，Sessions、Tasks、Settings 已拥有独立实现与路由边界；
+  PromptOS 保留 route shell，PromptDetail、Versions、Labels、Diff、Bindings、Playground、Context
+  与 Skills 区块迁入 `features/promptos/components/PromptOsSections.tsx`。普通用户契约测试已同步
+  读取 route shell 与 PromptOS sections，避免结构迁移后测试失真。
 
 ### 当前进行中
 
 - M2/M3：补齐 Docker/Remote Node 的真实 mount/target 行为和 Project preflight→add 回执；继续清理遗留页面代码与 raw enum 展示。
-- M5-M7：继续把 Session/Task/Settings/PromptOS 内部组件从兼容模块迁入 feature 目录，并补齐 Prompt Label/Review/Merge 的统一 Dialog 交互。
+- M5-M7：补齐 Prompt Label/Review/Merge 的统一 Dialog 交互，继续减少 Task/PromptOS 内部的原生
+  表单控件和重复样式。
 - M8-M9：收紧 Terminal 环境变量白名单、明确 Local-only Terminal DoD，并继续收敛 legacy CSS 与表格密度。
 
 ### 下一步
@@ -50,7 +55,9 @@
 - 非沙箱全仓回归：`TMPDIR=/dev/shm/agenthub-v06-release-test2 corepack pnpm test` 通过 43 个文件、178 tests passed、7 skipped；受限沙箱的 `listen EPERM` 不作为代码失败。
 - 代码门禁：共享 UI 包重建后，`corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm build` 通过；production build 完成 1706 modules 转换。针对仓库代码与 v0.6 实施文档的 Prettier check 通过；根目录两份用户提供的 v0.6 方案文档仍保持原样，因此完整 `pnpm format:check` 只会对其中一份报告既有格式警告。
 - 最终非沙箱回归：`TMPDIR=/dev/shm/agenthub-v06-release-test4 corepack pnpm test` 通过 43 个文件、178 tests passed、7 skipped；Approval 错误映射、Remote Node Dialog、Settings Dialog 均在此回归中通过。没有把受限沙箱的 `listen EPERM` 当作代码失败。
-- 仍需补齐 discovery route/service contract tests 与 CI gate；再进行真实 Codex discovery/adopt/session smoke、四视口视觉审查和 NAS Compose release（当前环境没有浏览器通道且 root-only Compose 不可读，不伪称完成）。
+- 仍需补齐 discovery route/service contract tests 与 CI gate；继续增加 feature contract tests，再进行
+  真实 Codex discovery/adopt/session smoke、四视口视觉审查和 NAS Compose release（当前环境没有浏览器
+  通道且 root-only Compose 不可读，不伪称完成）。
 
 ## v0.5 当前 Goal：可用性闭环
 

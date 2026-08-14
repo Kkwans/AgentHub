@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 describe('PromptOS v0.6 ordinary-user contracts', () => {
   it('uses shared dialog/select flows instead of exposing raw binding enums', () => {
-    const source = readFileSync(new URL('./PromptOsPage.tsx', import.meta.url), 'utf8');
+    const source = [
+      readFileSync(new URL('./PromptOsPage.tsx', import.meta.url), 'utf8'),
+      readFileSync(
+        new URL('../features/promptos/components/PromptOsSections.tsx', import.meta.url),
+        'utf8',
+      ),
+    ].join('\n');
 
     expect(source).toContain('新建 Prompt 绑定');
     expect(source).toContain('新建 Skill 绑定');
