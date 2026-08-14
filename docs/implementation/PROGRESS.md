@@ -58,8 +58,10 @@
 - v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 3 个文件、7 个测试；其中
   Worktree live 首次暴露临时路径未加入 workspace allow-list 的真实失败，补充
   `AGENTHUB_WORKSPACE_ROOTS_JSON` 后 Worktree→Review→Merge 与 Remote Node/Codex smoke 均通过。
-- 最新 GitHub Actions release gate：run `31773985580`（commit `c72ba6e`）全绿，lint、typecheck、
+- 最新 GitHub Actions release gate：run `31777520674`（commit `1ad230e`）全绿，lint、typecheck、
   test、build 与 Playwright E2E 均通过；Node.js 20 action deprecation 仅为 GitHub annotation。
+- M8-M9 CSS 收敛：移除 `styles.css` 尾部 v4 补丁块，统一到 `apps/web/src/styles/design-system.css`；
+  修复 Radix orange solid button 对比度后，四视口 axe 4/4、完整 Playwright E2E 24/24 通过。
 - v0.6 NAS 发布：已备份正式 Compose、`.env` 与旧 browser token 至
   `/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/`，仅重建
   `/volume2/DockerProject/agenthub/docker-compose.yml` 的 `agenthub` service；正式镜像为
@@ -68,6 +70,9 @@
 - 发布边界：未执行 `docker compose down`，未删除镜像、卷、用户数据，也未修改或重启其他 Agent
   容器；正式 Compose 仍注册为 Docker project `agenthub`。真实 Agent smoke 已通过，TX5Pro/浏览器
   视觉因本轮没有可用浏览器通道仍保持未验证状态。
+- 最新 UI 修复已以 `agenthub:0.6.0-nas.2`（revision `1ad230e`）部署；升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260814T064756Z-pre-nas2/`，详见
+  `docs/qa/nas/2026-08-14-v06-ui2/`。
 
 ### 当前进行中
 
@@ -75,8 +80,8 @@
   真实 Agent smoke 作为下一阶段集成门禁。
 - M5-M7：继续补齐 Prompt Label/Review/Merge 的统一 Dialog 交互和端到端审阅证据，减少 Task/PromptOS
   的重复样式。
-- M8-M9：继续收敛 legacy CSS 与表格密度；Terminal 仍保持 Local-only DoD，不伪造浏览器 PTY 或
-  Docker/Remote Terminal 能力。
+- M8-M9：共享 CSS 层与表单/状态视觉收敛已完成；Terminal 仍保持 Local-only DoD，不伪造浏览器
+  PTY 或 Docker/Remote Terminal 能力。
 
 ### 下一步
 

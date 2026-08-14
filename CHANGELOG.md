@@ -7,7 +7,8 @@
 - PromptOS 支持中文 Kind/Type、自动生成 key、结构化 Variables、Version/Label/Binding/Dialog 与 Context Preview；Session/Task/Review/Diff/Git 的写操作统一使用 Dialog 和用户可读状态；
 - 强化 Docker discovery 的 ID pinning、workspace allow-list、路径 containment/symlink 防护与 Terminal 环境变量白名单；浏览器 PTY 在 v0.6 明确为 scoped defer，不伪造可用能力；
 - 版本元数据统一为 `0.6.0`，真实 live gate 3 个文件/7 个测试通过；GitHub Actions run `31773985580` 的 lint、typecheck、test、build、Playwright E2E 全绿；
-- 正式 NAS Compose 已切换到 `agenthub:0.6.0-nas.1`，入口为 `192.168.5.110:3210`，容器 root/privileged、running/healthy；升级未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- 正式 NAS Compose 已切换到 `agenthub:0.6.0-nas.2`（revision `1ad230e`），入口为 `192.168.5.110:3210`，容器 root/privileged、running/healthy；升级未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- UI CSS 共享层已收敛到 `styles/design-system.css`；按钮对比度修复后四视口 axe 与完整 24 项 Playwright E2E 全部通过。
 
 已知边界：当前没有可用浏览器/Computer Use 通道，因此 1440/1024/768/390 人工视觉验收与人工可用性 checklist 保持未验证；请参阅 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。
 

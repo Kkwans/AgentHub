@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-14",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "1ad230e",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "ui": {
+    "canonicalSharedStylesheet": "apps/web/src/styles/design-system.css",
+    "legacyV4CssMarker": "REMOVED",
+    "axePlaywright": "PASS: 4 viewports",
+    "playwrightE2e": "PASS: 24 tests"
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.2",
+    "imageId": "sha256:8314c0a6d3bc4532d74f2b37c45166215bd4669256db6d7311b14d5d3e040e3e",
+    "imageRevision": "1ad230e",
+    "containerId": "8499e9c847b060b116906178c7b0444fdc11977f4a3f27f6a528740c5c9aa3c7",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260814T064756Z-pre-nas2",
+    "composeSha256": "2404f8b90d5b305dd53a7c0799c4b68dc9f135f682debe10fa3c54b1095376f3",
+    "envSha256": "16c6ae7e2a2e0fea07811ad72cf228a32e964b5db289b89682c19a0ae8e7836d",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+    "scope": ["compose", "env", "browser-token"]
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true
+  },
+  "githubActions": {
+    "runId": 31777520674,
+    "headSha": "1ad230ebe71817ce4fa74622bb962c6891d4eb71",
+    "status": "success"
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}

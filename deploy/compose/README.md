@@ -1,6 +1,6 @@
 # AgentHub v0.6 NAS Compose 部署
 
-该配置用于当前 ARM64 绿联 NAS，当前正式镜像为 `agenthub:0.6.0-nas.1`。它按用户明确授权以 root/privileged 运行，并拥有 Project
+该配置用于当前 ARM64 绿联 NAS，当前正式镜像为 `agenthub:0.6.0-nas.2`。它按用户明确授权以 root/privileged 运行，并拥有 Project
 读写、Codex HOME、Git identity 配置、Docker socket 和 host Docker CLI。该能力等同 NAS root，
 只能运行可信镜像。
 
@@ -49,6 +49,7 @@ docker compose --env-file deploy/compose/.env.example \
 ```text
 /volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/
 /volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/
+/volume2/Project/.agenthub/central/deployments/20260814T064756Z-pre-nas2/
 ```
 
 普通用户不需要执行上述命令；打开 Web 后只使用管理员账号密码登录。
