@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1 / FEATURE_SPLIT_COMPLETE · M5-M7 / UX_DIALOGS_IN_PROGRESS · M10 / AUTOMATED_REGRESSION_READY`，尚未声明真实集成或视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED`，尚未声明真实 Agent 集成或视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -49,22 +49,38 @@
 - Workspace 拆分：`WorkspacePage.tsx` 保留 Session 查询、URL 状态和布局事件；SessionRail、Conversation、
   Inspector（含 Files/Diff/Git/Run）与 Composer 迁入 `features/workspace/components/WorkspaceSections.tsx`，
   没有改动事件 cursor、Approval exactly-once、Git action 或 Terminal capability 语义。
+- v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
+  `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
+  `origin/main`。
+- v0.6 自动化回归：非沙箱全仓 Vitest 通过 44 个文件、182 passed、7 skipped；TypeScript、ESLint
+  与 production build 通过（Web 1710 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
+  的监听 `EPERM` 均不作为代码失败。
+- v0.6 NAS 发布：已备份正式 Compose、`.env` 与旧 browser token 至
+  `/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/`，仅重建
+  `/volume2/DockerProject/agenthub/docker-compose.yml` 的 `agenthub` service；正式镜像为
+  `agenthub:0.6.0-nas.1`（ARM64，revision `c167d4f`），容器 `running/healthy`，健康接口返回
+  `version=0.6.0`、`database=pglite`、`web=true`，端口仍为 `192.168.5.110:3210`。
+- 发布边界：未执行 `docker compose down`，未删除镜像、卷、用户数据，也未修改或重启其他 Agent
+  容器；正式 Compose 仍注册为 Docker project `agenthub`。TX5Pro/浏览器视觉与真实 Agent smoke
+  本轮没有可用浏览器通道或 live 授权，保持未验证状态。
 
 ### 当前进行中
 
-- M2/M3：补齐 Docker/Remote Node 的真实 mount/target 行为和 Project preflight→add 回执；继续清理遗留页面代码与 raw enum 展示。
-- M5-M7：补齐 Prompt Label/Review/Merge 的统一 Dialog 交互，继续减少 Task/PromptOS 内部的原生
-  表单控件和重复样式。
-- M8-M9：收紧 Terminal 环境变量白名单、明确 Local-only Terminal DoD，并继续收敛 legacy CSS 与表格密度。
+- M2/M3：继续补齐 Docker/Remote Node 的真实 mount/target 行为和 Project preflight→add 回执，并以
+  真实 Agent smoke 作为下一阶段集成门禁。
+- M5-M7：继续补齐 Prompt Label/Review/Merge 的统一 Dialog 交互和端到端审阅证据，减少 Task/PromptOS
+  的重复样式。
+- M8-M9：继续收敛 legacy CSS 与表格密度；Terminal 仍保持 Local-only DoD，不伪造浏览器 PTY 或
+  Docker/Remote Terminal 能力。
 
 ### 下一步
 
-- 非沙箱全仓回归：`TMPDIR=/dev/shm/agenthub-v06-release-test2 corepack pnpm test` 通过 43 个文件、178 tests passed、7 skipped；受限沙箱的 `listen EPERM` 不作为代码失败。
-- 代码门禁：共享 UI 包重建后，`corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm build` 通过；production build 完成 1706 modules 转换。针对仓库代码与 v0.6 实施文档的 Prettier check 通过；根目录两份用户提供的 v0.6 方案文档仍保持原样，因此完整 `pnpm format:check` 只会对其中一份报告既有格式警告。
-- 最终非沙箱回归：`TMPDIR=/dev/shm/agenthub-v06-release-test4 corepack pnpm test` 通过 43 个文件、178 tests passed、7 skipped；Approval 错误映射、Remote Node Dialog、Settings Dialog 均在此回归中通过。没有把受限沙箱的 `listen EPERM` 当作代码失败。
-- 仍需补齐 discovery route/service contract tests 与 CI gate；继续增加 feature contract tests，再进行
-  真实 Codex discovery/adopt/session smoke、四视口视觉审查和 NAS Compose release（当前环境没有浏览器
-  通道且 root-only Compose 不可读，不伪称完成）。
+- 继续补齐 discovery route/service contract tests 与 CI gate，并增加真实 Codex discovery/adopt/session
+  smoke；缺失 Agent 或未映射工作区必须明确记录 `SKIP/MISSING/WORKSPACE_UNMAPPED`。
+- 在获得授权浏览器通道后，执行 1440/1024/768/390 的视觉审查；当前 NAS v0.6 已发布，但本轮不把
+  `curl`/fixture/静态 build 结果等同于 TX5Pro 视觉验收。
+- 继续按普通用户旅程完善 Project → Agent → Session → Approval → Diff/Git → PromptOS → Task Review
+  的真实后端证据，保持每个独立逻辑变更可回退。
 
 ## v0.5 当前 Goal：可用性闭环
 

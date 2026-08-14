@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-08-14T04:55:13Z",
+  "finishedAt": "2026-08-14T05:19:33Z",
+  "result": "PASS",
+  "repository": {
+    "commit": "c167d4f",
+    "remote": "https://github.com/Kkwans/AgentHub.git",
+    "branch": "main"
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.1",
+    "imageId": "sha256:6c172943ca9c25414cde7237883447a20b09fd4f5f6cfd7e374d958dc986f8eb",
+    "imageRevision": "c167d4f",
+    "containerId": "4a0b69001d9ad0fe13a4d9bf6116391d73ee26accbe54c2d3db37c96c3d35a84",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "composeDownUsed": false
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06",
+    "composeSha256": "2404f8b90d5b305dd53a7c0799c4b68dc9f135f682debe10fa3c54b1095376f3",
+    "envSha256": "16c6ae7e2a2e0fea07811ad72cf228a32e964b5db289b89682c19a0ae8e7836d",
+    "preUpgradeComposeSha256": "2404f8b90d5b305dd53a7c0799c4b68dc9f135f682debe10fa3c54b1095376f3",
+    "preUpgradeEnvSha256": "36ef247514b09775b5a255bb0317902c34cb32bd00f3cc5f81cd524f65549790",
+    "scope": ["compose", "env", "browser-token"]
+  },
+  "agentContainersUnchanged": true,
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true
+  },
+  "gates": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS (1710 web modules)",
+    "vitest": { "filesPassed": 44, "filesSkipped": 3, "testsPassed": 182, "testsSkipped": 7 },
+    "browserVisual": "NOT_RUN: browser channel unavailable",
+    "realAgentSmoke": "NOT_RUN: live authorization/channel unavailable"
+  },
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}
