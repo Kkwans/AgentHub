@@ -42,8 +42,11 @@
 - `corepack pnpm build`：通过，Web 转换 1710 modules；
 - `TMPDIR=/dev/shm/agenthub-v06-release-test6 corepack pnpm test`：44 个文件通过、3 个跳过，
   182 passed、7 skipped；
-- 真实浏览器/TX5Pro 视觉验收与真实 Agent session smoke：本轮没有可用浏览器通道或 live 授权，
-  保持未验证，不将 curl、fixture 或静态 build 结果等同于视觉/真实 Agent 验收。
+- `TMPDIR=/dev/shm/agenthub-v06-live8 AGENTHUB_E2E_LIVE=1 corepack pnpm test:live`：3 个文件、7 个
+  测试通过，覆盖 Remote Node/Codex、Worktree→Review→Merge 与 Docker Agent smoke；首次失败的
+  Worktree fixture 已通过显式 workspace root 配置修复。
+- 真实浏览器/TX5Pro 视觉验收：本轮没有可用浏览器通道，保持未验证，不将 curl、fixture 或静态
+  build 结果等同于视觉验收。
 
 ## 回滚边界
 

@@ -14,8 +14,8 @@
 - M0 输出已落盘到 `docs/implementation/v0.6/BASELINE.md` 与
   `docs/implementation/v0.6/PRODUCT_DOD.md`，包含迁移地图、API/路径安全契约、首批十个逻辑提交
   计划与部署回滚边界。
-- 当前运行环境可以执行非沙箱测试，但无法读取 root-only 正式 Compose 目录，也没有浏览器/Computer
-  Use 通道；因此没有伪称 NAS v0.6 部署或 TX5Pro 视觉验收完成。
+- M0 时当前运行环境无法读取 root-only 正式 Compose 目录，也没有浏览器/Computer Use 通道；该
+  基线限制已在 M11 通过受控 NAS 发布核验解决，TX5Pro 视觉验收仍保持未声明。
 
 ### 已完成切片
 
@@ -55,14 +55,17 @@
 - v0.6 自动化回归：非沙箱全仓 Vitest 通过 44 个文件、182 passed、7 skipped；TypeScript、ESLint
   与 production build 通过（Web 1710 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
   的监听 `EPERM` 均不作为代码失败。
+- v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 3 个文件、7 个测试；其中
+  Worktree live 首次暴露临时路径未加入 workspace allow-list 的真实失败，补充
+  `AGENTHUB_WORKSPACE_ROOTS_JSON` 后 Worktree→Review→Merge 与 Remote Node/Codex smoke 均通过。
 - v0.6 NAS 发布：已备份正式 Compose、`.env` 与旧 browser token 至
   `/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/`，仅重建
   `/volume2/DockerProject/agenthub/docker-compose.yml` 的 `agenthub` service；正式镜像为
   `agenthub:0.6.0-nas.1`（ARM64，revision `c167d4f`），容器 `running/healthy`，健康接口返回
   `version=0.6.0`、`database=pglite`、`web=true`，端口仍为 `192.168.5.110:3210`。
 - 发布边界：未执行 `docker compose down`，未删除镜像、卷、用户数据，也未修改或重启其他 Agent
-  容器；正式 Compose 仍注册为 Docker project `agenthub`。TX5Pro/浏览器视觉与真实 Agent smoke
-  本轮没有可用浏览器通道或 live 授权，保持未验证状态。
+  容器；正式 Compose 仍注册为 Docker project `agenthub`。真实 Agent smoke 已通过，TX5Pro/浏览器
+  视觉因本轮没有可用浏览器通道仍保持未验证状态。
 
 ### 当前进行中
 

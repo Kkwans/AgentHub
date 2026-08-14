@@ -37,6 +37,7 @@ liveDescribe('Worktree Task Runner 真实闭环', () => {
       AGENTHUB_AUTH_MODE: 'local_trusted',
       AGENTHUB_DATA_DIR: join(fixtureRoot, 'pgdata'),
       AGENTHUB_WORKTREE_ROOT: join(fixtureRoot, 'managed-worktrees'),
+      AGENTHUB_WORKSPACE_ROOTS_JSON: JSON.stringify([fixtureRoot]),
       LOG_LEVEL: 'silent',
     });
     const address = running.server.address();

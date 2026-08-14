@@ -45,7 +45,7 @@
     "build": "PASS (1710 web modules)",
     "vitest": { "filesPassed": 44, "filesSkipped": 3, "testsPassed": 182, "testsSkipped": 7 },
     "browserVisual": "NOT_RUN: browser channel unavailable",
-    "realAgentSmoke": "NOT_RUN: live authorization/channel unavailable"
+    "realAgentSmoke": "PASS: 3 files, 7 tests (Remote Node/Codex, Worktree review/merge, Docker Agent)"
   },
   "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
 }
