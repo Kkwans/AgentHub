@@ -46,6 +46,9 @@
   PromptOS 版本、Diff、Playground 与 Context 的写入/选择控件改用共享 Field/FormTextArea/SelectField，
   保留变量 builder 的紧凑编辑布局。新增 v0.6 feature boundary contract，防止旧 God Component、原生
   写入入口和 raw binding label 回归。
+- Workspace 拆分：`WorkspacePage.tsx` 保留 Session 查询、URL 状态和布局事件；SessionRail、Conversation、
+  Inspector（含 Files/Diff/Git/Run）与 Composer 迁入 `features/workspace/components/WorkspaceSections.tsx`，
+  没有改动事件 cursor、Approval exactly-once、Git action 或 Terminal capability 语义。
 
 ### 当前进行中
 

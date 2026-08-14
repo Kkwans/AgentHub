@@ -22,6 +22,16 @@ describe('v0.6 feature boundaries', () => {
     expect(source('./promptos/components/PromptOsSections.tsx')).toContain('<FormDialog');
   });
 
+  it('keeps Workspace interaction panels outside the route shell', () => {
+    const route = source('../pages/WorkspacePage.tsx');
+    const sections = source('./workspace/components/WorkspaceSections.tsx');
+    expect(route).toContain("from '../features/workspace/components/WorkspaceSections'");
+    expect(route).not.toContain('function Conversation(');
+    expect(route).not.toContain('function Composer(');
+    expect(sections).toContain('export function Conversation(');
+    expect(sections).toContain('export function Composer(');
+  });
+
   it('keeps PromptOS ordinary-user labels in the feature section', () => {
     const promptos = source('./promptos/components/PromptOsSections.tsx');
     expect(promptos).toContain('labelPromptBindingTarget');
