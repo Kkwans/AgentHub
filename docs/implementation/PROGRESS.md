@@ -58,6 +58,8 @@
 - v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 3 个文件、7 个测试；其中
   Worktree live 首次暴露临时路径未加入 workspace allow-list 的真实失败，补充
   `AGENTHUB_WORKSPACE_ROOTS_JSON` 后 Worktree→Review→Merge 与 Remote Node/Codex smoke 均通过。
+- 最新 GitHub Actions release gate：run `31773985580`（commit `c72ba6e`）全绿，lint、typecheck、
+  test、build 与 Playwright E2E 均通过；Node.js 20 action deprecation 仅为 GitHub annotation。
 - v0.6 NAS 发布：已备份正式 Compose、`.env` 与旧 browser token 至
   `/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/`，仅重建
   `/volume2/DockerProject/agenthub/docker-compose.yml` 的 `agenthub` service；正式镜像为

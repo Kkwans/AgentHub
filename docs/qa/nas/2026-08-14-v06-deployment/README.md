@@ -20,9 +20,15 @@
 
 `/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/`
 
-备份包含正式 `docker-compose.yml`、`.env`、旧 `secrets/browser-token` 以及文件校验信息；
-没有复制或覆盖 PGlite data、worktrees 或其他项目数据。回滚时只恢复该 Compose project 的
-旧 `.env`/镜像并重建 `agenthub` service，不执行全局清理。
+备份包含正式 `docker-compose.yml`、`.env`、旧 `secrets/browser-token` 以及文件校验信息。
+随后在仅停止 `agenthub` service 的窗口内，另行创建了 data/worktrees 归档：
+
+`/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`
+
+SHA-256：`672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`。
+归档范围为 PGlite data 与 worktrees；没有删除、覆盖或迁移其他项目数据。回滚时只恢复该
+Compose project 的旧 `.env`/镜像并重建 `agenthub` service，不执行全局清理；只有在确认数据
+恢复必要时才使用该归档。
 
 ## 结果
 
@@ -45,6 +51,8 @@
 - `TMPDIR=/dev/shm/agenthub-v06-live8 AGENTHUB_E2E_LIVE=1 corepack pnpm test:live`：3 个文件、7 个
   测试通过，覆盖 Remote Node/Codex、Worktree→Review→Merge 与 Docker Agent smoke；首次失败的
   Worktree fixture 已通过显式 workspace root 配置修复。
+- GitHub Actions run `31773985580`（commit `c72ba6e`）：全绿，lint、typecheck、test、build 和
+  Playwright E2E 均通过（2m59s）。
 - 真实浏览器/TX5Pro 视觉验收：本轮没有可用浏览器通道，保持未验证，不将 curl、fixture 或静态
   build 结果等同于视觉验收。
 

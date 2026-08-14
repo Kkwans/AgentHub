@@ -1,6 +1,6 @@
-# AgentHub NAS Compose 部署
+# AgentHub v0.6 NAS Compose 部署
 
-该配置用于当前 ARM64 绿联 NAS。它按用户明确授权以 root/privileged 运行，并拥有 Project
+该配置用于当前 ARM64 绿联 NAS，当前正式镜像为 `agenthub:0.6.0-nas.1`。它按用户明确授权以 root/privileged 运行，并拥有 Project
 读写、Codex HOME、Git identity 配置、Docker socket 和 host Docker CLI。该能力等同 NAS root，
 只能运行可信镜像。
 
@@ -36,15 +36,22 @@ docker compose --env-file deploy/compose/.env.example \
 均只保存 hash。Compose 以固定 project name `agenthub` 启动后，应同时出现在
 `docker compose ls` 和绿联 Docker 的“项目”列表。
 
-## 切换顺序
+## v0.6 升级顺序
 
-1. 在仍为 loopback/local_trusted 的旧服务上运行 `create-deployment-token.mjs`，将明文直接
-   写入 root-only 文件，不把 token 打印到日志。
-2. 记录旧 systemd、健康、Project/Execution Target 和既有 Agent 容器状态。
-3. 优雅停止 systemd，确认 PGlite 没有打开句柄后，冷备份整个 data 目录以及 unit/env。
-4. 禁用但保留 systemd，执行 `docker compose up -d --no-build`。
-5. 核验 container health、账号登录、Cookie WebSocket、Project/Git、Docker preflight、重启恢复、
+1. 记录旧 image、Compose、`.env`、data/worktrees、健康、Project/Execution Target 和既有 Agent 容器状态。
+2. 只停止 `agenthub` service，备份正式 Compose、`.env`、兼容 token 和 PGlite data/worktrees。
+3. 使用固定 tag 构建并执行 `docker compose up -d --no-build agenthub`；不执行 `compose down`。
+4. 核验 container health、账号登录、Cookie WebSocket、Project/Git、Docker preflight、重启恢复、
    `192.168.5.110:3210` 和绿联项目列表。
+
+本次 v0.6 发布备份：
+
+```text
+/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/
+/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/
+```
+
+普通用户不需要执行上述命令；打开 Web 后只使用管理员账号密码登录。
 
 容器以 root 运行，但 `SUDO_UID=1000` 明确告诉 Git 原始 Project owner 是 `Kkwans`，避免
 `dubious ownership`；不会配置 `safe.directory=*`。只读挂载 `.gitconfig` 用于保留原 Git
@@ -62,10 +69,12 @@ HTTPS 后可设为 `true` 恢复 COOP；登录密码、Cookie 与 API token 跨�
 ```bash
 cd /volume2/DockerProject/agenthub
 docker compose stop agenthub
-sudo systemctl enable --now agenthub.service
-curl -fsS http://127.0.0.1:3210/api/v1/health
+sudo cp /volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/compose/docker-compose.yml ./docker-compose.yml
+sudo cp /volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/compose/.env ./.env
+docker compose up -d --no-build agenthub
+curl -fsS http://192.168.5.110:3210/api/v1/health
 ```
 
-正常回滚继续使用同一 PGlite 数据，不恢复备份。只有确认新进程写入导致旧代码不兼容时才
-停止所有 AgentHub 进程并恢复冷备份。回滚不执行 `compose down`，不删除容器、镜像、token
-文件、Project、worktree、Agent 容器或 volume。
+旧镜像 `agenthub:0.5.0-nas.1` 保留。只有确认新进程写入导致旧代码不兼容时，才在停止单个
+`agenthub` service 后恢复 `central-data-worktrees.tar.gz`；回滚不执行 `compose down`，不删除
+容器、镜像、token 文件、Project、worktree、Agent 容器或 volume。
