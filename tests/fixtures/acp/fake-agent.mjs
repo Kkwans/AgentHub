@@ -96,10 +96,7 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
       update: {
         sessionUpdate: 'tool_call_update',
         toolCallId: 'tool-1',
-        title: '修改 Fixture 文件',
-        kind: 'edit',
         status: 'completed',
-        locations: [{ path: '/workspace/fixture.ts' }],
       },
     });
     await client.notify(CLIENT_METHODS.session_update, {

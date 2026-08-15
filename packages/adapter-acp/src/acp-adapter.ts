@@ -297,6 +297,15 @@ class AcpSessionHandle implements AgentSessionHandle {
       resolve: (response: RequestPermissionResponse) => void;
     }
   >();
+  private readonly toolCallMetadata = new Map<
+    string,
+    {
+      kind?: string | null;
+      locations?: Array<{ path: string; line?: number | null }> | null;
+      title?: string | null;
+      name?: string | null;
+    }
+  >();
   private seq = 0;
   private eventCounter = 0;
   private sessionId: string | undefined;
@@ -491,13 +500,54 @@ class AcpSessionHandle implements AgentSessionHandle {
 
   onSessionUpdate(notification: SessionNotification): void {
     if (this.sessionId && notification.sessionId !== this.sessionId) return;
-    const updates = normalizeAcpSessionUpdate(notification.update);
+    const update = this.enrichToolCallUpdate(notification.update);
+    const updates = normalizeAcpSessionUpdate(update);
     for (const update of updates) {
       if (update.type === 'assistant.message.delta' && typeof update.payload.text === 'string') {
         this.messageText += update.payload.text;
       }
       this.emit(update.type, update.payload, this.activeRunId, update.sourceEventType);
     }
+  }
+
+  private enrichToolCallUpdate(
+    update: SessionNotification['update'],
+  ): SessionNotification['update'] {
+    if (update.sessionUpdate === 'tool_call') {
+      this.toolCallMetadata.set(update.toolCallId, {
+        ...(update.kind !== undefined ? { kind: update.kind } : {}),
+        ...(update.locations !== undefined ? { locations: update.locations } : {}),
+        ...(update.title !== undefined ? { title: update.title } : {}),
+        ...(update.name !== undefined ? { name: update.name } : {}),
+      });
+      return update;
+    }
+    if (update.sessionUpdate !== 'tool_call_update') return update;
+
+    const previous = this.toolCallMetadata.get(update.toolCallId);
+    if (!previous) return update;
+    const enriched = {
+      ...update,
+      ...(update.kind === undefined && previous.kind !== undefined ? { kind: previous.kind } : {}),
+      ...(update.locations === undefined && previous.locations !== undefined
+        ? { locations: previous.locations }
+        : {}),
+      ...(update.title === undefined && previous.title !== undefined
+        ? { title: previous.title }
+        : {}),
+      ...(update.name === undefined && previous.name !== undefined ? { name: previous.name } : {}),
+    } as SessionNotification['update'];
+    this.toolCallMetadata.set(update.toolCallId, {
+      ...previous,
+      ...(update.kind !== undefined ? { kind: update.kind } : {}),
+      ...(update.locations !== undefined ? { locations: update.locations } : {}),
+      ...(update.title !== undefined ? { title: update.title } : {}),
+      ...(update.name !== undefined ? { name: update.name } : {}),
+    });
+    if (update.status === 'completed' || update.status === 'failed') {
+      this.toolCallMetadata.delete(update.toolCallId);
+    }
+    return enriched;
   }
 
   private requireSession(): string {

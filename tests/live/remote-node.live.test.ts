@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AgentHubNodeCommandExecutor } from '../../apps/node/src/command-executor.js';
 import { RemoteNodeClient } from '../../apps/node/src/node-client.js';
 import { startServer, type RunningServer } from '../../apps/server/src/index.js';
+import { AcpAdapter, HostAcpProcessLauncher } from '../../packages/adapter-acp/src/index.js';
 
 const enabled = process.env.AGENTHUB_E2E_LIVE === '1';
 const liveDescribe = enabled ? describe : describe.skip;
@@ -22,9 +23,13 @@ liveDescribe('Remote Node 真实 Codex 闭环', () => {
   let client: RemoteNodeClient | undefined;
   let clientRun: Promise<void> | undefined;
   let apiRoot = '';
+  let codexHome = '';
 
   beforeAll(async () => {
     fixtureRoot = await mkdtemp(join(tmpdir(), 'agenthub-remote-node-live-'));
+    codexHome = join(fixtureRoot, 'codex-home');
+    await mkdir(codexHome);
+    await symlink('/home/Kkwans/.codex/auth.json', join(codexHome, 'auth.json'));
     projectRoot = join(fixtureRoot, 'project');
     await mkdir(projectRoot);
     await execFile(gitExecutable, ['init', '-b', 'main'], { cwd: projectRoot });
@@ -47,6 +52,7 @@ liveDescribe('Remote Node 真实 Codex 闭环', () => {
       AGENTHUB_AUTH_MODE: 'local_trusted',
       AGENTHUB_DATA_DIR: join(fixtureRoot, 'pgdata'),
       AGENTHUB_WORKTREE_ROOT: join(fixtureRoot, 'worktrees'),
+      CODEX_HOME: codexHome,
       LOG_LEVEL: 'silent',
     });
     const address = running.server.address();
@@ -69,7 +75,14 @@ liveDescribe('Remote Node 真实 Codex 闭环', () => {
         roots: [projectRoot],
         registrationToken: registration.token,
       },
-      new AgentHubNodeCommandExecutor([projectRoot]),
+      new AgentHubNodeCommandExecutor(
+        [projectRoot],
+        new AcpAdapter({
+          launcher: new HostAcpProcessLauncher({
+            resolveEnvironment: async () => ({ ...process.env, CODEX_HOME: codexHome }),
+          }),
+        }),
+      ),
     );
     clientRun = client.run();
     await waitForValue(
@@ -142,6 +155,13 @@ liveDescribe('Remote Node 真实 Codex 闭环', () => {
         expect.objectContaining({ role: 'ASSISTANT', text: expect.stringMatching(/REMOTE_OK/i) }),
       ]),
     );
+    // The terminal run event and the session READY transition are persisted
+    // independently. Wait for the session state to converge before closing;
+    // otherwise a valid completed run can race the close guard.
+    await waitForValue(async () => {
+      const current = await api<{ status: string }>(`/sessions/${session.id}`);
+      return ['READY', 'CLOSED'].includes(current.status) ? current : undefined;
+    }, 30_000);
     await api(`/sessions/${session.id}/close`, { method: 'POST' });
   }, 240_000);
 

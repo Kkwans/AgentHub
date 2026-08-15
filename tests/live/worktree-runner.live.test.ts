@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -18,9 +18,13 @@ liveDescribe('Worktree Task Runner 真实闭环', () => {
   let repositoryRoot = '';
   let running: RunningServer | undefined;
   let apiRoot = '';
+  let codexHome = '';
 
   beforeAll(async () => {
     fixtureRoot = await mkdtemp(join(tmpdir(), 'agenthub-worktree-live-'));
+    codexHome = join(fixtureRoot, 'codex-home');
+    await mkdir(codexHome);
+    await symlink('/home/Kkwans/.codex/auth.json', join(codexHome, 'auth.json'));
     repositoryRoot = join(fixtureRoot, 'repository');
     await mkdir(repositoryRoot, { recursive: true });
     await git(['init', '-b', 'main'], repositoryRoot);
@@ -38,6 +42,7 @@ liveDescribe('Worktree Task Runner 真实闭环', () => {
       AGENTHUB_DATA_DIR: join(fixtureRoot, 'pgdata'),
       AGENTHUB_WORKTREE_ROOT: join(fixtureRoot, 'managed-worktrees'),
       AGENTHUB_WORKSPACE_ROOTS_JSON: JSON.stringify([fixtureRoot]),
+      CODEX_HOME: codexHome,
       LOG_LEVEL: 'silent',
     });
     const address = running.server.address();

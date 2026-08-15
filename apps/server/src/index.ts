@@ -179,7 +179,9 @@ export async function startServer(
   });
   const promptos = new PromptService(promptRepository, skillRepository, projectRepository);
   const acpLauncher = new RoutedAcpProcessLauncher(
-    new HostAcpProcessLauncher(),
+    new HostAcpProcessLauncher({
+      resolveEnvironment: async () => ({ ...process.env, ...environment }),
+    }),
     new DockerAcpProcessLauncher(docker),
   );
   const openClawExec = new DockerOpenClawExecLauncher(docker);
