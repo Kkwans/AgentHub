@@ -180,6 +180,11 @@
   font-weight: 620;
 }
 
+.tool-card .event-label {
+  color: var(--app-muted);
+  font-size: 10px;
+}
+
 .approval-card {
   background: #fff9ee;
   border: 1px solid #f1d5aa;

@@ -39,6 +39,7 @@ import {
   type SessionRecord,
 } from '../../../lib/api';
 import {
+  labelAgentEventType,
   labelPromptBindingSlot,
   labelPromptBindingTarget,
 } from '../../../presentation/domain-labels';
@@ -204,10 +205,10 @@ export function Conversation({
                 <strong>
                   {String(
                     event.payloadJson.title ??
-                      (event.type === 'agent.plan.updated' ? 'Agent Plan' : '工具调用'),
+                      (event.type === 'agent.plan.updated' ? 'Agent 执行计划' : '工具调用'),
                   )}
                 </strong>
-                <code>{event.type}</code>
+                <span className="event-label">{labelAgentEventType(event.type)}</span>
               </div>
             </div>
             {Boolean(event.payloadJson.status) && (

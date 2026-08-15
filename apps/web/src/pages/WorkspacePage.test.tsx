@@ -194,6 +194,30 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(screen.getAllByRole('button', { name: '重新加载' }).length).toBeGreaterThan(0);
   });
 
+  it('正常对话视图将 Agent 事件类型翻译成中文，不泄露协议枚举', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === `/api/v1/sessions/${session.id}/events?afterSeq=0&limit=500`) {
+        return jsonResponse([
+          {
+            id: 'event-tool-completed',
+            sessionId: session.id,
+            runId: 'run-1',
+            seq: 1,
+            type: 'tool.call.completed',
+            payloadJson: { title: '读取文件', status: 'completed' },
+            createdAt: '2026-08-11T00:00:00.000Z',
+          },
+        ]);
+      }
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    expect(await screen.findByText('工具调用完成')).toBeInTheDocument();
+    expect(screen.queryByText('tool.call.completed')).not.toBeInTheDocument();
+  });
+
   it('Approval 提交失败可见、可重试，并且提交期间禁用全部选项', async () => {
     let attempts = 0;
     let releaseApproval: ((response: Response) => void) | undefined;

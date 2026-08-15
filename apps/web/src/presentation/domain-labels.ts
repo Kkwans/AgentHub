@@ -20,6 +20,37 @@ export const ADAPTER_KIND_LABELS = {
   CUSTOM_ACP: 'Custom ACP',
 } as const;
 
+/**
+ * Event types are an internal normalized contract. Keep the protocol value out
+ * of the normal conversation view; the debug view can still expose it when a
+ * technical diagnosis needs the exact wire name.
+ */
+export const AGENT_EVENT_TYPE_LABELS = {
+  'session.created': 'Session 已创建',
+  'session.state_changed': 'Session 状态更新',
+  'session.closed': 'Session 已关闭',
+  'run.started': 'Run 已开始',
+  'run.completed': 'Run 已完成',
+  'run.failed': 'Run 失败',
+  'run.cancelled': 'Run 已停止',
+  'assistant.message.delta': 'Agent 回复更新',
+  'assistant.message.completed': 'Agent 回复完成',
+  'agent.plan.updated': 'Agent 执行计划更新',
+  'agent.status': 'Agent 状态更新',
+  'tool.call.started': '工具调用开始',
+  'tool.call.progress': '工具调用进行中',
+  'tool.call.completed': '工具调用完成',
+  'tool.call.failed': '工具调用失败',
+  'approval.requested': '请求批准',
+  'approval.resolved': '批准已处理',
+  'file.changed': '文件已变更',
+  'git.status.changed': 'Git 状态更新',
+  'usage.updated': '用量更新',
+  'artifact.created': '产物已创建',
+  'adapter.warning': '适配器提醒',
+  'adapter.disconnected': 'Agent 连接中断',
+} as const;
+
 export const PROMPT_KIND_LABELS = {
   SYSTEM: '系统提示',
   TASK: '任务提示',
@@ -148,6 +179,10 @@ export function labelAgentKind(value: string | null | undefined) {
 
 export function labelAdapterKind(value: string | null | undefined) {
   return labelFrom(ADAPTER_KIND_LABELS, value, '协议适配器');
+}
+
+export function labelAgentEventType(value: string | null | undefined) {
+  return labelFrom(AGENT_EVENT_TYPE_LABELS, value, '执行事件');
 }
 
 export function labelPromptKind(value: string | null | undefined) {

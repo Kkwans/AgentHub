@@ -3364,7 +3364,8 @@ select:focus-visible {
   font-size: 11px;
 }
 
-.tool-card code {
+.tool-card code,
+.tool-card .event-label {
   color: #728098;
   font-size: 9px;
 }

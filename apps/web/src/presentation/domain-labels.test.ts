@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ADAPTER_KIND_LABELS,
+  AGENT_EVENT_TYPE_LABELS,
   AGENT_KIND_LABELS,
   AGENT_STATUS_LABELS,
   APPROVAL_STATUS_LABELS,
@@ -13,6 +14,7 @@ import {
   TASK_STATUS_LABELS,
   WORKTREE_STATUS_LABELS,
   labelAgentKind,
+  labelAgentEventType,
   labelExecutionTargetKind,
   labelPromptKind,
   labelPromptType,
@@ -25,6 +27,7 @@ describe('domain presentation labels', () => {
       EXECUTION_TARGET_KIND_LABELS,
       AGENT_KIND_LABELS,
       ADAPTER_KIND_LABELS,
+      AGENT_EVENT_TYPE_LABELS,
       AGENT_STATUS_LABELS,
       PROJECT_STATUS_LABELS,
       PROMPT_KIND_LABELS,
@@ -46,5 +49,7 @@ describe('domain presentation labels', () => {
     expect(labelPromptType('CHAT')).toBe('对话消息');
     expect(labelPromptType('UNSUPPORTED')).toBe('内容格式');
     expect(labelRuntimeStatus('WORKSPACE_UNMAPPED')).toBe('工作区未映射');
+    expect(labelAgentEventType('tool.call.completed')).toBe('工具调用完成');
+    expect(labelAgentEventType('vendor.private.event')).toBe('执行事件');
   });
 });
