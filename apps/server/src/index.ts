@@ -178,9 +178,10 @@ export async function startServer(
     publish: (topic, event) => brokerRef.current?.publish(topic, event),
   });
   const promptos = new PromptService(promptRepository, skillRepository, projectRepository);
+  const resolveEnvironment = async () => ({ ...process.env, ...environment });
   const acpLauncher = new RoutedAcpProcessLauncher(
     new HostAcpProcessLauncher({
-      resolveEnvironment: async () => ({ ...process.env, ...environment }),
+      resolveEnvironment,
     }),
     new DockerAcpProcessLauncher(docker),
   );
@@ -196,6 +197,7 @@ export async function startServer(
         : primary;
     },
     remoteAgentAdapter,
+    resolveEnvironment,
   );
   const agentDiscovery = new AgentDiscoveryService(
     agents,

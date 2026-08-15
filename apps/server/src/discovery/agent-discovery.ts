@@ -159,10 +159,10 @@ export class AgentDiscoveryService {
     const cwd = this.chooseCwd(candidate.targetCandidateId);
     try {
       const preflight = await this.agentService.preflight(agent.id, { cwd });
-      return { agent, preflight };
+      return { agent: (await this.agents.get(agent.id)) ?? agent, preflight };
     } catch (error) {
       return {
-        agent,
+        agent: (await this.agents.get(agent.id)) ?? agent,
         preflight: {
           status: mapPreflightFailure(error),
           reasonCode: error instanceof AppError ? error.code : 'PREFLIGHT_FAILED',

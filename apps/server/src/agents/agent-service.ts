@@ -100,6 +100,7 @@ export class AgentService {
       launcher: AcpProcessLauncher,
     ) => AgentRuntimeAdapter = (_adapterKind, launcher) => new AcpAdapter({ launcher }),
     private readonly remoteAdapter?: AgentRuntimeAdapter,
+    private readonly resolveEnvironment: () => Promise<NodeJS.ProcessEnv> = async () => process.env,
   ) {}
 
   list() {
@@ -214,8 +215,9 @@ export class AgentService {
   }
 
   async hostDiagnostics(): Promise<Record<string, unknown>> {
-    const codexExecutable = await findExecutable('codex');
-    const opencodeExecutable = await findExecutable('opencode');
+    const environment = await this.resolveEnvironment();
+    const codexExecutable = await findExecutable('codex', environment.PATH);
+    const opencodeExecutable = await findExecutable('opencode', environment.PATH);
     const diagnostics: Record<string, unknown> = {
       node: { executable: process.execPath, version: process.version },
       codex: { status: codexExecutable ? 'INSTALLED' : 'MISSING', executable: codexExecutable },
@@ -231,8 +233,8 @@ export class AgentService {
     if (codexExecutable) {
       diagnostics.codex = {
         ...(diagnostics.codex as Record<string, unknown>),
-        version: await readCommandLine(codexExecutable, ['--version']),
-        auth: await readCommandLine(codexExecutable, ['login', 'status']),
+        version: await readCommandLine(codexExecutable, ['--version'], environment),
+        auth: await readCommandLine(codexExecutable, ['login', 'status'], environment),
       };
     }
     return diagnostics;
@@ -489,8 +491,11 @@ function toAgentProfile(
   };
 }
 
-async function findExecutable(name: string): Promise<string | undefined> {
-  const paths = (process.env.PATH ?? '').split(delimiter).filter(isAbsolute);
+async function findExecutable(
+  name: string,
+  pathValue = process.env.PATH,
+): Promise<string | undefined> {
+  const paths = (pathValue ?? '').split(delimiter).filter(isAbsolute);
   for (const directory of paths) {
     const candidate = join(directory, name);
     try {
@@ -503,8 +508,18 @@ async function findExecutable(name: string): Promise<string | undefined> {
   return undefined;
 }
 
-async function readCommandLine(executable: string, args: string[]): Promise<string> {
-  const result = await runProcess({ executable, args, timeoutMs: 10_000, maxOutputBytes: 64_000 });
+async function readCommandLine(
+  executable: string,
+  args: string[],
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<string> {
+  const result = await runProcess({
+    executable,
+    args,
+    env: environment,
+    timeoutMs: 10_000,
+    maxOutputBytes: 64_000,
+  });
   const output = `${result.stdout}\n${result.stderr}`.trim();
   return output || `exit ${String(result.exitCode)}`;
 }
