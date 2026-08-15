@@ -1,0 +1,25 @@
+# Source-only NAS release overlay. Use this when the pinned base image already
+# contains the validated ARM64 node-pty native binding and only server/web
+# artifacts changed.
+
+ARG AGENTHUB_BASE_IMAGE=agenthub:0.6.0-nas.7
+FROM ${AGENTHUB_BASE_IMAGE}
+
+ARG AGENTHUB_VERSION=0.6.0
+ARG AGENTHUB_REVISION=unknown
+
+LABEL org.opencontainers.image.title="AgentHub" \
+      org.opencontainers.image.description="AI Coding Agent 控制平面" \
+      org.opencontainers.image.source="https://github.com/Kkwans/AgentHub" \
+      org.opencontainers.image.version="${AGENTHUB_VERSION}" \
+      org.opencontainers.image.revision="${AGENTHUB_REVISION}"
+
+WORKDIR /opt/agenthub
+
+COPY apps/server/dist /opt/agenthub/apps/server/dist
+COPY apps/web/dist /opt/agenthub/apps/web/dist
+
+# Do not allow an overlay to silently regress the PTY capability inherited from
+# the base image.
+RUN cd /opt/agenthub/apps/server \
+    && node -e "const p=require('node-pty'); if (typeof p.spawn !== 'function') process.exit(1)"

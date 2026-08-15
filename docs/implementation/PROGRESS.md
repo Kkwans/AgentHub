@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS7_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS8_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -55,7 +55,7 @@
 - v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
   `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
   `origin/main`。
-- v0.6 自动化回归：非沙箱全仓 Vitest 通过 45 个文件、184 passed、9 skipped；TypeScript、ESLint
+- v0.6 自动化回归：非沙箱全仓 Vitest 通过 46 个文件、188 passed、9 skipped；TypeScript、ESLint
   与 production build 通过（Web 1715 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
   的监听 `EPERM` 均不作为代码失败。
 - v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 4 个文件、9 个测试；新增
@@ -67,7 +67,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `UNVERIFIED` 状态覆盖。live 文件并行已关闭，避免真实 Codex/PGlite 启动竞态造成假失败。
 - ACP 事件归一化现在会在 `tool_call_update` 缺省 `kind`/`locations`/`title` 时继承同一工具初始事件的
   元数据，避免供应商合法的 partial update 丢失工具类型；fixture 已覆盖该回归。
-- 最新 GitHub Actions release gate：run `31886283190`（commit `e11eed7`）全绿，lint、typecheck、
+- 最新 GitHub Actions release gate：run `31892637869`（commit `23205f3`）全绿，lint、typecheck、
   test、build 与 Playwright E2E 均通过；Node.js 20 action deprecation 仅为 GitHub annotation。
 - M8-M9 CSS 收敛：移除 `styles.css` 尾部 v4 补丁块，统一到 `apps/web/src/styles/design-system.css`；
   修复 Radix orange solid button 对比度后，四视口 axe 4/4、完整 Playwright E2E 24/24 通过。
@@ -113,6 +113,15 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `/volume2/Project/.agenthub/central/deployments/20260815T144927Z-pre-nas7/`，完整记录见
   `docs/qa/nas/2026-08-15-v06-live7/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- 共享表单可访问性修复已发布为 `agenthub:0.6.0-nas.8`（ARM64，image digest
+  `sha256:0da6c9e92d12fc0f1ccf39aef7837e7020543e32c68343362f30a9fab8f47174`，revision `23205f3`），
+  容器 `9a8171965f9ac462ef71853ccd5820f578faeb21b7670eda841dd5fce799b169` 最终 `running/healthy`，
+  `/api/v1/health` 返回 `version=0.6.0`、`database=pglite`、`web=true`。因 NAS 代理不可用，native
+  重编译路径未继续；已验证的 nas.7 native base 通过 `Dockerfile.nas-overlay` 仅覆盖 server/web
+  dist，独立 node-pty spawn 与真实 Terminal API open/input/close 均通过。备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260815T153002Z-pre-nas8/`，完整记录见
+  `docs/qa/nas/2026-08-15-v06-live8/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 
 ### 当前进行中
 
@@ -122,7 +131,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
-  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.7 通过 ARM64 native image 后进入 READY。
+  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.8 通过 ARM64 native base overlay 后保持 READY。
 
 ### 下一步
 
