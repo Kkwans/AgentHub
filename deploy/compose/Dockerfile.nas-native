@@ -1,0 +1,53 @@
+# NAS fallback build for ARM64 node-pty. The regular Dockerfile remains the
+# primary reproducible build; this file is used when the NAS image needs a
+# native PTY binding and its registry/build network cannot build dependencies.
+
+ARG AGENTHUB_BASE_IMAGE=agenthub:0.6.0-nas.4
+
+FROM ${AGENTHUB_BASE_IMAGE} AS node-pty-builder
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY} \
+    HTTPS_PROXY=${HTTPS_PROXY} \
+    NO_PROXY=${NO_PROXY}
+
+# The NAS proxy intermittently fails for deb.debian.org. USTC is the verified
+# ARM64 mirror used only inside this disposable builder stage.
+RUN sed -i \
+      -e 's|http://deb.debian.org/debian-security|https://mirrors.ustc.edu.cn/debian-security|g' \
+      -e 's|http://deb.debian.org/debian|https://mirrors.ustc.edu.cn/debian|g' \
+      /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends build-essential python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty /tmp/node-pty
+WORKDIR /tmp/node-pty
+
+RUN npm install --ignore-scripts --no-audit --no-fund \
+    && npm_config_build_from_source=true npm rebuild --build-from-source \
+    && test -f build/Release/pty.node
+
+FROM ${AGENTHUB_BASE_IMAGE}
+
+ARG AGENTHUB_VERSION=0.6.0
+ARG AGENTHUB_REVISION=unknown
+
+LABEL org.opencontainers.image.title="AgentHub" \
+      org.opencontainers.image.description="AI Coding Agent 控制平面" \
+      org.opencontainers.image.source="https://github.com/Kkwans/AgentHub" \
+      org.opencontainers.image.version="${AGENTHUB_VERSION}" \
+      org.opencontainers.image.revision="${AGENTHUB_REVISION}"
+
+WORKDIR /opt/agenthub
+
+COPY --from=node-pty-builder /tmp/node-pty/lib /opt/agenthub/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/lib
+COPY --from=node-pty-builder /tmp/node-pty/typings /opt/agenthub/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/typings
+COPY --from=node-pty-builder /tmp/node-pty/build/Release/pty.node /opt/agenthub/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/build/Release/pty.node
+COPY apps/server/dist /opt/agenthub/apps/server/dist
+COPY apps/web/dist /opt/agenthub/apps/web/dist
+
+RUN cd /opt/agenthub/apps/server \
+    && node -e "const p=require('node-pty'); if (typeof p.spawn !== 'function') process.exit(1)"

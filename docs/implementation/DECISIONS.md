@@ -20,9 +20,10 @@
 
 状态：已接受。v0.6 交付 Local Project Terminal：能力可用时使用官方 xterm.js + node-pty，
 服务端只提供 allow-list shell、root containment、环境白名单和 Project owner UID/GID drop；
-Docker/Remote Terminal 不进入本版本。当前 ARM64 NAS 无 `node-pty` 预构建产物和编译工具，运行时
-必须显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，不安装系统工具，也不以普通子进程管道模拟 PTY。
-详细边界见 `docs/ADR/ADR-017-Local-Project-Terminal-Delivery.md`。
+Docker/Remote Terminal 不进入本版本。普通构建无法提供 ARM64 native binding 时，运行时必须显示
+`PTY_NATIVE_BINDING_UNAVAILABLE`，不安装系统工具，也不以普通子进程管道模拟 PTY；正式 NAS 发布
+通过专用 ARM64 native builder 产出可验证的 `pty.node` 后，能力才可标记 `READY`。详细边界见
+`docs/ADR/ADR-017-Local-Project-Terminal-Delivery.md` 与 `docs/ADR/ADR-018-ARM64-Native-PTY-Image.md`。
 
 ## D-006：UI 语言
 

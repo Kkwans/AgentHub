@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS5_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS7_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -100,6 +100,16 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `docs/qa/nas/2026-08-15-v06-live5/`。
 - NAS `linux/arm64` 当前真实 capability 为 `PTY_NATIVE_BINDING_UNAVAILABLE`；Terminal UI 显示中文原因并
   禁用打开操作，不用 Shell 模拟 PTY。Docker/Remote Terminal 仍不在 v0.6 范围。
+- ARM64 native PTY nas.7 已发布：`agenthub:0.6.0-nas.7`（ARM64，image digest
+  `sha256:df5e1c3a5e120e2604f8677cd4bd43a371c24d68b9135ccd82bee37cb3b4ecb9`，revision `a6f5c16`），
+  容器 `cc11ab51e1e31a7bdd4b30f31dcff89efa2d39ff8dd50550d2a563a7f7c2b528` 最终 `running/healthy`，健康
+  接口返回 `version=0.6.0`、`database=pglite`、`web=true`。native builder 由
+  `deploy/compose/Dockerfile.nas-native` 固化，容器内 `node-pty.spawn` 可加载。
+- nas.7 授权 capability 返回 `terminal.available=true`、`code=READY`、`platform=linux`、`arch=arm64`；
+  真实 Project Terminal API 完成 open/input/close 烟测。备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260815T144927Z-pre-nas7/`，完整记录见
+  `docs/qa/nas/2026-08-15-v06-live7/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 
 ### 当前进行中
 
@@ -108,8 +118,8 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 - 普通用户旅程的后端闭环已有自动化与真实 Codex/Remote Node 证据；Claude Code、Hermes、OpenClaw
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
-  API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。NAS native binding 缺失时
-  显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，不伪造浏览器 PTY。
+  API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
+  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.7 通过 ARM64 native image 后进入 READY。
 
 ### 下一步
 
@@ -319,7 +329,8 @@ M3：
 - Run Git snapshot：BEFORE/AFTER 状态与 SHA 持久化，snapshot 失败不改变 Agent Run outcome：通过。
 - Terminal：真实 `node-pty` open/input/resize/output/close 生命周期和独立 `terminal:*` topic 已实现；
   新增 `terminal.closed` 生命周期审计事件，无 native binding 时禁止 shell fallback。
-- 当前 NAS runtime 诊断：`available=false`、`PTY_NATIVE_BINDING_UNAVAILABLE`、`linux/arm64`。
+- 历史 M3 诊断记录：当时 NAS runtime 为 `available=false`、`PTY_NATIVE_BINDING_UNAVAILABLE`、`linux/arm64`；
+  该状态已由当前 v0.6 nas.7 native image 验证结果 supersede，详见上方 nas.7 记录。
 - M3 聚焦回归：Project/Git/Terminal/Session 共 16 项测试通过；lint、typecheck、全仓 build 通过。
 
 M4：
@@ -421,4 +432,5 @@ v0.2 Remote Node：
 - Claude Code 需在镜像内固定安装 `@agentclientprotocol/claude-agent-acp@0.66.0` 后才能验证 auth/session。
 - Hermes 需增加覆盖 Project 的部署级 workspace mount 后才能验证项目 Session；本次未修改 Compose。
 - OpenClaw 需在原生 Gateway 中批准 scope upgrade 后才能验证 `session/new` 和 prompt；本次未替用户批准授权请求。
-- 当前 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；未伪装 PTY。
+- 历史 v0.2 未验证项：当时 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；
+  当前 v0.6 nas.7 已通过 native image 和真实 API smoke，历史记录不代表当前部署状态。

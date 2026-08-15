@@ -20,7 +20,7 @@ v0.6 不允许使用单一 `DONE` 标记。每个 Feature 必须依次通过以�
 - Create/Edit 均使用 Dialog 或 responsive Sheet，不再挂载页面 inline form。
 - `ControlPages.tsx` 已按业务域拆分，UI package 有正式 Dialog/Form/Field/Picker 基础层。
 - Real Codex 完成 discovery → adopt → preflight → Session → turn → response → disposable repo file mutation → Diff → commit。
-- Terminal 在 v0.6 交付 Local Project Terminal：能力 READY 时可在 Workspace 使用 xterm.js；Docker/Remote Terminal 不进入本版本 DoD。native binding 缺失、Project 未绑定或诊断失败时，UI 显示中文原因并禁用打开动作，不伪造 Shell/PTY。
+- Terminal 在 v0.6 交付 Local Project Terminal：能力 READY 时可在 Workspace 使用 xterm.js；Docker/Remote Terminal 不进入本版本 DoD。native binding 缺失、Project 未绑定或诊断失败时，UI 显示中文原因并禁用打开动作，不伪造 Shell/PTY。正式 ARM64 NAS 通过 native image 交付 `pty.node`，并以真实 open/input/close 烟测证明 READY。
 - 1440/1024/768/390 视觉检查、产品契约测试、CI 和 rollback evidence 全部存在。
 
 ## 普通用户 UX Gate
