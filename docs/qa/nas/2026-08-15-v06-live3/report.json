@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-15",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "4eb548d",
+    "headSha": "4eb548d1203f3874ad5f917e6eca0490d7107496",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "automation": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS: Web 1711 modules transformed",
+    "vitest": "PASS: 44 files, 182 passed, 8 skipped",
+    "live": "PASS: 3 files, 8 tests",
+    "playwrightE2e": "PASS: 24 tests in GitHub Actions",
+    "githubActions": {
+      "runId": 31884092817,
+      "status": "success"
+    }
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.3",
+    "imageId": "sha256:36c54094d81b9c43ed2302593ad25464105f11fb7cc7e437ef1a87ca3cd2ce9c",
+    "imageRevision": "4eb548d",
+    "containerId": "f704fc2270ab15afd49ef9df9c7b184b543445a49f8592f1beef475536c5d1e9",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260815T122000Z-pre-nas3",
+    "composeSha256": "2404f8b90d5b305dd53a7c0799c4b68dc9f135f682debe10fa3c54b1095376f3",
+    "envSha256": "f75e8cfb305aaf973aa6116cb22ac291f58ce8a1d876c2f2de76f2e0c4ef06bf",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+    "scope": ["compose", "env", "browser-token"]
+  },
+  "runtimeHashMatch": {
+    "apps/server/dist/index.js": "dba3d7507b0b39e8b56321c04ff96adf3a965ec8d0abbd7d53e2e1d98b8b117b",
+    "packages/adapter-acp/dist/acp-adapter.js": "ac635258bfd1cea7825433a0c1a44f121e06b95698f8f5621d7189c72d9e78ae"
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}

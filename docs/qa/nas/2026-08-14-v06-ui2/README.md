@@ -5,6 +5,9 @@
 部署目录：`/volume2/DockerProject/agenthub`
 访问地址：`http://192.168.5.110:3210`
 
+本记录冻结为 2026-08-14 的 UI 修复与 `agenthub:0.6.0-nas.2` 发布证据；2026-08-15 的 ACP/live
+修复与 `nas.3` 当前运行状态见 [`../2026-08-15-v06-live3/`](../2026-08-15-v06-live3/)。
+
 ## 代码与 UI 变更
 
 - commit：`1ad230e`，已推送 `origin/main`。

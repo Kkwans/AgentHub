@@ -1,10 +1,10 @@
 # 实施进度
 
-最后更新：2026-08-14
+最后更新：2026-08-15
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED`，尚未声明真实 Agent 集成或视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED · ACP/LIVE/NAS3_VERIFIED`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -52,13 +52,16 @@
 - v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
   `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
   `origin/main`。
-- v0.6 自动化回归：非沙箱全仓 Vitest 通过 44 个文件、182 passed、7 skipped；TypeScript、ESLint
-  与 production build 通过（Web 1710 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
+- v0.6 自动化回归：非沙箱全仓 Vitest 通过 44 个文件、182 passed、8 skipped；TypeScript、ESLint
+  与 production build 通过（Web 1711 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
   的监听 `EPERM` 均不作为代码失败。
-- v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 3 个文件、7 个测试；其中
-  Worktree live 首次暴露临时路径未加入 workspace allow-list 的真实失败，补充
-  `AGENTHUB_WORKSPACE_ROOTS_JSON` 后 Worktree→Review→Merge 与 Remote Node/Codex smoke 均通过。
-- 最新 GitHub Actions release gate：run `31777520674`（commit `1ad230e`）全绿，lint、typecheck、
+- v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 3 个文件、8 个测试；新增
+  一次性 Git 仓库中的真实 Codex 文件变更、工作区 Diff、selected-file stage 与 commit 证据。Remote
+  Node close race 已等待 Session READY 收敛；Claude Code 的固定 `claude-agent-acp` 缺失明确保持
+  `BROKEN`，Hermes 的 workspace 未映射保持 `WORKSPACE_UNMAPPED`，OpenClaw ACP 命令通过。
+- ACP 事件归一化现在会在 `tool_call_update` 缺省 `kind`/`locations`/`title` 时继承同一工具初始事件的
+  元数据，避免供应商合法的 partial update 丢失工具类型；fixture 已覆盖该回归。
+- 最新 GitHub Actions release gate：run `31884092817`（commit `4eb548d`）全绿，lint、typecheck、
   test、build 与 Playwright E2E 均通过；Node.js 20 action deprecation 仅为 GitHub annotation。
 - M8-M9 CSS 收敛：移除 `styles.css` 尾部 v4 补丁块，统一到 `apps/web/src/styles/design-system.css`；
   修复 Radix orange solid button 对比度后，四视口 axe 4/4、完整 Playwright E2E 24/24 通过。
@@ -70,23 +73,26 @@
 - 发布边界：未执行 `docker compose down`，未删除镜像、卷、用户数据，也未修改或重启其他 Agent
   容器；正式 Compose 仍注册为 Docker project `agenthub`。真实 Agent smoke 已通过，TX5Pro/浏览器
   视觉因本轮没有可用浏览器通道仍保持未验证状态。
-- 最新 UI 修复已以 `agenthub:0.6.0-nas.2`（revision `1ad230e`）部署；升级前备份位于
-  `/volume2/Project/.agenthub/central/deployments/20260814T064756Z-pre-nas2/`，详见
-  `docs/qa/nas/2026-08-14-v06-ui2/`。
+- 最新 ACP/live 修复已以 `agenthub:0.6.0-nas.3`（ARM64，revision `4eb548d`，image digest
+  `sha256:36c54094d81b9c43ed2302593ad25464105f11fb7cc7e437ef1a87ca3cd2ce9c`）部署；升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260815T122000Z-pre-nas3/`。容器新的 ID 为
+  `f704fc2270ab15afd49ef9df9c7b184b543445a49f8592f1beef475536c5d1e9`，最终 `running/healthy`，
+  健康接口仍返回 `version=0.6.0`、`database=pglite`、`web=true`，旧 `nas.2` 镜像保留。
+  完整记录见 `docs/qa/nas/2026-08-15-v06-live3/`。
 
 ### 当前进行中
 
-- M2/M3：继续补齐 Docker/Remote Node 的真实 mount/target 行为和 Project preflight→add 回执，并以
-  真实 Agent smoke 作为下一阶段集成门禁。
-- M5-M7：继续补齐 Prompt Label/Review/Merge 的统一 Dialog 交互和端到端审阅证据，减少 Task/PromptOS
-  的重复样式。
-- M8-M9：共享 CSS 层与表单/状态视觉收敛已完成；Terminal 仍保持 Local-only DoD，不伪造浏览器
-  PTY 或 Docker/Remote Terminal 能力。
+- 视觉与人工可用性 gate 仍未完成：当前环境没有授权的浏览器/Computer Use/TX5Pro 通道，不能把
+  Playwright fixture 或 NAS `curl` 结果声明为 1440/1024/768/390 实机验收。
+- 普通用户旅程的后端闭环已有自动化与真实 Codex/Remote Node 证据；Claude Code、Hermes、OpenClaw
+  仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
+- M8-M9：Terminal 仍保持 Local-only DoD，不伪造浏览器 PTY 或 Docker/Remote Terminal 能力；PromptOS
+  与 Task Review 的更多真实业务数据验收继续沿用可回滚切片。
 
 ### 下一步
 
-- 继续补齐 discovery route/service contract tests 与 CI gate，并增加真实 Codex discovery/adopt/session
-  smoke；缺失 Agent 或未映射工作区必须明确记录 `SKIP/MISSING/WORKSPACE_UNMAPPED`。
+- 继续补齐 discovery route/service contract tests 与 CI gate；缺失 Agent 或未映射工作区必须明确记录
+  `SKIP/MISSING/WORKSPACE_UNMAPPED`，并保持真实供应商能力矩阵可追踪。
 - 在获得授权浏览器通道后，执行 1440/1024/768/390 的视觉审查；当前 NAS v0.6 已发布，但本轮不把
   `curl`/fixture/静态 build 结果等同于 TX5Pro 视觉验收。
 - 继续按普通用户旅程完善 Project → Agent → Session → Approval → Diff/Git → PromptOS → Task Review
