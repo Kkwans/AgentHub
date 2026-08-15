@@ -17,6 +17,14 @@ import { XIcon } from '@phosphor-icons/react/X';
 
 export type FormDialogSize = 'small' | 'medium' | 'large';
 
+const FOCUSABLE_CONTROL_SELECTOR =
+  'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [role="combobox"]:not([aria-disabled="true"]), button:not([disabled])';
+
+function resolveFocusableControl(element: HTMLElement): HTMLElement | undefined {
+  if (element.matches(FOCUSABLE_CONTROL_SELECTOR)) return element;
+  return element.querySelector<HTMLElement>(FOCUSABLE_CONTROL_SELECTOR) ?? undefined;
+}
+
 export interface FormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,6 +35,8 @@ export interface FormDialogProps {
   size?: FormDialogSize;
   labelledBy?: string;
   describedBy?: string;
+  onOpenAutoFocus?: React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onOpenAutoFocus'];
+  onCloseAutoFocus?: React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onCloseAutoFocus'];
 }
 
 export function FormDialog({
@@ -39,10 +49,59 @@ export function FormDialog({
   size = 'medium',
   labelledBy,
   describedBy,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
 }: FormDialogProps) {
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
+  const handleOpenAutoFocus = React.useCallback<
+    NonNullable<React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onOpenAutoFocus']>
+  >(
+    (event) => {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement && activeElement !== document.body) {
+        restoreFocusRef.current ??= activeElement;
+      }
+      onOpenAutoFocus?.(event);
+      if (event.defaultPrevented) return;
+
+      const content = event.currentTarget as HTMLElement;
+      const firstInvalid = Array.from(
+        content.querySelectorAll<HTMLElement>('[aria-invalid="true"], :invalid'),
+      )
+        .map(resolveFocusableControl)
+        .find((element): element is HTMLElement => Boolean(element));
+      const firstControl = content.querySelector<HTMLElement>(FOCUSABLE_CONTROL_SELECTOR);
+      const target = firstInvalid ?? firstControl;
+      if (target) {
+        event.preventDefault();
+        target.focus();
+      }
+    },
+    [onOpenAutoFocus],
+  );
+  const handleCloseAutoFocus = React.useCallback<
+    NonNullable<React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onCloseAutoFocus']>
+  >(
+    (event) => {
+      onCloseAutoFocus?.(event);
+      if (event.defaultPrevented) return;
+      const opener = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (opener?.isConnected) {
+        event.preventDefault();
+        opener.focus();
+      }
+    },
+    [onCloseAutoFocus],
+  );
+
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
-      <RadixDialog.Content className={`ah-dialog ah-dialog-${size}`}>
+      <RadixDialog.Content
+        className={`ah-dialog ah-dialog-${size}`}
+        onOpenAutoFocus={handleOpenAutoFocus}
+        onCloseAutoFocus={handleCloseAutoFocus}
+      >
         <Flex align="start" justify="between" gap="4" className="ah-dialog-header">
           <div>
             <RadixDialog.Title {...(labelledBy ? { id: labelledBy } : {})} size="5">
@@ -58,8 +117,10 @@ export function FormDialog({
               </RadixDialog.Description>
             ) : null}
           </div>
-          <RadixDialog.Close type="button" className="ah-dialog-close" aria-label="关闭">
-            <XIcon aria-hidden size={18} />
+          <RadixDialog.Close className="ah-dialog-close" aria-label="关闭">
+            <button type="button" className="ah-dialog-close" aria-label="关闭">
+              <XIcon aria-hidden size={18} />
+            </button>
           </RadixDialog.Close>
         </Flex>
         <div className="ah-dialog-body">{children}</div>
@@ -147,9 +208,8 @@ export function Field({
           typeof child.props['aria-describedby'] === 'string'
             ? child.props['aria-describedby']
             : undefined;
-        const mergedDescribedBy = [existingDescribedBy, describedBy]
-          .filter(Boolean)
-          .join(' ') || undefined;
+        const mergedDescribedBy =
+          [existingDescribedBy, describedBy].filter(Boolean).join(' ') || undefined;
         return React.cloneElement(child, {
           ...(mergedDescribedBy ? { 'aria-describedby': mergedDescribedBy } : {}),
           ...(error ? { 'aria-invalid': true } : {}),
