@@ -36,6 +36,9 @@
   语义分离，保证 Dialog 表单可访问名称稳定。
 - 错误体验：扩展前端稳定 error code 到中文下一步提示，保留原始状态只用于调试视图；Remote Node
   和 Project 的错误不再依赖 raw backend wording。
+- 共享表单可访问性：`@agenthub/ui` 的 `Field` 将说明/错误关系绑定到真实 input、textarea、select，
+  `FormTextField`/`FormTextArea` 默认提供 `autocomplete="off"` 与稳定 `name`；显式认证 autocomplete
+  保持不变。聚焦测试 `apps/web/src/components/FormFields.test.tsx` 4/4 通过，决策见 `ADR-019`。
 - Settings 体验：管理员密码更新与外部 API token 创建已迁移到共享 Dialog；普通用户不再在设置页
   直接面对长表单，密码字段继续复用单一可见性按钮。
 - Feature 拆分：删除 `ControlPages.tsx`，Sessions、Tasks、Settings 已拥有独立实现与路由边界；

@@ -140,6 +140,22 @@ export function Field({
     [description ? descriptionId : undefined, error ? errorId : undefined]
       .filter(Boolean)
       .join(' ') || undefined;
+  const control = React.isValidElement(children)
+    ? (() => {
+        const child = children as React.ReactElement<Record<string, unknown>>;
+        const existingDescribedBy =
+          typeof child.props['aria-describedby'] === 'string'
+            ? child.props['aria-describedby']
+            : undefined;
+        const mergedDescribedBy = [existingDescribedBy, describedBy]
+          .filter(Boolean)
+          .join(' ') || undefined;
+        return React.cloneElement(child, {
+          ...(mergedDescribedBy ? { 'aria-describedby': mergedDescribedBy } : {}),
+          ...(error ? { 'aria-invalid': true } : {}),
+        });
+      })()
+    : children;
 
   return (
     <div className="ah-field" data-invalid={Boolean(error) || undefined}>
@@ -153,9 +169,7 @@ export function Field({
           </span>
         ) : null}
       </div>
-      <div aria-describedby={describedBy} aria-invalid={Boolean(error) || undefined}>
-        {children}
-      </div>
+      <div className="ah-field-control">{control}</div>
       {description ? (
         <Text id={descriptionId} as="p" className="ah-field-description" color="gray" size="1">
           {description}
@@ -182,6 +196,8 @@ export function FormTextField({
   error,
   required,
   id,
+  name,
+  autoComplete = 'off',
   ...props
 }: FormTextFieldProps) {
   return (
@@ -194,8 +210,10 @@ export function FormTextField({
     >
       <RadixTextField.Root
         {...(id ? { id } : {})}
+        {...(name || id ? { name: name ?? id } : {})}
         size="2"
         {...props}
+        autoComplete={autoComplete}
         aria-invalid={Boolean(error) || undefined}
       />
     </Field>
@@ -211,6 +229,8 @@ export function FormTextArea({
   error,
   required,
   id,
+  name,
+  autoComplete = 'off',
   ...props
 }: FormTextAreaProps) {
   return (
@@ -223,8 +243,10 @@ export function FormTextArea({
     >
       <RadixTextArea
         {...(id ? { id } : {})}
+        {...(name || id ? { name: name ?? id } : {})}
         size="2"
         {...props}
+        autoComplete={autoComplete}
         aria-invalid={Boolean(error) || undefined}
       />
     </Field>

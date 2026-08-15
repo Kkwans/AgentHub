@@ -91,3 +91,12 @@ Task Review 的可操作旅程。普通用户不得输入 token、Session ID、T
 `@monaco-editor/react@4.7.0` 的 DiffEditor 清理顺序，`SafeDiffEditor` 在组件卸载完成后释放
 original/modified model，避免先释放 model 再销毁 editor 的运行时异常。该取舍保留较大的
 编辑器懒加载 chunk，但不增加首屏同步依赖；后续性能优化不得恢复外部 CDN。
+
+## D-016：共享表单必须把可访问关系绑定到真实控件
+
+状态：已接受。`@agenthub/ui` 的 `Field` 统一生成说明与错误节点 ID，并将
+`aria-describedby`/`aria-invalid` 合并到实际的 input、textarea 或 select，而不是只放在外层布局
+容器。`FormTextField`/`FormTextArea` 默认使用 `autocomplete="off"` 和稳定 `name`（显式 `name`
+优先，否则回退到 `id`）；认证字段仍由 AccessGate 显式指定 `username`、`current-password` 或
+`new-password`。这样不改变业务表单数据，只修复屏幕阅读器、浏览器自动填充和错误定位语义。
+回归测试见 `apps/web/src/components/FormFields.test.tsx`。

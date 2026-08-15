@@ -55,7 +55,7 @@ Agents → 重新扫描 → 选择候选 → 添加
 ## Quality and safety gates
 
 - 普通 UI 不出现 `LOCAL_HOST`、`DOCKER_CONTAINER`、`SYSTEM`、`REVIEW`、`TEXT`、`CHAT` 等 raw enum。
-- 所有 mutation 使用字段级错误、首个错误聚焦、加载中禁用重复提交、关闭 Dialog 后恢复焦点。
+- 所有 mutation 使用字段级错误、真实控件上的说明/错误关联、首个错误聚焦、加载中禁用重复提交、关闭 Dialog 后恢复焦点。
 - 所有 path 操作通过 root policy、realpath、symlink containment；被动 discovery 只读。
 - Terminal 只允许显式环境变量白名单，不继承 token/secret/password/key；PTY 尽量 drop 到 Project owner UID/GID，并发布 open/close/exit 生命周期审计事件。
 - 不能以 mock、fixture、健康检查或无横向滚动替代真实用户旅程证据。
