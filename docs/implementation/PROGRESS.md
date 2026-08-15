@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED · ACP/LIVE/NAS3_VERIFIED`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED · ACP/LIVE/NAS4_VERIFIED`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -52,16 +52,19 @@
 - v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
   `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
   `origin/main`。
-- v0.6 自动化回归：非沙箱全仓 Vitest 通过 44 个文件、182 passed、8 skipped；TypeScript、ESLint
+- v0.6 自动化回归：非沙箱全仓 Vitest 通过 44 个文件、182 passed、9 skipped；TypeScript、ESLint
   与 production build 通过（Web 1711 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
   的监听 `EPERM` 均不作为代码失败。
-- v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 3 个文件、8 个测试；新增
+- v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 4 个文件、9 个测试；新增
   一次性 Git 仓库中的真实 Codex 文件变更、工作区 Diff、selected-file stage 与 commit 证据。Remote
   Node close race 已等待 Session READY 收敛；Claude Code 的固定 `claude-agent-acp` 缺失明确保持
   `BROKEN`，Hermes 的 workspace 未映射保持 `WORKSPACE_UNMAPPED`，OpenClaw ACP 命令通过。
+- discovery live 闭环已真实通过：`discovery → Runtime adopt → Agent adopt/preflight → Project →
+Session → Run → Message → close`；adopt 响应现在返回最新持久化 Agent 快照，避免 READY 预检被旧
+  `UNVERIFIED` 状态覆盖。live 文件并行已关闭，避免真实 Codex/PGlite 启动竞态造成假失败。
 - ACP 事件归一化现在会在 `tool_call_update` 缺省 `kind`/`locations`/`title` 时继承同一工具初始事件的
   元数据，避免供应商合法的 partial update 丢失工具类型；fixture 已覆盖该回归。
-- 最新 GitHub Actions release gate：run `31884092817`（commit `4eb548d`）全绿，lint、typecheck、
+- 最新 GitHub Actions release gate：run `31886283190`（commit `e11eed7`）全绿，lint、typecheck、
   test、build 与 Playwright E2E 均通过；Node.js 20 action deprecation 仅为 GitHub annotation。
 - M8-M9 CSS 收敛：移除 `styles.css` 尾部 v4 补丁块，统一到 `apps/web/src/styles/design-system.css`；
   修复 Radix orange solid button 对比度后，四视口 axe 4/4、完整 Playwright E2E 24/24 通过。
@@ -79,6 +82,12 @@
   `f704fc2270ab15afd49ef9df9c7b184b543445a49f8592f1beef475536c5d1e9`，最终 `running/healthy`，
   健康接口仍返回 `version=0.6.0`、`database=pglite`、`web=true`，旧 `nas.2` 镜像保留。
   完整记录见 `docs/qa/nas/2026-08-15-v06-live3/`。
+- discovery/live 修复已继续发布为 `agenthub:0.6.0-nas.4`（ARM64，revision `e11eed7`，image
+  digest `sha256:d5a7745b70667521ac86243984013c6a3b37b8adb88efd33bd0a0680eb9b2cca`）；升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260815T130846Z-pre-nas4/`。容器 ID 为
+  `3d9ba293780758b66497987855240ab494bed68e8efe92f7645ef9c4b19ac7ec`，最终 `running/healthy`，
+  健康接口返回 `version=0.6.0`、`database=pglite`、`web=true`，主机与容器 server/ACP dist
+  SHA-256 一致。完整记录见 `docs/qa/nas/2026-08-15-v06-live4/`。
 
 ### 当前进行中
 
@@ -92,7 +101,8 @@
 ### 下一步
 
 - 继续补齐 discovery route/service contract tests 与 CI gate；缺失 Agent 或未映射工作区必须明确记录
-  `SKIP/MISSING/WORKSPACE_UNMAPPED`，并保持真实供应商能力矩阵可追踪。
+  `SKIP/MISSING/WORKSPACE_UNMAPPED`，并保持真实供应商能力矩阵可追踪。核心 discovery live 闭环已
+  通过，后续只补齐边界和回归场景。
 - 在获得授权浏览器通道后，执行 1440/1024/768/390 的视觉审查；当前 NAS v0.6 已发布，但本轮不把
   `curl`/fixture/静态 build 结果等同于 TX5Pro 视觉验收。
 - 继续按普通用户旅程完善 Project → Agent → Session → Approval → Diff/Git → PromptOS → Task Review

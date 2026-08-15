@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-15",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "e11eed7",
+    "headSha": "e11eed73924ec31d3cc23369755f3d78ab7111f",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "automation": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS: Web 1711 modules transformed",
+    "vitest": "PASS: 44 files, 182 passed, 9 skipped",
+    "live": "PASS: 4 files, 9 tests",
+    "playwrightE2e": "PASS: 24 tests in GitHub Actions",
+    "githubActions": {
+      "runId": 31886283190,
+      "status": "success"
+    },
+    "discoveryAdoptRun": "PASS: real Codex discovery/adopt/preflight/project/session/run/message/close"
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.4",
+    "imageId": "sha256:d5a7745b70667521ac86243984013c6a3b37b8adb88efd33bd0a0680eb9b2cca",
+    "imageRevision": "e11eed7",
+    "containerId": "3d9ba293780758b66497987855240ab494bed68e8efe92f7645ef9c4b19ac7ec",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true,
+    "overlayBaseImage": "agenthub:0.6.0-nas.3",
+    "registryMirrorError": "429 Too Many Requests for docker/dockerfile:1.7"
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260815T130846Z-pre-nas4",
+    "composeSha256": "2404f8b90d5b305dd53a7c0799c4b68dc9f135f682debe10fa3c54b1095376f3",
+    "envSha256": "03d720bff68965e52ed3a09c358a22bda2f4c36d9017daa01d68ba0623a05224",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+    "scope": ["compose", "env", "browser-token"]
+  },
+  "runtimeHashMatch": {
+    "apps/server/dist/index.js": "2939e93fd75f0aebe576f4968b5edf4e837145d42c1dd9a67a4bcee566b7e3fe",
+    "packages/adapter-acp/dist/acp-adapter.js": "ac635258bfd1cea7825433a0c1a44f121e06b95698f8f5621d7189c72d9e78ae"
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}
