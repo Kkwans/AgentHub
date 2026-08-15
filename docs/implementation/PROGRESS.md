@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS8_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS9_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -36,6 +36,9 @@
   语义分离，保证 Dialog 表单可访问名称稳定。
 - 错误体验：扩展前端稳定 error code 到中文下一步提示，保留原始状态只用于调试视图；Remote Node
   和 Project 的错误不再依赖 raw backend wording。
+- Discovery 操作反馈：新增共享 `InlineError`，为重新扫描、Runtime/Agent 接入、启动/停止、Project
+  预检和默认设置失败提供 `role=alert` 的中文提示；Agent 与 Remote Node 的 adapter 展示统一通过
+  `labelAdapterKind`，不直接渲染原始枚举。
 - 共享表单可访问性：`@agenthub/ui` 的 `Field` 将说明/错误关系绑定到真实 input、textarea、select，
   `FormTextField`/`FormTextArea` 默认提供 `autocomplete="off"` 与稳定 `name`；显式认证 autocomplete
   保持不变。聚焦测试 `apps/web/src/components/FormFields.test.tsx` 4/4 通过，决策见 `ADR-019`。
@@ -55,7 +58,7 @@
 - v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
   `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
   `origin/main`。
-- v0.6 自动化回归：非沙箱全仓 Vitest 通过 46 个文件、188 passed、9 skipped；TypeScript、ESLint
+- v0.6 自动化回归：非沙箱全仓 Vitest 通过 47 个文件、190 passed、9 skipped；TypeScript、ESLint
   与 production build 通过（Web 1715 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
   的监听 `EPERM` 均不作为代码失败。
 - v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 4 个文件、9 个测试；新增
@@ -67,7 +70,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `UNVERIFIED` 状态覆盖。live 文件并行已关闭，避免真实 Codex/PGlite 启动竞态造成假失败。
 - ACP 事件归一化现在会在 `tool_call_update` 缺省 `kind`/`locations`/`title` 时继承同一工具初始事件的
   元数据，避免供应商合法的 partial update 丢失工具类型；fixture 已覆盖该回归。
-- 最新 GitHub Actions release gate：run `31892637869`（commit `23205f3`）全绿，lint、typecheck、
+- 最新 GitHub Actions release gate：run `31894522807`（commit `06e4c2b`）全绿，lint、typecheck、
   test、build 与 Playwright E2E 均通过；Node.js 20 action deprecation 仅为 GitHub annotation。
 - M8-M9 CSS 收敛：移除 `styles.css` 尾部 v4 补丁块，统一到 `apps/web/src/styles/design-system.css`；
   修复 Radix orange solid button 对比度后，四视口 axe 4/4、完整 Playwright E2E 24/24 通过。
@@ -122,6 +125,14 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `/volume2/Project/.agenthub/central/deployments/20260815T153002Z-pre-nas8/`，完整记录见
   `docs/qa/nas/2026-08-15-v06-live8/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- Discovery 操作反馈修复已发布为 `agenthub:0.6.0-nas.9`（ARM64，image digest
+  `sha256:4e95f0d4aa88faea791f0c4a146a9fbe0b6fab03750acad5bec062150c42f77b`，revision `06e4c2b`），
+  容器 `db19526cecd4c70ea0c3db4cad80d599b5d35cf5a434dd56ce3122a90cc58b25` 最终 `running/healthy`，
+  `/api/v1/health` 返回 `version=0.6.0`、`database=pglite`、`web=true`；授权 capability 仍为
+  `terminal READY / linux arm64`，真实 Terminal open/input/close 与独立 node-pty spawn smoke 通过。
+  升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260815T160630Z-pre-nas9/`，
+  完整记录见 `docs/qa/nas/2026-08-15-v06-live9/`。仅执行 `docker compose up -d --no-build agenthub`，
+  未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 
 ### 当前进行中
 
@@ -131,7 +142,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
-  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.8 通过 ARM64 native base overlay 后保持 READY。
+  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.9 通过 ARM64 native base overlay 后保持 READY。
 
 ### 下一步
 

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-15",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "06e4c2b",
+    "headSha": "06e4c2b09216880bdc7159466c8c58a166c6b488",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "automation": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS: Web 1715 modules transformed",
+    "vitest": "PASS: 47 files, 190 passed, 9 skipped",
+    "focusedUx": "PASS: 7 tests",
+    "playwrightE2e": "PASS: 24 tests",
+    "githubActions": {
+      "runId": 31894522807,
+      "status": "success",
+      "job": "verify"
+    }
+  },
+  "uxSlice": {
+    "mutationErrors": "InlineError role=alert aria-live=assertive",
+    "adapterPresentation": "labelAdapterKind",
+    "backendContractChanged": false
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.9",
+    "imageId": "sha256:4e95f0d4aa88faea791f0c4a146a9fbe0b6fab03750acad5bec062150c42f77b",
+    "imageRevision": "06e4c2b",
+    "baseImage": "agenthub:0.6.0-nas.8",
+    "dockerfile": "deploy/compose/Dockerfile.nas-overlay",
+    "containerId": "db19526cecd4c70ea0c3db4cad80d599b5d35cf5a434dd56ce3122a90cc58b25",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "ownerUidGid": "1000:10",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true
+  },
+  "capabilities": {
+    "terminalAvailable": true,
+    "terminalCode": "READY",
+    "platform": "linux",
+    "arch": "arm64",
+    "nativeBinding": "inherited from agenthub:0.6.0-nas.8; build and runtime smoke passed"
+  },
+  "terminalSmoke": {
+    "projectId": "6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0",
+    "terminalId": "e1bf4564-8906-46b4-b68d-adf2821e5f8f",
+    "steps": ["open", "input: printf live-nas9-pty-ok\\n", "close"],
+    "result": "PASS"
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260815T160630Z-pre-nas9",
+    "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+    "envSha256": "d39bfd82c4235f28c748075630df5fc0fea29819e4ee87c6564319f5f2d5ce49",
+    "envAfterSha256": "2c2f6d19abcc470fe55e05d68c24fc62b8576302b856d51080f8c113292300f8",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+    "scope": [
+      "compose",
+      "env",
+      "browser-token-hash",
+      "container-inspect",
+      "image-inspect",
+      "containers-before",
+      "container-after-inspect",
+      "image-after-inspect"
+    ]
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}
