@@ -13,5 +13,7 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain('归档项目');
     expect(source).toContain('/projects/preflight-path');
     expect(source).toContain('添加前检查');
+    expect(source).toContain('InlineError');
+    expect(source).toContain('labelAdapterKind(candidate.adapterKind)');
   });
 });

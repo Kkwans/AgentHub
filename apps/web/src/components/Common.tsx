@@ -138,6 +138,25 @@ export function ErrorState({ error, retry }: { error: Error; retry?: () => void 
   );
 }
 
+/**
+ * A compact, announced error for mutations that should keep the current page
+ * and form state intact. Query failures use ErrorState; this is for actions
+ * such as adopt/start/stop/save where a retry button would be unsafe or
+ * ambiguous without the user's next choice.
+ */
+export function InlineError({ error, title = '操作未完成' }: { error: unknown; title?: string }) {
+  const message =
+    error instanceof Error && error.message ? error.message : '请检查当前状态后重试。';
+  return (
+    <div className="inline-error" role="alert" aria-live="assertive">
+      <AlertTriangle aria-hidden size={15} />
+      <span>
+        <strong>{title}</strong> {message}
+      </span>
+    </div>
+  );
+}
+
 export function EmptyState({
   title,
   description,

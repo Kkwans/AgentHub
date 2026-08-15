@@ -1023,6 +1023,9 @@ select:focus-visible {
 }
 
 .inline-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
   margin: 10px 0 0;
   padding: 9px 10px;
   color: #9c3340;
@@ -1030,6 +1033,10 @@ select:focus-visible {
   background: var(--red-soft);
   border: 1px solid #f0c7cc;
   border-radius: 4px;
+}
+
+.inline-error strong {
+  font-weight: 650;
 }
 
 .session-cards {

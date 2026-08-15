@@ -30,7 +30,7 @@ import {
   type RemoteNodeRecord,
   type RemoteNodeRegistration,
 } from '../lib/api';
-import { labelDiscoveryStatus } from '../presentation/domain-labels';
+import { labelAdapterKind, labelDiscoveryStatus } from '../presentation/domain-labels';
 import { realtime } from '../lib/realtime';
 
 export function RemoteNodesPanel() {
@@ -282,7 +282,7 @@ export function RemoteNodesPanel() {
                     <span key={agent.key}>
                       <strong>{agent.name}</strong>
                       <small>
-                        {agent.adapterKind} ·{' '}
+                        {labelAdapterKind(agent.adapterKind)} ·{' '}
                         {agent.detectedVersion ?? labelDiscoveryStatus(agent.status)}
                       </small>
                       <StatusBadge status={agent.status} />

@@ -39,12 +39,18 @@ import type {
 import { api } from '../../lib/api';
 import {
   labelAgentKind,
+  labelAdapterKind,
   labelDiscoveryStatus,
   labelExecutionTargetKind,
   labelProjectStatus,
   labelRuntimeStatus,
 } from '../../presentation/domain-labels';
-import { EmptyState as LegacyEmptyState, ErrorState, LoadingState } from '../../components/Common';
+import {
+  EmptyState as LegacyEmptyState,
+  ErrorState,
+  InlineError,
+  LoadingState,
+} from '../../components/Common';
 
 interface ProjectFormValues {
   name: string;
@@ -354,7 +360,7 @@ export function ProjectsDiscoveryPage() {
               {...form.register('description')}
             />
           </AdvancedSection>
-          {addProject.error ? <p className="v06-form-error">{addProject.error.message}</p> : null}
+          {addProject.error ? <InlineError error={addProject.error} title="项目添加失败" /> : null}
         </form>
       </FormDialog>
 
@@ -406,7 +412,7 @@ export function ProjectsDiscoveryPage() {
             {...editForm.register('description')}
           />
           {updateProject.error ? (
-            <p className="v06-form-error">{updateProject.error.message}</p>
+            <InlineError error={updateProject.error} title="项目保存失败" />
           ) : null}
         </form>
       </FormDialog>
@@ -555,7 +561,7 @@ function ProjectPreflightSummary({
           </Badge>
         ) : null}
       </div>
-      {error ? <p className="v06-form-error">{error.message}</p> : null}
+      {error ? <InlineError error={error} title="目录检查失败" /> : null}
       {!loading && !error && report ? (
         <ul>
           {report.checks.map((check) => (
@@ -633,6 +639,12 @@ export function AgentsDiscoveryPage() {
   });
 
   const readyAgents = registered.data?.filter((agent) => agent.status === 'READY').length ?? 0;
+  const actionError =
+    rescan.error ??
+    adoptRuntime.error ??
+    adoptAgent.error ??
+    lifecycle.error ??
+    updateDefaults.error;
   return (
     <div className="v06-page">
       <header className="v06-page-header">
@@ -667,6 +679,7 @@ export function AgentsDiscoveryPage() {
         </span>
         <span className="v06-summary-muted">未识别或需处理的项目会在下方明确标注原因。</span>
       </div>
+      {actionError ? <InlineError error={actionError} /> : null}
 
       <section className="v06-panel">
         <SectionHeader
@@ -779,7 +792,7 @@ export function AgentsDiscoveryPage() {
                   {candidate.agentKind === 'UNKNOWN'
                     ? '尚未识别 Agent 类型'
                     : labelAgentKind(candidate.agentKind)}{' '}
-                  · {candidate.adapterKind}
+                  · {labelAdapterKind(candidate.adapterKind)}
                 </span>
                 {candidate.detectedVersion ? <code>{candidate.detectedVersion}</code> : null}
               </div>
@@ -914,7 +927,7 @@ export function AgentsDiscoveryPage() {
             placeholder="跟随 Agent"
           />
           {updateDefaults.error ? (
-            <p className="v06-form-error">{updateDefaults.error.message}</p>
+            <InlineError error={updateDefaults.error} title="默认设置保存失败" />
           ) : null}
         </form>
       </FormDialog>
