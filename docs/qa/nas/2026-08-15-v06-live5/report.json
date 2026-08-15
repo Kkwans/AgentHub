@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-15",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "a6f5c16",
+    "headSha": "a6f5c16299d3b54ee0c9b5668e5a641913ea5015",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "automation": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS: Web 1715 modules transformed",
+    "vitest": "PASS: 45 files, 184 passed, 9 skipped",
+    "terminalDock": "PASS: 2 tests",
+    "playwrightE2e": "PASS: 24 tests",
+    "githubActions": {
+      "runId": 31889417182,
+      "status": "success",
+      "job": "verify"
+    },
+    "live": "PASS: existing v0.6 live gate, 4 files, 9 tests"
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.5",
+    "imageId": "sha256:0c30d4eb70b396febf273c86b9a7d8373a054cb4bb9aea9baff88cd15fd7ec09",
+    "imageRevision": "a6f5c16",
+    "containerId": "c519db777442eb0276cec5f5971b681f939558408688edaeeaf5e82b293264eb",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "ownerUidGid": "1000:10",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true,
+    "overlayBaseImage": "agenthub:0.6.0-nas.4"
+  },
+  "capabilities": {
+    "terminalAvailable": false,
+    "terminalCode": "PTY_NATIVE_BINDING_UNAVAILABLE",
+    "platform": "linux",
+    "arch": "arm64"
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260815T141727Z-pre-nas5",
+    "composeSha256": "2404f8b90d5b305dd53a7c0799c4b68dc9f135f682debe10fa3c54b1095376f3",
+    "envSha256": "cc3cabd97520b598888066af8d2921bc56fcaf042eb64c81b23128ef21154181",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+    "scope": ["compose", "env", "browser-token", "container-inspect", "image-inspect"]
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}

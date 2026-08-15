@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED · ACP/LIVE/NAS4_VERIFIED · TERMINAL_UI_READY`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS5_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -88,6 +88,18 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `3d9ba293780758b66497987855240ab494bed68e8efe92f7645ef9c4b19ac7ec`，最终 `running/healthy`，
   健康接口返回 `version=0.6.0`、`database=pglite`、`web=true`，主机与容器 server/ACP dist
   SHA-256 一致。完整记录见 `docs/qa/nas/2026-08-15-v06-live4/`。
+- Local Project Terminal 已以 `a6f5c16` 交付：Workspace 使用官方 `xterm.js` + `FitAddon`，复用
+  `terminal:<id>` topic 和既有安全 Terminal API；Server 增加 `terminal.closed` 生命周期事件，Compose
+  显式传入 `AGENTHUB_PROJECT_OWNER_UID/GID`。完整自动化回归为 45 files、184 passed、9 skipped，Web
+  build 为 1715 modules transformed。
+- Terminal UI nas.5 已发布：`agenthub:0.6.0-nas.5`（ARM64，image digest
+  `sha256:0c30d4eb70b396febf273c86b9a7d8373a054cb4bb9aea9baff88cd15fd7ec09`，revision `a6f5c16`），容器
+  `c519db777442eb0276cec5f5971b681f939558408688edaeeaf5e82b293264eb` 最终 `running/healthy`，健康接口
+  返回 `version=0.6.0`、`database=pglite`、`web=true`，根页面 HTTP 200。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260815T141727Z-pre-nas5/`；完整记录见
+  `docs/qa/nas/2026-08-15-v06-live5/`。
+- NAS `linux/arm64` 当前真实 capability 为 `PTY_NATIVE_BINDING_UNAVAILABLE`；Terminal UI 显示中文原因并
+  禁用打开操作，不用 Shell 模拟 PTY。Docker/Remote Terminal 仍不在 v0.6 范围。
 
 ### 当前进行中
 
