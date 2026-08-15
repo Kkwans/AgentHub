@@ -25,6 +25,7 @@ import {
   Inspector,
   SessionRail,
 } from '../features/workspace/components/WorkspaceSections';
+import { TerminalDock } from '../features/workspace/components/TerminalDock';
 
 type InspectorTab = 'files' | 'diff' | 'git' | 'run';
 
@@ -136,7 +137,10 @@ export function WorkspacePage() {
   });
   const capability = useQuery({
     queryKey: ['capabilities'],
-    queryFn: () => api.get<{ terminal: { available: boolean } }>('/settings/capabilities'),
+    queryFn: () =>
+      api.get<{
+        terminal: { available: boolean; code?: string; message?: string };
+      }>('/settings/capabilities'),
   });
   const promptContext = useQuery({
     queryKey: [
@@ -313,13 +317,18 @@ export function WorkspacePage() {
           onClick={closeMobileInspector}
         />
       )}
+      <TerminalDock
+        capability={capability.data?.terminal}
+        capabilityError={capability.error}
+        projectId={project?.id}
+        projectRoot={project?.realRootPath}
+        cwd={session.data.cwd}
+      />
       <Composer
         session={session.data}
         agent={agent}
         project={project}
         activeRun={activeRun}
-        terminalAvailable={capability.data?.terminal?.available === true}
-        capabilityQuery={capability}
         promptContext={promptContext.data}
         promptContextLoading={promptContext.isLoading}
         promptContextError={promptContext.error}

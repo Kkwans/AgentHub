@@ -119,8 +119,8 @@ export function SettingsPage() {
                 </code>
                 <p>
                   {capability.data?.terminal.available
-                    ? '当前版本只完成 Local Project Terminal 的能力诊断与安全边界；浏览器端 PTY 交互将在后续版本开放。'
-                    : '当前环境缺少可加载的 node-pty native binding，Terminal 交互已明确关闭；Agent core 不受影响。'}
+                    ? 'Workspace 已提供 Local Project Terminal；Docker/Remote Terminal 不在 v0.6 范围。'
+                    : '当前环境缺少可加载的 node-pty native binding，Workspace 会显示不可用原因，不使用普通 Shell 模拟 PTY；Agent core 不受影响。'}
                 </p>
               </div>
             )}

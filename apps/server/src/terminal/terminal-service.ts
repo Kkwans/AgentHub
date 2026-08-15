@@ -138,13 +138,25 @@ export class TerminalService {
 
   async close(id: string) {
     const terminal = this.requireTerminal(id);
+    this.publisher.publish(`terminal:${id}`, {
+      type: 'terminal.closed',
+      terminalId: id,
+      reason: 'USER',
+    });
     terminal.process.kill();
     this.terminals.delete(id);
     return { ...publicTerminal(terminal), closed: true };
   }
 
   async shutdown(): Promise<void> {
-    for (const terminal of this.terminals.values()) terminal.process.kill();
+    for (const terminal of this.terminals.values()) {
+      this.publisher.publish(`terminal:${terminal.id}`, {
+        type: 'terminal.closed',
+        terminalId: terminal.id,
+        reason: 'SERVER_SHUTDOWN',
+      });
+      terminal.process.kill();
+    }
     this.terminals.clear();
   }
 

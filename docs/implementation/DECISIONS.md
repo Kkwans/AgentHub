@@ -16,9 +16,13 @@
 
 状态：已接受。优先官方 `openclaw acp`，缺失时检测 `openclaw agent exec` 单回合回退。npm Gateway SDK 占位包不进入 v0.1。
 
-## D-005：Terminal 降级
+## D-005：Terminal 能力分层
 
-状态：已接受。当前 ARM64 NAS 无 `node-pty` 预构建产物和编译工具。Terminal 能力必须在运行时自检并报告不可用；不安装系统工具，不以子进程管道模拟 PTY。
+状态：已接受。v0.6 交付 Local Project Terminal：能力可用时使用官方 xterm.js + node-pty，
+服务端只提供 allow-list shell、root containment、环境白名单和 Project owner UID/GID drop；
+Docker/Remote Terminal 不进入本版本。当前 ARM64 NAS 无 `node-pty` 预构建产物和编译工具，运行时
+必须显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，不安装系统工具，也不以普通子进程管道模拟 PTY。
+详细边界见 `docs/ADR/ADR-017-Local-Project-Terminal-Delivery.md`。
 
 ## D-006：UI 语言
 

@@ -95,6 +95,10 @@ describe('Terminal capability 与 PTY 生命周期', () => {
           topic: `terminal:${terminal.id}`,
           event: expect.objectContaining({ type: 'terminal.output', data: 'fixture output' }),
         }),
+        expect.objectContaining({
+          topic: `terminal:${terminal.id}`,
+          event: expect.objectContaining({ type: 'terminal.closed', reason: 'USER' }),
+        }),
       ]),
     );
     delete process.env.AGENTHUB_TEST_SECRET;

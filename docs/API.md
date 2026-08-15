@@ -189,8 +189,9 @@ POST /api/v1/terminals/:id/close
 
 所有浏览器实时数据使用 `/ws` 单连接，topic 为 Session、Project、Approval、Worktree、Remote Node、Terminal。
 Worktree 控制面订阅 `worktrees`，Project 详情同时接收 `project:<id>`。Session 事件包含
-单调 `seq`；客户端以 `afterSeq` 请求补流。Terminal 使用独立生命周期消息，不复用
-Session 文本事件。
+单调 `seq`；客户端以 `afterSeq` 请求补流。Terminal 使用独立生命周期消息（`terminal.opened`、
+`terminal.output`、`terminal.resized`、`terminal.closed`、`terminal.exited`），不复用 Session
+文本事件。
 
 Remote Node 控制面订阅 `remote-nodes`。`/node/ws` 是 daemon 的设备认证/RPC 通道，不是浏览器 topic 连接，也不接受 API bearer token 替代设备签名。
 

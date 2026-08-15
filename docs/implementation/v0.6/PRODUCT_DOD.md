@@ -20,7 +20,7 @@ v0.6 不允许使用单一 `DONE` 标记。每个 Feature 必须依次通过以�
 - Create/Edit 均使用 Dialog 或 responsive Sheet，不再挂载页面 inline form。
 - `ControlPages.tsx` 已按业务域拆分，UI package 有正式 Dialog/Form/Field/Picker 基础层。
 - Real Codex 完成 discovery → adopt → preflight → Session → turn → response → disposable repo file mutation → Diff → commit。
-- Terminal 在 v0.6 明确降级为“仅 Local Project Terminal 能力诊断与安全环境边界”；浏览器端 PTY、Docker/Remote Terminal 不进入本版本 DoD，UI 不再提供伪装成可用的禁用按钮。
+- Terminal 在 v0.6 交付 Local Project Terminal：能力 READY 时可在 Workspace 使用 xterm.js；Docker/Remote Terminal 不进入本版本 DoD。native binding 缺失、Project 未绑定或诊断失败时，UI 显示中文原因并禁用打开动作，不伪造 Shell/PTY。
 - 1440/1024/768/390 视觉检查、产品契约测试、CI 和 rollback evidence 全部存在。
 
 ## 普通用户 UX Gate
@@ -57,5 +57,5 @@ Agents → 重新扫描 → 选择候选 → 添加
 - 普通 UI 不出现 `LOCAL_HOST`、`DOCKER_CONTAINER`、`SYSTEM`、`REVIEW`、`TEXT`、`CHAT` 等 raw enum。
 - 所有 mutation 使用字段级错误、首个错误聚焦、加载中禁用重复提交、关闭 Dialog 后恢复焦点。
 - 所有 path 操作通过 root policy、realpath、symlink containment；被动 discovery 只读。
-- Terminal 只允许显式环境变量白名单，不继承 token/secret/password/key；权限策略和审计边界可见。
+- Terminal 只允许显式环境变量白名单，不继承 token/secret/password/key；PTY 尽量 drop 到 Project owner UID/GID，并发布 open/close/exit 生命周期审计事件。
 - 不能以 mock、fixture、健康检查或无横向滚动替代真实用户旅程证据。

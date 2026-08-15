@@ -24,6 +24,8 @@ services:
       SUDO_UID: ${AGENTHUB_PROJECT_OWNER_UID:-1000}
       SHELL: /bin/sh
       TZ: Asia/Shanghai
+      AGENTHUB_PROJECT_OWNER_UID: ${AGENTHUB_PROJECT_OWNER_UID:-1000}
+      AGENTHUB_PROJECT_OWNER_GID: ${AGENTHUB_PROJECT_OWNER_GID:-10}
       TMPDIR: /volume2/Project/.agenthub/central/tmp
       AGENTHUB_HOST: 0.0.0.0
       AGENTHUB_PORT: 3210

@@ -16,7 +16,6 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
-  SquareTerminal,
   Tabs,
   Wrench,
 } from '@agenthub/ui';
@@ -908,8 +907,6 @@ export function Composer({
   agent,
   project,
   activeRun,
-  terminalAvailable,
-  capabilityQuery,
   promptContext,
   promptContextLoading,
   promptContextError,
@@ -921,8 +918,6 @@ export function Composer({
   agent: AgentRecord | undefined;
   project: ProjectRecord | undefined;
   activeRun: RunRecord | undefined;
-  terminalAvailable: boolean;
-  capabilityQuery: QueryState<{ terminal: { available: boolean } }>;
   promptContext: ResolvedPromptContextRecord | undefined;
   promptContextLoading: boolean;
   promptContextError: Error | null;
@@ -1006,19 +1001,6 @@ export function Composer({
         <span>
           Skill <strong>自动</strong>
         </span>
-        {terminalAvailable ? (
-          <span className="capability-note" title="v0.6 暂不开放浏览器端 PTY">
-            <SquareTerminal size={13} /> Local Terminal（后续版本）
-          </span>
-        ) : null}
-        {capabilityQuery.error && (
-          <span className="workspace-query-error-inline" role="alert">
-            能力状态加载失败：{capabilityQuery.error.message}
-            <button type="button" onClick={() => capabilityQuery.refetch()}>
-              重试
-            </button>
-          </span>
-        )}
       </div>
       {contextOpen && (
         <div className="composer-context-preview">

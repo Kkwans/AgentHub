@@ -679,6 +679,120 @@
   color: #969ba5;
 }
 
+.terminal-dock-shell {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  color: #e7e9ec;
+  background: #17191d;
+  border-top: 1px solid #343941;
+}
+
+.terminal-dock-toolbar {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid #343941;
+}
+
+.terminal-dock-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: #f1f2f4;
+  font-size: 11px;
+}
+
+.terminal-dock-heading svg {
+  color: #e17b3a;
+}
+
+.terminal-dock-heading span {
+  color: #959ca7;
+  font-size: 10px;
+}
+
+.terminal-dock-message {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  color: #b5bbc4;
+  font-size: 11px;
+}
+
+.terminal-dock-message strong {
+  color: #e3e5e8;
+  font-weight: 620;
+}
+
+.terminal-dock-message span {
+  min-width: 0;
+  overflow: hidden;
+  color: #969da8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-dock-message code {
+  margin-left: auto;
+  color: #7f8793;
+  font-size: 10px;
+}
+
+.terminal-dock-body {
+  position: relative;
+  min-height: 220px;
+  padding: 10px 12px 12px;
+  background: #17191d;
+}
+
+.terminal-viewport {
+  width: 100%;
+  height: 198px;
+  overflow: hidden;
+  border: 1px solid #343941;
+  border-radius: 6px;
+}
+
+.terminal-viewport .xterm {
+  height: 100%;
+  padding: 8px 10px;
+}
+
+.terminal-dock-status {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  padding: 4px 7px;
+  color: #a7adb6;
+  font-size: 10px;
+  background: rgb(23 25 29 / 88%);
+  border: 1px solid #3b414a;
+  border-radius: 4px;
+}
+
+.terminal-dock-status.error {
+  color: #ffb4aa;
+  border-color: #7b403e;
+}
+
+.terminal-dock-shell .rt-Button {
+  flex: none;
+  color: #d7dbe1;
+  background: #252a31;
+  border-color: #3e454f;
+}
+
+.terminal-dock-shell .rt-Button:hover {
+  background: #303640;
+}
+
 @media (max-width: 900px) {
   .page-body:has(.workspace-shell) {
     height: calc(100vh - 66px);
@@ -704,6 +818,19 @@
 
   .workspace-mobile-tabs .rt-TabsTrigger[data-state='active'] {
     color: var(--app-graphite);
+  }
+
+  .terminal-dock-toolbar {
+    padding: 0 10px;
+  }
+
+  .terminal-dock-body {
+    min-height: 280px;
+    padding: 8px;
+  }
+
+  .terminal-viewport {
+    height: 250px;
   }
 
   .inspector-panel.mobile-open {

@@ -25,11 +25,15 @@ describe('v0.6 feature boundaries', () => {
   it('keeps Workspace interaction panels outside the route shell', () => {
     const route = source('../pages/WorkspacePage.tsx');
     const sections = source('./workspace/components/WorkspaceSections.tsx');
+    const terminal = source('./workspace/components/TerminalDock.tsx');
     expect(route).toContain("from '../features/workspace/components/WorkspaceSections'");
+    expect(route).toContain("from '../features/workspace/components/TerminalDock'");
     expect(route).not.toContain('function Conversation(');
     expect(route).not.toContain('function Composer(');
     expect(sections).toContain('export function Conversation(');
     expect(sections).toContain('export function Composer(');
+    expect(terminal).toContain("from '@xterm/xterm'");
+    expect(terminal).toContain("'/terminals'");
   });
 
   it('keeps PromptOS ordinary-user labels in the feature section', () => {

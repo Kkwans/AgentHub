@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED · ACP/LIVE/NAS4_VERIFIED`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M11 / NAS_RELEASE_CANDIDATE_DEPLOYED · ACP/LIVE/NAS4_VERIFIED · TERMINAL_UI_READY`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -52,8 +52,8 @@
 - v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
   `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
   `origin/main`。
-- v0.6 自动化回归：非沙箱全仓 Vitest 通过 44 个文件、182 passed、9 skipped；TypeScript、ESLint
-  与 production build 通过（Web 1711 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
+- v0.6 自动化回归：非沙箱全仓 Vitest 通过 45 个文件、184 passed、9 skipped；TypeScript、ESLint
+  与 production build 通过（Web 1715 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
   的监听 `EPERM` 均不作为代码失败。
 - v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 4 个文件、9 个测试；新增
   一次性 Git 仓库中的真实 Codex 文件变更、工作区 Diff、selected-file stage 与 commit 证据。Remote
@@ -95,8 +95,9 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   Playwright fixture 或 NAS `curl` 结果声明为 1440/1024/768/390 实机验收。
 - 普通用户旅程的后端闭环已有自动化与真实 Codex/Remote Node 证据；Claude Code、Hermes、OpenClaw
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
-- M8-M9：Terminal 仍保持 Local-only DoD，不伪造浏览器 PTY 或 Docker/Remote Terminal 能力；PromptOS
-  与 Task Review 的更多真实业务数据验收继续沿用可回滚切片。
+- M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
+  API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。NAS native binding 缺失时
+  显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，不伪造浏览器 PTY。
 
 ### 下一步
 
@@ -304,7 +305,8 @@ M3：
 - 只读文件树/内容：root lexical containment、realpath containment、symlink escape、`../`、绝对路径、单/双编码 traversal、大文件和二进制限制：通过。
 - Git：status、Diff、commits、branches、staged/selected-files commit；selected commit 不混入其他已 staged 文件：通过。
 - Run Git snapshot：BEFORE/AFTER 状态与 SHA 持久化，snapshot 失败不改变 Agent Run outcome：通过。
-- Terminal：真实 `node-pty` open/input/resize/output/close 生命周期和独立 `terminal:*` topic 已实现；无 native binding 时禁止 shell fallback。
+- Terminal：真实 `node-pty` open/input/resize/output/close 生命周期和独立 `terminal:*` topic 已实现；
+  新增 `terminal.closed` 生命周期审计事件，无 native binding 时禁止 shell fallback。
 - 当前 NAS runtime 诊断：`available=false`、`PTY_NATIVE_BINDING_UNAVAILABLE`、`linux/arm64`。
 - M3 聚焦回归：Project/Git/Terminal/Session 共 16 项测试通过；lint、typecheck、全仓 build 通过。
 
@@ -313,7 +315,8 @@ M4：
 - 中文 Web Shell：概览、项目、任务、Agent、会话、PromptOS、设置一级导航与共享 TanStack Query/API/WebSocket 数据层：完成。
 - Dashboard 基线只呈现待批准、运行中、Agent 健康和 Project，不使用 KPI 卡片墙。
 - Coding Workspace：可调多栏 Session、对话/工具/Approval、只读文件/Monaco、Diff、Git、Run 上下文和固定 Composer：完成。
-- Composer 固定展示 Agent、模型、模式、Project/cwd、branch、PromptOS、Skill；无 capability 时隐藏模型、模式和 Terminal 控件。
+- Composer 固定展示 Agent、模型、模式、Project/cwd、branch、PromptOS、Skill；模型和模式按
+  capability 隐藏，Terminal 由底部 Local Project Terminal dock 单独呈现并说明真实能力状态。
 - 响应式：桌面多栏，900px 以下使用 Workspace tabs 和侧边检查器，390px 使用全宽 drawer；实现导航抽屉、键盘 Escape、焦点可见和 reduced-motion。
 - Agent UI：显式注册宿主机/Docker Execution Target、完整 container ID、工作区映射、启动策略、内置 Agent Profile、preflight、生命周期操作与 capability 调试视图：完成。
 - UI 文案：操作、说明、表单、状态、错误和空状态使用简体中文；Agent/PromptOS/Git/Terminal/model/mode/path/branch/command/protocol/vendor data 保留原文。
