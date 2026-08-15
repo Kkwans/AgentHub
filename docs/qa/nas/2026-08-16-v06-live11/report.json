@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-16",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "3508d22",
+    "headSha": "3508d2216939c7db19908118eb48e34f8b5a00d9",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "automation": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS: Web 1715 modules transformed",
+    "vitest": "PASS: 48 files, 192 passed, 9 skipped",
+    "formDialogFocus": "PASS: first invalid control focus and trigger focus restore",
+    "playwrightE2e": "PASS: 24 tests",
+    "githubActions": {
+      "runId": 31897639717,
+      "status": "success",
+      "job": "verify"
+    }
+  },
+  "uxSlice": {
+    "formDialog": {
+      "firstInvalidFocus": true,
+      "triggerFocusRestore": true,
+      "closeControl": "native_button"
+    },
+    "backendContractChanged": false
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.11",
+    "imageId": "sha256:013e01d5d93b1f32131795bedde4a7b46f02ba46b819747b379ab74969d664a1",
+    "imageRevision": "3508d22",
+    "baseImage": "agenthub:0.6.0-nas.10",
+    "dockerfile": "deploy/compose/Dockerfile.nas-overlay",
+    "containerId": "0db954ef887a897203eb5a6d86a16bc16f8bd36e54c340461633fa102ac0cc7e",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "ownerUidGid": "1000:10",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true,
+    "otherContainersNameIdUnchanged": true
+  },
+  "capabilities": {
+    "terminalAvailable": true,
+    "terminalCode": "READY",
+    "platform": "linux",
+    "arch": "arm64",
+    "remoteNodeTransport": "outbound_websocket",
+    "nativeBinding": "inherited from agenthub:0.6.0-nas.10; build and runtime smoke passed"
+  },
+  "terminalSmoke": {
+    "projectId": "6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0",
+    "terminalId": "992ef01b-99e0-44be-b16c-e7bb36b6ae9e",
+    "topic": "terminal:992ef01b-99e0-44be-b16c-e7bb36b6ae9e",
+    "steps": [
+      "open",
+      "ws subscribe",
+      "input: printf pty-nas11-ok\\n",
+      "output contains pty-nas11-ok",
+      "close"
+    ],
+    "result": "PASS"
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260815T171733Z-pre-nas11",
+    "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+    "envSha256": "2dac8995a2581a09e4ecaa01c9f2256c606c99138480c06f55c17cac8440f3ba",
+    "envAfterSha256": "3bb6d6f8d6bf7f8a0b44d096a7dc4b7e0da7b3e9b528f7da98d05c39ade00397",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+    "scope": [
+      "compose",
+      "env",
+      "browser-token-hash",
+      "container-inspect",
+      "image-inspect",
+      "containers-before",
+      "containers-after",
+      "container-after-inspect",
+      "image-after-inspect"
+    ]
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}

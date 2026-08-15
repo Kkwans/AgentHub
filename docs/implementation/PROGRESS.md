@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS10_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -60,7 +60,7 @@
 - v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
   `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
   `origin/main`。
-- v0.6 自动化回归：非沙箱全仓 Vitest 通过 47 个文件、191 passed、9 skipped；TypeScript、ESLint
+- v0.6 自动化回归：非沙箱全仓 Vitest 通过 48 个文件、192 passed、9 skipped；TypeScript、ESLint
   与 production build 通过（Web 1715 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
   的监听 `EPERM` 均不作为代码失败。
 - v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 4 个文件、9 个测试；新增
@@ -143,6 +143,17 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260815T163614Z-pre-nas10/`，
   完整记录见 `docs/qa/nas/2026-08-16-v06-live10/`。仅执行 `docker compose up -d --no-build agenthub`，
   未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- FormDialog 焦点与关闭控件修复已提交为 `3508d22`：打开时优先聚焦首个错误控件，关闭时恢复到触发
+  按钮；Radix Dialog 关闭图标改为真实 `button`，新增 jsdom 焦点回归测试。全量 Vitest 为 48 个文件、
+  `192 passed / 9 skipped / 201 total`，Playwright E2E 仍为 24/24（1440/1024/768/390 fixture）通过。
+- nas.11 已发布为 `agenthub:0.6.0-nas.11`（ARM64，image digest
+  `sha256:013e01d5d93b1f32131795bedde4a7b46f02ba46b819747b379ab74969d664a1`，revision `3508d22`），
+  容器 `0db954ef887a897203eb5a6d86a16bc16f8bd36e54c340461633fa102ac0cc7e` 最终 `running/healthy`。
+  授权 capability 仍为 `terminal READY / linux arm64`；真实 Terminal open、统一 `/ws` 订阅、input、
+  close 与独立 node-pty spawn smoke 通过。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260815T171733Z-pre-nas11/`，完整记录见
+  `docs/qa/nas/2026-08-16-v06-live11/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器；`.tmp-v05` 仍不存在。
 
 ### 当前进行中
 
@@ -152,7 +163,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
-  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.10 通过 ARM64 native base overlay 后保持 READY。
+  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.11 通过 ARM64 native base overlay 后保持 READY。
 
 ### 下一步
 
