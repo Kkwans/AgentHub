@@ -192,7 +192,7 @@ test('任务看板明确保留人工审阅门禁', async ({ page }) => {
   await expect(page.locator('[aria-label="Task 看板"]')).toBeVisible();
   await page.getByRole('button', { name: /审阅并合并/ }).click();
   await expect(page.getByRole('dialog', { name: task.title })).toBeVisible();
-  await expect(page.getByText('Review evidence')).toBeVisible();
+  await expect(page.getByText('审阅证据')).toBeVisible();
   await expect(page.getByText(/Worktree Review/)).toBeVisible();
   await expect(page.getByRole('button', { name: /批准并合并/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /继续修改/ })).toBeDisabled();
@@ -225,7 +225,7 @@ test('关键视图可由 URL 恢复并支持键盘返回主流程', async ({ pag
   await page.goto(`/tasks?projectId=${project.id}&execution=${worktreeExecution.id}`);
   const reviewDialog = page.getByRole('dialog', { name: task.title });
   await expect(reviewDialog).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('Review evidence')).toBeVisible();
+  await expect(page.getByText('审阅证据')).toBeVisible();
 
   if ((page.viewportSize()?.width ?? 1_000) <= 620) {
     const targetSizes = await page

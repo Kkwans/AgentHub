@@ -1172,7 +1172,7 @@ function ContextTab({ projects, agents }: { projects: ProjectRecord[]; agents: A
       ) : (
         <EmptyState
           title="等待解析"
-          description="按 Project → Agent → Task 和 priority 查看最终内容与来源记录。"
+          description="按 Project → Agent → Task 和优先级查看最终内容与来源记录。"
         />
       )}
     </div>

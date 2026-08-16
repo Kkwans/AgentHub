@@ -289,7 +289,7 @@ export function TasksPage() {
     <div className="page-stack">
       <PageIntro
         title="Goal 与 Task"
-        description="可直接运行，也可进入隔离 Worktree 队列；隔离任务只有经过 Review 与显式合并才会完成。"
+        description="可直接运行，也可进入隔离 Worktree 队列；隔离任务只有经过审阅与显式合并才会完成。"
         action={
           <div className="page-actions">
             <Button color="gray" variant="soft" onClick={() => setGoalFormOpen(!goalFormOpen)}>
@@ -964,7 +964,7 @@ function TaskReviewPanel({
       >
         <header className="task-review-header">
           <div>
-            <span className="section-kicker">Task Review</span>
+            <span className="section-kicker">Task 审阅</span>
             <Dialog.Title id="task-review-title">{task.title}</Dialog.Title>
             <Dialog.Description id="task-review-description">
               先核对验收标准、最终 Run 和 Git 现场，再确认完成或发起下一轮。
@@ -1002,13 +1002,13 @@ function TaskReviewPanel({
                       <dd>{formatTime(finalRun.startedAt)}</dd>
                     </div>
                     <div>
-                      <dt>Git before</dt>
+                      <dt>Git 之前</dt>
                       <dd>
                         <code>{finalRun.gitBeforeSha?.slice(0, 12) || '—'}</code>
                       </dd>
                     </div>
                     <div>
-                      <dt>Git after</dt>
+                      <dt>Git 之后</dt>
                       <dd>
                         <code>{finalRun.gitAfterSha?.slice(0, 12) || '—'}</code>
                       </dd>
@@ -1115,7 +1115,7 @@ const executionStages: Array<{
   { label: '排队', statuses: ['QUEUED'] },
   { label: '工作区', statuses: ['SETTING_UP'] },
   { label: 'Agent Run', statuses: ['RUNNING', 'AWAITING_INPUT'] },
-  { label: 'Review', statuses: ['REVIEW'] },
+  { label: '审阅', statuses: ['REVIEW'] },
   { label: 'Merge', statuses: ['MERGING', 'DONE'] },
 ];
 
@@ -1197,7 +1197,7 @@ function WorktreeReviewPanel({
       >
         <header className="worktree-review-header">
           <div>
-            <span className="section-kicker">Worktree Execution</span>
+            <span className="section-kicker">Worktree 执行</span>
             <Dialog.Title id="worktree-review-title">{task?.title || '隔离执行详情'}</Dialog.Title>
             <Dialog.Description id="worktree-review-copy">
               检查真实 Diff 与分支身份后，再决定继续修改或合并。
@@ -1214,17 +1214,17 @@ function WorktreeReviewPanel({
           <ExecutionRail execution={execution} />
           <div className="worktree-identity-grid">
             <div>
-              <span>base branch</span>
+              <span>基准分支</span>
               <strong>{execution.baseBranch}</strong>
               <code>{execution.baseSha.slice(0, 12)}</code>
             </div>
             <div>
-              <span>task branch</span>
+              <span>任务分支</span>
               <strong>{execution.taskBranch}</strong>
               <code>{review?.headSha.slice(0, 12) || '—'}</code>
             </div>
             <div className="worktree-path-fact">
-              <span>worktree path</span>
+              <span>Worktree 路径</span>
               <code>{execution.worktreePath || '尚未创建'}</code>
             </div>
           </div>
@@ -1247,7 +1247,7 @@ function WorktreeReviewPanel({
             <section className="worktree-diff-docket">
               <header>
                 <div>
-                  <span className="section-kicker">Review evidence</span>
+                  <span className="section-kicker">审阅证据</span>
                   <h3>变更清单</h3>
                 </div>
                 <div className="worktree-diff-facts">
@@ -1313,7 +1313,7 @@ function WorktreeReviewPanel({
         </div>
 
         <footer className="worktree-review-footer">
-          <span>Worktree 与 task branch 会保留，不会自动清理。</span>
+          <span>Worktree 与任务分支会保留，不会自动清理。</span>
           <div>
             {execution.sessionId && (
               <Button color="gray" variant="soft" onClick={onOpenSession}>

@@ -44,4 +44,19 @@ describe('v0.6 feature boundaries', () => {
     expect(promptos).not.toContain('<option>PROJECT</option>');
     expect(promptos).not.toContain('可选 UUID');
   });
+
+  it('keeps Task and Worktree review copy in Chinese', () => {
+    const tasks = source('./tasks/pages/TasksPageView.tsx');
+    const promptos = source('./promptos/components/PromptOsSections.tsx');
+    expect(tasks).toContain('Task 审阅');
+    expect(tasks).toContain('审阅证据');
+    expect(tasks).toContain('基准分支');
+    expect(tasks).toContain('任务分支');
+    expect(tasks).not.toContain('Task Review');
+    expect(tasks).not.toContain('Review evidence');
+    expect(tasks).not.toContain('<span>base branch</span>');
+    expect(tasks).not.toContain('<span>task branch</span>');
+    expect(promptos).toContain('和优先级查看最终内容');
+    expect(promptos).not.toContain('和 priority 查看最终内容');
+  });
 });
