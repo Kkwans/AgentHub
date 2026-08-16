@@ -86,7 +86,7 @@ export class RuntimeDiscoveryService {
       return candidates;
     }
 
-    for (const container of containers) {
+    for (const [index, container] of containers.entries()) {
       const target = registered.find(
         (item) => item.kind === 'DOCKER_CONTAINER' && item.expectedContainerId === container.id,
       );
@@ -96,7 +96,7 @@ export class RuntimeDiscoveryService {
       candidates.push({
         candidateId: `docker:${container.id}`,
         kind: 'DOCKER_CONTAINER',
-        displayName: cleanContainerName(container.names[0]) || container.id.slice(0, 12),
+        displayName: cleanContainerName(container.names[0]) || `Docker 容器 ${index + 1}`,
         state: running ? 'READY' : 'STOPPED',
         ...(target ? { targetId: target.id } : {}),
         containerId: container.id,

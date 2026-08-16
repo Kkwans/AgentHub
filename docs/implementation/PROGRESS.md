@@ -282,6 +282,10 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T074428Z-pre-nas21/`。仅执行
   `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent
   容器；`.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live21/`。
+- M22 Runtime discovery 展示名收口已完成：无 Docker name 的候选不再回退显示截断 container ID，改为
+  `Docker 容器 N`，内部完整 ID 仍只用于服务端 pinning 和接管校验。新增匿名容器回归测试；目标用户可读字段
+  不再泄漏内部标识。Runtime discovery 测试 4/4、全量 Vitest 214 passed / 9 skipped，lint、typecheck 和
+  production build 均通过；视觉/TX5Pro 仍按当前环境限制保持未验证。
 
 ### 当前进行中
 

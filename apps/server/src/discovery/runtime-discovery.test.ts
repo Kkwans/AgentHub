@@ -130,4 +130,37 @@ describe('RuntimeDiscoveryService', () => {
     const candidate = (await service.list()).find((item) => item.containerId === 'b'.repeat(64));
     expect(candidate?.workspaceMappings).toEqual([]);
   });
+
+  it('uses a friendly display name when a Docker container has no name', async () => {
+    const containerId = 'c'.repeat(64);
+    const docker: DockerEngineClient = {
+      listContainers: vi.fn(async () => [
+        {
+          id: containerId,
+          names: [],
+          image: 'agent:latest',
+          state: 'running',
+          status: 'Up 1 minute',
+          labels: {},
+        },
+      ]),
+      inspectContainer: vi.fn(async () => ({
+        id: containerId,
+        name: '',
+        image: 'agent:latest',
+        state: { status: 'running', running: true },
+        mounts: [],
+        labels: {},
+      })),
+    };
+    const service = new RuntimeDiscoveryService(
+      { list: vi.fn(async () => []) } as never,
+      { register: vi.fn() } as never,
+      { docker },
+    );
+
+    const candidate = (await service.list()).find((item) => item.containerId === containerId);
+    expect(candidate?.displayName).toBe('Docker 容器 1');
+    expect(candidate?.displayName).not.toContain(containerId);
+  });
 });

@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -38,12 +38,14 @@
   使用统一焦点样式，避免叠加浏览器/旧 CSS 焦点边框。
 - 普通 Dashboard、Workspace 不再显示 Run、Session、Agent 的 UUID 片段；Approval/最近结果使用 Session 名称，
   Run Inspector 使用 Agent 名称和“第 N 次 Run”，保留 Git SHA 等专业 Git 数据。
+- Docker discovery 对没有容器名称的候选使用“Docker 容器 N”作为展示名；完整 container ID 继续只用于服务端
+  pinning、重新 inspect 与接管安全校验，不进入普通用户可读文案。
 
 ## 证据
 
 | 层级                     | 结果                                                                                                                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                   | 49 个非 live 文件通过，4 个 live 文件跳过；206 passed、9 skipped（非沙箱、单 worker 串行取得稳定结果）                                                                                      |
+| Vitest                   | 50 个非 live 文件通过，4 个 live 文件跳过；214 passed、9 skipped（非沙箱、单 worker 串行取得稳定结果）                                                                                      |
 | typecheck / lint / build | 通过；Web 1715 modules transformed                                                                                                                                                          |
 | Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                    |
 | real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                  |
