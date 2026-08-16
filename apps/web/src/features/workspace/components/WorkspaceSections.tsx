@@ -40,6 +40,7 @@ import {
 } from '../../../lib/api';
 import {
   labelAgentEventType,
+  labelApprovalStatus,
   labelPromptBindingSlot,
   labelPromptBindingTarget,
   resolveWorkspaceRunState,
@@ -235,6 +236,20 @@ export function Conversation({
           const selectedOption = approval.optionsJson.find(
             (option) => option.id === approval.selectedOptionId,
           );
+          const deliveryStateLabel =
+            approval.deliveryState === 'UNKNOWN'
+              ? '状态无法确认'
+              : approval.deliveryState === 'DEAD'
+                ? '未发送给 Agent'
+                : approval.deliveryState === 'DELIVERED'
+                  ? 'Agent 已接收'
+                  : approval.deliveryState
+                    ? '正在处理'
+                    : '尚未发送';
+          const deliveryFailureCopy =
+            approval.deliveryState === 'UNKNOWN'
+              ? 'Agent 没有在限定时间内确认，系统不会自动重发，避免同一权限操作执行两次。'
+              : '系统未能将这个决定交给 Agent。请恢复 Session 后重新开始。';
           return (
             <article
               className={`approval-card${deliveryUnconfirmed || deliveryAborted ? ' approval-card-attention' : ''}`}
@@ -250,55 +265,71 @@ export function Conversation({
                     <ShieldCheck size={17} />
                   )}
                 </span>
-                <div>
-                  <small>
-                    {awaitingDecision
-                      ? 'Agent 请求你的决定'
-                      : deliveryInProgress
-                        ? '正在交给 Agent'
-                        : '需要处理投递状态'}
+                <div className="approval-heading-copy">
+                  <small className="approval-kicker">
+                    {awaitingDecision ? 'Agent 请求' : deliveryInProgress ? '正在处理' : '投递结果'}
                   </small>
                   <strong>{approval.title}</strong>
                 </div>
               </div>
-              {approval.description && <p>{approval.description}</p>}
-              {awaitingDecision && (
-                <div className="approval-actions">
-                  {approval.optionsJson.map(
-                    (option) =>
-                      option.id && (
-                        <Button
-                          key={option.id}
-                          color={
-                            /reject|deny|refuse/i.test(
-                              `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
-                            )
-                              ? 'gray'
-                              : 'orange'
-                          }
-                          size="1"
-                          variant={
-                            /reject|deny|refuse/i.test(
-                              `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
-                            )
-                              ? 'soft'
-                              : 'solid'
-                          }
-                          onClick={() => resolve.mutate({ id: approval.id, optionId: option.id! })}
-                          disabled={resolve.isPending}
-                        >
-                          {option.label ?? option.id}
-                        </Button>
-                      ),
-                  )}
+              {approval.description && (
+                <div className="approval-impact">
+                  <span>影响</span>
+                  <p>{approval.description}</p>
                 </div>
+              )}
+              {awaitingDecision && (
+                <>
+                  <span className="approval-options-label">可选操作</span>
+                  {approval.optionsJson.some((option) => option.id) ? (
+                    <div
+                      className="approval-actions"
+                      aria-label="合法操作选项"
+                      aria-busy={resolve.isPending && resolve.variables?.id === approval.id}
+                    >
+                      {approval.optionsJson.map(
+                        (option) =>
+                          option.id && (
+                            <Button
+                              key={option.id}
+                              color={
+                                /reject|deny|refuse/i.test(
+                                  `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
+                                )
+                                  ? 'gray'
+                                  : 'orange'
+                              }
+                              size="1"
+                              variant={
+                                /reject|deny|refuse/i.test(
+                                  `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
+                                )
+                                  ? 'soft'
+                                  : 'solid'
+                              }
+                              onClick={() =>
+                                resolve.mutate({ id: approval.id, optionId: option.id! })
+                              }
+                              disabled={resolve.isPending}
+                            >
+                              {option.label ?? option.id}
+                            </Button>
+                          ),
+                      )}
+                    </div>
+                  ) : (
+                    <div className="approval-no-options" role="alert">
+                      Agent 没有提供可执行选项，请返回 Session 列表重新开始。
+                    </div>
+                  )}
+                </>
               )}
               {deliveryInProgress && (
                 <div className="approval-delivery-status" role="status" aria-live="polite">
                   <strong>决定已保存</strong>
                   <span>
-                    已选择“{selectedOption?.label ?? approval.selectedOptionId ?? '已记录选项'}”，
-                    正在等待 Agent 确认接收，请勿重复操作。
+                    已选择“{selectedOption?.label ?? '已记录选项'}”，正在等待 Agent
+                    确认接收，请勿重复操作。
                   </span>
                 </div>
               )}
@@ -308,10 +339,7 @@ export function Conversation({
                   role="alert"
                 >
                   <strong>无法确认 Agent 是否收到</strong>
-                  <span>
-                    {approval.deliveryErrorMessage ??
-                      '为避免同一权限操作执行两次，系统不会自动重发这个决定。'}
-                  </span>
+                  <span>{deliveryFailureCopy}</span>
                   <Link to="/sessions">前往 Session 列表恢复或重新开始</Link>
                 </div>
               )}
@@ -321,10 +349,7 @@ export function Conversation({
                   role="alert"
                 >
                   <strong>决定没有发送给 Agent</strong>
-                  <span>
-                    {approval.deliveryErrorMessage ??
-                      '当前 Run 已断开，请恢复 Session 后重新开始。'}
-                  </span>
+                  <span>{deliveryFailureCopy}</span>
                   <Link to="/sessions">前往 Session 列表处理</Link>
                 </div>
               )}
@@ -350,6 +375,39 @@ export function Conversation({
                   )}
                 </div>
               )}
+              <details className="approval-debug">
+                <summary>显示诊断信息</summary>
+                <dl>
+                  <div>
+                    <dt>Approval</dt>
+                    <dd>
+                      <code>{approval.id}</code>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>状态</dt>
+                    <dd>{labelApprovalStatus(approval.status)}</dd>
+                  </div>
+                  <div>
+                    <dt>投递</dt>
+                    <dd>{deliveryStateLabel}</dd>
+                  </div>
+                  {approval.deliveryErrorCode && (
+                    <div>
+                      <dt>错误码</dt>
+                      <dd>
+                        <code>{approval.deliveryErrorCode}</code>
+                      </dd>
+                    </div>
+                  )}
+                  {approval.deliveryErrorMessage && (
+                    <div>
+                      <dt>原始信息</dt>
+                      <dd>{approval.deliveryErrorMessage}</dd>
+                    </div>
+                  )}
+                </dl>
+              </details>
             </article>
           );
         })}

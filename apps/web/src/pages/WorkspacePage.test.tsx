@@ -311,7 +311,15 @@ describe('WorkspacePage 数据分区可靠性', () => {
     renderWorkspace(fetchMock);
 
     expect(await screen.findByText('无法确认 Agent 是否收到')).toBeInTheDocument();
+    expect(
+      screen.getByText('Agent 没有在限定时间内确认，系统不会自动重发，避免同一权限操作执行两次。'),
+    ).toBeInTheDocument();
+    const debug = screen.getByText('显示诊断信息');
+    expect(debug.closest('details')).not.toHaveAttribute('open');
+    fireEvent.click(debug);
+    expect(debug.closest('details')).toHaveAttribute('open');
     expect(screen.getByText(approval.deliveryErrorMessage)).toBeInTheDocument();
+    expect(screen.getByText('APPROVAL_DELIVERY_TIMEOUT')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '前往 Session 列表恢复或重新开始' })).toHaveAttribute(
       'href',
       '/sessions',
@@ -319,6 +327,37 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(screen.queryByRole('button', { name: '允许一次' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '拒绝' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '重试此选项' })).not.toBeInTheDocument();
+  });
+
+  it('Approval 没有合法选项时不渲染空操作区，而是给出可执行的下一步', async () => {
+    const approval = {
+      id: 'approval-no-options',
+      sessionId: session.id,
+      runId: 'run-no-options',
+      title: '需要处理权限请求',
+      description: 'Agent 没有返回可用选项。',
+      optionsJson: [{ label: '缺少 id' }],
+      status: 'PENDING',
+      selectedOptionId: null,
+      deliveryId: null,
+      deliveryState: null,
+      deliveryAttemptCount: null,
+      deliveryErrorCode: null,
+      deliveryErrorMessage: null,
+      requestedAt: '2026-08-11T00:00:00.000Z',
+      resolvedAt: null,
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === `/api/v1/approvals?sessionId=${session.id}`) return jsonResponse([approval]);
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    expect(
+      await screen.findByText('Agent 没有提供可执行选项，请返回 Session 列表重新开始。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '缺少 id' })).not.toBeInTheDocument();
   });
 
   it('Stop Run 提交期间防重复，失败显示可见反馈并支持重试', async () => {
