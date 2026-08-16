@@ -1,0 +1,13 @@
+{
+  "date": "2026-08-16",
+  "revision": "8adb2a5",
+  "scope": "promptos-presentation",
+  "tests": {
+    "focusedVitest": { "files": 2, "passed": 4 },
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": { "status": "passed", "webModulesTransformed": 1716 }
+  },
+  "deployment": { "status": "NOT_DEPLOYED", "currentNasImage": "agenthub:0.6.0-nas.33" },
+  "visualGate": "PENDING_NO_AUTHORIZED_BROWSER"
+}
