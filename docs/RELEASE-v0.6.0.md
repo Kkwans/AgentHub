@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -36,6 +36,8 @@
   等过期文案，也不把协议错误直接交给普通用户。
 - Terminal 能力码只保留在服务端诊断数据，普通用户界面显示中文原因和必要的平台信息；所有 Radix 文本控件
   使用统一焦点样式，避免叠加浏览器/旧 CSS 焦点边框。
+- 普通 Dashboard、Workspace 不再显示 Run、Session、Agent 的 UUID 片段；Approval/最近结果使用 Session 名称，
+  Run Inspector 使用 Agent 名称和“第 N 次 Run”，保留 Git SHA 等专业 Git 数据。
 
 ## 证据
 
@@ -49,11 +51,13 @@
 | NAS Compose              | `agenthub:0.6.0-nas.17`，ARM64，revision `cdb7d5b`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，Remote Node transport `outbound_websocket`，根页面 HTTP 200       |
 | NAS Compose nas.18       | `agenthub:0.6.0-nas.18`，ARM64，revision `e98c65b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面和静态 bundle 文案核验通过                                      |
 | NAS Compose nas.19       | `agenthub:0.6.0-nas.19`，ARM64，revision `a38901b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面、内部码隐藏和受保护容器核验通过                                |
+| NAS Compose nas.21       | `agenthub:0.6.0-nas.21`，ARM64，revision `7a11215`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、node-pty、Terminal API smoke、对象 ID 文案和受保护容器核验通过 |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                           |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755` |
 
 完整 NAS 基线记录见 [`docs/qa/nas/2026-08-16-v06-live16/README.md`](qa/nas/2026-08-16-v06-live16/README.md)；最新 nas.18 记录见
-[`docs/qa/nas/2026-08-16-v06-live18/README.md`](qa/nas/2026-08-16-v06-live18/README.md)。
+[`docs/qa/nas/2026-08-16-v06-live18/README.md`](qa/nas/2026-08-16-v06-live18/README.md)。对象 ID 文案和 nas.21
+Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](qa/nas/2026-08-16-v06-live21/README.md)。
 
 ## 升级与回滚
 
@@ -186,7 +190,9 @@
   基底，仅叠加当前 commit 生成并逐字节核验的 `apps/server/dist` 与 `packages/adapter-acp/dist`；
   临时 overlay 构建文件已删除，运行时 hash 与主机产物一致。
 - v0.5 → v0.6 没有新增数据库 migration；健康、Project、Agent、Session、PromptOS 数据在重启后保持可用。
-- nas.19 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
+- nas.19/nas.21 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
+- nas.20 曾因常规镜像覆盖 ARM64 `node-pty` binding 而被 supersede；nas.21 已用 overlay 基于 nas.19 修复，
+  nas.20/nas.21 镜像均保留，未删除镜像、卷或用户数据。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。
 - 回滚保留旧 `agenthub:0.5.0-nas.1` image；先停止单个 `agenthub` service，再恢复备份 `.env`/Compose，使用 `up -d --no-build agenthub`，必要时才恢复 data/worktrees 归档。
 

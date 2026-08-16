@@ -268,6 +268,20 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `/volume2/Project/.agenthub/central/deployments/20260816T070856Z-pre-nas19/`。仅执行
   `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
   Agent 容器；`.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live19/`。
+- M21 普通页面对象标识收口已提交为 `7a11215`：Dashboard 的 Approval/最近结果改用 Session 名称，Workspace
+  的 Agent 改用 Agent 名称，Run 历史改用运行序号；补充 feature-boundary 防回归测试。非沙箱全量 Vitest
+  `50 passed / 4 skipped`、`213 passed / 9 skipped`，lint、typecheck、build 和 GitHub CI 均通过。
+- nas.20 的常规镜像构建曾覆盖已验证的 ARM64 `node-pty` native binding，运行时 capability 回退为
+  `PTY_NATIVE_BINDING_UNAVAILABLE`；该镜像保留但不作为正式版本。基于 nas.19 使用
+  `deploy/compose/Dockerfile.nas-overlay` 重新发布 nas.21，构建与运行时 `node-pty` smoke、Terminal
+  `open/input/resize/close` API smoke 均通过。
+- nas.21 已发布为 `agenthub:0.6.0-nas.21`（ARM64，image ID
+  `sha256:64c64d49b0159050f0927218136c60fdbdefe8d44215bca2415b314e92c67b8d`，revision `7a11215`），
+  容器 `6b4a9815032a3fe1e047c5adbdceafb62025b593e2ba22a524accde3edf9f1c1` 最终 `running/healthy`。
+  `/api/v1/health`、授权 capability、根页面、静态 bundle、Terminal API 和受保护容器不变性检查均通过；升级前
+  备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T074428Z-pre-nas21/`。仅执行
+  `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent
+  容器；`.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live21/`。
 
 ### 当前进行中
 

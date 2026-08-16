@@ -1,0 +1,40 @@
+{
+  "date": "2026-08-16",
+  "revision": "7a11215",
+  "change": "隐藏普通页面中的 Run、Session、Agent 内部对象 ID，并修复常规镜像覆盖 node-pty binding 的部署回归",
+  "image": "agenthub:0.6.0-nas.21",
+  "imageId": "sha256:64c64d49b0159050f0927218136c60fdbdefe8d44215bca2415b314e92c67b8d",
+  "containerId": "6b4a9815032a3fe1e047c5adbdceafb62025b593e2ba22a524accde3edf9f1c1",
+  "architecture": "arm64",
+  "status": "running",
+  "health": "healthy",
+  "endpoint": "192.168.5.110:3210",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T074428Z-pre-nas21/",
+  "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+  "envSha256Before": "e009e330ddd41d11ccf0ecaf9b361c09e62f7bb7668c18959bffd991e296ecae",
+  "envSha256After": "fb1a5a4b0f33e1dc6aef84641e28fad2d660e78e9f56aac1253d4966054a77b7",
+  "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+  "checks": {
+    "health": "pass",
+    "rootHttp": 200,
+    "terminalCapability": "READY",
+    "remoteNodeTransport": "outbound_websocket",
+    "nodePtySpawn": "function",
+    "terminalApiSmoke": {
+      "open": 201,
+      "input": 200,
+      "resize": 200,
+      "close": 200
+    },
+    "bundleNewCopy": true,
+    "bundleRawTerminalCode": false,
+    "tmpV05": "absent",
+    "visualGate": "pending"
+  },
+  "protectedContainersUnchanged": true,
+  "composeDown": false,
+  "imagesDeleted": false,
+  "volumesDeleted": false,
+  "userDataDeleted": false,
+  "nas20Superseded": "regular Dockerfile copied host node_modules without ARM64 node-pty binding; retained for diagnosis and rollback"
+}
