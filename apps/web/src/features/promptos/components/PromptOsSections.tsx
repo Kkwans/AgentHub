@@ -38,8 +38,12 @@ import {
   labelPromptBindingSlot,
   labelPromptBindingTarget,
   labelPromptKind,
+  labelPromptPriority,
+  labelPromptVersionCreator,
+  labelPromptVersionSource,
   labelPromptSelector,
   labelPromptType,
+  labelSkillSource,
   labelTaskStatus,
 } from '../../../presentation/domain-labels';
 
@@ -197,7 +201,8 @@ function VersionsTab({
               <div>
                 <strong>{version.changelog || '未填写变更说明'}</strong>
                 <span>
-                  {version.source} · {version.createdBy} · {formatTime(version.createdAt)}
+                  {labelPromptVersionSource(version.source)} ·{' '}
+                  {labelPromptVersionCreator(version.createdBy)} · {formatTime(version.createdAt)}
                 </span>
                 <code title={version.contentHash}>{version.contentHash}</code>
               </div>
@@ -892,11 +897,11 @@ function BindingsTab({
             {...(!selectorOptions.length ? { description: '请先创建版本或标签。' } : {})}
           />
           <FormTextField
-            label="优先级"
+            label="解析顺序"
             type="number"
             value={priority}
             onChange={(event) => setPriority(event.target.value)}
-            description="数字越大，解析时优先级越高。"
+            description="数字越小越优先；0 表示默认顺序。只有需要覆盖同一提示位时才修改。"
           />
           {create.error ? <span className="v06-form-error">{create.error.message}</span> : null}
         </form>
@@ -919,7 +924,7 @@ function BindingsTab({
               <strong>{bindingTargetLabel(binding) ?? '目标已删除或不在当前范围'}</strong>
               <strong>{labelPromptBindingSlot(binding.slot)}</strong>
               <span>{bindingSelectorLabel(binding)}</span>
-              <small>优先级：{binding.priority}</small>
+              <small>解析顺序：{labelPromptPriority(binding.priority)}</small>
               <button
                 className={`toggle-control ${binding.enabled ? 'on' : ''}`}
                 onClick={() => toggle.mutate({ id: binding.id, enabled: !binding.enabled })}
@@ -1364,7 +1369,7 @@ function SkillsTab({ projects, agents }: { projects: ProjectRecord[]; agents: Ag
                 <p>{skill.description || '暂无说明'}</p>
               </div>
               <small>
-                {skill.source}
+                {labelSkillSource(skill.source)}
                 <br />
                 {skill.contentHash.slice(0, 12)}
                 <br />

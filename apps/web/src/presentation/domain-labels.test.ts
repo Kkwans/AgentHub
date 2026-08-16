@@ -17,7 +17,11 @@ import {
   labelAgentEventType,
   labelExecutionTargetKind,
   labelPromptKind,
+  labelPromptPriority,
+  labelPromptVersionCreator,
+  labelPromptVersionSource,
   labelPromptType,
+  labelSkillSource,
   labelRuntimeStatus,
   resolveWorkspaceRunState,
 } from './domain-labels';
@@ -52,6 +56,12 @@ describe('domain presentation labels', () => {
     expect(labelRuntimeStatus('WORKSPACE_UNMAPPED')).toBe('工作区未映射');
     expect(labelAgentEventType('tool.call.completed')).toBe('工具调用完成');
     expect(labelAgentEventType('vendor.private.event')).toBe('执行事件');
+    expect(labelPromptVersionSource('PROJECT_SCAN')).toBe('项目扫描');
+    expect(labelPromptVersionCreator('local-user')).toBe('本机用户');
+    expect(labelSkillSource('PROJECT_SCAN')).toBe('项目扫描');
+    expect(labelPromptPriority(0)).toBe('默认顺序');
+    expect(labelPromptPriority(-5)).toBe('更优先（-5）');
+    expect(labelPromptPriority(5)).toBe('较后执行（+5）');
   });
 
   it('将 Session 与 Run 状态收敛为普通用户可理解的 Workspace 状态', () => {

@@ -84,6 +84,19 @@ export const PROMPT_SELECTOR_LABELS = {
   VERSION: '固定版本',
 } as const;
 
+export const PROMPT_VERSION_SOURCE_LABELS = {
+  UI: '页面创建',
+  PROJECT_SCAN: '项目扫描',
+  IMPORT: '导入',
+  SYSTEM: '系统生成',
+} as const;
+
+export const SKILL_SOURCE_LABELS = {
+  PROJECT_SCAN: '项目扫描',
+  AGENTS_SKILLS: '项目 Skill 目录',
+  CODEX_SKILLS: 'Codex Skill 目录',
+} as const;
+
 export const PROJECT_STATUS_LABELS = {
   ACTIVE: '使用中',
   ARCHIVED: '已归档',
@@ -303,6 +316,27 @@ export function labelPromptBindingSlot(value: string | null | undefined) {
 
 export function labelPromptSelector(value: string | null | undefined) {
   return labelFrom(PROMPT_SELECTOR_LABELS, value, '选择方式');
+}
+
+export function labelPromptVersionSource(value: string | null | undefined) {
+  return labelFrom(PROMPT_VERSION_SOURCE_LABELS, value, '其他来源');
+}
+
+export function labelPromptVersionCreator(value: string | null | undefined) {
+  if (!value || value === 'local-user' || value === 'user') return '本机用户';
+  if (value === 'system') return '系统';
+  return '项目成员';
+}
+
+export function labelSkillSource(value: string | null | undefined) {
+  return labelFrom(SKILL_SOURCE_LABELS, value, '项目扫描');
+}
+
+export function labelPromptPriority(value: number | null | undefined) {
+  const priority = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  if (priority === 0) return '默认顺序';
+  if (priority < 0) return `更优先（${priority}）`;
+  return `较后执行（+${priority}）`;
 }
 
 export function labelProjectStatus(value: string | null | undefined) {

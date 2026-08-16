@@ -16,7 +16,9 @@ describe('PromptOS v0.6 ordinary-user contracts', () => {
     expect(source).toContain('labelPromptBindingTarget');
     expect(source).toContain('labelPromptBindingSlot');
     expect(source).toContain('bindingSelectorLabel');
-    expect(source).toContain('优先级：{binding.priority}');
+    expect(source).toContain('解析顺序：{labelPromptPriority(binding.priority)}');
+    expect(source).toContain('labelPromptVersionSource(version.source)');
+    expect(source).toContain('labelSkillSource(skill.source)');
     expect(source).toContain('PromptVariableEditor');
     expect(source).toContain('字段编辑');
     expect(source).toContain('通过任务名称选择');
