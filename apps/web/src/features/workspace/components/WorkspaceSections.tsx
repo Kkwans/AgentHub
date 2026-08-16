@@ -1192,6 +1192,9 @@ export function Composer({
       )}
       <div className="composer-input">
         <textarea
+          aria-label="给 Agent 发送工程指令"
+          autoComplete="off"
+          name="message"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="给 Agent 发送工程指令…"

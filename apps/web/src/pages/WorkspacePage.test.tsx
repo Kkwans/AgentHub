@@ -421,6 +421,8 @@ describe('WorkspacePage 数据分区可靠性', () => {
       screen.getByRole('link', { name: /可靠性回归/ }).querySelector('.session-state-dot'),
     ).toHaveClass('session-state-closed');
     const composer = await screen.findByPlaceholderText('给 Agent 发送工程指令…');
+    expect(composer).toHaveAttribute('aria-label', '给 Agent 发送工程指令');
+    expect(composer).toHaveAttribute('name', 'message');
     expect(composer).toBeDisabled();
     expect(screen.getByText('Session 已关闭，无法继续发送指令。')).toBeInTheDocument();
   });
