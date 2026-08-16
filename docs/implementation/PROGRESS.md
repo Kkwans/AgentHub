@@ -286,6 +286,9 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `Docker 容器 N`，内部完整 ID 仍只用于服务端 pinning 和接管校验。新增匿名容器回归测试；目标用户可读字段
   不再泄漏内部标识。Runtime discovery 测试 4/4、全量 Vitest 214 passed / 9 skipped，lint、typecheck 和
   production build 均通过；视觉/TX5Pro 仍按当前环境限制保持未验证。
+- M23 Runtime discovery 错误提示收口已完成：`DOCKER_INSPECT_FAILED` 不再显示泛化的“当前状态需要处理”，
+  改为明确的重新扫描与 Docker 权限下一步；未知错误也保留中文诊断入口。Discovery contract 5/5、Playwright
+  四视口 24/24、lint、typecheck 和 production build 均通过；未把 fixture 结果提升为人工视觉验收。
 - nas.22 已发布为 `agenthub:0.6.0-nas.22`（ARM64，image ID
   `sha256:2df68a357f33ecc3b8f5b3b20602dd06711e6d5b0916a583a0bbb76f92acf744`，revision `ea32533`），
   容器 `b6ac554545ee2bb61eacfbd78a3a022d679a4925cace28c3d63a510443e2da70` 最终 `running/healthy`。

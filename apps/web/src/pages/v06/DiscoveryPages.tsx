@@ -788,9 +788,7 @@ export function AgentsDiscoveryPage() {
               </div>
               {runtime.reasonCode ? (
                 <small className="v06-card-warning">
-                  {runtime.reasonCode === 'DOCKER_ENGINE_UNAVAILABLE'
-                    ? 'Docker Engine 不可用，请检查服务权限。'
-                    : '当前状态需要处理。'}
+                  {labelRuntimeCandidateReason(runtime.reasonCode)}
                 </small>
               ) : null}
             </article>
@@ -996,5 +994,16 @@ function labelAgentCandidateReason(reasonCode: string): string {
       return '远程环境的 Agent inventory 无法识别。';
     default:
       return '当前状态需要处理。';
+  }
+}
+
+function labelRuntimeCandidateReason(reasonCode: string): string {
+  switch (reasonCode) {
+    case 'DOCKER_ENGINE_UNAVAILABLE':
+      return 'Docker Engine 不可用，请检查服务权限后重新扫描。';
+    case 'DOCKER_INSPECT_FAILED':
+      return '无法读取 Docker 容器状态，请重新扫描；若仍失败，请检查 Docker Engine 权限。';
+    default:
+      return '当前运行环境需要处理，请重新扫描或查看设置中的诊断信息。';
   }
 }
