@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-16",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "2fbc3dc",
+    "headSha": "2fbc3dc18a60be3fbaf7a07bb4fe46d15303bc56",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "automation": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS: Web 1715 modules transformed",
+    "vitest": "PASS: 53 files, 203 passed, 9 skipped; maxWorkers=1",
+    "playwrightE2e": "PASS: 24 tests",
+    "githubActions": {
+      "runId": 31924583891,
+      "status": "success",
+      "job": "verify"
+    }
+  },
+  "remoteInventorySlice": {
+    "candidateSource": "registered Remote Node inventoryJson",
+    "deduplication": "PASS: registered Agent identity and inventoryKey",
+    "inventorySelection": "PASS: requested remoteInventoryKey selects exact same-kind item",
+    "stateMapping": ["READY", "STOPPED", "MISSING_DEPENDENCY", "BROKEN", "UNKNOWN"],
+    "remoteWorkspaceCwd": "PASS: first allowed Remote Node root",
+    "webReasonLabels": "PASS: offline, revoked, missing, broken and invalid inventory Chinese next steps"
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.13",
+    "imageId": "sha256:44c4049fc919957c6e3a45356ba433d7650468d1ed9a032e13835bbcd4b4442f",
+    "imageRevision": "2fbc3dc18a60be3fbaf7a07bb4fe46d15303bc56",
+    "baseImage": "agenthub:0.6.0-nas.12",
+    "dockerfile": "deploy/compose/Dockerfile.nas-overlay",
+    "containerId": "cda2a499d7770e3db8aaa0f11e476a0b71b1ddb863d1c2cd1053ef75de339ee0",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "ownerUidGid": "1000:10",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true,
+    "protectedAgentContainersNameIdImageUnchanged": true
+  },
+  "capabilities": {
+    "terminalAvailable": true,
+    "terminalCode": "READY",
+    "platform": "linux",
+    "arch": "arm64",
+    "remoteNodeTransport": "outbound_websocket",
+    "nativeBinding": "inherited from agenthub:0.6.0-nas.12; build and runtime smoke passed"
+  },
+  "terminalSmoke": {
+    "projectId": "6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0",
+    "terminalId": "c1b0f42f-8b6e-4094-99b8-410545308fea",
+    "topic": "terminal:c1b0f42f-8b6e-4094-99b8-410545308fea",
+    "steps": [
+      "open",
+      "ws subscribe",
+      "input: printf nas13-pty-ok\\n",
+      "output contains nas13-pty-ok",
+      "close"
+    ],
+    "result": "PASS"
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260816T034029Z-pre-nas13",
+    "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+    "envSha256": "f56fad7d044ae1f5efaed0314616bf8728dcd8f02fd66eefc4af50f9d8fdf648",
+    "envAfterSha256": "b59bebead2befb58f506e8bd904f58442fde5608ee565f2a6d5a78cdaa01fc9d",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087"
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}
