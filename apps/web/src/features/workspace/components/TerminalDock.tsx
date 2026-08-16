@@ -208,18 +208,19 @@ export function TerminalDock({
           <span>
             {capabilityLoading
               ? '正在读取本机 PTY 能力。'
-              : capabilityError?.message ??
+              : (capabilityError?.message ??
                 capability?.message ??
-                (projectId ? '本机 PTY 未就绪。' : '当前 Session 尚未绑定 Project。')}
+                (projectId ? '本机 PTY 未就绪。' : '当前 Session 尚未绑定 Project。'))}
           </span>
-          {capability?.code && <code>{capability.code}</code>}
         </div>
       )}
       {expanded && (
         <div className="terminal-dock-body">
           <div ref={viewportRef} className="terminal-viewport" aria-label="Terminal 输入区" />
           {state === 'opening' && <span className="terminal-dock-status">正在打开 Terminal…</span>}
-          {state === 'exited' && <span className="terminal-dock-status">Terminal 已退出，可重新打开。</span>}
+          {state === 'exited' && (
+            <span className="terminal-dock-status">Terminal 已退出，可重新打开。</span>
+          )}
           {state === 'error' && (
             <span className="terminal-dock-status error" role="alert">
               {error ?? 'Terminal 连接失败'}

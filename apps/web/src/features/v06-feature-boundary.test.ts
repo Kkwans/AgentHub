@@ -59,4 +59,11 @@ describe('v0.6 feature boundaries', () => {
     expect(promptos).toContain('和优先级查看最终内容');
     expect(promptos).not.toContain('和 priority 查看最终内容');
   });
+
+  it('keeps Terminal capability codes out of ordinary-user UI', () => {
+    const terminal = source('./workspace/components/TerminalDock.tsx');
+    const settings = source('./settings/pages/SettingsPageView.tsx');
+    expect(terminal).not.toContain('{capability?.code}');
+    expect(settings).not.toContain('terminal.code');
+  });
 });

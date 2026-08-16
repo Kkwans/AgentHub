@@ -113,6 +113,26 @@ select {
   border-radius: var(--radius-control);
 }
 
+/* One focus treatment for Radix text controls. Keep the browser focus ring
+ * visible without stacking Radix's default ring with the legacy blue outline. */
+.rt-TextFieldRoot:where(:has(.rt-TextFieldInput:focus)) {
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.rt-TextFieldRoot:where(:has(.rt-TextFieldInput:focus-visible)),
+.rt-TextArea:where(:has(.rt-TextAreaInput:focus-visible)) {
+  border-color: var(--app-accent) !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 3px rgb(184 78 22 / 18%) !important;
+}
+
+.rt-TextFieldRoot .rt-TextFieldInput:focus-visible,
+.rt-TextArea .rt-TextAreaInput:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
 .account-password-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

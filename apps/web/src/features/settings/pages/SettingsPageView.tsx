@@ -114,8 +114,7 @@ export function SettingsPage() {
                 <StatusBadge status={capability.data?.terminal.available ? 'READY' : 'MISSING'} />
                 <strong>{capability.data?.terminal.message}</strong>
                 <code>
-                  {capability.data?.terminal.platform}/{capability.data?.terminal.arch} ·{' '}
-                  {capability.data?.terminal.code}
+                  {capability.data?.terminal.platform}/{capability.data?.terminal.arch}
                 </code>
                 <p>
                   {capability.data?.terminal.available
