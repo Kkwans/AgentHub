@@ -15,7 +15,7 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain('targetId,');
     expect(source).toContain('添加前检查');
     expect(source).toContain('InlineError');
-    expect(source).toContain('labelAdapterKind(candidate.adapterKind)');
+    expect(source).not.toContain('labelAdapterKind(candidate.adapterKind)');
     expect(source).toContain('labelAgentCandidateReason(candidate.reasonCode)');
     expect(source).toContain("filter((candidate) => candidate.agentKind !== 'UNKNOWN')");
     expect(source).toContain('请先完成该 Agent 的登录授权。');

@@ -80,6 +80,13 @@ describe('v0.6 feature boundaries', () => {
     expect(settings).not.toContain('terminal.code');
   });
 
+  it('keeps adapter implementation details out of ordinary Agent surfaces', () => {
+    const discovery = source('../pages/v06/DiscoveryPages.tsx');
+    const remoteNodes = source('../pages/RemoteNodesPanel.tsx');
+    expect(discovery).not.toContain('labelAdapterKind(candidate.adapterKind)');
+    expect(remoteNodes).not.toContain('labelAdapterKind(agent.adapterKind)');
+  });
+
   it('keeps warning surfaces symmetric instead of using a one-sided accent bar', () => {
     const designSystem = source('../styles/design-system.css');
     const controls = source('../styles/v3-controls.css');

@@ -35,7 +35,6 @@ import type {
 import { api } from '../../lib/api';
 import {
   labelAgentKind,
-  labelAdapterKind,
   labelDiscoveryStatus,
   labelExecutionTargetKind,
   labelProjectStatus,
@@ -668,8 +667,7 @@ export function AgentsDiscoveryPage() {
                 <span>
                   {candidate.agentKind === 'UNKNOWN'
                     ? '尚未识别 Agent 类型'
-                    : labelAgentKind(candidate.agentKind)}{' '}
-                  · {labelAdapterKind(candidate.adapterKind)}
+                    : labelAgentKind(candidate.agentKind)}
                 </span>
                 {candidate.detectedVersion ? <code>{candidate.detectedVersion}</code> : null}
               </div>
