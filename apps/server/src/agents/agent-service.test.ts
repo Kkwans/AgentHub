@@ -114,6 +114,36 @@ describe('Agent 注册与预检', () => {
       argsJson: created.argsJson,
     });
   });
+
+  it('Remote Node discovery uses the selected inventory key when multiple entries share an Agent kind', async () => {
+    const target = await targets.create({
+      id: randomUUID(),
+      name: '多 Agent Remote Node',
+      kind: 'REMOTE_NODE',
+      hostname: 'remote-test',
+      os: 'linux',
+      arch: 'arm64',
+      status: 'READY',
+      capabilitiesJson: {
+        inventory: [
+          { key: 'codex-default', agentKind: 'CODEX', status: 'AVAILABLE' },
+          { key: 'codex-arm64', agentKind: 'CODEX', status: 'AVAILABLE' },
+        ],
+      },
+      connectionJson: { nodeId: randomUUID() },
+    });
+    const service = new AgentService(agents, targets, new NeverLaunch());
+
+    const created = await service.register({
+      name: 'Codex ARM64',
+      targetId: target.id,
+      agentKind: 'CODEX',
+      config: { remoteInventoryKey: 'codex-arm64' },
+    });
+
+    expect(created.executable).toBe('remote:codex-arm64');
+    expect(created.configJson).toMatchObject({ remoteInventoryKey: 'codex-arm64' });
+  });
 });
 
 class NeverLaunch implements AcpProcessLauncher {

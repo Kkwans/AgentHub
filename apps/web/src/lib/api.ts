@@ -276,6 +276,7 @@ export interface AgentCandidateRecord {
   state: AgentCandidateState;
   adapterKind: string;
   detectedVersion?: string;
+  inventoryKey?: string;
   reasonCode?: string;
   registeredAgentId?: string;
   adoptable: boolean;

@@ -324,11 +324,17 @@ async function resolveRegistrationLaunch(
     const inventory = Array.isArray(target.capabilitiesJson.inventory)
       ? target.capabilitiesJson.inventory
       : [];
+    const requestedInventoryKey =
+      typeof input.config?.remoteInventoryKey === 'string'
+        ? input.config.remoteInventoryKey
+        : undefined;
     const remote = inventory.find((candidate): candidate is Record<string, unknown> =>
       Boolean(
         candidate &&
         typeof candidate === 'object' &&
-        (candidate as Record<string, unknown>).agentKind === input.agentKind,
+        (candidate as Record<string, unknown>).agentKind === input.agentKind &&
+        (!requestedInventoryKey ||
+          (candidate as Record<string, unknown>).key === requestedInventoryKey),
       ),
     );
     if (!remote || remote.status !== 'AVAILABLE' || typeof remote.key !== 'string') {

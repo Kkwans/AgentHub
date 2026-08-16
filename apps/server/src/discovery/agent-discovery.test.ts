@@ -50,6 +50,19 @@ function createRuntimeService(runtimes: RuntimeCandidate[]) {
   };
 }
 
+function createRemoteNodeService(
+  nodes: Array<{
+    id: string;
+    targetId: string;
+    name: string;
+    status: string;
+    allowedRootsJson: string[];
+    inventoryJson: Array<Record<string, unknown>>;
+  }>,
+) {
+  return { list: vi.fn(async () => nodes) };
+}
+
 function createAgentRepository(initial: Record<string, unknown>[] = []) {
   const records = [...initial];
   return {
@@ -67,14 +80,27 @@ function createService(options: {
   agents?: Record<string, unknown>[];
   register?: (input: Record<string, unknown>) => Promise<Record<string, unknown>>;
   preflight?: (id: string, input: { cwd: string }) => Promise<Record<string, unknown>>;
+  remoteNodes?: Array<{
+    id: string;
+    targetId: string;
+    name: string;
+    status: string;
+    allowedRootsJson: string[];
+    inventoryJson: Array<Record<string, unknown>>;
+  }>;
 }) {
   const agentService = createAgentService(options);
   const agents = createAgentRepository(options.agents);
   const runtimes = createRuntimeService(options.runtimes);
-  const service = new DiscoveryService(agentService, agents as never, runtimes as never, [
-    workspaceRoot,
-  ]);
-  return { service, agentService, agents, runtimes };
+  const remoteNodes = createRemoteNodeService(options.remoteNodes ?? []);
+  const service = new DiscoveryService(
+    agentService,
+    agents as never,
+    runtimes as never,
+    [workspaceRoot],
+    remoteNodes as never,
+  );
+  return { service, agentService, agents, runtimes, remoteNodes };
 }
 
 describe('AgentDiscoveryService', () => {
@@ -245,6 +271,153 @@ describe('AgentDiscoveryService', () => {
       status: 'STOPPED',
       reasonCode: 'DOCKER_CONTAINER_STOPPED',
     });
+  });
+
+  it('maps Remote Node inventory to deduplicated Agent candidates with offline state', async () => {
+    const online = {
+      id: '11111111-1111-4111-8111-111111111111',
+      targetId: 'target-remote-online',
+      name: '远程开发机',
+      status: 'ONLINE',
+      allowedRootsJson: ['/srv/projects'],
+      inventoryJson: [
+        {
+          key: 'codex',
+          name: 'Codex',
+          agentKind: 'CODEX',
+          adapterKind: 'ACP_STDIO',
+          status: 'AVAILABLE',
+          detectedVersion: '0.146.0',
+          capabilities: {
+            sessions: true,
+            streaming: true,
+            approvals: true,
+            files: true,
+            terminal: true,
+          },
+        },
+        {
+          key: 'hermes',
+          name: 'Hermes',
+          agentKind: 'HERMES',
+          adapterKind: 'ACP_STDIO',
+          status: 'MISSING',
+          capabilities: {
+            sessions: true,
+            streaming: true,
+            approvals: true,
+            files: true,
+            terminal: true,
+          },
+        },
+      ],
+    };
+    const offline = {
+      ...online,
+      id: '22222222-2222-4222-8222-222222222222',
+      targetId: 'target-remote-offline',
+      name: '离线开发机',
+      status: 'OFFLINE',
+      inventoryJson: online.inventoryJson.slice(0, 1),
+    };
+    const { service } = createService({
+      runtimes: [hostRuntime()],
+      remoteNodes: [online, offline],
+      agents: [
+        {
+          id: 'agent-remote-existing',
+          targetId: 'target-remote-online',
+          agentKind: 'CODEX',
+          status: 'READY',
+        },
+      ],
+    });
+
+    const candidates = await service.list();
+    expect(candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          candidateId: 'remote:11111111-1111-4111-8111-111111111111:codex',
+          displayName: 'Codex（远程开发机）',
+          state: 'READY',
+          detectedVersion: '0.146.0',
+          registeredAgentId: 'agent-remote-existing',
+          adoptable: false,
+        }),
+        expect.objectContaining({
+          candidateId: 'remote:11111111-1111-4111-8111-111111111111:hermes',
+          state: 'MISSING_DEPENDENCY',
+          reasonCode: 'REMOTE_AGENT_MISSING',
+          adoptable: false,
+        }),
+        expect.objectContaining({
+          candidateId: 'remote:22222222-2222-4222-8222-222222222222:codex',
+          state: 'STOPPED',
+          reasonCode: 'REMOTE_NODE_OFFLINE',
+          adoptable: false,
+        }),
+      ]),
+    );
+  });
+
+  it('adopts a Remote Node inventory entry with its key and remote workspace root', async () => {
+    const node = {
+      id: '33333333-3333-4333-8333-333333333333',
+      targetId: 'target-remote',
+      name: '远程 Codex',
+      status: 'ONLINE',
+      allowedRootsJson: ['/srv/agenthub/projects'],
+      inventoryJson: [
+        {
+          key: 'codex-arm64',
+          name: 'Codex ARM64',
+          agentKind: 'CODEX',
+          adapterKind: 'ACP_STDIO',
+          status: 'AVAILABLE',
+          capabilities: {
+            sessions: true,
+            streaming: true,
+            approvals: true,
+            files: true,
+            terminal: true,
+          },
+        },
+      ],
+    };
+    const agents = createAgentRepository();
+    const preflight = vi.fn(async (_id: string, _input: { cwd: string }) => ({
+      status: 'READY',
+      checkedAt: new Date().toISOString(),
+      checks: [],
+    }));
+    const agentService = createAgentService({
+      preflight,
+      register: async (input) => {
+        const record = { id: 'agent-remote', ...input, status: 'UNVERIFIED' };
+        agents.add(record);
+        return record;
+      },
+    });
+    const runtimes = createRuntimeService([hostRuntime()]);
+    const remoteNodes = createRemoteNodeService([node]);
+    const service = new DiscoveryService(
+      agentService,
+      agents as never,
+      runtimes as never,
+      [workspaceRoot],
+      remoteNodes as never,
+    );
+
+    const result = await service.adopt('remote:33333333-3333-4333-8333-333333333333:codex-arm64');
+    expect(result).toMatchObject({ preflight: { status: 'READY' } });
+    expect(agentService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: 'target-remote',
+        agentKind: 'CODEX',
+        config: { discoveredBy: 'agenthub-v06', remoteInventoryKey: 'codex-arm64' },
+      }),
+    );
+    expect(preflight).toHaveBeenCalledWith('agent-remote', { cwd: '/srv/agenthub/projects' });
   });
 
   it('returns already registered candidates idempotently and rejects unknown IDs', async () => {

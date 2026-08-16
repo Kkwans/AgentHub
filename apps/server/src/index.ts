@@ -204,6 +204,7 @@ export async function startServer(
     agentRepository,
     runtimeDiscovery,
     workspaceRoots,
+    remoteNodeRepository,
   );
   const sessions = new SessionService(
     sessionRepository,

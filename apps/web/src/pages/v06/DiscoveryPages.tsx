@@ -817,8 +817,10 @@ export function AgentsDiscoveryPage() {
                 </Button>
               ) : null}
               {candidate.registeredAgentId ? <span className="v06-connected">已接入</span> : null}
-              {candidate.reasonCode === 'RUNTIME_STOPPED' ? (
-                <small className="v06-card-warning">请先启动运行环境。</small>
+              {candidate.reasonCode ? (
+                <small className="v06-card-warning">
+                  {labelAgentCandidateReason(candidate.reasonCode)}
+                </small>
               ) : null}
             </article>
           ))}
@@ -933,4 +935,23 @@ export function AgentsDiscoveryPage() {
       </FormDialog>
     </div>
   );
+}
+
+function labelAgentCandidateReason(reasonCode: string): string {
+  switch (reasonCode) {
+    case 'RUNTIME_STOPPED':
+      return '请先启动运行环境。';
+    case 'REMOTE_NODE_OFFLINE':
+      return 'Remote Node 当前离线，请检查连接。';
+    case 'REMOTE_NODE_REVOKED':
+      return 'Remote Node 已撤销，请重新注册设备。';
+    case 'REMOTE_AGENT_MISSING':
+      return '远程环境缺少该 Agent。';
+    case 'REMOTE_AGENT_BROKEN':
+      return '远程环境报告该 Agent 异常，请查看 Node 诊断。';
+    case 'REMOTE_AGENT_INVENTORY_INVALID':
+      return '远程环境的 Agent inventory 无法识别。';
+    default:
+      return '当前状态需要处理。';
+  }
 }

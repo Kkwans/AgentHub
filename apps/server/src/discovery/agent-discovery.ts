@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 
 import type { AgentKind } from '@agenthub/agent-core';
 import type { AgentHubDatabase, AgentRepository } from '@agenthub/db';
+import { remoteAgentInventoryEntrySchema, type RemoteAgentInventoryEntry } from '@agenthub/shared';
 
 import { AppError } from '../errors.js';
 import type { AgentService } from '../agents/agent-service.js';
@@ -25,9 +26,23 @@ export interface AgentCandidate {
   state: AgentCandidateState;
   adapterKind: 'ACP_STDIO' | 'OPENCLAW_GATEWAY' | 'OPENCLAW_EXEC';
   detectedVersion?: string;
+  inventoryKey?: string;
   reasonCode?: string;
   registeredAgentId?: string;
   adoptable: boolean;
+}
+
+interface RemoteNodeInventorySource {
+  list(): Promise<
+    Array<{
+      id: string;
+      targetId: string;
+      name: string;
+      status: string;
+      allowedRootsJson: string[];
+      inventoryJson: Array<Record<string, unknown>>;
+    }>
+  >;
 }
 
 const HOST_AGENT_CATALOG: Array<{
@@ -64,13 +79,15 @@ export class AgentDiscoveryService {
     private readonly agents: AgentRepository<AgentHubDatabase>,
     private readonly runtimes: RuntimeDiscoveryService,
     private readonly workspaceRoots: string[] = [],
+    private readonly remoteNodes?: RemoteNodeInventorySource,
   ) {}
 
   async list(): Promise<AgentCandidate[]> {
-    const [diagnostics, registered, runtimes] = await Promise.all([
+    const [diagnostics, registered, runtimes, remoteNodes] = await Promise.all([
       this.agentService.hostDiagnostics(),
       this.agents.list(),
       this.runtimes.list(),
+      this.remoteNodes?.list() ?? Promise.resolve([]),
     ]);
     const candidates: AgentCandidate[] = [];
     const hostTarget = runtimes.find((runtime) => runtime.candidateId === 'host:local');
@@ -132,6 +149,9 @@ export class AgentDiscoveryService {
         ...(runtime.state === 'STOPPED' ? { reasonCode: 'RUNTIME_STOPPED' } : {}),
       });
     }
+    for (const node of remoteNodes) {
+      candidates.push(...this.remoteCandidates(node, registered));
+    }
     return candidates;
   }
 
@@ -160,9 +180,12 @@ export class AgentDiscoveryService {
       name: candidate.displayName,
       targetId,
       agentKind: candidate.agentKind,
-      config: { discoveredBy: 'agenthub-v06' },
+      config: {
+        discoveredBy: 'agenthub-v06',
+        ...(candidate.inventoryKey ? { remoteInventoryKey: candidate.inventoryKey } : {}),
+      },
     });
-    const cwd = this.chooseCwd(candidate.targetCandidateId);
+    const cwd = await this.chooseCwd(candidate);
     try {
       const preflight = await this.agentService.preflight(agent.id, { cwd });
       return { agent: (await this.agents.get(agent.id)) ?? agent, preflight };
@@ -177,12 +200,76 @@ export class AgentDiscoveryService {
     }
   }
 
-  private chooseCwd(candidateId: string): string {
-    if (candidateId.startsWith('host:')) {
+  private async chooseCwd(candidate: AgentCandidate): Promise<string> {
+    if (
+      candidate.targetCandidateId.startsWith('remote:') &&
+      this.remoteNodes &&
+      candidate.targetId
+    ) {
+      const node = (await this.remoteNodes.list()).find(
+        (item) => item.targetId === candidate.targetId,
+      );
+      const remoteRoot = node?.allowedRootsJson.find((root) => root.length > 0);
+      if (remoteRoot) return remoteRoot;
+    }
+    if (candidate.targetCandidateId.startsWith('host:')) {
       const root = this.workspaceRoots.find((item) => existsSync(item));
       return root ?? process.cwd();
     }
     return this.workspaceRoots.find((item) => existsSync(item)) ?? process.cwd();
+  }
+
+  private remoteCandidates(
+    node: Awaited<ReturnType<RemoteNodeInventorySource['list']>>[number],
+    registered: Array<{ id: string; targetId: string; agentKind: string; status: string }>,
+  ): AgentCandidate[] {
+    return node.inventoryJson.flatMap((raw, index) => {
+      const parsed = remoteAgentInventoryEntrySchema.safeParse(raw);
+      if (!parsed.success) {
+        return [
+          {
+            candidateId: `remote:${node.id}:invalid-${index}`,
+            agentKind: 'UNKNOWN',
+            displayName: `${node.name}（未识别 Agent）`,
+            targetCandidateId: `remote:${node.id}`,
+            targetId: node.targetId,
+            state: mapRemoteState(node.status, 'BROKEN'),
+            adapterKind: 'ACP_STDIO',
+            adoptable: false,
+            reasonCode: 'REMOTE_AGENT_INVENTORY_INVALID',
+          },
+        ];
+      }
+      return [this.mapRemoteCandidate(node, parsed.data, registered)];
+    });
+  }
+
+  private mapRemoteCandidate(
+    node: Awaited<ReturnType<RemoteNodeInventorySource['list']>>[number],
+    entry: RemoteAgentInventoryEntry,
+    registered: Array<{ id: string; targetId: string; agentKind: string; status: string }>,
+  ): AgentCandidate {
+    const existing = registered.find(
+      (agent) => agent.targetId === node.targetId && agent.agentKind === entry.agentKind,
+    );
+    const nodeState = mapRemoteState(node.status, entry.status);
+    const state =
+      existing && node.status === 'ONLINE' ? mapRegisteredState(existing.status) : nodeState;
+    const reasonCode = remoteReasonCode(node.status, entry.status);
+    return {
+      candidateId: `remote:${node.id}:${entry.key}`,
+      agentKind: entry.agentKind,
+      displayName: `${entry.name}（${node.name}）`,
+      targetCandidateId: `remote:${node.id}`,
+      targetId: node.targetId,
+      state,
+      adapterKind: entry.adapterKind,
+      inventoryKey: entry.key,
+      ...(entry.detectedVersion ? { detectedVersion: entry.detectedVersion } : {}),
+      ...(existing ? { registeredAgentId: existing.id } : {}),
+      adoptable: !existing && node.status === 'ONLINE' && entry.status === 'AVAILABLE',
+      ...(reasonCode ? { reasonCode } : {}),
+    };
   }
 }
 
@@ -220,11 +307,38 @@ function mapRegisteredState(status: string): AgentCandidateState {
   return 'INSTALLED';
 }
 
+function mapRemoteState(
+  nodeStatus: string,
+  inventoryStatus: RemoteAgentInventoryEntry['status'],
+): AgentCandidateState {
+  if (nodeStatus === 'REVOKED') return 'BROKEN';
+  if (nodeStatus !== 'ONLINE') return 'STOPPED';
+  if (inventoryStatus === 'AVAILABLE') return 'READY';
+  if (inventoryStatus === 'MISSING') return 'MISSING_DEPENDENCY';
+  return 'BROKEN';
+}
+
+function remoteReasonCode(
+  nodeStatus: string,
+  inventoryStatus: RemoteAgentInventoryEntry['status'],
+): string | undefined {
+  if (nodeStatus === 'OFFLINE') return 'REMOTE_NODE_OFFLINE';
+  if (nodeStatus === 'REVOKED') return 'REMOTE_NODE_REVOKED';
+  if (inventoryStatus === 'MISSING') return 'REMOTE_AGENT_MISSING';
+  if (inventoryStatus === 'BROKEN') return 'REMOTE_AGENT_BROKEN';
+  return undefined;
+}
+
 function mapPreflightFailure(error: unknown): AgentCandidateState {
   if (error instanceof AppError) {
     if (error.code.includes('AUTH')) return 'AUTH_REQUIRED';
-    if (error.code === 'DOCKER_CONTAINER_STOPPED' || error.code === 'RUNTIME_STOPPED')
+    if (
+      error.code === 'DOCKER_CONTAINER_STOPPED' ||
+      error.code === 'RUNTIME_STOPPED' ||
+      error.code === 'REMOTE_NODE_OFFLINE'
+    )
       return 'STOPPED';
+    if (error.code === 'REMOTE_NODE_REVOKED') return 'BROKEN';
     if (error.code.includes('MISSING') || error.code.includes('COMMAND'))
       return 'MISSING_DEPENDENCY';
   }

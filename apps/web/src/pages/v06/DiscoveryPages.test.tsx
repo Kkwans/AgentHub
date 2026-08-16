@@ -15,5 +15,6 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain('添加前检查');
     expect(source).toContain('InlineError');
     expect(source).toContain('labelAdapterKind(candidate.adapterKind)');
+    expect(source).toContain('labelAgentCandidateReason(candidate.reasonCode)');
   });
 });
