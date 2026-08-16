@@ -769,6 +769,13 @@ function BindingsTab({
     }
     return tasks.data?.find((task) => task.id === binding.targetId)?.title;
   };
+  const bindingSelectorLabel = (binding: PromptBindingRecord) => {
+    if (binding.selectorType === 'LABEL') {
+      return binding.label ? `标签：${binding.label}` : '标签已删除';
+    }
+    const version = versions.find((item) => item.id === binding.versionId);
+    return version ? `固定版本 v${version.version}` : '固定版本已删除';
+  };
   return (
     <div className="prompt-section-stack">
       <div className="prompt-actionbar">
@@ -911,12 +918,8 @@ function BindingsTab({
               <span className="binding-scope">{labelPromptBindingTarget(binding.targetType)}</span>
               <strong>{bindingTargetLabel(binding) ?? '目标已删除或不在当前范围'}</strong>
               <strong>{labelPromptBindingSlot(binding.slot)}</strong>
-              <span>
-                {binding.selectorType === 'LABEL'
-                  ? `${binding.label}`
-                  : `v:${binding.versionId?.slice(0, 8)}`}
-              </span>
-              <small>priority {binding.priority}</small>
+              <span>{bindingSelectorLabel(binding)}</span>
+              <small>优先级：{binding.priority}</small>
               <button
                 className={`toggle-control ${binding.enabled ? 'on' : ''}`}
                 onClick={() => toggle.mutate({ id: binding.id, enabled: !binding.enabled })}

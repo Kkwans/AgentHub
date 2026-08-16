@@ -495,6 +495,18 @@ describe('App', () => {
             priority: 0,
             enabled: true,
           },
+          {
+            id: '77777777-7777-4777-8777-777777777777',
+            targetType: 'TASK',
+            targetId: taskId,
+            slot: 'COMMIT',
+            promptId,
+            selectorType: 'VERSION',
+            label: null,
+            versionId,
+            priority: 2,
+            enabled: true,
+          },
         ];
       } else if (pathname === '/api/v1/skills') data = [skill];
       else if (pathname === '/api/v1/skill-bindings') data = [];
@@ -515,6 +527,10 @@ describe('App', () => {
 
     await screen.findByRole('heading', { name: 'PromptOS', level: 2 }, { timeout: 5_000 });
     await screen.findByRole('tab', { name: '绑定' });
+    expect(await screen.findByText('标签：latest')).toBeVisible();
+    expect(await screen.findByText('固定版本 v1')).toBeVisible();
+    expect(screen.queryByText(`v:${versionId.slice(0, 8)}`)).not.toBeInTheDocument();
+    expect(screen.getByText('优先级：2')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '新建绑定' }));
     const bindingDialog = await screen.findByRole('dialog');
     const bindingTargetType = within(bindingDialog).getByRole('combobox', { name: '绑定目标' });

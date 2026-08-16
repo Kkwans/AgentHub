@@ -15,6 +15,8 @@ describe('PromptOS v0.6 ordinary-user contracts', () => {
     expect(source).toContain('新建 Skill 绑定');
     expect(source).toContain('labelPromptBindingTarget');
     expect(source).toContain('labelPromptBindingSlot');
+    expect(source).toContain('bindingSelectorLabel');
+    expect(source).toContain('优先级：{binding.priority}');
     expect(source).toContain('PromptVariableEditor');
     expect(source).toContain('字段编辑');
     expect(source).toContain('通过任务名称选择');
@@ -23,5 +25,6 @@ describe('PromptOS v0.6 ordinary-user contracts', () => {
     expect(source).not.toContain('<option> TASK </option>');
     expect(source).not.toContain('<strong>{prompt.type} content</strong>');
     expect(source).not.toContain('可选 UUID');
+    expect(source).not.toContain('binding.versionId?.slice');
   });
 });
