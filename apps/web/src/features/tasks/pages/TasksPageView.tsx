@@ -792,7 +792,11 @@ export function TasksPage() {
                   <ShieldAlert size={17} />
                   <div>
                     <strong>{task.title}</strong>
-                    <span>{execution?.errorMessage || '上次 Run 未成功完成'}</span>
+                    <span>
+                      {execution?.errorCode
+                        ? worktreeErrorCopy(execution.errorCode).description
+                        : '上次 Run 未成功完成'}
+                    </span>
                   </div>
                   {execution?.worktreePath && (
                     <button
