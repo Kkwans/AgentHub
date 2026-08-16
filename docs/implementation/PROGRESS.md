@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · M28 / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -350,6 +350,12 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `/volume2/Project/.agenthub/central/deployments/20260816T103844Z-pre-nas28/`，完整记录见
   `docs/qa/nas/2026-08-16-v06-live28/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- M28 Remote Node 注册体验已收口：注册码表单将多行 `allowed roots` 改为中文“授权目录”添加器，支持绝对路径即时校验、重复/数量限制、Chip 展示和单项移除；后端注册协议与安全校验保持不变。代码提交为 `ebb49ee`、`70c6095`，均已推送。
+- nas.29 已发布为 `agenthub:0.6.0-nas.29`（ARM64，image ID
+  `sha256:70f975d75ae223ba926665d2ee50f63945fec60c9f1a9b798e50a1a1b5a04fc1`，revision `70c6095`），容器
+  `fd0835bfb0af3dabbe759cc08d7e9105008de9eba2cb4a2c8a60587792af5d9c` 最终 `running/healthy`。health、根页面、授权目录静态 bundle 和正确工作目录下的 node-pty smoke 通过；升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T105434Z-pre-nas29/`，完整记录见
+  `docs/qa/nas/2026-08-16-v06-live29/`。使用已验证 nas.28 作为 overlay 基底，未执行 `compose down`，未删除旧镜像、卷、用户数据或其他 Agent 容器。
 
 ### 当前进行中
 
@@ -362,6 +368,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 - M25 已在 nas.25 正式发布 Session 配置渐进式 UX；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
 - M26 已在 nas.26 正式发布 Workspace 运行状态与 Composer 输入门禁；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
 - M27 已在 nas.28 正式发布 Approval、Task/Worktree 与 Runtime 状态文案收口；全仓测试和 TX5Pro/人工视觉门禁按用户要求留到最终集中验证。
+- M28 已在 nas.29 正式发布 Remote Node 授权目录添加器；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
   时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.14 通过 ARM64 native base overlay 后保持 READY。
