@@ -13,7 +13,7 @@ AgentHub 是一个面向普通开发者的 AI Coding Agent 控制平面。v0.6 �
 - Linux（当前目标为 NAS ARM64）
 - 默认开发监听：`127.0.0.1`
 - 当前 NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）；当前镜像为
-  `agenthub:0.6.0-nas.2`，视觉人工验收仍需浏览器通道。
+  `agenthub:0.6.0-nas.32`，容器当前 `running/healthy`；视觉人工验收仍需浏览器通道。
 
 ## 普通用户快速开始
 
@@ -55,6 +55,6 @@ pnpm dev
 - Agent 原生凭据归 Agent 所有，AgentHub 不复制凭据。
 - Remote Node 使用一次性注册码与 Ed25519 设备身份，只主动连接中央 `/node/ws`；非 loopback 必须使用 `wss://`。
 
-Remote Node 不提供 SSH、任意 shell、远程 Terminal、远程 Docker 管理或 Remote Worktree merge；浏览器端 PTY 在 v0.6 明确延后，Settings 会显示 Local Project Terminal 的诊断边界。详细契约见 [`docs/implementation/V0.2_REMOTE_NODE.md`](docs/implementation/V0.2_REMOTE_NODE.md)。
+Local Project Terminal 已在能力为 `READY` 时通过官方 `xterm.js` + `node-pty` 提供；如果当前平台缺少 native binding、Project 未绑定或诊断失败，界面会显示中文原因并禁用打开，不用普通 Shell 冒充 PTY。Remote Node 不提供 SSH、任意 shell、远程 Terminal、远程 Docker 管理或 Remote Worktree merge。详细契约见 [`docs/implementation/V0.2_REMOTE_NODE.md`](docs/implementation/V0.2_REMOTE_NODE.md)。
 
 详细说明见 [`docs/SECURITY.md`](docs/SECURITY.md)。

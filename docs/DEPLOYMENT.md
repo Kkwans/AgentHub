@@ -1,6 +1,6 @@
 # 部署与升级
 
-AgentHub v0.5 由 Central Server 与可选的 host-native Remote Node daemon 组成。当前绿联 NAS
+AgentHub v0.6 由 Central Server 与可选的 host-native Remote Node daemon 组成。当前绿联 NAS
 的 Central Server 已由用户明确要求改为 root/privileged Docker Compose；既有 Agent 容器仍
 只允许显式接管，不修改它们的 Compose、镜像或 volume。
 
@@ -16,7 +16,7 @@ AgentHub v0.5 由 Central Server 与可选的 host-native Remote Node daemon 组
 
 仓库配置位于 `deploy/compose/`，NAS 项目配置安装到
 `/volume2/DockerProject/agenthub/docker-compose.yml`。当前入口为
-`http://192.168.5.110:3210`，强制认证。首次打开页面创建唯一管理员账号，之后使用用户名和
+`http://192.168.5.110:3210`，当前镜像为 `agenthub:0.6.0-nas.32`，强制认证。首次打开页面创建唯一管理员账号，之后使用用户名和
 密码登录；浏览器凭据由 Server 通过 HttpOnly Cookie 管理。Compose 显式配置：
 
 - ARM64 Node.js 24 固定 digest 与版本化镜像 tag；
@@ -67,7 +67,7 @@ AGENTHUB_WORKTREE_ROOT=/volume2/Project/.agenthub/worktrees
 
 ## Remote Node daemon
 
-Remote Node 无需开放入站管理端口。先在中央“设置 → Remote Node”创建一次性注册码，再在目标主机使用与中央相同的 v0.5.0 代码和锁定依赖：
+Remote Node 无需开放入站管理端口。先在中央“设置 → Remote Node”创建一次性注册码，再在目标主机使用与中央相同的 v0.6.0 代码和锁定依赖：
 
 ```bash
 corepack pnpm install --frozen-lockfile

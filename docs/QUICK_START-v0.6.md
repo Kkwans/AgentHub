@@ -51,7 +51,7 @@
 
 ## 7. 当前能力边界
 
-- Browser Terminal / PTY 在 v0.6 明确延后；Settings 只显示 Local Project Terminal 的能力诊断，不会伪造一个不可用的终端。
+- Local Project Terminal 在能力为 `READY` 时可从 Workspace 底部打开，使用官方 `xterm.js` + `node-pty`；能力缺失时会显示中文原因并禁用打开，不用普通 Shell 冒充 PTY。
 - Remote Node 文件浏览和 Remote Git 仍按后端 capability 显示，未开放的能力会明确说明。
 - 没有可用浏览器通道时，不能把自动化 fixture 或静态 build 当作 TX5Pro 视觉验收。
 
