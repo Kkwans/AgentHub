@@ -55,7 +55,7 @@
 
 | 层级                     | 结果                                                                                                                                                                                                          |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                   | 51 个非 live 文件通过，4 个 live 文件跳过；219 passed、9 skipped（非沙箱、单 worker 串行取得稳定结果）                                                                                                        |
+| Vitest                   | M26 最近一次完整非沙箱回归为 51 个文件、219 passed/9 skipped；M27 Approval 聚焦回归 11/11 通过，最新全仓回归按用户要求留到最终门禁                                                                            |
 | typecheck / lint / build | 通过；Web 1716 modules transformed                                                                                                                                                                            |
 | Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                                      |
 | real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                                    |
