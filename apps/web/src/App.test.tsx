@@ -530,7 +530,7 @@ describe('App', () => {
     expect(await screen.findByText('标签：latest')).toBeVisible();
     expect(await screen.findByText('固定版本 v1')).toBeVisible();
     expect(screen.queryByText(`v:${versionId.slice(0, 8)}`)).not.toBeInTheDocument();
-    expect(screen.getByText('优先级：2')).toBeVisible();
+    expect(screen.getByText('解析顺序：较后执行（+2）')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '新建绑定' }));
     const bindingDialog = await screen.findByRole('dialog');
     const bindingTargetType = within(bindingDialog).getByRole('combobox', { name: '绑定目标' });
