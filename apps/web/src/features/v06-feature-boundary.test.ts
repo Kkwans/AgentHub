@@ -70,6 +70,7 @@ describe('v0.6 feature boundaries', () => {
       expect(copy).not.toContain('v0.2 暂不提供');
     }
     expect(api).toContain('请改用普通 Session');
+    expect(api).toContain('当前 Remote Node 不支持 Git 控制');
   });
 
   it('keeps Terminal capability codes out of ordinary-user UI', () => {

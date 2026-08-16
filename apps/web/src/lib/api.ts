@@ -108,7 +108,7 @@ const errorMessages: Record<string, string> = {
   REMOTE_NODE_REGISTRATION_TOKEN_EXPIRED: 'Remote Node 注册码已经过期。',
   REMOTE_AGENT_NOT_AVAILABLE: 'Remote Node inventory 中没有可用的该类型 Agent。',
   REMOTE_CUSTOM_AGENT_UNSUPPORTED: 'Remote Node 只允许 inventory 中的固定 Agent Profile。',
-  REMOTE_GIT_UNSUPPORTED: 'Remote Node 暂不提供 Git 控制，请在 Project 所在设备上完成 Git 操作。',
+  REMOTE_GIT_UNSUPPORTED: '当前 Remote Node 不支持 Git 控制，请在 Project 所在设备上完成 Git 操作。',
   REMOTE_NODE_GATEWAY_UNAVAILABLE: 'Remote Node 通道暂不可用，请检查 Node 连接。',
   REMOTE_NODE_OPERATION_FAILED: 'Remote Node 操作失败，请检查连接与授权目录。',
   REMOTE_NODE_RPC_FAILED: 'Remote Node 请求失败，请检查连接后重试。',
