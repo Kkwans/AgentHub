@@ -224,15 +224,32 @@ export const authSession = {
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, {
-    ...init,
-    credentials: 'same-origin',
-    headers: {
-      'content-type': 'application/json',
-      ...init?.headers,
-    },
-  });
-  const body = (await response.json()) as SuccessEnvelope<T> | ErrorEnvelope;
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1${path}`, {
+      ...init,
+      credentials: 'same-origin',
+      headers: {
+        'content-type': 'application/json',
+        ...init?.headers,
+      },
+    });
+  } catch {
+    // Keep browser/network implementation details out of ordinary-user copy.
+    // The diagnostic view can still use the request log and request id.
+    throw new ApiError('HTTP_ERROR', errorMessages.HTTP_ERROR ?? '请求失败，请稍后重试。', 0);
+  }
+
+  let body: SuccessEnvelope<T> | ErrorEnvelope;
+  try {
+    body = (await response.json()) as SuccessEnvelope<T> | ErrorEnvelope;
+  } catch {
+    throw new ApiError(
+      'HTTP_ERROR',
+      errorMessages.HTTP_ERROR ?? '请求失败，请稍后重试。',
+      response.status,
+    );
+  }
   if (!response.ok || 'error' in body) {
     const error = 'error' in body ? body.error : { code: 'HTTP_ERROR', message: '请求失败' };
     if (error.code === 'AUTH_REQUIRED') {

@@ -120,6 +120,7 @@ export function LoadingState({ label = '正在加载真实状态' }: { label?: s
 
 export function ErrorState({ error, retry }: { error: Error; retry?: () => void }) {
   const authorizationError = error instanceof ApiError && error.code === 'AUTH_REQUIRED';
+  const message = error instanceof ApiError ? error.message : '服务暂时不可用，请检查连接后重试。';
   return (
     <Callout.Root className="error-state" color="red" role="alert" size="2">
       <span className="error-state-icon" aria-hidden>
@@ -127,7 +128,7 @@ export function ErrorState({ error, retry }: { error: Error; retry?: () => void 
       </span>
       <div className="error-state-copy">
         <strong>{authorizationError ? '登录已失效' : '暂时无法加载'}</strong>
-        <span>{error.message || '服务暂时不可用。请检查连接后重试。'}</span>
+        <span>{message}</span>
       </div>
       {retry && (
         <Button className="error-state-action" color="red" size="1" variant="soft" onClick={retry}>
@@ -145,8 +146,7 @@ export function ErrorState({ error, retry }: { error: Error; retry?: () => void 
  * ambiguous without the user's next choice.
  */
 export function InlineError({ error, title = '操作未完成' }: { error: unknown; title?: string }) {
-  const message =
-    error instanceof Error && error.message ? error.message : '请检查当前状态后重试。';
+  const message = error instanceof ApiError ? error.message : '请检查当前状态后重试。';
   return (
     <div className="inline-error" role="alert" aria-live="assertive">
       <AlertTriangle aria-hidden size={15} />
