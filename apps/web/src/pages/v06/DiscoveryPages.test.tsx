@@ -11,7 +11,8 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain('接入并检查');
     expect(source).toContain('编辑项目');
     expect(source).toContain('归档项目');
-    expect(source).toContain('/projects/preflight-path');
+    expect(source).toContain("'/projects/preflight'");
+    expect(source).toContain('targetId,');
     expect(source).toContain('添加前检查');
     expect(source).toContain('InlineError');
     expect(source).toContain('labelAdapterKind(candidate.adapterKind)');
@@ -19,5 +20,6 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain("filter((candidate) => candidate.agentKind !== 'UNKNOWN')");
     expect(source).toContain('已隐藏 {hiddenRuntimeCount} 个未识别容器');
     expect(source).toContain('请先完成该 Agent 的登录授权。');
+    expect(source).toContain("source === 'REMOTE_NODE'");
   });
 });

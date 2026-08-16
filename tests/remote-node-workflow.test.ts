@@ -83,6 +83,11 @@ describe('Remote Node Project → Agent → Approval 闭环', () => {
   it('远程 Project、只读文件、Agent preflight、Approval、cancel 与 close 全部可追踪', async () => {
     const [node] = await api<Array<{ id: string; targetId: string }>>('/remote-nodes');
     if (!node) throw new Error('Remote Node 不存在');
+    const targetPreflight = await api<{ status: string }>('/projects/preflight', {
+      method: 'POST',
+      body: { targetId: node.targetId, rootPath: projectRoot },
+    });
+    expect(targetPreflight.status).toBe('READY');
     const project = await api<{ id: string; repoKind: string; realRootPath: string }>('/projects', {
       method: 'POST',
       body: { name: 'Remote fixture', targetId: node.targetId, rootPath: projectRoot },

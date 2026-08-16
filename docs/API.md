@@ -147,6 +147,7 @@ POST       /api/v1/approvals/:id/resolve
 ```text
 GET/POST  /api/v1/projects
 GET/PATCH /api/v1/projects/:id
+POST      /api/v1/projects/preflight
 POST      /api/v1/projects/:id/preflight
 POST      /api/v1/projects/:id/archive
 GET       /api/v1/projects/:id/files

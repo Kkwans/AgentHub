@@ -78,4 +78,48 @@ describe('FilesystemService', () => {
 
     await expect(service.listRoots('target-2')).resolves.toEqual([]);
   });
+
+  it('delegates Remote Node directory browsing to the authorized read-only adapter', async () => {
+    const calls: string[] = [];
+    const root = {
+      rootId: 'target-remote:/srv/projects',
+      label: 'projects',
+      path: '/srv/projects',
+      targetId: 'target-remote',
+      source: 'REMOTE_NODE' as const,
+    };
+    const service = new FilesystemService(
+      { get: async () => ({ id: 'target-remote', kind: 'REMOTE_NODE' }) } as never,
+      [],
+      {
+        listRoots: async () => {
+          calls.push('roots');
+          return [root];
+        },
+        listDirectories: async (targetId, rootId, requestedPath) => {
+          calls.push(`directories:${targetId}:${rootId}:${requestedPath}`);
+          return {
+            root,
+            path: requestedPath || root.path,
+            entries: [],
+          };
+        },
+        discoverProjects: async (targetId, rootId) => {
+          calls.push(`projects:${targetId}:${rootId ?? ''}`);
+          return [];
+        },
+      },
+    );
+
+    await expect(service.listRoots('target-remote')).resolves.toEqual([root]);
+    await expect(
+      service.listDirectories('target-remote', root.rootId, root.path),
+    ).resolves.toMatchObject({ root, path: root.path });
+    await expect(service.discoverProjects('target-remote', root.rootId)).resolves.toEqual([]);
+    expect(calls).toEqual([
+      'roots',
+      `directories:target-remote:${root.rootId}:${root.path}`,
+      `projects:target-remote:${root.rootId}`,
+    ]);
+  });
 });

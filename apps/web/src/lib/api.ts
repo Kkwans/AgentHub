@@ -287,7 +287,7 @@ export interface WorkspaceRootRecord {
   label: string;
   path: string;
   targetId: string;
-  source: 'CONFIGURED' | 'DOCKER_MOUNT';
+  source: 'CONFIGURED' | 'DOCKER_MOUNT' | 'REMOTE_NODE';
 }
 
 export interface DirectoryEntryRecord {

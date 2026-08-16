@@ -12,7 +12,7 @@ export interface WorkspaceRoot {
   label: string;
   path: string;
   targetId: string;
-  source: 'CONFIGURED' | 'DOCKER_MOUNT';
+  source: 'CONFIGURED' | 'DOCKER_MOUNT' | 'REMOTE_NODE';
 }
 
 export interface DirectoryEntry {
@@ -32,21 +32,32 @@ export interface ProjectCandidate {
   readable: boolean;
 }
 
+/**
+ * Remote Node owns the filesystem. The central server only forwards the
+ * already-authorized, read-only directory operations through this boundary.
+ */
+export interface RemoteFilesystemOperations {
+  listRoots(targetId: string): Promise<WorkspaceRoot[]>;
+  listDirectories(
+    targetId: string,
+    rootId: string | undefined,
+    requestedPath: string,
+  ): Promise<{ root: WorkspaceRoot; path: string; entries: DirectoryEntry[] }>;
+  discoverProjects(targetId: string, rootId?: string): Promise<ProjectCandidate[]>;
+}
+
 export class FilesystemService {
   constructor(
     private readonly targets: ExecutionTargetRepository<AgentHubDatabase>,
     private readonly configuredRoots: string[],
+    private readonly remote?: RemoteFilesystemOperations,
   ) {}
 
   async listRoots(targetId: string): Promise<WorkspaceRoot[]> {
     const target = await this.targets.get(targetId);
     if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
     if (target.kind === 'REMOTE_NODE') {
-      throw new AppError(
-        501,
-        'REMOTE_FILESYSTEM_UNSUPPORTED',
-        'Remote Node 文件浏览将在后续版本开放',
-      );
+      return this.requireRemote().listRoots(targetId);
     }
     if (target.kind === 'DOCKER_CONTAINER') {
       const mappings = target.workspaceMappingsJson ?? [];
@@ -63,6 +74,11 @@ export class FilesystemService {
   }
 
   async listDirectories(targetId: string, rootId: string | undefined, requestedPath = '') {
+    const target = await this.targets.get(targetId);
+    if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
+    if (target.kind === 'REMOTE_NODE') {
+      return this.requireRemote().listDirectories(targetId, rootId, requestedPath);
+    }
     const roots = await this.listRoots(targetId);
     const root = this.selectRoot(roots, rootId, requestedPath);
     const directory = await this.resolvePath(root, requestedPath);
@@ -93,6 +109,11 @@ export class FilesystemService {
   }
 
   async discoverProjects(targetId: string, rootId?: string): Promise<ProjectCandidate[]> {
+    const target = await this.targets.get(targetId);
+    if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
+    if (target.kind === 'REMOTE_NODE') {
+      return this.requireRemote().discoverProjects(targetId, rootId);
+    }
     const roots = await this.listRoots(targetId);
     const selected = rootId ? roots.filter((root) => root.rootId === rootId) : roots;
     if (!selected.length) throw new AppError(404, 'FILESYSTEM_ROOT_NOT_FOUND', '文件根目录不存在');
@@ -176,6 +197,17 @@ export class FilesystemService {
     } catch {
       return undefined;
     }
+  }
+
+  private requireRemote(): RemoteFilesystemOperations {
+    if (!this.remote) {
+      throw new AppError(
+        501,
+        'REMOTE_FILESYSTEM_UNSUPPORTED',
+        'Remote Node 文件浏览暂不可用，请检查 Node 连接',
+      );
+    }
+    return this.remote;
   }
 }
 

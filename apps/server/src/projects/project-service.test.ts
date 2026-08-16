@@ -63,6 +63,59 @@ describe('Project 预检与只读文件边界', () => {
     });
   });
 
+  it('按 Execution Target 将 Remote Node Project 预检委托给远程适配器', async () => {
+    const remoteTargetId = randomUUID();
+    await new ExecutionTargetRepository(database.db).create({
+      id: remoteTargetId,
+      name: '测试 Remote Node',
+      kind: 'REMOTE_NODE',
+      hostname: 'remote-test',
+      os: 'linux',
+      arch: 'arm64',
+      status: 'READY',
+    });
+    const calls: Array<[string, string]> = [];
+    const remoteService = new ProjectService(
+      new ProjectRepository(database.db),
+      new ExecutionTargetRepository(database.db),
+      {
+        preflight: async (targetId, rootPath) => {
+          calls.push([targetId, rootPath]);
+          return {
+            status: 'READY' as const,
+            rootPath,
+            canonicalRoot: rootPath,
+            exists: true,
+            directory: true,
+            permissions: { readable: true, writable: true },
+            git: { detected: false },
+            context: {
+              agentsMd: false,
+              claudeMd: false,
+              openSpec: false,
+              packageManagers: [],
+            },
+            checks: [{ id: 'remote', status: 'PASS' as const, message: 'Remote fixture ready' }],
+          };
+        },
+        listFiles: async () => [],
+        readFile: async () => ({
+          path: 'README.md',
+          content: '',
+          size: 0,
+          sha256: '',
+          modifiedAt: new Date(0).toISOString(),
+          readOnly: true as const,
+        }),
+      },
+    );
+
+    await expect(
+      remoteService.preflightForTarget(remoteTargetId, '/srv/remote-project'),
+    ).resolves.toMatchObject({ status: 'READY', canonicalRoot: '/srv/remote-project' });
+    expect(calls).toEqual([[remoteTargetId, '/srv/remote-project']]);
+  });
+
   it('文件树只读并标记逃逸 symlink', async () => {
     const [project] = await service.list();
     if (!project) throw new Error('Project fixture 不存在');

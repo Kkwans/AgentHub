@@ -172,7 +172,11 @@ export async function startServer(
       workspaceRoots,
     },
   );
-  const filesystem = new FilesystemService(executionTargetRepository, workspaceRoots);
+  const filesystem = new FilesystemService(
+    executionTargetRepository,
+    workspaceRoots,
+    remoteNodeOperations,
+  );
   const git = new GitService(projectRepository, gitSnapshotRepository, executionTargetRepository);
   const terminal = new TerminalService(projectRepository, {
     publish: (topic, event) => brokerRef.current?.publish(topic, event),

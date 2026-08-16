@@ -86,12 +86,7 @@ export class ProjectService {
   }
 
   async add(input: AddProjectInput) {
-    const target = await this.targets.get(input.targetId);
-    if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
-    const report =
-      target.kind === 'REMOTE_NODE'
-        ? await this.requireRemote().preflight(target.id, input.rootPath)
-        : await this.preflightPath(input.rootPath);
+    const report = await this.preflightForTarget(input.targetId, input.rootPath);
     if (report.status !== 'READY') {
       throw new AppError(400, 'PROJECT_PREFLIGHT_FAILED', 'Project 路径预检未通过', {
         checks: report.checks,
@@ -109,6 +104,14 @@ export class ProjectService {
     });
   }
 
+  async preflightForTarget(targetId: string, rootPath: string): Promise<ProjectPreflightReport> {
+    const target = await this.targets.get(targetId);
+    if (!target) throw new AppError(404, 'EXECUTION_TARGET_NOT_FOUND', 'Execution Target 不存在');
+    return target.kind === 'REMOTE_NODE'
+      ? this.requireRemote().preflight(target.id, rootPath)
+      : this.preflightPath(rootPath);
+  }
+
   async update(id: string, input: { name?: string; description?: string | null }) {
     await this.get(id);
     return this.projects.update(id, input);
@@ -121,13 +124,22 @@ export class ProjectService {
 
   async preflight(id: string): Promise<ProjectPreflightReport> {
     const project = await this.get(id);
-    const target = await this.targets.get(project.targetId);
-    if (!target)
-      throw new AppError(500, 'PROJECT_TARGET_MISSING', 'Project 的 Execution Target 不存在');
-    if (target.kind === 'REMOTE_NODE') {
-      return this.requireRemote().preflight(target.id, project.rootPath);
+    try {
+      return await this.preflightForTarget(project.targetId, project.rootPath);
+    } catch (error) {
+      if (error instanceof AppError && error.code === 'EXECUTION_TARGET_NOT_FOUND') {
+        throw new AppError(
+          500,
+          'PROJECT_TARGET_MISSING',
+          'Project 的 Execution Target 不存在',
+          undefined,
+          {
+            cause: error,
+          },
+        );
+      }
+      throw error;
     }
-    return this.preflightPath(project.rootPath);
   }
 
   async preflightPath(rootPath: string): Promise<ProjectPreflightReport> {

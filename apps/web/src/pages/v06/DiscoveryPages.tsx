@@ -104,15 +104,14 @@ export function ProjectsDiscoveryPage() {
       ),
     enabled: dialogOpen && Boolean(targetId && selectedRoot),
   });
-  const selectedTarget = targets.data?.find((target) => target.id === targetId);
   const pathPreflight = useQuery({
-    queryKey: ['project-preflight-path', targetId, selectedPath],
+    queryKey: ['project-preflight', targetId, selectedPath],
     queryFn: () =>
-      api.post<ProjectPreflightRecord>('/projects/preflight-path', { rootPath: selectedPath }),
-    enabled:
-      dialogOpen &&
-      Boolean(selectedPath) &&
-      (selectedTarget?.kind === 'LOCAL_HOST' || selectedTarget?.kind === 'DOCKER_CONTAINER'),
+      api.post<ProjectPreflightRecord>('/projects/preflight', {
+        targetId,
+        rootPath: selectedPath,
+      }),
+    enabled: dialogOpen && Boolean(selectedPath && targetId),
     staleTime: 2_000,
   });
   const addProject = useMutation({
@@ -464,7 +463,11 @@ function PathPicker({
         </div>
         {selectedRoot ? (
           <Badge color="gray">
-            {selectedRoot.source === 'DOCKER_MOUNT' ? '容器映射' : '允许目录'}
+            {selectedRoot.source === 'DOCKER_MOUNT'
+              ? '容器映射'
+              : selectedRoot.source === 'REMOTE_NODE'
+                ? 'Remote Node 授权目录'
+                : '允许目录'}
           </Badge>
         ) : null}
       </div>
@@ -476,7 +479,12 @@ function PathPicker({
           options={roots.map((root) => ({
             value: root.rootId,
             label: root.label,
-            description: root.source === 'DOCKER_MOUNT' ? '来自 Docker 映射' : '来自 AgentHub 设置',
+            description:
+              root.source === 'DOCKER_MOUNT'
+                ? '来自 Docker 映射'
+                : root.source === 'REMOTE_NODE'
+                  ? '来自 Remote Node 授权范围'
+                  : '来自 AgentHub 设置',
           }))}
           onValueChange={(value) => {
             const root = roots.find((item) => item.rootId === value);
