@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -247,6 +247,17 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `/volume2/Project/.agenthub/central/deployments/20260816T062241Z-pre-nas17/`。仅执行
   `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
   Agent 容器；`.tmp-v05` 不存在，受保护容器完整 ID 与状态保持不变。
+- M19 中文错误提示收口已提交为 `e98c65b`：修正 Remote Node 文件浏览/Git 的过期版本文案，并覆盖后端
+  AppError 的中文下一步提示，避免普通用户看到原始英文错误。typecheck、lint、2 个前端 Vitest 文件
+  （6 tests）和 production build 均通过，GitHub 已推送到 `main`。
+- nas.18 已发布为 `agenthub:0.6.0-nas.18`（ARM64，image ID
+  `sha256:f343a3054c39a266d84e6b2d03cf8cdb6136038ad986ae6ce74cb800d11567e4`，revision `e98c65b`），
+  容器 `817bf63e4afeec8f1241cc1d58e3f20212ed499900a1c959d0f9327cf64dff95` 最终 `running/healthy`。
+  `/api/v1/health`、授权 capability、根页面和静态 bundle 新旧文案核验均通过；升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T064912Z-pre-nas18/`。仅执行
+  `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
+  Agent 容器；`.tmp-v05` 不存在，受保护容器完整 ID 与状态保持不变。完整记录见
+  `docs/qa/nas/2026-08-16-v06-live18/`。
 
 ### 当前进行中
 

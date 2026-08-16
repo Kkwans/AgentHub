@@ -1,0 +1,31 @@
+{
+  "date": "2026-08-16",
+  "revision": "e98c65b",
+  "change": "中文 Remote Node 与 AppError 错误提示收口",
+  "image": "agenthub:0.6.0-nas.18",
+  "imageId": "sha256:f343a3054c39a266d84e6b2d03cf8cdb6136038ad986ae6ce74cb800d11567e4",
+  "containerId": "817bf63e4afeec8f1241cc1d58e3f20212ed499900a1c959d0f9327cf64dff95",
+  "architecture": "arm64",
+  "status": "running",
+  "health": "healthy",
+  "endpoint": "192.168.5.110:3210",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T064912Z-pre-nas18/",
+  "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+  "envSha256": "703f7ab6d8c85c8f82cb33a34351a422e19b9873838d7c0c9c64f22987c4c190",
+  "checks": {
+    "health": "pass",
+    "rootHttp": 200,
+    "terminalCapability": "READY",
+    "remoteNodeTransport": "outbound_websocket",
+    "nodePtySpawn": "function",
+    "bundleOldExactCopy": false,
+    "bundleNewExactCopy": true,
+    "tmpV05": "absent",
+    "visualGate": "pending"
+  },
+  "protectedContainersUnchanged": true,
+  "composeDown": false,
+  "imagesDeleted": false,
+  "volumesDeleted": false,
+  "userDataDeleted": false
+}
