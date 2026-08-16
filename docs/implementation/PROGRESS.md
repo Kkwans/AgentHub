@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -341,6 +341,15 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T100058Z-pre-nas26/`，完整记录见
   `docs/qa/nas/2026-08-16-v06-live26/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器；`.tmp-v05` 不存在。
+- M27 用户可见状态收口已完成：Approval 决策卡片按“Agent 请求 / 影响 / 可选操作 / 投递结果”分层，原始错误
+  只在诊断折叠区显示；Session 列表状态点复用 Workspace 状态解析；Task/Worktree 错误与 Runtime Docker
+  状态统一提供中文下一步。代码提交为 `3e62e6c`、`f123b1a`、`9d3271a`、`3ed6455`、`018a03b`，均已推送。
+- nas.28 已发布为 `agenthub:0.6.0-nas.28`（ARM64，image ID
+  `sha256:da15594462db9e5f07f829f48a677b2e0fb15f6c3c0575241ac4ca7f19323df8`，revision `018a03b`），容器
+  `98f3cd8753fc` 最终 `running/healthy`。health、根页面、node-pty 和运行 bundle 文案检查通过；升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T103844Z-pre-nas28/`，完整记录见
+  `docs/qa/nas/2026-08-16-v06-live28/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 
 ### 当前进行中
 
@@ -352,6 +361,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   受保护容器不变性核验；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
 - M25 已在 nas.25 正式发布 Session 配置渐进式 UX；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
 - M26 已在 nas.26 正式发布 Workspace 运行状态与 Composer 输入门禁；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
+- M27 已在 nas.28 正式发布 Approval、Task/Worktree 与 Runtime 状态文案收口；全仓测试和 TX5Pro/人工视觉门禁按用户要求留到最终集中验证。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
   时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.14 通过 ARM64 native base overlay 后保持 READY。

@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -48,6 +48,8 @@
   Agent 默认值，不再让普通用户填写空文本框。没有后端候选列表时不会伪造选项，默认值仍按原 Session 契约传递。
 - Workspace Session 状态现在统一显示中文运行状态横幅；断线或已关闭时提供回到 Session 列表的入口，非 `READY`
   Session 的 Composer 会锁定输入与发送，避免用户向失效会话继续提交内容。
+- Approval 决策卡片现在把 Agent 请求、影响、合法操作和投递结果分层；未知/失败投递不再直接展示原始错误，
+  诊断信息折叠展示。Session 列表状态点、Task/Worktree 错误和 Runtime Docker 状态同步使用中文稳定文案。
 
 ## 证据
 
@@ -67,13 +69,15 @@
 | NAS Compose nas.24       | `agenthub:0.6.0-nas.24`，ARM64，revision `971f863`，`running/healthy`，`192.168.5.110:3210`；health、根页面、Settings/Runtime 静态 bundle、授权 capability、node-pty、Terminal API smoke 和受保护容器核验通过 |
 | NAS Compose nas.25       | `agenthub:0.6.0-nas.25`，ARM64，revision `b3ab86c`，`running/healthy`，`192.168.5.110:3210`；health、根页面、Session 静态 bundle、授权 capability、node-pty、Terminal API smoke 和受保护容器核验通过          |
 | NAS Compose nas.26       | `agenthub:0.6.0-nas.26`，ARM64，revision `939d3cc`，`running/healthy`，`192.168.5.110:3210`；health、根页面、Workspace 状态静态 bundle、授权 capability、node-pty、Terminal API smoke 和受保护容器核验通过    |
+| NAS Compose nas.28       | `agenthub:0.6.0-nas.28`，ARM64，revision `018a03b`，`running/healthy`，`192.168.5.110:3210`；health、根页面、Runtime/Task/Workspace 中文 bundle、node-pty 和受保护容器边界核验通过                            |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                             |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                   |
 
 完整 NAS 基线记录见 [`docs/qa/nas/2026-08-16-v06-live16/README.md`](qa/nas/2026-08-16-v06-live16/README.md)；最新 nas.26
 Workspace 运行状态记录见 [`docs/qa/nas/2026-08-16-v06-live26/README.md`](qa/nas/2026-08-16-v06-live26/README.md)。nas.25 Session 配置记录见
 [`docs/qa/nas/2026-08-16-v06-live25/README.md`](qa/nas/2026-08-16-v06-live25/README.md)。Runtime 设置入口记录见
-[`docs/qa/nas/2026-08-16-v06-live24/README.md`](qa/nas/2026-08-16-v06-live24/README.md)。对象 ID 文案和 nas.21
+[`docs/qa/nas/2026-08-16-v06-live24/README.md`](qa/nas/2026-08-16-v06-live24/README.md)。最新 nas.28 用户可见状态收口记录见
+[`docs/qa/nas/2026-08-16-v06-live28/README.md`](qa/nas/2026-08-16-v06-live28/README.md)。对象 ID 文案和 nas.21
 Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](qa/nas/2026-08-16-v06-live21/README.md)。
 
 ## 升级与回滚
@@ -232,6 +236,7 @@ Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](
 - nas.24 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
 - nas.25 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
 - nas.26 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
+- nas.28 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
 - nas.20 曾因常规镜像覆盖 ARM64 `node-pty` binding 而被 supersede；nas.21 已用 overlay 基于 nas.19 修复，
   nas.20/nas.21 镜像均保留，未删除镜像、卷或用户数据。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。
