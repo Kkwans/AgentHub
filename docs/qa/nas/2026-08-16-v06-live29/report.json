@@ -15,6 +15,7 @@
     "rootHttp": "PASS",
     "authorizedDirectoryBundle": "PASS",
     "nodePtySmoke": "PASS",
+    "remoteNodeUiFocusedTest": "PASS",
     "visualGate": "PENDING"
   },
   "boundaries": [

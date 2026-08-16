@@ -11,17 +11,18 @@
 
 ## NAS 结果
 
-| 检查项           | 结果                                                              |
-| ---------------- | ----------------------------------------------------------------- |
-| 主机             | `DH4300Plus` / `aarch64`                                          |
-| Compose 项目     | `agenthub`                                                        |
-| 入口             | `http://192.168.5.110:3210/`                                      |
-| 镜像             | `agenthub:0.6.0-nas.29` / revision `70c6095`                      |
-| 容器             | `running/healthy`                                                 |
-| `/api/v1/health` | HTTP 200，`version=0.6.0`、`database=pglite`、`web=true`          |
-| 根页面           | HTTP 200                                                          |
-| 静态 bundle      | 包含“授权目录”文案                                                |
-| node-pty         | 在 `/opt/agenthub/apps/server` 工作目录加载成功，`node-pty=READY` |
+| 检查项                  | 结果                                                              |
+| ----------------------- | ----------------------------------------------------------------- |
+| 主机                    | `DH4300Plus` / `aarch64`                                          |
+| Compose 项目            | `agenthub`                                                        |
+| 入口                    | `http://192.168.5.110:3210/`                                      |
+| 镜像                    | `agenthub:0.6.0-nas.29` / revision `70c6095`                      |
+| 容器                    | `running/healthy`                                                 |
+| `/api/v1/health`        | HTTP 200，`version=0.6.0`、`database=pglite`、`web=true`          |
+| 根页面                  | HTTP 200                                                          |
+| 静态 bundle             | 包含“授权目录”文案                                                |
+| node-pty                | 在 `/opt/agenthub/apps/server` 工作目录加载成功，`node-pty=READY` |
+| Remote Node UI 聚焦测试 | 1/1 通过（其余全仓回归留到最终门禁）                              |
 
 ## 发布边界
 
