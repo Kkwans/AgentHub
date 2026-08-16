@@ -83,8 +83,20 @@ export function SessionsPage() {
     }
   }, [compatibleAgents, selectedAgentId]);
   useEffect(() => {
-    setModel(selectedAgent?.defaultModel ?? '');
-    setMode(selectedAgent?.defaultMode ?? '');
+    const configuration = (selectedAgent?.capabilitiesJson.configuration ?? {}) as Record<
+      string,
+      unknown
+    >;
+    setModel(
+      selectedAgent?.defaultModel ??
+        readChoiceOptions(configuration.modelOptions ?? configuration.models)[0]?.value ??
+        '',
+    );
+    setMode(
+      selectedAgent?.defaultMode ??
+        readChoiceOptions(configuration.modeOptions ?? configuration.modes)[0]?.value ??
+        '',
+    );
   }, [selectedAgent]);
   const createSession = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post<SessionRecord>('/sessions', body),
@@ -116,18 +128,17 @@ export function SessionsPage() {
     next.delete('new');
     setSearchParams(next);
   };
-  const configuration = selectedAgent?.capabilitiesJson.configuration;
+  const configuration = (selectedAgent?.capabilitiesJson.configuration ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const modelOptions = readChoiceOptions(configuration.modelOptions ?? configuration.models);
+  const modeOptions = readChoiceOptions(configuration.modeOptions ?? configuration.modes);
   const hasModelCapability = Boolean(
-    selectedAgent?.defaultModel ||
-    (configuration && typeof configuration === 'object' && 'models' in configuration
-      ? configuration.models === true
-      : false),
+    selectedAgent?.defaultModel || configuration.models === true || modelOptions.length,
   );
   const hasModeCapability = Boolean(
-    selectedAgent?.defaultMode ||
-    (configuration && typeof configuration === 'object' && 'modes' in configuration
-      ? configuration.modes === true
-      : false),
+    selectedAgent?.defaultMode || configuration.modes === true || modeOptions.length,
   );
   return (
     <div className="page-stack">
@@ -269,20 +280,34 @@ export function SessionsPage() {
                   <code title={selectedProject!.realRootPath}>{selectedProject!.realRootPath}</code>
                 </div>
                 {hasModelCapability ? (
-                  <FormTextField
-                    label="model"
-                    id="v06-session-model"
-                    value={model}
-                    onChange={(event) => setModel(event.target.value)}
-                  />
+                  modelOptions.length ? (
+                    <SelectField
+                      label="model"
+                      value={model}
+                      options={modelOptions}
+                      onValueChange={setModel}
+                    />
+                  ) : (
+                    <div className="session-readonly-field" aria-label="模型">
+                      <span>模型</span>
+                      <code>{model || '使用 Agent 默认模型'}</code>
+                    </div>
+                  )
                 ) : null}
                 {hasModeCapability ? (
-                  <FormTextField
-                    label="mode"
-                    id="v06-session-mode"
-                    value={mode}
-                    onChange={(event) => setMode(event.target.value)}
-                  />
+                  modeOptions.length ? (
+                    <SelectField
+                      label="mode"
+                      value={mode}
+                      options={modeOptions}
+                      onValueChange={setMode}
+                    />
+                  ) : (
+                    <div className="session-readonly-field" aria-label="模式">
+                      <span>模式</span>
+                      <code>{mode || '使用 Agent 默认模式'}</code>
+                    </div>
+                  )
                 ) : null}
               </AdvancedSection>
               {createSession.error && (
@@ -406,4 +431,26 @@ export function SessionsPage() {
       </AlertDialog.Root>
     </div>
   );
+}
+
+interface ChoiceOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+function readChoiceOptions(value: unknown): ChoiceOption[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === 'string' && item.trim()) {
+      return [{ value: item, label: item }];
+    }
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    const value = typeof record.id === 'string' ? record.id : record.value;
+    if (typeof value !== 'string' || !value.trim()) return [];
+    const label = typeof record.label === 'string' ? record.label : value;
+    const description = typeof record.description === 'string' ? record.description : undefined;
+    return [{ value, label, ...(description ? { description } : {}) }];
+  });
 }

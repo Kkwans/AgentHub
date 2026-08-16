@@ -1327,6 +1327,11 @@ describe('App', () => {
     );
 
     await screen.findByRole('dialog', { name: '新建 Session' }, { timeout: 5_000 });
+    fireEvent.click(await screen.findByText('运行参数', {}, { timeout: 5_000 }));
+    expect(screen.queryByRole('textbox', { name: 'model' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'mode' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('模型')).toHaveTextContent('gpt-5-codex'));
+    await waitFor(() => expect(screen.getByLabelText('模式')).toHaveTextContent('default'));
     fireEvent.change(
       await screen.findByRole('textbox', { name: 'Session 标题' }, { timeout: 5_000 }),
       {
