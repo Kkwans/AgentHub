@@ -1,0 +1,33 @@
+{
+  "date": "2026-08-16",
+  "revision": "a38901b",
+  "change": "隐藏 Terminal 内部能力码并统一 Radix 文本控件焦点样式",
+  "image": "agenthub:0.6.0-nas.19",
+  "imageId": "sha256:4fabe7d5f77c35e44f523e8789d3c295037b81e721450eb2a8155eb49cd89165",
+  "containerId": "1e43233d25834749096220e90fe91292ead5c3f9555ccdd2260e78947964cfcb",
+  "architecture": "arm64",
+  "status": "running",
+  "health": "healthy",
+  "endpoint": "192.168.5.110:3210",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T070856Z-pre-nas19/",
+  "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+  "envSha256Before": "703f7ab6d8c85c8f82cb33a34351a422e19b9873838d7c0c9c64f22987c4c190",
+  "envSha256After": "b452bc6ebd637905cceb18fa04301b1fe5dd6690f83c8ca6c93be21e0903412f",
+  "checks": {
+    "health": "pass",
+    "rootHttp": 200,
+    "terminalCapability": "READY",
+    "remoteNodeTransport": "outbound_websocket",
+    "nodePtySpawn": "function",
+    "bundleOldRemoteCopy": false,
+    "bundleNewRemoteCopy": true,
+    "bundleRawTerminalCode": false,
+    "tmpV05": "absent",
+    "visualGate": "pending"
+  },
+  "protectedContainersUnchanged": true,
+  "composeDown": false,
+  "imagesDeleted": false,
+  "volumesDeleted": false,
+  "userDataDeleted": false
+}

@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -258,6 +258,16 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
   Agent 容器；`.tmp-v05` 不存在，受保护容器完整 ID 与状态保持不变。完整记录见
   `docs/qa/nas/2026-08-16-v06-live18/`。
+- M20 Terminal/焦点样式收口已提交为 `a38901b`：普通用户界面不再显示 `READY` 或
+  `PTY_NATIVE_BINDING_UNAVAILABLE` 等内部能力码；Radix 文本控件统一使用单一焦点环，避免蓝/橙双层边框。
+  聚焦测试 2 files/8 tests、typecheck、lint 和 production build 均通过，GitHub CI 已触发。
+- nas.19 已发布为 `agenthub:0.6.0-nas.19`（ARM64，image ID
+  `sha256:4fabe7d5f77c35e44f523e8789d3c295037b81e721450eb2a8155eb49cd89165`，revision `a38901b`），
+  容器 `1e43233d25834749096220e90fe91292ead5c3f9555ccdd2260e78947964cfcb` 最终 `running/healthy`。
+  `/api/v1/health`、授权 capability、根页面、bundle 内部码和受保护容器不变性检查均通过；升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T070856Z-pre-nas19/`。仅执行
+  `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
+  Agent 容器；`.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live19/`。
 
 ### 当前进行中
 
