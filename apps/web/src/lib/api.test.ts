@@ -38,4 +38,16 @@ describe('web api error boundary', () => {
       status: 502,
     });
   });
+
+  it('normalizes malformed JSON envelopes before they reach the UI', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(null, { status: 200 })));
+
+    const failure = await api.get('/projects').catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      code: 'HTTP_ERROR',
+      message: '请求失败，请稍后重试。',
+      status: 200,
+    });
+  });
 });

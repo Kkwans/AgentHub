@@ -242,7 +242,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   let body: SuccessEnvelope<T> | ErrorEnvelope;
   try {
-    body = (await response.json()) as SuccessEnvelope<T> | ErrorEnvelope;
+    const parsed: unknown = await response.json();
+    if (!parsed || typeof parsed !== 'object') throw new Error('invalid response envelope');
+    body = parsed as SuccessEnvelope<T> | ErrorEnvelope;
   } catch {
     throw new ApiError(
       'HTTP_ERROR',
