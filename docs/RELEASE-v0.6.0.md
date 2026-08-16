@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED / FINAL_AUTOMATED_GATE_PASS / COMPOSER_A11Y_NAS33_DEPLOYED / PROMPTOS_PRESENTATION_CODE_READY / PROMPTOS_PRESENTATION_NAS34_DEPLOYED / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED / FINAL_AUTOMATED_GATE_PASS / COMPOSER_A11Y_NAS33_DEPLOYED / PROMPTOS_PRESENTATION_CODE_READY / PROMPTOS_PRESENTATION_NAS34_DEPLOYED / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED / FOCUS_STYLE_NAS36_DEPLOYED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -82,6 +82,7 @@
 | NAS Compose nas.33       | `agenthub:0.6.0-nas.33`，ARM64，revision `b4ec7d0`，`running/healthy`，`192.168.5.110:3210`；Composer 中文无障碍文案存在、server 工作目录 node-pty READY 和受保护容器边界核验通过                                                                                                                                                                         |
 | NAS Compose nas.34       | `agenthub:0.6.0-nas.34`，ARM64，revision `8adb2a5`，单层 image digest `sha256:dfbe0fe3afb6e3e18851037653cdb2ebc3f274aff4c0467c0b8c8096f7dfbcf1`，`running/healthy`，`192.168.5.110:3210`；health/root HTTP 200、PromptOS bundle 中文文案、server 工作目录 node-pty `READY` 通过。overlay 构建因 daemon max depth 未激活，改用已验证 nas.33 运行时单层导入 |
 | NAS Compose nas.35       | `agenthub:0.6.0-nas.35`，ARM64，revision `cd4c606`，`running/healthy`，`192.168.5.110:3210`；health/root HTTP 200、生产 bundle 不含单边 `inset 3px 0`、server 工作目录 node-pty `READY` 通过。基于 nas.34 单层基底 overlay，未触发 daemon max depth                                                                                                       |
+| NAS Compose nas.36       | `agenthub:0.6.0-nas.36`，ARM64，revision `ac20416`，`running/healthy`，`192.168.5.110:3210`；health/root HTTP 200、生产 bundle 不含单边 `inset 3px 0` 或旧蓝色 `#5c8df6` focus literal、server 工作目录 node-pty `READY` 通过                                                                                                                             |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                                                                                                                                                                         |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                                                                                                                                                               |
 
@@ -97,6 +98,7 @@ Workspace 运行状态记录见 [`docs/qa/nas/2026-08-16-v06-live26/README.md`](
 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](qa/nas/2026-08-16-v06-live21/README.md)。
 PromptOS Presentation 与 nas.34 发布记录见 [`docs/qa/v06-promptos-presentation/README.md`](qa/v06-promptos-presentation/README.md)。
 UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/README.md`](qa/nas/2026-08-16-v06-live35/README.md)。
+焦点样式与 nas.36 发布记录见 [`docs/qa/nas/2026-08-16-v06-live36/README.md`](qa/nas/2026-08-16-v06-live36/README.md)。
 
 ## 升级与回滚
 
@@ -267,6 +269,8 @@ UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/RE
   `/volume2/Project/.agenthub/central/deployments/20260816T121812Z-pre-nas34/`；nas.33 镜像保留，可按单 service 回滚。第一次直接 overlay 构建触发 daemon `max depth exceeded`，未切换服务；最终使用已验证运行时导出的单层镜像，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - nas.35 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
   `/volume2/Project/.agenthub/central/deployments/20260816T124717Z-pre-nas35/`；nas.34 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- nas.36 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
+  `/volume2/Project/.agenthub/central/deployments/20260816T125608Z-pre-nas36/`；nas.35 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - nas.20 曾因常规镜像覆盖 ARM64 `node-pty` binding 而被 supersede；nas.21 已用 overlay 基于 nas.19 修复，
   nas.20/nas.21 镜像均保留，未删除镜像、卷或用户数据。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。

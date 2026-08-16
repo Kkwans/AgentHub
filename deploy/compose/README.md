@@ -1,6 +1,6 @@
 # AgentHub v0.6 NAS Compose 部署
 
-该配置用于当前 ARM64 绿联 NAS，当前正式镜像为 `agenthub:0.6.0-nas.35`。它按用户明确授权以 root/privileged 运行，并拥有 Project
+该配置用于当前 ARM64 绿联 NAS，当前正式镜像为 `agenthub:0.6.0-nas.36`。它按用户明确授权以 root/privileged 运行，并拥有 Project
 读写、Codex HOME、Git identity 配置、Docker socket 和 host Docker CLI。该能力等同 NAS root，
 只能运行可信镜像。
 
