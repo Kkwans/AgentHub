@@ -352,8 +352,9 @@ export function ProjectsDiscoveryPage() {
           {selectedPath ? (
             <ProjectPreflightSummary
               report={pathPreflight.data}
-              loading={pathPreflight.isLoading}
+              loading={pathPreflight.isFetching}
               error={pathPreflight.error}
+              retry={() => void pathPreflight.refetch()}
             />
           ) : null}
           <AdvancedSection title="补充说明" description="可选，不影响项目目录预检。">
@@ -604,10 +605,12 @@ function ProjectPreflightSummary({
   report,
   loading,
   error,
+  retry,
 }: {
   report: ProjectPreflightRecord | undefined;
   loading: boolean;
   error: Error | null;
+  retry: () => void;
 }) {
   return (
     <section className="v06-preflight-summary" aria-live="polite">
@@ -623,7 +626,14 @@ function ProjectPreflightSummary({
           </Badge>
         ) : null}
       </div>
-      {error ? <InlineError error={error} title="目录检查失败" /> : null}
+      {error ? (
+        <div className="v06-picker-state">
+          <InlineError error={error} title="目录检查失败" />
+          <Button type="button" size="2" variant="soft" color="gray" onClick={retry}>
+            重新检查目录
+          </Button>
+        </div>
+      ) : null}
       {!loading && !error && report ? (
         <ul>
           {report.checks.map((check) => (

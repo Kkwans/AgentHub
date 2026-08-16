@@ -18,7 +18,9 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain('目录范围读取失败');
     expect(source).toContain('目录内容读取失败');
     expect(source).toContain('工程扫描失败');
+    expect(source).toContain('目录检查失败');
     expect(source).toContain('重新读取当前目录');
+    expect(source).toContain('重新检查目录');
     expect(source).not.toContain('labelAdapterKind(candidate.adapterKind)');
     expect(source).toContain('labelAgentCandidateReason(candidate.reasonCode)');
     expect(source).toContain("filter((candidate) => candidate.agentKind !== 'UNKNOWN')");
