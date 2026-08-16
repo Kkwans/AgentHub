@@ -136,6 +136,24 @@
   background: #23845c;
 }
 
+.session-state-running,
+.session-state-canceling {
+  background: #3d6fba;
+}
+
+.session-state-waiting_approval {
+  background: var(--app-accent);
+}
+
+.session-state-disconnected,
+.session-state-failed {
+  background: var(--red);
+}
+
+.session-state-closed {
+  background: #9aa1aa;
+}
+
 .session-list strong {
   color: var(--app-graphite);
   font-size: 11px;

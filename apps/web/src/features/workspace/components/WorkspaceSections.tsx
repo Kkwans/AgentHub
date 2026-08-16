@@ -81,7 +81,10 @@ export function SessionRail({
               to={`/sessions/${session.id}`}
               key={session.id}
             >
-              <span className="session-state-dot" />
+              <span
+                className={`session-state-dot session-state-${resolveWorkspaceRunState(session.status).toLowerCase()}`}
+                aria-hidden="true"
+              />
               <div>
                 <strong>{session.title}</strong>
                 <code>

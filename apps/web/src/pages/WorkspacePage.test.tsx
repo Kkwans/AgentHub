@@ -417,6 +417,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(
       await screen.findByRole('region', { name: '当前运行状态：Session 已关闭' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /可靠性回归/ }).querySelector('.session-state-dot'),
+    ).toHaveClass('session-state-closed');
     const composer = await screen.findByPlaceholderText('给 Agent 发送工程指令…');
     expect(composer).toBeDisabled();
     expect(screen.getByText('Session 已关闭，无法继续发送指令。')).toBeInTheDocument();
