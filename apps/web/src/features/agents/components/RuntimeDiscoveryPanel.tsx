@@ -1,21 +1,11 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import {
-  Badge,
-  Button,
-  Play,
-  RefreshCw,
-  SectionHeader,
-  Settings,
-} from '@agenthub/ui';
+import { Badge, Button, Play, RefreshCw, SectionHeader, Settings } from '@agenthub/ui';
 
 import type { AgentCandidateRecord, RuntimeCandidateRecord } from '../../../lib/api';
 import { api } from '../../../lib/api';
-import {
-  labelExecutionTargetKind,
-  labelRuntimeStatus,
-} from '../../../presentation/domain-labels';
+import { labelExecutionTargetKind, labelRuntimeStatus } from '../../../presentation/domain-labels';
 import { ErrorState, InlineError, LoadingState, EmptyState } from '../../../components/Common';
 
 /**
@@ -112,7 +102,9 @@ export function RuntimeDiscoveryPanel() {
         <ErrorState error={runtimes.error} retry={() => void runtimes.refetch()} />
       ) : null}
       {agents.isLoading ? <LoadingState label="正在识别运行环境中的 Agent" /> : null}
-      {agents.error ? <ErrorState error={agents.error} retry={() => void agents.refetch()} /> : null}
+      {agents.error ? (
+        <ErrorState error={agents.error} retry={() => void agents.refetch()} />
+      ) : null}
       {!runtimes.isLoading && !runtimes.error && !visibleRuntimeCandidates.length ? (
         <EmptyState
           title="暂时没有可管理的运行环境"

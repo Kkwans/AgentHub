@@ -19,9 +19,7 @@ describe('Runtime discovery settings surface', () => {
   it('does not render every Docker container while Agent discovery is pending', () => {
     const source = readFileSync(new URL('./RuntimeDiscoveryPanel.tsx', import.meta.url), 'utf8');
     expect(source).toContain('if (!agents.isSuccess)');
-    expect(source).toContain(
-      "runtime.kind === 'LOCAL_HOST' || Boolean(runtime.targetId)",
-    );
+    expect(source).toContain("runtime.kind === 'LOCAL_HOST' || Boolean(runtime.targetId)");
   });
 
   it('is mounted from Settings as the primary Runtime management entry', () => {
@@ -29,7 +27,7 @@ describe('Runtime discovery settings surface', () => {
       new URL('../../settings/pages/SettingsPageView.tsx', import.meta.url),
       'utf8',
     );
-    expect(settingsSource).toContain("RuntimeDiscoveryPanel");
+    expect(settingsSource).toContain('RuntimeDiscoveryPanel');
     expect(settingsSource).toContain('<RuntimeDiscoveryPanel />');
   });
 });
