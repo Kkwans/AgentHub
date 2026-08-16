@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -74,6 +74,8 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   元数据，避免供应商合法的 partial update 丢失工具类型；fixture 已覆盖该回归。
 - 最新 GitHub Actions release gate：run `31895892171`（commit `ea51790`）全绿，lint、typecheck、
   test、build 与 Playwright E2E 均通过；Node.js 20 action deprecation 仅为 GitHub annotation。
+- Remote Node Project 提交 `cdb7d5b` 的 GitHub Actions run `31931214963` 已完成且 `success`；同一套
+  lint、typecheck、test、build 与 Playwright E2E 门禁通过。
 - M8-M9 CSS 收敛：移除 `styles.css` 尾部 v4 补丁块，统一到 `apps/web/src/styles/design-system.css`；
   修复 Radix orange solid button 对比度后，四视口 axe 4/4、完整 Playwright E2E 24/24 通过。
 - v0.6 NAS 发布：已备份正式 Compose、`.env` 与旧 browser token 至
@@ -231,6 +233,20 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `docs/qa/nas/2026-08-16-v06-live16/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。受保护 Claude Code、Hermes、OpenClaw
   容器的 name/ID/image 与发布前一致。
+- Remote Node Project 路径链路已恢复并提交为 `cdb7d5b`：授权 roots 进入统一 PathPicker，目录浏览与候选
+  工程扫描通过 Remote Node 固定 `fs.list` RPC，Project 添加前预检新增目标感知的
+  `POST /api/v1/projects/preflight`；相对路径、symlink/traversal 和 revoked/offline Node 均保持服务端边界。
+  聚焦测试 4 files/17 tests、Remote Node workflow 1/1、全仓 Vitest 50 files/211 passed/9 skipped、
+  Playwright 24/24、TypeScript、ESLint 和 production build 均通过。完整 NAS 记录见
+  `docs/qa/nas/2026-08-16-v06-live17/`。
+- nas.17 已发布为 `agenthub:0.6.0-nas.17`（ARM64，image ID
+  `sha256:2e984c0be37cb3efc31aeacbbbf8771045058c30957f4bd1039d0a261dc1c6c2`，revision `cdb7d5b`），
+  容器 `40f977973aef15382bf593b5df3c76dfed426fe72ed652c4af00da39ebe3c07e` 最终 `running/healthy`。
+  `/api/v1/health` 返回 `status=ok`、`version=0.6.0`、`database=pglite`、`web=true`；根页面 HTTP 200，
+  capability 为 `terminal READY / linux arm64` 与 `Remote Node outbound_websocket`。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T062241Z-pre-nas17/`。仅执行
+  `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
+  Agent 容器；`.tmp-v05` 不存在，受保护容器完整 ID 与状态保持不变。
 
 ### 当前进行中
 

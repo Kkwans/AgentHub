@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -29,6 +29,9 @@
   NAS 镜像已内置 `node-pty` native binding 并通过真实 open/input/close 烟测；Docker/Remote Terminal
   不在 v0.6 范围。
 - 健康接口和 workspace package metadata 统一返回 `0.6.0`。
+- Remote Node Project 现在复用同一套 PathPicker：显示 Node 授权目录、只读目录浏览和两层候选工程扫描；
+  添加 Project 时使用目标感知的 `POST /api/v1/projects/preflight`，不再把 Remote Node 误送到中央主机路径
+  预检，也不再因为 `REMOTE_FILESYSTEM_UNSUPPORTED` 让普通用户卡在添加项目入口。
 
 ## 证据
 
@@ -38,8 +41,9 @@
 | typecheck / lint / build | 通过；Web 1715 modules transformed                                                                                                                                                          |
 | Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                    |
 | real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                  |
-| GitHub Actions           | run `31929088781`，commit `51711f0`，`verify` 成功；Node.js 20 action deprecation 仅为 annotation                                                                                           |
-| NAS Compose              | `agenthub:0.6.0-nas.16`，ARM64，revision `51711f0ce3936ca8d8263481f0b026bb083fa29f`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，真实 open/WS input/output/close smoke 通过                       |
+| GitHub Actions           | run `31931214963`，commit `cdb7d5b`，`success`；Node.js 20 action deprecation 仅为 annotation                                                                                               |
+| NAS Compose              | `agenthub:0.6.0-nas.17`，ARM64，revision `cdb7d5b`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，Remote Node transport `outbound_websocket`，根页面 HTTP 200       |
+| Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                           |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755` |
 
 完整 NAS 记录见 [`docs/qa/nas/2026-08-16-v06-live16/README.md`](qa/nas/2026-08-16-v06-live16/README.md)。
@@ -147,6 +151,13 @@
   `restart=unless-stopped`，owner UID/GID `1000:10`。基于 nas.15 通过 `deploy/compose/Dockerfile.nas-overlay`
   仅覆盖 server/web dist，构建与运行时 node-pty smoke、真实 Terminal API/WS smoke 均通过；nas.15 保留
   作为回滚点。完整记录见 [`docs/qa/nas/2026-08-16-v06-live16/`](qa/nas/2026-08-16-v06-live16/)。
+- Remote Node Project 路径 nas.17 升级前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260816T062241Z-pre-nas17/`；
+  Compose SHA-256 `0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff`，新 `.env` SHA-256
+  `4e3f1f608e54d3428ab6d9a64c02a0f9dfe66ac16ec6e249de4474fee63a3a8a`。镜像 `agenthub:0.6.0-nas.17`
+  image ID `sha256:2e984c0be37cb3efc31aeacbbbf8771045058c30957f4bd1039d0a261dc1c6c2`，容器 ID
+  `40f977973aef15382bf593b5df3c76dfed426fe72ed652c4af00da39ebe3c07e`，最终 `running/healthy`，
+  `user=0:0`、`privileged=true`、`restart=unless-stopped`。完整记录见
+  [`docs/qa/nas/2026-08-16-v06-live17/README.md`](qa/nas/2026-08-16-v06-live17/README.md)。
 - nas.4 image digest：`sha256:d5a7745b70667521ac86243984013c6a3b37b8adb88efd33bd0a0680eb9b2cca`；容器 ID
   `3d9ba293780758b66497987855240ab494bed68e8efe92f7645ef9c4b19ac7ec`，运行时 server/ACP dist
   与主机构建产物 SHA-256 一致。由于 NAS registry mirror 对 Dockerfile frontend 仍返回 429，本次
@@ -156,13 +167,14 @@
   基底，仅叠加当前 commit 生成并逐字节核验的 `apps/server/dist` 与 `packages/adapter-acp/dist`；
   临时 overlay 构建文件已删除，运行时 hash 与主机产物一致。
 - v0.5 → v0.6 没有新增数据库 migration；健康、Project、Agent、Session、PromptOS 数据在重启后保持可用。
+- nas.17 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。
 - 回滚保留旧 `agenthub:0.5.0-nas.1` image；先停止单个 `agenthub` service，再恢复备份 `.env`/Compose，使用 `up -d --no-build agenthub`，必要时才恢复 data/worktrees 归档。
 
 ## 未验证项与明确边界
 
 - 当前环境没有可用浏览器/Computer Use 通道，因此 1440、1024、768、390 四视口人工视觉验收和人工可用性 checklist 尚未完成；不能声明 TX5Pro v0.6 视觉通过。
-- NAS 当前 `linux/arm64` 的正式 nas.16 镜像已具备可加载的 `node-pty` native binding，
+- NAS 当前 `linux/arm64` 的正式 nas.17 镜像已具备可加载的 `node-pty` native binding，
   `GET /api/v1/settings/capabilities` 返回 `terminal.available=true`、`code=READY`；如果其他平台或镜像
   缺少 native binding，Workspace 仍会显示中文原因并禁用 Terminal 操作，不伪称 PTY 已可用。
 - Claude Code、Hermes、OpenClaw 的正式容器接入状态以 Agent discovery/preflight 的实时结果为准；本轮 live gate
@@ -180,4 +192,5 @@ ACP/live nas.3 的历史记录见 [`docs/qa/nas/2026-08-15-v06-live3/`](qa/nas/2
 [`docs/qa/nas/2026-08-16-v06-live13/`](qa/nas/2026-08-16-v06-live13/)；当前 nas.14 记录见
 [`docs/qa/nas/2026-08-16-v06-live14/`](qa/nas/2026-08-16-v06-live14/)；当前 nas.15 记录见
 [`docs/qa/nas/2026-08-16-v06-live15/`](qa/nas/2026-08-16-v06-live15/)；当前 nas.16 记录见
-[`docs/qa/nas/2026-08-16-v06-live16/`](qa/nas/2026-08-16-v06-live16/)。
+[`docs/qa/nas/2026-08-16-v06-live16/`](qa/nas/2026-08-16-v06-live16/)；当前 nas.17 记录见
+[`docs/qa/nas/2026-08-16-v06-live17/`](qa/nas/2026-08-16-v06-live17/)。

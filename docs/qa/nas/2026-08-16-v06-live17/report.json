@@ -1,0 +1,28 @@
+{
+  "date": "2026-08-16",
+  "revision": "cdb7d5b",
+  "image": "agenthub:0.6.0-nas.17",
+  "imageId": "sha256:2e984c0be37cb3efc31aeacbbbf8771045058c30957f4bd1039d0a261dc1c6c2",
+  "containerId": "40f977973aef15382bf593b5df3c76dfed426fe72ed652c4af00da39ebe3c07e",
+  "architecture": "arm64",
+  "status": "running",
+  "health": "healthy",
+  "endpoint": "192.168.5.110:3210",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T062241Z-pre-nas17/",
+  "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+  "envSha256": "4e3f1f608e54d3428ab6d9a64c02a0f9dfe66ac16ec6e249de4474fee63a3a8a",
+  "checks": {
+    "health": "pass",
+    "rootHttp": 200,
+    "terminalCapability": "READY",
+    "remoteNodeTransport": "outbound_websocket",
+    "nodePtySpawn": "function",
+    "tmpV05": "absent",
+    "visualGate": "pending"
+  },
+  "protectedContainersUnchanged": true,
+  "composeDown": false,
+  "imagesDeleted": false,
+  "volumesDeleted": false,
+  "userDataDeleted": false
+}
