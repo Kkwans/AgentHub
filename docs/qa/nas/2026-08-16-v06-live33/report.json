@@ -1,0 +1,26 @@
+{
+  "date": "2026-08-16",
+  "release": "0.6.0",
+  "revision": "b4ec7d0",
+  "image": "agenthub:0.6.0-nas.33",
+  "host": "DH4300Plus",
+  "arch": "aarch64",
+  "composeProject": "agenthub",
+  "endpoint": "http://192.168.5.110:3210/",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T115844Z-pre-nas33/",
+  "checks": {
+    "composeConfig": "PASS",
+    "containerHealthy": "PASS",
+    "healthHttp": "PASS",
+    "rootHttp": "PASS",
+    "composerA11yCopy": "PASS",
+    "nodePtySmoke": "PASS",
+    "visualGate": "PENDING"
+  },
+  "boundaries": [
+    "no compose down",
+    "no image deletion",
+    "no volume or user-data deletion",
+    "no other Agent container changes"
+  ]
+}
