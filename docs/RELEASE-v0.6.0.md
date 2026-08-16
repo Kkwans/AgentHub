@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED / FINAL_AUTOMATED_GATE_PASS / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -60,11 +60,11 @@
 
 | 层级                     | 结果                                                                                                                                                                                                                    |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                   | M26 最近一次完整非沙箱回归为 51 个文件、219 passed/9 skipped；M27 Approval 聚焦回归 11/11 通过，最新全仓回归按用户要求留到最终门禁                                                                                      |
+| Vitest                   | 当前收尾全仓非沙箱回归 51 个文件、221 passed/9 skipped；Approval 聚焦回归 11/11 通过                                                                                                                                    |
 | typecheck / lint / build | 通过；Web 1716 modules transformed                                                                                                                                                                                      |
 | Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                                                |
 | real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                                              |
-| GitHub Actions           | run `31931214963`，commit `cdb7d5b`，`success`；Node.js 20 action deprecation 仅为 annotation                                                                                                                           |
+| GitHub Actions           | run `31931214963`，commit `cdb7d5b`，`success`；Node.js 20 action deprecation 仅为 annotation；本地收尾门禁见 `docs/qa/v06-final-gate/`                                                                                 |
 | NAS Compose              | `agenthub:0.6.0-nas.17`，ARM64，revision `cdb7d5b`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，Remote Node transport `outbound_websocket`，根页面 HTTP 200                                   |
 | NAS Compose nas.18       | `agenthub:0.6.0-nas.18`，ARM64，revision `e98c65b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面和静态 bundle 文案核验通过                                                                  |
 | NAS Compose nas.19       | `agenthub:0.6.0-nas.19`，ARM64，revision `a38901b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面、内部码隐藏和受保护容器核验通过                                                            |

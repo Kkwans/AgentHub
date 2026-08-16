@@ -1,0 +1,35 @@
+{
+  "date": "2026-08-16",
+  "release": "0.6.0",
+  "checks": {
+    "vitest": {
+      "status": "PASS",
+      "files": 51,
+      "passed": 221,
+      "skipped": 9
+    },
+    "playwright": {
+      "status": "PASS",
+      "passed": 24,
+      "total": 24,
+      "viewports": [1440, 1024, 768, 390]
+    },
+    "live": {
+      "status": "PASS",
+      "files": 4,
+      "passed": 9
+    },
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "visualGate": "PENDING"
+  },
+  "regressionFix": {
+    "revision": "f0e84a3",
+    "description": "更新 Remote Node E2E accessible name，从旧 roots 同步为中文授权目录"
+  },
+  "boundaries": [
+    "Playwright fixture 不等同 TX5Pro 人工视觉验收",
+    "缺少供应商授权或 workspace mapping 的 Agent 保持真实阻断状态"
+  ]
+}

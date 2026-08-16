@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · M28 / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED · M29 / REMOTE_NODE_COPY_NAS31_DEPLOYED · M30 / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED · M31 / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · M28 / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED · M29 / REMOTE_NODE_COPY_NAS31_DEPLOYED · M30 / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED · M31 / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED · M32 / FINAL_AUTOMATED_GATE_PASS · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -60,9 +60,8 @@
 - v0.6 版本发布收口：根包、workspace 包、共享版本常量、ACP clientInfo 与 Compose 默认值统一为
   `0.6.0`；健康接口与镜像 OCI label 均返回/标记 `0.6.0`。对应提交为 `c167d4f`，已推送
   `origin/main`。
-- v0.6 自动化回归：非沙箱全仓 Vitest 通过 48 个文件、192 passed、9 skipped；TypeScript、ESLint
-  与 production build 通过（Web 1715 modules transformed）。受限沙箱中的 pnpm `ENOENT` 与早先
-  的监听 `EPERM` 均不作为代码失败。
+- v0.6 自动化回归收尾：非沙箱全仓 Vitest 通过 51 个文件、221 passed、9 skipped；TypeScript、ESLint
+  与 production build 通过（Web 1716 modules transformed）。受限沙箱中的监听 `EPERM` 不作为代码失败。
 - v0.6 真实集成回归：`AGENTHUB_E2E_LIVE=1 corepack pnpm test:live` 通过 4 个文件、9 个测试；新增
   一次性 Git 仓库中的真实 Codex 文件变更、工作区 Diff、selected-file stage 与 commit 证据。Remote
   Node close race 已等待 Session READY 收敛；Claude Code 的固定 `claude-agent-acp` 缺失明确保持
@@ -365,6 +364,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 - nas.32 已发布为 `agenthub:0.6.0-nas.32`（ARM64，revision `de4ecd7`），容器最终 `running/healthy`；health、根页面、旧 Git 文案清除、当前中文文案和 server 工作目录下 node-pty smoke 均通过。升级前备份位于
   `/volume2/Project/.agenthub/central/deployments/20260816T112000Z-pre-nas32/`，完整记录见
   `docs/qa/nas/2026-08-16-v06-live32/`。nas.31 保留为回滚点，未执行 `compose down`，未删除旧镜像、卷、用户数据或其他 Agent 容器。
+- M32 自动化收尾门禁已通过：非沙箱 Vitest `51 files / 221 passed / 9 skipped`、Playwright `24/24`、真实 live `4 files / 9 passed`；Remote Node E2E 旧 accessible name 回归由 `f0e84a3` 修复。完整记录见 `docs/qa/v06-final-gate/`。
 
 ### 当前进行中
 

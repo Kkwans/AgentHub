@@ -6,7 +6,7 @@
 - 删除 `ControlPages.tsx` God Component，拆分 Projects、Agents、Sessions、Tasks、Settings、PromptOS 与 Workspace feature 边界；统一复用 Radix Themes、Radix primitives、Phosphor、Form/Dialog/Field/Select/Combobox/Picker/State 组件；
 - PromptOS 支持中文 Kind/Type、自动生成 key、结构化 Variables、Version/Label/Binding/Dialog 与 Context Preview；Session/Task/Review/Diff/Git 的写操作统一使用 Dialog 和用户可读状态；
 - 强化 Docker discovery 的 ID pinning、workspace allow-list、路径 containment/symlink 防护与 Terminal 环境变量白名单；Local Project Terminal 在 ARM64 native binding 可用时通过官方 `xterm.js` + `node-pty` 提供，不用普通 Shell 冒充 PTY；Docker/Remote Terminal 不在 v0.6 范围；
-- 版本元数据统一为 `0.6.0`，真实 live gate 3 个文件/7 个测试通过；GitHub Actions run `31773985580` 的 lint、typecheck、test、build、Playwright E2E 全绿；
+- 版本元数据统一为 `0.6.0`，真实 live gate 4 个文件/9 个测试通过；当前收尾全仓 Vitest 51 个文件（221 passed/9 skipped）与 Playwright E2E 24/24 通过；GitHub Actions 历史 release gate 保持全绿；
 - 正式 NAS Compose 当前为 `agenthub:0.6.0-nas.32`（revision `de4ecd7`），入口为 `192.168.5.110:3210`，容器 root/privileged、running/healthy；升级未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - UI CSS 共享层已收敛到 `styles/design-system.css`；按钮对比度修复后四视口 axe 与完整 24 项 Playwright E2E 全部通过。
 
