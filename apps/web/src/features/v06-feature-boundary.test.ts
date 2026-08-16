@@ -66,4 +66,14 @@ describe('v0.6 feature boundaries', () => {
     expect(terminal).not.toContain('{capability?.code}');
     expect(settings).not.toContain('terminal.code');
   });
+
+  it('keeps internal object ids out of ordinary workspace and dashboard copy', () => {
+    const overview = source('../pages/OverviewPage.tsx');
+    const workspace = source('./workspace/components/WorkspaceSections.tsx');
+    expect(overview).not.toContain('approval.sessionId.slice(0, 8)');
+    expect(overview).not.toContain('run.id.slice(0, 8)');
+    expect(workspace).not.toContain('activeRun.id.slice(0, 8)');
+    expect(workspace).not.toContain('session.agentId.slice(0, 8)');
+    expect(workspace).not.toContain('run.id.slice(0, 8)');
+  });
 });

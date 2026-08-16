@@ -147,7 +147,7 @@ export function Conversation({
       <div className="panel-title conversation-title">
         <div>
           <span>对话与执行</span>
-          <small>{activeRun ? `Run ${activeRun.id.slice(0, 8)}` : '没有活动 Run'}</small>
+          <small>{activeRun ? '当前 Run' : '没有活动 Run'}</small>
         </div>
         {activeRun && <StatusBadge status={activeRun.status} />}
       </div>
@@ -357,6 +357,7 @@ export function Inspector({
   setTab,
   selectedFile,
   setSelectedFile,
+  agent,
   runs,
 }: {
   project: ProjectRecord | undefined;
@@ -366,6 +367,7 @@ export function Inspector({
   setTab: (tab: InspectorTab) => void;
   selectedFile: string | undefined;
   setSelectedFile: (path: string) => void;
+  agent: AgentRecord | undefined;
   runs: QueryState<RunRecord[]>;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string }> = [
@@ -399,7 +401,7 @@ export function Inspector({
         ) : tab === 'git' ? (
           <GitInspector project={project} />
         ) : (
-          <RunInspector session={session} runs={runs} />
+          <RunInspector agent={agent} session={session} runs={runs} />
         )}
       </div>
     </div>
@@ -861,17 +863,20 @@ function formatGitTime(value: string): string {
 }
 
 function RunInspector({
+  agent,
   session,
   runs,
 }: {
+  agent: AgentRecord | undefined;
   session: SessionRecord;
   runs: QueryState<RunRecord[]>;
 }) {
+  const recentRuns = [...(runs.data ?? [])].reverse();
   return (
     <div className="run-inspector">
       <div className="run-context">
         <span>Agent</span>
-        <strong>{session.agentId.slice(0, 8)}</strong>
+        <strong>{agent?.name ?? '当前 Agent'}</strong>
         <span>模型</span>
         <strong>{session.model || 'Agent 默认'}</strong>
         <span>模式</span>
@@ -885,11 +890,11 @@ function RunInspector({
         ) : runs.error ? (
           <ErrorState error={runs.error} retry={() => runs.refetch()} />
         ) : (
-          [...(runs.data ?? [])].reverse().map((run) => (
+          recentRuns.map((run, index) => (
             <div key={run.id}>
               <span className="run-dot" />
               <div>
-                <strong>Run {run.id.slice(0, 8)}</strong>
+                <strong>第 {recentRuns.length - index} 次 Run</strong>
                 <code>
                   {run.gitBeforeSha?.slice(0, 8) ?? '—'} → {run.gitAfterSha?.slice(0, 8) ?? '—'}
                 </code>

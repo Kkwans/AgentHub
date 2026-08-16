@@ -65,6 +65,9 @@ export function OverviewPage() {
   const readyAgent = agents.find((agent) => agent.status === 'READY');
   const firstSession = sessions.data?.[0];
   const setupComplete = Boolean(readyTarget && activeProject && readyAgent && firstSession);
+  const sessionTitleById = new Map(
+    (sessions.data ?? []).map((session) => [session.id, session.title]),
+  );
   const sessionStartPath = activeProject
     ? `/sessions?projectId=${activeProject.id}&new=1`
     : '/sessions?new=1';
@@ -187,7 +190,9 @@ export function OverviewPage() {
                   <ShieldAlert size={18} />
                   <div>
                     <strong>{approval.title}</strong>
-                    <span>等待批准 · Session {approval.sessionId.slice(0, 8)}</span>
+                    <span>
+                      等待批准 · {sessionTitleById.get(approval.sessionId) ?? '打开对应 Session'}
+                    </span>
                   </div>
                   <ArrowRight size={16} />
                 </Link>
@@ -265,9 +270,9 @@ export function OverviewPage() {
               <Link className="action-row" key={run.id} to={`/sessions/${run.sessionId}`}>
                 <CheckCircle2 size={17} />
                 <div>
-                  <strong>Run {run.id.slice(0, 8)}</strong>
+                  <strong>{sessionTitleById.get(run.sessionId) ?? '会话运行结果'}</strong>
                   <span>
-                    Git{' '}
+                    Run · Git{' '}
                     {run.gitOutcome === 'CHANGED'
                       ? '有变更'
                       : run.gitOutcome === 'UNCHANGED'

@@ -304,6 +304,7 @@ export function WorkspacePage() {
             setTab={setTab}
             selectedFile={selectedFile}
             setSelectedFile={setSelectedFile}
+            agent={agent}
             runs={runs}
           />
         </Panel>
