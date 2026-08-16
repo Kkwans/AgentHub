@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -215,6 +215,22 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `docs/qa/nas/2026-08-16-v06-live15/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。受保护 Claude Code、Hermes、OpenClaw
   容器的 name/ID/image 与发布前一致。
+- Task/Worktree/PromptOS 用户文案收口已提交为 `51711f0` 并通过 GitHub CI `31929088781`：Task
+  审阅、Git 之前/之后、基准分支、任务分支、Worktree 路径与审阅证据均不再泄漏英文内部字段；Context
+  空状态的 `priority` 也已改为中文优先级。新增 v0.6 feature boundary contract，并同步更新四视口
+  Playwright 断言；全仓 Vitest 为 49 个文件通过、206 passed/9 skipped，Playwright 24/24 通过。
+- nas.16 已发布为 `agenthub:0.6.0-nas.16`（ARM64，image ID
+  `sha256:317073aeb5540969bbaefd08f5c1d3b5731e8c93cb7978534d0b9f2b17e5813d`，revision
+  `51711f0ce3936ca8d8263481f0b026bb083fa29f`），容器
+  `72140d39166a2e5b536766eafc648fe3d71d7ab880afbf34d9e80474a8331b29` 最终 `running/healthy`。
+  `/api/v1/health` 返回 `status=ok`、`version=0.6.0`、`database=pglite`、`web=true`；根页面 HTTP 200，
+  当前 bundle 含“审阅证据”文案。授权 capability 仍为 `terminal READY / linux arm64`、Remote Node
+  `outbound_websocket`。真实 Terminal API + 统一 `/ws` topic open/input/output/close smoke 通过（marker
+  `nas16-pty-ok`，terminal `4766d6e2-d36a-4a4a-9d0a-689f3e0a49de`）。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T053418Z-pre-nas16/`，完整记录见
+  `docs/qa/nas/2026-08-16-v06-live16/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。受保护 Claude Code、Hermes、OpenClaw
+  容器的 name/ID/image 与发布前一致。
 
 ### 当前进行中
 
@@ -228,6 +244,8 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 - 供应商 live capability matrix 已复跑：4 个 live 文件、9 个测试全部通过；Codex 的 preflight/session/
   stream/cancel 与一次性 Git 变更、Diff、commit 通过，Claude Code 固定 adapter 缺失保持 BROKEN，Hermes
   的 Project 映射限制保持 WORKSPACE_UNMAPPED，OpenClaw ACP 命令通过，OpenCode 缺失明确 SKIP/MISSING。
+- Task/Worktree/PromptOS 的剩余英文内部字段已完成收口；下一步只保留真实浏览器视觉门禁和供应商能力差异的
+  普通用户提示优化，不把 fixture、静态 bundle 或 NAS `curl` 结果提升为视觉 READY。
 
 ### 下一步
 
