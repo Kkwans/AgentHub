@@ -80,6 +80,16 @@ describe('v0.6 feature boundaries', () => {
     expect(settings).not.toContain('terminal.code');
   });
 
+  it('keeps warning surfaces symmetric instead of using a one-sided accent bar', () => {
+    const designSystem = source('../styles/design-system.css');
+    const controls = source('../styles/v3-controls.css');
+    expect(designSystem).not.toContain('inset 3px 0');
+    expect(designSystem).toContain('border: 1px solid #f0d3aa');
+    expect(designSystem).toContain('box-shadow: var(--shadow-card)');
+    expect(controls).toContain('border-radius: var(--radius-card);');
+    expect(controls).toContain('box-shadow: var(--shadow-card);');
+  });
+
   it('keeps internal object ids out of ordinary workspace and dashboard copy', () => {
     const overview = source('../pages/OverviewPage.tsx');
     const workspace = source('./workspace/components/WorkspaceSections.tsx');

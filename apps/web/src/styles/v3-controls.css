@@ -18,7 +18,7 @@
   font-weight: 620;
   background: var(--app-surface);
   border: 1px solid var(--app-line-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   box-shadow: none;
 }
 
@@ -66,8 +66,8 @@
 .management-form {
   background: var(--app-surface);
   border: 1px solid var(--app-line);
-  border-radius: 7px;
-  box-shadow: none;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 .control-section {
@@ -119,7 +119,7 @@
   font-weight: 700;
   background: var(--app-accent-soft);
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
 }
 
 .action-row {
@@ -173,7 +173,7 @@
   color: #994614;
   background: var(--app-accent-soft);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
 }
 
 .project-strip {
@@ -195,7 +195,7 @@
 .inline-warning,
 .inline-error {
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
 }
 
 .inline-form {
