@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-16",
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "repository": {
+    "commit": "37ebaa8",
+    "headSha": "37ebaa89f32326c254ac4a9b81977f551cf32716",
+    "branch": "main",
+    "remote": "https://github.com/Kkwans/AgentHub.git"
+  },
+  "automation": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS: Web 1715 modules transformed",
+    "vitest": "PASS: 49 non-live files, 205 passed, 9 skipped",
+    "playwrightE2e": "PASS: 24 tests",
+    "live": "PASS: 4 files, 9 tests",
+    "githubActions": {
+      "runId": 31926163032,
+      "status": "success",
+      "job": "verify"
+    }
+  },
+  "discoveryCorrection": {
+    "totalCandidates": 75,
+    "supportedAgentCandidates": 8,
+    "unknownContainersHiddenByUi": 67,
+    "codex": {
+      "state": "INSTALLED",
+      "adoptable": true,
+      "pinnedPackage": "@agentclientprotocol/codex-acp",
+      "pinnedVersion": "1.1.14"
+    },
+    "opencode": {
+      "state": "MISSING_DEPENDENCY",
+      "adoptable": false,
+      "reasonCode": "AGENT_DEPENDENCY_MISSING"
+    }
+  },
+  "vendorLiveMatrix": {
+    "codex": "PASS: preflight/session/stream/cancel and isolated Git mutation/Diff/commit",
+    "claudeCode": "PASS: executable present, pinned claude-agent-acp missing remains BROKEN",
+    "hermes": "PASS: ACP present, Project workspace mapping absent remains WORKSPACE_UNMAPPED",
+    "openclaw": "PASS: official Gateway-backed ACP command available",
+    "opencode": "SKIP: MISSING"
+  },
+  "compose": {
+    "project": "agenthub",
+    "service": "agenthub",
+    "path": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "image": "agenthub:0.6.0-nas.14",
+    "imageId": "sha256:d96ce748d45bbe48cb904bf70c33ee39e0127ec152b54098ebfaaac6b190d1c2",
+    "baseImage": "agenthub:0.6.0-nas.13",
+    "dockerfile": "deploy/compose/Dockerfile.nas-overlay",
+    "containerId": "5bb92c59564f1575e94411837f7301f16963b19fe970242846e2e76cc43b9f4b",
+    "bind": "192.168.5.110:3210",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "ownerUidGid": "1000:10",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true,
+    "protectedAgentContainersNameIdImageUnchanged": true
+  },
+  "capabilities": {
+    "terminalAvailable": true,
+    "terminalCode": "READY",
+    "platform": "linux",
+    "arch": "arm64",
+    "remoteNodeTransport": "outbound_websocket",
+    "nativeBinding": "inherited from agenthub:0.6.0-nas.13; build and runtime smoke passed"
+  },
+  "terminalSmoke": {
+    "projectId": "6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0",
+    "terminalId": "2ae4d3f0-6e2b-4b7a-8044-d7467e40f409",
+    "topic": "terminal:2ae4d3f0-6e2b-4b7a-8044-d7467e40f409",
+    "steps": [
+      "open",
+      "ws subscribe",
+      "input: printf nas14-pty-ok\\n",
+      "output contains nas14-pty-ok",
+      "close"
+    ],
+    "result": "PASS"
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260816T041830Z-pre-nas14",
+    "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+    "envSha256": "b59bebead2befb58f506e8bd904f58442fde5608ee565f2a6d5a78cdaa01fc9d",
+    "envAfterSha256": "dc4c6bba69133174d1da09ea7df9975c4344a4617df481513b6bb2dcd8c11ff3",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087"
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "protectedContainers": {
+    "claude-code": {
+      "id": "9d8cbc9b82062c31d962c3829a49afe931087edef5691b96f96ba1ec5c339281",
+      "image": "claude-code:2026.6.8",
+      "status": "exited"
+    },
+    "hermes": {
+      "id": "cdcfb3fe1b1a542160b8e9d74725aa54a8da6a2f31f7cad2448ae9141b6799d0",
+      "image": "ugreen/hermes-agent:v1",
+      "status": "exited"
+    },
+    "openclaw-official": {
+      "id": "433abd2cfd7687ca393ae5de4f3458959a29746a2a8130bcb39e1e3bb96a571e",
+      "image": "ghcr.io/openclaw/openclaw:2026.6.11",
+      "status": "exited"
+    },
+    "openclaw-custom": {
+      "id": "633495c2f6aa29bc704d558d3ed147667b447cb4451b78aee51679dc84981566",
+      "image": "openclaw-custom:2026.5.7",
+      "status": "running"
+    }
+  },
+  "tmpV05": "NOT_FOUND_NO_DELETE",
+  "forbiddenActions": ["docker compose down", "delete images", "delete volumes", "delete user data"]
+}

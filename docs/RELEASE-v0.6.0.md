@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / TERMINAL_UI_DELIVERED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -12,6 +12,8 @@
   认证字段继续使用标准 username/password autocomplete。
 - Discovery 的重新扫描、Runtime/Agent 接入、启动/停止和默认设置失败时统一显示中文、可访问的操作反馈；
   adapter 只通过 presentation label 展示，不把原始枚举直接交给普通用户。
+- Agent discovery 会校正固定依赖状态：Codex pinned ACP 存在时显示 `INSTALLED`；缺依赖、异常或不支持的
+  宿主 Agent 不再显示可接入动作。普通 Docker 容器不再混入 Agent 列表，页面明确显示隐藏数量和接入前置条件。
 - Workspace 工具卡通过 `labelAgentEventType` 展示中文事件标签，正常对话视图隐藏 `tool.call.*` 等原始
   协议枚举，未知事件统一显示“执行事件”。
 - 共享 `FormDialog` 现在会把焦点送到首个错误控件，关闭后恢复到触发按钮；关闭图标使用真实
@@ -28,15 +30,15 @@
 
 | 层级                     | 结果                                                                                                                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                   | 53 个文件通过，4 个 live 文件跳过；203 passed、9 skipped（本地以单 worker 串行取得稳定结果）                                                                                                |
+| Vitest                   | 49 个非 live 文件通过，4 个 live 文件跳过；205 passed、9 skipped（非沙箱、单 worker 串行取得稳定结果）                                                                                      |
 | typecheck / lint / build | 通过；Web 1715 modules transformed                                                                                                                                                          |
 | Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                    |
 | real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                  |
-| GitHub Actions           | run `31924583891`，commit `2fbc3dc`，`verify` 成功；Node.js 20 action deprecation 仅为 annotation                                                                                           |
-| NAS Compose              | `agenthub:0.6.0-nas.13`，ARM64，revision `2fbc3dc1`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，真实 open/WS input/output/close smoke 通过                       |
+| GitHub Actions           | run `31926163032`，commit `37ebaa8`，`verify` 成功；Node.js 20 action deprecation 仅为 annotation                                                                                           |
+| NAS Compose              | `agenthub:0.6.0-nas.14`，ARM64，revision `37ebaa89`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，真实 open/WS input/output/close smoke 通过                       |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755` |
 
-完整 NAS 记录见 [`docs/qa/nas/2026-08-16-v06-live13/README.md`](qa/nas/2026-08-16-v06-live13/README.md)。
+完整 NAS 记录见 [`docs/qa/nas/2026-08-16-v06-live14/README.md`](qa/nas/2026-08-16-v06-live14/README.md)。
 
 ## 升级与回滚
 
@@ -112,6 +114,15 @@
   `restart=unless-stopped`，owner UID/GID `1000:10`。基于已验证 nas.12 通过
   `deploy/compose/Dockerfile.nas-overlay` 仅覆盖 server/web dist，构建与运行时 node-pty smoke、真实
   Terminal API/WS smoke 均通过；nas.12 保留作为回滚点。
+- Agent discovery 状态修正 nas.14 升级前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260816T041830Z-pre-nas14/`；
+  Compose SHA-256 `0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff`，旧 `.env` SHA-256
+  `b59bebead2befb58f506e8bd904f58442fde5608ee565f2a6d5a78cdaa01fc9d`，新 `.env` SHA-256
+  `dc4c6bba69133174d1da09ea7df9975c4344a4617df481513b6bb2dcd8c11ff3`，browser-token 仅保留 hash
+  `d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087`。镜像 `agenthub:0.6.0-nas.14` image ID
+  `sha256:d96ce748d45bbe48cb904bf70c33ee39e0127ec152b54098ebfaaac6b190d1c2`；容器 ID
+  `5bb92c59564f1575e94411837f7301f16963b19fe970242846e2e76cc43b9f4b`，`user=0:0`、`privileged=true`、
+  `restart=unless-stopped`。基于 nas.13 通过 `deploy/compose/Dockerfile.nas-overlay` 仅覆盖 server/web dist，
+  构建与运行时 node-pty smoke、真实 Terminal API/WS smoke 均通过；nas.13 保留作为回滚点。
 - nas.4 image digest：`sha256:d5a7745b70667521ac86243984013c6a3b37b8adb88efd33bd0a0680eb9b2cca`；容器 ID
   `3d9ba293780758b66497987855240ab494bed68e8efe92f7645ef9c4b19ac7ec`，运行时 server/ACP dist
   与主机构建产物 SHA-256 一致。由于 NAS registry mirror 对 Dockerfile frontend 仍返回 429，本次
@@ -127,10 +138,11 @@
 ## 未验证项与明确边界
 
 - 当前环境没有可用浏览器/Computer Use 通道，因此 1440、1024、768、390 四视口人工视觉验收和人工可用性 checklist 尚未完成；不能声明 TX5Pro v0.6 视觉通过。
-- NAS 当前 `linux/arm64` 的正式 nas.13 镜像已具备可加载的 `node-pty` native binding，
+- NAS 当前 `linux/arm64` 的正式 nas.14 镜像已具备可加载的 `node-pty` native binding，
   `GET /api/v1/settings/capabilities` 返回 `terminal.available=true`、`code=READY`；如果其他平台或镜像
   缺少 native binding，Workspace 仍会显示中文原因并禁用 Terminal 操作，不伪称 PTY 已可用。
-- Claude Code、Hermes、OpenClaw 的正式容器接入状态以 Agent discovery/preflight 的实时结果为准；本次 live gate 的真实 Codex 与隔离 Worktree 证据不代表所有供应商均 READY。
+- Claude Code、Hermes、OpenClaw 的正式容器接入状态以 Agent discovery/preflight 的实时结果为准；本轮 live gate
+  明确验证了 Claude Code adapter 缺失、Hermes workspace 未映射和 OpenClaw ACP 命令，不把这些状态误报为 READY。
 
 本次 UI/可访问性修复的历史 NAS 记录见 [`docs/qa/nas/2026-08-14-v06-ui2/`](qa/nas/2026-08-14-v06-ui2/)；
 ACP/live nas.3 的历史记录见 [`docs/qa/nas/2026-08-15-v06-live3/`](qa/nas/2026-08-15-v06-live3/)；
@@ -140,4 +152,6 @@ ACP/live nas.3 的历史记录见 [`docs/qa/nas/2026-08-15-v06-live3/`](qa/nas/2
 [`docs/qa/nas/2026-08-15-v06-live8/`](qa/nas/2026-08-15-v06-live8/)；nas.9 记录见
 [`docs/qa/nas/2026-08-15-v06-live9/`](qa/nas/2026-08-15-v06-live9/)；当前 nas.10 记录见
 [`docs/qa/nas/2026-08-16-v06-live10/`](qa/nas/2026-08-16-v06-live10/)；当前 nas.11 记录见
-[`docs/qa/nas/2026-08-16-v06-live11/`](qa/nas/2026-08-16-v06-live11/)。
+[`docs/qa/nas/2026-08-16-v06-live11/`](qa/nas/2026-08-16-v06-live11/)；nas.13 记录见
+[`docs/qa/nas/2026-08-16-v06-live13/`](qa/nas/2026-08-16-v06-live13/)；当前 nas.14 记录见
+[`docs/qa/nas/2026-08-16-v06-live14/`](qa/nas/2026-08-16-v06-live14/)。

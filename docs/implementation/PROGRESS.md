@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -185,6 +185,21 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `docs/qa/nas/2026-08-16-v06-live13/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。受保护 Claude Code、Hermes、OpenClaw
   容器的 name/ID/image 发布前后保持一致。
+- Agent 状态修正已提交为 `37ebaa8` 并通过 GitHub CI `31926163032`：固定 Codex ACP 依赖存在时不再
+  误报 `MISSING_DEPENDENCY`；宿主缺依赖、异常或不支持的 Agent 不再显示可接入动作；前端隐藏普通
+  Docker 容器的 UNKNOWN 候选，并明确提示隐藏数量和接入前置条件。当前 NAS discovery 共返回 75 个
+  候选，其中 8 个为支持的 Agent、67 个普通容器被 UI 隐藏；Codex 为 `INSTALLED`，OpenCode 为
+  `MISSING_DEPENDENCY` 且不可接入。
+- nas.14 已发布为 `agenthub:0.6.0-nas.14`（ARM64，image digest
+  `sha256:d96ce748d45bbe48cb904bf70c33ee39e0127ec152b54098ebfaaac6b190d1c2`，revision
+  `37ebaa89f32326c254ac4a9b81977f551cf32716`），容器
+  `5bb92c59564f1575e94411837f7301f16963b19fe970242846e2e76cc43b9f4b` 最终 `running/healthy`。
+  授权 capability 仍为 `terminal READY / linux arm64`；构建时与运行时 `node-pty`、真实 Terminal API
+  与统一 `/ws` topic open/input/output/close smoke 均通过（marker `nas14-pty-ok`）。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T041830Z-pre-nas14/`，完整记录见
+  `docs/qa/nas/2026-08-16-v06-live14/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。受保护 Claude Code、Hermes、OpenClaw
+  容器的 name/ID/image 与 live smoke 前后一致。
 
 ### 当前进行中
 
@@ -194,14 +209,15 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
-  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.13 通过 ARM64 native base overlay 后保持 READY。
+  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.14 通过 ARM64 native base overlay 后保持 READY。
+- 供应商 live capability matrix 已复跑：4 个 live 文件、9 个测试全部通过；Codex 的 preflight/session/
+  stream/cancel 与一次性 Git 变更、Diff、commit 通过，Claude Code 固定 adapter 缺失保持 BROKEN，Hermes
+  的 Project 映射限制保持 WORKSPACE_UNMAPPED，OpenClaw ACP 命令通过，OpenCode 缺失明确 SKIP/MISSING。
 
 ### 下一步
 
-- 补齐 Claude Code、Hermes、OpenClaw 的真实供应商 capability matrix 与 preflight/live 证据；缺失 Agent
-  或未映射工作区必须明确记录 `SKIP/MISSING/WORKSPACE_UNMAPPED`，不能伪称 READY。当前本地、Docker
-  和 Remote Node discovery 边界与 HTTP 契约已通过，下一切片聚焦供应商能力差异在 UI 与真实运行中的
-  一致呈现。
+- 继续把已验证的供应商能力差异落到普通用户路径：缺失 adapter、未授权、容器停止、workspace 未映射
+  和普通未知容器都必须给出明确中文下一步；不得把静态发现或 fixture 状态提升为 READY。
 - 在获得授权浏览器通道后，执行 1440/1024/768/390 的视觉审查；当前 NAS v0.6 已发布，但本轮不把
   `curl`/fixture/静态 build 结果等同于 TX5Pro 视觉验收。
 - 继续按普通用户旅程完善 Project → Agent → Session → Approval → Diff/Git → PromptOS → Task Review
