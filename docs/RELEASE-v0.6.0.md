@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -54,6 +54,7 @@
   不改变后端 roots 安全校验和一次性注册码语义。
 - Remote Node Worktree/Git 能力限制现在使用与版本无关的中文下一步提示；overlay 发布会先清理旧 server/web dist，
   避免历史 hashed assets 或旧文案残留。
+- Web 稳定错误映射中的 Remote Node Git 提示已同步为当前能力边界，不再出现旧版本“暂不提供”措辞。
 
 ## 证据
 
@@ -76,6 +77,7 @@
 | NAS Compose nas.28       | `agenthub:0.6.0-nas.28`，ARM64，revision `018a03b`，`running/healthy`，`192.168.5.110:3210`；health、根页面、Runtime/Task/Workspace 中文 bundle、node-pty 和受保护容器边界核验通过                                      |
 | NAS Compose nas.29       | `agenthub:0.6.0-nas.29`，ARM64，revision `70c6095`，`running/healthy`，`192.168.5.110:3210`；health、根页面、授权目录 bundle、正确工作目录下 node-pty smoke 和受保护容器边界核验通过                                    |
 | NAS Compose nas.31       | `agenthub:0.6.0-nas.31`，ARM64，revision `9a39480`，`running/healthy`，`192.168.5.110:3210`；旧 Remote Node 能力文案残留为 0、当前中文下一步文案存在、overlay 静态资源目录清洁、node-pty READY 和受保护容器边界核验通过 |
+| NAS Compose nas.32       | `agenthub:0.6.0-nas.32`，ARM64，revision `de4ecd7`，`running/healthy`，`192.168.5.110:3210`；旧 Git 能力文案残留为 0、当前中文 Git 边界文案存在、server 工作目录 node-pty READY 和受保护容器边界核验通过                |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                                       |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                             |
 
@@ -85,8 +87,9 @@ Workspace 运行状态记录见 [`docs/qa/nas/2026-08-16-v06-live26/README.md`](
 [`docs/qa/nas/2026-08-16-v06-live24/README.md`](qa/nas/2026-08-16-v06-live24/README.md)。最新 nas.28 用户可见状态收口记录见
 [`docs/qa/nas/2026-08-16-v06-live28/README.md`](qa/nas/2026-08-16-v06-live28/README.md)。最新 nas.29 Remote Node 授权目录记录见
 [`docs/qa/nas/2026-08-16-v06-live29/README.md`](qa/nas/2026-08-16-v06-live29/README.md)。最新 nas.31 Remote Node 文案与 overlay 清洁发布记录见
-[`docs/qa/nas/2026-08-16-v06-live31/README.md`](qa/nas/2026-08-16-v06-live31/README.md)。对象 ID 文案和 nas.21
-Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](qa/nas/2026-08-16-v06-live21/README.md)。
+[`docs/qa/nas/2026-08-16-v06-live31/README.md`](qa/nas/2026-08-16-v06-live31/README.md)。Remote Node Git 文案 nas.32 记录见
+[`docs/qa/nas/2026-08-16-v06-live32/README.md`](qa/nas/2026-08-16-v06-live32/README.md)。对象 ID 文案和 nas.21 Terminal
+回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](qa/nas/2026-08-16-v06-live21/README.md)。
 
 ## 升级与回滚
 
@@ -249,6 +252,8 @@ Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](
   `/volume2/Project/.agenthub/central/deployments/20260816T105434Z-pre-nas29/`；nas.28 作为 overlay 基底保留，可按单 service 回滚。
 - nas.31 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
   `/volume2/Project/.agenthub/central/deployments/20260816T111414Z-pre-nas31/`；nas.30 镜像保留，可按单 service 回滚。
+- nas.32 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
+  `/volume2/Project/.agenthub/central/deployments/20260816T112000Z-pre-nas32/`；nas.31 镜像保留，可按单 service 回滚。
 - nas.20 曾因常规镜像覆盖 ARM64 `node-pty` binding 而被 supersede；nas.21 已用 overlay 基于 nas.19 修复，
   nas.20/nas.21 镜像均保留，未删除镜像、卷或用户数据。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。
