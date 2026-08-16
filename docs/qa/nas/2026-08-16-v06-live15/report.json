@@ -1,0 +1,68 @@
+{
+  "result": "PASS",
+  "visualGate": "PENDING_BROWSER_CHANNEL",
+  "date": "2026-08-16",
+  "commit": "29d475cf723ed53eb21ec701a40287c7785bc253",
+  "ci": {
+    "runId": 31927521417,
+    "conclusion": "success"
+  },
+  "target": {
+    "host": "DH4300Plus",
+    "arch": "aarch64",
+    "composeProject": "agenthub",
+    "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "url": "http://192.168.5.110:3210",
+    "port": 3210
+  },
+  "image": {
+    "tag": "agenthub:0.6.0-nas.15",
+    "id": "sha256:23213a07b30f6abbe84566f820657af8598b9ab0299aa2d8bf7f32f8f1610820",
+    "architecture": "arm64",
+    "revision": "29d475cf723ed53eb21ec701a40287c7785bc253",
+    "baseImage": "agenthub:0.6.0-nas.14"
+  },
+  "container": {
+    "id": "3b89e27d871bed8a911bd2390678986b5fc6639b57760620599548bf9706dedc",
+    "status": "running",
+    "health": "healthy",
+    "user": "0:0",
+    "privileged": true,
+    "restartPolicy": "unless-stopped",
+    "ownerUidGid": "1000:10",
+    "composeDownUsed": false,
+    "onlyAgenthubServiceUpdated": true
+  },
+  "healthResponse": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true,
+    "rootHttp": 200
+  },
+  "capabilities": {
+    "terminalAvailable": true,
+    "terminalCode": "READY",
+    "platform": "linux",
+    "arch": "arm64",
+    "remoteNodeTransport": "outbound_websocket",
+    "nativeBinding": "node-pty build and runtime smoke passed"
+  },
+  "terminalSmoke": {
+    "projectId": "6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0",
+    "terminalId": "baf32fe4-56b9-4a4b-a0cb-818112e7d95d",
+    "topic": "terminal:baf32fe4-56b9-4a4b-a0cb-818112e7d95d",
+    "marker": "nas15-pty-ok",
+    "steps": ["open", "ws subscribe", "input", "output contains marker", "close"],
+    "result": "PASS"
+  },
+  "backup": {
+    "directory": "/volume2/Project/.agenthub/central/deployments/20260816T045503Z-pre-nas15",
+    "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+    "envBeforeSha256": "dc4c6bba69133174d1da09ea7df9975c4344a4617df481513b6bb2dcd8c11ff3",
+    "envAfterSha256": "adc70e2446d59af428e0e0d44c1aef75448297e98edfac17536f1c0f62efa541",
+    "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087"
+  },
+  "protectedContainersUnchanged": true,
+  "tmpV05Present": false
+}

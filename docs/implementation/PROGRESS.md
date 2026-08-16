@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -200,6 +200,21 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `docs/qa/nas/2026-08-16-v06-live14/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。受保护 Claude Code、Hermes、OpenClaw
   容器的 name/ID/image 与 live smoke 前后一致。
+- PromptOS 绑定展示修复已提交为 `29d475c` 并通过 GitHub CI `31927521417`：固定版本不再向普通用户
+  暴露内部 UUID，标签/删除状态与优先级统一使用中文可读文案；新增绑定列表的版本、标签和内部标识回归断言。
+  全仓 Vitest 为 49 个文件通过、205 passed/9 skipped；Playwright 四视口 24/24 通过。
+- nas.15 已发布为 `agenthub:0.6.0-nas.15`（ARM64，image ID
+  `sha256:23213a07b30f6abbe84566f820657af8598b9ab0299aa2d8bf7f32f8f1610820`，revision
+  `29d475cf723ed53eb21ec701a40287c7785bc253`），容器
+  `3b89e27d871bed8a911bd2390678986b5fc6639b57760620599548bf9706dedc` 最终 `running/healthy`。
+  `/api/v1/health` 返回 `status=ok`、`version=0.6.0`、`database=pglite`、`web=true`；授权 capability
+  仍为 `terminal READY / linux arm64`、Remote Node `outbound_websocket`。真实 Terminal API + 统一
+  `/ws` topic open/input/output/close smoke 通过（marker `nas15-pty-ok`，terminal
+  `baf32fe4-56b9-4a4b-a0cb-818112e7d95d`）。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T045503Z-pre-nas15/`，完整记录见
+  `docs/qa/nas/2026-08-16-v06-live15/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。受保护 Claude Code、Hermes、OpenClaw
+  容器的 name/ID/image 与发布前一致。
 
 ### 当前进行中
 
