@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · ACP/LIVE/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -154,6 +154,20 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `/volume2/Project/.agenthub/central/deployments/20260815T171733Z-pre-nas11/`，完整记录见
   `docs/qa/nas/2026-08-16-v06-live11/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
   `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器；`.tmp-v05` 仍不存在。
+- Discovery 接入边界已提交为 `123af32` 并通过 GitHub CI `31923237501`；停止、未识别或不支持的
+  Runtime/Agent 候选不再显示可接入动作，服务端返回稳定 `AGENT_CANDIDATE_NOT_ADOPTABLE`，前端映射
+  中文下一步提示。新增 AgentDiscovery service 测试 6 项与 discovery HTTP contract 测试 3 项，覆盖
+  状态映射、停止竞态、幂等接入、参数校验和稳定错误信封。
+- nas.12 已发布为 `agenthub:0.6.0-nas.12`（ARM64，image digest
+  `sha256:2c51ef8148565bd6390c5f8938d4deeecd5c77234294d68976ab65f8db3db3d3`，revision
+  `123af329e1a578f6f235ed4a6a251db3d9de528b`），容器
+  `7181e640ac0aff13a5863c8f5698d481710e67ead1f06aa8d3403f47fe11cb6f` 最终 `running/healthy`。
+  授权 capability 仍为 `terminal READY / linux arm64`；真实 Terminal API + 统一 `/ws` topic
+  open/input/output/close smoke 通过（terminal `405103b9-e836-43ef-a9a5-f515aae4f8bd`）。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T030407Z-pre-nas12/`，完整记录见
+  `docs/qa/nas/2026-08-16-v06-live12/`。仅执行 `docker compose up -d --no-build agenthub`，未执行
+  `compose down`，未删除镜像、卷、用户数据；`.tmp-v05` 不存在。发布快照期间观察到其他项目容器
+  的外部漂移，因此只对 Claude Code、Hermes、OpenClaw 四个明确受保护容器核对并确认 name/ID/image 未变。
 
 ### 当前进行中
 
@@ -163,13 +177,14 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
-  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.11 通过 ARM64 native base overlay 后保持 READY。
+  时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.12 通过 ARM64 native base overlay 后保持 READY。
 
 ### 下一步
 
-- 继续补齐 discovery route/service contract tests 与 CI gate；缺失 Agent 或未映射工作区必须明确记录
-  `SKIP/MISSING/WORKSPACE_UNMAPPED`，并保持真实供应商能力矩阵可追踪。核心 discovery live 闭环已
-  通过，后续只补齐边界和回归场景。
+- 继续接入 Remote Node inventory 到统一 AgentDiscoveryCandidate，并补齐 Claude Code、Hermes、OpenClaw
+  的真实供应商 capability matrix；缺失 Agent 或未映射工作区必须明确记录
+  `SKIP/MISSING/WORKSPACE_UNMAPPED`，不能伪称 READY。当前本地/Docker discovery 边界与 HTTP 契约已
+  通过，下一切片聚焦 Remote inventory 去重与真实 preflight 状态。
 - 在获得授权浏览器通道后，执行 1440/1024/768/390 的视觉审查；当前 NAS v0.6 已发布，但本轮不把
   `curl`/fixture/静态 build 结果等同于 TX5Pro 视觉验收。
 - 继续按普通用户旅程完善 Project → Agent → Session → Approval → Diff/Git → PromptOS → Task Review

@@ -28,15 +28,15 @@
 
 | 层级                     | 结果                                                                                                                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                   | 48 个文件通过，4 个 live 文件跳过；192 passed、9 skipped                                                                                                                                    |
+| Vitest                   | 53 个文件通过，4 个 live 文件跳过；200 passed、9 skipped（本地以单 worker 串行取得稳定结果）                                                                                                |
 | typecheck / lint / build | 通过；Web 1715 modules transformed                                                                                                                                                          |
 | Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                    |
 | real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                  |
-| GitHub Actions           | run `31897639717`，commit `3508d22`，`verify` 成功；Node.js 20 action deprecation 仅为 annotation                                                                                           |
-| NAS Compose              | `agenthub:0.6.0-nas.11`，ARM64，revision `3508d22`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，真实 open/WS input/close smoke 通过                               |
+| GitHub Actions           | run `31923237501`，commit `123af32`，`verify` 成功；Node.js 20 action deprecation 仅为 annotation                                                                                           |
+| NAS Compose              | `agenthub:0.6.0-nas.12`，ARM64，revision `123af329`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，真实 open/WS input/output/close smoke 通过                       |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755` |
 
-完整 NAS 记录见 [`docs/qa/nas/2026-08-16-v06-live11/README.md`](qa/nas/2026-08-16-v06-live11/README.md)。
+完整 NAS 记录见 [`docs/qa/nas/2026-08-16-v06-live12/README.md`](qa/nas/2026-08-16-v06-live12/README.md)。
 
 ## 升级与回滚
 
@@ -93,6 +93,16 @@
   `0db954ef887a897203eb5a6d86a16bc16f8bd36e54c340461633fa102ac0cc7e`，`user=0:0`、`privileged=true`、
   `restart=unless-stopped`，owner UID/GID `1000:10`。基于 nas.10 通过 `deploy/compose/Dockerfile.nas-overlay`
   仅覆盖 server/web dist；构建与运行时 node-pty smoke、真实 Terminal API/WS smoke 均通过；nas.10 保留作为回滚点。
+- Discovery 边界修复 nas.12 升级前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260816T030407Z-pre-nas12/`；
+  Compose SHA-256 `0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff`，旧 `.env` SHA-256
+  `3bb6d6f8d6bf7f8a0b44d096a7dc4b7e0da7b3e9b528f7da98d05c39ade00397`，新 `.env` SHA-256
+  `f56fad7d044ae1f5efaed0314616bf8728dcd8f02fd66eefc4af50f9d8fdf648`，browser-token 仅保留 hash
+  `d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087`。镜像 `agenthub:0.6.0-nas.12` image ID
+  `sha256:2c51ef8148565bd6390c5f8938d4deeecd5c77234294d68976ab65f8db3db3d3`；容器 ID
+  `7181e640ac0aff13a5863c8f5698d481710e67ead1f06aa8d3403f47fe11cb6f`，`user=0:0`、`privileged=true`、
+  `restart=unless-stopped`。基于 nas.11 通过 `deploy/compose/Dockerfile.nas-overlay` 仅覆盖 server/web dist，
+  node-pty build/runtime smoke 均通过；nas.11 保留作为回滚点。发布快照观察到其他项目容器存在外部漂移，
+  但 Claude Code、Hermes、OpenClaw 容器的 name/ID/image 在本次发布前后保持一致。
 - nas.4 image digest：`sha256:d5a7745b70667521ac86243984013c6a3b37b8adb88efd33bd0a0680eb9b2cca`；容器 ID
   `3d9ba293780758b66497987855240ab494bed68e8efe92f7645ef9c4b19ac7ec`，运行时 server/ACP dist
   与主机构建产物 SHA-256 一致。由于 NAS registry mirror 对 Dockerfile frontend 仍返回 429，本次
@@ -108,7 +118,7 @@
 ## 未验证项与明确边界
 
 - 当前环境没有可用浏览器/Computer Use 通道，因此 1440、1024、768、390 四视口人工视觉验收和人工可用性 checklist 尚未完成；不能声明 TX5Pro v0.6 视觉通过。
-- NAS 当前 `linux/arm64` 的正式 nas.11 镜像已具备可加载的 `node-pty` native binding，
+- NAS 当前 `linux/arm64` 的正式 nas.12 镜像已具备可加载的 `node-pty` native binding，
   `GET /api/v1/settings/capabilities` 返回 `terminal.available=true`、`code=READY`；如果其他平台或镜像
   缺少 native binding，Workspace 仍会显示中文原因并禁用 Terminal 操作，不伪称 PTY 已可用。
 - Claude Code、Hermes、OpenClaw 的正式容器接入状态以 Agent discovery/preflight 的实时结果为准；本次 live gate 的真实 Codex 与隔离 Worktree 证据不代表所有供应商均 READY。
