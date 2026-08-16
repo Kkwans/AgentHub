@@ -378,6 +378,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 - M41 畸形 API 响应防护已提交为 `85ea067` 并发布 nas.40：HTTP 200 的 `null`、数组或非对象响应统一归一化为稳定 `HTTP_ERROR`，避免解析细节进入普通用户 UI；聚焦测试 4 files/10 tests、typecheck、build 通过。nas.40 容器 `running/healthy`，health/root HTTP 200、Compose config 和 server 工作目录 `node-pty` smoke 通过。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T140109Z-pre-nas40/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整记录见 `docs/qa/nas/2026-08-16-v06-live40/`。
 
 - M42 实时消息边界已提交为 `4d12f63` 并发布 nas.41：统一 WebSocket message envelope 校验，畸形 JSON 或非对象事件会被安全忽略，不中断其余订阅；realtime 聚焦测试 3 files/9 tests、lint、typecheck、build 通过。nas.41 容器 `running/healthy`，health/root HTTP 200、Compose config 和 server 工作目录 `node-pty` smoke 通过。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T140805Z-pre-nas41/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整记录见 `docs/qa/nas/2026-08-16-v06-live41/`。
+- 全仓回归复核：非沙箱 `corepack pnpm test` 通过 52 files / 228 passed / 9 skipped；仅保留既有 live/环境 skip，不把 skipped 提升为真实能力证据。
 
 ### 当前进行中
 
