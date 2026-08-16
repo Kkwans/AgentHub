@@ -16,5 +16,8 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain('InlineError');
     expect(source).toContain('labelAdapterKind(candidate.adapterKind)');
     expect(source).toContain('labelAgentCandidateReason(candidate.reasonCode)');
+    expect(source).toContain("filter((candidate) => candidate.agentKind !== 'UNKNOWN')");
+    expect(source).toContain('已隐藏 {hiddenRuntimeCount} 个未识别容器');
+    expect(source).toContain('请先完成该 Agent 的登录授权。');
   });
 });

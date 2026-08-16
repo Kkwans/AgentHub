@@ -61,6 +61,24 @@ describe('Agent 注册与预检', () => {
     expect(created.configJson).toMatchObject({ pinnedVersion: '1.1.14' });
   });
 
+  it('host diagnostics reports the pinned Codex ACP runtime even without a codex CLI on PATH', async () => {
+    const service = new AgentService(
+      agents,
+      targets,
+      new NeverLaunch(),
+      undefined,
+      undefined,
+      async () => ({}),
+    );
+    const diagnostics = await service.hostDiagnostics();
+
+    expect(diagnostics.codex).toMatchObject({
+      status: 'INSTALLED',
+      pinnedPackage: '@agentclientprotocol/codex-acp',
+      pinnedVersion: '1.1.14',
+    });
+  });
+
   it('缺失 executable 时返回 MISSING，并持久化预检状态', async () => {
     const target = await seedTarget('LOCAL_HOST');
     const service = new AgentService(agents, targets, new HostAcpProcessLauncher());

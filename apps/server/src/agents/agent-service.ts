@@ -218,9 +218,19 @@ export class AgentService {
     const environment = await this.resolveEnvironment();
     const codexExecutable = await findExecutable('codex', environment.PATH);
     const opencodeExecutable = await findExecutable('opencode', environment.PATH);
+    const pinnedCodex = resolvePinnedAcpAdapter('CODEX');
+    const codexAdapterAvailable = await isPinnedAdapterAvailable(pinnedCodex);
     const diagnostics: Record<string, unknown> = {
       node: { executable: process.execPath, version: process.version },
-      codex: { status: codexExecutable ? 'INSTALLED' : 'MISSING', executable: codexExecutable },
+      codex: {
+        status: codexAdapterAvailable ? 'INSTALLED' : 'MISSING',
+        executable: codexExecutable ?? pinnedCodex.executable,
+        ...(codexExecutable ? { runtimeExecutable: codexExecutable } : {}),
+        adapterExecutable: pinnedCodex.args[0],
+        pinnedPackage: pinnedCodex.packageName,
+        pinnedVersion: pinnedCodex.version,
+        ...(codexAdapterAvailable ? { version: pinnedCodex.version } : {}),
+      },
       opencode: {
         status: opencodeExecutable ? 'INSTALLED' : 'MISSING',
         executable: opencodeExecutable,
@@ -512,6 +522,20 @@ async function findExecutable(
     }
   }
   return undefined;
+}
+
+async function isPinnedAdapterAvailable(adapter: {
+  executable: string;
+  args: string[];
+}): Promise<boolean> {
+  if (!adapter.args[0]) return false;
+  try {
+    await access(adapter.executable, constants.X_OK);
+    await access(adapter.args[0], constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function readCommandLine(

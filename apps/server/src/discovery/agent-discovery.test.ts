@@ -133,10 +133,34 @@ describe('AgentDiscoveryService', () => {
         expect.objectContaining({
           candidateId: 'host:opencode',
           state: 'MISSING_DEPENDENCY',
-          adoptable: true,
+          adoptable: false,
+          reasonCode: 'AGENT_DEPENDENCY_MISSING',
         }),
       ]),
     );
+  });
+
+  it('does not offer adoption for a host Agent whose fixed dependency is missing', async () => {
+    const { service, agentService } = createService({
+      runtimes: [hostRuntime()],
+      diagnostics: { codex: { status: 'MISSING' }, opencode: { status: 'MISSING' } },
+    });
+
+    const candidates = await service.list();
+    expect(candidates.filter((candidate) => candidate.targetCandidateId === 'host:local')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          candidateId: 'host:codex',
+          state: 'MISSING_DEPENDENCY',
+          adoptable: false,
+          reasonCode: 'AGENT_DEPENDENCY_MISSING',
+        }),
+      ]),
+    );
+    await expect(service.adopt('host:codex')).rejects.toMatchObject({
+      code: 'AGENT_CANDIDATE_NOT_ADOPTABLE',
+    });
+    expect(agentService.register).not.toHaveBeenCalled();
   });
 
   it('keeps stopped or unsupported container candidates visible but rejects adoption', async () => {

@@ -645,6 +645,26 @@ export function AgentsDiscoveryPage() {
     adoptAgent.error ??
     lifecycle.error ??
     updateDefaults.error;
+  const visibleAgentCandidates = useMemo(
+    () => (agents.data ?? []).filter((candidate) => candidate.agentKind !== 'UNKNOWN'),
+    [agents.data],
+  );
+  const visibleRuntimeCandidates = useMemo(() => {
+    if (!agents.isSuccess) return runtimes.data ?? [];
+    const supportedRuntimeIds = new Set(
+      visibleAgentCandidates.map((candidate) => candidate.targetCandidateId),
+    );
+    return (runtimes.data ?? []).filter(
+      (runtime) =>
+        runtime.kind === 'LOCAL_HOST' ||
+        Boolean(runtime.targetId) ||
+        supportedRuntimeIds.has(runtime.candidateId),
+    );
+  }, [agents.isSuccess, runtimes.data, visibleAgentCandidates]);
+  const hiddenRuntimeCount = Math.max(
+    0,
+    (runtimes.data?.length ?? 0) - visibleRuntimeCandidates.length,
+  );
   return (
     <div className="v06-page">
       <header className="v06-page-header">
@@ -673,11 +693,11 @@ export function AgentsDiscoveryPage() {
         </span>
         <span>
           <strong>
-            {runtimes.data?.filter((runtime) => runtime.state === 'READY').length ?? 0}
+            {visibleRuntimeCandidates.filter((runtime) => runtime.state === 'READY').length}
           </strong>{' '}
           个运行环境可用
         </span>
-        <span className="v06-summary-muted">未识别或需处理的项目会在下方明确标注原因。</span>
+        <span className="v06-summary-muted">需要处理的已识别 Agent 会在下方明确标注原因。</span>
       </div>
       {actionError ? <InlineError error={actionError} /> : null}
 
@@ -686,12 +706,17 @@ export function AgentsDiscoveryPage() {
           title="运行环境"
           description="本机和 Docker 容器会在这里出现；接管只保存身份和允许的工作区映射。"
         />
+        {hiddenRuntimeCount ? (
+          <p className="v06-summary-muted">
+            已隐藏 {hiddenRuntimeCount} 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。
+          </p>
+        ) : null}
         {runtimes.isLoading ? <LoadingState label="正在扫描运行环境" /> : null}
         {runtimes.error ? (
           <ErrorState error={runtimes.error} retry={() => void runtimes.refetch()} />
         ) : null}
         <div className="v06-card-grid">
-          {(runtimes.data ?? []).map((runtime) => (
+          {visibleRuntimeCandidates.map((runtime) => (
             <article className="v06-discovery-card" key={runtime.candidateId}>
               <div className="v06-discovery-card-top">
                 <div className="v06-record-icon">
@@ -774,14 +799,14 @@ export function AgentsDiscoveryPage() {
         {agents.error ? (
           <ErrorState error={agents.error} retry={() => void agents.refetch()} />
         ) : null}
-        {!agents.isLoading && !agents.data?.length ? (
+        {!agents.isLoading && !agents.error && !visibleAgentCandidates.length ? (
           <LegacyEmptyState
-            title="没有发现可用 Agent"
-            description="请先接入本机或 Docker 运行环境，然后重新扫描。"
+            title="没有发现支持的 Agent"
+            description="请先接入本机或 Docker 运行环境，然后重新扫描。未识别的普通容器不会显示在这里。"
           />
         ) : null}
         <div className="v06-record-list">
-          {(agents.data ?? []).map((candidate) => (
+          {visibleAgentCandidates.map((candidate) => (
             <article className="v06-record" key={candidate.candidateId}>
               <div className="v06-record-icon">
                 <Bot size={20} />
@@ -939,6 +964,16 @@ export function AgentsDiscoveryPage() {
 
 function labelAgentCandidateReason(reasonCode: string): string {
   switch (reasonCode) {
+    case 'AUTH_REQUIRED':
+      return '请先完成该 Agent 的登录授权。';
+    case 'AGENT_DEPENDENCY_MISSING':
+      return 'AgentHub 未找到固定依赖，请先安装或重新部署。';
+    case 'AGENT_UNSUPPORTED':
+      return '当前 Agent 版本不在支持范围内。';
+    case 'AGENT_BROKEN':
+      return 'Agent 运行环境异常，请查看诊断信息。';
+    case 'AGENT_PROFILE_NOT_DETECTED':
+      return '容器中没有识别到支持的 Agent。';
     case 'RUNTIME_STOPPED':
       return '请先启动运行环境。';
     case 'REMOTE_NODE_OFFLINE':

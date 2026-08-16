@@ -94,6 +94,7 @@ export class AgentDiscoveryService {
     for (const definition of HOST_AGENT_CATALOG) {
       const diagnostic = recordValue(diagnostics[definition.diagnosticKey]);
       const status = diagnosticStatus(diagnostic);
+      const reasonCode = hostReasonCode(status);
       const existing = registered.find(
         (agent) =>
           agent.targetId === hostTarget?.targetId && agent.agentKind === definition.agentKind,
@@ -108,8 +109,8 @@ export class AgentDiscoveryService {
         adapterKind: definition.adapterKind,
         ...(typeof diagnostic?.version === 'string' ? { detectedVersion: diagnostic.version } : {}),
         ...(existing ? { registeredAgentId: existing.id } : {}),
-        adoptable: !existing,
-        ...(status === 'AUTH_REQUIRED' ? { reasonCode: 'AUTH_REQUIRED' } : {}),
+        adoptable: !existing && isHostCandidateAdoptable(status),
+        ...(reasonCode ? { reasonCode } : {}),
       });
     }
 
@@ -295,6 +296,19 @@ function diagnosticStatus(value: Record<string, unknown> | undefined): AgentCand
     return 'AUTH_REQUIRED';
   }
   return 'INSTALLED';
+}
+
+function isHostCandidateAdoptable(state: AgentCandidateState): boolean {
+  return state === 'READY' || state === 'INSTALLED' || state === 'AUTH_REQUIRED';
+}
+
+function hostReasonCode(state: AgentCandidateState): string | undefined {
+  if (state === 'AUTH_REQUIRED') return 'AUTH_REQUIRED';
+  if (state === 'MISSING_DEPENDENCY') return 'AGENT_DEPENDENCY_MISSING';
+  if (state === 'UNSUPPORTED') return 'AGENT_UNSUPPORTED';
+  if (state === 'BROKEN') return 'AGENT_BROKEN';
+  if (state === 'STOPPED') return 'RUNTIME_STOPPED';
+  return undefined;
 }
 
 function mapRegisteredState(status: string): AgentCandidateState {
