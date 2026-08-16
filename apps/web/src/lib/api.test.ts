@@ -50,4 +50,19 @@ describe('web api error boundary', () => {
       status: 200,
     });
   });
+
+  it('normalizes malformed error envelopes without throwing while reading the code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ error: null }, { status: 500 })),
+    );
+
+    const failure = await api.get('/projects').catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      code: 'HTTP_ERROR',
+      message: '请求失败，请稍后重试。',
+      status: 500,
+    });
+  });
 });

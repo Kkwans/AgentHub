@@ -253,7 +253,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
   if (!response.ok || 'error' in body) {
-    const error = 'error' in body ? body.error : { code: 'HTTP_ERROR', message: '请求失败' };
+    const rawError = 'error' in body ? body.error : undefined;
+    const error =
+      isRecord(rawError) && typeof rawError.code === 'string'
+        ? rawError
+        : { code: 'HTTP_ERROR', message: '请求失败' };
     if (error.code === 'AUTH_REQUIRED') {
       authSession.notifyAuthorizationRequired();
     }
@@ -261,10 +265,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       error.code,
       errorMessages[error.code] ?? '请求失败，请查看设置中的诊断信息。',
       response.status,
-      'details' in error ? error.details : undefined,
+      'details' in error && isRecord(error.details) ? error.details : undefined,
     );
   }
   return body.data;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 export const api = {
