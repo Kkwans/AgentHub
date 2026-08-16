@@ -83,11 +83,14 @@ describe('v0.6 feature boundaries', () => {
   it('keeps warning surfaces symmetric instead of using a one-sided accent bar', () => {
     const designSystem = source('../styles/design-system.css');
     const controls = source('../styles/v3-controls.css');
+    const legacyStyles = source('../styles.css');
     expect(designSystem).not.toContain('inset 3px 0');
     expect(designSystem).toContain('border: 1px solid #f0d3aa');
     expect(designSystem).toContain('box-shadow: var(--shadow-card)');
     expect(controls).toContain('border-radius: var(--radius-card);');
     expect(controls).toContain('box-shadow: var(--shadow-card);');
+    expect(legacyStyles).not.toContain('#5c8df6');
+    expect(legacyStyles).not.toContain('.rt-TextFieldRoot:where(:has(');
   });
 
   it('keeps internal object ids out of ordinary workspace and dashboard copy', () => {
