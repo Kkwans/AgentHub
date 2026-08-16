@@ -103,9 +103,9 @@ export function RemoteNodesPanel() {
     <section className="control-section remote-node-section">
       <div className="section-heading remote-node-heading">
         <div>
-          <span className="section-kicker">Outbound control plane</span>
+          <span className="section-kicker">远程连接</span>
           <h3>Remote Node</h3>
-          <p>Node 主动连接 AgentHub；Central Server 不使用 SSH，也不接收 Agent 登录凭据。</p>
+          <p>Remote Node 会主动连接 AgentHub；Central Server 不使用 SSH，也不接收 Agent 登录凭据。</p>
         </div>
         <Button
           className="remote-node-register-button"
@@ -199,7 +199,7 @@ export function RemoteNodesPanel() {
               value={rootDraft}
               placeholder="例如 /srv/projects/AgentHub"
               description="输入目标 Node 上的绝对目录，按“添加目录”加入授权清单。"
-              error={rootError || undefined}
+              {...(rootError ? { error: rootError } : {})}
               onChange={(event) => {
                 setRootDraft(event.target.value);
                 if (rootError) setRootError('');
@@ -331,7 +331,7 @@ export function RemoteNodesPanel() {
                   <Fingerprint size={14} />
                   <code title={node.fingerprint}>{node.fingerprint}</code>
                 </div>
-                <div className="remote-node-roots-list" aria-label="授权 roots">
+                <div className="remote-node-roots-list" aria-label="授权目录">
                   {node.allowedRootsJson.map((root) => (
                     <code key={root}>{root}</code>
                   ))}
