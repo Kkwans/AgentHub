@@ -286,6 +286,13 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `Docker 容器 N`，内部完整 ID 仍只用于服务端 pinning 和接管校验。新增匿名容器回归测试；目标用户可读字段
   不再泄漏内部标识。Runtime discovery 测试 4/4、全量 Vitest 214 passed / 9 skipped，lint、typecheck 和
   production build 均通过；视觉/TX5Pro 仍按当前环境限制保持未验证。
+- nas.22 已发布为 `agenthub:0.6.0-nas.22`（ARM64，image ID
+  `sha256:2df68a357f33ecc3b8f5b3b20602dd06711e6d5b0916a583a0bbb76f92acf744`，revision `ea32533`），
+  容器 `b6ac554545ee2bb61eacfbd78a3a022d679a4925cace28c3d63a510443e2da70` 最终 `running/healthy`。
+  `/api/v1/health`、授权 capability、根页面、Runtime discovery 展示字段和 Terminal API smoke 均通过；升级前
+  备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T081436Z-pre-nas22/`。仅执行
+  `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
+  Agent 容器；`.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live22/`。
 
 ### 当前进行中
 

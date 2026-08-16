@@ -54,6 +54,7 @@
 | NAS Compose nas.18       | `agenthub:0.6.0-nas.18`，ARM64，revision `e98c65b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面和静态 bundle 文案核验通过                                      |
 | NAS Compose nas.19       | `agenthub:0.6.0-nas.19`，ARM64，revision `a38901b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面、内部码隐藏和受保护容器核验通过                                |
 | NAS Compose nas.21       | `agenthub:0.6.0-nas.21`，ARM64，revision `7a11215`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、node-pty、Terminal API smoke、对象 ID 文案和受保护容器核验通过 |
+| NAS Compose nas.22       | `agenthub:0.6.0-nas.22`，ARM64，revision `ea32533`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、Runtime 展示字段、node-pty、Terminal API smoke 和受保护容器核验通过 |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                           |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755` |
 

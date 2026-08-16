@@ -1,0 +1,37 @@
+{
+  "date": "2026-08-16",
+  "revision": "ea32533",
+  "change": "匿名 Docker Runtime 使用友好展示名，不再把截断 container ID 暴露给普通用户",
+  "image": "agenthub:0.6.0-nas.22",
+  "imageId": "sha256:2df68a357f33ecc3b8f5b3b20602dd06711e6d5b0916a583a0bbb76f92acf744",
+  "containerId": "b6ac554545ee2bb61eacfbd78a3a022d679a4925cace28c3d63a510443e2da70",
+  "architecture": "arm64",
+  "status": "running",
+  "health": "healthy",
+  "endpoint": "192.168.5.110:3210",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T081436Z-pre-nas22/",
+  "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+  "envSha256After": "fad77e6292785494177dd0b361bb69ae64e07142a4e9f375521c5008f8db27f7",
+  "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087",
+  "checks": {
+    "health": "pass",
+    "rootHttp": 200,
+    "terminalCapability": "READY",
+    "remoteNodeTransport": "outbound_websocket",
+    "nodePtySpawn": "function",
+    "terminalApiSmoke": {
+      "open": 201,
+      "input": 200,
+      "resize": 200,
+      "close": 200
+    },
+    "runtimeDiscoveryDisplayFields": "pass",
+    "tmpV05": "absent",
+    "visualGate": "pending"
+  },
+  "protectedContainersUnchanged": true,
+  "composeDown": false,
+  "imagesDeleted": false,
+  "volumesDeleted": false,
+  "userDataDeleted": false
+}
