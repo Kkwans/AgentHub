@@ -330,7 +330,7 @@ export function OverviewPage() {
                     <strong>{project.name}</strong>
                     <code>{project.realRootPath}</code>
                   </div>
-                  <span>{project.repoKind}</span>
+                  <span>{project.repoKind === 'GIT' ? 'Git' : '非 Git'}</span>
                 </Link>
               ))}
               {!!unhealthy.length && (

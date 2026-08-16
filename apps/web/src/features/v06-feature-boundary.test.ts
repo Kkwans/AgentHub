@@ -109,4 +109,10 @@ describe('v0.6 feature boundaries', () => {
     expect(workspace).not.toContain('session.agentId.slice(0, 8)');
     expect(workspace).not.toContain('run.id.slice(0, 8)');
   });
+
+  it('keeps the dashboard Project repository label in presentation copy', () => {
+    const overview = source('../pages/OverviewPage.tsx');
+    expect(overview).not.toContain('<span>{project.repoKind}</span>');
+    expect(overview).toContain("project.repoKind === 'GIT' ? 'Git' : '非 Git'");
+  });
 });
