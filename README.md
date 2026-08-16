@@ -13,7 +13,7 @@ AgentHub 是一个面向普通开发者的 AI Coding Agent 控制平面。v0.6 �
 - Linux（当前目标为 NAS ARM64）
 - 默认开发监听：`127.0.0.1`
 - 当前 NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）；当前镜像为
-  `agenthub:0.6.0-nas.42`（revision `b3d1cac`），容器当前 `running/healthy`；视觉人工验收仍需浏览器通道。
+  `agenthub:0.6.0-nas.43`（revision `4a0a73a`），容器当前 `running/healthy`；视觉人工验收仍需浏览器通道。
 
 ## 普通用户快速开始
 

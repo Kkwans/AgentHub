@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED / FINAL_AUTOMATED_GATE_PASS / COMPOSER_A11Y_NAS33_DEPLOYED / PROMPTOS_PRESENTATION_CODE_READY / PROMPTOS_PRESENTATION_NAS34_DEPLOYED / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED / FOCUS_STYLE_NAS36_DEPLOYED / ORDINARY_AGENT_SURFACE_NAS37_DEPLOYED / DASHBOARD_REPO_KIND_NAS38_DEPLOYED / USER_ERROR_BOUNDARY_NAS39_DEPLOYED / MALFORMED_ENVELOPE_NAS40_DEPLOYED / REALTIME_ENVELOPE_NAS41_DEPLOYED / ERROR_ENVELOPE_NAS42_DEPLOYED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / SESSION_CONFIG_NAS25_DEPLOYED / WORKSPACE_RUN_STATE_NAS26_DEPLOYED / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED / REMOTE_NODE_COPY_NAS31_DEPLOYED / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED / FINAL_AUTOMATED_GATE_PASS / COMPOSER_A11Y_NAS33_DEPLOYED / PROMPTOS_PRESENTATION_CODE_READY / PROMPTOS_PRESENTATION_NAS34_DEPLOYED / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED / FOCUS_STYLE_NAS36_DEPLOYED / ORDINARY_AGENT_SURFACE_NAS37_DEPLOYED / DASHBOARD_REPO_KIND_NAS38_DEPLOYED / USER_ERROR_BOUNDARY_NAS39_DEPLOYED / MALFORMED_ENVELOPE_NAS40_DEPLOYED / REALTIME_ENVELOPE_NAS41_DEPLOYED / ERROR_ENVELOPE_NAS42_DEPLOYED / PROJECT_PICKER_ERROR_RECOVERY_NAS43_DEPLOYED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -93,6 +93,7 @@
 | NAS Compose nas.40       | `agenthub:0.6.0-nas.40`，ARM64，revision `85ea067`，`running/healthy`，`192.168.5.110:3210`；畸形响应边界聚焦测试 4 files/10 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
 | NAS Compose nas.41       | `agenthub:0.6.0-nas.41`，ARM64，revision `4d12f63`，`running/healthy`，`192.168.5.110:3210`；实时消息边界聚焦测试 3 files/9 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
 | NAS Compose nas.42       | `agenthub:0.6.0-nas.42`，ARM64，revision `b3d1cac`，`running/healthy`，`192.168.5.110:3210`；错误信封边界聚焦测试 2 files/8 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
+| NAS Compose nas.43       | `agenthub:0.6.0-nas.43`，ARM64，revision `4a0a73a`，`running/healthy`，`192.168.5.110:3210`；Project PathPicker 错误恢复 focused test 1 file/1 passed、typecheck/lint/build、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                                                                                                                                                                         |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                                                                                                                                                               |
 
@@ -110,7 +111,7 @@ PromptOS Presentation 与 nas.34 发布记录见 [`docs/qa/v06-promptos-presenta
 UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/README.md`](qa/nas/2026-08-16-v06-live35/README.md)。
 焦点样式与 nas.36 发布记录见 [`docs/qa/nas/2026-08-16-v06-live36/README.md`](qa/nas/2026-08-16-v06-live36/README.md)。
 普通 Agent 表面与 nas.37 发布记录见 [`docs/qa/nas/2026-08-16-v06-live37/README.md`](qa/nas/2026-08-16-v06-live37/README.md)。
-概览 Project 仓库类型与 nas.38 发布记录见 [`docs/qa/nas/2026-08-16-v06-live38/README.md`](qa/nas/2026-08-16-v06-live38/README.md)。用户错误边界与 nas.39 发布记录见 [`docs/qa/nas/2026-08-16-v06-live39/README.md`](qa/nas/2026-08-16-v06-live39/README.md)。畸形 API 响应与 nas.40 发布记录见 [`docs/qa/nas/2026-08-16-v06-live40/README.md`](qa/nas/2026-08-16-v06-live40/README.md)。实时消息边界与 nas.41 发布记录见 [`docs/qa/nas/2026-08-16-v06-live41/README.md`](qa/nas/2026-08-16-v06-live41/README.md)。错误信封与 nas.42 发布记录见 [`docs/qa/nas/2026-08-16-v06-live42/README.md`](qa/nas/2026-08-16-v06-live42/README.md)。
+概览 Project 仓库类型与 nas.38 发布记录见 [`docs/qa/nas/2026-08-16-v06-live38/README.md`](qa/nas/2026-08-16-v06-live38/README.md)。用户错误边界与 nas.39 发布记录见 [`docs/qa/nas/2026-08-16-v06-live39/README.md`](qa/nas/2026-08-16-v06-live39/README.md)。畸形 API 响应与 nas.40 发布记录见 [`docs/qa/nas/2026-08-16-v06-live40/README.md`](qa/nas/2026-08-16-v06-live40/README.md)。实时消息边界与 nas.41 发布记录见 [`docs/qa/nas/2026-08-16-v06-live41/README.md`](qa/nas/2026-08-16-v06-live41/README.md)。错误信封与 nas.42 发布记录见 [`docs/qa/nas/2026-08-16-v06-live42/README.md`](qa/nas/2026-08-16-v06-live42/README.md)。Project PathPicker 错误恢复与 nas.43 发布记录见 [`docs/qa/nas/2026-08-16-v06-live43/README.md`](qa/nas/2026-08-16-v06-live43/README.md)。
 
 ## 升级与回滚
 
@@ -295,6 +296,8 @@ UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/RE
   `/volume2/Project/.agenthub/central/deployments/20260816T140805Z-pre-nas41/`；nas.40 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - nas.42 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
   `/volume2/Project/.agenthub/central/deployments/20260816T141924Z-pre-nas42/`；nas.41 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- nas.43 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
+  `/volume2/Project/.agenthub/central/deployments/20260816T1432Z-pre-nas43/`；nas.42 镜像保留，可按单 service 回滚。首次完整构建因 Dockerfile frontend 429 未采用，最终使用 nas.42 overlay 仅覆盖 web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - nas.20 曾因常规镜像覆盖 ARM64 `node-pty` binding 而被 supersede；nas.21 已用 overlay 基于 nas.19 修复，
   nas.20/nas.21 镜像均保留，未删除镜像、卷或用户数据。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。
