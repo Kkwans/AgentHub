@@ -128,7 +128,7 @@ export class AgentDiscoveryService {
             : 'INSTALLED',
         adapterKind: matching.adapterKind,
         ...(existing ? { registeredAgentId: existing.id } : {}),
-        adoptable: Boolean(runtime.targetId) && !existing && runtime.state !== 'UNAVAILABLE',
+        adoptable: Boolean(runtime.targetId) && !existing && runtime.state === 'READY',
         ...(runtime.state === 'STOPPED' ? { reasonCode: 'RUNTIME_STOPPED' } : {}),
       });
     }
@@ -147,6 +147,12 @@ export class AgentDiscoveryService {
       throw new AppError(409, 'AGENT_PROFILE_NOT_DETECTED', '当前容器尚未识别出支持的 Agent');
     }
     if (candidate.registeredAgentId) return this.agents.get(candidate.registeredAgentId);
+    if (!candidate.adoptable) {
+      throw new AppError(409, 'AGENT_CANDIDATE_NOT_ADOPTABLE', '该 Agent 当前不能接入', {
+        state: candidate.state,
+        ...(candidate.reasonCode ? { reasonCode: candidate.reasonCode } : {}),
+      });
+    }
     const targetId =
       candidate.targetId ?? (await this.runtimes.adopt(candidate.targetCandidateId))?.id;
     if (!targetId) throw new AppError(409, 'RUNTIME_NOT_ADOPTED', '请先接管 Runtime');
@@ -193,6 +199,10 @@ function recordValue(value: unknown): Record<string, unknown> | undefined {
 
 function diagnosticStatus(value: Record<string, unknown> | undefined): AgentCandidateState {
   if (!value || value.status === 'MISSING') return 'MISSING_DEPENDENCY';
+  if (value.status === 'BROKEN') return 'BROKEN';
+  if (value.status === 'UNSUPPORTED' || value.status === 'UNSUPPORTED_VERSION')
+    return 'UNSUPPORTED';
+  if (value.status === 'STOPPED') return 'STOPPED';
   const auth = typeof value.auth === 'string' ? value.auth.toLocaleLowerCase() : '';
   if (auth.includes('not logged') || auth.includes('unauthorized') || auth.includes('login')) {
     return 'AUTH_REQUIRED';
@@ -203,7 +213,9 @@ function diagnosticStatus(value: Record<string, unknown> | undefined): AgentCand
 function mapRegisteredState(status: string): AgentCandidateState {
   if (status === 'READY') return 'READY';
   if (status === 'AUTH_REQUIRED') return 'AUTH_REQUIRED';
-  if (status === 'MISSING_DEPENDENCY') return 'MISSING_DEPENDENCY';
+  if (status === 'MISSING' || status === 'MISSING_DEPENDENCY') return 'MISSING_DEPENDENCY';
+  if (status === 'STOPPED') return 'STOPPED';
+  if (status === 'UNSUPPORTED' || status === 'UNSUPPORTED_VERSION') return 'UNSUPPORTED';
   if (status === 'BROKEN') return 'BROKEN';
   return 'INSTALLED';
 }
@@ -211,6 +223,8 @@ function mapRegisteredState(status: string): AgentCandidateState {
 function mapPreflightFailure(error: unknown): AgentCandidateState {
   if (error instanceof AppError) {
     if (error.code.includes('AUTH')) return 'AUTH_REQUIRED';
+    if (error.code === 'DOCKER_CONTAINER_STOPPED' || error.code === 'RUNTIME_STOPPED')
+      return 'STOPPED';
     if (error.code.includes('MISSING') || error.code.includes('COMMAND'))
       return 'MISSING_DEPENDENCY';
   }

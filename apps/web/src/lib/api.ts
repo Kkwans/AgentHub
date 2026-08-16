@@ -91,6 +91,7 @@ const errorMessages: Record<string, string> = {
   RUNTIME_NOT_ADOPTED: '请先接管 Runtime。',
   DOCKER_ENGINE_UNAVAILABLE: 'Docker Engine 当前不可用，请检查 Docker 服务与权限。',
   AGENT_CANDIDATE_NOT_FOUND: 'Agent 候选不存在，请重新扫描。',
+  AGENT_CANDIDATE_NOT_ADOPTABLE: '当前 Agent 不能接入，请先处理运行环境状态。',
   AGENT_PROFILE_NOT_DETECTED: '尚未识别出支持的 Agent。',
   REMOTE_FILESYSTEM_UNSUPPORTED: 'Remote Node 文件浏览将在后续版本开放。',
   FILESYSTEM_ROOT_NOT_FOUND: '文件根目录不存在或当前无权访问。',
