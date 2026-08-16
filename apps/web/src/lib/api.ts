@@ -79,7 +79,8 @@ const errorMessages: Record<string, string> = {
   PRIMARY_BRANCH_CHANGED: 'Project 当前分支已不是登记的 base branch。',
   WORKTREE_BASE_DIVERGED: 'base branch 历史已替换，不能安全合并。',
   WORKTREE_PATH_ESCAPE: 'Worktree 路径超出受管目录，已阻止访问。',
-  REMOTE_WORKTREE_NOT_AVAILABLE: 'Remote Node Worktree 将在下一阶段启用。',
+  REMOTE_WORKTREE_NOT_AVAILABLE:
+    '当前 Remote Node 不支持隔离 Worktree，请改用普通 Session，或在本机 Git Project 中执行隔离任务。',
   REMOTE_NODE_NOT_FOUND: 'Remote Node 不存在。',
   REMOTE_NODE_OFFLINE: 'Remote Node 当前离线，请检查 daemon 与网络连接。',
   REMOTE_NODE_REVOKED: 'Remote Node 设备身份已撤销。',

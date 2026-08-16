@@ -208,7 +208,7 @@ export class SessionService {
       throw new AppError(
         409,
         'REMOTE_WORKTREE_NOT_AVAILABLE',
-        'Remote Node Worktree 将在下一阶段启用',
+        '当前 Remote Node 不支持隔离 Worktree，请改用普通 Session，或在本机 Git Project 中执行隔离任务',
       );
     }
     const cwd = await this.validateManagedWorktreeCwd(managedRoot, input.cwd);

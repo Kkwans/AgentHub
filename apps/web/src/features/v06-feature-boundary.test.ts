@@ -60,6 +60,18 @@ describe('v0.6 feature boundaries', () => {
     expect(promptos).not.toContain('和 priority 查看最终内容');
   });
 
+  it('keeps Remote Node capability limits actionable and version-neutral', () => {
+    const api = source('../lib/api.ts');
+    const sessionService = source('../../../server/src/sessions/session-service.ts');
+    const worktreeService = source('../../../server/src/worktrees/worktree-task-service.ts');
+    const gitService = source('../../../server/src/git/git-service.ts');
+    for (const copy of [api, sessionService, worktreeService, gitService]) {
+      expect(copy).not.toContain('下一阶段启用');
+      expect(copy).not.toContain('v0.2 暂不提供');
+    }
+    expect(api).toContain('请改用普通 Session');
+  });
+
   it('keeps Terminal capability codes out of ordinary-user UI', () => {
     const terminal = source('./workspace/components/TerminalDock.tsx');
     const settings = source('./settings/pages/SettingsPageView.tsx');

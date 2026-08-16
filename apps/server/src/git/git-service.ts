@@ -207,7 +207,11 @@ export class GitService implements GitHeadProbe {
     if (project.repoKind !== 'GIT')
       throw new AppError(409, 'PROJECT_NOT_GIT', 'Project 不是 Git 仓库');
     if (await this.isRemote(project.targetId)) {
-      throw new AppError(409, 'REMOTE_GIT_UNSUPPORTED', 'v0.2 暂不提供 Remote Node Git 控制接口');
+      throw new AppError(
+        409,
+        'REMOTE_GIT_UNSUPPORTED',
+        '当前 Remote Node 不支持 Git 控制，请在 Project 所在设备上完成 Git 操作',
+      );
     }
     return project;
   }
