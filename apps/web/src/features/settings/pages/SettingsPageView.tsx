@@ -25,6 +25,7 @@ import type { AuthStatus } from '../../../components/AccessGate';
 import { PasswordField } from '../../../components/PasswordField';
 import { realtime } from '../../../lib/realtime';
 import { RemoteNodesPanel } from '../../../pages/RemoteNodesPanel';
+import { RuntimeDiscoveryPanel } from '../../agents/components/RuntimeDiscoveryPanel';
 
 export function SettingsPage() {
   const client = useQueryClient();
@@ -94,6 +95,7 @@ export function SettingsPage() {
         title="设置与诊断"
         description="查看服务能力、Remote Node、安全边界和高权限 Docker 风险。凭据只保存引用。"
       />
+      <RuntimeDiscoveryPanel />
       <RemoteNodesPanel />
       <div className="settings-grid">
         <div className="settings-column">

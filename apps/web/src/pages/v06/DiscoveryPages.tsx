@@ -15,13 +15,10 @@ import {
   FormTextArea,
   FormTextField,
   FolderGit2,
-  Play,
   Plus,
   Pencil,
-  RefreshCw,
   SelectField,
   SectionHeader,
-  Settings,
   Badge,
   Bot,
 } from '@agenthub/ui';
@@ -33,7 +30,6 @@ import type {
   ExecutionTargetRecord,
   ProjectCandidateRecord,
   ProjectRecord,
-  RuntimeCandidateRecord,
   WorkspaceRootRecord,
 } from '../../lib/api';
 import { api } from '../../lib/api';
@@ -51,6 +47,7 @@ import {
   InlineError,
   LoadingState,
 } from '../../components/Common';
+import { RuntimeDiscoveryPanel } from '../../features/agents/components/RuntimeDiscoveryPanel';
 
 interface ProjectFormValues {
   name: string;
@@ -588,10 +585,6 @@ function ProjectPreflightSummary({
 
 export function AgentsDiscoveryPage() {
   const client = useQueryClient();
-  const runtimes = useQuery({
-    queryKey: ['discovery-runtimes'],
-    queryFn: () => api.get<RuntimeCandidateRecord[]>('/discovery/runtimes'),
-  });
   const agents = useQuery({
     queryKey: ['discovery-agents'],
     queryFn: () => api.get<AgentCandidateRecord[]>('/discovery/agents'),
@@ -603,38 +596,12 @@ export function AgentsDiscoveryPage() {
   const [defaultsAgent, setDefaultsAgent] = useState<AgentRecord | null>(null);
   const [defaultModel, setDefaultModel] = useState('');
   const [defaultMode, setDefaultMode] = useState('');
-  const rescan = useMutation({
-    mutationFn: () => api.post('/discovery/agents/rescan'),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['discovery-agents'] });
-      void client.invalidateQueries({ queryKey: ['discovery-runtimes'] });
-      void client.invalidateQueries({ queryKey: ['agents'] });
-      void client.invalidateQueries({ queryKey: ['targets'] });
-    },
-  });
-  const adoptRuntime = useMutation({
-    mutationFn: (candidateId: string) =>
-      api.post(`/discovery/runtimes/${encodeURIComponent(candidateId)}/adopt`),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['discovery-runtimes'] });
-      void client.invalidateQueries({ queryKey: ['discovery-agents'] });
-      void client.invalidateQueries({ queryKey: ['targets'] });
-    },
-  });
   const adoptAgent = useMutation({
     mutationFn: (candidateId: string) =>
       api.post(`/discovery/agents/${encodeURIComponent(candidateId)}/adopt`),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['discovery-agents'] });
       void client.invalidateQueries({ queryKey: ['agents'] });
-    },
-  });
-  const lifecycle = useMutation({
-    mutationFn: ({ targetId, action }: { targetId: string; action: 'start' | 'stop' }) =>
-      api.post(`/execution-targets/${targetId}/${action}`),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['discovery-runtimes'] });
-      void client.invalidateQueries({ queryKey: ['targets'] });
     },
   });
   const updateDefaults = useMutation({
@@ -647,31 +614,10 @@ export function AgentsDiscoveryPage() {
   });
 
   const readyAgents = registered.data?.filter((agent) => agent.status === 'READY').length ?? 0;
-  const actionError =
-    rescan.error ??
-    adoptRuntime.error ??
-    adoptAgent.error ??
-    lifecycle.error ??
-    updateDefaults.error;
+  const actionError = adoptAgent.error ?? updateDefaults.error;
   const visibleAgentCandidates = useMemo(
     () => (agents.data ?? []).filter((candidate) => candidate.agentKind !== 'UNKNOWN'),
     [agents.data],
-  );
-  const visibleRuntimeCandidates = useMemo(() => {
-    if (!agents.isSuccess) return runtimes.data ?? [];
-    const supportedRuntimeIds = new Set(
-      visibleAgentCandidates.map((candidate) => candidate.targetCandidateId),
-    );
-    return (runtimes.data ?? []).filter(
-      (runtime) =>
-        runtime.kind === 'LOCAL_HOST' ||
-        Boolean(runtime.targetId) ||
-        supportedRuntimeIds.has(runtime.candidateId),
-    );
-  }, [agents.isSuccess, runtimes.data, visibleAgentCandidates]);
-  const hiddenRuntimeCount = Math.max(
-    0,
-    (runtimes.data?.length ?? 0) - visibleRuntimeCandidates.length,
   );
   return (
     <div className="v06-page">
@@ -684,117 +630,17 @@ export function AgentsDiscoveryPage() {
             Agent。普通流程只需要接入和检查，不需要填写运行命令。
           </p>
         </div>
-        <Button
-          variant="soft"
-          color="gray"
-          onClick={() => rescan.mutate()}
-          disabled={rescan.isPending}
-          loading={rescan.isPending}
-        >
-          <RefreshCw size={16} /> 重新扫描
-        </Button>
       </header>
 
       <div className="v06-summary-strip">
         <span>
           <strong>{readyAgents}</strong> 个 Agent 已就绪
         </span>
-        <span>
-          <strong>
-            {visibleRuntimeCandidates.filter((runtime) => runtime.state === 'READY').length}
-          </strong>{' '}
-          个运行环境可用
-        </span>
         <span className="v06-summary-muted">需要处理的已识别 Agent 会在下方明确标注原因。</span>
       </div>
       {actionError ? <InlineError error={actionError} /> : null}
 
-      <section className="v06-panel">
-        <SectionHeader
-          title="运行环境"
-          description="本机和 Docker 容器会在这里出现；接管只保存身份和允许的工作区映射。"
-        />
-        {hiddenRuntimeCount ? (
-          <p className="v06-summary-muted">
-            已隐藏 {hiddenRuntimeCount} 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。
-          </p>
-        ) : null}
-        {runtimes.isLoading ? <LoadingState label="正在扫描运行环境" /> : null}
-        {runtimes.error ? (
-          <ErrorState error={runtimes.error} retry={() => void runtimes.refetch()} />
-        ) : null}
-        <div className="v06-card-grid">
-          {visibleRuntimeCandidates.map((runtime) => (
-            <article className="v06-discovery-card" key={runtime.candidateId}>
-              <div className="v06-discovery-card-top">
-                <div className="v06-record-icon">
-                  <Settings size={19} />
-                </div>
-                <Badge
-                  color={
-                    runtime.state === 'READY'
-                      ? 'green'
-                      : runtime.state === 'STOPPED'
-                        ? 'orange'
-                        : 'gray'
-                  }
-                >
-                  {labelRuntimeStatus(runtime.state)}
-                </Badge>
-              </div>
-              <h3>{runtime.displayName}</h3>
-              <p>
-                {labelExecutionTargetKind(runtime.kind)}
-                {runtime.image ? ` · ${runtime.image}` : ''}
-              </p>
-              {runtime.statusText ? <small>{runtime.statusText}</small> : null}
-              <div className="v06-discovery-card-actions">
-                {!runtime.targetId && runtime.adoptable ? (
-                  <Button
-                    size="2"
-                    onClick={() => adoptRuntime.mutate(runtime.candidateId)}
-                    loading={adoptRuntime.isPending}
-                  >
-                    接入运行环境
-                  </Button>
-                ) : null}
-                {runtime.targetId && runtime.state === 'STOPPED' ? (
-                  <Button
-                    size="2"
-                    onClick={() =>
-                      lifecycle.mutate({ targetId: runtime.targetId!, action: 'start' })
-                    }
-                    loading={lifecycle.isPending}
-                  >
-                    <Play size={14} /> 启动
-                  </Button>
-                ) : null}
-                {runtime.targetId &&
-                runtime.state === 'READY' &&
-                runtime.kind === 'DOCKER_CONTAINER' ? (
-                  <Button
-                    size="2"
-                    variant="soft"
-                    color="gray"
-                    onClick={() =>
-                      lifecycle.mutate({ targetId: runtime.targetId!, action: 'stop' })
-                    }
-                    loading={lifecycle.isPending}
-                  >
-                    停止
-                  </Button>
-                ) : null}
-                {runtime.targetId ? <span className="v06-connected">已接入</span> : null}
-              </div>
-              {runtime.reasonCode ? (
-                <small className="v06-card-warning">
-                  {labelRuntimeCandidateReason(runtime.reasonCode)}
-                </small>
-              ) : null}
-            </article>
-          ))}
-        </div>
-      </section>
+      <RuntimeDiscoveryPanel />
 
       <section className="v06-panel">
         <SectionHeader
@@ -994,16 +840,5 @@ function labelAgentCandidateReason(reasonCode: string): string {
       return '远程环境的 Agent inventory 无法识别。';
     default:
       return '当前状态需要处理。';
-  }
-}
-
-function labelRuntimeCandidateReason(reasonCode: string): string {
-  switch (reasonCode) {
-    case 'DOCKER_ENGINE_UNAVAILABLE':
-      return 'Docker Engine 不可用，请检查服务权限后重新扫描。';
-    case 'DOCKER_INSPECT_FAILED':
-      return '无法读取 Docker 容器状态，请重新扫描；若仍失败，请检查 Docker Engine 权限。';
-    default:
-      return '当前运行环境需要处理，请重新扫描或查看设置中的诊断信息。';
   }
 }
