@@ -112,71 +112,78 @@ export function RuntimeDiscoveryPanel() {
         />
       ) : null}
       <div className="v06-card-grid">
-        {visibleRuntimeCandidates.map((runtime) => (
-          <article className="v06-discovery-card" key={runtime.candidateId}>
-            <div className="v06-discovery-card-top">
-              <div className="v06-record-icon">
-                <Settings size={19} />
+        {visibleRuntimeCandidates.map((runtime) => {
+          const statusDetail = labelRuntimeStatusDetail(runtime.statusText);
+          return (
+            <article className="v06-discovery-card" key={runtime.candidateId}>
+              <div className="v06-discovery-card-top">
+                <div className="v06-record-icon">
+                  <Settings size={19} />
+                </div>
+                <Badge
+                  color={
+                    runtime.state === 'READY'
+                      ? 'green'
+                      : runtime.state === 'STOPPED'
+                        ? 'orange'
+                        : 'gray'
+                  }
+                >
+                  {labelRuntimeStatus(runtime.state)}
+                </Badge>
               </div>
-              <Badge
-                color={
-                  runtime.state === 'READY'
-                    ? 'green'
-                    : runtime.state === 'STOPPED'
-                      ? 'orange'
-                      : 'gray'
-                }
-              >
-                {labelRuntimeStatus(runtime.state)}
-              </Badge>
-            </div>
-            <h3>{runtime.displayName}</h3>
-            <p>
-              {labelExecutionTargetKind(runtime.kind)}
-              {runtime.image ? ` · ${runtime.image}` : ''}
-            </p>
-            {runtime.statusText ? <small>{runtime.statusText}</small> : null}
-            <div className="v06-discovery-card-actions">
-              {!runtime.targetId && runtime.adoptable ? (
-                <Button
-                  size="2"
-                  onClick={() => adoptRuntime.mutate(runtime.candidateId)}
-                  loading={adoptRuntime.isPending}
-                >
-                  接入运行环境
-                </Button>
+              <h3>{runtime.displayName}</h3>
+              <p>
+                {labelExecutionTargetKind(runtime.kind)}
+                {runtime.image ? ` · ${runtime.image}` : ''}
+              </p>
+              {statusDetail ? <small>{statusDetail}</small> : null}
+              <div className="v06-discovery-card-actions">
+                {!runtime.targetId && runtime.adoptable ? (
+                  <Button
+                    size="2"
+                    onClick={() => adoptRuntime.mutate(runtime.candidateId)}
+                    loading={adoptRuntime.isPending}
+                  >
+                    接入运行环境
+                  </Button>
+                ) : null}
+                {runtime.targetId && runtime.state === 'STOPPED' ? (
+                  <Button
+                    size="2"
+                    onClick={() =>
+                      lifecycle.mutate({ targetId: runtime.targetId!, action: 'start' })
+                    }
+                    loading={lifecycle.isPending}
+                  >
+                    <Play size={14} /> 启动
+                  </Button>
+                ) : null}
+                {runtime.targetId &&
+                runtime.state === 'READY' &&
+                runtime.kind === 'DOCKER_CONTAINER' ? (
+                  <Button
+                    size="2"
+                    variant="soft"
+                    color="gray"
+                    onClick={() =>
+                      lifecycle.mutate({ targetId: runtime.targetId!, action: 'stop' })
+                    }
+                    loading={lifecycle.isPending}
+                  >
+                    停止
+                  </Button>
+                ) : null}
+                {runtime.targetId ? <span className="v06-connected">已接入</span> : null}
+              </div>
+              {runtime.reasonCode ? (
+                <small className="v06-card-warning">
+                  {labelRuntimeCandidateReason(runtime.reasonCode)}
+                </small>
               ) : null}
-              {runtime.targetId && runtime.state === 'STOPPED' ? (
-                <Button
-                  size="2"
-                  onClick={() => lifecycle.mutate({ targetId: runtime.targetId!, action: 'start' })}
-                  loading={lifecycle.isPending}
-                >
-                  <Play size={14} /> 启动
-                </Button>
-              ) : null}
-              {runtime.targetId &&
-              runtime.state === 'READY' &&
-              runtime.kind === 'DOCKER_CONTAINER' ? (
-                <Button
-                  size="2"
-                  variant="soft"
-                  color="gray"
-                  onClick={() => lifecycle.mutate({ targetId: runtime.targetId!, action: 'stop' })}
-                  loading={lifecycle.isPending}
-                >
-                  停止
-                </Button>
-              ) : null}
-              {runtime.targetId ? <span className="v06-connected">已接入</span> : null}
-            </div>
-            {runtime.reasonCode ? (
-              <small className="v06-card-warning">
-                {labelRuntimeCandidateReason(runtime.reasonCode)}
-              </small>
-            ) : null}
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -190,5 +197,25 @@ function labelRuntimeCandidateReason(reasonCode: string): string {
       return '无法读取 Docker 容器状态，请重新扫描；若仍失败，请检查 Docker Engine 权限。';
     default:
       return '当前运行环境需要处理，请重新扫描或查看设置中的诊断信息。';
+  }
+}
+
+function labelRuntimeStatusDetail(statusText?: string): string | undefined {
+  switch (statusText?.trim().toLowerCase()) {
+    case 'running':
+      return '容器正在运行';
+    case 'created':
+      return '容器已创建';
+    case 'restarting':
+      return '容器正在重启';
+    case 'paused':
+      return '容器已暂停';
+    case 'exited':
+    case 'dead':
+      return '容器已停止';
+    case 'removing':
+      return '容器正在移除';
+    default:
+      return undefined;
   }
 }
