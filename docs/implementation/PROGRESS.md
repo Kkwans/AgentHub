@@ -296,6 +296,13 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T081436Z-pre-nas22/`。仅执行
   `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
   Agent 容器；`.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live22/`。
+- nas.23 已发布为 `agenthub:0.6.0-nas.23`（ARM64，image ID
+  `sha256:dd6700e0b769d345fa90c80fc9d09326ca557becc06b9cfbd1805e850cdff99b`，revision `d17611d`），
+  容器 `639b3ba62780b813328bde82ba0ec83b37a677cc18d5267a4428419031858076` 最终 `running/healthy`。
+  `/api/v1/health`、授权 capability、根页面、Runtime discovery 展示字段和 Terminal API smoke 均通过；升级前
+  备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T082920Z-pre-nas23/`。仅执行
+  `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他
+  Agent 容器；`.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live23/`。
 
 ### 当前进行中
 
