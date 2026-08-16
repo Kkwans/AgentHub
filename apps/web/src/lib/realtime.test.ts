@@ -36,6 +36,10 @@ class FakeWebSocket extends EventTarget {
     this.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(data) }));
   }
 
+  receiveRaw(data: string): void {
+    this.dispatchEvent(new MessageEvent('message', { data }));
+  }
+
   close(): void {
     this.readyState = FakeWebSocket.CLOSED;
     this.dispatchEvent(new Event('close'));
@@ -110,6 +114,22 @@ describe('RealtimeClient cursor 补流', () => {
       topics: ['session:session-1'],
       afterSeq: { 'session:session-1': 3 },
     });
+    client.disconnect();
+  });
+
+  it('忽略畸形 WebSocket frame，不让原生解析异常打断实时订阅', () => {
+    const client = new RealtimeClient();
+    const listener = vi.fn();
+    client.subscribe('session:session-1', listener);
+    const socket = FakeWebSocket.instances[0]!;
+    socket.open();
+
+    expect(() => socket.receiveRaw('{not-json')).not.toThrow();
+    socket.receive({ type: 'event', topic: 'session:session-1', event: 'not-an-object' });
+    expect(listener).not.toHaveBeenCalled();
+
+    socket.receive({ type: 'event', topic: 'session:session-1', event: { seq: 1 } });
+    expect(listener).toHaveBeenCalledTimes(1);
     client.disconnect();
   });
 });

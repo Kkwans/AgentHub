@@ -79,12 +79,21 @@ export class RealtimeClient {
       this.sendSubscription([...this.listeners.keys()]);
     });
     socket.addEventListener('message', (message) => {
-      const decoded = JSON.parse(String(message.data)) as {
-        type: string;
-        topic?: string;
-        event?: Record<string, unknown>;
-      };
-      if (decoded.type !== 'event' || !decoded.topic || !decoded.event) return;
+      let decoded: unknown;
+      try {
+        decoded = JSON.parse(String(message.data));
+      } catch {
+        // A malformed frame must not escape the event handler and break the
+        // rest of the UI. The server-side diagnostic log remains authoritative.
+        return;
+      }
+      if (
+        !isRecord(decoded) ||
+        decoded.type !== 'event' ||
+        typeof decoded.topic !== 'string' ||
+        !isRecord(decoded.event)
+      )
+        return;
       const seq = decoded.event.seq;
       if (typeof seq === 'number' && Number.isSafeInteger(seq) && seq >= 0) {
         const cursor = this.cursors.get(decoded.topic) ?? 0;
@@ -124,6 +133,10 @@ export class RealtimeClient {
   private emitState(state: '连接中' | '已连接' | '已断开'): void {
     for (const listener of this.stateListeners) listener(state);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 export const realtime = new RealtimeClient();
