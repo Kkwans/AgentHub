@@ -16,6 +16,11 @@ LABEL org.opencontainers.image.title="AgentHub" \
 
 WORKDIR /opt/agenthub
 
+# COPY merges directories. Remove the previous build artifacts first so a
+# rolling overlay cannot leave stale hashed assets or server bundles behind.
+RUN rm -rf /opt/agenthub/apps/server/dist /opt/agenthub/apps/web/dist \
+    && mkdir -p /opt/agenthub/apps/server/dist /opt/agenthub/apps/web/dist
+
 COPY apps/server/dist /opt/agenthub/apps/server/dist
 COPY apps/web/dist /opt/agenthub/apps/web/dist
 
