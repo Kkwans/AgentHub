@@ -39,6 +39,7 @@ import {
   StatusBadge,
 } from '../../../components/Common';
 import { realtime } from '../../../lib/realtime';
+import { worktreeErrorCopy } from '../../../presentation/domain-labels';
 
 export function TasksPage() {
   const client = useQueryClient();
@@ -660,9 +661,7 @@ export function TasksPage() {
                         )}
                         {task.branch && <code>{task.branch}</code>}
                         {execution && <ExecutionRail execution={execution} compact />}
-                        {execution?.errorMessage && (
-                          <span className="worktree-card-error">{execution.errorMessage}</span>
-                        )}
+                        {execution && <WorktreeErrorNotice execution={execution} compact />}
                         {task.status === 'READY' && (
                           <label className="task-agent-select">
                             Agent
@@ -1108,6 +1107,45 @@ function TaskReviewPanel({
   );
 }
 
+function WorktreeErrorNotice({
+  execution,
+  compact = false,
+}: {
+  execution: WorktreeExecutionRecord;
+  compact?: boolean;
+}) {
+  if (!execution.errorCode && !execution.errorMessage) return null;
+  const copy = worktreeErrorCopy(execution.errorCode);
+  return (
+    <div className={`worktree-gate-message danger${compact ? ' compact' : ''}`} role="alert">
+      <ShieldAlert size={compact ? 14 : 16} />
+      <div>
+        <strong>{copy.title}</strong>
+        <span>{copy.description}</span>
+        <details>
+          <summary>显示诊断信息</summary>
+          <dl>
+            {execution.errorCode && (
+              <div>
+                <dt>错误码</dt>
+                <dd>
+                  <code>{execution.errorCode}</code>
+                </dd>
+              </div>
+            )}
+            {execution.errorMessage && (
+              <div>
+                <dt>原始信息</dt>
+                <dd>{execution.errorMessage}</dd>
+              </div>
+            )}
+          </dl>
+        </details>
+      </div>
+    </div>
+  );
+}
+
 const executionStages: Array<{
   label: string;
   statuses: WorktreeExecutionRecord['status'][];
@@ -1229,15 +1267,7 @@ function WorktreeReviewPanel({
             </div>
           </div>
 
-          {execution.errorMessage && (
-            <div className="worktree-gate-message danger">
-              <ShieldAlert size={16} />
-              <div>
-                <strong>{execution.errorCode || '执行受阻'}</strong>
-                <span>{execution.errorMessage}</span>
-              </div>
-            </div>
-          )}
+          <WorktreeErrorNotice execution={execution} />
 
           {loading ? (
             <LoadingState label="正在读取 Worktree status 与 Diff" />

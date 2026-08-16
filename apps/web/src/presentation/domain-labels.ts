@@ -199,6 +199,69 @@ export const WORKTREE_STATUS_LABELS = {
   CANCELED: '已取消',
 } as const;
 
+const WORKTREE_ERROR_COPY: Record<string, { title: string; description: string }> = {
+  WORKTREE_MERGE_CONFLICT: {
+    title: '合并存在冲突',
+    description: '任务分支与 base branch 有冲突，请处理冲突后再合并。',
+  },
+  PRIMARY_WORKTREE_DIRTY: {
+    title: '主工作区有未提交变更',
+    description: '为保护现有修改，系统已暂停合并。请先处理 Project 主工作区。',
+  },
+  WORKTREE_BASE_DIVERGED: {
+    title: 'base branch 已变化',
+    description: '任务开始后 base branch 发生变化，请重新检查差异再决定。',
+  },
+  WORKTREE_IDENTITY_MISMATCH: {
+    title: 'Worktree 身份已变化',
+    description: '当前隔离工作区与登记信息不一致，请重新创建后再继续。',
+  },
+  WORKTREE_PATH_ESCAPE: {
+    title: 'Worktree 路径不安全',
+    description: '目标路径超出受管目录，系统已阻止继续操作。',
+  },
+  WORKTREE_PATH_EXISTS: {
+    title: 'Worktree 路径已存在',
+    description: '请刷新任务状态，或选择重新创建隔离执行。',
+  },
+  WORKTREE_TASK_BRANCH_EXISTS: {
+    title: '任务分支已存在',
+    description: '请刷新任务状态，确认是否已有同一任务的隔离执行。',
+  },
+  WORKTREE_NOT_READY: {
+    title: 'Worktree 尚未准备好',
+    description: '隔离工作区仍在准备中，请稍后重试。',
+  },
+  WORKTREE_EXECUTION_BUSY: {
+    title: '隔离执行正在进行',
+    description: '当前操作还没有完成，请等待状态更新后再继续。',
+  },
+  WORKTREE_MERGE_FAILED: {
+    title: '合并未完成',
+    description: '系统已尝试保护主工作区，请查看 Git 状态后再决定下一步。',
+  },
+  WORKTREE_COMMIT_FAILED: {
+    title: '受管提交未完成',
+    description: '隔离变更没有创建受管 commit，请检查 Git 配置后重试。',
+  },
+  WORKTREE_STAGE_FAILED: {
+    title: '变更暂存未完成',
+    description: '系统没有把隔离变更加入待提交列表，请刷新 Diff 后重试。',
+  },
+  WORKTREE_STAGE_CHECK_FAILED: {
+    title: '暂存状态需要复核',
+    description: '暂存结果无法确认，请刷新隔离执行的 Git 现场。',
+  },
+  WORKTREE_DIFF_FAILED: {
+    title: 'Diff 读取失败',
+    description: '无法读取当前隔离变更，请刷新后重试。',
+  },
+  WORKTREE_EXECUTION_FAILED: {
+    title: '隔离执行失败',
+    description: 'Agent 没有完成这次隔离执行，请查看 Run 和 Git 证据。',
+  },
+};
+
 type LabelMap = Record<string, string>;
 
 function labelFrom(map: LabelMap, value: string | null | undefined, fallback = '状态待确认') {
@@ -299,6 +362,15 @@ export function labelApprovalStatus(value: string | null | undefined) {
 
 export function labelWorktreeStatus(value: string | null | undefined) {
   return labelFrom(WORKTREE_STATUS_LABELS, value);
+}
+
+export function worktreeErrorCopy(value: string | null | undefined) {
+  return (
+    WORKTREE_ERROR_COPY[value ?? ''] ?? {
+      title: '隔离执行受阻',
+      description: '当前隔离执行没有完成，请打开诊断信息后处理。',
+    }
+  );
 }
 
 export const RAW_ENUM_ALLOWLIST_FOR_DEBUG = [
