@@ -1,0 +1,51 @@
+{
+  "date": "2026-08-16",
+  "host": "DH4300Plus",
+  "architecture": "aarch64",
+  "compose": "/volume2/DockerProject/agenthub/docker-compose.yml",
+  "dockerProject": "agenthub",
+  "service": "agenthub",
+  "port": "192.168.5.110:3210",
+  "image": "agenthub:0.6.0-nas.26",
+  "baseImage": "agenthub:0.6.0-nas.25",
+  "imageId": "sha256:5b044df0c7a49584ae31b828ec6ca781daf7ae6cf6ec6eb73a03509d4c8df3d0",
+  "revision": "939d3cc",
+  "containerId": "ebf9032ccf010a7b5d4be404dce71db7aa52e52d0745239a4e1e3367d8a00d47",
+  "status": "running",
+  "health": "healthy",
+  "healthApi": {
+    "http": 200,
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true
+  },
+  "rootHttp": 200,
+  "rootLanguage": "zh-CN",
+  "staticAssets": ["run-state-banner", "Workspace run-state copy"],
+  "capability": {
+    "terminal": { "available": true, "code": "READY", "platform": "linux", "arch": "arm64" },
+    "remoteNode": { "available": true, "transport": "outbound_websocket" }
+  },
+  "nodePty": "READY",
+  "terminalSmoke": { "open": 201, "input": 200, "resize": 200, "close": 200 },
+  "protectedContainers": "unchanged",
+  "rollbackImage": "agenthub:0.6.0-nas.25",
+  "tmpV05": "absent",
+  "automated": {
+    "vitest": { "filesPassed": 51, "liveFilesSkipped": 4, "passed": 219, "skipped": 9 },
+    "lint": "passed",
+    "typecheck": "passed",
+    "build": { "status": "passed", "webModulesTransformed": 1716 },
+    "playwright": { "passed": 24, "visualGate": "fixture_only" }
+  },
+  "composeDown": false,
+  "deletedImages": false,
+  "deletedVolumes": false,
+  "deletedUserData": false,
+  "visualGate": "PENDING_NO_AUTHORIZED_BROWSER",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T100058Z-pre-nas26/",
+  "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+  "envSha256": "c8744e55c51f56a6309c44d30c3865090a363ce3139336feb970d1581fa2028c",
+  "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087"
+}
