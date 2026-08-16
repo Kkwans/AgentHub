@@ -330,8 +330,17 @@ export function ProjectsDiscoveryPage() {
           />
           <PathPicker
             roots={roots.data ?? []}
+            rootsLoading={roots.isLoading}
+            rootsError={roots.error}
+            retryRoots={() => void roots.refetch()}
             listing={listing.data}
+            listingLoading={listing.isLoading}
+            listingError={listing.error}
+            retryListing={() => void listing.refetch()}
             candidates={candidates.data ?? []}
+            candidatesLoading={candidates.isLoading}
+            candidatesError={candidates.error}
+            retryCandidates={() => void candidates.refetch()}
             selectedRoot={selectedRoot}
             selectedPath={selectedPath}
             onRootChange={(root) => {
@@ -435,16 +444,34 @@ export function ProjectsDiscoveryPage() {
 
 function PathPicker({
   roots,
+  rootsLoading,
+  rootsError,
+  retryRoots,
   listing,
+  listingLoading,
+  listingError,
+  retryListing,
   candidates,
+  candidatesLoading,
+  candidatesError,
+  retryCandidates,
   selectedRoot,
   selectedPath,
   onRootChange,
   onPathChange,
 }: {
   roots: WorkspaceRootRecord[];
+  rootsLoading: boolean;
+  rootsError: Error | null;
+  retryRoots: () => void;
   listing: DirectoryListingRecord | undefined;
+  listingLoading: boolean;
+  listingError: Error | null;
+  retryListing: () => void;
   candidates: ProjectCandidateRecord[];
+  candidatesLoading: boolean;
+  candidatesError: Error | null;
+  retryCandidates: () => void;
   selectedRoot: WorkspaceRootRecord | undefined;
   selectedPath: string;
   onRootChange: (root: WorkspaceRootRecord) => void;
@@ -467,7 +494,18 @@ function PathPicker({
           </Badge>
         ) : null}
       </div>
-      {roots.length ? (
+      {rootsError ? (
+        <div className="v06-picker-state">
+          <InlineError error={rootsError} title="目录范围读取失败" />
+          <Button type="button" size="2" variant="soft" color="gray" onClick={retryRoots}>
+            重新读取目录
+          </Button>
+        </div>
+      ) : rootsLoading ? (
+        <div className="v06-inline-state" role="status" aria-live="polite">
+          正在读取可用目录…
+        </div>
+      ) : roots.length ? (
         <SelectField
           label="目录范围"
           id="v06-project-root"
@@ -488,7 +526,7 @@ function PathPicker({
           }}
         />
       ) : (
-        <div className="v06-inline-state">正在读取可用目录…</div>
+        <div className="v06-inline-state">当前运行环境没有可用目录。</div>
       )}
       <div className="v06-picker-current">
         <code>{selectedPath || '请选择目录'}</code>
@@ -503,7 +541,18 @@ function PathPicker({
           </Button>
         ) : null}
       </div>
-      {listing ? (
+      {listingError ? (
+        <div className="v06-picker-state">
+          <InlineError error={listingError} title="目录内容读取失败" />
+          <Button type="button" size="2" variant="soft" color="gray" onClick={retryListing}>
+            重新读取当前目录
+          </Button>
+        </div>
+      ) : listingLoading ? (
+        <div className="v06-inline-state" role="status" aria-live="polite">
+          正在读取当前目录…
+        </div>
+      ) : listing ? (
         <div className="v06-directory-list">
           {listing.entries
             .filter((entry) => entry.type === 'DIRECTORY' && entry.accessible)
@@ -519,7 +568,16 @@ function PathPicker({
       ) : null}
       <div className="v06-project-candidates">
         <span className="v06-subheading">检测到的工程</span>
-        {candidates.length ? (
+        {candidatesError ? (
+          <div className="v06-picker-state">
+            <InlineError error={candidatesError} title="工程扫描失败" />
+            <Button type="button" size="2" variant="soft" color="gray" onClick={retryCandidates}>
+              重新扫描工程
+            </Button>
+          </div>
+        ) : candidatesLoading ? (
+          <span role="status" aria-live="polite">正在扫描当前目录…</span>
+        ) : candidates.length ? (
           candidates.slice(0, 8).map((candidate) => (
             <button
               type="button"

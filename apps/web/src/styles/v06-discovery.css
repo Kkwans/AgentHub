@@ -373,6 +373,12 @@
   font-size: 12px;
 }
 
+.v06-picker-state {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
 @media (max-width: 760px) {
   .v06-page {
     padding: 24px 16px 40px;
