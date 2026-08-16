@@ -216,7 +216,7 @@ test('Remote Node 管理在当前 viewport 无水平溢出', async ({ page }) =>
   await expect(page.getByText('/srv/projects/AgentHub')).toBeVisible();
   await expect(page.getByText('Codex')).toBeVisible();
   await page.getByRole('button', { name: '生成一次性注册码' }).click();
-  await expect(page.getByRole('textbox', { name: '授权 roots' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '授权目录' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
