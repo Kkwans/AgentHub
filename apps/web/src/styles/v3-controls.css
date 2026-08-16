@@ -1007,6 +1007,82 @@
   border-radius: 6px;
 }
 
+.remote-node-roots-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 10px;
+  align-items: end;
+}
+
+.remote-node-roots-editor > .ah-field {
+  min-width: 0;
+  margin: 0;
+}
+
+.remote-node-roots-editor > .rt-Button {
+  min-height: 36px;
+}
+
+.remote-node-root-chips {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.remote-node-root-chip {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 6px 5px 9px;
+  color: var(--app-graphite);
+  background: #f5f7fa;
+  border: 1px solid var(--app-line);
+  border-radius: 999px;
+}
+
+.remote-node-root-chip code {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-node-root-remove {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--app-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  place-items: center;
+  cursor: pointer;
+}
+
+.remote-node-root-remove:hover {
+  color: var(--app-graphite);
+  background: #e8edf3;
+}
+
+.remote-node-root-remove:focus-visible {
+  outline: 2px solid var(--focus-control);
+  outline-offset: 1px;
+}
+
+.remote-node-root-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 10px;
+}
+
 .remote-node-copy-row code,
 .remote-node-command pre {
   color: #34363b;
@@ -1115,6 +1191,14 @@
   .form-grid,
   .remote-node-registration {
     grid-template-columns: 1fr;
+  }
+
+  .remote-node-roots-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .remote-node-roots-editor > .rt-Button {
+    width: 100%;
   }
 
   .form-grid .span-two {

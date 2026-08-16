@@ -1111,9 +1111,11 @@ describe('App', () => {
     fireEvent.change(screen.getByLabelText('Node 名称'), {
       target: { value: 'TX5Pro 开发节点' },
     });
-    fireEvent.change(screen.getByRole('textbox', { name: '授权 roots' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: '授权目录' }), {
       target: { value: '/srv/projects/AgentHub' },
     });
+    fireEvent.click(screen.getByRole('button', { name: '添加目录' }));
+    expect(screen.getByLabelText('已添加的授权目录')).toHaveTextContent('/srv/projects/AgentHub');
     fireEvent.click(screen.getByRole('button', { name: '生成注册码' }));
 
     expect(await screen.findByText('注册码只显示这一次')).toBeInTheDocument();

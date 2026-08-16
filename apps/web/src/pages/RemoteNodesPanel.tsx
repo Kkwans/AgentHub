@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import {
   AlertDialog,
   Button,
@@ -6,14 +7,15 @@ import {
   Flex,
   Fingerprint,
   FormDialog,
-  FormTextArea,
   FormTextField,
   KeyRound,
   Network,
+  Plus,
   RefreshCw,
   Server,
   SelectField,
   ShieldAlert,
+  X,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -41,6 +43,9 @@ export function RemoteNodesPanel() {
   const [revokeCandidate, setRevokeCandidate] = useState<RemoteNodeRecord>();
   const [copied, setCopied] = useState<'token' | 'command'>();
   const [expiresInMinutes, setExpiresInMinutes] = useState('15');
+  const [allowedRoots, setAllowedRoots] = useState<string[]>([]);
+  const [rootDraft, setRootDraft] = useState('');
+  const [rootError, setRootError] = useState('');
   const nodes = useQuery({
     queryKey: ['remote-nodes'],
     queryFn: () => api.get<RemoteNodeRecord[]>('/remote-nodes'),
@@ -105,11 +110,14 @@ export function RemoteNodesPanel() {
         <Button
           className="remote-node-register-button"
           onClick={() => {
-            setRegistrationOpen((open) => !open);
-            setRegistration(undefined);
-            setExpiresInMinutes('15');
-          }}
-        >
+          setRegistrationOpen((open) => !open);
+          setRegistration(undefined);
+          setExpiresInMinutes('15');
+          setAllowedRoots([]);
+          setRootDraft('');
+          setRootError('');
+        }}
+      >
           <KeyRound size={15} /> 生成一次性注册码
         </Button>
       </div>
@@ -120,10 +128,13 @@ export function RemoteNodesPanel() {
           setRegistrationOpen(open);
           if (!open) {
             createRegistration.reset();
+            setAllowedRoots([]);
+            setRootDraft('');
+            setRootError('');
           }
         }}
         title="授权一台新 Node"
-        description="每行一个绝对路径。只授权 Agent 实际需要访问的 Project 根目录。注册码只显示一次。"
+        description="先添加目标 Node 上的项目目录，再生成一次性注册码。只授权 Agent 实际需要访问的目录。"
         footer={
           <>
             <Button
@@ -151,13 +162,13 @@ export function RemoteNodesPanel() {
           onSubmit={(event) => {
             event.preventDefault();
             const values = new FormData(event.currentTarget);
-            const allowedRoots = String(values.get('allowedRoots') ?? '')
-              .split(/\r?\n/)
-              .map((root) => root.trim())
-              .filter(Boolean);
+            if (!allowedRoots.length) {
+              setRootError('至少添加一个授权目录。');
+              return;
+            }
             createRegistration.mutate({
               name: String(values.get('name') ?? '').trim(),
-              allowedRoots: [...new Set(allowedRoots)],
+              allowedRoots,
               expiresInMinutes: Number(expiresInMinutes),
             });
           }}
@@ -181,15 +192,63 @@ export function RemoteNodesPanel() {
             ]}
             onValueChange={setExpiresInMinutes}
           />
-          <FormTextArea
-            label="授权 roots"
-            id="remote-node-roots"
-            name="allowedRoots"
-            required
-            placeholder={'/srv/projects/AgentHub\n/volume2/Project/example'}
-            rows={4}
-            description="仅允许浏览和执行这些根目录内的 Project。"
-          />
+          <div className="remote-node-roots-editor">
+            <FormTextField
+              label="授权目录"
+              id="remote-node-root-draft"
+              value={rootDraft}
+              placeholder="例如 /srv/projects/AgentHub"
+              description="输入目标 Node 上的绝对目录，按“添加目录”加入授权清单。"
+              error={rootError || undefined}
+              onChange={(event) => {
+                setRootDraft(event.target.value);
+                if (rootError) setRootError('');
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                addAllowedRoot(rootDraft, allowedRoots, setAllowedRoots, setRootDraft, setRootError);
+              }}
+            />
+            <Button
+              type="button"
+              color="gray"
+              variant="soft"
+              onClick={() =>
+                addAllowedRoot(
+                  rootDraft,
+                  allowedRoots,
+                  setAllowedRoots,
+                  setRootDraft,
+                  setRootError,
+                )
+              }
+            >
+              <Plus size={14} /> 添加目录
+            </Button>
+            {allowedRoots.length ? (
+              <div className="remote-node-root-chips" aria-label="已添加的授权目录">
+                {allowedRoots.map((root) => (
+                  <span className="remote-node-root-chip" key={root}>
+                    <code title={root}>{root}</code>
+                    <button
+                      type="button"
+                      className="remote-node-root-remove"
+                      aria-label={`移除授权目录 ${root}`}
+                      onClick={() => {
+                        setAllowedRoots((current) => current.filter((item) => item !== root));
+                        setRootError('');
+                      }}
+                    >
+                      <X size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="remote-node-root-empty">尚未添加目录，注册码不会授权任何文件。</p>
+            )}
+          </div>
           {createRegistration.error ? (
             <p className="v06-form-error">{createRegistration.error.message}</p>
           ) : null}
@@ -360,6 +419,39 @@ export function RemoteNodesPanel() {
       </AlertDialog.Root>
     </section>
   );
+}
+
+function addAllowedRoot(
+  draft: string,
+  current: string[],
+  setRoots: Dispatch<SetStateAction<string[]>>,
+  setDraft: Dispatch<SetStateAction<string>>,
+  setError: Dispatch<SetStateAction<string>>,
+): void {
+  const root = draft.trim();
+  if (!root) {
+    setError('请输入要授权的目录。');
+    return;
+  }
+  if (!isAbsoluteNodePath(root)) {
+    setError('请输入目标 Node 上的绝对目录，例如 /srv/projects/AgentHub。');
+    return;
+  }
+  if (current.includes(root)) {
+    setError('这个目录已经添加。');
+    return;
+  }
+  if (current.length >= 32) {
+    setError('最多添加 32 个授权目录。');
+    return;
+  }
+  setRoots((items) => [...items, root]);
+  setDraft('');
+  setError('');
+}
+
+function isAbsoluteNodePath(value: string): boolean {
+  return value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value) || value.startsWith('\\\\');
 }
 
 function RemoteNodeDiagnosticsView({
