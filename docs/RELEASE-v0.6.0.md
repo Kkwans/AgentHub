@@ -64,8 +64,8 @@
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                             |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                   |
 
-完整 NAS 基线记录见 [`docs/qa/nas/2026-08-16-v06-live16/README.md`](qa/nas/2026-08-16-v06-live16/README.md)；最新 nas.18 记录见
-[`docs/qa/nas/2026-08-16-v06-live18/README.md`](qa/nas/2026-08-16-v06-live18/README.md)。对象 ID 文案和 nas.21
+完整 NAS 基线记录见 [`docs/qa/nas/2026-08-16-v06-live16/README.md`](qa/nas/2026-08-16-v06-live16/README.md)；最新 nas.24
+Runtime 设置入口记录见 [`docs/qa/nas/2026-08-16-v06-live24/README.md`](qa/nas/2026-08-16-v06-live24/README.md)。对象 ID 文案和 nas.21
 Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](qa/nas/2026-08-16-v06-live21/README.md)。
 
 ## 升级与回滚
