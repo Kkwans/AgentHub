@@ -42,6 +42,8 @@ import {
   labelAgentEventType,
   labelPromptBindingSlot,
   labelPromptBindingTarget,
+  resolveWorkspaceRunState,
+  WORKSPACE_RUN_STATE_COPY,
 } from '../../../presentation/domain-labels';
 
 type InspectorTab = 'files' | 'diff' | 'git' | 'run';
@@ -100,12 +102,14 @@ export function Conversation({
   events,
   approvals,
   activeRun,
+  latestRunStatus,
 }: {
   session: SessionRecord;
   messages: QueryState<MessageRecord[]>;
   events: QueryState<EventRecord[]>;
   approvals: QueryState<ApprovalRecord[]>;
   activeRun: RunRecord | undefined;
+  latestRunStatus?: string | undefined;
 }) {
   const client = useQueryClient();
   const [approvalFeedback, setApprovalFeedback] = useState<string>();
@@ -157,6 +161,11 @@ export function Conversation({
         aria-live="polite"
         aria-relevant="additions text"
       >
+        <RunStateBanner
+          sessionStatus={session.status}
+          activeRunStatus={activeRun?.status}
+          latestRunStatus={latestRunStatus}
+        />
         {approvals.isLoading && <LoadingState label="正在读取 Approval" />}
         {approvals.error && (
           <ErrorState error={approvals.error} retry={() => approvals.refetch()} />
@@ -346,6 +355,38 @@ export function Conversation({
         })}
       </div>
     </div>
+  );
+}
+
+export function RunStateBanner({
+  sessionStatus,
+  activeRunStatus,
+  latestRunStatus,
+}: {
+  sessionStatus: string | null | undefined;
+  activeRunStatus?: string | null | undefined;
+  latestRunStatus?: string | null | undefined;
+}) {
+  const state = resolveWorkspaceRunState(sessionStatus, activeRunStatus, latestRunStatus);
+  const copy = WORKSPACE_RUN_STATE_COPY[state];
+  const showLink = state === 'DISCONNECTED' || state === 'CLOSED';
+  return (
+    <section
+      className={`run-state-banner run-state-${state.toLowerCase()}`}
+      aria-label={`当前运行状态：${copy.title}`}
+      aria-live="polite"
+    >
+      <span className="run-state-marker" aria-hidden="true" />
+      <div>
+        <strong>{copy.title}</strong>
+        <span>{copy.description}</span>
+      </div>
+      {showLink && (
+        <Link className="run-state-link" to="/sessions">
+          返回 Session 列表
+        </Link>
+      )}
+    </section>
   );
 }
 
@@ -953,6 +994,7 @@ export function Composer({
     },
   });
   const configuration = (agent?.capabilitiesJson.configuration ?? {}) as Record<string, boolean>;
+  const sessionLocked = session.status !== 'READY';
   const contextBlocked =
     promptContextLoading ||
     Boolean(promptContextError) ||
@@ -1093,7 +1135,7 @@ export function Composer({
           onChange={(event) => setText(event.target.value)}
           placeholder="给 Agent 发送工程指令…"
           rows={2}
-          disabled={Boolean(activeRun)}
+          disabled={Boolean(activeRun) || sessionLocked}
         />
         {activeRun ? (
           <IconButton
@@ -1108,7 +1150,13 @@ export function Composer({
         ) : (
           <IconButton
             className="send-button"
-            disabled={!text.trim() || send.isPending || contextBlocked || Boolean(variablesError)}
+            disabled={
+              !text.trim() ||
+              send.isPending ||
+              contextBlocked ||
+              Boolean(variablesError) ||
+              sessionLocked
+            }
             onClick={() => send.mutate()}
             aria-label="发送"
           >
@@ -1133,6 +1181,15 @@ export function Composer({
       {send.error && (
         <span className="composer-error" role="alert">
           {send.error.message}
+        </span>
+      )}
+      {sessionLocked && !activeRun && (
+        <span className="composer-hint" role="status">
+          {session.status === 'CLOSED'
+            ? 'Session 已关闭，无法继续发送指令。'
+            : session.status === 'DISCONNECTED'
+              ? 'Agent 连接已中断，请先恢复 Session。'
+              : 'Session 正在准备中，请稍候。'}
         </span>
       )}
     </div>

@@ -142,6 +142,43 @@ export const RUN_STATUS_LABELS = {
   DISCONNECTED: '连接中断',
 } as const;
 
+export type WorkspaceRunState =
+  'IDLE' | 'RUNNING' | 'WAITING_APPROVAL' | 'CANCELING' | 'DISCONNECTED' | 'FAILED' | 'CLOSED';
+
+export const WORKSPACE_RUN_STATE_COPY: Record<
+  WorkspaceRunState,
+  { title: string; description: string }
+> = {
+  IDLE: {
+    title: '可以开始',
+    description: '在下方写下下一步，Agent 会在当前 Project 中执行。',
+  },
+  RUNNING: {
+    title: 'Agent 正在执行',
+    description: '实时消息和工具进度会出现在对话中，输入框会暂时锁定。',
+  },
+  WAITING_APPROVAL: {
+    title: '等待你的批准',
+    description: '请查看下方 Approval 请求，只选择 Agent 提供的合法选项。',
+  },
+  CANCELING: {
+    title: '正在停止 Run',
+    description: '正在等待 Agent 收尾，完成后可以继续发送新的指令。',
+  },
+  DISCONNECTED: {
+    title: 'Agent 连接已中断',
+    description: '当前会话不能继续运行。可以先恢复 Session，或返回列表重新开始。',
+  },
+  FAILED: {
+    title: '最近一次 Run 失败',
+    description: '查看对话和运行记录后，可以发送新的指令重试。',
+  },
+  CLOSED: {
+    title: 'Session 已关闭',
+    description: '历史记录仍可查看，但已关闭的 Session 不能继续发送指令。',
+  },
+};
+
 export const APPROVAL_STATUS_LABELS = {
   PENDING: '等待你的决定',
   APPROVED: '已批准',
@@ -227,6 +264,33 @@ export function labelTaskStatus(value: string | null | undefined) {
 
 export function labelRunStatus(value: string | null | undefined) {
   return labelFrom(RUN_STATUS_LABELS, value);
+}
+
+export function resolveWorkspaceRunState(
+  sessionStatus: string | null | undefined,
+  activeRunStatus?: string | null,
+  latestRunStatus?: string | null,
+): WorkspaceRunState {
+  const currentRunStatus =
+    activeRunStatus ??
+    latestRunStatus ??
+    (sessionStatus &&
+    ['QUEUED', 'STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'].includes(sessionStatus)
+      ? sessionStatus
+      : undefined);
+  if (currentRunStatus === 'WAITING_APPROVAL') return 'WAITING_APPROVAL';
+  if (currentRunStatus === 'CANCELING') return 'CANCELING';
+  if (currentRunStatus && ['QUEUED', 'STARTING', 'RUNNING'].includes(currentRunStatus)) {
+    return 'RUNNING';
+  }
+  if (sessionStatus === 'DISCONNECTED' || currentRunStatus === 'DISCONNECTED') {
+    return 'DISCONNECTED';
+  }
+  if (sessionStatus === 'FAILED' || currentRunStatus === 'FAILED') {
+    return 'FAILED';
+  }
+  if (sessionStatus === 'CLOSED') return 'CLOSED';
+  return 'IDLE';
 }
 
 export function labelApprovalStatus(value: string | null | undefined) {

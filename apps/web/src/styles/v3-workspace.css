@@ -148,6 +148,90 @@
   background: #f8f8f9;
 }
 
+.run-state-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  color: var(--app-graphite);
+  background: var(--app-surface);
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+}
+
+.run-state-marker {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--app-muted);
+  box-shadow: 0 0 0 4px rgb(95 104 117 / 10%);
+}
+
+.run-state-banner > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.run-state-banner strong {
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.run-state-banner > div > span {
+  color: var(--app-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.run-state-running,
+.run-state-canceling {
+  background: #f5f8ff;
+  border-color: #d7e2f6;
+}
+
+.run-state-running .run-state-marker,
+.run-state-canceling .run-state-marker {
+  background: #3d6fba;
+  box-shadow: 0 0 0 4px rgb(61 111 186 / 12%);
+}
+
+.run-state-waiting_approval {
+  background: #fff9ee;
+  border-color: #f1d5aa;
+}
+
+.run-state-waiting_approval .run-state-marker {
+  background: var(--app-accent);
+  box-shadow: 0 0 0 4px rgb(184 78 22 / 12%);
+}
+
+.run-state-disconnected,
+.run-state-failed {
+  background: #fff7f7;
+  border-color: #efc5ca;
+}
+
+.run-state-disconnected .run-state-marker,
+.run-state-failed .run-state-marker {
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgb(193 59 74 / 12%);
+}
+
+.run-state-closed {
+  background: #f5f6f7;
+  border-color: var(--app-line);
+}
+
+.run-state-link {
+  color: var(--app-accent);
+  font-size: 11px;
+  font-weight: 650;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
 .message-meta {
   color: var(--app-muted);
   font-size: 9px;
@@ -673,6 +757,14 @@
   background: #e3e5e8;
 }
 
+.composer-hint {
+  display: block;
+  margin: 6px 2px 0;
+  color: var(--app-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .terminal-dock {
   color: #e0e1e4;
   background: #24262a;
@@ -892,6 +984,15 @@
 
   .conversation-scroll {
     padding: 16px 12px 32px;
+  }
+
+  .run-state-banner {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .run-state-link {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .message,

@@ -353,6 +353,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
     });
     renderWorkspace(fetchMock);
 
+    expect(
+      await screen.findByRole('region', { name: '当前运行状态：Agent 正在执行' }),
+    ).toBeInTheDocument();
     const stop = await screen.findByRole('button', { name: '停止 Run' });
     fireEvent.click(stop);
     await waitFor(() => expect(stop).toBeDisabled());
@@ -360,6 +363,24 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('停止 Run 失败');
     fireEvent.click(screen.getByRole('button', { name: '重试停止' }));
     await waitFor(() => expect(cancelAttempts).toBe(2));
+  });
+
+  it('关闭的 Session 明确说明原因并锁定 Composer', async () => {
+    const closedSession = { ...session, status: 'CLOSED' };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === `/api/v1/sessions/${session.id}`) return jsonResponse(closedSession);
+      if (path === '/api/v1/sessions') return jsonResponse([closedSession]);
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    expect(
+      await screen.findByRole('region', { name: '当前运行状态：Session 已关闭' }),
+    ).toBeInTheDocument();
+    const composer = await screen.findByPlaceholderText('给 Agent 发送工程指令…');
+    expect(composer).toBeDisabled();
+    expect(screen.getByText('Session 已关闭，无法继续发送指令。')).toBeInTheDocument();
   });
 
   it('PromptOS 服务失败时阻止静默跳过绑定，重新解析成功后恢复发送', async () => {

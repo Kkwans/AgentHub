@@ -19,6 +19,7 @@ import {
   labelPromptKind,
   labelPromptType,
   labelRuntimeStatus,
+  resolveWorkspaceRunState,
 } from './domain-labels';
 
 describe('domain presentation labels', () => {
@@ -51,5 +52,19 @@ describe('domain presentation labels', () => {
     expect(labelRuntimeStatus('WORKSPACE_UNMAPPED')).toBe('工作区未映射');
     expect(labelAgentEventType('tool.call.completed')).toBe('工具调用完成');
     expect(labelAgentEventType('vendor.private.event')).toBe('执行事件');
+  });
+
+  it('将 Session 与 Run 状态收敛为普通用户可理解的 Workspace 状态', () => {
+    expect(resolveWorkspaceRunState('READY')).toBe('IDLE');
+    expect(resolveWorkspaceRunState('RUNNING', 'RUNNING')).toBe('RUNNING');
+    expect(resolveWorkspaceRunState('RUNNING')).toBe('RUNNING');
+    expect(resolveWorkspaceRunState('RUNNING', undefined, 'QUEUED')).toBe('RUNNING');
+    expect(resolveWorkspaceRunState('WAITING_APPROVAL', 'WAITING_APPROVAL')).toBe(
+      'WAITING_APPROVAL',
+    );
+    expect(resolveWorkspaceRunState('READY', 'CANCELING')).toBe('CANCELING');
+    expect(resolveWorkspaceRunState('DISCONNECTED')).toBe('DISCONNECTED');
+    expect(resolveWorkspaceRunState('READY', undefined, 'FAILED')).toBe('FAILED');
+    expect(resolveWorkspaceRunState('CLOSED')).toBe('CLOSED');
   });
 });

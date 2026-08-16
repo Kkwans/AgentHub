@@ -170,6 +170,7 @@ export function WorkspacePage() {
         .find((run) =>
           ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'].includes(run.status),
         );
+  const latestRunStatus = runs.data?.at(-1)?.status;
 
   useEffect(() => {
     if (!id) return;
@@ -277,6 +278,7 @@ export function WorkspacePage() {
             events={events}
             approvals={approvals}
             activeRun={activeRun}
+            latestRunStatus={latestRunStatus}
           />
         </Panel>
         <Separator className="resize-handle" />
