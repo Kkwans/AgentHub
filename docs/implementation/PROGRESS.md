@@ -37,8 +37,8 @@
 - 错误体验：扩展前端稳定 error code 到中文下一步提示，保留原始状态只用于调试视图；Remote Node
   和 Project 的错误不再依赖 raw backend wording。
 - Discovery 操作反馈：新增共享 `InlineError`，为重新扫描、Runtime/Agent 接入、启动/停止、Project
-  预检和默认设置失败提供 `role=alert` 的中文提示；Agent 与 Remote Node 的 adapter 展示统一通过
-  `labelAdapterKind`，不直接渲染原始枚举。
+  预检和默认设置失败提供 `role=alert` 的中文提示；Agent 与 Remote Node 普通入口隐藏 adapter 实现细节，
+  仅在高级/诊断数据中保留供应商协议标签。
 - Workspace 事件展示：新增 `labelAgentEventType`，工具卡将 `tool.call.*`、`agent.plan.updated` 等
   内部事件枚举统一翻译为中文；正常对话视图不再显示原始协议值，未知事件安全降级为“执行事件”。
 - 共享表单可访问性：`@agenthub/ui` 的 `Field` 将说明/错误关系绑定到真实 input、textarea、select，

@@ -11,7 +11,7 @@
 - 共享 `Field` 将说明/错误绑定到真实表单控件，文本字段默认提供稳定 `name` 与 `autocomplete="off"`，
   认证字段继续使用标准 username/password autocomplete。
 - Discovery 的重新扫描、Runtime/Agent 接入、启动/停止和默认设置失败时统一显示中文、可访问的操作反馈；
-  adapter 只通过 presentation label 展示，不把原始枚举直接交给普通用户。
+  普通入口隐藏 adapter 实现细节，供应商协议标签仅保留在高级/诊断数据中。
 - Agent discovery 会校正固定依赖状态：Codex pinned ACP 存在时显示 `INSTALLED`；缺依赖、异常或不支持的
   宿主 Agent 不再显示可接入动作。普通 Docker 容器不再混入 Agent 列表，页面明确显示隐藏数量和接入前置条件。
 - Workspace 工具卡通过 `labelAgentEventType` 展示中文事件标签，正常对话视图隐藏 `tool.call.*` 等原始
