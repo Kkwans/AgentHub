@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-16",
+  "host": "DH4300Plus",
+  "architecture": "aarch64",
+  "compose": "/volume2/DockerProject/agenthub/docker-compose.yml",
+  "service": "agenthub",
+  "port": "192.168.5.110:3210",
+  "image": "agenthub:0.6.0-nas.24",
+  "imageId": "sha256:9083ef1895d15c628044d605d5af13eea1b4572c173b0d43a005408fa637c59f",
+  "revision": "971f863",
+  "containerId": "b8b19fe759f3ed3db985b4c2d9784bd5255e8e645c50ce0b6143d4401ffe1675",
+  "status": "running",
+  "health": "healthy",
+  "healthApi": {
+    "http": 200,
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true
+  },
+  "rootHttp": 200,
+  "staticAssets": ["RuntimeDiscoveryPanel-*.js", "SettingsPage-*.js"],
+  "capability": {
+    "terminal": { "available": true, "code": "READY", "platform": "linux", "arch": "arm64" },
+    "remoteNode": { "available": true, "transport": "outbound_websocket" }
+  },
+  "nodePty": "READY",
+  "terminalSmoke": { "open": 201, "input": 200, "resize": 200, "close": 200 },
+  "protectedContainers": "unchanged",
+  "rollbackImage": "agenthub:0.6.0-nas.23",
+  "tmpV05": "absent",
+  "composeDown": false,
+  "deletedImages": false,
+  "deletedVolumes": false,
+  "deletedUserData": false,
+  "visualGate": "PENDING_NO_AUTHORIZED_BROWSER",
+  "backup": "/volume2/Project/.agenthub/central/deployments/20260816T085653Z-pre-nas24/",
+  "composeSha256": "0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff",
+  "envSha256": "d6d0405801ac6622fa77e2703a5743b277b2729f276fa0fac4f5fdad404f708e",
+  "browserTokenSha256": "d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087"
+}

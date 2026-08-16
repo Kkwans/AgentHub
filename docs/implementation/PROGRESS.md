@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_READY · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -308,6 +308,14 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   Agent discovery 尚未返回时只显示本机或已接入目标，避免 Docker 容器扫描短暂加载期间把无关容器误展示；识别完成后
   才显示未识别容器数量和下一步提示。新增设置入口与加载边界 contract 测试；聚焦 Vitest 4/4、lint、typecheck、
   production build 通过，Playwright 四视口 24/24 通过（fixture，非人工视觉验收）。
+- nas.24 已发布为 `agenthub:0.6.0-nas.24`（ARM64，image ID
+  `sha256:9083ef1895d15c628044d605d5af13eea1b4572c173b0d43a005408fa637c59f`，revision `971f863`），
+  容器 `b8b19fe759f3ed3db985b4c2d9784bd5255e8e645c50ce0b6143d4401ffe1675` 最终 `running/healthy`。
+  `/api/v1/health`、根页面、Settings/Runtime 静态 bundle、授权 capability、node-pty 和 Terminal open/input/resize/close
+  smoke 均通过；受保护 Agent 容器 name、完整 ID、image、状态保持发布前基线不变。升级前备份位于
+  `/volume2/Project/.agenthub/central/deployments/20260816T085653Z-pre-nas24/`。仅执行
+  `docker compose up -d --no-build agenthub`，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器；
+  `.tmp-v05` 不存在。完整记录见 `docs/qa/nas/2026-08-16-v06-live24/`。
 
 ### 当前进行中
 
@@ -315,8 +323,8 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   Playwright fixture 或 NAS `curl` 结果声明为 1440/1024/768/390 实机验收。
 - 普通用户旅程的后端闭环已有自动化与真实 Codex/Remote Node 证据；Claude Code、Hermes、OpenClaw
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
-- M24 已将 Runtime 管理放入设置页并与 Agent 页面复用同一数据与操作面板；下一步需要在 NAS 发布后复验
-  设置页静态 bundle、健康状态、授权 capability 和受保护容器不变性。
+- M24 Runtime 设置入口已在 nas.24 正式发布并完成静态 bundle、健康状态、授权 capability、Terminal smoke 和
+  受保护容器不变性核验；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
   时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.14 通过 ARM64 native base overlay 后保持 READY。

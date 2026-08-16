@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_READY / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -47,22 +47,22 @@
 
 ## 证据
 
-| 层级                     | 结果                                                                                                                                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                   | 50 个非 live 文件通过，4 个 live 文件跳过；214 passed、9 skipped（非沙箱、单 worker 串行取得稳定结果）                                                                                      |
-| typecheck / lint / build | 通过；Web 1715 modules transformed                                                                                                                                                          |
-| Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                    |
-| real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                  |
-| GitHub Actions           | run `31931214963`，commit `cdb7d5b`，`success`；Node.js 20 action deprecation 仅为 annotation                                                                                               |
-| NAS Compose              | `agenthub:0.6.0-nas.17`，ARM64，revision `cdb7d5b`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，Remote Node transport `outbound_websocket`，根页面 HTTP 200       |
-| NAS Compose nas.18       | `agenthub:0.6.0-nas.18`，ARM64，revision `e98c65b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面和静态 bundle 文案核验通过                                      |
-| NAS Compose nas.19       | `agenthub:0.6.0-nas.19`，ARM64，revision `a38901b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面、内部码隐藏和受保护容器核验通过                                |
-| NAS Compose nas.21       | `agenthub:0.6.0-nas.21`，ARM64，revision `7a11215`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、node-pty、Terminal API smoke、对象 ID 文案和受保护容器核验通过 |
-| NAS Compose nas.22       | `agenthub:0.6.0-nas.22`，ARM64，revision `ea32533`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、Runtime 展示字段、node-pty、Terminal API smoke 和受保护容器核验通过 |
-| NAS Compose nas.23       | `agenthub:0.6.0-nas.23`，ARM64，revision `d17611d`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、Runtime 错误提示 bundle、node-pty、Terminal API smoke 和受保护容器核验通过 |
-| Runtime 设置入口（未部署） | 共享 `RuntimeDiscoveryPanel` 已接入 Agent 与设置页；聚焦 Vitest 4/4、Playwright 四视口 24/24、lint、typecheck、build 通过，等待 nas.24 发布核验 |
-| Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                           |
-| 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755` |
+| 层级                     | 结果                                                                                                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vitest                   | 50 个非 live 文件通过，4 个 live 文件跳过；214 passed、9 skipped（非沙箱、单 worker 串行取得稳定结果）                                                                                                        |
+| typecheck / lint / build | 通过；Web 1715 modules transformed                                                                                                                                                                            |
+| Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                                      |
+| real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                                    |
+| GitHub Actions           | run `31931214963`，commit `cdb7d5b`，`success`；Node.js 20 action deprecation 仅为 annotation                                                                                                                 |
+| NAS Compose              | `agenthub:0.6.0-nas.17`，ARM64，revision `cdb7d5b`，`running/healthy`，`192.168.5.110:3210`；Terminal capability `READY`，Remote Node transport `outbound_websocket`，根页面 HTTP 200                         |
+| NAS Compose nas.18       | `agenthub:0.6.0-nas.18`，ARM64，revision `e98c65b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面和静态 bundle 文案核验通过                                                        |
+| NAS Compose nas.19       | `agenthub:0.6.0-nas.19`，ARM64，revision `a38901b`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、根页面、内部码隐藏和受保护容器核验通过                                                  |
+| NAS Compose nas.21       | `agenthub:0.6.0-nas.21`，ARM64，revision `7a11215`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、node-pty、Terminal API smoke、对象 ID 文案和受保护容器核验通过                          |
+| NAS Compose nas.22       | `agenthub:0.6.0-nas.22`，ARM64，revision `ea32533`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、Runtime 展示字段、node-pty、Terminal API smoke 和受保护容器核验通过                     |
+| NAS Compose nas.23       | `agenthub:0.6.0-nas.23`，ARM64，revision `d17611d`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、Runtime 错误提示 bundle、node-pty、Terminal API smoke 和受保护容器核验通过              |
+| NAS Compose nas.24       | `agenthub:0.6.0-nas.24`，ARM64，revision `971f863`，`running/healthy`，`192.168.5.110:3210`；health、根页面、Settings/Runtime 静态 bundle、授权 capability、node-pty、Terminal API smoke 和受保护容器核验通过 |
+| Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                             |
+| 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                   |
 
 完整 NAS 基线记录见 [`docs/qa/nas/2026-08-16-v06-live16/README.md`](qa/nas/2026-08-16-v06-live16/README.md)；最新 nas.18 记录见
 [`docs/qa/nas/2026-08-16-v06-live18/README.md`](qa/nas/2026-08-16-v06-live18/README.md)。对象 ID 文案和 nas.21
@@ -74,6 +74,13 @@ Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](
 - 发布前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/`。
 - 数据/worktrees 备份：`/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/`。
 - UI 修复升级前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260814T064756Z-pre-nas2/`。
+- Runtime 设置入口 nas.24 升级前 Compose/.env/token 校验值和容器状态备份：`/volume2/Project/.agenthub/central/deployments/20260816T085653Z-pre-nas24/`；Compose SHA-256
+  `0e3e92b7078a4a6cfde4fa8c5493539ffac0e238f1aa570ff689606a095f27ff`，当前 `.env` SHA-256
+  `d6d0405801ac6622fa77e2703a5743b277b2729f276fa0fac4f5fdad404f708e`，browser-token 仅保留 hash
+  `d1e3d6d77a351bd669f975c32b414d8c9cd581e2e8fe87a11a4e0a64290db087`。镜像 `agenthub:0.6.0-nas.24` image ID
+  `sha256:9083ef1895d15c628044d605d5af13eea1b4572c173b0d43a005408fa637c59f`；容器 ID
+  `b8b19fe759f3ed3db985b4c2d9784bd5255e8e645c50ce0b6143d4401ffe1675`，最终 `running/healthy`。完整记录见
+  [`docs/qa/nas/2026-08-16-v06-live24/README.md`](qa/nas/2026-08-16-v06-live24/README.md)。
 - ACP/live nas.3 升级前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260815T122000Z-pre-nas3/`。
 - discovery/live nas.4 升级前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260815T130846Z-pre-nas4/`。
 - Terminal UI nas.5 升级前 Compose/.env/token 备份：`/volume2/Project/.agenthub/central/deployments/20260815T141727Z-pre-nas5/`；Compose
@@ -200,6 +207,7 @@ Terminal 回归/修复记录见 [`docs/qa/nas/2026-08-16-v06-live21/README.md`](
   临时 overlay 构建文件已删除，运行时 hash 与主机产物一致。
 - v0.5 → v0.6 没有新增数据库 migration；健康、Project、Agent、Session、PromptOS 数据在重启后保持可用。
 - nas.19/nas.21 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
+- nas.24 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
 - nas.20 曾因常规镜像覆盖 ARM64 `node-pty` binding 而被 supersede；nas.21 已用 overlay 基于 nas.19 修复，
   nas.20/nas.21 镜像均保留，未删除镜像、卷或用户数据。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。
