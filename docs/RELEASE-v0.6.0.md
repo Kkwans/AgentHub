@@ -1,7 +1,7 @@
 # AgentHub v0.6.0 发布说明
 
 日期：2026-08-16
-状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / VISUAL_GATE_PENDING`
+状态：`NAS_DEPLOYED / AUTOMATED_AND_LIVE_PASS / VENDOR_MATRIX_PASS / TERMINAL_UI_DELIVERED / PROMPTOS_BINDING_UX_DELIVERED / TASK_REVIEW_COPY_DELIVERED / REMOTE_PROJECT_PATH_DELIVERED / ERROR_COPY_DELIVERED / TERMINAL_COPY_FOCUS_DELIVERED / OBJECT_ID_COPY_DELIVERED / RUNTIME_COPY_DELIVERED / RUNTIME_ERROR_COPY_DELIVERED / RUNTIME_SETTINGS_SURFACE_READY / VISUAL_GATE_PENDING`
 
 ## 发布内容
 
@@ -42,6 +42,8 @@
   pinning、重新 inspect 与接管安全校验，不进入普通用户可读文案。
 - Docker discovery 无法 inspect 容器时，普通用户会看到“重新扫描 / 检查 Docker Engine 权限”的明确下一步；
   原始 `DOCKER_INSPECT_FAILED` 仅保留在诊断数据中。
+- Runtime discovery 已抽取为共享 `RuntimeDiscoveryPanel`，在 Agent 页面与 `设置` 同时提供运行环境管理；重新扫描、接入、
+  启动/停止和错误提示只维护一套实现。Agent discovery 尚未完成时暂不展示未确认的 Docker 容器，避免加载竞态把无关容器呈现给普通用户。
 
 ## 证据
 
@@ -58,6 +60,7 @@
 | NAS Compose nas.21       | `agenthub:0.6.0-nas.21`，ARM64，revision `7a11215`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、node-pty、Terminal API smoke、对象 ID 文案和受保护容器核验通过 |
 | NAS Compose nas.22       | `agenthub:0.6.0-nas.22`，ARM64，revision `ea32533`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、Runtime 展示字段、node-pty、Terminal API smoke 和受保护容器核验通过 |
 | NAS Compose nas.23       | `agenthub:0.6.0-nas.23`，ARM64，revision `d17611d`，`running/healthy`，`192.168.5.110:3210`；health、授权 capability、Runtime 错误提示 bundle、node-pty、Terminal API smoke 和受保护容器核验通过 |
+| Runtime 设置入口（未部署） | 共享 `RuntimeDiscoveryPanel` 已接入 Agent 与设置页；聚焦 Vitest 4/4、Playwright 四视口 24/24、lint、typecheck、build 通过，等待 nas.24 发布核验 |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                           |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755` |
 
