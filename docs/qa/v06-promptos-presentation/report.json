@@ -8,6 +8,20 @@
     "typecheck": "passed",
     "build": { "status": "passed", "webModulesTransformed": 1716 }
   },
-  "deployment": { "status": "NOT_DEPLOYED", "currentNasImage": "agenthub:0.6.0-nas.33" },
+  "deployment": {
+    "status": "DEPLOYED",
+    "currentNasImage": "agenthub:0.6.0-nas.34",
+    "revision": "8adb2a5",
+    "endpoint": "http://192.168.5.110:3210",
+    "containerStatus": "running/healthy",
+    "health": "200",
+    "rootPage": "200",
+    "bundleLabels": ["项目扫描", "数字越小越优先"],
+    "nodePtySmoke": "READY",
+    "preDeployBackup": "/volume2/Project/.agenthub/central/deployments/20260816T121812Z-pre-nas34",
+    "imageDigest": "sha256:dfbe0fe3afb6e3e18851037653cdb2ebc3f274aff4c0467c0b8c8096f7dfbcf1",
+    "imageLayers": 1,
+    "rollbackBoundary": "保留 nas.33；未执行 compose down，未删除镜像、卷、用户数据或其他 Agent 容器"
+  },
   "visualGate": "PENDING_NO_AUTHORIZED_BROWSER"
 }
