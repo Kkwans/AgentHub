@@ -70,18 +70,24 @@ import { FilesystemService } from './filesystem/filesystem-service.js';
  * ACP adapter accepts this JSON through CODEX_CONFIG, so keep the workaround
  * scoped to AgentHub's Codex child and do not mutate the user's Codex config.
  */
-const CODEX_HTTP_PROVIDER_CONFIG = JSON.stringify({
-  model_provider: 'openai_http',
-  model_providers: {
-    openai_http: {
-      name: 'AgentHub Codex HTTPS',
-      base_url: 'https://chatgpt.com/backend-api/codex',
-      wire_api: 'responses',
-      requires_openai_auth: true,
-      supports_websockets: false,
+function createCodexHttpProviderConfig(proxy: string): string {
+  return JSON.stringify({
+    // Codex 0.147.0 accepts http_proxy in its runtime config and applies it
+    // before constructing the Rust HTTP client. Keep the value scoped to the
+    // ACP child so AgentHub itself and Docker Agents do not inherit it.
+    http_proxy: proxy,
+    model_provider: 'openai_http',
+    model_providers: {
+      openai_http: {
+        name: 'AgentHub Codex HTTPS',
+        base_url: 'https://chatgpt.com/backend-api/codex',
+        wire_api: 'responses',
+        requires_openai_auth: true,
+        supports_websockets: false,
+      },
     },
-  },
-});
+  });
+}
 
 export interface RunningServer {
   readonly server: Server;
@@ -212,7 +218,7 @@ export async function startServer(
     // server-side requests, and unrelated host Agents retain their own env.
     return {
       ...resolved,
-      CODEX_CONFIG: CODEX_HTTP_PROVIDER_CONFIG,
+      CODEX_CONFIG: createCodexHttpProviderConfig(proxy),
       HTTP_PROXY: proxy,
       HTTPS_PROXY: proxy,
       ALL_PROXY: proxy,
