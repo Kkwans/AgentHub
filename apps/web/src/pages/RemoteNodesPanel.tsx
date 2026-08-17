@@ -179,7 +179,7 @@ export function RemoteNodesPanel() {
             name="name"
             required
             maxLength={120}
-            placeholder="例如 TX5Pro 开发节点"
+            placeholder="例如：开发节点"
           />
           <SelectField
             label="有效期"

@@ -1043,7 +1043,7 @@ describe('App', () => {
             : pathname === '/api/v1/remote-nodes/registration-tokens' && init?.method === 'POST'
               ? {
                   id: '22222222-2222-4222-8222-222222222222',
-                  name: 'TX5Pro 开发节点',
+                  name: '开发节点注册码',
                   allowedRoots: ['/srv/projects/AgentHub'],
                   expiresAt: '2026-08-10T01:15:00.000Z',
                   createdAt: '2026-08-10T01:00:00.000Z',
@@ -1054,8 +1054,8 @@ describe('App', () => {
                     {
                       id: nodeId,
                       targetId: '33333333-3333-4333-8333-333333333333',
-                      name: 'TX5Pro',
-                      hostname: 'tx5pro',
+                      name: '开发节点',
+                      hostname: 'dev-node',
                       os: 'linux',
                       arch: 'arm64',
                       fingerprint,
@@ -1102,14 +1102,14 @@ describe('App', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Remote Node' })).toBeInTheDocument();
-    expect(await screen.findByText('TX5Pro')).toBeInTheDocument();
+    expect(await screen.findByText('开发节点')).toBeInTheDocument();
     expect(screen.getByText('/srv/projects/AgentHub')).toBeInTheDocument();
     expect(screen.getByText('Codex')).toBeInTheDocument();
     expect(screen.getByTitle(fingerprint)).toHaveTextContent(fingerprint);
 
     fireEvent.click(screen.getByRole('button', { name: '生成一次性注册码' }));
     fireEvent.change(screen.getByLabelText('Node 名称'), {
-      target: { value: 'TX5Pro 开发节点' },
+      target: { value: '开发节点注册码' },
     });
     fireEvent.change(screen.getByRole('textbox', { name: '授权目录' }), {
       target: { value: '/srv/projects/AgentHub' },
@@ -1127,7 +1127,7 @@ describe('App', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
-          name: 'TX5Pro 开发节点',
+          name: '开发节点注册码',
           allowedRoots: ['/srv/projects/AgentHub'],
           expiresInMinutes: 15,
         }),

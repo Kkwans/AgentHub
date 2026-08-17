@@ -51,5 +51,5 @@ inventory、远程 Project、真实 Codex preflight、Session 流式输出、Tas
 - [390 概览](./overview-390.png) / [390 Workspace](./workspace-390.png) /
   [390 设置](./settings-390.png)
 
-验收驱动为仓库中的 `tests/tx5pro/acceptance.cjs`，使用
+验收驱动为 v0.6 前的历史脚本（现已移除），本目录仅保留
 `AGENTHUB_EXPECT_REMOTE_NODE_NAME` 切换到 Remote Node 路径。

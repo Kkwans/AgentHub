@@ -14,6 +14,19 @@
   1440、1024、768、390 四个视口截图；Agent 页面额外等待运行环境扫描完成后复拍。
 - 通过页面 console 监听和 DOM 横向溢出扫描复核稳定性。
 
+仓库内固定入口为 `scripts/qa/real-deployment-visual.cjs`，通过 `pnpm test:visual:real` 执行。
+它只接受真实部署地址和 root-only token 文件路径，不提供外部设备、人工浏览器或 fixture 模式；
+token 只在进程内注入 HTTP/WebSocket，不写入报告：
+
+```bash
+sudo -n env \
+  PLAYWRIGHT_BROWSERS_PATH=/home/Kkwans/.cache/ms-playwright \
+  AGENTHUB_BASE_URL=http://192.168.5.110:3210 \
+  AGENTHUB_BROWSER_TOKEN_FILE=/volume2/DockerProject/agenthub/secrets/browser-token \
+  AGENTHUB_VISUAL_OUTPUT=/volume2/Project/AgentHub/docs/qa/visual/<date> \
+  corepack pnpm test:visual:real
+```
+
 ## 结论
 
 `AUTOMATED_VISUAL_GATE_PASS`。本轮确认并修复了五个高影响问题：

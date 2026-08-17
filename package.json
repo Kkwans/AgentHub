@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:real": "corepack pnpm build && corepack pnpm exec playwright test --config=playwright.real.config.ts",
+    "test:visual:real": "node scripts/qa/real-deployment-visual.cjs",
     "test:live": "vitest run --config vitest.live.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

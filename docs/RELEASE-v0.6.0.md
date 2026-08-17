@@ -65,7 +65,7 @@
 
 | 层级                     | 结果                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                   | 当前收尾全仓非沙箱回归 52 个文件、228 passed/9 skipped；realtime/API 边界聚焦回归通过                                                                                                                                                                                                                                                                       |
+| Vitest                   | 当前收尾全仓非沙箱回归 52 个文件、228 passed/9 skipped；realtime/API 边界聚焦回归通过                                                                                                                                                                                                                                                                     |
 | typecheck / lint / build | 通过；Web 1716 modules transformed                                                                                                                                                                                                                                                                                                                        |
 | Playwright E2E           | 24/24 通过，覆盖 1440/1024/768/390、URL 恢复、键盘与 axe                                                                                                                                                                                                                                                                                                  |
 | real live gate           | 4 个文件、9 个测试通过，包含真实 Codex discovery/adopt/preflight/session/run/message/close、文件变更/Diff/commit、Remote Node、Worktree Review/Merge 与 Docker Agent smoke                                                                                                                                                                                |
@@ -87,17 +87,17 @@
 | NAS Compose nas.34       | `agenthub:0.6.0-nas.34`，ARM64，revision `8adb2a5`，单层 image digest `sha256:dfbe0fe3afb6e3e18851037653cdb2ebc3f274aff4c0467c0b8c8096f7dfbcf1`，`running/healthy`，`192.168.5.110:3210`；health/root HTTP 200、PromptOS bundle 中文文案、server 工作目录 node-pty `READY` 通过。overlay 构建因 daemon max depth 未激活，改用已验证 nas.33 运行时单层导入 |
 | NAS Compose nas.35       | `agenthub:0.6.0-nas.35`，ARM64，revision `cd4c606`，`running/healthy`，`192.168.5.110:3210`；health/root HTTP 200、生产 bundle 不含单边 `inset 3px 0`、server 工作目录 node-pty `READY` 通过。基于 nas.34 单层基底 overlay，未触发 daemon max depth                                                                                                       |
 | NAS Compose nas.36       | `agenthub:0.6.0-nas.36`，ARM64，revision `ac20416`，`running/healthy`，`192.168.5.110:3210`；health/root HTTP 200、生产 bundle 不含单边 `inset 3px 0` 或旧蓝色 `#5c8df6` focus literal、server 工作目录 node-pty `READY` 通过                                                                                                                             |
-| NAS Compose nas.37       | `agenthub:0.6.0-nas.37`，ARM64，revision `42bf4a2`，`running/healthy`，`192.168.5.110:3210`；普通 Agent/Remote Node adapter 细节边界测试 11/11、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.38       | `agenthub:0.6.0-nas.38`，ARM64，revision `a935a0f`，`running/healthy`，`192.168.5.110:3210`；概览 Project 仓库类型边界测试 14/14、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.39       | `agenthub:0.6.0-nas.39`，ARM64，revision `cbd3044`，`running/healthy`，`192.168.5.110:3210`；用户错误边界聚焦测试 4 files/18 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.40       | `agenthub:0.6.0-nas.40`，ARM64，revision `85ea067`，`running/healthy`，`192.168.5.110:3210`；畸形响应边界聚焦测试 4 files/10 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.41       | `agenthub:0.6.0-nas.41`，ARM64，revision `4d12f63`，`running/healthy`，`192.168.5.110:3210`；实时消息边界聚焦测试 3 files/9 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.42       | `agenthub:0.6.0-nas.42`，ARM64，revision `b3d1cac`，`running/healthy`，`192.168.5.110:3210`；错误信封边界聚焦测试 2 files/8 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.43       | `agenthub:0.6.0-nas.43`，ARM64，revision `4a0a73a`，`running/healthy`，`192.168.5.110:3210`；Project PathPicker 错误恢复 focused test 1 file/1 passed、typecheck/lint/build、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.44       | `agenthub:0.6.0-nas.44`，ARM64，revision `3b01c6a`，`running/healthy`，`192.168.5.110:3210`；Project 预检重试 focused test 1 file/1 passed、typecheck/lint/build、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.45       | `agenthub:0.6.0-nas.45`，ARM64，revision `a5903c5`，`running/healthy`，`192.168.5.110:3210`；响应式 UI 修复、Web build、Project focused test、自动化视觉四视口 24 组横向溢出、console error 0、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.48       | `agenthub:0.6.0-nas.48`，ARM64，revision `96e683d`，`running/healthy`，`192.168.5.110:3210`；Agent 名称/运行环境分层、Web focused test/build、真实 NAS Chromium Agent 四视口 console error 0、390px 横向溢出、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
-| NAS Compose nas.50       | `agenthub:0.6.0-nas.50`，ARM64，revision `4c0331f`，`running/healthy`，`192.168.5.110:3210`；重复 Agent 标签收口、390px 错误提示对齐、Web focused test/build、真实 NAS Chromium Agent 四视口 console error 0、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过 |
+| NAS Compose nas.37       | `agenthub:0.6.0-nas.37`，ARM64，revision `42bf4a2`，`running/healthy`，`192.168.5.110:3210`；普通 Agent/Remote Node adapter 细节边界测试 11/11、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                                             |
+| NAS Compose nas.38       | `agenthub:0.6.0-nas.38`，ARM64，revision `a935a0f`，`running/healthy`，`192.168.5.110:3210`；概览 Project 仓库类型边界测试 14/14、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                                                           |
+| NAS Compose nas.39       | `agenthub:0.6.0-nas.39`，ARM64，revision `cbd3044`，`running/healthy`，`192.168.5.110:3210`；用户错误边界聚焦测试 4 files/18 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                                                        |
+| NAS Compose nas.40       | `agenthub:0.6.0-nas.40`，ARM64，revision `85ea067`，`running/healthy`，`192.168.5.110:3210`；畸形响应边界聚焦测试 4 files/10 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                                                        |
+| NAS Compose nas.41       | `agenthub:0.6.0-nas.41`，ARM64，revision `4d12f63`，`running/healthy`，`192.168.5.110:3210`；实时消息边界聚焦测试 3 files/9 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                                                         |
+| NAS Compose nas.42       | `agenthub:0.6.0-nas.42`，ARM64，revision `b3d1cac`，`running/healthy`，`192.168.5.110:3210`；错误信封边界聚焦测试 2 files/8 passed、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                                                         |
+| NAS Compose nas.43       | `agenthub:0.6.0-nas.43`，ARM64，revision `4a0a73a`，`running/healthy`，`192.168.5.110:3210`；Project PathPicker 错误恢复 focused test 1 file/1 passed、typecheck/lint/build、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                |
+| NAS Compose nas.44       | `agenthub:0.6.0-nas.44`，ARM64，revision `3b01c6a`，`running/healthy`，`192.168.5.110:3210`；Project 预检重试 focused test 1 file/1 passed、typecheck/lint/build、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                                                           |
+| NAS Compose nas.45       | `agenthub:0.6.0-nas.45`，ARM64，revision `a5903c5`，`running/healthy`，`192.168.5.110:3210`；响应式 UI 修复、Web build、Project focused test、自动化视觉四视口 24 组横向溢出、console error 0、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                              |
+| NAS Compose nas.48       | `agenthub:0.6.0-nas.48`，ARM64，revision `96e683d`，`running/healthy`，`192.168.5.110:3210`；Agent 名称/运行环境分层、Web focused test/build、真实 NAS Chromium Agent 四视口 console error 0、390px 横向溢出、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                               |
+| NAS Compose nas.50       | `agenthub:0.6.0-nas.50`，ARM64，revision `4c0331f`，`running/healthy`，`192.168.5.110:3210`；重复 Agent 标签收口、390px 错误提示对齐、Web focused test/build、真实 NAS Chromium Agent 四视口 console error 0、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                               |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                                                                                                                                                                         |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                                                                                                                                                               |
 
@@ -269,42 +269,10 @@ UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/RE
   基底，仅叠加当前 commit 生成并逐字节核验的 `apps/server/dist` 与 `packages/adapter-acp/dist`；
   临时 overlay 构建文件已删除，运行时 hash 与主机产物一致。
 - v0.5 → v0.6 没有新增数据库 migration；健康、Project、Agent、Session、PromptOS 数据在重启后保持可用。
-- nas.19/nas.21 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
-- nas.24 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
-- nas.25 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
-- nas.26 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
-- nas.28 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。
-- nas.29 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T105434Z-pre-nas29/`；nas.28 作为 overlay 基底保留，可按单 service 回滚。
-- nas.31 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T111414Z-pre-nas31/`；nas.30 镜像保留，可按单 service 回滚。
-- nas.32 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T112000Z-pre-nas32/`；nas.31 镜像保留，可按单 service 回滚。
-- nas.33 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T115844Z-pre-nas33/`；nas.32 镜像保留，可按单 service 回滚。
-- nas.34 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T121812Z-pre-nas34/`；nas.33 镜像保留，可按单 service 回滚。第一次直接 overlay 构建触发 daemon `max depth exceeded`，未切换服务；最终使用已验证运行时导出的单层镜像，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.35 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T124717Z-pre-nas35/`；nas.34 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.36 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T125608Z-pre-nas36/`；nas.35 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.37 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T130838Z-pre-nas37/`；nas.36 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.38 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T133714Z-pre-nas38/`；nas.37 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.39 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T135155Z-pre-nas39/`；nas.38 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.40 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T140109Z-pre-nas40/`；nas.39 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.41 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T140805Z-pre-nas41/`；nas.40 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.42 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T141924Z-pre-nas42/`；nas.41 镜像保留，可按单 service 回滚。升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.43 仍未声明 TX5Pro/人工视觉验收；当前环境没有授权浏览器通道，`VISUAL_GATE_PENDING` 保持不变。升级前备份为
-  `/volume2/Project/.agenthub/central/deployments/20260816T1432Z-pre-nas43/`；nas.42 镜像保留，可按单 service 回滚。首次完整构建因 Dockerfile frontend 429 未采用，最终使用 nas.42 overlay 仅覆盖 web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.45 已完成自动化视觉 gate，但仍未声明 TX5Pro/人工视觉验收。升级前备份为
+- nas.19 至 nas.43 的发布记录均已完成当时的健康、能力和回滚检查；这些历史记录不再追加外部设备视觉步骤，也不阻塞当前发布。
+- nas.45 已完成自动化视觉 gate。升级前备份为
   `/volume2/Project/.agenthub/central/deployments/20260817T040419Z-pre-nas45/`；nas.44 镜像保留，可按单 service 回滚。升级使用 nas.44 overlay 仅覆盖 server/web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
-- nas.48 已完成自动化视觉 gate，但仍未声明 TX5Pro/人工视觉验收。升级前备份为
+- nas.48 已完成自动化视觉 gate。升级前备份为
   `/volume2/Project/.agenthub/central/deployments/20260817T044150Z-pre-nas48/`；nas.47 镜像保留，可按单 service 回滚。升级使用 nas.47 overlay 仅覆盖 server/web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - nas.50 已完成 NAS 本地 Playwright 自动化视觉 gate，作为当前正式视觉门禁。升级前备份为
   `/volume2/Project/.agenthub/central/deployments/20260817T045811Z-pre-nas50/`；nas.49 镜像保留，可按单 service 回滚。升级使用 nas.49 overlay 仅覆盖 server/web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。

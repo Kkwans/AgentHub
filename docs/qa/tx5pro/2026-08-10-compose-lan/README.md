@@ -32,9 +32,9 @@
 入口移除该 CSP directive 和只适用于可信安全上下文的 COOP header，同时保留其余 CSP、
 `nosniff`、token auth 与路径边界。Server 回归测试覆盖 HTTP/HTTPS 两种配置。
 
-修复镜像重新部署后，同一 TX5Pro、同一 LAN URL 的完整脚本通过。当时的脚本版本只从
+修复镜像重新部署后，同一外部设备、同一 LAN URL 的完整脚本通过。当时的脚本版本只从
 stdin 读取 token，不创建或修改正式业务记录；现行
-`scripts/qa/tx5pro-compose-acceptance.cjs` 已改为首次设置页或用户名/密码登录验收。
+旧版脚本已在 v0.6 移除；本目录仅保留历史证据，不再作为当前发布入口。
 
 ## 证据
 

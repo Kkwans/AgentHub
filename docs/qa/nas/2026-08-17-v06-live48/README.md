@@ -16,16 +16,16 @@
 
 ## 发布证据
 
-| 检查项 | 结果 |
-| --- | --- |
-| NAS 主机 / 架构 | `DH4300Plus` / `aarch64` |
-| Container | `268c5d429bcb...`，`running/healthy` |
-| Image ID | `sha256:e273874f5e2d7161a921443ae092312776f78ef07c99bce0f879061846fd16bb` |
-| Revision label | `96e683d` |
-| Health | `/api/v1/health` HTTP 200，`version=0.6.0`、`database=pglite`、`web=true` |
-| 根页面 | HTTP 200 |
-| Terminal native | server 工作目录加载 `node-pty=READY` |
-| Compose config | 通过 |
+| 检查项            | 结果                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| NAS 主机 / 架构   | `DH4300Plus` / `aarch64`                                                                                                  |
+| Container         | `268c5d429bcb...`，`running/healthy`                                                                                      |
+| Image ID          | `sha256:e273874f5e2d7161a921443ae092312776f78ef07c99bce0f879061846fd16bb`                                                 |
+| Revision label    | `96e683d`                                                                                                                 |
+| Health            | `/api/v1/health` HTTP 200，`version=0.6.0`、`database=pglite`、`web=true`                                                 |
+| 根页面            | HTTP 200                                                                                                                  |
+| Terminal native   | server 工作目录加载 `node-pty=READY`                                                                                      |
+| Compose config    | 通过                                                                                                                      |
 | 受保护 Agent 容器 | `openclaw-custom` 保持 running/healthy；`openclaw-official`、`claude-code`、`hermes-dashboard`、`hermes` 未被本次发布启动 |
 
 ## 验证命令
@@ -41,4 +41,4 @@
 - 升级前备份：`/volume2/Project/.agenthub/central/deployments/20260817T044150Z-pre-nas48/`。
 - 只执行了 `docker compose up -d --no-build agenthub`，没有执行 `compose down`。
 - 未删除容器、镜像、卷、Project、PGlite 数据、worktree 或其他 Agent 数据；nas.47 镜像保留为回滚点。
-- 本记录是自动化 Chromium 视觉验收，不等同于 TX5Pro 人工浏览器验收。
+- 本记录是 NAS 本地 Chromium 对真实部署执行的正式自动化视觉验收，不依赖外部设备或人工浏览器。

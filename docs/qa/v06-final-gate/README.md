@@ -22,6 +22,6 @@ Playwright 首次收尾运行发现 Remote Node 测试仍查找旧的 `授权 ro
 - Hermes workspace 未映射时保持 `WORKSPACE_UNMAPPED`。
 - OpenClaw ACP 需要供应商 scope approval 时保持 `AUTH_REQUIRED`。
 
-## 尚未完成
+## 视觉门禁
 
-当前环境没有授权浏览器/Computer Use/TX5Pro 通道，因此 1440/1024/768/390 人工视觉审查、真实人工可用性 checklist 和生产浏览器验收仍是 `VISUAL_GATE_PENDING`，不能用 Playwright fixture 替代。
+NAS 本地 Playwright Chromium 已连接真实 Compose 部署完成 1440/1024/768/390 四视口自动化视觉门禁，覆盖稳定截图、console/页面错误、横向溢出和关键交互断言。该结果就是当前正式视觉验收，不再依赖外部设备或人工浏览器；fixture Playwright 仍只用于隔离回归，不能替代真实部署门禁。

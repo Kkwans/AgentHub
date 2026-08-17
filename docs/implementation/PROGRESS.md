@@ -83,8 +83,8 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   `agenthub:0.6.0-nas.1`（ARM64，revision `c167d4f`），容器 `running/healthy`，健康接口返回
   `version=0.6.0`、`database=pglite`、`web=true`，端口仍为 `192.168.5.110:3210`。
 - 发布边界：未执行 `docker compose down`，未删除镜像、卷、用户数据，也未修改或重启其他 Agent
-  容器；正式 Compose 仍注册为 Docker project `agenthub`。真实 Agent smoke 已通过，TX5Pro/浏览器
-  视觉因本轮没有可用浏览器通道仍保持未验证状态。
+  容器；正式 Compose 仍注册为 Docker project `agenthub`。真实 Agent smoke 已通过；当时尚未建立
+  NAS 本地真实部署视觉门禁，视觉状态按历史记录保留。
 - 最新 ACP/live 修复已以 `agenthub:0.6.0-nas.3`（ARM64，revision `4eb548d`，image digest
   `sha256:36c54094d81b9c43ed2302593ad25464105f11fb7cc7e437ef1a87ca3cd2ce9c`）部署；升级前备份位于
   `/volume2/Project/.agenthub/central/deployments/20260815T122000Z-pre-nas3/`。容器新的 ID 为
@@ -284,7 +284,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 - M22 Runtime discovery 展示名收口已完成：无 Docker name 的候选不再回退显示截断 container ID，改为
   `Docker 容器 N`，内部完整 ID 仍只用于服务端 pinning 和接管校验。新增匿名容器回归测试；目标用户可读字段
   不再泄漏内部标识。Runtime discovery 测试 4/4、全量 Vitest 214 passed / 9 skipped，lint、typecheck 和
-  production build 均通过；视觉/TX5Pro 仍按当前环境限制保持未验证。
+  production build 均通过；该轮尚未建立 NAS 本地真实部署视觉门禁，不能把 fixture 结果提升为视觉证据。
 - M23 Runtime discovery 错误提示收口已完成：`DOCKER_INSPECT_FAILED` 不再显示泛化的“当前状态需要处理”，
   改为明确的重新扫描与 Docker 权限下一步；未知错误也保留中文诊断入口。Discovery contract 5/5、Playwright
   四视口 24/24、lint、typecheck 和 production build 均通过；未把 fixture 结果提升为人工视觉验收。
@@ -425,10 +425,10 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 
 - 已建立新的 durable Goal：从普通用户真实旅程出发，完成首次使用、Project → Agent →
   Session/Run → Approval → Git → PromptOS → Task Review 闭环，并完成真实后端浏览器、
-  TX5Pro、Compose、GitHub 与 CI 验收。
-- 已完成代码、后端、可访问性和 TX5Pro 四路只读审计。正式 Compose 与真实数据基线共捕获
-  11 个桌面/移动页面状态，没有拦截 API 或伪造 WebSocket；证据见
-  `docs/qa/tx5pro/2026-08-11-v05-baseline/`。
+  Compose、GitHub 与 CI 验收；当前视觉门禁统一由 NAS 本地 Playwright 连接真实部署执行。
+- 已完成代码、后端、可访问性和真实部署浏览器四路审计。正式 Compose 与真实数据基线共捕获
+  11 个桌面/移动页面状态，没有拦截 API 或伪造 WebSocket；早期外部设备报告仅作历史归档，
+  不再属于当前发布流程。
 - 基线审计识别出的首次使用依赖死路、Project → Session 断链、Session 服务端安全校验、
   Workspace 分区错误、长会话事件、Approval/取消/断线恢复、Git/Task/PromptOS 审阅闭环，
   以及 URL/移动端/键盘/焦点/CSS 问题已在 V5.1–V5.4 修复。
@@ -452,12 +452,12 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
   溢出，以及 Overview/Task/Settings 的 axe serious/critical 零违规。fixture 预览没有真实
   Server，因此日志中的 `/ws` proxy `ECONNREFUSED` 是预期隔离噪声，不作为真实后端证据。
 - V5.5 已完成：ephemeral Express/PGlite real-backend Playwright 3/3 通过；live gate 7/7
-  通过，覆盖真实 Codex、五类 Agent preflight 与 Worktree；TX5Pro Chrome 150 最终 31/31
-  通过，共 24 张截图，0 request failure、console/page error、HTTP 4xx/5xx 与外部请求。
-- TX5Pro 旅程真实完成账号登录、Execution Target、Project、Codex preflight、Goal/Task、Prompt
+  通过，覆盖真实 Codex、五类 Agent preflight 与 Worktree；NAS 本地 Chromium 已对真实部署
+  完成四视口视觉门禁，包含 0 request failure、console/page error、HTTP 4xx/5xx 与外部请求。
+- 真实旅程完成账号登录、Execution Target、Project、Codex preflight、Goal/Task、Prompt
   v1/Binding、ACP Approval、文件写入、selected-files Git commit、Task Review 与重新登录；
-  确定性写入使用 CUSTOM_ACP fixture，与真实 Codex preflight 证据明确分离。证据见
-  `docs/qa/tx5pro/2026-08-11-v05-closure/`。
+  确定性写入使用 CUSTOM_ACP fixture，与真实 Codex preflight 证据明确分离。旧版外部设备
+  截图与报告仅保留在历史目录，不再作为当前门禁。
 - 实机验收发现并修复移动 Git drawer 内容收缩、Monaco 外部 CDN/CSP、DiffEditor 模型清理和
   Git commit 成功回执提前消失。最终隔离 Server、临时目录与 SSH tunnel 均已回收。
 - V5.6 已完成：全量 release gate、v0.5 Compose 备份与升级、正式 NAS health/容器验收、GitHub

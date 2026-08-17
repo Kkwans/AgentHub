@@ -16,16 +16,16 @@
 
 ## 发布证据
 
-| 检查项 | 结果 |
-| --- | --- |
-| NAS 主机 / 架构 | `DH4300Plus` / `aarch64` |
-| Container | `e6b81bb2eb9e...`，`running/healthy` |
-| Image ID | `sha256:b3f1793db2a3bd057b44ce8aa2ea6a7de19c25e7d268be37d8ada540b8de9fe8` |
-| Revision label | `a5903c5` |
-| Health | HTTP 200，`version=0.6.0`、`database=pglite`、`web=true` |
-| 根页面 | HTTP 200 |
-| Terminal native | server 工作目录加载 `node-pty=READY` |
-| Compose config | 通过 |
+| 检查项            | 结果                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| NAS 主机 / 架构   | `DH4300Plus` / `aarch64`                                                                          |
+| Container         | `e6b81bb2eb9e...`，`running/healthy`                                                              |
+| Image ID          | `sha256:b3f1793db2a3bd057b44ce8aa2ea6a7de19c25e7d268be37d8ada540b8de9fe8`                         |
+| Revision label    | `a5903c5`                                                                                         |
+| Health            | HTTP 200，`version=0.6.0`、`database=pglite`、`web=true`                                          |
+| 根页面            | HTTP 200                                                                                          |
+| Terminal native   | server 工作目录加载 `node-pty=READY`                                                              |
+| Compose config    | 通过                                                                                              |
 | 受保护 Agent 容器 | `claude-code`、`hermes`、`openclaw-official` 保持 stopped；`openclaw-custom` 保持 running/healthy |
 
 ## 验证命令
@@ -41,4 +41,4 @@
 - 升级前备份：`/volume2/Project/.agenthub/central/deployments/20260817T040419Z-pre-nas45/`。
 - 只执行了 `docker compose up -d --no-build agenthub`，没有执行 `compose down`。
 - 未删除容器、镜像、卷、Project、PGlite 数据、worktree 或其他 Agent 数据；nas.44 镜像保留为回滚点。
-- TX5Pro/Computer Use 人工视觉通道仍不可用，本记录只声明自动化 Chromium 视觉 gate 通过，不声明人工验收完成。
+- 本记录的 NAS 本地 Chromium 自动化视觉 gate 就是正式视觉验收；不依赖外部设备或人工浏览器。

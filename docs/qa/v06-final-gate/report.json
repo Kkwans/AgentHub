@@ -22,14 +22,16 @@
     "typecheck": "PASS",
     "lint": "PASS",
     "build": "PASS",
-    "visualGate": "PENDING"
+    "visualGate": "PASS",
+    "visualGateTarget": "NAS local Chromium against real Compose deployment",
+    "visualGateViewports": [1440, 1024, 768, 390]
   },
   "regressionFix": {
     "revision": "f0e84a3",
     "description": "更新 Remote Node E2E accessible name，从旧 roots 同步为中文授权目录"
   },
   "boundaries": [
-    "Playwright fixture 不等同 TX5Pro 人工视觉验收",
+    "Playwright fixture 仅用于隔离回归，不等同真实部署视觉门禁",
     "缺少供应商授权或 workspace mapping 的 Agent 保持真实阻断状态"
   ]
 }

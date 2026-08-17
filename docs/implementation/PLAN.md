@@ -48,20 +48,20 @@ UI 阶段增加 `pnpm test:e2e`；真实 Agent 验收使用 `AGENTHUB_E2E_LIVE=1
 | W3     | 中文任务控制面、E2E、真实 Git 验收与提交               | 已完成 |
 | R1     | Remote Node 注册、设备身份与 outbound secure WebSocket | 已完成 |
 | R2     | Remote target、Agent inventory、repo roots 与执行闭环  | 已完成 |
-| R3     | 中文管理 UI、安全测试、live 与 TX5Pro 实机验收         | 已完成 |
+| R3     | 中文管理 UI、安全测试、live 与真实部署浏览器验收       | 已完成 |
 | R4     | v0.2 文档、release gate、版本标签与 GitHub 发布        | 已完成 |
 
 ## v0.3 UI/UX 与 NAS 部署
 
-| 里程碑 | 范围                                                   | 状态   |
-| ------ | ------------------------------------------------------ | ------ |
-| U1     | 运行状态核验、设计审计、Radix/Phosphor 组件合同        | 已完成 |
-| U2     | App Shell、公共组件、概览与基础管理页面                | 已完成 |
-| U3     | Task/Worktree、Workspace 与 PromptOS 重构              | 已完成 |
-| U4     | 可访问性、四视口、TX5Pro 实机与 anti-slop pre-flight   | 已完成 |
-| D1     | host-native 常驻部署、健康检查与 AgentHub 自身 Project | 已完成 |
-| D2     | privileged Compose 迁移、绿联项目注册与 LAN token 验收 | 已完成 |
-| D3     | 管理员登录、Cookie Session 与认证/UI 体验修订          | 已完成 |
+| 里程碑 | 范围                                                          | 状态   |
+| ------ | ------------------------------------------------------------- | ------ |
+| U1     | 运行状态核验、设计审计、Radix/Phosphor 组件合同               | 已完成 |
+| U2     | App Shell、公共组件、概览与基础管理页面                       | 已完成 |
+| U3     | Task/Worktree、Workspace 与 PromptOS 重构                     | 已完成 |
+| U4     | 可访问性、四视口、真实部署 Playwright 与 anti-slop pre-flight | 已完成 |
+| D1     | host-native 常驻部署、健康检查与 AgentHub 自身 Project        | 已完成 |
+| D2     | privileged Compose 迁移、绿联项目注册与 LAN token 验收        | 已完成 |
+| D3     | 管理员登录、Cookie Session 与认证/UI 体验修订                 | 已完成 |
 
 ## v0.5 可用性闭环
 
@@ -74,5 +74,5 @@ v0.5 以普通用户真实旅程为唯一完成标准，详细合同见
 | V5.2   | Workspace 数据、事件、Approval、停止与恢复可靠性  | 已完成 |
 | V5.3   | Git、Task Review/Rework 与 PromptOS 可发现绑定    | 已完成 |
 | V5.4   | URL 状态、移动端、键盘、焦点、错误状态与 CSS 收敛 | 已完成 |
-| V5.5   | 真实后端 Playwright、live 与 TX5Pro 全旅程        | 已完成 |
+| V5.5   | 真实后端 Playwright、live 与真实部署视觉全旅程    | 已完成 |
 | V5.6   | Compose 发布、文档、GitHub 与 CI 终态             | 已完成 |

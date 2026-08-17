@@ -42,4 +42,4 @@
 
 ## 可复用入口
 
-验收驱动位于 `tests/tx5pro/acceptance.cjs`。它接收 `AGENTHUB_BASE_URL`、`AGENTHUB_PROJECT_ROOT`、`AGENTHUB_ACCEPTANCE_OUTPUT`、`AGENTHUB_PLAYWRIGHT_PACKAGE` 和可选的 SSH tunnel 环境变量；浏览器、隧道和报告均由同一 Node 进程管理，异常路径也会执行回收。
+本记录使用的旧版外部设备验收驱动已在 v0.6 移除；本目录仅保留历史报告与截图，不再作为当前发布入口。
