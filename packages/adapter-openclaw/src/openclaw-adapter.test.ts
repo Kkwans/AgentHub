@@ -29,6 +29,34 @@ const profile: AgentProfile = {
 };
 
 describe('OpenClaw adapter', () => {
+  it('ACP 已初始化但显式要求 exec 时切到已验证的单回合能力', async () => {
+    const adapter = new OpenClawAdapter({
+      primary: new ReadyPrimary(),
+      exec: new SuccessfulExec(),
+      preferExec: true,
+    });
+
+    const report = await adapter.preflight(profile);
+    expect(report).toMatchObject({
+      status: 'READY',
+      checks: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'openclaw-exec-fallback',
+          status: 'WARN',
+          message: expect.stringContaining('ACP 版本未回传 Prompt 终态'),
+        }),
+      ]),
+    });
+    const session = await adapter.createSession({
+      sessionId: 'session-forced-exec',
+      projectId: 'project-1',
+      profile,
+      cwd: '/workspace',
+    });
+    expect(session.getConfiguration).toBeUndefined();
+    await session.close();
+  });
+
   it('ACP 失败且 agent exec 可用时降级为明确的单回合能力', async () => {
     const adapter = new OpenClawAdapter({
       primary: new BrokenPrimary(),
@@ -101,6 +129,18 @@ class BrokenPrimary implements AgentRuntimeAdapter {
   }
   createSession(_input: CreateAgentSessionInput): Promise<never> {
     throw new Error('不应调用 primary');
+  }
+}
+
+class ReadyPrimary extends BrokenPrimary {
+  override async preflight(): Promise<PreflightReport> {
+    return {
+      status: 'READY',
+      checkedAt: '2026-08-09T00:00:00.000Z',
+      checks: [
+        { id: 'initialize', label: 'ACP initialize', status: 'PASS', message: '已启动' },
+      ],
+    };
   }
 }
 

@@ -236,6 +236,8 @@ export async function startServer(
     new DockerAcpProcessLauncher(docker),
   );
   const openClawExec = new DockerOpenClawExecLauncher(docker);
+  const preferOpenClawExec =
+    environment.AGENTHUB_OPENCLAW_TRANSPORT?.trim().toLowerCase() === 'exec';
   const agents = new AgentService(
     agentRepository,
     executionTargetRepository,
@@ -249,7 +251,11 @@ export async function startServer(
         ...(adapterKind === 'OPENCLAW_GATEWAY' ? { promptTimeoutMs: 30_000 } : {}),
       });
       return adapterKind === 'OPENCLAW_GATEWAY'
-        ? new OpenClawAdapter({ primary, exec: openClawExec })
+        ? new OpenClawAdapter({
+            primary,
+            exec: openClawExec,
+            ...(preferOpenClawExec ? { preferExec: true } : {}),
+          })
         : primary;
     },
     remoteAgentAdapter,

@@ -19,6 +19,7 @@ export interface OpenClawExecProbe {
   available: boolean;
   version?: string;
   message: string;
+  commandStyle?: 'AGENT_COMMAND' | 'AGENT_EXEC';
 }
 
 export interface OpenClawExecProcess {
@@ -34,6 +35,12 @@ export interface OpenClawExecLauncher {
 export interface OpenClawAdapterOptions {
   primary: AgentRuntimeAdapter;
   exec: OpenClawExecLauncher;
+  /**
+   * Use the single-turn exec transport when the installed Gateway-backed ACP
+   * bridge is known to omit terminal chat events. This is intentionally an
+   * adapter-level switch so the core domain remains vendor agnostic.
+   */
+  preferExec?: boolean;
   now?: () => Date;
 }
 
@@ -49,6 +56,29 @@ export class OpenClawAdapter implements AgentRuntimeAdapter {
   async preflight(profile: AgentProfile): Promise<PreflightReport> {
     const primary = await this.options.primary.preflight(profile);
     if (primary.status === 'READY') {
+      if (this.options.preferExec) {
+        const fallback = await this.probeExec(profile);
+        if (fallback.available) {
+          this.modes.set(profile.id, 'EXEC');
+          return this.execFallbackReport(primary, fallback, true);
+        }
+        return {
+          ...primary,
+          status: 'BROKEN',
+          checks: [
+            ...primary.checks,
+            {
+              id: 'openclaw-exec-fallback',
+              label: 'OpenClaw agent exec 回退',
+              status: 'FAIL',
+              message: fallback.message,
+            },
+          ],
+          repair: {
+            summary: '当前部署要求使用 agent exec 回退，但该命令不可用；请修复 OpenClaw ACP 或安装 agent exec。',
+          },
+        };
+      }
       this.modes.set(profile.id, 'ACP');
       return primary;
     }
@@ -60,12 +90,24 @@ export class OpenClawAdapter implements AgentRuntimeAdapter {
       return primary;
     }
 
-    const cwd =
-      typeof profile.config.preflightCwd === 'string' ? profile.config.preflightCwd : '/tmp';
-    const fallback = await this.options.exec.probe(profile, cwd);
+    const fallback = await this.probeExec(profile);
     if (!fallback.available) return primary;
 
     this.modes.set(profile.id, 'EXEC');
+    return this.execFallbackReport(primary, fallback, false);
+  }
+
+  private probeExec(profile: AgentProfile): Promise<OpenClawExecProbe> {
+    const cwd =
+      typeof profile.config.preflightCwd === 'string' ? profile.config.preflightCwd : '/tmp';
+    return this.options.exec.probe(profile, cwd);
+  }
+
+  private execFallbackReport(
+    primary: PreflightReport,
+    fallback: OpenClawExecProbe,
+    forced: boolean,
+  ): PreflightReport {
     return {
       status: 'READY',
       checkedAt: this.now().toISOString(),
@@ -76,11 +118,15 @@ export class OpenClawAdapter implements AgentRuntimeAdapter {
           id: 'openclaw-exec-fallback',
           label: 'OpenClaw agent exec 回退',
           status: 'WARN',
-          message: fallback.message,
+          message: forced
+            ? '当前 ACP 版本未回传 Prompt 终态，已切换到已验证的单回合回退'
+            : fallback.message,
         },
       ],
       repair: {
-        summary: '当前仅可使用单回合回退；请修复 OpenClaw Gateway/ACP 后恢复完整能力',
+        summary: forced
+          ? 'OpenClaw ACP Prompt 终态事件不可用；当前使用 agent exec 保证消息可发送。'
+          : '当前仅可使用单回合回退；请修复 OpenClaw Gateway/ACP 后恢复完整能力',
       },
     };
   }
@@ -170,7 +216,8 @@ class OpenClawExecSession implements AgentSessionHandle {
         if (result.canceled) {
           this.emit('run.cancelled', {}, input.runId);
         } else if (result.exitCode === 0) {
-          this.emit('assistant.message.completed', { text: result.stdout }, input.runId);
+          const text = extractExecText(result.stdout);
+          if (text) this.emit('assistant.message.completed', { text }, input.runId);
           this.emit('run.completed', { exitCode: result.exitCode }, input.runId);
         } else {
           this.emit(
@@ -230,6 +277,34 @@ class OpenClawExecSession implements AgentSessionHandle {
       source: { protocol: 'openclaw-agent-exec' },
     });
   }
+}
+
+function extractExecText(stdout: string): string {
+  const trimmed = stdout.trim();
+  if (!trimmed) return '';
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (parsed && typeof parsed === 'object') {
+      const result = (parsed as { result?: unknown }).result;
+      const payloads =
+        result && typeof result === 'object'
+          ? (result as { payloads?: unknown }).payloads
+          : undefined;
+      if (Array.isArray(payloads)) {
+        return payloads
+          .map((payload) =>
+            payload && typeof payload === 'object' && typeof (payload as { text?: unknown }).text === 'string'
+              ? (payload as { text: string }).text
+              : '',
+          )
+          .filter(Boolean)
+          .join('\n');
+      }
+    }
+  } catch {
+    // Older OpenClaw exec variants return plain text instead of JSON.
+  }
+  return trimmed;
 }
 
 export class OpenClawAdapterError extends Error {

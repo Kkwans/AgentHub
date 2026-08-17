@@ -9,6 +9,8 @@ import { AppError } from '../errors.js';
 import type { DockerControlService, DockerTarget } from '../docker/docker-control.js';
 
 export class DockerOpenClawExecLauncher implements OpenClawExecLauncher {
+  private readonly commandStyles = new Map<string, 'AGENT_COMMAND' | 'AGENT_EXEC'>();
+
   constructor(
     private readonly docker: DockerControlService,
     private readonly dockerExecutable = '/usr/bin/docker',
@@ -19,17 +21,37 @@ export class DockerOpenClawExecLauncher implements OpenClawExecLauncher {
     try {
       const result = await this.docker.execAgentCommand(
         target,
-        { command, args: ['agent', 'exec', '--help'] },
+        { command, args: ['agent', '--help'] },
         cwd,
       );
       const output = `${result.stdout}\n${result.stderr}`;
-      const hasExecUsage = /Usage:\s+openclaw agent exec(?:\s|\[)/i.test(output);
+      const hasAgentCommand =
+        /Usage:\s+openclaw agent \[options\]/i.test(output) && /--json/.test(output);
+      if (result.exitCode === 0 && hasAgentCommand) {
+        this.commandStyles.set(profile.id, 'AGENT_COMMAND');
+        return {
+          available: true,
+          message: '已验证 openclaw agent 单回合回退（JSON 输出）',
+        };
+      }
+
+      const legacy = await this.docker.execAgentCommand(
+        target,
+        { command, args: ['agent', 'exec', '--help'] },
+        cwd,
+      );
+      const legacyOutput = `${legacy.stdout}\n${legacy.stderr}`;
+      const hasLegacyExec = /Usage:\s+openclaw agent exec(?:\s|\[)/i.test(legacyOutput);
+      if (legacy.exitCode === 0 && hasLegacyExec) {
+        this.commandStyles.set(profile.id, 'AGENT_EXEC');
+        return {
+          available: true,
+          message: '已验证 openclaw agent exec 单回合回退',
+        };
+      }
       return {
-        available: result.exitCode === 0 && hasExecUsage,
-        message:
-          result.exitCode === 0 && hasExecUsage
-            ? 'ACP 不可用，已验证 openclaw agent exec 单回合回退'
-            : '当前 OpenClaw 版本未提供 agent exec 子命令',
+        available: false,
+        message: '当前 OpenClaw 版本未提供可解析的 agent 单回合命令',
       };
     } catch (error) {
       if (error instanceof AppError) throw error;
@@ -49,9 +71,9 @@ export class DockerOpenClawExecLauncher implements OpenClawExecLauncher {
         containerCwd,
         target.expectedContainerId,
         command,
-        'agent',
-        'exec',
-        prompt,
+        ...(this.commandStyles.get(profile.id) === 'AGENT_EXEC'
+          ? ['agent', 'exec', prompt]
+          : ['agent', '--agent', 'main', '--message', prompt, '--json', '--timeout', '600']),
       ],
       maxOutputBytes: 4 * 1024 * 1024,
       cancelGraceMs: 2_000,
