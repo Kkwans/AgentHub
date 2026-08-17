@@ -741,11 +741,14 @@ export function AgentsDiscoveryPage() {
               </div>
               <div className="v06-record-main">
                 <strong>{candidate.displayName}</strong>
-                <span>
-                  {candidate.agentKind === 'UNKNOWN'
-                    ? '尚未识别 Agent 类型'
-                    : labelAgentKind(candidate.agentKind)}
-                </span>
+                {candidate.agentKind === 'UNKNOWN' ||
+                labelAgentKind(candidate.agentKind) !== candidate.displayName ? (
+                  <span>
+                    {candidate.agentKind === 'UNKNOWN'
+                      ? '尚未识别 Agent 类型'
+                      : labelAgentKind(candidate.agentKind)}
+                  </span>
+                ) : null}
                 {runtimeNames.get(candidate.targetCandidateId) ? (
                   <span
                     className="v06-record-environment"

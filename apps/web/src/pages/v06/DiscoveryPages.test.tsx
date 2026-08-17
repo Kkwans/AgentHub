@@ -26,6 +26,7 @@ describe('v0.6 ordinary-user flow contracts', () => {
     expect(source).toContain("filter((candidate) => candidate.agentKind !== 'UNKNOWN')");
     expect(source).toContain('请先完成该 Agent 的登录授权。');
     expect(source).toContain('运行环境：{runtimeNames.get(candidate.targetCandidateId)}');
+    expect(source).toContain('labelAgentKind(candidate.agentKind) !== candidate.displayName');
     expect(source).toContain("source === 'REMOTE_NODE'");
     expect(source).toContain('<RuntimeDiscoveryPanel />');
   });
