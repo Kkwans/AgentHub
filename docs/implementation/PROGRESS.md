@@ -813,10 +813,13 @@ NAS 实机与部署证据：
 真实 NAS 验收与部署：
 
 - 备份目录：`/volume2/Project/.agenthub/central/deployments/20260817T230900Z-pre-session-config/`。
-- 镜像 `agenthub:0.6.0-nas.71`，revision `6b38b80`，ARM64；仅执行 `docker compose config` 和
+- 配置能力实现先部署到 `agenthub:0.6.0-nas.71`（revision `6b38b80`）完成 API 验收；随后中文命令说明补丁
+  `61d799b` 基于保留 native binding 的 `.70` overlay 发布为 `agenthub:0.6.0-nas.72`。当前运行 `.72`、
+  ARM64，且 `node-pty` native binding 仍可加载。两次均只执行 `docker compose config` 和
   `docker compose up -d --no-deps --force-recreate agenthub`，未执行 `compose down`，未删除镜像、卷、容器或用户数据。
 - 容器 `running/healthy`，`192.168.5.110:3210/api/v1/health` 返回 `status=ok`。真实 `/api/v1/agents`
   同时返回 READY 的 Codex 与 OpenClaw；OpenClaw Docker mapping 覆盖 `/volume2/Project`。
 - 真实 Codex Session 返回 6 个 model、5 个 mode（`read-only`、`agent`、`agent-full-access`、`default`、
   `plan`）和 5 个 reasoning effort；同一 Session 成功切换 `agent -> plan`、`max -> high`、
   `gpt-5.6-luna -> gpt-5.6-sol`，随后已关闭验收 Session。ACP 命令事件包含 `/plan`、`/status`、`/review`。
+- `.72` Web 补丁将 ACP 原生命令说明映射为中文；未知 `$skill` 命令保留命令名并显示中文通用说明。
