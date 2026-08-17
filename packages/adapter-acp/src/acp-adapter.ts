@@ -492,11 +492,25 @@ class AcpSessionHandle implements AgentSessionHandle {
       .catch((error: unknown) => {
         const runId = this.activeRunId;
         if (runId) {
-          this.emit(
-            'run.failed',
-            { code: 'ACP_PROMPT_FAILED', message: safeErrorMessage(error) },
-            runId,
-          );
+          // codex-acp can keep its stdio wrapper alive after the bundled
+          // Codex app-server child exits. In that case the prompt request
+          // rejects with a closed JSON-RPC connection, but the process-level
+          // wait hook never fires. Surface a normalized disconnect so the
+          // Session becomes recoverable instead of returning to READY with a
+          // dead activation.
+          if (isConnectionFailure(error)) {
+            this.emit(
+              'adapter.disconnected',
+              { reason: 'prompt_transport', code: 'ACP_PROMPT_FAILED' },
+              runId,
+            );
+          } else {
+            this.emit(
+              'run.failed',
+              { code: 'ACP_PROMPT_FAILED', message: safeErrorMessage(error) },
+              runId,
+            );
+          }
           this.activeRunId = undefined;
         }
       });
@@ -932,6 +946,15 @@ async function requestWithGrace<T>(
 
 function safeErrorMessage(error: unknown): string {
   return error instanceof AcpAdapterError ? error.message : 'ACP 请求失败';
+}
+
+function isConnectionFailure(error: unknown): boolean {
+  const code = errorCode(error);
+  if (code && ['CONNECTION_CLOSED', 'ECONNRESET', 'EPIPE'].includes(code)) return true;
+  const message = error instanceof Error ? error.message : '';
+  return /connection (?:closed|reset)|broken pipe|econnreset|epipe|not connected|socket closed/i.test(
+    message,
+  );
 }
 
 function classifyTransportFailure(text: string): string | undefined {
