@@ -50,6 +50,11 @@ UI 阶段增加 `pnpm test:e2e`；真实 Agent 验收使用 `AGENTHUB_E2E_LIVE=1
 当前状态以 `docs/implementation/PROGRESS.md` 的“v0.6 功能闭环修复与 Session 动态配置”条目和
 `docs/implementation/DECISIONS.md` 的 D-023～D-025 为准。
 
+最新纠偏以 PROGRESS 的“v0.6 运行时纠偏与真实恢复验收”及 D-026～D-027 为准：当前部署为
+`agenthub:0.6.0-nas.70` / `caabdb3`；Codex model/mode、Run、app-server 子进程断线、resume
+和恢复后 Run 已通过。OpenClaw mode 配置已通过，但 prompt 仍需 Gateway 模型/账号响应，保持
+明确的 `CANCELED` 状态；NAS 无 Chromium，视觉门禁未验证。
+
 ## v0.2
 
 执行顺序已经锁定：先完成 Worktree Task Runner，再完成 Remote Node。Worktree 的详细

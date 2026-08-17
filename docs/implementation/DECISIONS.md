@@ -157,3 +157,19 @@ disconnected、request connection refused 或 transcript save failure 等传输�
 状态：已接受（2026-08-17）。Compose 服务可继续 root/privileged 以执行显式 Docker 控制，但 Host ACP
 子进程固定以 `AGENTHUB_PROJECT_OWNER_UID/GID` 运行；迁移只修复明确挂载 `.codex` 条目的 owner，不读取、删除或
 重写 transcript 内容。旧文件不存在或损坏时仅记录事实。
+
+## D-026：NAS overlay 必须同步运行时 workspace 包
+
+状态：已接受（2026-08-17）。AgentHub server 通过 workspace package 的 `dist` exports 加载
+`agent-core`、`adapter-acp`、`adapter-openclaw`、`db` 和 `shared`。NAS native 基础镜像 overlay
+不得只覆盖 `apps/server/dist`/`apps/web/dist`，否则会把旧 ACP 实现带入新 server。发布 overlay
+必须同步这些 dist；Host ACP 以 `1000:10` 运行时，仅对 pinned ACP/Codex 依赖闭包和 workspace
+代码目录开放读取，不触碰 secret、数据卷或用户文件。
+
+## D-027：ACP prompt rejection 统一进入可恢复断线
+
+状态：已接受（2026-08-17）。ACP stdio wrapper 可能在 app-server 子进程退出后继续存活，且 SDK
+可能以 plain JSON-RPC object 返回 `stream disconnected`、`connection refused` 或其他 prompt
+请求拒绝。此类拒绝不再把 Session 留在 READY 并将 Run 标为普通失败；adapter 发布
+`adapter.disconnected`，Server 将 Run 标为 `DISCONNECTED/ADAPTER_DISCONNECTED`，用户可执行
+resume。正常 Agent refusal 仍通过成功的 ACP PromptResponse/`run.failed` 语义处理。

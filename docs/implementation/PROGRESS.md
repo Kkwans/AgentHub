@@ -767,3 +767,29 @@ NAS 实机与部署证据：
    在此之前 Codex 只能声明 Session/configuration 可用，不能声明真实消息 Run 可用。
 2. OpenClaw ACP 的长消息 Run 需要独立确认 Gateway 的模型/账号响应；mode 配置链路已通过。
 3. 当前 NAS 没有可用 Chromium，本阶段未声明真实浏览器视觉验收完成。
+
+### v0.6 运行时纠偏与真实恢复验收（2026-08-17）
+
+上段记录对应 `.60`，已被后续实机结果 supersede。新增独立提交：
+
+- `9a3869e`：将 Codex 代理配置移入 Host ACP 子进程运行时环境，并保留 ChatGPT OAuth provider。
+- `e0dc22f`：ACP prompt 连接失败发出可恢复断线事件。
+- `1aadb2e`：NAS overlay 同步 `agent-core`、`adapter-acp`、`adapter-openclaw`、`db`、`shared` 等 workspace dist，避免基础镜像加载旧实现。
+- `d5a5028`、`386c7f9`、`33700b6`、`caabdb3`：补齐 ACP 进程退出、关闭标准流、plain-object 错误和 prompt rejection 的断线收敛。
+
+根因与部署修复：
+
+- 挂载的 `/home/Kkwans/.codex/.env` 原先把 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY` 指向容器内不可用的 loopback；已在备份后同步到 NAS 代理地址，保留 auth/transcript 内容不变。备份目录为
+  `/volume2/Project/.agenthub/central/deployments/20260817-2026-http-proxy-config/`。
+- `.63` 之前的 overlay 只覆盖 server/web，导致容器仍加载旧 ACP 包；`deploy/compose/Dockerfile.nas-overlay` 现覆盖运行时 workspace dist，并仅对 pinned ACP/Codex 依赖闭包开放读取，使 Host ACP 子进程实际以 `1000:10` 运行。
+- 当前 Compose 镜像为 `agenthub:0.6.0-nas.70`、revision `caabdb3`，`running/healthy`；`/api/v1/health` 返回 `status=ok`、`database=pglite`、`web=true`。每次只执行 `docker compose config` 与 `docker compose up -d --no-deps --force-recreate agenthub`，未执行 `compose down`，未删除镜像、卷、容器或用户数据。历次回滚备份见 `20260817-*runtime*`、`20260817-*disconnect*` 目录。
+
+真实 NAS 结果：
+
+- Codex Agent 与 OpenClaw Agent 同时为 `READY` 且 enabled；Project 的 Docker mapping 覆盖 `/volume2/Project`，新建 Session Agent 兼容过滤可同时提供两者。
+- Codex Session `04f5776d-6083-420d-b0f8-6d41def54c50`：读取真实 6 个 model/3 个 mode；`agent → read-only` 与 `gpt-5.6-luna → gpt-5.6-terra` 成功；Run `1c73105f-8410-412a-a859-9f6f3c5533c2` 使用新快照完成。
+- 在该 Session 的 Codex app-server 子进程退出后，后续 Run `76e1683f-bf1e-4799-8edf-c0c16fab6da4` 收敛为 `DISCONNECTED/ADAPTER_DISCONNECTED`；随后 resume 成功，配置仍为 terra/read-only，恢复后 Run 再次 `COMPLETED`。子进程 UID/GID 实测为 `1000:10`。
+- OpenClaw Session `2943c6c5-a405-4131-8996-2393d1bd3e9d` 读取 6 个 mode，`adaptive → low` 成功；短 prompt 长时间保持 `RUNNING`，已取消为 `CANCELED` 并关闭，未伪称 OpenClaw 消息链路完成。其 `agent exec`/ACP fallback 仍需 Gateway 模型/账号响应的后续实机确认。
+- 无效 model/mode 与双字段配置请求分别返回 `SESSION_MODEL_UNSUPPORTED`、`SESSION_MODE_UNSUPPORTED`、`VALIDATION_FAILED`，有效值未被污染。
+
+验证边界：`corepack pnpm typecheck`、adapter/server build、Compose config、health 和上述真实 Session/Run 验收通过；完整 Vitest 仍受 ACP child-process harness 与既有环境测试影响，未宣称全仓测试通过。NAS 当前没有 Chromium，按 D-017 不声明视觉验收完成。
