@@ -2,7 +2,7 @@
 
 日期：2026-08-17
 
-部署：`agenthub:0.6.0-nas.48`  revision：`96e683d`
+部署：`agenthub:0.6.0-nas.50`  revision：`4c0331f`
 
 入口：`http://192.168.5.110:3210/`
 
@@ -16,11 +16,13 @@
 
 ## 结论
 
-`AUTOMATED_VISUAL_GATE_PASS`。本轮确认并修复了三个高影响问题：
+`AUTOMATED_VISUAL_GATE_PASS`。本轮确认并修复了五个高影响问题：
 
 1. 768/390 宽度下移动菜单使用旧的 fixed 样式覆盖页头，导致 `AGENTHUB`/页面标题只露出尾部；现在菜单回到页头布局流，标题完整可见。
 2. 手机端 Project 卡片的“开始会话”和“编辑/归档”共用同一 CSS Grid 行，操作文本相互覆盖；现在操作项按独立行排列。
 3. Agent 发现列表将 Agent 短名称与运行环境分成独立层级，避免 390px 宽度下容器名挤进标题并造成不必要的折返。
+4. Agent 发现列表不再同时显示相同的 Agent 名称与类型标签，减少重复信息。
+5. 390px 下缺少依赖/运行环境停止的错误提示统一放在 Agent 内容列，避免落入图标列造成错位。
 
 复核结果：
 
@@ -29,6 +31,7 @@
 - 登录页显示单一密码查看按钮，品牌图标为网络节点图标，不再使用大写 `A` 占位。
 - Agent 页面在等待扫描完成后显示真实运行环境、容器停止状态、依赖缺失和已接入 Agent；初始加载骨架截图不作为验收证据。
 - nas.48 Agent 页面 390px 回归的 `scrollWidth`、`clientWidth`、`bodyScrollWidth` 均为 `390`，console error 为 `0`；截图显示 `Codex`、`OpenClaw`、`Claude Code`、`Hermes` 标题与 `运行环境：...` 次级信息分层。
+- nas.50 Agent 页面 390px 截图确认重复类型标签已移除，错误提示与内容列对齐；四视口 console error 仍为 `0`。
 
 ## 关键截图
 
