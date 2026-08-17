@@ -21,6 +21,7 @@ import {
   labelPromptVersionCreator,
   labelPromptVersionSource,
   labelPromptType,
+  presentAgentMessage,
   labelSkillSource,
   labelRuntimeStatus,
   resolveWorkspaceRunState,
@@ -76,5 +77,16 @@ describe('domain presentation labels', () => {
     expect(resolveWorkspaceRunState('DISCONNECTED')).toBe('DISCONNECTED');
     expect(resolveWorkspaceRunState('READY', undefined, 'FAILED')).toBe('FAILED');
     expect(resolveWorkspaceRunState('CLOSED')).toBe('CLOSED');
+  });
+
+  it('将供应商传输错误转成中文提示，并把原始地址放入脱敏诊断', () => {
+    const result = presentAgentMessage(
+      'Warning: Falling back from WebSockets to HTTPS transport. stream disconnected before completion: error sending request for url (https://chatgpt.com/backend-api/codex/responses?token=secret)',
+    );
+    expect(result).toMatchObject({ kind: 'TRANSPORT_ERROR', title: 'Agent 连接失败' });
+    expect(result.text).toContain('检查 Agent 是否已授权');
+    expect(result.debug).toContain('[已隐藏地址]');
+    expect(result.debug).not.toContain('https://chatgpt.com');
+    expect(result.debug).not.toContain('token=secret');
   });
 });

@@ -43,6 +43,7 @@ import {
   labelApprovalStatus,
   labelPromptBindingSlot,
   labelPromptBindingTarget,
+  presentAgentMessage,
   resolveWorkspaceRunState,
   WORKSPACE_RUN_STATE_COPY,
 } from '../../../presentation/domain-labels';
@@ -189,21 +190,35 @@ export function Conversation({
             description="Composer 会固定带上 Agent、Project、cwd、branch 与 PromptOS 上下文。"
           />
         )}
-        {(messages.data ?? []).map((message) => (
-          <article className={`message ${message.role.toLowerCase()}`} key={message.id}>
-            <div className="message-meta">
-              <span>
-                {message.role === 'USER'
-                  ? '你'
-                  : message.role === 'ASSISTANT'
-                    ? 'Agent'
-                    : message.role}
-              </span>
-              <code>#{message.sequence}</code>
-            </div>
-            <div className="message-body">{message.text || '（无文本内容）'}</div>
-          </article>
-        ))}
+        {(messages.data ?? []).map((message) => {
+          const presentation = presentAgentMessage(message.text);
+          return (
+            <article className={`message ${message.role.toLowerCase()}`} key={message.id}>
+              <div className="message-meta">
+                <span>
+                  {message.role === 'USER'
+                    ? '你'
+                    : message.role === 'ASSISTANT'
+                      ? 'Agent'
+                      : message.role}
+                </span>
+                <code>#{message.sequence}</code>
+              </div>
+              {presentation.kind === 'TRANSPORT_ERROR' ? (
+                <div className="message-body message-body-error">
+                  <strong>{presentation.title}</strong>
+                  <p>{presentation.text}</p>
+                  <details className="message-debug">
+                    <summary>显示脱敏诊断</summary>
+                    <pre>{presentation.debug}</pre>
+                  </details>
+                </div>
+              ) : (
+                <div className="message-body">{presentation.text}</div>
+              )}
+            </article>
+          );
+        })}
         {toolEvents.map((event) => (
           <article className="tool-card" key={event.id}>
             <div>

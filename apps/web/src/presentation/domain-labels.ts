@@ -192,6 +192,46 @@ export const WORKSPACE_RUN_STATE_COPY: Record<
   },
 };
 
+export interface AgentMessagePresentation {
+  kind: 'TEXT' | 'TRANSPORT_ERROR';
+  text: string;
+  title?: string;
+  debug?: string;
+}
+
+const TRANSPORT_ERROR_MARKERS = [
+  /falling back from websockets to https transport/i,
+  /stream disconnected before completion/i,
+  /error sending request for url/i,
+  /connection refused \(os error/i,
+];
+
+/**
+ * ACP/OpenClaw may return a transport diagnostic as assistant text. Keep the
+ * ordinary conversation useful and Chinese-first; raw vendor details belong
+ * in the explicit diagnostic disclosure and must not expose URLs or tokens.
+ */
+export function presentAgentMessage(value: string | null | undefined): AgentMessagePresentation {
+  const text = value?.trim() ?? '';
+  if (!text) return { kind: 'TEXT', text: '（无文本内容）' };
+  if (!TRANSPORT_ERROR_MARKERS.some((marker) => marker.test(text))) {
+    return { kind: 'TEXT', text };
+  }
+  return {
+    kind: 'TRANSPORT_ERROR',
+    title: 'Agent 连接失败',
+    text: 'Agent 的实时连接没有完成这次 Run。请检查 Agent 是否已授权并正在运行，然后重试。',
+    debug: redactAgentDiagnostic(text),
+  };
+}
+
+function redactAgentDiagnostic(value: string): string {
+  return value
+    .replace(/https?:\/\/[^\s)]+/gi, '[已隐藏地址]')
+    .replace(/\b(?:bearer|token|api[_-]?key)\s*[:=]\s*[^\s,;]+/gi, '$1=[已隐藏]')
+    .slice(0, 2_000);
+}
+
 export const APPROVAL_STATUS_LABELS = {
   PENDING: '等待你的决定',
   APPROVED: '已批准',

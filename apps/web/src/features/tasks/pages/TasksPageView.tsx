@@ -617,163 +617,170 @@ export function TasksPage() {
           description="先添加 Project，才能创建 Goal 与 Task。"
         />
       ) : (
-        <div className="task-board" aria-label="Task 看板">
-          {columns.map((column) => {
-            const entries = (tasks.data ?? []).filter((task) => task.status === column.status);
-            return (
-              <section className="task-column" key={column.status}>
-                <header>
-                  <div>
-                    <strong>{column.title}</strong>
-                    <span>{column.description}</span>
-                  </div>
-                  <small>{entries.length}</small>
-                </header>
-                <div className="task-column-body">
-                  {entries.map((task) => {
-                    const taskProject = projects.data?.find(
-                      (project) => project.id === task.projectId,
-                    );
-                    const compatibleAgents = (agents.data ?? []).filter(
-                      (agent) =>
-                        agent.targetId === taskProject?.targetId &&
-                        agent.enabled !== false &&
-                        agent.status === 'READY',
-                    );
-                    const agentId = selectedAgents[task.id] || compatibleAgents[0]?.id || '';
-                    const execution = latestWorktreeByTask.get(task.id);
-                    return (
-                      <article
-                        className={`task-card${execution ? ' worktree-task-card' : ''}`}
-                        key={task.id}
-                      >
-                        <div className="task-card-heading">
-                          <span>优先级 {task.priority}</span>
-                          <StatusBadge status={task.status} />
-                        </div>
-                        <strong>{task.title}</strong>
-                        <p>{task.description || '暂无任务说明'}</p>
-                        {task.acceptanceCriteria && (
-                          <div className="task-acceptance">
-                            <span>验收标准</span>
-                            <p>{task.acceptanceCriteria}</p>
+        <>
+          <p className="task-board-hint" id="task-board-hint">
+            手机端左右滑动查看其他状态
+          </p>
+          <div className="task-board" aria-label="Task 看板" aria-describedby="task-board-hint">
+            {columns.map((column) => {
+              const entries = (tasks.data ?? []).filter((task) => task.status === column.status);
+              return (
+                <section className="task-column" key={column.status}>
+                  <header>
+                    <div>
+                      <strong>{column.title}</strong>
+                      <span>{column.description}</span>
+                    </div>
+                    <small>{entries.length}</small>
+                  </header>
+                  <div className="task-column-body">
+                    {entries.map((task) => {
+                      const taskProject = projects.data?.find(
+                        (project) => project.id === task.projectId,
+                      );
+                      const compatibleAgents = (agents.data ?? []).filter(
+                        (agent) =>
+                          agent.targetId === taskProject?.targetId &&
+                          agent.enabled !== false &&
+                          agent.status === 'READY',
+                      );
+                      const agentId = selectedAgents[task.id] || compatibleAgents[0]?.id || '';
+                      const execution = latestWorktreeByTask.get(task.id);
+                      return (
+                        <article
+                          className={`task-card${execution ? ' worktree-task-card' : ''}`}
+                          key={task.id}
+                        >
+                          <div className="task-card-heading">
+                            <span>优先级 {task.priority}</span>
+                            <StatusBadge status={task.status} />
                           </div>
-                        )}
-                        {task.branch && <code>{task.branch}</code>}
-                        {execution && <ExecutionRail execution={execution} compact />}
-                        {execution && <WorktreeErrorNotice execution={execution} compact />}
-                        {task.status === 'READY' && (
-                          <label className="task-agent-select">
-                            Agent
-                            <select
-                              value={agentId}
-                              onChange={(event) =>
-                                setSelectedAgents((current) => ({
-                                  ...current,
-                                  [task.id]: event.target.value,
-                                }))
-                              }
-                            >
-                              <option value="">请选择 Agent</option>
-                              {compatibleAgents.map((agent) => (
-                                <option key={agent.id} value={agent.id}>
-                                  {agent.name} · 就绪
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        )}
-                        <div className="task-card-actions">
-                          <button
-                            className="button ghost compact"
-                            onClick={() => setEditingTask(task)}
-                            aria-label={`编辑 Task ${task.title}`}
-                          >
-                            <Pencil size={13} /> 编辑
-                          </button>
-                          {task.status === 'BACKLOG' && (
-                            <button
-                              className="button primary compact"
-                              onClick={() => transition.mutate({ id: task.id, status: 'READY' })}
-                            >
-                              设为就绪
-                            </button>
+                          <strong>{task.title}</strong>
+                          <p>{task.description || '暂无任务说明'}</p>
+                          {task.acceptanceCriteria && (
+                            <div className="task-acceptance">
+                              <span>验收标准</span>
+                              <p>{task.acceptanceCriteria}</p>
+                            </div>
                           )}
+                          {task.branch && <code>{task.branch}</code>}
+                          {execution && <ExecutionRail execution={execution} compact />}
+                          {execution && <WorktreeErrorNotice execution={execution} compact />}
                           {task.status === 'READY' && (
-                            <>
-                              {projects.data?.find((project) => project.id === task.projectId)
-                                ?.repoKind === 'GIT' && (
-                                <button
-                                  className="button primary compact"
-                                  disabled={!agentId || queueWorktree.isPending}
-                                  onClick={() => queueWorktree.mutate({ id: task.id, agentId })}
-                                >
-                                  <Layers3 size={13} /> 隔离执行
-                                </button>
-                              )}
-                              <button
-                                className="button secondary compact"
-                                disabled={!agentId || start.isPending}
-                                onClick={() => start.mutate({ id: task.id, agentId })}
+                            <label className="task-agent-select">
+                              Agent
+                              <select
+                                value={agentId}
+                                onChange={(event) =>
+                                  setSelectedAgents((current) => ({
+                                    ...current,
+                                    [task.id]: event.target.value,
+                                  }))
+                                }
                               >
-                                <Play size={13} /> 直接运行
-                              </button>
-                            </>
+                                <option value="">请选择 Agent</option>
+                                {compatibleAgents.map((agent) => (
+                                  <option key={agent.id} value={agent.id}>
+                                    {agent.name} · 就绪
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
                           )}
-                          {task.status === 'IN_PROGRESS' && (
-                            <>
-                              {(execution?.sessionId || task.sessionId) && (
+                          <div className="task-card-actions">
+                            <button
+                              className="button ghost compact"
+                              onClick={() => setEditingTask(task)}
+                              aria-label={`编辑 Task ${task.title}`}
+                            >
+                              <Pencil size={13} /> 编辑
+                            </button>
+                            {task.status === 'BACKLOG' && (
+                              <button
+                                className="button primary compact"
+                                onClick={() => transition.mutate({ id: task.id, status: 'READY' })}
+                              >
+                                设为就绪
+                              </button>
+                            )}
+                            {task.status === 'READY' && (
+                              <>
+                                {projects.data?.find((project) => project.id === task.projectId)
+                                  ?.repoKind === 'GIT' && (
+                                  <button
+                                    className="button primary compact"
+                                    disabled={!agentId || queueWorktree.isPending}
+                                    onClick={() => queueWorktree.mutate({ id: task.id, agentId })}
+                                  >
+                                    <Layers3 size={13} /> 隔离执行
+                                  </button>
+                                )}
                                 <button
                                   className="button secondary compact"
-                                  onClick={() =>
-                                    navigate(`/sessions/${execution?.sessionId || task.sessionId}`)
-                                  }
+                                  disabled={!agentId || start.isPending}
+                                  onClick={() => start.mutate({ id: task.id, agentId })}
                                 >
-                                  打开 Session
+                                  <Play size={13} /> 直接运行
                                 </button>
-                              )}
-                              {execution && (
-                                <button
-                                  className="button ghost compact"
-                                  onClick={() => openExecution(execution.id)}
-                                >
-                                  执行详情
-                                </button>
-                              )}
-                            </>
-                          )}
-                          {task.status === 'WAITING_REVIEW' && (
-                            <>
-                              {execution?.status === 'REVIEW' ? (
-                                <button
-                                  className="button primary compact"
-                                  onClick={() => openExecution(execution.id)}
-                                >
-                                  <GitMerge size={13} /> 审阅并合并
-                                </button>
-                              ) : (
-                                <button
-                                  className="button primary compact"
-                                  onClick={() => {
-                                    setSelectedTaskReviewId(task.id);
-                                    setTaskReworkFeedback('');
-                                  }}
-                                >
-                                  <ClipboardCheck size={13} /> 审阅结果
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                  {!entries.length && <span className="task-column-empty">暂无 Task</span>}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+                              </>
+                            )}
+                            {task.status === 'IN_PROGRESS' && (
+                              <>
+                                {(execution?.sessionId || task.sessionId) && (
+                                  <button
+                                    className="button secondary compact"
+                                    onClick={() =>
+                                      navigate(
+                                        `/sessions/${execution?.sessionId || task.sessionId}`,
+                                      )
+                                    }
+                                  >
+                                    打开 Session
+                                  </button>
+                                )}
+                                {execution && (
+                                  <button
+                                    className="button ghost compact"
+                                    onClick={() => openExecution(execution.id)}
+                                  >
+                                    执行详情
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {task.status === 'WAITING_REVIEW' && (
+                              <>
+                                {execution?.status === 'REVIEW' ? (
+                                  <button
+                                    className="button primary compact"
+                                    onClick={() => openExecution(execution.id)}
+                                  >
+                                    <GitMerge size={13} /> 审阅并合并
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="button primary compact"
+                                    onClick={() => {
+                                      setSelectedTaskReviewId(task.id);
+                                      setTaskReworkFeedback('');
+                                    }}
+                                  >
+                                    <ClipboardCheck size={13} /> 审阅结果
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                    {!entries.length && <span className="task-column-empty">暂无 Task</span>}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </>
       )}
       {!!tasks.data?.some((task) => task.status === 'BLOCKED') && (
         <section className="control-section blocked-tasks">

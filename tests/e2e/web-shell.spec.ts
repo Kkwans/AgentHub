@@ -70,8 +70,8 @@ const worktreeExecution = {
 const remoteNode = {
   id: '88888888-8888-4888-8888-888888888888',
   targetId: '99999999-9999-4999-8999-999999999999',
-  name: 'TX5Pro Remote Node',
-  hostname: 'tx5pro',
+  name: '开发节点',
+  hostname: 'dev-node',
   os: 'linux',
   arch: 'arm64',
   fingerprint: 'c'.repeat(64),
@@ -190,6 +190,9 @@ test('任务看板明确保留人工审阅门禁', async ({ page }) => {
   await page.goto('/tasks');
   await expect(page.getByRole('heading', { name: 'Goal 与 Task' })).toBeVisible();
   await expect(page.locator('[aria-label="Task 看板"]')).toBeVisible();
+  if ((page.viewportSize()?.width ?? 1_000) <= 620) {
+    await expect(page.getByText('手机端左右滑动查看其他状态')).toBeVisible();
+  }
   await page.getByRole('button', { name: /审阅并合并/ }).click();
   await expect(page.getByRole('dialog', { name: task.title })).toBeVisible();
   await expect(page.getByText('审阅证据')).toBeVisible();
@@ -212,7 +215,7 @@ test('设置页呈现认证与 Docker 高权限边界', async ({ page }) => {
 test('Remote Node 管理在当前 viewport 无水平溢出', async ({ page }) => {
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Remote Node' })).toBeVisible();
-  await expect(page.getByText('TX5Pro Remote Node')).toBeVisible();
+  await expect(page.getByText('开发节点')).toBeVisible();
   await expect(page.getByText('/srv/projects/AgentHub')).toBeVisible();
   await expect(page.getByText('Codex')).toBeVisible();
   await page.getByRole('button', { name: '生成一次性注册码' }).click();

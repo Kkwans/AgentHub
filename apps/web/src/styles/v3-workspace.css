@@ -271,6 +271,48 @@
   border-color: #2b2d31;
 }
 
+.message-body-error {
+  color: #8f303d;
+  background: var(--red-soft);
+  border-color: #efc5ca;
+}
+
+.message-body-error strong {
+  display: block;
+  color: #7d2734;
+  font-size: 12px;
+}
+
+.message-body-error p {
+  margin: 6px 0 0;
+  color: #8f303d;
+}
+
+.message-debug {
+  margin-top: 11px;
+  color: #9b4b57;
+  font-size: 10px;
+}
+
+.message-debug summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.message-debug pre {
+  max-height: 150px;
+  margin: 7px 0 0;
+  padding: 8px;
+  overflow: auto;
+  color: #73303b;
+  font: 10px/1.5 var(--app-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: rgb(255 255 255 / 58%);
+  border: 1px solid #efc5ca;
+  border-radius: 6px;
+}
+
 .tool-card {
   background: var(--app-surface);
   border: 1px solid var(--app-line);

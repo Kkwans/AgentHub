@@ -218,6 +218,39 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(screen.queryByText('tool.call.completed')).not.toBeInTheDocument();
   });
 
+  it('供应商连接诊断在对话中显示中文下一步，原文只在脱敏诊断中出现', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === `/api/v1/sessions/${session.id}/messages`) {
+        return jsonResponse([
+          {
+            id: 'message-error',
+            runId: 'run-error',
+            role: 'ASSISTANT',
+            kind: 'TEXT',
+            text: 'Warning: Falling back from WebSockets to HTTPS transport. stream disconnected before completion: error sending request for url (https://chatgpt.com/backend-api/codex/responses?token=secret)',
+            sequence: 1,
+            createdAt: '2026-08-11T00:00:00.000Z',
+          },
+        ]);
+      }
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    expect(await screen.findByText('Agent 连接失败')).toBeInTheDocument();
+    expect(screen.getByText(/检查 Agent 是否已授权/)).toBeInTheDocument();
+    const debug = screen.getByText('显示脱敏诊断');
+    expect(debug.closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByText(/Falling back from WebSockets/).closest('details')).toBe(
+      debug.closest('details'),
+    );
+    fireEvent.click(debug);
+    expect(await screen.findByText(/已隐藏地址/)).toBeInTheDocument();
+    expect(screen.queryByText('https://chatgpt.com')).not.toBeInTheDocument();
+    expect(screen.queryByText('token=secret')).not.toBeInTheDocument();
+  });
+
   it('Approval 提交失败可见、可重试，并且提交期间禁用全部选项', async () => {
     let attempts = 0;
     let releaseApproval: ((response: Response) => void) | undefined;
