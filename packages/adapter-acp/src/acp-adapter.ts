@@ -970,7 +970,12 @@ function isConnectionFailure(error: unknown): boolean {
     ].includes(code)
   )
     return true;
-  const message = error instanceof Error ? error.message : '';
+  const message =
+    error instanceof Error
+      ? error.message
+      : isRecord(error) && typeof error.message === 'string'
+        ? error.message
+        : '';
   return /connection (?:closed|reset|refused)|broken pipe|econnreset|econnrefused|epipe|not connected|socket closed|stream disconnected before completion|error sending request for url|failed to save the conversation transcript/i.test(
     message,
   );
