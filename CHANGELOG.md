@@ -12,7 +12,7 @@
 - 正式 NAS Compose 当前为 `agenthub:0.6.0-nas.50`（revision `4c0331f`），入口为 `192.168.5.110:3210`，容器 root/privileged、running/healthy；升级未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - UI CSS 共享层已收敛到 `styles/design-system.css`；按钮对比度修复后四视口 axe 与完整 24 项 Playwright E2E 全部通过。
 
-已知边界：nas.50 已完成 Playwright Chromium 自动化视觉 gate（Agent 页面四视口稳定截图、console 与 390px 横向溢出检查；前一轮六页面全量检查仍有效）；当前仍没有 TX5Pro/Computer Use 通道，因此人工视觉验收保持未验证；请参阅 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。
+视觉门禁：nas.50 已完成 NAS 本地 Playwright Chromium 自动化视觉 gate（Agent 页面四视口稳定截图、console 与 390px 横向溢出检查；前一轮六页面全量检查仍有效）。该自动化 gate 是当前版本的正式视觉验收依据；请参阅 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。
 
 ## 0.3.0 - 2026-08-10
 

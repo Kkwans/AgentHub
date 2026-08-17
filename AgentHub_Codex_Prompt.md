@@ -1223,9 +1223,7 @@ local_trusted
 - no Agent；
 - auth required。
 
-如果有浏览器/截图能力，保存 baseline/after。
-
-如果没有，写入 PROGRESS，不能声称视觉验收完成。
+使用 NAS 本地 Playwright Chromium 连接真实部署目标并保存 baseline/after，同时记录四视口截图、console/页面错误、横向溢出和关键交互断言。如果当前没有任何浏览器运行能力，写入 PROGRESS 并明确视觉门禁未验证，不能用 fixture、静态 build 或 curl 冒充视觉证据。
 
 ---
 

@@ -4,7 +4,7 @@ AgentHub 是一个面向普通开发者的 AI Coding Agent 控制平面。v0.6 �
 
 ## 当前版本
 
-当前运行版本为 v0.6.0。代码、自动化、live smoke 与 NAS 发布证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md) 和 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。自动化视觉 gate 已完成；TX5Pro 人工视觉验收需要可用浏览器通道，当前明确标记为未验证。
+当前运行版本为 v0.6.0。代码、自动化、live smoke 与 NAS 发布证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md) 和 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。NAS 本地 Playwright 已对真实部署完成自动化视觉 gate；该 gate 是当前视觉验收与发布依据。
 
 ## 环境
 
@@ -13,7 +13,7 @@ AgentHub 是一个面向普通开发者的 AI Coding Agent 控制平面。v0.6 �
 - Linux（当前目标为 NAS ARM64）
 - 默认开发监听：`127.0.0.1`
 - 当前 NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）；当前镜像为
-  `agenthub:0.6.0-nas.50`（revision `4c0331f`），容器当前 `running/healthy`；自动化视觉 gate 已完成，TX5Pro 人工验收仍需浏览器通道。
+  `agenthub:0.6.0-nas.50`（revision `4c0331f`），容器当前 `running/healthy`；NAS 本地 Playwright 自动化视觉 gate 已完成。
 
 ## 普通用户快速开始
 

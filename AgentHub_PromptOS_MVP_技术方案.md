@@ -1675,7 +1675,7 @@ Playwright P0：
 
 # 27. UI 验收
 
-开发前记录官方参考；开发后实际浏览器（NAS本地没有浏览器，需要通过ssh操作TX5Pro上的Playwright）截图/验证：
+开发前记录官方参考；开发后使用 NAS 本地 Playwright Chromium 连接真实部署目标截图/验证：
 
 ```text
 1440 / 1024 / 768 / 390
@@ -1690,7 +1690,7 @@ Playwright P0：
 - no git；
 - agent missing/auth required。
 
-如果没有浏览器能力，必须明确说明，不能声称视觉审计完成。
+如果当前没有任何浏览器能力，必须明确说明视觉门禁未验证，不能用 fixture、静态 build 或 curl 冒充视觉审计完成。
 
 ---
 

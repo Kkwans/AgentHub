@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · M28 / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED · M29 / REMOTE_NODE_COPY_NAS31_DEPLOYED · M30 / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED · M31 / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED · M32 / FINAL_AUTOMATED_GATE_PASS · M33 / COMPOSER_A11Y_NAS33_DEPLOYED · M34 / PROMPTOS_PRESENTATION_CODE_READY · M35 / PROMPTOS_PRESENTATION_NAS34_DEPLOYED · M36 / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED · M37 / FOCUS_STYLE_NAS36_DEPLOYED · M38 / ORDINARY_AGENT_SURFACE_NAS37_DEPLOYED · M39 / DASHBOARD_REPO_KIND_NAS38_DEPLOYED · M40 / USER_ERROR_BOUNDARY_NAS39_DEPLOYED · M41 / MALFORMED_ENVELOPE_NAS40_DEPLOYED · M42 / REALTIME_ENVELOPE_NAS41_DEPLOYED · M43 / ERROR_ENVELOPE_NAS42_DEPLOYED · M44 / PROJECT_PICKER_ERROR_RECOVERY_NAS43_DEPLOYED · M45 / PROJECT_PREFLIGHT_RETRY_NAS44_DEPLOYED · M46 / RESPONSIVE_UI_FIX_NAS45_DEPLOYED · M47 / DISCOVERY_FALSE_POSITIVE_NAS47_DEPLOYED · M48 / AGENT_ENVIRONMENT_HIERARCHY_NAS48_DEPLOYED · M49 / AGENT_DUPLICATE_LABEL_NAS49_DEPLOYED · M50 / AGENT_MOBILE_WARNING_NAS50_DEPLOYED · AUTOMATED_VISUAL_GATE_PASS · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · TX5PRO_MANUAL_PENDING`。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · M28 / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED · M29 / REMOTE_NODE_COPY_NAS31_DEPLOYED · M30 / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED · M31 / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED · M32 / FINAL_AUTOMATED_GATE_PASS · M33 / COMPOSER_A11Y_NAS33_DEPLOYED · M34 / PROMPTOS_PRESENTATION_CODE_READY · M35 / PROMPTOS_PRESENTATION_NAS34_DEPLOYED · M36 / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED · M37 / FOCUS_STYLE_NAS36_DEPLOYED · M38 / ORDINARY_AGENT_SURFACE_NAS37_DEPLOYED · M39 / DASHBOARD_REPO_KIND_NAS38_DEPLOYED · M40 / USER_ERROR_BOUNDARY_NAS39_DEPLOYED · M41 / MALFORMED_ENVELOPE_NAS40_DEPLOYED · M42 / REALTIME_ENVELOPE_NAS41_DEPLOYED · M43 / ERROR_ENVELOPE_NAS42_DEPLOYED · M44 / PROJECT_PICKER_ERROR_RECOVERY_NAS43_DEPLOYED · M45 / PROJECT_PREFLIGHT_RETRY_NAS44_DEPLOYED · M46 / RESPONSIVE_UI_FIX_NAS45_DEPLOYED · M47 / DISCOVERY_FALSE_POSITIVE_NAS47_DEPLOYED · M48 / AGENT_ENVIRONMENT_HIERARCHY_NAS48_DEPLOYED · M49 / AGENT_DUPLICATE_LABEL_NAS49_DEPLOYED · M50 / AGENT_MOBILE_WARNING_NAS50_DEPLOYED · AUTOMATED_VISUAL_GATE_CANONICAL · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED`。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -14,8 +14,8 @@
 - M0 输出已落盘到 `docs/implementation/v0.6/BASELINE.md` 与
   `docs/implementation/v0.6/PRODUCT_DOD.md`，包含迁移地图、API/路径安全契约、首批十个逻辑提交
   计划与部署回滚边界。
-- M0 时当前运行环境无法读取 root-only 正式 Compose 目录，也没有浏览器/Computer Use 通道；该
-  基线限制已在 M11 通过受控 NAS 发布核验解决，TX5Pro 视觉验收仍保持未声明。
+- M0 时当前运行环境无法读取 root-only 正式 Compose 目录，也没有浏览器运行能力；该
+  基线限制已在 M11 通过受控 NAS 发布核验解决，当前视觉门禁改由 NAS 本地 Playwright 执行。
 
 ### 已完成切片
 
@@ -394,16 +394,16 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 
 ### 当前进行中
 
-- 自动化视觉 gate 已完成：真实 nas.50 Agent 页面在 Chromium headless 下通过 1440/1024/768/390 稳定截图、console 和 390px 横向溢出检查；前一轮六页全量检查仍记录在 nas.45 视觉证据中。TX5Pro/Computer Use 手工通道仍不可用，因此仅保留 `TX5PRO_MANUAL_PENDING`，不伪称人工通过。
+- 自动化视觉 gate 已完成：真实 nas.50 Agent 页面在 NAS 本地 Chromium headless 下通过 1440/1024/768/390 稳定截图、console 和 390px 横向溢出检查；前一轮六页全量检查仍记录在 nas.45 视觉证据中。该自动化 gate 是当前正式视觉门禁。
 - 普通用户旅程的后端闭环已有自动化与真实 Codex/Remote Node 证据；Claude Code、Hermes、OpenClaw
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M24 Runtime 设置入口已在 nas.24 正式发布并完成静态 bundle、健康状态、授权 capability、Terminal smoke 和
-  受保护容器不变性核验；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
-- M25 已在 nas.25 正式发布 Session 配置渐进式 UX；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
-- M26 已在 nas.26 正式发布 Workspace 运行状态与 Composer 输入门禁；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
-- M27 已在 nas.28 正式发布 Approval、Task/Worktree 与 Runtime 状态文案收口；全仓测试和 TX5Pro/人工视觉门禁按用户要求留到最终集中验证。
-- M28 已在 nas.29 正式发布 Remote Node 授权目录添加器；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
-- M29/M30 已在 nas.31 正式发布 Remote Node 能力边界文案和清洁 overlay；当前仍只缺授权浏览器/TX5Pro 的人工视觉 gate。
+  受保护容器不变性核验；视觉证据按当前 NAS 本地 Playwright 门禁归档。
+- M25 已在 nas.25 正式发布 Session 配置渐进式 UX；视觉证据按当前 NAS 本地 Playwright 门禁归档。
+- M26 已在 nas.26 正式发布 Workspace 运行状态与 Composer 输入门禁；视觉证据按当前 NAS 本地 Playwright 门禁归档。
+- M27 已在 nas.28 正式发布 Approval、Task/Worktree 与 Runtime 状态文案收口；全仓测试与 NAS 本地 Playwright 门禁按切片记录。
+- M28 已在 nas.29 正式发布 Remote Node 授权目录添加器；视觉证据按当前 NAS 本地 Playwright 门禁归档。
+- M29/M30 已在 nas.31 正式发布 Remote Node 能力边界文案和清洁 overlay；视觉证据按当前 NAS 本地 Playwright 门禁归档。
 - M8-M9：Local Project Terminal 已接入 Workspace：能力 READY 时使用 xterm.js 连接既有 Terminal
   API 与 `terminal:<id>` topic；Docker/Remote Terminal 仍不在 v0.6 范围。通用镜像缺少 native binding
   时仍显示 `PTY_NATIVE_BINDING_UNAVAILABLE`，nas.14 通过 ARM64 native base overlay 后保持 READY。
@@ -417,7 +417,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 
 - 继续把已验证的供应商能力差异落到普通用户路径：缺失 adapter、未授权、容器停止、workspace 未映射
   和普通未知容器都必须给出明确中文下一步；不得把静态发现或 fixture 状态提升为 READY。
-- 若后续提供 TX5Pro/Computer Use 通道，再补做同一组真实账号状态下的人工视觉审查；当前自动化截图、console 和溢出证据已归档，不把它等同于 TX5Pro 人工验收。
+- 后续视觉回归继续在 NAS 本地 Playwright Chromium 上针对真实部署执行；四视口截图、console/页面错误、横向溢出和关键交互断言均需归档。
 - 继续按普通用户旅程完善 Project → Agent → Session → Approval → Diff/Git → PromptOS → Task Review
   的真实后端证据，保持每个独立逻辑变更可回退。
 

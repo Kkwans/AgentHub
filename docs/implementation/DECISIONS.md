@@ -66,8 +66,8 @@ systemd 与冷备份保留为回滚，不修改既有 Agent Compose。
 
 状态：已接受。v0.5 不再以页面存在、空状态截图、fixture Playwright 或 HTTP 200 作为功能完成
 证据。发布必须分别通过 fixture 视觉测试、真实后端浏览器测试和真实 Agent runtime，并在正式
-Compose 上由 TX5Pro 完成登录 → 准备 Target/Project/Agent → Session/Run → Approval → Git →
-Task Review 的可操作旅程。普通用户不得输入 token、Session ID、Task UUID 或执行 NAS 命令；
+Compose 上完成登录 → 准备 Target/Project/Agent → Session/Run → Approval → Git → Task Review 的
+可操作旅程。普通用户不得输入 token、Session ID、Task UUID 或执行 NAS 命令；
 前端筛选不能替代服务端 Project、cwd、Agent readiness 与 Execution Target 兼容校验。
 
 ## D-013：Approval 决定与 Agent 投递分离
@@ -100,3 +100,7 @@ original/modified model，避免先释放 model 再销毁 editor 的运行时异
 优先，否则回退到 `id`）；认证字段仍由 AccessGate 显式指定 `username`、`current-password` 或
 `new-password`。这样不改变业务表单数据，只修复屏幕阅读器、浏览器自动填充和错误定位语义。
 回归测试见 `apps/web/src/components/FormFields.test.tsx`。
+
+## D-017：NAS 本地 Playwright 是唯一正式视觉门禁
+
+状态：已接受（2026-08-17）。视觉验收必须由 NAS 本地 Playwright Chromium 连接真实部署目标完成，至少覆盖 1440/1024/768/390 四个视口、稳定截图、console/页面错误、横向溢出和关键交互断言。旧版本报告和截图目录仅作为历史事实保留，不改变当前门禁。
