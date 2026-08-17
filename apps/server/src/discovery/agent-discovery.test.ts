@@ -212,6 +212,29 @@ describe('AgentDiscoveryService', () => {
     expect(agentService.register).not.toHaveBeenCalled();
   });
 
+  it('does not misclassify a clawdash container as OpenClaw', async () => {
+    const clawdash: RuntimeCandidate = {
+      candidateId: 'docker:clawdash',
+      kind: 'DOCKER_CONTAINER',
+      displayName: 'clawdash',
+      state: 'READY',
+      targetId: 'target-clawdash',
+      containerId: 'c'.repeat(64),
+      image: 'nginx:alpine',
+      workspaceMappings: [],
+      adoptable: false,
+    };
+    const { service } = createService({ runtimes: [hostRuntime(), clawdash] });
+
+    const candidate = (await service.list()).find(
+      (item) => item.targetCandidateId === 'docker:clawdash',
+    );
+    expect(candidate).toMatchObject({
+      agentKind: 'UNKNOWN',
+      reasonCode: 'AGENT_PROFILE_NOT_DETECTED',
+    });
+  });
+
   it('adopts a discoverable Agent, runs preflight, and returns the refreshed record', async () => {
     const persisted = {
       id: 'agent-new',

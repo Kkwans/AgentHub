@@ -66,7 +66,9 @@ const CONTAINER_AGENT_HINTS: Array<{
   {
     agentKind: 'OPENCLAW',
     name: 'OpenClaw',
-    tokens: ['openclaw', 'claw'],
+    // Match the product name, not generic words such as “clawdash”. A
+    // dashboard/proxy container must never be offered as a coding Agent.
+    tokens: ['openclaw'],
     adapterKind: 'OPENCLAW_GATEWAY',
   },
   { agentKind: 'CODEX', name: 'Codex', tokens: ['codex'], adapterKind: 'ACP_STDIO' },
