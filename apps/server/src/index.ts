@@ -63,6 +63,26 @@ import { RuntimeDiscoveryService } from './discovery/runtime-discovery.js';
 import { AgentDiscoveryService } from './discovery/agent-discovery.js';
 import { FilesystemService } from './filesystem/filesystem-service.js';
 
+/**
+ * Codex 0.147.0 may prefer the Responses WebSocket transport for the
+ * ChatGPT provider. That transport is unreliable behind the NAS egress
+ * proxy, while the same authenticated account works over HTTPS/SSE. The
+ * ACP adapter accepts this JSON through CODEX_CONFIG, so keep the workaround
+ * scoped to AgentHub's Codex child and do not mutate the user's Codex config.
+ */
+const CODEX_HTTP_PROVIDER_CONFIG = JSON.stringify({
+  model_provider: 'agenthub-http',
+  model_providers: {
+    'agenthub-http': {
+      name: 'AgentHub Codex HTTPS',
+      base_url: 'https://chatgpt.com/backend-api/codex',
+      wire_api: 'responses',
+      requires_openai_auth: true,
+      supports_websockets: false,
+    },
+  },
+});
+
 export interface RunningServer {
   readonly server: Server;
   readonly broker: TopicBroker;
@@ -192,6 +212,8 @@ export async function startServer(
     // server-side requests, and unrelated host Agents retain their own env.
     return {
       ...resolved,
+      CODEX_CONFIG: CODEX_HTTP_PROVIDER_CONFIG,
+      MODEL_PROVIDER: 'agenthub-http',
       HTTP_PROXY: proxy,
       HTTPS_PROXY: proxy,
       ALL_PROXY: proxy,
