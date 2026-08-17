@@ -309,7 +309,7 @@ UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/RE
 
 ## 未验证项与明确边界
 
-- 当前环境没有可用浏览器/Computer Use 通道，因此 1440、1024、768、390 四视口人工视觉验收和人工可用性 checklist 尚未完成；不能声明 TX5Pro v0.6 视觉通过。
+- 当前环境没有 TX5Pro/Computer Use 人工浏览器通道，因此 1440、1024、768、390 四视口人工视觉验收和人工可用性 checklist 尚未完成；nas.45 的自动化 Chromium 视觉 gate 已完成，不能将其声明为 TX5Pro v0.6 人工视觉通过。
 - NAS 当前 `linux/arm64` 的正式 nas.17 镜像已具备可加载的 `node-pty` native binding，
   `GET /api/v1/settings/capabilities` 返回 `terminal.available=true`、`code=READY`；如果其他平台或镜像
   缺少 native binding，Workspace 仍会显示中文原因并禁用 Terminal 操作，不伪称 PTY 已可用。
