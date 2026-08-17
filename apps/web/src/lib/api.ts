@@ -185,9 +185,10 @@ const errorMessages: Record<string, string> = {
   RUN_NOT_FOUND: 'Run 不存在或已被移除。',
   SESSION_HAS_ACTIVE_RUN: 'Session 仍有运行中的 Run，请先停止它。',
   SESSION_NOT_CONNECTED: 'Session 当前未连接 Agent。',
-  SESSION_CONFIGURATION_UNSUPPORTED: '当前 Agent 不支持动态切换模型或模式。',
+  SESSION_CONFIGURATION_UNSUPPORTED: '当前 Agent 不支持动态切换模型、模式或推理强度。',
   SESSION_MODEL_UNSUPPORTED: 'Agent 不支持所选模型。',
   SESSION_MODE_UNSUPPORTED: 'Agent 不支持所选模式。',
+  SESSION_REASONING_EFFORT_UNSUPPORTED: 'Agent 不支持所选推理强度。',
   SESSION_CONFIGURATION_FAILED: 'Session 配置更新失败，请稍后重试。',
   SESSION_NOT_DISCONNECTED: 'Session 当前不处于可恢复状态。',
   SESSION_NOT_READY: 'Session 尚未准备好运行。',
@@ -499,10 +500,15 @@ export interface SessionRecord {
 
 export interface SessionConfigurationRecord {
   supported: boolean;
-  current: { model: string | null; mode: string | null };
+  current: {
+    model: string | null;
+    mode: string | null;
+    reasoningEffort: string | null;
+  };
   options: {
     models: Array<{ id: string; label: string; description?: string }>;
     modes: Array<{ id: string; label: string; description?: string }>;
+    reasoningEfforts: Array<{ id: string; label: string; description?: string }>;
   };
   reasonCode?: string;
 }

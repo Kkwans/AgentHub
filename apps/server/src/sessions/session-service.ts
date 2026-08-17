@@ -50,6 +50,7 @@ export interface CreateSessionInput {
   branch?: string | undefined;
   model?: string | undefined;
   mode?: string | undefined;
+  reasoningEffort?: string | undefined;
   taskId?: string | undefined;
 }
 
@@ -165,16 +166,16 @@ export class SessionService {
     if (!active) {
       return {
         supported: false,
-        current: { model: session.model, mode: session.mode },
-        options: { models: [], modes: [] },
+        current: { model: session.model, mode: session.mode, reasoningEffort: null },
+        options: { models: [], modes: [], reasoningEfforts: [] },
         reasonCode: 'SESSION_NOT_CONNECTED',
       };
     }
     if (!active.handle.getConfiguration) {
       return {
         supported: false,
-        current: { model: session.model, mode: session.mode },
-        options: { models: [], modes: [] },
+        current: { model: session.model, mode: session.mode, reasoningEffort: null },
+        options: { models: [], modes: [], reasoningEfforts: [] },
         reasonCode: 'SESSION_CONFIGURATION_UNSUPPORTED',
       };
     }
@@ -303,6 +304,7 @@ export class SessionService {
     const id = randomUUID();
     const model = input.model ?? profile.defaultModel ?? undefined;
     const mode = input.mode ?? profile.defaultMode ?? undefined;
+    const reasoningEffort = input.reasoningEffort ?? profile.defaultReasoningEffort ?? undefined;
     await this.sessions.create({
       id,
       projectId,
@@ -325,6 +327,7 @@ export class SessionService {
         cwd,
         ...(model ? { model } : {}),
         ...(mode ? { mode } : {}),
+        ...(reasoningEffort ? { reasoningEffort } : {}),
       });
       await this.persistEffectiveConfiguration(id, handle);
       const ready = await this.sessions.transition(id, 'READY', {
@@ -1397,6 +1400,9 @@ function configurationError(error: unknown, fallbackMessage: string): AppError {
   }
   if (code === 'SESSION_MODE_UNSUPPORTED') {
     return new AppError(409, code, 'Agent 不支持当前模式');
+  }
+  if (code === 'SESSION_REASONING_EFFORT_UNSUPPORTED') {
+    return new AppError(409, code, 'Agent 不支持当前推理强度');
   }
   if (code === 'SESSION_CONFIGURATION_UNSUPPORTED' || code === 'CAPABILITY_UNSUPPORTED') {
     return new AppError(409, 'SESSION_CONFIGURATION_UNSUPPORTED', '当前 Agent 不支持动态配置');

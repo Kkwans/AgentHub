@@ -337,6 +337,7 @@ export function WorkspacePage() {
       <Composer
         session={session.data}
         agent={agent}
+        events={events}
         project={project}
         activeRun={activeRun}
         promptContext={promptContext.data}

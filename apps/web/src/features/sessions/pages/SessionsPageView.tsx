@@ -29,7 +29,12 @@ import {
   PageIntro,
   StatusBadge,
 } from '../../../components/Common';
-import { labelAgentKind } from '../../../presentation/domain-labels';
+import {
+  describeSessionMode,
+  labelAgentKind,
+  labelReasoningEffort,
+  labelSessionMode,
+} from '../../../presentation/domain-labels';
 
 export function SessionsPage() {
   const navigate = useNavigate();
@@ -77,6 +82,7 @@ export function SessionsPage() {
   const [title, setTitle] = useState('新 Session');
   const [model, setModel] = useState('');
   const [mode, setMode] = useState('');
+  const [reasoningEffort, setReasoningEffort] = useState('');
   const [sessionToClose, setSessionToClose] = useState<SessionRecord>();
   const selectedAgent = compatibleAgents.find((agent) => agent.id === selectedAgentId);
   useEffect(() => {
@@ -91,13 +97,18 @@ export function SessionsPage() {
     >;
     setModel(
       selectedAgent?.defaultModel ??
-        readChoiceOptions(configuration.modelOptions ?? configuration.models)[0]?.value ??
+        readChoiceOptions(configuration.modelOptions ?? configuration.models, 'model')[0]?.value ??
         '',
     );
     setMode(
       selectedAgent?.defaultMode ??
-        readChoiceOptions(configuration.modeOptions ?? configuration.modes)[0]?.value ??
+        pickDefaultMode(
+          readChoiceOptions(configuration.modeOptions ?? configuration.modes, 'mode'),
+        ) ??
         '',
+    );
+    setReasoningEffort(
+      readChoiceOptions(configuration.reasoningEffortOptions, 'reasoningEffort')[0]?.value ?? '',
     );
   }, [selectedAgent]);
   const createSession = useMutation({
@@ -134,13 +145,23 @@ export function SessionsPage() {
     string,
     unknown
   >;
-  const modelOptions = readChoiceOptions(configuration.modelOptions ?? configuration.models);
-  const modeOptions = readChoiceOptions(configuration.modeOptions ?? configuration.modes);
+  const modelOptions = readChoiceOptions(
+    configuration.modelOptions ?? configuration.models,
+    'model',
+  );
+  const modeOptions = readChoiceOptions(configuration.modeOptions ?? configuration.modes, 'mode');
+  const reasoningEffortOptions = readChoiceOptions(
+    configuration.reasoningEffortOptions,
+    'reasoningEffort',
+  );
   const hasModelCapability = Boolean(
     selectedAgent?.defaultModel || configuration.models === true || modelOptions.length,
   );
   const hasModeCapability = Boolean(
     selectedAgent?.defaultMode || configuration.modes === true || modeOptions.length,
+  );
+  const hasReasoningEffortCapability = Boolean(
+    configuration.reasoningEffort === true || reasoningEffortOptions.length,
   );
   return (
     <div className="page-stack">
@@ -243,6 +264,7 @@ export function SessionsPage() {
                   cwd: selectedProject.realRootPath,
                   ...(model.trim() ? { model: model.trim() } : {}),
                   ...(mode.trim() ? { mode: mode.trim() } : {}),
+                  ...(reasoningEffort.trim() ? { reasoningEffort: reasoningEffort.trim() } : {}),
                 });
               }}
             >
@@ -284,7 +306,7 @@ export function SessionsPage() {
                 {hasModelCapability ? (
                   modelOptions.length ? (
                     <SelectField
-                      label="model"
+                      label="模型"
                       value={model}
                       options={modelOptions}
                       onValueChange={setModel}
@@ -307,7 +329,8 @@ export function SessionsPage() {
                 {hasModeCapability ? (
                   modeOptions.length ? (
                     <SelectField
-                      label="mode"
+                      label="运行模式"
+                      description="权限模式控制可执行范围；计划模式控制是否先制定计划。"
                       value={mode}
                       options={modeOptions}
                       onValueChange={setMode}
@@ -315,7 +338,7 @@ export function SessionsPage() {
                   ) : selectedAgent?.defaultMode ? (
                     <div className="session-readonly-field" aria-label="模式">
                       <span>模式</span>
-                      <code>{mode || '使用 Agent 默认模式'}</code>
+                      <code>{mode ? labelSessionMode(mode) : '使用 Agent 默认模式'}</code>
                     </div>
                   ) : (
                     <FormTextField
@@ -324,6 +347,24 @@ export function SessionsPage() {
                       value={mode}
                       placeholder="输入 Agent 支持的模式 ID"
                       onChange={(event) => setMode(event.target.value)}
+                    />
+                  )
+                ) : null}
+                {hasReasoningEffortCapability ? (
+                  reasoningEffortOptions.length ? (
+                    <SelectField
+                      label="推理强度"
+                      value={reasoningEffort}
+                      options={reasoningEffortOptions}
+                      onValueChange={setReasoningEffort}
+                    />
+                  ) : (
+                    <FormTextField
+                      label="推理强度"
+                      description="填写 Agent 接受的 reasoning effort ID"
+                      value={reasoningEffort}
+                      placeholder="输入 Agent 支持的推理强度 ID"
+                      onChange={(event) => setReasoningEffort(event.target.value)}
                     />
                   )
                 ) : null}
@@ -457,20 +498,55 @@ interface ChoiceOption {
   description?: string;
 }
 
-function readChoiceOptions(value: unknown): ChoiceOption[] {
+function readChoiceOptions(
+  value: unknown,
+  kind?: 'model' | 'mode' | 'reasoningEffort',
+): ChoiceOption[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (typeof item === 'string' && item.trim()) {
-      return [{ value: item, label: item }];
+      return [
+        {
+          value: item,
+          label:
+            kind === 'mode'
+              ? labelSessionMode(item)
+              : kind === 'reasoningEffort'
+                ? labelReasoningEffort(item)
+                : item,
+        },
+      ];
     }
     if (!item || typeof item !== 'object') return [];
     const record = item as Record<string, unknown>;
     const value = typeof record.id === 'string' ? record.id : record.value;
     if (typeof value !== 'string' || !value.trim()) return [];
-    const label = typeof record.label === 'string' ? record.label : value;
+    const rawLabel = typeof record.label === 'string' ? record.label : value;
+    const label =
+      kind === 'mode'
+        ? labelSessionMode(value, rawLabel)
+        : kind === 'reasoningEffort'
+          ? labelReasoningEffort(value, rawLabel)
+          : rawLabel;
     const description = typeof record.description === 'string' ? record.description : undefined;
-    return [{ value, label, ...(description ? { description } : {}) }];
+    const translatedDescription =
+      kind === 'mode' ? describeSessionMode(value, description) : description;
+    return [
+      {
+        value,
+        label,
+        ...(translatedDescription ? { description: translatedDescription } : {}),
+      },
+    ];
   });
+}
+
+function pickDefaultMode(options: ChoiceOption[]): string | undefined {
+  return (
+    options.find((option) => option.value === 'agent')?.value ??
+    options.find((option) => option.value === 'default')?.value ??
+    options[0]?.value
+  );
 }
 
 function isAgentCompatibleWithProject(

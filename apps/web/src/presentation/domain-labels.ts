@@ -20,6 +20,52 @@ export const ADAPTER_KIND_LABELS = {
   CUSTOM_ACP: 'Custom ACP',
 } as const;
 
+const SESSION_MODE_LABELS: Record<string, string> = {
+  'read-only': '只读',
+  readonly: '只读',
+  agent: '工作区执行',
+  'agent-full-access': '完全访问',
+  'full-access': '完全访问',
+  default: '标准',
+  plan: '计划',
+  planning: '计划',
+};
+
+const SESSION_MODE_DESCRIPTIONS: Record<string, string> = {
+  'read-only': '仅查看文件；修改和命令需要批准',
+  readonly: '仅查看文件；修改和命令需要批准',
+  agent: '可在当前工作区读写并执行命令，敏感操作会请求批准',
+  'agent-full-access': '可访问工作区之外并使用网络，请谨慎使用',
+  'full-access': '可访问工作区之外并使用网络，请谨慎使用',
+  default: '按普通执行流程处理后续请求',
+  plan: '先制定计划，确认后再执行修改',
+  planning: '先制定计划，确认后再执行修改',
+};
+
+const REASONING_EFFORT_LABELS: Record<string, string> = {
+  none: '不使用',
+  minimal: '最小',
+  low: '低',
+  medium: '中等',
+  high: '高',
+  xhigh: '极高',
+  max: '最高',
+  adaptive: '自适应',
+  auto: '自动',
+};
+
+export function labelSessionMode(value: string, fallback?: string): string {
+  return SESSION_MODE_LABELS[value.trim().toLocaleLowerCase()] ?? fallback ?? value;
+}
+
+export function describeSessionMode(value: string, fallback?: string): string {
+  return SESSION_MODE_DESCRIPTIONS[value.trim().toLocaleLowerCase()] ?? fallback ?? '';
+}
+
+export function labelReasoningEffort(value: string, fallback?: string): string {
+  return REASONING_EFFORT_LABELS[value.trim().toLocaleLowerCase()] ?? fallback ?? value;
+}
+
 /**
  * Event types are an internal normalized contract. Keep the protocol value out
  * of the normal conversation view; the debug view can still expose it when a
@@ -38,6 +84,7 @@ export const AGENT_EVENT_TYPE_LABELS = {
   'agent.plan.updated': 'Agent 执行计划更新',
   'agent.status': 'Agent 状态更新',
   'agent.configuration.updated': 'Agent 配置更新',
+  'agent.commands.updated': 'Agent 命令更新',
   'tool.call.started': '工具调用开始',
   'tool.call.progress': '工具调用进行中',
   'tool.call.completed': '工具调用完成',

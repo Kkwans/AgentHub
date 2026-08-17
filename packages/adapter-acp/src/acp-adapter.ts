@@ -423,8 +423,31 @@ class AcpSessionHandle implements AgentSessionHandle {
           ...this.configuration,
           current: { ...this.configuration.current, mode: patch.mode },
         };
+        const collaborationMode = findConfigOption(
+          this.configOptions,
+          'collaboration_mode',
+          'default',
+        );
+        if (
+          collaborationMode &&
+          currentConfigValue(this.configOptions, 'collaboration_mode') !== 'default'
+        ) {
+          const response = await this.runtime.agent.request(
+            AGENT_METHODS.session_set_config_option,
+            {
+              sessionId,
+              configId: collaborationMode.id,
+              value: 'default',
+            },
+          );
+          this.updateConfigurationFromAcp({ configOptions: response.configOptions });
+        }
       } else {
-        const option = findConfigOption(this.configOptions, 'mode', patch.mode);
+        const option = findConfigOption(
+          this.configOptions,
+          ['mode', 'collaboration_mode'],
+          patch.mode,
+        );
         if (!option) {
           throw new AcpAdapterError('SESSION_MODE_UNSUPPORTED', `Agent 不支持模式：${patch.mode}`);
         }
@@ -435,6 +458,26 @@ class AcpSessionHandle implements AgentSessionHandle {
         });
         this.updateConfigurationFromAcp({ configOptions: response.configOptions });
       }
+    }
+
+    if (patch.reasoningEffort) {
+      const option = findConfigOption(
+        this.configOptions,
+        ['thought_level', 'reasoning_effort', 'effort'],
+        patch.reasoningEffort,
+      );
+      if (!option) {
+        throw new AcpAdapterError(
+          'SESSION_REASONING_EFFORT_UNSUPPORTED',
+          `Agent 不支持推理强度：${patch.reasoningEffort}`,
+        );
+      }
+      const response = await this.runtime.agent.request(AGENT_METHODS.session_set_config_option, {
+        sessionId,
+        configId: option.id,
+        value: patch.reasoningEffort,
+      });
+      this.updateConfigurationFromAcp({ configOptions: response.configOptions });
     }
 
     return structuredClone(this.configuration);
@@ -640,16 +683,26 @@ class AcpSessionHandle implements AgentSessionHandle {
     const options = isRecord(payload.options) ? payload.options : {};
     const models = readModelOptions(options.models);
     const modes = readModelOptions(options.modes);
+    const reasoningEfforts = readModelOptions(options.reasoningEfforts);
+    if (typeof current.mode === 'string' && this.modeState) {
+      this.modeState = { ...this.modeState, currentModeId: current.mode };
+    }
     this.configuration = {
       ...this.configuration,
       current: {
         ...this.configuration.current,
         ...(typeof current.model === 'string' ? { model: current.model } : {}),
         ...(typeof current.mode === 'string' ? { mode: current.mode } : {}),
+        ...(typeof current.reasoningEffort === 'string'
+          ? { reasoningEffort: current.reasoningEffort }
+          : {}),
       },
       options: {
         models: models.length ? models : this.configuration.options.models,
         modes: modes.length ? modes : this.configuration.options.modes,
+        reasoningEfforts: reasoningEfforts.length
+          ? reasoningEfforts
+          : this.configuration.options.reasoningEfforts,
       },
     };
   }
@@ -749,19 +802,19 @@ export function mapAcpCapabilities(
   hints: Record<string, unknown> = {},
   session?: Pick<NewSessionResponse, 'modes' | 'configOptions'>,
 ): AgentCapabilities {
-  const modeOptions = session?.modes?.availableModes.map((mode) => ({
-    id: mode.id,
-    label: mode.name,
-    ...(mode.description ? { description: mode.description } : {}),
-  }));
+  const modeOptions = modeOptionsFromAcp(session ?? {});
   const modelOptions = configOptionsForCategory(session?.configOptions, 'model');
-  const reasoningEffortOptions = configOptionsForCategory(session?.configOptions, 'thought_level');
+  const reasoningEffortOptions = configOptionsForCategories(session?.configOptions, [
+    'thought_level',
+    'reasoning_effort',
+    'effort',
+  ]);
   const configuration: AgentCapabilities['configuration'] = {
     models: Boolean(hints.models) || modelOptions.length > 0,
-    modes: Boolean(hints.modes) || (modeOptions?.length ?? 0) > 0,
+    modes: Boolean(hints.modes) || modeOptions.length > 0,
     reasoningEffort: Boolean(hints.reasoningEffort) || reasoningEffortOptions.length > 0,
     ...(modelOptions.length ? { modelOptions } : {}),
-    ...(modeOptions?.length ? { modeOptions } : {}),
+    ...(modeOptions.length ? { modeOptions } : {}),
     ...(reasoningEffortOptions.length ? { reasoningEffortOptions } : {}),
   };
   return {
@@ -800,13 +853,15 @@ async function applyRequestedSessionConfiguration(
 ): Promise<void> {
   if (input.model) await handle.setConfiguration?.({ model: input.model });
   if (input.mode) await handle.setConfiguration?.({ mode: input.mode });
+  if (input.reasoningEffort)
+    await handle.setConfiguration?.({ reasoningEffort: input.reasoningEffort });
 }
 
 function emptySessionConfiguration(): SessionConfiguration {
   return {
     supported: false,
-    current: { model: null, mode: null },
-    options: { models: [], modes: [] },
+    current: { model: null, mode: null, reasoningEffort: null },
+    options: { models: [], modes: [], reasoningEfforts: [] },
   };
 }
 
@@ -815,20 +870,23 @@ function configurationFromAcp(input: {
   configOptions?: SessionConfigOption[];
 }): SessionConfiguration {
   const models = configOptionsForCategory(input.configOptions, 'model');
-  const modeOptions = input.modes?.availableModes.map((mode) => ({
-    id: mode.id,
-    label: mode.name,
-    ...(mode.description ? { description: mode.description } : {}),
-  }));
-  const modes = modeOptions?.length
-    ? modeOptions
-    : configOptionsForCategory(input.configOptions, 'mode');
+  const reasoningEfforts = configOptionsForCategories(input.configOptions, [
+    'thought_level',
+    'reasoning_effort',
+    'effort',
+  ]);
+  const modes = modeOptionsFromAcp(input);
   const modelValue = currentConfigValue(input.configOptions, 'model');
-  const modeValue = input.modes?.currentModeId ?? currentConfigValue(input.configOptions, 'mode');
+  const modeValue = currentModeValueFromAcp(input);
+  const reasoningEffortValue = currentConfigValueForCategories(input.configOptions, [
+    'thought_level',
+    'reasoning_effort',
+    'effort',
+  ]);
   return {
-    supported: models.length > 0 || modes.length > 0,
-    current: { model: modelValue, mode: modeValue },
-    options: { models, modes },
+    supported: models.length > 0 || modes.length > 0 || reasoningEfforts.length > 0,
+    current: { model: modelValue, mode: modeValue, reasoningEffort: reasoningEffortValue },
+    options: { models, modes, reasoningEfforts },
   };
 }
 
@@ -838,15 +896,22 @@ function mergeSessionConfiguration(
 ): SessionConfiguration {
   const hasModels = next.options.models.length > 0;
   const hasModes = next.options.modes.length > 0;
+  const hasReasoningEfforts = next.options.reasoningEfforts.length > 0;
   return {
     supported: previous.supported || next.supported,
     current: {
       model: hasModels ? next.current.model : previous.current.model,
       mode: hasModes ? next.current.mode : previous.current.mode,
+      reasoningEffort: hasReasoningEfforts
+        ? next.current.reasoningEffort
+        : previous.current.reasoningEffort,
     },
     options: {
       models: hasModels ? next.options.models : previous.options.models,
       modes: hasModes ? next.options.modes : previous.options.modes,
+      reasoningEfforts: hasReasoningEfforts
+        ? next.options.reasoningEfforts
+        : previous.options.reasoningEfforts,
     },
     ...(previous.reasonCode || next.reasonCode
       ? { reasonCode: next.reasonCode ?? previous.reasonCode }
@@ -855,12 +920,21 @@ function mergeSessionConfiguration(
 }
 
 function currentConfigValue(
-  options: SessionConfigOption[] | undefined,
+  options: SessionConfigOption[] | null | undefined,
   category: string,
+): string | null {
+  return currentConfigValueForCategories(options, [category]);
+}
+
+function currentConfigValueForCategories(
+  options: SessionConfigOption[] | null | undefined,
+  categories: string[],
 ): string | null {
   const option = options?.find(
     (candidate): candidate is Extract<SessionConfigOption, { type: 'select' }> =>
-      candidate.type === 'select' && candidate.category === category,
+      candidate.type === 'select' &&
+      typeof candidate.category === 'string' &&
+      categories.includes(candidate.category),
   );
   return option?.currentValue ?? null;
 }
@@ -889,15 +963,75 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function findConfigOption(
   options: SessionConfigOption[] | null | undefined,
-  category: string,
+  category: string | string[],
   value: string,
 ): Extract<SessionConfigOption, { type: 'select' }> | undefined {
+  const categories = Array.isArray(category) ? category : [category];
   return options?.find(
     (option): option is Extract<SessionConfigOption, { type: 'select' }> =>
       option.type === 'select' &&
-      option.category === category &&
+      typeof option.category === 'string' &&
+      categories.includes(option.category) &&
       flattenSelectOptions(option.options).some((candidate) => candidate.value === value),
   );
+}
+
+function configOptionsForCategories(
+  options: SessionConfigOption[] | null | undefined,
+  categories: string[],
+): Array<{ id: string; label: string; description?: string }> {
+  for (const category of categories) {
+    const values = configOptionsForCategory(options, category);
+    if (values.length) return values;
+  }
+  return [];
+}
+
+function modeOptionsFromAcp(input: {
+  modes?: SessionModeState | null;
+  configOptions?: SessionConfigOption[] | null;
+}): Array<{ id: string; label: string; description?: string }> {
+  const dedicated =
+    input.modes?.availableModes.map((mode) => ({
+      id: mode.id,
+      label: mode.name,
+      ...(mode.description ? { description: mode.description } : {}),
+    })) ?? [];
+  const declared = configOptionsForCategoriesCombined(input.configOptions, [
+    'mode',
+    'collaboration_mode',
+  ]);
+  const seen = new Set<string>();
+  return [...dedicated, ...declared].filter((option) => {
+    if (seen.has(option.id)) return false;
+    seen.add(option.id);
+    return true;
+  });
+}
+
+function currentModeValueFromAcp(input: {
+  modes?: SessionModeState | null;
+  configOptions?: SessionConfigOption[] | null;
+}): string | null {
+  const collaborationMode = currentConfigValue(input.configOptions, 'collaboration_mode');
+  if (collaborationMode && collaborationMode !== 'default') return collaborationMode;
+  return input.modes?.currentModeId ?? currentConfigValue(input.configOptions, 'mode');
+}
+
+function configOptionsForCategoriesCombined(
+  options: SessionConfigOption[] | null | undefined,
+  categories: string[],
+): Array<{ id: string; label: string; description?: string }> {
+  const result: Array<{ id: string; label: string; description?: string }> = [];
+  const seen = new Set<string>();
+  for (const category of categories) {
+    for (const option of configOptionsForCategory(options, category)) {
+      if (seen.has(option.id)) continue;
+      seen.add(option.id);
+      result.push(option);
+    }
+  }
+  return result;
 }
 
 function configOptionsForCategory(

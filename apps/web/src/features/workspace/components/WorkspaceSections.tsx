@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Bot,
@@ -41,10 +41,13 @@ import {
   type SessionRecord,
 } from '../../../lib/api';
 import {
+  describeSessionMode,
   labelAgentEventType,
   labelApprovalStatus,
   labelPromptBindingSlot,
   labelPromptBindingTarget,
+  labelReasoningEffort,
+  labelSessionMode,
   presentAgentMessage,
   resolveWorkspaceRunState,
   WORKSPACE_RUN_STATE_COPY,
@@ -1032,6 +1035,7 @@ export function Composer({
   agent,
   project,
   activeRun,
+  events,
   promptContext,
   promptContextLoading,
   promptContextError,
@@ -1046,6 +1050,7 @@ export function Composer({
   agent: AgentRecord | undefined;
   project: ProjectRecord | undefined;
   activeRun: RunRecord | undefined;
+  events: QueryState<EventRecord[]>;
   promptContext: ResolvedPromptContextRecord | undefined;
   promptContextLoading: boolean;
   promptContextError: Error | null;
@@ -1062,11 +1067,14 @@ export function Composer({
     JSON.stringify(promptVariables, null, 2),
   );
   const [variablesError, setVariablesError] = useState<string>();
+  const [commandNotice, setCommandNotice] = useState<string>();
+  const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const client = useQueryClient();
   const send = useMutation({
     mutationFn: () => api.post(`/sessions/${session.id}/runs`, { text, promptVariables }),
     onSuccess: () => {
       setText('');
+      setCommandNotice(undefined);
       void client.invalidateQueries({ queryKey: ['runs', session.id] });
     },
   });
@@ -1078,9 +1086,11 @@ export function Composer({
     },
   });
   const updateConfiguration = useMutation({
-    mutationFn: (patch: { model?: string; mode?: string }) =>
+    mutationFn: (patch: { model?: string; mode?: string; reasoningEffort?: string }) =>
       api.post<SessionConfigurationRecord>(`/sessions/${session.id}/configuration`, patch),
     onSuccess: async () => {
+      setText('');
+      setCommandNotice(undefined);
       await Promise.all([
         client.invalidateQueries({ queryKey: ['session', session.id] }),
         client.invalidateQueries({ queryKey: ['session-configuration', session.id] }),
@@ -1091,12 +1101,96 @@ export function Composer({
   const sessionLocked = session.status !== 'READY';
   const modelOptions = configuration?.options?.models ?? [];
   const modeOptions = configuration?.options?.modes ?? [];
+  const reasoningEffortOptions = configuration?.options?.reasoningEfforts ?? [];
   const modelValue = configuration?.current?.model ?? session.model ?? '';
   const modeValue = configuration?.current?.mode ?? session.mode ?? '';
+  const reasoningEffortValue = configuration?.current?.reasoningEffort ?? '';
   const updatingModel =
     updateConfiguration.isPending && updateConfiguration.variables?.model !== undefined;
   const updatingMode =
     updateConfiguration.isPending && updateConfiguration.variables?.mode !== undefined;
+  const updatingReasoningEffort =
+    updateConfiguration.isPending && updateConfiguration.variables?.reasoningEffort !== undefined;
+  const agentCommands = useMemo(() => readAgentCommands(events.data), [events.data]);
+  const slashCommands = useMemo(() => {
+    const builtins: ComposerCommand[] = [
+      {
+        name: 'model',
+        label: '切换模型',
+        description: '切换当前 Session 后续 Run 使用的模型',
+        hint: modelOptions.length ? modelOptions.map((option) => option.id).join('、') : '模型 ID',
+      },
+      {
+        name: 'mode',
+        label: '切换运行模式',
+        description: '切换当前 Session 的运行模式',
+        hint: modeOptions.length ? modeOptions.map((option) => option.id).join('、') : '模式 ID',
+      },
+      ...(reasoningEffortOptions.length
+        ? [
+            {
+              name: 'effort',
+              label: '切换推理强度',
+              description: '切换当前 Session 的推理强度',
+              hint: reasoningEffortOptions.map((option) => option.id).join('、'),
+            },
+          ]
+        : []),
+      ...(modeOptions.some((option) => option.id === 'plan')
+        ? [
+            {
+              name: 'plan',
+              label: '进入计划模式',
+              description: '将运行模式切换为 Agent 提供的计划模式',
+              hint: '无需参数',
+            },
+          ]
+        : []),
+      {
+        name: 'help',
+        label: '查看命令帮助',
+        description: '查看当前 Session 可用的命令',
+        hint: '无需参数',
+      },
+    ];
+    const commands = new Map(builtins.map((command) => [command.name, command]));
+    for (const command of agentCommands) {
+      if (!commands.has(command.name)) commands.set(command.name, command);
+    }
+    return [...commands.values()];
+  }, [agentCommands, modeOptions, modelOptions, reasoningEffortOptions]);
+  const slashQuery = text.startsWith('/') && !text.includes('\n') ? text.slice(1) : null;
+  const slashMenuOpen =
+    slashQuery !== null &&
+    !slashQuery.includes(' ') &&
+    !slashQuery.includes('\t') &&
+    slashCommands.length > 0;
+  const filteredSlashCommands = slashMenuOpen
+    ? slashCommands.filter((command) =>
+        command.name.toLocaleLowerCase().startsWith(slashQuery.toLocaleLowerCase()),
+      )
+    : [];
+  useEffect(() => {
+    setActiveCommandIndex(0);
+  }, [slashQuery]);
+  const localSlashCommand = parseLocalSlashCommand(text, {
+    hasPlanMode: modeOptions.some((option) => option.id === 'plan'),
+  });
+  const executeLocalSlashCommand = () => {
+    if (!localSlashCommand) return false;
+    if (localSlashCommand.kind === 'help') {
+      setCommandNotice(
+        '可用命令：/model <模型 ID>、/mode <模式 ID>、/effort <推理强度 ID>。Agent 提供的命令会在列表中显示。',
+      );
+      return true;
+    }
+    if (!localSlashCommand.value || !localSlashCommand.patch) {
+      setCommandNotice(`用法：/${localSlashCommand.name} <值>；可选值见输入框上方的命令提示。`);
+      return true;
+    }
+    updateConfiguration.mutate(localSlashCommand.patch);
+    return true;
+  };
   const contextBlocked =
     promptContextLoading ||
     Boolean(promptContextError) ||
@@ -1128,7 +1222,7 @@ export function Composer({
           </span>
         ) : configuration?.supported && modelOptions.length ? (
           <SelectField
-            label="model"
+            label="模型"
             value={modelValue}
             options={modelOptions.map((option) => ({
               value: option.id,
@@ -1145,20 +1239,41 @@ export function Composer({
         )}
         {!configurationLoading && configuration?.supported && modeOptions.length ? (
           <SelectField
-            label="mode"
+            label="运行模式"
+            description="权限模式控制可执行范围；计划模式控制是否先制定计划。"
             value={modeValue}
             options={modeOptions.map((option) => ({
               value: option.id,
-              label: option.label,
-              ...(option.description ? { description: option.description } : {}),
+              label: labelSessionMode(option.id, option.label),
+              description: describeSessionMode(option.id, option.description),
             }))}
             disabled={updatingMode}
             onValueChange={(mode) => updateConfiguration.mutate({ mode })}
           />
         ) : !configurationLoading ? (
           <span>
-            模式 <strong>{modeValue || agent?.defaultMode || '默认'}</strong>
+            模式{' '}
+            <strong>
+              {modeValue
+                ? labelSessionMode(modeValue)
+                : agent?.defaultMode
+                  ? labelSessionMode(agent.defaultMode)
+                  : '默认'}
+            </strong>
           </span>
+        ) : null}
+        {!configurationLoading && configuration?.supported && reasoningEffortOptions.length ? (
+          <SelectField
+            label="推理强度"
+            value={reasoningEffortValue}
+            options={reasoningEffortOptions.map((option) => ({
+              value: option.id,
+              label: labelReasoningEffort(option.id, option.label),
+              ...(option.description ? { description: option.description } : {}),
+            }))}
+            disabled={updatingReasoningEffort}
+            onValueChange={(reasoningEffort) => updateConfiguration.mutate({ reasoningEffort })}
+          />
         ) : null}
         <span>
           Project <strong>{project?.name ?? '未知'}</strong>
@@ -1275,11 +1390,51 @@ export function Composer({
           autoComplete="off"
           name="message"
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            setText(event.target.value);
+            setCommandNotice(undefined);
+          }}
+          onKeyDown={(event) => {
+            if (!slashMenuOpen || !filteredSlashCommands.length) return;
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              setActiveCommandIndex((index) => (index + 1) % filteredSlashCommands.length);
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              setActiveCommandIndex(
+                (index) =>
+                  (index - 1 + filteredSlashCommands.length) % filteredSlashCommands.length,
+              );
+            } else if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              const command = filteredSlashCommands[activeCommandIndex];
+              if (command) setText(`/${command.name} `);
+            }
+          }}
           placeholder="给 Agent 发送工程指令…"
           rows={2}
           disabled={Boolean(activeRun) || sessionLocked}
         />
+        {slashMenuOpen && filteredSlashCommands.length > 0 && (
+          <div className="composer-command-menu" role="listbox" aria-label="可用命令">
+            {filteredSlashCommands.map((command, index) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={index === activeCommandIndex}
+                className={index === activeCommandIndex ? 'active' : ''}
+                key={command.name}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setText(`/${command.name} `)}
+              >
+                <strong>/{command.name}</strong>
+                <span>{command.label}</span>
+                <small>{command.description}</small>
+                {command.hint && <code>{command.hint}</code>}
+              </button>
+            ))}
+          </div>
+        )}
         {activeRun ? (
           <IconButton
             className="send-button stop"
@@ -1296,11 +1451,14 @@ export function Composer({
             disabled={
               !text.trim() ||
               send.isPending ||
-              contextBlocked ||
+              updateConfiguration.isPending ||
+              (contextBlocked && !localSlashCommand) ||
               Boolean(variablesError) ||
               sessionLocked
             }
-            onClick={() => send.mutate()}
+            onClick={() => {
+              if (!executeLocalSlashCommand()) send.mutate();
+            }}
             aria-label="发送"
           >
             <Send size={18} />
@@ -1326,6 +1484,11 @@ export function Composer({
           {send.error.message}
         </span>
       )}
+      {commandNotice && (
+        <span className="composer-hint" role="status">
+          {commandNotice}
+        </span>
+      )}
       {sessionLocked && !activeRun && (
         <span className="composer-hint" role="status">
           {session.status === 'CLOSED'
@@ -1337,4 +1500,64 @@ export function Composer({
       )}
     </div>
   );
+}
+
+interface ComposerCommand {
+  name: string;
+  label: string;
+  description: string;
+  hint?: string;
+}
+
+function readAgentCommands(events: EventRecord[] | undefined): ComposerCommand[] {
+  const latest = [...(events ?? [])]
+    .reverse()
+    .find((event) => event.type === 'agent.commands.updated');
+  const commands = latest?.payloadJson.commands;
+  if (!Array.isArray(commands)) return [];
+  return commands.flatMap((value) => {
+    if (!value || typeof value !== 'object') return [];
+    const record = value as Record<string, unknown>;
+    if (typeof record.name !== 'string' || !record.name.trim()) return [];
+    return [
+      {
+        name: record.name,
+        label: 'Agent 命令',
+        description:
+          typeof record.description === 'string' ? record.description : 'Agent 提供的命令',
+        ...(typeof record.hint === 'string' ? { hint: record.hint } : {}),
+      },
+    ];
+  });
+}
+
+function parseLocalSlashCommand(
+  text: string,
+  options: { hasPlanMode: boolean },
+):
+  | {
+      name: string;
+      kind: 'configuration' | 'help';
+      value?: string;
+      patch?: { model?: string; mode?: string; reasoningEffort?: string };
+    }
+  | undefined {
+  const match = /^\/(model|mode|effort|reasoning-effort|plan|help)(?:\s+(.+))?$/i.exec(text.trim());
+  if (!match) return undefined;
+  const name = match[1]!.toLocaleLowerCase();
+  const value = match[2]?.trim();
+  if (name === 'help') return { name, kind: 'help' };
+  if (name === 'plan') {
+    if (!options.hasPlanMode) return undefined;
+    return { name, kind: 'configuration', value: 'plan', patch: { mode: 'plan' } };
+  }
+  if (!value) return { name, kind: 'configuration' };
+  if (name === 'model') return { name, kind: 'configuration', value, patch: { model: value } };
+  if (name === 'mode') return { name, kind: 'configuration', value, patch: { mode: value } };
+  return {
+    name,
+    kind: 'configuration',
+    value,
+    patch: { reasoningEffort: value },
+  };
 }

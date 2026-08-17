@@ -121,26 +121,53 @@ export function normalizeAcpSessionUpdate(update: SessionUpdate): NormalizedUpda
       ];
     case 'config_option_update': {
       const models = configOptionsForCategory(update.configOptions, 'model');
-      const modes = configOptionsForCategory(update.configOptions, 'mode');
+      const modes = configOptionsForCategoriesCombined(update.configOptions, [
+        'mode',
+        'collaboration_mode',
+      ]);
+      const reasoningEfforts = configOptionsForCategories(update.configOptions, [
+        'thought_level',
+        'reasoning_effort',
+        'effort',
+      ]);
       const current: Record<string, string> = {};
       const modelValue = currentConfigValue(update.configOptions, 'model');
-      const modeValue = currentConfigValue(update.configOptions, 'mode');
+      const modeValue = currentModeValue(update.configOptions);
+      const reasoningEffortValue = currentConfigValueForCategories(update.configOptions, [
+        'thought_level',
+        'reasoning_effort',
+        'effort',
+      ]);
       if (modelValue) current.model = modelValue;
       if (modeValue) current.mode = modeValue;
+      if (reasoningEffortValue) current.reasoningEffort = reasoningEffortValue;
       return [
         {
           type: 'agent.configuration.updated',
           payload: {
             current,
-            options: { models, modes },
+            options: { models, modes, reasoningEfforts },
           },
           sourceEventType,
         },
       ];
     }
+    case 'available_commands_update':
+      return [
+        {
+          type: 'agent.commands.updated',
+          payload: {
+            commands: update.availableCommands.map((command) => ({
+              name: command.name,
+              description: command.description,
+              ...(command.input && 'hint' in command.input ? { hint: command.input.hint } : {}),
+            })),
+          },
+          sourceEventType,
+        },
+      ];
     case 'agent_thought_chunk':
     case 'user_message_chunk':
-    case 'available_commands_update':
       return [];
   }
 }
@@ -164,12 +191,54 @@ function configOptionsForCategory(
   });
 }
 
+function configOptionsForCategories(
+  options: SessionConfigOption[],
+  categories: string[],
+): Array<{ id: string; label: string; description?: string }> {
+  for (const category of categories) {
+    const values = configOptionsForCategory(options, category);
+    if (values.length) return values;
+  }
+  return [];
+}
+
+function configOptionsForCategoriesCombined(
+  options: SessionConfigOption[],
+  categories: string[],
+): Array<{ id: string; label: string; description?: string }> {
+  const result: Array<{ id: string; label: string; description?: string }> = [];
+  const seen = new Set<string>();
+  for (const category of categories) {
+    for (const option of configOptionsForCategory(options, category)) {
+      if (seen.has(option.id)) continue;
+      seen.add(option.id);
+      result.push(option);
+    }
+  }
+  return result;
+}
+
 function currentConfigValue(options: SessionConfigOption[], category: string): string | undefined {
+  return currentConfigValueForCategories(options, [category]);
+}
+
+function currentConfigValueForCategories(
+  options: SessionConfigOption[],
+  categories: string[],
+): string | undefined {
   const option = options.find(
     (candidate): candidate is Extract<SessionConfigOption, { type: 'select' }> =>
-      candidate.type === 'select' && candidate.category === category,
+      candidate.type === 'select' &&
+      typeof candidate.category === 'string' &&
+      categories.includes(candidate.category),
   );
   return option?.currentValue;
+}
+
+function currentModeValue(options: SessionConfigOption[]): string | undefined {
+  const collaborationMode = currentConfigValue(options, 'collaboration_mode');
+  if (collaborationMode && collaborationMode !== 'default') return collaborationMode;
+  return currentConfigValue(options, 'mode');
 }
 
 function toolPayload(update: {

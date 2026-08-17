@@ -15,10 +15,12 @@ const { AGENT_METHODS, CLIENT_METHODS, PROTOCOL_VERSION, agent, ndJsonStream } =
 let sessionCounter = 0;
 let currentMode = 'agent';
 let currentModel = 'fixture-model';
+let currentReasoningEffort = 'low';
+let currentCollaborationMode = 'default';
 
 const availableModes = () => [
+  { id: 'read-only', name: 'Read-only', description: '只读模式' },
   { id: 'agent', name: 'Agent', description: '执行模式' },
-  { id: 'plan', name: 'Plan', description: '规划模式' },
 ];
 
 const configOptions = () => [
@@ -31,6 +33,28 @@ const configOptions = () => [
     options: [
       { value: 'fixture-model', name: 'Fixture Model' },
       { value: 'fixture-model-2', name: 'Fixture Model 2' },
+    ],
+  },
+  {
+    id: 'thought-level',
+    name: 'Reasoning effort',
+    category: 'thought_level',
+    type: 'select',
+    currentValue: currentReasoningEffort,
+    options: [
+      { value: 'low', name: 'Low' },
+      { value: 'high', name: 'High' },
+    ],
+  },
+  {
+    id: 'collaboration-mode',
+    name: 'Collaboration mode',
+    category: 'collaboration_mode',
+    type: 'select',
+    currentValue: currentCollaborationMode,
+    options: [
+      { value: 'default', name: 'Default' },
+      { value: 'plan', name: 'Plan', description: '规划模式' },
     ],
   },
 ];
@@ -73,7 +97,9 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     return {};
   })
   .onRequest(AGENT_METHODS.session_set_config_option, async ({ params, client }) => {
-    currentModel = params.value;
+    if (params.configId === 'thought-level') currentReasoningEffort = params.value;
+    else if (params.configId === 'collaboration-mode') currentCollaborationMode = params.value;
+    else currentModel = params.value;
     await client.notify(CLIENT_METHODS.session_update, {
       sessionId: params.sessionId,
       update: { sessionUpdate: 'config_option_update', configOptions: configOptions() },

@@ -47,6 +47,10 @@ export const FAKE_AGENT_CAPABILITIES: AgentCapabilities = {
       { id: 'agent', label: 'Agent', description: '执行模式' },
       { id: 'plan', label: 'Plan', description: '规划模式' },
     ],
+    reasoningEffortOptions: [
+      { id: 'low', label: 'Low' },
+      { id: 'high', label: 'High' },
+    ],
   },
   telemetry: { tokenUsage: true, cost: false },
 };
@@ -134,6 +138,7 @@ class FakeAgentSession implements AgentSessionHandle {
       current: {
         model: input.model ?? 'fixture-model',
         mode: input.mode ?? 'agent',
+        reasoningEffort: 'low',
       },
       options: {
         models: [
@@ -143,6 +148,10 @@ class FakeAgentSession implements AgentSessionHandle {
         modes: [
           { id: 'agent', label: 'Agent', description: '执行模式' },
           { id: 'plan', label: 'Plan', description: '规划模式' },
+        ],
+        reasoningEfforts: [
+          { id: 'low', label: 'Low' },
+          { id: 'high', label: 'High' },
         ],
       },
     };
@@ -176,12 +185,24 @@ class FakeAgentSession implements AgentSessionHandle {
     ) {
       throw new FakeAdapterError('SESSION_MODE_UNSUPPORTED', 'Fixture 不支持该模式');
     }
+    if (
+      patch.reasoningEffort &&
+      !this.configuration.options.reasoningEfforts.some(
+        (option) => option.id === patch.reasoningEffort,
+      )
+    ) {
+      throw new FakeAdapterError(
+        'SESSION_REASONING_EFFORT_UNSUPPORTED',
+        'Fixture 不支持该推理强度',
+      );
+    }
     this.configuration = {
       ...this.configuration,
       current: {
         ...this.configuration.current,
         ...(patch.model ? { model: patch.model } : {}),
         ...(patch.mode ? { mode: patch.mode } : {}),
+        ...(patch.reasoningEffort ? { reasoningEffort: patch.reasoningEffort } : {}),
       },
     };
     this.emit('agent.configuration.updated', {

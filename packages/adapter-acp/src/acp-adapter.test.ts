@@ -82,8 +82,14 @@ describe('ACP v1 adapter wire fixture', () => {
       { id: 'fixture-model-2', label: 'Fixture Model 2' },
     ]);
     expect(capabilities.configuration.modeOptions).toEqual([
+      { id: 'read-only', label: 'Read-only', description: '只读模式' },
       { id: 'agent', label: 'Agent', description: '执行模式' },
+      { id: 'default', label: 'Default' },
       { id: 'plan', label: 'Plan', description: '规划模式' },
+    ]);
+    expect(capabilities.configuration.reasoningEffortOptions).toEqual([
+      { id: 'low', label: 'Low' },
+      { id: 'high', label: 'High' },
     ]);
   });
 
@@ -137,7 +143,7 @@ describe('ACP v1 adapter wire fixture', () => {
     );
   });
 
-  it('读取并动态切换 Session model/mode，拒绝无效选项', async () => {
+  it('读取并动态切换 Session model/mode/推理强度，拒绝无效选项', async () => {
     const adapter = new AcpAdapter();
     const session = await adapter.createSession({
       sessionId: 'hub-session-configuration',
@@ -157,6 +163,14 @@ describe('ACP v1 adapter wire fixture', () => {
     });
     await expect(session.setConfiguration?.({ model: 'fixture-model-2' })).resolves.toMatchObject({
       current: { model: 'fixture-model-2' },
+    });
+    await expect(session.setConfiguration?.({ reasoningEffort: 'high' })).resolves.toMatchObject({
+      current: { reasoningEffort: 'high' },
+    });
+    await expect(
+      session.setConfiguration?.({ reasoningEffort: 'missing-effort' }),
+    ).rejects.toMatchObject({
+      code: 'SESSION_REASONING_EFFORT_UNSUPPORTED',
     });
     await expect(session.setConfiguration?.({ mode: 'missing-mode' })).rejects.toMatchObject({
       code: 'SESSION_MODE_UNSUPPORTED',

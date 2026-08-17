@@ -31,6 +31,7 @@ export interface AgentProfile {
   launchSpec: AgentLaunchSpec;
   defaultModel?: string;
   defaultMode?: string;
+  defaultReasoningEffort?: string;
   config: Record<string, unknown>;
 }
 
@@ -98,6 +99,7 @@ export interface ModelOption {
 export interface SessionConfigurationPatch {
   model?: string;
   mode?: string;
+  reasoningEffort?: string;
 }
 
 export interface SessionConfiguration {
@@ -105,10 +107,12 @@ export interface SessionConfiguration {
   current: {
     model: string | null;
     mode: string | null;
+    reasoningEffort: string | null;
   };
   options: {
     models: ModelOption[];
     modes: ModelOption[];
+    reasoningEfforts: ModelOption[];
   };
   reasonCode?: string;
 }
@@ -120,6 +124,7 @@ export interface CreateAgentSessionInput {
   cwd: string;
   model?: string;
   mode?: string;
+  reasoningEffort?: string;
   additionalRoots?: string[];
   metadata?: Record<string, unknown>;
 }

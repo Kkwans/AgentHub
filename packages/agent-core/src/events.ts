@@ -13,6 +13,7 @@ export const AGENT_EVENT_TYPES = [
   'agent.plan.updated',
   'agent.status',
   'agent.configuration.updated',
+  'agent.commands.updated',
   'tool.call.started',
   'tool.call.progress',
   'tool.call.completed',

@@ -63,6 +63,14 @@ describe('ACP 事件归一化', () => {
             currentValue: 'fixture-model',
             options: [{ value: 'fixture-model', name: 'Fixture Model' }],
           },
+          {
+            id: 'thought-level',
+            name: 'Reasoning effort',
+            category: 'thought_level',
+            type: 'select',
+            currentValue: 'high',
+            options: [{ value: 'high', name: 'High' }],
+          },
         ],
       }),
     ).toMatchObject([
@@ -70,8 +78,35 @@ describe('ACP 事件归一化', () => {
         type: 'agent.configuration.updated',
         payload: {
           current: { model: 'fixture-model' },
-          options: { models: [{ id: 'fixture-model', label: 'Fixture Model' }], modes: [] },
+          options: {
+            models: [{ id: 'fixture-model', label: 'Fixture Model' }],
+            modes: [],
+            reasoningEfforts: [{ id: 'high', label: 'High' }],
+          },
         },
+      },
+    ]);
+  });
+
+  it('将 ACP 可用命令归一化为可供 Composer 使用的安全命令列表', () => {
+    expect(
+      normalizeAcpSessionUpdate({
+        sessionUpdate: 'available_commands_update',
+        availableCommands: [
+          { name: 'plan', description: 'Turn plan mode on.', input: null, _meta: { secret: true } },
+          { name: '$lint', description: 'Run project lint', input: { hint: 'optional path' } },
+        ],
+      }),
+    ).toEqual([
+      {
+        type: 'agent.commands.updated',
+        payload: {
+          commands: [
+            { name: 'plan', description: 'Turn plan mode on.' },
+            { name: '$lint', description: 'Run project lint', hint: 'optional path' },
+          ],
+        },
+        sourceEventType: 'available_commands_update',
       },
     ]);
   });

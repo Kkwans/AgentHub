@@ -15,6 +15,7 @@ const createSchema = z.object({
   branch: z.string().max(1_024).optional(),
   model: z.string().max(160).optional(),
   mode: z.string().max(80).optional(),
+  reasoningEffort: z.string().max(80).optional(),
   taskId: z.string().uuid().optional(),
 });
 const runSchema = z.object({
@@ -26,11 +27,17 @@ const configurationSchema = z
   .object({
     model: z.string().trim().min(1).max(160).optional(),
     mode: z.string().trim().min(1).max(80).optional(),
+    reasoningEffort: z.string().trim().min(1).max(80).optional(),
   })
   .strict()
-  .refine((value) => (value.model !== undefined) !== (value.mode !== undefined), {
-    message: '一次只能修改一个 Session 配置',
-  });
+  .refine(
+    (value) =>
+      [value.model, value.mode, value.reasoningEffort].filter((item) => item !== undefined)
+        .length === 1,
+    {
+      message: '一次只能修改一个 Session 配置',
+    },
+  );
 
 export function createSessionRouter(service: SessionService): Router {
   const router = Router();
@@ -79,6 +86,9 @@ export function createSessionRouter(service: SessionService): Router {
           data: await service.updateConfiguration(id, {
             ...(parsed.model !== undefined ? { model: parsed.model } : {}),
             ...(parsed.mode !== undefined ? { mode: parsed.mode } : {}),
+            ...(parsed.reasoningEffort !== undefined
+              ? { reasoningEffort: parsed.reasoningEffort }
+              : {}),
           }),
           requestId: String(request.id),
         });
