@@ -1,12 +1,24 @@
 {
-  "capturedAt": "2026-08-17T04:06:55.199Z",
+  "capturedAt": "2026-08-17T06:19:27.230Z",
   "baseURL": "http://192.168.5.110:3210",
+  "viewports": [
+    "1440",
+    "1024",
+    "768",
+    "390"
+  ],
   "unauthenticated": {
-    "state": "unauthenticated",
-    "path": "/overview",
+    "route": "/overview",
     "title": "AgentHub",
-    "text": "AgentHub\n工程控制平面\n安全登录\n登录 AgentHub\n\n输入管理员账号和密码，继续管理 Project、Agent 与 Session。\n\n用户名\n密码\n登录\n此设备将保持登录 7 天。你可以随时从设置页退出。",
-    "consoleErrors": []
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "layout": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "horizontalOverflow": false,
+      "visibleTextLength": 111
+    }
   },
   "authenticated": [
     {
@@ -16,43 +28,99 @@
           "route": "/overview",
           "fileName": "02-overview-1440.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n概览\n搜索与跳转\nCtrl K\n已连接\n今天需要处理什么\n\n待处理事项、实时执行与最近工程结果，都集中在一个清晰的工作视图中。\n\n需要处理\n等待你的决定\n0\n没有待处理项\n\nAgent Approval 与 Task 审阅会集中出现在这里。\n\n查看任务\n运行态\n正在执行\n当前没有运行中的 Session\n\n从任务或会话页选择 Agent 开始。\n\n打开会话\n最近结果\n最近 Run 与 Git 结果\n测试codex\nRun · Git 无变更\n已完成\n运行基础\nAgent 健康与 Project\nOpenClaw\nOpenClaw · 2026.5.7\n就绪\nCodex\nCodex · 1.1.14\n就绪\nAgentHub\n/volume2/Project/AgentHub\nGit",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1440,
+            "clientWidth": 1440,
+            "horizontalOverflow": false,
+            "visibleTextLength": 416
+          }
         },
         {
           "route": "/projects",
           "fileName": "03-projects-1440.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n项目\n搜索与跳转\nCtrl K\n已连接\nPROJECT\n项目\n\n从可用目录中选择工程，AgentHub 会自动完成 Git、规则文件和权限预检。\n\n添加项目\n已接入的项目\n\n项目目录只读浏览；Agent 的修改通过自身工具完成。\n\nAgentHub\nAgentHub AI Coding Agent 控制平面自身仓库\n/volume2/Project/AgentHub\nGit\n使用中\n开始会话\n编辑\n归档",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1440,
+            "clientWidth": 1440,
+            "horizontalOverflow": false,
+            "visibleTextLength": 275
+          }
+        },
+        {
+          "route": "/tasks",
+          "fileName": "04-tasks-1440.png",
+          "title": "AgentHub",
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1440,
+            "clientWidth": 1440,
+            "horizontalOverflow": false,
+            "visibleTextLength": 377
+          }
         },
         {
           "route": "/agents",
-          "fileName": "04-agents-1440.png",
+          "fileName": "05-agents-1440.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\nAgent\n搜索与跳转\nCtrl K\n已连接\nAGENT\nAgent\n\nAgentHub 会自动发现本机与 Docker 中的 Agent。普通流程只需要接入和检查，不需要填写运行命令。\n\n2 个 Agent 已就绪\n需要处理的已识别 Agent 会在下方明确标注原因。\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n正在扫描运行环境…\n正在读取最新状态\n正在识别运行环境中的 Agent…\n正在读取最新状态\n发现的 Agent\n\n接入后会自动运行 preflight；需要登录、缺少依赖或容器停止时会保留明确状态。\n\n正在检查 Agent…\n正在读取最新状态\n已接入 Agent\n\n这里管理已接入 Agent 的默认模型和模式；实际能力仍以每次 preflight 返回为准。\n\nOpenClaw\nOpenClaw · 就绪\n默认模型：跟随 Agent · 默认模式：跟随 Agent\n就绪\n默认设置\nCodex\nCodex · 就绪\n默认模型：跟随 Agent · 默认模式：跟随 Agent\n就绪\n默认设置",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1440,
+            "clientWidth": 1440,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1248
+          }
         },
         {
           "route": "/sessions",
-          "fileName": "05-sessions-1440.png",
+          "fileName": "06-sessions-1440.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n会话\n搜索与跳转\nCtrl K\n已连接\nCoding Session\n\n进入多栏工作区查看对话、Approval、文件、Diff、Git 和运行上下文。\n\n新建 Session\n已关闭\n测试codex\n/volume2/Project/AgentHub\n无 Git 分支 · 08/17 12:05",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1440,
+            "clientWidth": 1440,
+            "horizontalOverflow": false,
+            "visibleTextLength": 221
+          }
         },
         {
           "route": "/promptos",
-          "fileName": "06-promptos-1440.png",
+          "fileName": "07-promptos-1440.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\nPromptOS\n搜索与跳转\nCtrl K\n已连接\nPromptOS\n\n管理稳定 Prompt 标识、不可变版本、可移动标签、绑定与可复现的最终上下文。\n\n新建 Prompt\nPrompt 资产\n0\n还没有 Prompt\n\n先创建稳定标识，再追加第一个版本。\n\n选择 Prompt\n\n在左侧选择 Prompt 查看版本、标签和绑定。",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1440,
+            "clientWidth": 1440,
+            "horizontalOverflow": false,
+            "visibleTextLength": 238
+          }
         },
         {
           "route": "/settings",
-          "fileName": "07-settings-1440.png",
+          "fileName": "08-settings-1440.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n设置\n搜索与跳转\nCtrl K\n已连接\n设置与诊断\n\n查看服务能力、Remote Node、安全边界和高权限 Docker 风险。凭据只保存引用。\n\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n\n已隐藏 67 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。\n\n可用\n本机（agenthub）\n\nAgentHub 运行环境\n\n已接入\n已停止\nopenclaw-official\n\nDocker 容器 · ghcr.io/openclaw/openclaw:2026.6.11\n\n容器已停止\n接入运行环境\n已停止\nclawdash\n\nDocker 容器 · nginx:alpine\n\n容器已停止\n接入运行环境\n可用\nopenclaw-custom\n\nDocker 容器 · openclaw-custom:2026.5.7\n\n容器正在运行\n停止\n已接入\n已停止\nclaude-code\n\nDocker 容器 · claude-code:2026.6.8\n\n容器已停止\n接入运行环境\n已停止\nhermes-dashboard\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n已停止\nhermes\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n远程连接\nR",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1440,
+            "clientWidth": 1440,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1235
+          }
         }
       ]
     },
@@ -63,43 +131,99 @@
           "route": "/overview",
           "fileName": "02-overview-1024.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n概览\n搜索与跳转\nCtrl K\n已连接\n今天需要处理什么\n\n待处理事项、实时执行与最近工程结果，都集中在一个清晰的工作视图中。\n\n需要处理\n等待你的决定\n0\n没有待处理项\n\nAgent Approval 与 Task 审阅会集中出现在这里。\n\n查看任务\n运行态\n正在执行\n当前没有运行中的 Session\n\n从任务或会话页选择 Agent 开始。\n\n打开会话\n最近结果\n最近 Run 与 Git 结果\n测试codex\nRun · Git 无变更\n已完成\n运行基础\nAgent 健康与 Project\nOpenClaw\nOpenClaw · 2026.5.7\n就绪\nCodex\nCodex · 1.1.14\n就绪\nAgentHub\n/volume2/Project/AgentHub\nGit",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1024,
+            "clientWidth": 1024,
+            "horizontalOverflow": false,
+            "visibleTextLength": 416
+          }
         },
         {
           "route": "/projects",
           "fileName": "03-projects-1024.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n项目\n搜索与跳转\nCtrl K\n已连接\nPROJECT\n项目\n\n从可用目录中选择工程，AgentHub 会自动完成 Git、规则文件和权限预检。\n\n添加项目\n已接入的项目\n\n项目目录只读浏览；Agent 的修改通过自身工具完成。\n\nAgentHub\nAgentHub AI Coding Agent 控制平面自身仓库\n/volume2/Project/AgentHub\nGit\n使用中\n开始会话\n编辑\n归档",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1024,
+            "clientWidth": 1024,
+            "horizontalOverflow": false,
+            "visibleTextLength": 275
+          }
+        },
+        {
+          "route": "/tasks",
+          "fileName": "04-tasks-1024.png",
+          "title": "AgentHub",
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1024,
+            "clientWidth": 1024,
+            "horizontalOverflow": false,
+            "visibleTextLength": 377
+          }
         },
         {
           "route": "/agents",
-          "fileName": "04-agents-1024.png",
+          "fileName": "05-agents-1024.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\nAgent\n搜索与跳转\nCtrl K\n已连接\nAGENT\nAgent\n\nAgentHub 会自动发现本机与 Docker 中的 Agent。普通流程只需要接入和检查，不需要填写运行命令。\n\n2 个 Agent 已就绪\n需要处理的已识别 Agent 会在下方明确标注原因。\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n\n已隐藏 67 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。\n\n可用\n本机（agenthub）\n\nAgentHub 运行环境\n\n已接入\n已停止\nopenclaw-official\n\nDocker 容器 · ghcr.io/openclaw/openclaw:2026.6.11\n\n容器已停止\n接入运行环境\n已停止\nclawdash\n\nDocker 容器 · nginx:alpine\n\n容器已停止\n接入运行环境\n可用\nopenclaw-custom\n\nDocker 容器 · openclaw-custom:2026.5.7\n\n容器正在运行\n停止\n已接入\n已停止\nclaude-code\n\nDocker 容器 · claude-code:2026.6.8\n\n容器已停止\n接入运行环境\n已停止\nhermes-dashboard\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n已停止\nhe",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1024,
+            "clientWidth": 1024,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1248
+          }
         },
         {
           "route": "/sessions",
-          "fileName": "05-sessions-1024.png",
+          "fileName": "06-sessions-1024.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n会话\n搜索与跳转\nCtrl K\n已连接\nCoding Session\n\n进入多栏工作区查看对话、Approval、文件、Diff、Git 和运行上下文。\n\n新建 Session\n已关闭\n测试codex\n/volume2/Project/AgentHub\n无 Git 分支 · 08/17 12:05",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1024,
+            "clientWidth": 1024,
+            "horizontalOverflow": false,
+            "visibleTextLength": 221
+          }
         },
         {
           "route": "/promptos",
-          "fileName": "06-promptos-1024.png",
+          "fileName": "07-promptos-1024.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\nPromptOS\n搜索与跳转\nCtrl K\n已连接\nPromptOS\n\n管理稳定 Prompt 标识、不可变版本、可移动标签、绑定与可复现的最终上下文。\n\n新建 Prompt\nPrompt 资产\n0\n还没有 Prompt\n\n先创建稳定标识，再追加第一个版本。\n\n选择 Prompt\n\n在左侧选择 Prompt 查看版本、标签和绑定。",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1024,
+            "clientWidth": 1024,
+            "horizontalOverflow": false,
+            "visibleTextLength": 238
+          }
         },
         {
           "route": "/settings",
-          "fileName": "07-settings-1024.png",
+          "fileName": "08-settings-1024.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgentHub\n工程控制平面\n概览\n项目\n任务\nAgent\n会话\nPromptOS\n设置\n已连接\nLOCAL\nAGENTHUB\n设置\n搜索与跳转\nCtrl K\n已连接\n设置与诊断\n\n查看服务能力、Remote Node、安全边界和高权限 Docker 风险。凭据只保存引用。\n\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n\n已隐藏 67 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。\n\n可用\n本机（agenthub）\n\nAgentHub 运行环境\n\n已接入\n已停止\nopenclaw-official\n\nDocker 容器 · ghcr.io/openclaw/openclaw:2026.6.11\n\n容器已停止\n接入运行环境\n已停止\nclawdash\n\nDocker 容器 · nginx:alpine\n\n容器已停止\n接入运行环境\n可用\nopenclaw-custom\n\nDocker 容器 · openclaw-custom:2026.5.7\n\n容器正在运行\n停止\n已接入\n已停止\nclaude-code\n\nDocker 容器 · claude-code:2026.6.8\n\n容器已停止\n接入运行环境\n已停止\nhermes-dashboard\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n已停止\nhermes\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n远程连接\nR",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 1024,
+            "clientWidth": 1024,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1235
+          }
         }
       ]
     },
@@ -110,43 +234,99 @@
           "route": "/overview",
           "fileName": "02-overview-768.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAGENTHUB\n概览\n搜索与跳转\nCtrl K\n已连接\n今天需要处理什么\n\n待处理事项、实时执行与最近工程结果，都集中在一个清晰的工作视图中。\n\n需要处理\n等待你的决定\n0\n没有待处理项\n\nAgent Approval 与 Task 审阅会集中出现在这里。\n\n查看任务\n运行态\n正在执行\n当前没有运行中的 Session\n\n从任务或会话页选择 Agent 开始。\n\n打开会话\n最近结果\n最近 Run 与 Git 结果\n测试codex\nRun · Git 无变更\n已完成\n运行基础\nAgent 健康与 Project\nOpenClaw\nOpenClaw · 2026.5.7\n就绪\nCodex\nCodex · 1.1.14\n就绪\nAgentHub\n/volume2/Project/AgentHub\nGit",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 768,
+            "clientWidth": 768,
+            "horizontalOverflow": false,
+            "visibleTextLength": 360
+          }
         },
         {
           "route": "/projects",
           "fileName": "03-projects-768.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAGENTHUB\n项目\n搜索与跳转\nCtrl K\n已连接\nPROJECT\n项目\n\n从可用目录中选择工程，AgentHub 会自动完成 Git、规则文件和权限预检。\n\n添加项目\n已接入的项目\n\n项目目录只读浏览；Agent 的修改通过自身工具完成。\n\nAgentHub\nAgentHub AI Coding Agent 控制平面自身仓库\n/volume2/Project/AgentHub\nGit\n使用中\n开始会话\n编辑\n归档",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 768,
+            "clientWidth": 768,
+            "horizontalOverflow": false,
+            "visibleTextLength": 219
+          }
+        },
+        {
+          "route": "/tasks",
+          "fileName": "04-tasks-768.png",
+          "title": "AgentHub",
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 768,
+            "clientWidth": 768,
+            "horizontalOverflow": false,
+            "visibleTextLength": 321
+          }
         },
         {
           "route": "/agents",
-          "fileName": "04-agents-768.png",
+          "fileName": "05-agents-768.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAGENTHUB\nAgent\n搜索与跳转\nCtrl K\n已连接\nAGENT\nAgent\n\nAgentHub 会自动发现本机与 Docker 中的 Agent。普通流程只需要接入和检查，不需要填写运行命令。\n\n2 个 Agent 已就绪\n需要处理的已识别 Agent 会在下方明确标注原因。\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n\n已隐藏 67 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。\n\n可用\n本机（agenthub）\n\nAgentHub 运行环境\n\n已接入\n已停止\nopenclaw-official\n\nDocker 容器 · ghcr.io/openclaw/openclaw:2026.6.11\n\n容器已停止\n接入运行环境\n已停止\nclawdash\n\nDocker 容器 · nginx:alpine\n\n容器已停止\n接入运行环境\n可用\nopenclaw-custom\n\nDocker 容器 · openclaw-custom:2026.5.7\n\n容器正在运行\n停止\n已接入\n已停止\nclaude-code\n\nDocker 容器 · claude-code:2026.6.8\n\n容器已停止\n接入运行环境\n已停止\nhermes-dashboard\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n已停止\nhermes\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n发",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 768,
+            "clientWidth": 768,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1192
+          }
         },
         {
           "route": "/sessions",
-          "fileName": "05-sessions-768.png",
+          "fileName": "06-sessions-768.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAGENTHUB\n会话\n搜索与跳转\nCtrl K\n已连接\nCoding Session\n\n进入多栏工作区查看对话、Approval、文件、Diff、Git 和运行上下文。\n\n新建 Session\n已关闭\n测试codex\n/volume2/Project/AgentHub\n无 Git 分支 · 08/17 12:05",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 768,
+            "clientWidth": 768,
+            "horizontalOverflow": false,
+            "visibleTextLength": 165
+          }
         },
         {
           "route": "/promptos",
-          "fileName": "06-promptos-768.png",
+          "fileName": "07-promptos-768.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAGENTHUB\nPromptOS\n搜索与跳转\nCtrl K\n已连接\nPromptOS\n\n管理稳定 Prompt 标识、不可变版本、可移动标签、绑定与可复现的最终上下文。\n\n新建 Prompt\nPrompt 资产\n0\n还没有 Prompt\n\n先创建稳定标识，再追加第一个版本。\n\n选择 Prompt\n\n在左侧选择 Prompt 查看版本、标签和绑定。",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 768,
+            "clientWidth": 768,
+            "horizontalOverflow": false,
+            "visibleTextLength": 182
+          }
         },
         {
           "route": "/settings",
-          "fileName": "07-settings-768.png",
+          "fileName": "08-settings-768.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAGENTHUB\n设置\n搜索与跳转\nCtrl K\n已连接\n设置与诊断\n\n查看服务能力、Remote Node、安全边界和高权限 Docker 风险。凭据只保存引用。\n\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n\n已隐藏 67 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。\n\n可用\n本机（agenthub）\n\nAgentHub 运行环境\n\n已接入\n已停止\nopenclaw-official\n\nDocker 容器 · ghcr.io/openclaw/openclaw:2026.6.11\n\n容器已停止\n接入运行环境\n已停止\nclawdash\n\nDocker 容器 · nginx:alpine\n\n容器已停止\n接入运行环境\n可用\nopenclaw-custom\n\nDocker 容器 · openclaw-custom:2026.5.7\n\n容器正在运行\n停止\n已接入\n已停止\nclaude-code\n\nDocker 容器 · claude-code:2026.6.8\n\n容器已停止\n接入运行环境\n已停止\nhermes-dashboard\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n已停止\nhermes\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n远程连接\nRemote Node\n\nRemote Node 会主动连接 AgentHub；Central Server 不使",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 768,
+            "clientWidth": 768,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1179
+          }
         }
       ]
     },
@@ -157,43 +337,99 @@
           "route": "/overview",
           "fileName": "02-overview-390.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\n概览\n已连接\n今天需要处理什么\n\n待处理事项、实时执行与最近工程结果，都集中在一个清晰的工作视图中。\n\n需要处理\n等待你的决定\n0\n没有待处理项\n\nAgent Approval 与 Task 审阅会集中出现在这里。\n\n查看任务\n运行态\n正在执行\n当前没有运行中的 Session\n\n从任务或会话页选择 Agent 开始。\n\n打开会话\n最近结果\n最近 Run 与 Git 结果\n测试codex\nRun · Git 无变更\n已完成\n运行基础\nAgent 健康与 Project\nOpenClaw\nOpenClaw · 2026.5.7\n就绪\nCodex\nCodex · 1.1.14\n就绪\nAgentHub\n/volume2/Project/AgentHub\nGit",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 390,
+            "clientWidth": 390,
+            "horizontalOverflow": false,
+            "visibleTextLength": 338
+          }
         },
         {
           "route": "/projects",
           "fileName": "03-projects-390.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\n项目\n已连接\nPROJECT\n项目\n\n从可用目录中选择工程，AgentHub 会自动完成 Git、规则文件和权限预检。\n\n添加项目\n已接入的项目\n\n项目目录只读浏览；Agent 的修改通过自身工具完成。\n\nAgentHub\nAgentHub AI Coding Agent 控制平面自身仓库\n/volume2/Project/AgentHub\nGit\n使用中\n开始会话\n编辑\n归档",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 390,
+            "clientWidth": 390,
+            "horizontalOverflow": false,
+            "visibleTextLength": 197
+          }
+        },
+        {
+          "route": "/tasks",
+          "fileName": "04-tasks-390.png",
+          "title": "AgentHub",
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 390,
+            "clientWidth": 390,
+            "horizontalOverflow": false,
+            "visibleTextLength": 315
+          }
         },
         {
           "route": "/agents",
-          "fileName": "04-agents-390.png",
+          "fileName": "05-agents-390.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nAgent\n已连接\nAGENT\nAgent\n\nAgentHub 会自动发现本机与 Docker 中的 Agent。普通流程只需要接入和检查，不需要填写运行命令。\n\n2 个 Agent 已就绪\n需要处理的已识别 Agent 会在下方明确标注原因。\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n\n已隐藏 67 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。\n\n可用\n本机（agenthub）\n\nAgentHub 运行环境\n\n已接入\n已停止\nopenclaw-official\n\nDocker 容器 · ghcr.io/openclaw/openclaw:2026.6.11\n\n容器已停止\n接入运行环境\n已停止\nclawdash\n\nDocker 容器 · nginx:alpine\n\n容器已停止\n接入运行环境\n可用\nopenclaw-custom\n\nDocker 容器 · openclaw-custom:2026.5.7\n\n容器正在运行\n停止\n已接入\n已停止\nclaude-code\n\nDocker 容器 · claude-code:2026.6.8\n\n容器已停止\n接入运行环境\n已停止\nhermes-dashboard\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n已停止\nhermes\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n发现的 Agent\n\n接入后会自动运行 pre",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 390,
+            "clientWidth": 390,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1170
+          }
         },
         {
           "route": "/sessions",
-          "fileName": "05-sessions-390.png",
+          "fileName": "06-sessions-390.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\n会话\n已连接\nCoding Session\n\n进入多栏工作区查看对话、Approval、文件、Diff、Git 和运行上下文。\n\n新建 Session\n已关闭\n测试codex\n/volume2/Project/AgentHub\n无 Git 分支 · 08/17 12:05",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 390,
+            "clientWidth": 390,
+            "horizontalOverflow": false,
+            "visibleTextLength": 143
+          }
         },
         {
           "route": "/promptos",
-          "fileName": "06-promptos-390.png",
+          "fileName": "07-promptos-390.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\nPromptOS\n已连接\nPromptOS\n\n管理稳定 Prompt 标识、不可变版本、可移动标签、绑定与可复现的最终上下文。\n\n新建 Prompt\nPrompt 资产\n0\n还没有 Prompt\n\n先创建稳定标识，再追加第一个版本。\n\n选择 Prompt\n\n在左侧选择 Prompt 查看版本、标签和绑定。",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 390,
+            "clientWidth": 390,
+            "horizontalOverflow": false,
+            "visibleTextLength": 160
+          }
         },
         {
           "route": "/settings",
-          "fileName": "07-settings-390.png",
+          "fileName": "08-settings-390.png",
           "title": "AgentHub",
-          "text": "跳到主要内容\n设置\n已连接\n设置与诊断\n\n查看服务能力、Remote Node、安全边界和高权限 Docker 风险。凭据只保存引用。\n\n运行环境\n\n管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。\n\n重新扫描\n\n已隐藏 67 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。\n\n可用\n本机（agenthub）\n\nAgentHub 运行环境\n\n已接入\n已停止\nopenclaw-official\n\nDocker 容器 · ghcr.io/openclaw/openclaw:2026.6.11\n\n容器已停止\n接入运行环境\n已停止\nclawdash\n\nDocker 容器 · nginx:alpine\n\n容器已停止\n接入运行环境\n可用\nopenclaw-custom\n\nDocker 容器 · openclaw-custom:2026.5.7\n\n容器正在运行\n停止\n已接入\n已停止\nclaude-code\n\nDocker 容器 · claude-code:2026.6.8\n\n容器已停止\n接入运行环境\n已停止\nhermes-dashboard\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n已停止\nhermes\n\nDocker 容器 · ugreen/hermes-agent:v1\n\n容器已停止\n接入运行环境\n远程连接\nRemote Node\n\nRemote Node 会主动连接 AgentHub；Central Server 不使用 SSH，也不接收 Agent 登录凭据。",
-          "consoleErrors": []
+          "consoleErrors": [],
+          "pageErrors": [],
+          "failedRequests": [],
+          "layout": {
+            "scrollWidth": 390,
+            "clientWidth": 390,
+            "horizontalOverflow": false,
+            "visibleTextLength": 1157
+          }
         }
       ]
     }

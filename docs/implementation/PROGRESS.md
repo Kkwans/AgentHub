@@ -391,10 +391,12 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 - M48 Agent 发现页信息层级已提交为 `96e683d` 并发布 nas.48：Agent 短名称与 `运行环境：...` 次级信息分层，避免 390px 宽度下容器名挤压标题；Discovery focused test 1/1、Web build、overlay build、health/root、Compose config 和 server 工作目录 `node-pty=READY` 通过。真实 NAS Chromium Agent 页面 1440/1024/768/390 四视口 console error 为 0；390px `scrollWidth=clientWidth=bodyScrollWidth=390`。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260817T044150Z-pre-nas48/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整记录见 `docs/qa/nas/2026-08-17-v06-live48/`。
 - M49 Agent 发现列表重复标签已提交为 `a24c298` 并发布 nas.49：当 Agent 类型标签与展示名相同时隐藏重复行，保留运行环境与状态；focused test、Web build、health/root 和 `node-pty=READY` 通过。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260817T045355Z-pre-nas49/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - M50 Agent 移动端错误提示布局已提交为 `4c0331f` 并发布 nas.50：390px 下错误文案统一落在 Agent 内容列，避免图标列错位；focused test、Web build、overlay build、health/root、Compose config 和 server 工作目录 `node-pty=READY` 通过。真实 NAS Chromium Agent 页面四视口 console error 为 0，390px 截图确认错误提示对齐。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260817T045811Z-pre-nas50/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整记录见 `docs/qa/nas/2026-08-17-v06-live50/`。
+- M51 Agent 连接错误用户边界已提交为 `859963e`：WebSocket/供应商原始错误不再直出普通用户界面，统一显示中文下一步，并在调试折叠区提供脱敏诊断；同时 Task 看板增加移动端横向浏览提示。聚焦 Vitest 4 files/47 passed、Web build 1716 modules、typecheck、fixture Playwright 24/24 通过。nas.51 已发布并完成 health/root、Compose config、ARM64 `node-pty=READY` 和真实 NAS Chromium 七页四视口门禁；升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260817T141000Z-pre-nas51/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- M52 Task 移动端可读性已提交为 `e00c668` 并发布 nas.52：五列看板在手机端保持单列可读宽度，通过横向滚动查看其他状态，修复压缩成窄条的问题。focused test 12/12、Web build 1716 modules、health/root、Compose config、server 工作目录 `node-pty=READY` 通过；真实 NAS Chromium `/tasks` 与真实 Workspace 核心路径 1440/390 均无 console/page/request error 和横向溢出。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260817T061748Z-pre-nas52/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整记录见 `docs/qa/nas/2026-08-17-v06-live52/`。
 
 ### 当前进行中
 
-- 自动化视觉 gate 已完成：真实 nas.50 Agent 页面在 NAS 本地 Chromium headless 下通过 1440/1024/768/390 稳定截图、console 和 390px 横向溢出检查；前一轮六页全量检查仍记录在 nas.45 视觉证据中。该自动化 gate 是当前正式视觉门禁。
+- 自动化视觉 gate 已完成：真实 nas.52 在 NAS 本地 Chromium headless 下对七个主要页面通过 1440/1024/768/390 稳定截图、console/page/request error 和横向溢出检查；`/tasks` 与真实 Workspace 核心路径另完成 1440/390 交互复核。该 NAS 本地 Playwright gate 是当前唯一正式视觉门禁，不再依赖 TX5Pro、外部设备、人工浏览器或 fixture 页面。
 - 普通用户旅程的后端闭环已有自动化与真实 Codex/Remote Node 证据；Claude Code、Hermes、OpenClaw
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M24 Runtime 设置入口已在 nas.24 正式发布并完成静态 bundle、健康状态、授权 capability、Terminal smoke 和

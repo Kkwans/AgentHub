@@ -98,6 +98,7 @@
 | NAS Compose nas.45       | `agenthub:0.6.0-nas.45`，ARM64，revision `a5903c5`，`running/healthy`，`192.168.5.110:3210`；响应式 UI 修复、Web build、Project focused test、自动化视觉四视口 24 组横向溢出、console error 0、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                                              |
 | NAS Compose nas.48       | `agenthub:0.6.0-nas.48`，ARM64，revision `96e683d`，`running/healthy`，`192.168.5.110:3210`；Agent 名称/运行环境分层、Web focused test/build、真实 NAS Chromium Agent 四视口 console error 0、390px 横向溢出、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                               |
 | NAS Compose nas.50       | `agenthub:0.6.0-nas.50`，ARM64，revision `4c0331f`，`running/healthy`，`192.168.5.110:3210`；重复 Agent 标签收口、390px 错误提示对齐、Web focused test/build、真实 NAS Chromium Agent 四视口 console error 0、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                               |
+| NAS Compose nas.52       | `agenthub:0.6.0-nas.52`，ARM64，revision `e00c668`，`running/healthy`，`192.168.5.110:3210`；Agent 连接失败中文错误边界、Task 移动端可读列宽、真实 NAS Chromium 七页四视口 console/page/request error 0、横向溢出 0、health/root HTTP 200、Compose config 和 server 工作目录 node-pty `READY` 通过                                                               |
 | Remote Node Project      | `cdb7d5b`；Remote Node workflow target preflight、目录授权根、fs.list 相对路径和 traversal 拒绝通过；Route `/api/v1/projects/preflight` 已接入普通用户 PathPicker                                                                                                                                                                                         |
 | 数据备份                 | `/volume2/Project/.agenthub/central/deployments/20260814T054956Z-v06-data-backup/central-data-worktrees.tar.gz`，SHA-256 `672fef18fdf6b3920780d5e3d32cd82495f84d656cd8e92d35647c283f2b9755`                                                                                                                                                               |
 
@@ -276,6 +277,8 @@ UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/RE
   `/volume2/Project/.agenthub/central/deployments/20260817T044150Z-pre-nas48/`；nas.47 镜像保留，可按单 service 回滚。升级使用 nas.47 overlay 仅覆盖 server/web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - nas.50 已完成 NAS 本地 Playwright 自动化视觉 gate，作为当前正式视觉门禁。升级前备份为
   `/volume2/Project/.agenthub/central/deployments/20260817T045811Z-pre-nas50/`；nas.49 镜像保留，可按单 service 回滚。升级使用 nas.49 overlay 仅覆盖 server/web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- nas.52 已完成 NAS 本地 Playwright 自动化视觉 gate，作为当前唯一正式视觉门禁。升级前备份为
+  `/volume2/Project/.agenthub/central/deployments/20260817T061748Z-pre-nas52/`；nas.51 镜像保留，可按单 service 回滚。升级使用 nas.51 overlay 仅覆盖 server/web dist 并保留 node-pty native binding；升级只重建 `agenthub` service，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - nas.20 曾因常规镜像覆盖 ARM64 `node-pty` binding 而被 supersede；nas.21 已用 overlay 基于 nas.19 修复，
   nas.20/nas.21 镜像均保留，未删除镜像、卷或用户数据。
 - 升级只重建 `agenthub` service，没有执行 `docker compose down`，没有删除镜像、卷、用户数据或其他 Agent 容器。
@@ -283,7 +286,7 @@ UI 对称表面与 nas.35 发布记录见 [`docs/qa/nas/2026-08-16-v06-live35/RE
 
 ## 未验证项与明确边界
 
-- 当前视觉门禁以 NAS 本地 Playwright Chromium 对真实部署的 1440、1024、768、390 四视口截图、console/页面错误、横向溢出和关键交互断言为准；nas.50 已完成该门禁。
+- 当前唯一正式视觉门禁以 NAS 本地 Playwright Chromium 对真实 Compose 部署的 1440、1024、768、390 四视口截图、console/页面错误、横向溢出和关键交互断言为准；不依赖 TX5Pro、外部设备、人工浏览器或 fixture；nas.52 已完成该门禁。
 - NAS 当前 `linux/arm64` 的正式 nas.17 镜像已具备可加载的 `node-pty` native binding，
   `GET /api/v1/settings/capabilities` 返回 `terminal.available=true`、`code=READY`；如果其他平台或镜像
   缺少 native binding，Workspace 仍会显示中文原因并禁用 Terminal 操作，不伪称 PTY 已可用。
