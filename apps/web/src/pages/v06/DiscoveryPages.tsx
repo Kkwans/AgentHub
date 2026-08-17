@@ -740,12 +740,20 @@ export function AgentsDiscoveryPage() {
                 <Bot size={20} />
               </div>
               <div className="v06-record-main">
-                <strong>{formatAgentCandidateName(candidate, runtimeNames)}</strong>
+                <strong>{candidate.displayName}</strong>
                 <span>
                   {candidate.agentKind === 'UNKNOWN'
                     ? '尚未识别 Agent 类型'
                     : labelAgentKind(candidate.agentKind)}
                 </span>
+                {runtimeNames.get(candidate.targetCandidateId) ? (
+                  <span
+                    className="v06-record-environment"
+                    title={runtimeNames.get(candidate.targetCandidateId)}
+                  >
+                    运行环境：{runtimeNames.get(candidate.targetCandidateId)}
+                  </span>
+                ) : null}
                 {candidate.detectedVersion ? <code>{candidate.detectedVersion}</code> : null}
               </div>
               <Badge
@@ -887,15 +895,6 @@ export function AgentsDiscoveryPage() {
       </FormDialog>
     </div>
   );
-}
-
-function formatAgentCandidateName(
-  candidate: AgentCandidateRecord,
-  runtimeNames: ReadonlyMap<string, string>,
-): string {
-  const runtimeName = runtimeNames.get(candidate.targetCandidateId);
-  if (!runtimeName || runtimeName === candidate.displayName) return candidate.displayName;
-  return `${candidate.displayName} · ${runtimeName}`;
 }
 
 function labelAgentCandidateReason(reasonCode: string): string {

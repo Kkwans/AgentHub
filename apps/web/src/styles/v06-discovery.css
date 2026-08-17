@@ -133,6 +133,10 @@
   color: var(--gray-9);
 }
 
+.v06-record-main .v06-record-environment {
+  color: var(--gray-9);
+}
+
 .v06-record-meta {
   display: flex;
   align-items: center;
@@ -418,5 +422,11 @@
 
   .v06-record-secondary-actions {
     flex-wrap: wrap;
+  }
+
+  .v06-record-main .v06-record-environment {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
