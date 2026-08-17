@@ -823,3 +823,5 @@ NAS 实机与部署证据：
   `plan`）和 5 个 reasoning effort；同一 Session 成功切换 `agent -> plan`、`max -> high`、
   `gpt-5.6-luna -> gpt-5.6-sol`，随后已关闭验收 Session。ACP 命令事件包含 `/plan`、`/status`、`/review`。
 - `.72` Web 补丁将 ACP 原生命令说明映射为中文；未知 `$skill` 命令保留命令名并显示中文通用说明。
+- 随后 `907d15d` 将 `/plan` 做成 `plan` 与 `default` 的双向切换，最终 overlay 为
+  `agenthub:0.6.0-nas.73`；当前容器已健康运行，`node-pty` native binding 验证为可加载。
