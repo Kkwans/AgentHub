@@ -30,6 +30,7 @@ import type {
   ExecutionTargetRecord,
   ProjectCandidateRecord,
   ProjectRecord,
+  RuntimeCandidateRecord,
   WorkspaceRootRecord,
 } from '../../lib/api';
 import { api } from '../../lib/api';
@@ -652,6 +653,10 @@ function ProjectPreflightSummary({
 
 export function AgentsDiscoveryPage() {
   const client = useQueryClient();
+  const runtimes = useQuery({
+    queryKey: ['discovery-runtimes'],
+    queryFn: () => api.get<RuntimeCandidateRecord[]>('/discovery/runtimes'),
+  });
   const agents = useQuery({
     queryKey: ['discovery-agents'],
     queryFn: () => api.get<AgentCandidateRecord[]>('/discovery/agents'),
@@ -685,6 +690,10 @@ export function AgentsDiscoveryPage() {
   const visibleAgentCandidates = useMemo(
     () => (agents.data ?? []).filter((candidate) => candidate.agentKind !== 'UNKNOWN'),
     [agents.data],
+  );
+  const runtimeNames = useMemo(
+    () => new Map((runtimes.data ?? []).map((runtime) => [runtime.candidateId, runtime.displayName])),
+    [runtimes.data],
   );
   return (
     <div className="v06-page">
@@ -731,7 +740,7 @@ export function AgentsDiscoveryPage() {
                 <Bot size={20} />
               </div>
               <div className="v06-record-main">
-                <strong>{candidate.displayName}</strong>
+                <strong>{formatAgentCandidateName(candidate, runtimeNames)}</strong>
                 <span>
                   {candidate.agentKind === 'UNKNOWN'
                     ? '尚未识别 Agent 类型'
@@ -878,6 +887,15 @@ export function AgentsDiscoveryPage() {
       </FormDialog>
     </div>
   );
+}
+
+function formatAgentCandidateName(
+  candidate: AgentCandidateRecord,
+  runtimeNames: ReadonlyMap<string, string>,
+): string {
+  const runtimeName = runtimeNames.get(candidate.targetCandidateId);
+  if (!runtimeName || runtimeName === candidate.displayName) return candidate.displayName;
+  return `${candidate.displayName} · ${runtimeName}`;
 }
 
 function labelAgentCandidateReason(reasonCode: string): string {
