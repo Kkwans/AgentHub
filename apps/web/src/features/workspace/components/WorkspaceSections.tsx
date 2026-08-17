@@ -1140,8 +1140,8 @@ export function Composer({
         ? [
             {
               name: 'plan',
-              label: '进入计划模式',
-              description: '将运行模式切换为 Agent 提供的计划模式',
+              label: '切换计划模式',
+              description: '在计划模式与标准模式之间切换',
               hint: '无需参数',
             },
           ]
@@ -1175,6 +1175,8 @@ export function Composer({
   }, [slashQuery]);
   const localSlashCommand = parseLocalSlashCommand(text, {
     hasPlanMode: modeOptions.some((option) => option.id === 'plan'),
+    hasDefaultMode: modeOptions.some((option) => option.id === 'default'),
+    currentMode: modeValue,
   });
   const executeLocalSlashCommand = () => {
     if (!localSlashCommand) return false;
@@ -1553,7 +1555,7 @@ function describeAgentCommand(name: string): string {
 
 function parseLocalSlashCommand(
   text: string,
-  options: { hasPlanMode: boolean },
+  options: { hasPlanMode: boolean; hasDefaultMode: boolean; currentMode: string },
 ):
   | {
       name: string;
@@ -1569,7 +1571,8 @@ function parseLocalSlashCommand(
   if (name === 'help') return { name, kind: 'help' };
   if (name === 'plan') {
     if (!options.hasPlanMode) return undefined;
-    return { name, kind: 'configuration', value: 'plan', patch: { mode: 'plan' } };
+    const nextMode = options.currentMode === 'plan' && options.hasDefaultMode ? 'default' : 'plan';
+    return { name, kind: 'configuration', value: nextMode, patch: { mode: nextMode } };
   }
   if (!value) return { name, kind: 'configuration' };
   if (name === 'model') return { name, kind: 'configuration', value, patch: { model: value } };
