@@ -71,9 +71,9 @@ import { FilesystemService } from './filesystem/filesystem-service.js';
  * scoped to AgentHub's Codex child and do not mutate the user's Codex config.
  */
 const CODEX_HTTP_PROVIDER_CONFIG = JSON.stringify({
-  model_provider: 'agenthub-http',
+  model_provider: 'openai_http',
   model_providers: {
-    'agenthub-http': {
+    openai_http: {
       name: 'AgentHub Codex HTTPS',
       base_url: 'https://chatgpt.com/backend-api/codex',
       wire_api: 'responses',
@@ -213,7 +213,7 @@ export async function startServer(
     return {
       ...resolved,
       CODEX_CONFIG: CODEX_HTTP_PROVIDER_CONFIG,
-      MODEL_PROVIDER: 'agenthub-http',
+      MODEL_PROVIDER: 'openai_http',
       HTTP_PROXY: proxy,
       HTTPS_PROXY: proxy,
       ALL_PROXY: proxy,
