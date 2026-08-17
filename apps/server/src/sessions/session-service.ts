@@ -223,6 +223,8 @@ export class SessionService {
     cwd: string,
   ) {
     const id = randomUUID();
+    const model = input.model ?? profile.defaultModel ?? undefined;
+    const mode = input.mode ?? profile.defaultMode ?? undefined;
     await this.sessions.create({
       id,
       projectId,
@@ -232,8 +234,8 @@ export class SessionService {
       cwd,
       branch: input.branch,
       status: 'CREATED',
-      model: input.model,
-      mode: input.mode,
+      ...(model ? { model } : {}),
+      ...(mode ? { mode } : {}),
     });
     await this.sessions.transition(id, 'STARTING');
 
@@ -243,8 +245,8 @@ export class SessionService {
         profile,
         projectId,
         cwd,
-        ...(input.model ? { model: input.model } : {}),
-        ...(input.mode ? { mode: input.mode } : {}),
+        ...(model ? { model } : {}),
+        ...(mode ? { mode } : {}),
       });
       const ready = await this.sessions.transition(id, 'READY', {
         externalSessionId: handle.externalSessionId,

@@ -67,6 +67,13 @@ describe('ACP v1 adapter wire fixture', () => {
       ]),
     });
     expect(capabilities.sessions).toEqual({ create: true, load: true, resume: true, close: true });
+    expect(capabilities.configuration.modelOptions).toEqual([
+      { id: 'fixture-model', label: 'Fixture Model' },
+    ]);
+    expect(capabilities.configuration.modeOptions).toEqual([
+      { id: 'agent', label: 'Agent', description: '执行模式' },
+      { id: 'plan', label: 'Plan', description: '规划模式' },
+    ]);
   });
 
   it('归一化 stream/tool/permission/file/usage 并完成 Run', async () => {
@@ -76,6 +83,7 @@ describe('ACP v1 adapter wire fixture', () => {
       projectId: 'project-1',
       profile,
       cwd: process.cwd(),
+      model: 'fixture-model',
       mode: 'plan',
     });
     openSessions.push(session);

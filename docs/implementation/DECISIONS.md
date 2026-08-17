@@ -104,3 +104,22 @@ original/modified model，避免先释放 model 再销毁 editor 的运行时异
 ## D-017：NAS 本地 Playwright 是唯一正式视觉门禁
 
 状态：已接受（2026-08-17）。视觉验收只由 NAS 本地 Playwright Chromium 连接真实部署目标完成，至少覆盖 1440/1024/768/390 四个视口、稳定截图、console/页面错误、横向溢出和关键交互断言。外部设备、人工浏览器和远程桌面不属于验收流程，也不是发布前的可选补充；没有本地浏览器运行能力时，门禁必须明确标记为未验证。旧版本报告和截图目录仅作为历史事实保留，不改变当前门禁。
+## D-018：Host ACP 降权写入 Codex Session Store
+
+状态：已接受（2026-08-17）。AgentHub Compose 继续以 root 运行以访问 Docker socket，但 Host
+ACP 子进程按 `AGENTHUB_PROJECT_OWNER_UID/GID` 降权，并显式使用 `CODEX_HOME`。这样 Codex
+thread JSONL 由实际项目用户创建，桌面 Codex 可以恢复和归档；不会对整个 Codex HOME 做递归
+权限改写，历史 session 文件只在部署迁移中按明确清单修复 owner。
+
+## D-019：Docker Agent 可复用映射覆盖的 Host Project
+
+状态：已接受（2026-08-17）。Project 与 Agent 不要求执行目标 ID 完全相同；当 Project 位于
+Host target 且 Agent 为 Docker target 时，仅在注册的 workspace mapping 覆盖 canonical cwd 的
+情况下允许创建/恢复 Session。服务端再次执行该边界校验，前端筛选只是能力提示，不能替代校验。
+
+## D-020：ACP Session 配置来自 configOptions
+
+状态：已接受（2026-08-17）。model、mode 不猜测供应商 CLI 参数：ACP `session/new` 返回的
+`configOptions`/`modes` 是唯一发现来源；预检 smoke 会持久化 model/mode 选项，创建 Session 时
+使用 `session/set_config_option` 或 `session/set_mode` 透传用户选择。没有真实选项时保留明确的
+Agent 默认状态，不伪造可选值。

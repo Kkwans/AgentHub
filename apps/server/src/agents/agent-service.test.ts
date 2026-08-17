@@ -110,6 +110,45 @@ describe('Agent 注册与预检', () => {
     expect(report.repair?.summary).toContain('手动启动');
   });
 
+  it('允许映射覆盖宿主机 Project 的 Docker Agent 参与 Session', async () => {
+    const hostTarget = await seedTarget('LOCAL_HOST');
+    const dockerTarget = await seedTarget('DOCKER_CONTAINER');
+    const service = new AgentService(agents, targets, new NeverLaunch());
+    const created = await service.register({
+      name: 'Mapped OpenClaw',
+      targetId: dockerTarget.id,
+      agentKind: 'OPENCLAW',
+    });
+    await agents.updatePreflight(created.id, {
+      status: 'READY',
+      capabilitiesJson: { sessions: { create: true } },
+    });
+
+    const runtime = await service.resolveRuntime(created.id, '/tmp/project', hostTarget.id);
+    expect(runtime.profile.targetKind).toBe('DOCKER_CONTAINER');
+  });
+
+  it('拒绝未映射到宿主机 Project 的 Docker Agent', async () => {
+    const hostTarget = await seedTarget('LOCAL_HOST');
+    const dockerTarget = await seedTarget('DOCKER_CONTAINER');
+    const service = new AgentService(agents, targets, new NeverLaunch());
+    const created = await service.register({
+      name: 'Unmapped OpenClaw',
+      targetId: dockerTarget.id,
+      agentKind: 'OPENCLAW',
+    });
+    await agents.updatePreflight(created.id, {
+      status: 'READY',
+      capabilitiesJson: { sessions: { create: true } },
+    });
+
+    await expect(
+      service.resolveRuntime(created.id, '/var/lib/project', hostTarget.id),
+    ).rejects.toMatchObject({
+      code: 'AGENT_PROJECT_TARGET_MISMATCH',
+    });
+  });
+
   it('允许普通用户只修改 Agent 默认模型和模式，不触碰启动配置', async () => {
     const target = await seedTarget('LOCAL_HOST');
     const service = new AgentService(agents, targets, new NeverLaunch());

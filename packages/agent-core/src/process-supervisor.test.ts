@@ -15,6 +15,14 @@ describe('Process Supervisor', () => {
     );
   });
 
+  it('要求降权进程同时提供 uid 与 gid', () => {
+    expect(() =>
+      spawnSupervisedProcess({ executable: process.execPath, args: [], uid: 1000 }),
+    ).toThrowError(
+      expect.objectContaining<Partial<ProcessSupervisorError>>({ code: 'INVALID_PROCESS_OPTION' }),
+    );
+  });
+
   it('使用 argv 与 shell:false，不执行 shell 元字符', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'agenthub-process-'));
     const marker = join(directory, 'must-not-exist');

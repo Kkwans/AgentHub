@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
-import { delimiter, isAbsolute, join } from 'node:path';
+import { delimiter, isAbsolute, join, relative, resolve as resolvePath, sep } from 'node:path';
 
 import {
   AcpAdapter,
@@ -188,19 +188,23 @@ export class AgentService {
     if (!agent.enabled || agent.status !== 'READY') {
       throw new AppError(409, 'AGENT_NOT_READY', '只有就绪且已启用的 Agent 可以创建或恢复 Session');
     }
-    if (agent.targetId !== expectedTargetId) {
-      throw new AppError(
-        409,
-        'AGENT_PROJECT_TARGET_MISMATCH',
-        'Agent 与 Project 的 Execution Target 不一致',
-      );
-    }
-    const target = await this.targets.get(agent.targetId);
-    if (!target)
+    const agentTarget = await this.targets.get(agent.targetId);
+    if (!agentTarget) {
       throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
+    }
+    if (agent.targetId !== expectedTargetId) {
+      const projectTarget = await this.targets.get(expectedTargetId);
+      if (!projectTarget || !canAgentReachProject(agentTarget, projectTarget, cwd)) {
+        throw new AppError(
+          409,
+          'AGENT_PROJECT_TARGET_MISMATCH',
+          'Agent 的执行环境无法访问当前 Project 工作区',
+        );
+      }
+    }
     return {
-      profile: toAgentProfile(agent, target, { cwd }),
-      adapter: this.adapterForTarget(target.kind, agent.adapterKind as AdapterKind),
+      profile: toAgentProfile(agent, agentTarget, { cwd }),
+      adapter: this.adapterForTarget(agentTarget.kind, agent.adapterKind as AdapterKind),
     };
   }
 
@@ -536,6 +540,36 @@ async function isPinnedAdapterAvailable(adapter: {
   } catch {
     return false;
   }
+}
+
+function canAgentReachProject(
+  agentTarget: {
+    kind: string;
+    workspaceMappingsJson: Array<{ hostRoot: string; containerRoot: string }>;
+  },
+  projectTarget: { kind: string },
+  cwd: string,
+): boolean {
+  // A Docker Agent can serve a host Project only when the registered mapping
+  // explicitly covers this canonical cwd. Other cross-target combinations
+  // remain rejected so a registration cannot silently escape its boundary.
+  return (
+    agentTarget.kind === 'DOCKER_CONTAINER' &&
+    projectTarget.kind === 'LOCAL_HOST' &&
+    isPathCoveredByWorkspaceMapping(cwd, agentTarget.workspaceMappingsJson)
+  );
+}
+
+function isPathCoveredByWorkspaceMapping(
+  path: string,
+  mappings: Array<{ hostRoot: string; containerRoot: string }>,
+): boolean {
+  const candidate = resolvePath(path);
+  return mappings.some(({ hostRoot }) => {
+    const root = resolvePath(hostRoot);
+    const remainder = relative(root, candidate);
+    return remainder === '' || (!remainder.startsWith(`..${sep}`) && remainder !== '..');
+  });
 }
 
 async function readCommandLine(

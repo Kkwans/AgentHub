@@ -68,7 +68,9 @@ export function SessionsPage() {
   const compatibleAgents = selectedProject
     ? (agents.data ?? []).filter(
         (agent) =>
-          agent.targetId === selectedProject.targetId && agent.enabled && agent.status === 'READY',
+          agent.enabled &&
+          agent.status === 'READY' &&
+          isAgentCompatibleWithProject(agent, selectedProject, targets.data ?? []),
       )
     : [];
   const [selectedAgentId, setSelectedAgentId] = useState('');
@@ -219,7 +221,7 @@ export function SessionsPage() {
           ) : !compatibleAgents.length ? (
             <EmptyState
               title="没有可用的 Agent"
-              description="需要一个与当前 Project 使用同一 Execution Target、已启用且预检就绪的 Agent。"
+              description="需要一个可访问当前 Project 工作区、已启用且预检就绪的 Agent。"
               action={
                 <Link className="empty-state-link" to="/agents">
                   前往 Agent 管理 <ArrowRight size={14} />
@@ -287,11 +289,19 @@ export function SessionsPage() {
                       options={modelOptions}
                       onValueChange={setModel}
                     />
-                  ) : (
+                  ) : selectedAgent?.defaultModel ? (
                     <div className="session-readonly-field" aria-label="模型">
                       <span>模型</span>
                       <code>{model || '使用 Agent 默认模型'}</code>
                     </div>
+                  ) : (
+                    <FormTextField
+                      label="模型"
+                      description="填写 Agent 接受的 model ID"
+                      value={model}
+                      placeholder="输入 Agent 支持的模型 ID"
+                      onChange={(event) => setModel(event.target.value)}
+                    />
                   )
                 ) : null}
                 {hasModeCapability ? (
@@ -302,11 +312,19 @@ export function SessionsPage() {
                       options={modeOptions}
                       onValueChange={setMode}
                     />
-                  ) : (
+                  ) : selectedAgent?.defaultMode ? (
                     <div className="session-readonly-field" aria-label="模式">
                       <span>模式</span>
                       <code>{mode || '使用 Agent 默认模式'}</code>
                     </div>
+                  ) : (
+                    <FormTextField
+                      label="模式"
+                      description="填写 Agent 接受的 mode ID"
+                      value={mode}
+                      placeholder="输入 Agent 支持的模式 ID"
+                      onChange={(event) => setMode(event.target.value)}
+                    />
                   )
                 ) : null}
               </AdvancedSection>
@@ -453,4 +471,35 @@ function readChoiceOptions(value: unknown): ChoiceOption[] {
     const description = typeof record.description === 'string' ? record.description : undefined;
     return [{ value, label, ...(description ? { description } : {}) }];
   });
+}
+
+function isAgentCompatibleWithProject(
+  agent: AgentRecord,
+  project: ProjectRecord,
+  targets: ExecutionTargetRecord[],
+): boolean {
+  if (agent.targetId === project.targetId) return true;
+  const projectTarget = targets.find((target) => target.id === project.targetId);
+  const agentTarget = targets.find((target) => target.id === agent.targetId);
+  return Boolean(
+    projectTarget?.kind === 'LOCAL_HOST' &&
+    agentTarget?.kind === 'DOCKER_CONTAINER' &&
+    isPathCoveredByMapping(project.realRootPath, agentTarget.workspaceMappingsJson),
+  );
+}
+
+function isPathCoveredByMapping(
+  path: string,
+  mappings: Array<{ hostRoot: string; containerRoot: string }>,
+): boolean {
+  const candidate = normalizeAbsolutePath(path);
+  return mappings.some(({ hostRoot }) => {
+    const root = normalizeAbsolutePath(hostRoot);
+    return candidate === root || candidate.startsWith(`${root}/`);
+  });
+}
+
+function normalizeAbsolutePath(path: string): string {
+  const normalized = path.replaceAll('\\', '/').replace(/\/+/g, '/').replace(/\/$/, '');
+  return normalized || '/';
 }

@@ -37,6 +37,16 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
           { id: 'plan', name: 'Plan', description: '规划模式' },
         ],
       },
+      configOptions: [
+        {
+          id: 'model',
+          name: 'Model',
+          category: 'model',
+          type: 'select',
+          currentValue: 'fixture-model',
+          options: [{ value: 'fixture-model', name: 'Fixture Model' }],
+        },
+      ],
     };
   })
   .onRequest(AGENT_METHODS.session_load, () => ({}))
@@ -49,6 +59,18 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     currentMode = params.modeId;
     return {};
   })
+  .onRequest(AGENT_METHODS.session_set_config_option, () => ({
+    configOptions: [
+      {
+        id: 'model',
+        name: 'Model',
+        category: 'model',
+        type: 'select',
+        currentValue: 'fixture-model',
+        options: [{ value: 'fixture-model', name: 'Fixture Model' }],
+      },
+    ],
+  }))
   .onRequest(AGENT_METHODS.session_prompt, async ({ params, client }) => {
     await client.notify(CLIENT_METHODS.session_update, {
       sessionId: params.sessionId,

@@ -21,6 +21,8 @@ export interface AcpProcessLauncher {
 
 export interface HostProcessLauncherOptions {
   resolveEnvironment?: (profile: AgentProfile) => Promise<NodeJS.ProcessEnv>;
+  /** Optional identity used for host Agent processes (the server may stay root). */
+  runAs?: { uid: number; gid: number };
 }
 
 export class HostAcpProcessLauncher implements AcpProcessLauncher {
@@ -47,6 +49,9 @@ export class HostAcpProcessLauncher implements AcpProcessLauncher {
       args: profile.launchSpec.args,
       cwd,
       ...(env ? { env } : {}),
+      ...(this.options.runAs && process.getuid?.() === 0
+        ? { uid: this.options.runAs.uid, gid: this.options.runAs.gid }
+        : {}),
       captureStdout: false,
       maxOutputBytes: 2 * 1024 * 1024,
       cancelGraceMs: 2_000,

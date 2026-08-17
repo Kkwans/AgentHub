@@ -183,9 +183,11 @@ export async function startServer(
   });
   const promptos = new PromptService(promptRepository, skillRepository, projectRepository);
   const resolveEnvironment = async () => ({ ...process.env, ...environment });
+  const hostAgentIdentity = resolveHostAgentIdentity(environment);
   const acpLauncher = new RoutedAcpProcessLauncher(
     new HostAcpProcessLauncher({
       resolveEnvironment,
+      ...(hostAgentIdentity ? { runAs: hostAgentIdentity } : {}),
     }),
     new DockerAcpProcessLauncher(docker),
   );
@@ -322,6 +324,23 @@ export async function startServer(
       await database.close();
     },
   };
+}
+
+function resolveHostAgentIdentity(
+  environment: NodeJS.ProcessEnv,
+): { uid: number; gid: number } | undefined {
+  // The central service needs root for the Docker socket, but host Agent
+  // processes must write their session stores as the project owner.
+  if (process.getuid?.() !== 0) return undefined;
+  const uid = parseNonNegativeInteger(environment.AGENTHUB_PROJECT_OWNER_UID);
+  const gid = parseNonNegativeInteger(environment.AGENTHUB_PROJECT_OWNER_GID);
+  return uid === undefined || gid === undefined ? undefined : { uid, gid };
+}
+
+function parseNonNegativeInteger(value: string | undefined): number | undefined {
+  if (!value || !/^\d+$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= 0xffff_ffff ? parsed : undefined;
 }
 
 function resolveWorkspaceRoots(environment: NodeJS.ProcessEnv): string[] {

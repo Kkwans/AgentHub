@@ -48,13 +48,34 @@ describe('ACP 事件归一化', () => {
         sessionCapabilities: { resume: {}, close: {}, additionalDirectories: {} },
       },
       { files: true, terminal: false, models: true, modes: true },
+      {
+        modes: {
+          currentModeId: 'plan',
+          availableModes: [{ id: 'plan', name: 'Plan', description: '规划模式' }],
+        },
+        configOptions: [
+          {
+            id: 'model',
+            name: 'Model',
+            category: 'model',
+            type: 'select',
+            currentValue: 'fixture-model',
+            options: [{ value: 'fixture-model', name: 'Fixture Model' }],
+          },
+        ],
+      },
     );
 
     expect(capabilities).toMatchObject({
       sessions: { create: true, load: true, resume: true, close: true },
       prompts: { text: true, images: true, resources: true },
       workspace: { files: true, terminal: false, additionalRoots: true, mcpHttp: true },
-      configuration: { models: true, modes: true },
+      configuration: {
+        models: true,
+        modes: true,
+        modelOptions: [{ id: 'fixture-model', label: 'Fixture Model' }],
+        modeOptions: [{ id: 'plan', label: 'Plan', description: '规划模式' }],
+      },
     });
     expect(JSON.stringify(capabilities)).not.toMatch(/ACP|Docker|OpenClaw/i);
   });

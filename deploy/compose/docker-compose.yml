@@ -21,6 +21,7 @@ services:
     environment:
       NODE_ENV: production
       HOME: /home/Kkwans
+      CODEX_HOME: ${AGENTHUB_CODEX_HOME:-/home/Kkwans/.codex}
       SUDO_UID: ${AGENTHUB_PROJECT_OWNER_UID:-1000}
       SHELL: /bin/sh
       TZ: Asia/Shanghai

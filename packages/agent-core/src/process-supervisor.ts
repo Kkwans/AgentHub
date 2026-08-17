@@ -9,6 +9,9 @@ export interface ProcessSpec {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   inheritEnv?: boolean;
+  /** Drop privileges for a child process while the supervisor remains privileged. */
+  uid?: number;
+  gid?: number;
   timeoutMs?: number;
   protocolCancelGraceMs?: number;
   cancelGraceMs?: number;
@@ -67,6 +70,8 @@ export class SupervisedProcess {
     this.child = spawn(spec.executable, spec.args, {
       cwd: spec.cwd,
       env: spec.inheritEnv === false ? spec.env : { ...process.env, ...spec.env },
+      ...(spec.uid !== undefined ? { uid: spec.uid } : {}),
+      ...(spec.gid !== undefined ? { gid: spec.gid } : {}),
       shell: false,
       detached,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -209,6 +214,8 @@ function validateSpec(spec: ProcessSpec): void {
     throw new ProcessSupervisorError('EXECUTABLE_NOT_ABSOLUTE', 'executable 必须是绝对路径');
   }
   for (const [name, value] of [
+    ['uid', spec.uid],
+    ['gid', spec.gid],
     ['timeoutMs', spec.timeoutMs],
     ['protocolCancelGraceMs', spec.protocolCancelGraceMs],
     ['cancelGraceMs', spec.cancelGraceMs],
@@ -218,6 +225,15 @@ function validateSpec(spec: ProcessSpec): void {
     if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
       throw new ProcessSupervisorError('INVALID_PROCESS_OPTION', `${name} 必须是非负安全整数`);
     }
+  }
+  if ((spec.uid === undefined) !== (spec.gid === undefined)) {
+    throw new ProcessSupervisorError('INVALID_PROCESS_OPTION', 'uid 与 gid 必须同时提供');
+  }
+  if (
+    (spec.uid !== undefined && spec.uid > 0xffff_ffff) ||
+    (spec.gid !== undefined && spec.gid > 0xffff_ffff)
+  ) {
+    throw new ProcessSupervisorError('INVALID_PROCESS_OPTION', 'uid 与 gid 超出系统范围');
   }
 }
 

@@ -57,7 +57,7 @@ const errorMessages: Record<string, string> = {
   GIT_LOG_FAILED: 'Git 提交历史读取失败，请刷新后重试。',
   GIT_BRANCHES_FAILED: 'Git 分支读取失败，请刷新后重试。',
   AGENT_NOT_READY: 'Agent 尚未预检就绪或已停用，请先前往 Agent 页面处理。',
-  AGENT_PROJECT_TARGET_MISMATCH: 'Agent 与当前 Project 使用的 Execution Target 不一致。',
+  AGENT_PROJECT_TARGET_MISMATCH: 'Agent 的执行环境无法访问当前 Project 工作区。',
   PROMPT_NOT_FOUND: 'Prompt 不存在。',
   PROMPT_VERSION_NOT_FOUND: 'Prompt 版本不存在。',
   PROMPT_LABEL_NOT_FOUND: 'Prompt 标签不存在。',
@@ -108,7 +108,8 @@ const errorMessages: Record<string, string> = {
   REMOTE_NODE_REGISTRATION_TOKEN_EXPIRED: 'Remote Node 注册码已经过期。',
   REMOTE_AGENT_NOT_AVAILABLE: 'Remote Node inventory 中没有可用的该类型 Agent。',
   REMOTE_CUSTOM_AGENT_UNSUPPORTED: 'Remote Node 只允许 inventory 中的固定 Agent Profile。',
-  REMOTE_GIT_UNSUPPORTED: '当前 Remote Node 不支持 Git 控制，请在 Project 所在设备上完成 Git 操作。',
+  REMOTE_GIT_UNSUPPORTED:
+    '当前 Remote Node 不支持 Git 控制，请在 Project 所在设备上完成 Git 操作。',
   REMOTE_NODE_GATEWAY_UNAVAILABLE: 'Remote Node 通道暂不可用，请检查 Node 连接。',
   REMOTE_NODE_OPERATION_FAILED: 'Remote Node 操作失败，请检查连接与授权目录。',
   REMOTE_NODE_RPC_FAILED: 'Remote Node 请求失败，请检查连接后重试。',

@@ -10,8 +10,10 @@ import {
   type ClientConnection,
   type ClientContext,
   type InitializeResponse,
+  type NewSessionResponse,
   type RequestPermissionRequest,
   type RequestPermissionResponse,
+  type SessionConfigOption,
   type SessionNotification,
 } from '@agentclientprotocol/sdk';
 import {
@@ -83,7 +85,6 @@ export class AcpAdapter implements AgentRuntimeAdapter {
         activeRuntime.initialize.agentCapabilities,
         profile.config,
       );
-      this.capabilityCache.set(profile.id, capabilities);
       const checks: PreflightReport['checks'] = [
         { id: 'process', label: 'ACP adapter 进程', status: 'PASS', message: '已启动' },
         {
@@ -99,6 +100,12 @@ export class AcpAdapter implements AgentRuntimeAdapter {
           cwd,
           mcpServers: [],
         });
+        const discoveredCapabilities = mapAcpCapabilities(
+          activeRuntime.initialize.agentCapabilities,
+          profile.config,
+          response,
+        );
+        this.capabilityCache.set(profile.id, discoveredCapabilities);
         checks.push({
           id: 'session',
           label: 'ACP session/new',
@@ -115,6 +122,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
           );
         }
       } else {
+        this.capabilityCache.set(profile.id, capabilities);
         checks.push({
           id: 'session',
           label: 'ACP session/new',
@@ -178,12 +186,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
         ...(input.additionalRoots?.length ? { additionalDirectories: input.additionalRoots } : {}),
       });
       handle.attach(response.sessionId, runtime.initialize.agentCapabilities);
-      if (input.mode && response.modes?.availableModes.some((mode) => mode.id === input.mode)) {
-        await runtime.agent.request(AGENT_METHODS.session_set_mode, {
-          sessionId: response.sessionId,
-          modeId: input.mode,
-        });
-      }
+      await applyRequestedSessionConfiguration(runtime.agent, response, input);
       return handle;
     } catch (error) {
       await closeRuntime(runtime);
@@ -591,7 +594,23 @@ export class AcpAdapterError extends Error {
 export function mapAcpCapabilities(
   capabilities: AcpAgentCapabilities | undefined,
   hints: Record<string, unknown> = {},
+  session?: Pick<NewSessionResponse, 'modes' | 'configOptions'>,
 ): AgentCapabilities {
+  const modeOptions = session?.modes?.availableModes.map((mode) => ({
+    id: mode.id,
+    label: mode.name,
+    ...(mode.description ? { description: mode.description } : {}),
+  }));
+  const modelOptions = configOptionsForCategory(session?.configOptions, 'model');
+  const reasoningEffortOptions = configOptionsForCategory(session?.configOptions, 'thought_level');
+  const configuration: AgentCapabilities['configuration'] = {
+    models: Boolean(hints.models) || modelOptions.length > 0,
+    modes: Boolean(hints.modes) || (modeOptions?.length ?? 0) > 0,
+    reasoningEffort: Boolean(hints.reasoningEffort) || reasoningEffortOptions.length > 0,
+    ...(modelOptions.length ? { modelOptions } : {}),
+    ...(modeOptions?.length ? { modeOptions } : {}),
+    ...(reasoningEffortOptions.length ? { reasoningEffortOptions } : {}),
+  };
   return {
     sessions: {
       create: true,
@@ -617,13 +636,81 @@ export function mapAcpCapabilities(
       mcpStdio: Boolean(hints.mcpStdio),
       mcpHttp: Boolean(capabilities?.mcpCapabilities?.http),
     },
-    configuration: {
-      models: Boolean(hints.models),
-      modes: Boolean(hints.modes),
-      reasoningEffort: Boolean(hints.reasoningEffort),
-    },
+    configuration,
     telemetry: { tokenUsage: true, cost: Boolean(hints.cost) },
   };
+}
+
+async function applyRequestedSessionConfiguration(
+  agent: ClientContext,
+  response: NewSessionResponse,
+  input: CreateAgentSessionInput,
+): Promise<void> {
+  if (input.model) {
+    const modelOption = findConfigOption(response.configOptions, 'model', input.model);
+    if (!modelOption) {
+      throw new AcpAdapterError('SESSION_MODEL_UNSUPPORTED', `Agent 不支持模型：${input.model}`);
+    }
+    await agent.request(AGENT_METHODS.session_set_config_option, {
+      sessionId: response.sessionId,
+      configId: modelOption.id,
+      value: input.model,
+    });
+  }
+
+  if (!input.mode) return;
+  if (response.modes?.availableModes.some((mode) => mode.id === input.mode)) {
+    await agent.request(AGENT_METHODS.session_set_mode, {
+      sessionId: response.sessionId,
+      modeId: input.mode,
+    });
+    return;
+  }
+
+  const modeOption = findConfigOption(response.configOptions, 'mode', input.mode);
+  if (!modeOption) {
+    throw new AcpAdapterError('SESSION_MODE_UNSUPPORTED', `Agent 不支持模式：${input.mode}`);
+  }
+  await agent.request(AGENT_METHODS.session_set_config_option, {
+    sessionId: response.sessionId,
+    configId: modeOption.id,
+    value: input.mode,
+  });
+}
+
+function findConfigOption(
+  options: SessionConfigOption[] | null | undefined,
+  category: string,
+  value: string,
+): Extract<SessionConfigOption, { type: 'select' }> | undefined {
+  return options?.find(
+    (option): option is Extract<SessionConfigOption, { type: 'select' }> =>
+      option.type === 'select' &&
+      option.category === category &&
+      flattenSelectOptions(option.options).some((candidate) => candidate.value === value),
+  );
+}
+
+function configOptionsForCategory(
+  options: SessionConfigOption[] | null | undefined,
+  category: string,
+): Array<{ id: string; label: string; description?: string }> {
+  const option = options?.find(
+    (candidate): candidate is Extract<SessionConfigOption, { type: 'select' }> =>
+      candidate.type === 'select' && candidate.category === category,
+  );
+  if (!option) return [];
+  return flattenSelectOptions(option.options).map((candidate) => ({
+    id: candidate.value,
+    label: candidate.name,
+    ...(candidate.description ? { description: candidate.description } : {}),
+  }));
+}
+
+function flattenSelectOptions(
+  options: Extract<SessionConfigOption, { type: 'select' }>['options'],
+): Array<{ value: string; name: string; description?: string | null }> {
+  return options.flatMap((option) => ('value' in option ? [option] : option.options));
 }
 
 async function closeRuntime(runtime: AcpRuntime): Promise<void> {

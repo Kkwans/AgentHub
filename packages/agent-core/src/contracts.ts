@@ -45,7 +45,15 @@ export interface AgentCapabilities {
     mcpStdio: boolean;
     mcpHttp: boolean;
   };
-  configuration: { models: boolean; modes: boolean; reasoningEffort: boolean };
+  configuration: {
+    models: boolean;
+    modes: boolean;
+    reasoningEffort: boolean;
+    /** Options discovered from the provider's session configuration contract. */
+    modelOptions?: ModelOption[];
+    modeOptions?: ModelOption[];
+    reasoningEffortOptions?: ModelOption[];
+  };
   telemetry: { tokenUsage: boolean; cost: boolean };
 }
 

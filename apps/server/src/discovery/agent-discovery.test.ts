@@ -267,7 +267,10 @@ describe('AgentDiscoveryService', () => {
         config: { discoveredBy: 'agenthub-v06' },
       }),
     );
-    expect(agentService.preflight).toHaveBeenCalledWith('agent-new', { cwd: workspaceRoot });
+    expect(agentService.preflight).toHaveBeenCalledWith('agent-new', {
+      cwd: workspaceRoot,
+      smokeSession: true,
+    });
   });
 
   it('converts preflight authorization failures to a visible candidate state', async () => {
@@ -464,7 +467,10 @@ describe('AgentDiscoveryService', () => {
         config: { discoveredBy: 'agenthub-v06', remoteInventoryKey: 'codex-arm64' },
       }),
     );
-    expect(preflight).toHaveBeenCalledWith('agent-remote', { cwd: '/srv/agenthub/projects' });
+    expect(preflight).toHaveBeenCalledWith('agent-remote', {
+      cwd: '/srv/agenthub/projects',
+      smokeSession: true,
+    });
   });
 
   it('returns already registered candidates idempotently and rejects unknown IDs', async () => {

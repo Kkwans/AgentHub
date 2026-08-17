@@ -190,7 +190,14 @@ export class AgentDiscoveryService {
     });
     const cwd = await this.chooseCwd(candidate);
     try {
-      const preflight = await this.agentService.preflight(agent.id, { cwd });
+      // Adoption is the first real user-facing readiness gate. Create/close a
+      // smoke Session here so dynamic ACP model/mode options are persisted and
+      // a process that only initializes but cannot create a Session is not
+      // presented as usable.
+      const preflight = await this.agentService.preflight(agent.id, {
+        cwd,
+        smokeSession: true,
+      });
       return { agent: (await this.agents.get(agent.id)) ?? agent, preflight };
     } catch (error) {
       return {
