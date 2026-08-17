@@ -137,3 +137,23 @@ Agent 默认状态，不伪造可选值。
 disconnected、request connection refused 或 transcript save failure 等传输诊断文本时，归一化为
 `AGENT_TRANSPORT_FAILED`，并对 URL 脱敏；不能因为 ACP response 的 `stopReason=end_turn` 把 Run
 标记为 `COMPLETED`。
+
+## D-023：Session model/mode 只使用运行时真实选项
+
+状态：已接受（2026-08-17）。Session 配置 API 只接受单字段 `model` 或 `mode`，选项来源为 ACP
+`configOptions`/`modes`；适配器按 Session 串行处理更新，成功后才持久化并发布
+`agent.configuration.updated`。OpenClaw `agent exec` 或无候选项时不显示伪造控件，供应商不支持时返回
+`SESSION_CONFIGURATION_UNSUPPORTED`。
+
+## D-024：Codex HTTP-only workaround 不等同于真实 Run 成功
+
+状态：已接受（2026-08-17）。NAS 代理环境下 Codex ACP 通过 scoped `CODEX_CONFIG` 使用
+`openai_http`/`supports_websockets=false`，不修改用户 `config.toml`，不设置会改变 ChatGPT OAuth 语义的
+`MODEL_PROVIDER`。如果 runtime 仍返回 403、connection refused 或 stream disconnected，只记录
+`AGENT_TRANSPORT_FAILED`，继续保留配置读取/切换能力，但不把 Session 创建或 health 200 当成消息链路成功。
+
+## D-025：Host ACP transcript owner 固定为项目用户
+
+状态：已接受（2026-08-17）。Compose 服务可继续 root/privileged 以执行显式 Docker 控制，但 Host ACP
+子进程固定以 `AGENTHUB_PROJECT_OWNER_UID/GID` 运行；迁移只修复明确挂载 `.codex` 条目的 owner，不读取、删除或
+重写 transcript 内容。旧文件不存在或损坏时仅记录事实。

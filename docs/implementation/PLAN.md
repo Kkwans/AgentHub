@@ -36,6 +36,20 @@ UI 阶段增加 `pnpm test:e2e`；真实 Agent 验收使用 `AGENTHUB_E2E_LIVE=1
 
 完整范围以根目录两份合同与用户已确认的实施计划为准。
 
+## v0.6 功能闭环修复（当前切片）
+
+本切片暂停整体 UI 重构，按以下顺序收口：
+
+1. Agent Core/ACP：实现 Session model/mode 配置契约、真实 config options、串行更新和事件归一化。
+2. Server/Web：提供 Session configuration REST，持久化有效值；Workspace 只展示真实可选项；兼容 Docker mapping 的 Agent 可进入新 Session。
+3. NAS runtime：Host ACP 使用项目用户 UID/GID；Codex 代理仅注入 ACP 子进程；备份后通过 `compose config` 与
+   `up -d --no-deps --force-recreate agenthub` 部署，禁止 `compose down` 和删除数据。
+4. Live gate：分别记录 Codex 的连接/Run、OpenClaw ACP、Session 配置、旧 transcript 权限和未验证视觉门禁；任何
+   403、connection refused、stream disconnected 或长时间 RUNNING 均不计为成功。
+
+当前状态以 `docs/implementation/PROGRESS.md` 的“v0.6 功能闭环修复与 Session 动态配置”条目和
+`docs/implementation/DECISIONS.md` 的 D-023～D-025 为准。
+
 ## v0.2
 
 执行顺序已经锁定：先完成 Worktree Task Runner，再完成 Remote Node。Worktree 的详细

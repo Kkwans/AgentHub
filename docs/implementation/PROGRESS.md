@@ -726,3 +726,44 @@ v0.2 Remote Node：
 - OpenClaw 需在原生 Gateway 中批准 scope upgrade 后才能验证 `session/new` 和 prompt；本次未替用户批准授权请求。
 - 历史 v0.2 未验证项：当时 NAS 无 node-pty ARM64 native binding，Terminal UI 必须显示 capability=false；
   当前 v0.6 nas.7 已通过 native image 和真实 API smoke，历史记录不代表当前部署状态。
+
+## v0.6 功能闭环修复与 Session 动态配置（2026-08-17）
+
+本阶段暂停 UI 大重构，只处理真实可用性和 Agent 运行链路。已完成的独立提交：
+
+- `1fdb71d`：Agent Core 增加供应商无关的 `SessionConfiguration` 契约、配置更新事件和 Fake adapter 能力。
+- `29d69f8`：Session service/REST 增加 `GET/POST /api/v1/sessions/:id/configuration`，持久化有效 model/mode，保留稳定错误码。
+- `6ea0438`：Workspace Composer 复用 `SelectField` 接入 Session model/mode 读取、切换、失败恢复和缓存刷新。
+- `b7d9aaa`、`e22928e`、`23ee734`：Codex ACP 子进程按项目 owner 降权，并通过 `CODEX_CONFIG` 注入官方 HTTP-only provider；最终不设置 `MODEL_PROVIDER`，保留 ChatGPT OAuth 语义。
+
+自动化证据：
+
+- `corepack pnpm typecheck` 通过；动态配置、ACP 归一化、Session service、OpenClaw adapter 和 Web 相关聚焦测试通过。
+- 固定 ACP fixture 覆盖 model/mode 切换、无效选项、配置通知归一化与串行请求；完整 ACP child-process fixture 在当前 Node 子 stdin 环境仍有既有 harness 限制，未伪称通过。
+
+NAS 实机与部署证据：
+
+- 已备份 `/volume2/DockerProject/agenthub/.env`、Compose 和容器状态：
+  `/volume2/Project/.agenthub/central/deployments/20260817-180528-pre-v06-dynamic-config/`、
+  `20260817-191154-pre-v06-http-provider/`、`20260817-192344-pre-v06-http-provider2/`、
+  `20260817-194105-pre-v06-http-oauth/`。
+- 当前镜像 `agenthub:0.6.0-nas.60`，revision `23ee734`，容器 `running/healthy`；健康接口返回
+  `status=ok`、`version=0.6.0`、`database=pglite`、`web=true`。仅执行 `docker compose config` 与
+  `docker compose up -d --no-deps --force-recreate agenthub`，未执行 `compose down`，未删除镜像、卷、容器或用户数据。
+- `/api/v1/agents` 实测同时返回 READY 且 enabled 的 Codex 与 OpenClaw。Codex Session 实测返回 5 个
+  model、3 个 mode，并成功切换 `agent → read-only` 和 `gpt-5.6-terra → gpt-5.6-luna`；OpenClaw
+  ACP Session 实测返回 6 个 mode，并成功切换 `adaptive → low`。因此无真实 options 的 Agent 会隐藏相应控件。
+- Codex 新 Session 创建/配置读取成功，但发送短消息的 Run 仍返回 `AGENT_TRANSPORT_FAILED`；`.60` 后运行日志
+  不再出现 `wss://`，但仍有 HTTPS 403/连接失败。使用同一 OAuth 和代理对 `/backend-api/codex/responses`
+  做最小 HTTPS 探测返回 HTTP 200，说明剩余问题位于 bundled Codex Runtime/代理流式请求路径，不能标记为已完成。
+- 已将挂载的 `.codex` 中非项目 owner 的条目修正为 `1000:10`，不改写会话内容；本次新建的 Codex transcript
+  已由 `1000:10` 可读写。用户提到的旧 ID 在当前挂载 sessions 树中已不存在，未删除或重写旧文件。
+- OpenClaw 短消息 Run 长时间保持 `RUNNING`，已通过 Session cancel 收敛为 `CANCELED`，随后关闭验收 Session；未把其
+  未完成状态伪称为成功。
+
+剩余阻塞：
+
+1. 需要继续定位 bundled Codex Runtime 在 NAS 代理下的 HTTP streaming 403/连接失败，或升级到已修复的配套 runtime；
+   在此之前 Codex 只能声明 Session/configuration 可用，不能声明真实消息 Run 可用。
+2. OpenClaw ACP 的长消息 Run 需要独立确认 Gateway 的模型/账号响应；mode 配置链路已通过。
+3. 当前 NAS 没有可用 Chromium，本阶段未声明真实浏览器视觉验收完成。
