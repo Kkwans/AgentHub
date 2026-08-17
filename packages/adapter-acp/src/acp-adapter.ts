@@ -327,6 +327,7 @@ class AcpSessionHandle implements AgentSessionHandle {
   private activeRunId: string | undefined;
   private messageText = '';
   private closed = false;
+  private processExited = false;
   private closePromise: Promise<void> | undefined;
   private configuration: SessionConfiguration = emptySessionConfiguration();
   private modeState: SessionModeState | undefined;
@@ -341,11 +342,13 @@ class AcpSessionHandle implements AgentSessionHandle {
   ) {
     void runtime.process.wait().then(
       (result) => {
+        this.processExited = true;
         if (!this.closed && !result.canceled) {
           this.emit('adapter.disconnected', { exitCode: result.exitCode, signal: result.signal });
         }
       },
       () => {
+        this.processExited = true;
         if (!this.closed) this.emit('adapter.disconnected', { reason: 'process_error' });
       },
     );
@@ -498,7 +501,7 @@ class AcpSessionHandle implements AgentSessionHandle {
           // wait hook never fires. Surface a normalized disconnect so the
           // Session becomes recoverable instead of returning to READY with a
           // dead activation.
-          if (isConnectionFailure(error)) {
+          if (this.processExited || isConnectionFailure(error)) {
             this.emit(
               'adapter.disconnected',
               { reason: 'prompt_transport', code: 'ACP_PROMPT_FAILED' },
