@@ -17,12 +17,59 @@ LABEL org.opencontainers.image.title="AgentHub" \
 WORKDIR /opt/agenthub
 
 # COPY merges directories. Remove the previous build artifacts first so a
-# rolling overlay cannot leave stale hashed assets or server bundles behind.
-RUN rm -rf /opt/agenthub/apps/server/dist /opt/agenthub/apps/web/dist \
-    && mkdir -p /opt/agenthub/apps/server/dist /opt/agenthub/apps/web/dist
+# rolling overlay cannot leave stale hashed assets, server bundles, or
+# workspace package implementations behind. The server resolves workspace
+# packages through their `dist` exports at runtime; copying only server/web
+# would silently keep an older ACP/session implementation from the base image.
+RUN rm -rf \
+      /opt/agenthub/apps/server/dist \
+      /opt/agenthub/apps/web/dist \
+      /opt/agenthub/packages/shared/dist \
+      /opt/agenthub/packages/db/dist \
+      /opt/agenthub/packages/agent-core/dist \
+      /opt/agenthub/packages/adapter-acp/dist \
+      /opt/agenthub/packages/adapter-openclaw/dist \
+    && mkdir -p \
+      /opt/agenthub/apps/server/dist \
+      /opt/agenthub/apps/web/dist \
+      /opt/agenthub/packages/shared/dist \
+      /opt/agenthub/packages/db/dist \
+      /opt/agenthub/packages/agent-core/dist \
+      /opt/agenthub/packages/adapter-acp/dist \
+      /opt/agenthub/packages/adapter-openclaw/dist
 
 COPY apps/server/dist /opt/agenthub/apps/server/dist
 COPY apps/web/dist /opt/agenthub/apps/web/dist
+COPY packages/shared/dist /opt/agenthub/packages/shared/dist
+COPY packages/db/dist /opt/agenthub/packages/db/dist
+COPY packages/agent-core/dist /opt/agenthub/packages/agent-core/dist
+COPY packages/adapter-acp/dist /opt/agenthub/packages/adapter-acp/dist
+COPY packages/adapter-openclaw/dist /opt/agenthub/packages/adapter-openclaw/dist
+
+# The central server runs as root for the Docker socket, while host ACP
+# children run as the project owner (1000:10). The base image was created with
+# root-only pnpm directories (770), which prevents that child from resolving
+# the pinned adapter. Make the workspace package roots and the pinned Codex ACP
+# dependency closure readable; no credential or data directory is touched.
+RUN chmod a+rx \
+      /opt/agenthub/packages \
+      /opt/agenthub/packages/agent-core \
+      /opt/agenthub/packages/agent-core/dist \
+      /opt/agenthub/packages/adapter-acp \
+      /opt/agenthub/packages/adapter-acp/dist \
+      /opt/agenthub/packages/shared \
+      /opt/agenthub/packages/shared/dist \
+      /opt/agenthub/node_modules \
+      /opt/agenthub/node_modules/.pnpm \
+    && chmod -R a+rX \
+      /opt/agenthub/node_modules/.pnpm/@agentclientprotocol+codex-acp@1.1.14 \
+      /opt/agenthub/node_modules/.pnpm/@agentclientprotocol+sdk@1.3.0_zod@4.4.3 \
+      /opt/agenthub/node_modules/.pnpm/@openai+codex@0.147.0 \
+      /opt/agenthub/node_modules/.pnpm/@openai+codex@0.147.0-linux-arm64 \
+      /opt/agenthub/node_modules/.pnpm/diff@* \
+      /opt/agenthub/node_modules/.pnpm/open@* \
+      /opt/agenthub/node_modules/.pnpm/vscode-jsonrpc@* \
+      /opt/agenthub/node_modules/.pnpm/zod@*
 
 # Do not allow an overlay to silently regress the PTY capability inherited from
 # the base image.

@@ -950,9 +950,20 @@ function safeErrorMessage(error: unknown): string {
 
 function isConnectionFailure(error: unknown): boolean {
   const code = errorCode(error);
-  if (code && ['CONNECTION_CLOSED', 'ECONNRESET', 'EPIPE'].includes(code)) return true;
+  if (
+    code &&
+    [
+      'CONNECTION_CLOSED',
+      'ECONNRESET',
+      'EPIPE',
+      'ECONNREFUSED',
+      'ERR_STREAM_PREMATURE_CLOSE',
+      'UND_ERR_SOCKET',
+    ].includes(code)
+  )
+    return true;
   const message = error instanceof Error ? error.message : '';
-  return /connection (?:closed|reset)|broken pipe|econnreset|epipe|not connected|socket closed/i.test(
+  return /connection (?:closed|reset|refused)|broken pipe|econnreset|econnrefused|epipe|not connected|socket closed|stream disconnected before completion|error sending request for url|failed to save the conversation transcript/i.test(
     message,
   );
 }
