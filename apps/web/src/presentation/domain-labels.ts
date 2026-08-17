@@ -37,6 +37,7 @@ export const AGENT_EVENT_TYPE_LABELS = {
   'assistant.message.completed': 'Agent 回复完成',
   'agent.plan.updated': 'Agent 执行计划更新',
   'agent.status': 'Agent 状态更新',
+  'agent.configuration.updated': 'Agent 配置更新',
   'tool.call.started': '工具调用开始',
   'tool.call.progress': '工具调用进行中',
   'tool.call.completed': '工具调用完成',

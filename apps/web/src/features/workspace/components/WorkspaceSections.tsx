@@ -14,6 +14,7 @@ import {
   ListChecks,
   LoaderCircle,
   RefreshCw,
+  SelectField,
   Send,
   ShieldCheck,
   Tabs,
@@ -36,6 +37,7 @@ import {
   type ProjectRecord,
   type ResolvedPromptContextRecord,
   type RunRecord,
+  type SessionConfigurationRecord,
   type SessionRecord,
 } from '../../../lib/api';
 import {
@@ -1036,6 +1038,9 @@ export function Composer({
   promptContextRetry,
   promptVariables,
   setPromptVariables,
+  configuration,
+  configurationLoading,
+  configurationError,
 }: {
   session: SessionRecord;
   agent: AgentRecord | undefined;
@@ -1047,6 +1052,9 @@ export function Composer({
   promptContextRetry: () => unknown;
   promptVariables: Record<string, unknown>;
   setPromptVariables: (variables: Record<string, unknown>) => void;
+  configuration: SessionConfigurationRecord | undefined;
+  configurationLoading: boolean;
+  configurationError: Error | null;
 }) {
   const [text, setText] = useState('');
   const [contextOpen, setContextOpen] = useState(false);
@@ -1069,8 +1077,26 @@ export function Composer({
       void client.invalidateQueries({ queryKey: ['session', session.id] });
     },
   });
-  const configuration = (agent?.capabilitiesJson.configuration ?? {}) as Record<string, boolean>;
+  const updateConfiguration = useMutation({
+    mutationFn: (patch: { model?: string; mode?: string }) =>
+      api.post<SessionConfigurationRecord>(`/sessions/${session.id}/configuration`, patch),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['session', session.id] }),
+        client.invalidateQueries({ queryKey: ['session-configuration', session.id] }),
+        client.invalidateQueries({ queryKey: ['events', session.id] }),
+      ]);
+    },
+  });
   const sessionLocked = session.status !== 'READY';
+  const modelOptions = configuration?.options?.models ?? [];
+  const modeOptions = configuration?.options?.modes ?? [];
+  const modelValue = configuration?.current?.model ?? session.model ?? '';
+  const modeValue = configuration?.current?.mode ?? session.mode ?? '';
+  const updatingModel =
+    updateConfiguration.isPending && updateConfiguration.variables?.model !== undefined;
+  const updatingMode =
+    updateConfiguration.isPending && updateConfiguration.variables?.mode !== undefined;
   const contextBlocked =
     promptContextLoading ||
     Boolean(promptContextError) ||
@@ -1096,16 +1122,44 @@ export function Composer({
         <span>
           <Bot size={13} /> {agent?.name ?? 'Agent'}
         </span>
-        {configuration.models && (
+        {configurationLoading ? (
           <span>
-            模型 <strong>{session.model || agent?.defaultModel || '默认'}</strong>
+            配置 <strong>正在读取…</strong>
+          </span>
+        ) : configuration?.supported && modelOptions.length ? (
+          <SelectField
+            label="model"
+            value={modelValue}
+            options={modelOptions.map((option) => ({
+              value: option.id,
+              label: option.label,
+              ...(option.description ? { description: option.description } : {}),
+            }))}
+            disabled={updatingModel}
+            onValueChange={(model) => updateConfiguration.mutate({ model })}
+          />
+        ) : (
+          <span>
+            模型 <strong>{modelValue || agent?.defaultModel || '默认'}</strong>
           </span>
         )}
-        {configuration.modes && (
+        {!configurationLoading && configuration?.supported && modeOptions.length ? (
+          <SelectField
+            label="mode"
+            value={modeValue}
+            options={modeOptions.map((option) => ({
+              value: option.id,
+              label: option.label,
+              ...(option.description ? { description: option.description } : {}),
+            }))}
+            disabled={updatingMode}
+            onValueChange={(mode) => updateConfiguration.mutate({ mode })}
+          />
+        ) : !configurationLoading ? (
           <span>
-            模式 <strong>{session.mode || agent?.defaultMode || '默认'}</strong>
+            模式 <strong>{modeValue || agent?.defaultMode || '默认'}</strong>
           </span>
-        )}
+        ) : null}
         <span>
           Project <strong>{project?.name ?? '未知'}</strong>
         </span>
@@ -1126,6 +1180,16 @@ export function Composer({
           Skill <strong>自动</strong>
         </span>
       </div>
+      {configurationError && (
+        <div className="composer-error" role="alert">
+          配置读取失败：{configurationError.message}
+        </div>
+      )}
+      {updateConfiguration.isError && (
+        <div className="composer-error" role="alert">
+          {updateConfiguration.error.message}
+        </div>
+      )}
       {contextOpen && (
         <div className="composer-context-preview">
           <div className="context-preview-heading">

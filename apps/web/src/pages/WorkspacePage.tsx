@@ -14,6 +14,7 @@ import {
   type ProjectRecord,
   type ResolvedPromptContextRecord,
   type RunRecord,
+  type SessionConfigurationRecord,
   type SessionRecord,
 } from '../lib/api';
 import '../lib/monaco';
@@ -96,6 +97,11 @@ export function WorkspacePage() {
   const session = useQuery({
     queryKey: ['session', id],
     queryFn: () => api.get<SessionRecord>(`/sessions/${id}`),
+    enabled: Boolean(id),
+  });
+  const configuration = useQuery({
+    queryKey: ['session-configuration', id],
+    queryFn: () => api.get<SessionConfigurationRecord>(`/sessions/${id}/configuration`),
     enabled: Boolean(id),
   });
   const messages = useQuery({
@@ -183,6 +189,7 @@ export function WorkspacePage() {
         void client.invalidateQueries({ queryKey: ['events', id] });
         void client.invalidateQueries({ queryKey: ['approvals', id] });
         void client.invalidateQueries({ queryKey: ['session', id] });
+        void client.invalidateQueries({ queryKey: ['session-configuration', id] });
       },
       events.data?.at(-1)?.seq ?? 0,
     );
@@ -338,6 +345,9 @@ export function WorkspacePage() {
         promptContextRetry={() => promptContext.refetch()}
         promptVariables={promptVariables}
         setPromptVariables={setPromptVariables}
+        configuration={configuration.data}
+        configurationLoading={configuration.isLoading}
+        configurationError={configuration.error}
       />
     </div>
   );
