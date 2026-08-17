@@ -59,21 +59,26 @@ export interface AcpAdapterOptions {
   now?: () => Date;
   /** session/close is best effort; transport shutdown remains authoritative. */
   sessionCloseGraceMs?: number;
+  /** Bound ACP prompts whose JSON-RPC response never arrives. */
+  promptTimeoutMs?: number;
 }
 
 const DEFAULT_SESSION_CLOSE_GRACE_MS = 250;
+const DEFAULT_PROMPT_TIMEOUT_MS = 120_000;
 
 export class AcpAdapter implements AgentRuntimeAdapter {
   readonly kind = 'ACP_STDIO';
   private readonly launcher: AcpProcessLauncher;
   private readonly now: () => Date;
   private readonly sessionCloseGraceMs: number;
+  private readonly promptTimeoutMs: number;
   private readonly capabilityCache = new Map<string, AgentCapabilities>();
 
   constructor(options: AcpAdapterOptions = {}) {
     this.launcher = options.launcher ?? new HostAcpProcessLauncher();
     this.now = options.now ?? (() => new Date());
     this.sessionCloseGraceMs = options.sessionCloseGraceMs ?? DEFAULT_SESSION_CLOSE_GRACE_MS;
+    this.promptTimeoutMs = options.promptTimeoutMs ?? DEFAULT_PROMPT_TIMEOUT_MS;
   }
 
   async preflight(profile: AgentProfile): Promise<PreflightReport> {
@@ -180,6 +185,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       runtime,
       this.now,
       this.sessionCloseGraceMs,
+      this.promptTimeoutMs,
     );
     runtime.route.handle = handle;
     try {
@@ -225,6 +231,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       runtime,
       this.now,
       this.sessionCloseGraceMs,
+      this.promptTimeoutMs,
     );
     runtime.route.handle = handle;
     const request = {
@@ -333,22 +340,26 @@ class AcpSessionHandle implements AgentSessionHandle {
   private modeState: SessionModeState | undefined;
   private configOptions: SessionConfigOption[] = [];
   private configurationQueue: Promise<unknown> = Promise.resolve();
+  private promptTimer: NodeJS.Timeout | undefined;
 
   constructor(
     private readonly agentHubSessionId: string,
     private readonly runtime: AcpRuntime,
     private readonly now: () => Date,
     private readonly sessionCloseGraceMs: number,
+    private readonly promptTimeoutMs: number,
   ) {
     void runtime.process.wait().then(
       (result) => {
         this.processExited = true;
+        this.clearPromptTimer();
         if (!this.closed && !result.canceled) {
           this.emit('adapter.disconnected', { exitCode: result.exitCode, signal: result.signal });
         }
       },
       () => {
         this.processExited = true;
+        this.clearPromptTimer();
         if (!this.closed) this.emit('adapter.disconnected', { reason: 'process_error' });
       },
     );
@@ -489,6 +500,7 @@ class AcpSessionHandle implements AgentSessionHandle {
     if (this.activeRunId) throw new AcpAdapterError('RUN_ALREADY_ACTIVE', '当前已有运行中的 Run');
     this.activeRunId = input.runId;
     this.messageText = '';
+    this.startPromptTimer(input.runId);
     this.emit('run.started', {}, input.runId);
 
     void this.runtime.agent
@@ -499,6 +511,7 @@ class AcpSessionHandle implements AgentSessionHandle {
       .then((response) => {
         const runId = this.activeRunId;
         if (!runId) return;
+        this.clearPromptTimer();
         const transportFailure = classifyTransportFailure(this.messageText);
         if (transportFailure) {
           this.emit(
@@ -538,6 +551,7 @@ class AcpSessionHandle implements AgentSessionHandle {
       .catch((error: unknown) => {
         const runId = this.activeRunId;
         if (runId) {
+          this.clearPromptTimer();
           // codex-acp can keep its stdio wrapper alive after the bundled
           // Codex app-server child exits. In that case the prompt request
           // rejects with a closed JSON-RPC connection, but the process-level
@@ -592,6 +606,7 @@ class AcpSessionHandle implements AgentSessionHandle {
     if (!this.activeRunId || (runId && runId !== this.activeRunId)) {
       throw new AcpAdapterError('RUN_NOT_ACTIVE', '没有可取消的 Run');
     }
+    this.clearPromptTimer();
     for (const [approvalId, pending] of this.approvals) {
       pending.resolve({ outcome: { outcome: 'cancelled' } });
       this.approvals.delete(approvalId);
@@ -609,6 +624,7 @@ class AcpSessionHandle implements AgentSessionHandle {
   }
 
   private async performClose(): Promise<void> {
+    this.clearPromptTimer();
     for (const pending of this.approvals.values()) {
       pending.resolve({ outcome: { outcome: 'cancelled' } });
     }
@@ -663,8 +679,45 @@ class AcpSessionHandle implements AgentSessionHandle {
     });
   }
 
+  private startPromptTimer(runId: string): void {
+    this.clearPromptTimer();
+    const timer = setTimeout(() => {
+      if (this.closed || this.activeRunId !== runId) return;
+      this.activeRunId = undefined;
+      this.emit(
+        'run.failed',
+        {
+          code: 'ACP_PROMPT_TIMEOUT',
+          message: 'Agent 在限定时间内未完成响应，连接已关闭',
+        },
+        runId,
+      );
+      const sessionId = this.sessionId;
+      if (sessionId) {
+        void this.runtime.agent
+          .notify(AGENT_METHODS.session_cancel, { sessionId })
+          .catch(() => undefined);
+      }
+      void this.close();
+    }, this.promptTimeoutMs);
+    timer.unref?.();
+    this.promptTimer = timer;
+  }
+
+  private refreshPromptTimer(): void {
+    if (!this.activeRunId) return;
+    this.startPromptTimer(this.activeRunId);
+  }
+
+  private clearPromptTimer(): void {
+    if (!this.promptTimer) return;
+    clearTimeout(this.promptTimer);
+    this.promptTimer = undefined;
+  }
+
   onSessionUpdate(notification: SessionNotification): void {
     if (this.sessionId && notification.sessionId !== this.sessionId) return;
+    this.refreshPromptTimer();
     const update = this.enrichToolCallUpdate(notification.update);
     const updates = normalizeAcpSessionUpdate(update);
     for (const update of updates) {

@@ -825,3 +825,20 @@ NAS 实机与部署证据：
 - `.72` Web 补丁将 ACP 原生命令说明映射为中文；未知 `$skill` 命令保留命令名并显示中文通用说明。
 - 随后 `907d15d` 将 `/plan` 做成 `plan` 与 `default` 的双向切换，最终 overlay 为
   `agenthub:0.6.0-nas.73`；当前容器已健康运行，`node-pty` native binding 验证为可加载。
+
+### v0.6 OpenClaw/Heimdall 功能闭环修复（2026-08-18）
+
+本轮针对真实 OpenClaw Run 长时间停留 `RUNNING`、Heimdall 上游解析失败和用户可见模式英文问题继续收敛：
+
+- ACP Session 增加有界 `session/prompt` 超时；OpenClaw Gateway 使用 30 秒、其他 Host ACP 使用 120 秒默认值。
+  超时会发布 `ACP_PROMPT_TIMEOUT`、关闭连接并让 Server 将 Run 收敛为可诊断失败，不再无限等待。
+- Fake ACP fixture 改用基于文件描述符的 Node stream bridge，兼容 NAS Node 24 子进程管道；新增 prompt 不返回的超时回归测试。
+- OpenClaw Gateway 配置切换到 Heimdall 的 `deepseek-v4-flash`，移除 Mimo 主模型和 fallback；Heimdall API key 9 同时允许
+  `deepseek/deepseek-v4-flash` 与 Gateway 实际发送的 `deepseek-v4-flash`。
+- Heimdall proxy Compose 增加可配置的 `HEIMDALL_EGRESS_PROXY`，复用 NAS `192.168.5.110:7890` 出网代理；未修改 Heimdall 数据卷、密钥或现有 Agent 容器。
+- 运行时模式标签补充 OpenClaw `off/minimal/low/medium/high/adaptive` 的中文显示和说明；不伪造不存在的 Plan 能力。
+
+自动化证据：ACP adapter/normalization 11 项、Web domain labels 4 项、Agent Core/adapter/server typecheck 通过。
+NAS 只读复测显示 `223.6.6.6`、`114.114.114.114` 及局域网 DNS 对普通域名和 DeepSeek 域名均返回 `SERVFAIL`；通过
+代理访问 AliDNS DoH 和 DeepSeek 均正常，故 Heimdall 出网代理兜底仍保留。尚待部署新 AgentHub overlay 后完成 OpenClaw
+真实 Session/Run 及 prompt 超时闭环验收。

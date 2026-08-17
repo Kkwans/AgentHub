@@ -29,6 +29,12 @@ const SESSION_MODE_LABELS: Record<string, string> = {
   default: '标准',
   plan: '计划',
   planning: '计划',
+  off: '关闭推理',
+  minimal: '最小推理',
+  low: '低推理',
+  medium: '中等推理',
+  high: '高推理',
+  adaptive: '自适应推理',
 };
 
 const SESSION_MODE_DESCRIPTIONS: Record<string, string> = {
@@ -40,6 +46,12 @@ const SESSION_MODE_DESCRIPTIONS: Record<string, string> = {
   default: '按普通执行流程处理后续请求',
   plan: '先制定计划，确认后再执行修改',
   planning: '先制定计划，确认后再执行修改',
+  off: '不使用额外推理过程，响应更快',
+  minimal: '使用少量额外推理，兼顾速度与质量',
+  low: '使用较少额外推理，适合简单任务',
+  medium: '使用中等额外推理，适合常规任务',
+  high: '使用更多额外推理，适合复杂任务',
+  adaptive: '由 Agent 根据任务自动选择推理强度',
 };
 
 const REASONING_EFFORT_LABELS: Record<string, string> = {

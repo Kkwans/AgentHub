@@ -241,7 +241,13 @@ export async function startServer(
     executionTargetRepository,
     acpLauncher,
     (adapterKind, launcher) => {
-      const primary = new AcpAdapter({ launcher });
+      const primary = new AcpAdapter({
+        launcher,
+        // OpenClaw's Gateway-backed ACP can publish an upstream error without
+        // resolving session/prompt. Keep that path bounded while retaining a
+        // longer window for local coding Agents.
+        ...(adapterKind === 'OPENCLAW_GATEWAY' ? { promptTimeoutMs: 30_000 } : {}),
+      });
       return adapterKind === 'OPENCLAW_GATEWAY'
         ? new OpenClawAdapter({ primary, exec: openClawExec })
         : primary;

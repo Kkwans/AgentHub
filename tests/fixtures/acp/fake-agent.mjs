@@ -1,8 +1,8 @@
 /* global process */
 import { createRequire } from 'node:module';
+import { read as readFd, write as writeFd } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Readable, Writable } from 'node:stream';
 import { pathToFileURL, URL } from 'node:url';
 
 const requireFromAdapter = createRequire(
@@ -107,6 +107,7 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     return { configOptions: configOptions() };
   })
   .onRequest(AGENT_METHODS.session_prompt, async ({ params, client }) => {
+    if (process.argv.includes('--hang-prompt')) await new Promise(() => {});
     if (process.argv.includes('--transport-warning')) {
       await client.notify(CLIENT_METHODS.session_update, {
         sessionId: params.sessionId,
@@ -185,6 +186,38 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
   .onNotification(AGENT_METHODS.session_cancel, () => {});
 
 const connection = fixture.connect(
-  ndJsonStream(Writable.toWeb(process.stdout), Readable.toWeb(process.stdin)),
+  ndJsonStream(
+    new WritableStream({
+      write(chunk) {
+        const data = Buffer.from(chunk);
+        return new Promise((resolve, reject) => {
+          writeFd(1, data, 0, data.byteLength, null, (error) => {
+            if (error) reject(error);
+            else resolve();
+          });
+        });
+      },
+    }),
+    new ReadableStream({
+      start(controller) {
+        const readNext = () => {
+          const buffer = Buffer.allocUnsafe(64 * 1024);
+          readFd(0, buffer, 0, buffer.byteLength, null, (error, bytesRead) => {
+            if (error) {
+              controller.error(error);
+              return;
+            }
+            if (bytesRead === 0) {
+              controller.close();
+              return;
+            }
+            controller.enqueue(Uint8Array.from(buffer.subarray(0, bytesRead)));
+            readNext();
+          });
+        };
+        readNext();
+      },
+    }),
+  ),
 );
 await connection.closed;

@@ -42,6 +42,16 @@ const transportWarningProfile: AgentProfile = {
   },
 };
 
+const hangingPromptProfile: AgentProfile = {
+  ...profile,
+  id: 'acp-fixture-hanging-prompt',
+  launchSpec: {
+    kind: 'HOST_PROCESS',
+    executable: process.execPath,
+    args: [fixturePath, '--hang-prompt'],
+  },
+};
+
 const openSessions: AgentSessionHandle[] = [];
 
 afterEach(async () => {
@@ -223,5 +233,30 @@ describe('ACP v1 adapter wire fixture', () => {
       },
     });
     expect(events.some((event) => event.type === 'run.completed')).toBe(false);
+  });
+
+  it('ACP prompt 不返回时在超时后失败并关闭连接', async () => {
+    const adapter = new AcpAdapter({ promptTimeoutMs: 20 });
+    const session = await adapter.createSession({
+      sessionId: 'hub-session-prompt-timeout',
+      projectId: 'project-1',
+      profile: hangingPromptProfile,
+      cwd: process.cwd(),
+    });
+    openSessions.push(session);
+    const iterator = session.events()[Symbol.asyncIterator]();
+    await session.sendTurn({ runId: 'run-prompt-timeout', text: '等待超时' });
+
+    const events = await takeUntil(iterator, 'session.closed');
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'run.failed',
+          runId: 'run-prompt-timeout',
+          payload: expect.objectContaining({ code: 'ACP_PROMPT_TIMEOUT' }),
+        }),
+        expect.objectContaining({ type: 'session.closed' }),
+      ]),
+    );
   });
 });

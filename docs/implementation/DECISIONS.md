@@ -186,3 +186,18 @@ resume。正常 Agent refusal 仍通过成功的 ACP PromptResponse/`run.failed`
 状态：已接受（2026-08-17）。Composer 输入 `/` 时显示本地配置命令和 ACP `available_commands_update` 提供的
 Agent 原生命令；本地 `/model`、`/mode`、`/effort`、`/plan`、`/help` 只在明确能力存在时执行，其他命令原样发送
 给 Agent。命令元数据只保留名称、说明和 hint，不持久化或展示 ACP 原始 `_meta`。
+
+## D-030：上游 DNS 失败时 Heimdall 使用显式出网代理兜底
+
+状态：已接受（2026-08-18）。NAS 的 UGOS DNS 配置虽包含 `223.6.6.6` 和 `114.114.114.114`，但在
+`DH4300Plus` 上对普通域名和 `api.deepseek.com` 的 UDP/TCP 查询均返回 `SERVFAIL`，通过代理访问
+DNS-over-HTTPS 和 DeepSeek 正常。AgentHub 不修改 NAS 全局 DNS；Heimdall proxy 仅通过可配置的
+`HEIMDALL_EGRESS_PROXY` 访问上游，Compose 内部地址继续由 `NO_PROXY` 直连。这样 DNS 修复后可以将
+环境变量置空回归直连，当前不伪称直连已恢复。
+
+## D-031：ACP Prompt 必须有界并在超时后收敛
+
+状态：已接受（2026-08-18）。Gateway-backed ACP 可能发布上游错误但不响应 `session/prompt` JSON-RPC，
+因此 adapter 必须设置有界计时器；收到 Session update 时刷新，超时发布稳定的 `ACP_PROMPT_TIMEOUT`、发送
+最佳努力 cancel 并关闭 Session。OpenClaw 默认 30 秒，其他本地 ACP 默认 120 秒；不改变正常 Agent 的
+streaming、approval 或 cancellation 语义，也不把挂起 Run 伪标记为成功。
