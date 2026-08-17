@@ -79,6 +79,7 @@ describe('ACP v1 adapter wire fixture', () => {
     expect(capabilities.sessions).toEqual({ create: true, load: true, resume: true, close: true });
     expect(capabilities.configuration.modelOptions).toEqual([
       { id: 'fixture-model', label: 'Fixture Model' },
+      { id: 'fixture-model-2', label: 'Fixture Model 2' },
     ]);
     expect(capabilities.configuration.modeOptions).toEqual([
       { id: 'agent', label: 'Agent', description: '执行模式' },
@@ -134,6 +135,32 @@ describe('ACP v1 adapter wire fixture', () => {
     expect(all.map((event) => event.seq)).toEqual(
       Array.from({ length: all.length }, (_, index) => index + 1),
     );
+  });
+
+  it('读取并动态切换 Session model/mode，拒绝无效选项', async () => {
+    const adapter = new AcpAdapter();
+    const session = await adapter.createSession({
+      sessionId: 'hub-session-configuration',
+      projectId: 'project-1',
+      profile,
+      cwd: process.cwd(),
+      mode: 'plan',
+    });
+    openSessions.push(session);
+
+    await expect(session.getConfiguration?.()).resolves.toMatchObject({
+      supported: true,
+      current: { model: 'fixture-model', mode: 'plan' },
+    });
+    await expect(session.setConfiguration?.({ mode: 'agent' })).resolves.toMatchObject({
+      current: { mode: 'agent' },
+    });
+    await expect(session.setConfiguration?.({ model: 'fixture-model-2' })).resolves.toMatchObject({
+      current: { model: 'fixture-model-2' },
+    });
+    await expect(session.setConfiguration?.({ mode: 'missing-mode' })).rejects.toMatchObject({
+      code: 'SESSION_MODE_UNSUPPORTED',
+    });
   });
 
   it('session/close 挂起时仍在短 grace 后关闭 connection、process 与 event queue', async () => {

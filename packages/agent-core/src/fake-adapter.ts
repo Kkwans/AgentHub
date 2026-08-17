@@ -8,6 +8,8 @@ import type {
   ApprovalDecision,
   CreateAgentSessionInput,
   PreflightReport,
+  SessionConfiguration,
+  SessionConfigurationPatch,
 } from './contracts.js';
 import type { AgentEventType, NormalizedAgentEvent } from './events.js';
 
@@ -33,7 +35,19 @@ export const FAKE_AGENT_CAPABILITIES: AgentCapabilities = {
     mcpStdio: false,
     mcpHttp: false,
   },
-  configuration: { models: true, modes: true, reasoningEffort: false },
+  configuration: {
+    models: true,
+    modes: true,
+    reasoningEffort: false,
+    modelOptions: [
+      { id: 'fixture-model', label: 'Fixture Model' },
+      { id: 'fixture-model-2', label: 'Fixture Model 2' },
+    ],
+    modeOptions: [
+      { id: 'agent', label: 'Agent', description: '执行模式' },
+      { id: 'plan', label: 'Plan', description: '规划模式' },
+    ],
+  },
   telemetry: { tokenUsage: true, cost: false },
 };
 
@@ -105,6 +119,7 @@ class FakeAgentSession implements AgentSessionHandle {
   private activeRunId: string | undefined;
   private pendingApprovalId: string | undefined;
   private closed = false;
+  private configuration: SessionConfiguration;
 
   constructor(
     private readonly input: CreateAgentSessionInput,
@@ -114,11 +129,66 @@ class FakeAgentSession implements AgentSessionHandle {
     private readonly includeExternalRunId: boolean,
     private readonly usagePayload: Record<string, unknown>,
   ) {
+    this.configuration = {
+      supported: true,
+      current: {
+        model: input.model ?? 'fixture-model',
+        mode: input.mode ?? 'agent',
+      },
+      options: {
+        models: [
+          { id: 'fixture-model', label: 'Fixture Model' },
+          { id: 'fixture-model-2', label: 'Fixture Model 2' },
+        ],
+        modes: [
+          { id: 'agent', label: 'Agent', description: '执行模式' },
+          { id: 'plan', label: 'Plan', description: '规划模式' },
+        ],
+      },
+    };
     this.emit('session.created', { externalSessionId });
   }
 
   events(): AsyncIterable<NormalizedAgentEvent> {
     return this.queue;
+  }
+
+  async getConfiguration(): Promise<SessionConfiguration> {
+    return structuredClone(this.configuration);
+  }
+
+  async setConfiguration(patch: SessionConfigurationPatch): Promise<SessionConfiguration> {
+    const fields = Object.keys(patch).filter(
+      (key) => patch[key as keyof SessionConfigurationPatch],
+    );
+    if (fields.length !== 1) {
+      throw new FakeAdapterError('SESSION_CONFIGURATION_INVALID', '一次只能修改一个 Session 配置');
+    }
+    if (
+      patch.model &&
+      !this.configuration.options.models.some((option) => option.id === patch.model)
+    ) {
+      throw new FakeAdapterError('SESSION_MODEL_UNSUPPORTED', 'Fixture 不支持该模型');
+    }
+    if (
+      patch.mode &&
+      !this.configuration.options.modes.some((option) => option.id === patch.mode)
+    ) {
+      throw new FakeAdapterError('SESSION_MODE_UNSUPPORTED', 'Fixture 不支持该模式');
+    }
+    this.configuration = {
+      ...this.configuration,
+      current: {
+        ...this.configuration.current,
+        ...(patch.model ? { model: patch.model } : {}),
+        ...(patch.mode ? { mode: patch.mode } : {}),
+      },
+    };
+    this.emit('agent.configuration.updated', {
+      current: structuredClone(this.configuration.current),
+      options: structuredClone(this.configuration.options),
+    });
+    return structuredClone(this.configuration);
   }
 
   async sendTurn(input: AgentTurnInput): Promise<AgentRunRef> {

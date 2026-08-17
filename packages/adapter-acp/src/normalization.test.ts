@@ -39,6 +39,43 @@ describe('ACP 事件归一化', () => {
     ).toMatchObject({ type: 'usage.updated', payload: { used: 10, size: 100 } });
   });
 
+  it('将 ACP 配置通知归一化为 AgentHub 配置事件', () => {
+    expect(
+      normalizeAcpSessionUpdate({
+        sessionUpdate: 'current_mode_update',
+        currentModeId: 'plan',
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        type: 'agent.configuration.updated',
+        payload: { current: { mode: 'plan' } },
+      }),
+    ]);
+    expect(
+      normalizeAcpSessionUpdate({
+        sessionUpdate: 'config_option_update',
+        configOptions: [
+          {
+            id: 'model',
+            name: 'Model',
+            category: 'model',
+            type: 'select',
+            currentValue: 'fixture-model',
+            options: [{ value: 'fixture-model', name: 'Fixture Model' }],
+          },
+        ],
+      }),
+    ).toMatchObject([
+      {
+        type: 'agent.configuration.updated',
+        payload: {
+          current: { model: 'fixture-model' },
+          options: { models: [{ id: 'fixture-model', label: 'Fixture Model' }], modes: [] },
+        },
+      },
+    ]);
+  });
+
   it('从 ACP initialize 生成供应商无关 capability', () => {
     const capabilities = mapAcpCapabilities(
       {

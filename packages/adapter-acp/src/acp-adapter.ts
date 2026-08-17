@@ -14,6 +14,7 @@ import {
   type RequestPermissionRequest,
   type RequestPermissionResponse,
   type SessionConfigOption,
+  type SessionModeState,
   type SessionNotification,
 } from '@agentclientprotocol/sdk';
 import {
@@ -30,6 +31,8 @@ import {
   type NormalizedAgentEvent,
   type PreflightReport,
   type ResumeAgentSessionInput,
+  type SessionConfiguration,
+  type SessionConfigurationPatch,
 } from '@agenthub/agent-core';
 
 import { normalizeAcpSessionUpdate } from './normalization.js';
@@ -185,8 +188,8 @@ export class AcpAdapter implements AgentRuntimeAdapter {
         mcpServers: [],
         ...(input.additionalRoots?.length ? { additionalDirectories: input.additionalRoots } : {}),
       });
-      handle.attach(response.sessionId, runtime.initialize.agentCapabilities);
-      await applyRequestedSessionConfiguration(runtime.agent, response, input);
+      handle.attach(response.sessionId, runtime.initialize.agentCapabilities, response);
+      await applyRequestedSessionConfiguration(handle, input);
       return handle;
     } catch (error) {
       await closeRuntime(runtime);
@@ -231,9 +234,14 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       ...(input.additionalRoots?.length ? { additionalDirectories: input.additionalRoots } : {}),
     };
     try {
-      if (method === 'load') await runtime.agent.request(AGENT_METHODS.session_load, request);
-      else await runtime.agent.request(AGENT_METHODS.session_resume, request);
-      handle.attach(input.externalSessionId, capabilities);
+      const response = (await (method === 'load'
+        ? runtime.agent.request(AGENT_METHODS.session_load, request)
+        : runtime.agent.request(AGENT_METHODS.session_resume, request))) as Pick<
+        NewSessionResponse,
+        'modes' | 'configOptions'
+      >;
+      handle.attach(input.externalSessionId, capabilities, response);
+      await applyRequestedSessionConfiguration(handle, input);
       return handle;
     } catch (error) {
       await closeRuntime(runtime);
@@ -260,7 +268,10 @@ export class AcpAdapter implements AgentRuntimeAdapter {
     try {
       const initialize = await connection.agent.request(AGENT_METHODS.initialize, {
         protocolVersion: PROTOCOL_VERSION,
-        clientCapabilities: { plan: {} },
+        clientCapabilities: {
+          plan: {},
+          session: { configOptions: { boolean: {} } },
+        },
         clientInfo: { name: 'agenthub', title: 'AgentHub', version: '0.6.0' },
       });
       if (initialize.protocolVersion !== PROTOCOL_VERSION) {
@@ -317,6 +328,10 @@ class AcpSessionHandle implements AgentSessionHandle {
   private messageText = '';
   private closed = false;
   private closePromise: Promise<void> | undefined;
+  private configuration: SessionConfiguration = emptySessionConfiguration();
+  private modeState: SessionModeState | undefined;
+  private configOptions: SessionConfigOption[] = [];
+  private configurationQueue: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly agentHubSessionId: string,
@@ -340,14 +355,86 @@ class AcpSessionHandle implements AgentSessionHandle {
     return this.sessionId;
   }
 
-  attach(sessionId: string, capabilities?: AcpAgentCapabilities): void {
+  attach(
+    sessionId: string,
+    capabilities?: AcpAgentCapabilities,
+    initial?: Pick<NewSessionResponse, 'modes' | 'configOptions'>,
+  ): void {
     this.sessionId = sessionId;
     this.capabilities = capabilities;
+    this.updateConfigurationFromAcp(initial);
     this.emit('session.created', { externalSessionId: sessionId });
   }
 
   events(): AsyncIterable<NormalizedAgentEvent> {
     return this.queue;
+  }
+
+  async getConfiguration(): Promise<SessionConfiguration> {
+    return structuredClone(this.configuration);
+  }
+
+  setConfiguration(patch: SessionConfigurationPatch): Promise<SessionConfiguration> {
+    const operation = this.configurationQueue.then(() => this.performSetConfiguration(patch));
+    this.configurationQueue = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
+  private async performSetConfiguration(
+    patch: SessionConfigurationPatch,
+  ): Promise<SessionConfiguration> {
+    const fields = Object.keys(patch).filter(
+      (key) => patch[key as keyof SessionConfigurationPatch],
+    );
+    if (fields.length !== 1) {
+      throw new AcpAdapterError('SESSION_CONFIGURATION_INVALID', '一次只能修改一个 Session 配置');
+    }
+    if (this.closed) throw new AcpAdapterError('SESSION_CLOSED', 'Session 已关闭');
+    const sessionId = this.requireSession();
+
+    if (patch.model) {
+      const option = findConfigOption(this.configOptions, 'model', patch.model);
+      if (!option) {
+        throw new AcpAdapterError('SESSION_MODEL_UNSUPPORTED', `Agent 不支持模型：${patch.model}`);
+      }
+      const response = await this.runtime.agent.request(AGENT_METHODS.session_set_config_option, {
+        sessionId,
+        configId: option.id,
+        value: patch.model,
+      });
+      this.updateConfigurationFromAcp({ configOptions: response.configOptions });
+    }
+
+    if (patch.mode) {
+      const dedicatedMode = this.modeState?.availableModes.find((mode) => mode.id === patch.mode);
+      if (dedicatedMode) {
+        await this.runtime.agent.request(AGENT_METHODS.session_set_mode, {
+          sessionId,
+          modeId: patch.mode,
+        });
+        this.modeState = { ...this.modeState!, currentModeId: patch.mode };
+        this.configuration = {
+          ...this.configuration,
+          current: { ...this.configuration.current, mode: patch.mode },
+        };
+      } else {
+        const option = findConfigOption(this.configOptions, 'mode', patch.mode);
+        if (!option) {
+          throw new AcpAdapterError('SESSION_MODE_UNSUPPORTED', `Agent 不支持模式：${patch.mode}`);
+        }
+        const response = await this.runtime.agent.request(AGENT_METHODS.session_set_config_option, {
+          sessionId,
+          configId: option.id,
+          value: patch.mode,
+        });
+        this.updateConfigurationFromAcp({ configOptions: response.configOptions });
+      }
+    }
+
+    return structuredClone(this.configuration);
   }
 
   async sendTurn(input: AgentTurnInput): Promise<AgentRunRef> {
@@ -518,8 +605,42 @@ class AcpSessionHandle implements AgentSessionHandle {
       if (update.type === 'assistant.message.delta' && typeof update.payload.text === 'string') {
         this.messageText += update.payload.text;
       }
+      if (update.type === 'agent.configuration.updated') {
+        this.applyConfigurationEventPayload(update.payload);
+      }
       this.emit(update.type, update.payload, this.activeRunId, update.sourceEventType);
     }
+  }
+
+  private applyConfigurationEventPayload(payload: Record<string, unknown>): void {
+    const current = isRecord(payload.current) ? payload.current : {};
+    const options = isRecord(payload.options) ? payload.options : {};
+    const models = readModelOptions(options.models);
+    const modes = readModelOptions(options.modes);
+    this.configuration = {
+      ...this.configuration,
+      current: {
+        ...this.configuration.current,
+        ...(typeof current.model === 'string' ? { model: current.model } : {}),
+        ...(typeof current.mode === 'string' ? { mode: current.mode } : {}),
+      },
+      options: {
+        models: models.length ? models : this.configuration.options.models,
+        modes: modes.length ? modes : this.configuration.options.modes,
+      },
+    };
+  }
+
+  private updateConfigurationFromAcp(
+    session?: Pick<NewSessionResponse, 'modes' | 'configOptions'>,
+  ): void {
+    if (session?.modes) this.modeState = session.modes;
+    if (session?.configOptions) this.configOptions = session.configOptions;
+    const next = configurationFromAcp({
+      ...(this.modeState ? { modes: this.modeState } : {}),
+      configOptions: this.configOptions,
+    });
+    this.configuration = mergeSessionConfiguration(this.configuration, next);
   }
 
   private enrichToolCallUpdate(
@@ -651,40 +772,96 @@ export function mapAcpCapabilities(
 }
 
 async function applyRequestedSessionConfiguration(
-  agent: ClientContext,
-  response: NewSessionResponse,
+  handle: AcpSessionHandle,
   input: CreateAgentSessionInput,
 ): Promise<void> {
-  if (input.model) {
-    const modelOption = findConfigOption(response.configOptions, 'model', input.model);
-    if (!modelOption) {
-      throw new AcpAdapterError('SESSION_MODEL_UNSUPPORTED', `Agent 不支持模型：${input.model}`);
-    }
-    await agent.request(AGENT_METHODS.session_set_config_option, {
-      sessionId: response.sessionId,
-      configId: modelOption.id,
-      value: input.model,
-    });
-  }
+  if (input.model) await handle.setConfiguration?.({ model: input.model });
+  if (input.mode) await handle.setConfiguration?.({ mode: input.mode });
+}
 
-  if (!input.mode) return;
-  if (response.modes?.availableModes.some((mode) => mode.id === input.mode)) {
-    await agent.request(AGENT_METHODS.session_set_mode, {
-      sessionId: response.sessionId,
-      modeId: input.mode,
-    });
-    return;
-  }
+function emptySessionConfiguration(): SessionConfiguration {
+  return {
+    supported: false,
+    current: { model: null, mode: null },
+    options: { models: [], modes: [] },
+  };
+}
 
-  const modeOption = findConfigOption(response.configOptions, 'mode', input.mode);
-  if (!modeOption) {
-    throw new AcpAdapterError('SESSION_MODE_UNSUPPORTED', `Agent 不支持模式：${input.mode}`);
-  }
-  await agent.request(AGENT_METHODS.session_set_config_option, {
-    sessionId: response.sessionId,
-    configId: modeOption.id,
-    value: input.mode,
+function configurationFromAcp(input: {
+  modes?: SessionModeState;
+  configOptions?: SessionConfigOption[];
+}): SessionConfiguration {
+  const models = configOptionsForCategory(input.configOptions, 'model');
+  const modeOptions = input.modes?.availableModes.map((mode) => ({
+    id: mode.id,
+    label: mode.name,
+    ...(mode.description ? { description: mode.description } : {}),
+  }));
+  const modes = modeOptions?.length
+    ? modeOptions
+    : configOptionsForCategory(input.configOptions, 'mode');
+  const modelValue = currentConfigValue(input.configOptions, 'model');
+  const modeValue = input.modes?.currentModeId ?? currentConfigValue(input.configOptions, 'mode');
+  return {
+    supported: models.length > 0 || modes.length > 0,
+    current: { model: modelValue, mode: modeValue },
+    options: { models, modes },
+  };
+}
+
+function mergeSessionConfiguration(
+  previous: SessionConfiguration,
+  next: SessionConfiguration,
+): SessionConfiguration {
+  const hasModels = next.options.models.length > 0;
+  const hasModes = next.options.modes.length > 0;
+  return {
+    supported: previous.supported || next.supported,
+    current: {
+      model: hasModels ? next.current.model : previous.current.model,
+      mode: hasModes ? next.current.mode : previous.current.mode,
+    },
+    options: {
+      models: hasModels ? next.options.models : previous.options.models,
+      modes: hasModes ? next.options.modes : previous.options.modes,
+    },
+    ...(previous.reasonCode || next.reasonCode
+      ? { reasonCode: next.reasonCode ?? previous.reasonCode }
+      : {}),
+  };
+}
+
+function currentConfigValue(
+  options: SessionConfigOption[] | undefined,
+  category: string,
+): string | null {
+  const option = options?.find(
+    (candidate): candidate is Extract<SessionConfigOption, { type: 'select' }> =>
+      candidate.type === 'select' && candidate.category === category,
+  );
+  return option?.currentValue ?? null;
+}
+
+function readModelOptions(
+  value: unknown,
+): Array<{ id: string; label: string; description?: string }> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate) => {
+    if (!isRecord(candidate) || typeof candidate.id !== 'string') return [];
+    return [
+      {
+        id: candidate.id,
+        label: typeof candidate.label === 'string' ? candidate.label : candidate.id,
+        ...(typeof candidate.description === 'string'
+          ? { description: candidate.description }
+          : {}),
+      },
+    ];
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function findConfigOption(

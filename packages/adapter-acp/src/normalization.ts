@@ -1,4 +1,4 @@
-import type { SessionUpdate } from '@agentclientprotocol/sdk';
+import type { SessionConfigOption, SessionUpdate } from '@agentclientprotocol/sdk';
 import type { AgentEventType } from '@agenthub/agent-core';
 
 export interface NormalizedUpdate {
@@ -103,8 +103,8 @@ export function normalizeAcpSessionUpdate(update: SessionUpdate): NormalizedUpda
     case 'current_mode_update':
       return [
         {
-          type: 'agent.status',
-          payload: { mode: update.currentModeId },
+          type: 'agent.configuration.updated',
+          payload: { current: { mode: update.currentModeId } },
           sourceEventType,
         },
       ];
@@ -119,12 +119,57 @@ export function normalizeAcpSessionUpdate(update: SessionUpdate): NormalizedUpda
           sourceEventType,
         },
       ];
+    case 'config_option_update': {
+      const models = configOptionsForCategory(update.configOptions, 'model');
+      const modes = configOptionsForCategory(update.configOptions, 'mode');
+      const current: Record<string, string> = {};
+      const modelValue = currentConfigValue(update.configOptions, 'model');
+      const modeValue = currentConfigValue(update.configOptions, 'mode');
+      if (modelValue) current.model = modelValue;
+      if (modeValue) current.mode = modeValue;
+      return [
+        {
+          type: 'agent.configuration.updated',
+          payload: {
+            current,
+            options: { models, modes },
+          },
+          sourceEventType,
+        },
+      ];
+    }
     case 'agent_thought_chunk':
     case 'user_message_chunk':
     case 'available_commands_update':
-    case 'config_option_update':
       return [];
   }
+}
+
+function configOptionsForCategory(
+  options: SessionConfigOption[],
+  category: string,
+): Array<{ id: string; label: string; description?: string }> {
+  const option = options.find(
+    (candidate): candidate is Extract<SessionConfigOption, { type: 'select' }> =>
+      candidate.type === 'select' && candidate.category === category,
+  );
+  if (!option) return [];
+  return option.options.flatMap((candidate) => {
+    const values = 'value' in candidate ? [candidate] : candidate.options;
+    return values.map((value) => ({
+      id: value.value,
+      label: value.name,
+      ...(value.description ? { description: value.description } : {}),
+    }));
+  });
+}
+
+function currentConfigValue(options: SessionConfigOption[], category: string): string | undefined {
+  const option = options.find(
+    (candidate): candidate is Extract<SessionConfigOption, { type: 'select' }> =>
+      candidate.type === 'select' && candidate.category === category,
+  );
+  return option?.currentValue;
 }
 
 function toolPayload(update: {

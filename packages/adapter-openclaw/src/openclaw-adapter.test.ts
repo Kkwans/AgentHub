@@ -57,6 +57,8 @@ describe('OpenClaw adapter', () => {
       profile,
       cwd: '/workspace',
     });
+    expect(session.getConfiguration).toBeUndefined();
+    expect(session.setConfiguration).toBeUndefined();
     const iterator = session.events()[Symbol.asyncIterator]();
     await session.sendTurn({ runId: 'run-1', text: '执行测试' });
     const types: string[] = [];

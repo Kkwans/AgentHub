@@ -14,6 +14,31 @@ const { AGENT_METHODS, CLIENT_METHODS, PROTOCOL_VERSION, agent, ndJsonStream } =
 
 let sessionCounter = 0;
 let currentMode = 'agent';
+let currentModel = 'fixture-model';
+
+const availableModes = () => [
+  { id: 'agent', name: 'Agent', description: '执行模式' },
+  { id: 'plan', name: 'Plan', description: '规划模式' },
+];
+
+const configOptions = () => [
+  {
+    id: 'model',
+    name: 'Model',
+    category: 'model',
+    type: 'select',
+    currentValue: currentModel,
+    options: [
+      { value: 'fixture-model', name: 'Fixture Model' },
+      { value: 'fixture-model-2', name: 'Fixture Model 2' },
+    ],
+  },
+];
+
+const sessionConfiguration = () => ({
+  modes: { currentModeId: currentMode, availableModes: availableModes() },
+  configOptions: configOptions(),
+});
 
 const fixture = agent({ name: 'AgentHub ACP Fixture' })
   .onRequest(AGENT_METHODS.initialize, () => ({
@@ -30,47 +55,31 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     sessionCounter += 1;
     return {
       sessionId: `fixture-session-${sessionCounter}`,
-      modes: {
-        currentModeId: currentMode,
-        availableModes: [
-          { id: 'agent', name: 'Agent', description: '执行模式' },
-          { id: 'plan', name: 'Plan', description: '规划模式' },
-        ],
-      },
-      configOptions: [
-        {
-          id: 'model',
-          name: 'Model',
-          category: 'model',
-          type: 'select',
-          currentValue: 'fixture-model',
-          options: [{ value: 'fixture-model', name: 'Fixture Model' }],
-        },
-      ],
+      ...sessionConfiguration(),
     };
   })
-  .onRequest(AGENT_METHODS.session_load, () => ({}))
-  .onRequest(AGENT_METHODS.session_resume, () => ({}))
+  .onRequest(AGENT_METHODS.session_load, () => sessionConfiguration())
+  .onRequest(AGENT_METHODS.session_resume, () => sessionConfiguration())
   .onRequest(AGENT_METHODS.session_close, async () => {
     if (process.argv.includes('--hang-close')) await new Promise(() => {});
     return {};
   })
-  .onRequest(AGENT_METHODS.session_set_mode, ({ params }) => {
+  .onRequest(AGENT_METHODS.session_set_mode, async ({ params, client }) => {
     currentMode = params.modeId;
+    await client.notify(CLIENT_METHODS.session_update, {
+      sessionId: params.sessionId,
+      update: { sessionUpdate: 'current_mode_update', currentModeId: currentMode },
+    });
     return {};
   })
-  .onRequest(AGENT_METHODS.session_set_config_option, () => ({
-    configOptions: [
-      {
-        id: 'model',
-        name: 'Model',
-        category: 'model',
-        type: 'select',
-        currentValue: 'fixture-model',
-        options: [{ value: 'fixture-model', name: 'Fixture Model' }],
-      },
-    ],
-  }))
+  .onRequest(AGENT_METHODS.session_set_config_option, async ({ params, client }) => {
+    currentModel = params.value;
+    await client.notify(CLIENT_METHODS.session_update, {
+      sessionId: params.sessionId,
+      update: { sessionUpdate: 'config_option_update', configOptions: configOptions() },
+    });
+    return { configOptions: configOptions() };
+  })
   .onRequest(AGENT_METHODS.session_prompt, async ({ params, client }) => {
     if (process.argv.includes('--transport-warning')) {
       await client.notify(CLIENT_METHODS.session_update, {

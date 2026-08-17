@@ -90,6 +90,29 @@ export interface ModelOption {
   description?: string;
 }
 
+/**
+ * The subset of per-session configuration that AgentHub exposes as a
+ * first-class user action. Provider-specific ACP/OpenClaw types must not cross
+ * this boundary.
+ */
+export interface SessionConfigurationPatch {
+  model?: string;
+  mode?: string;
+}
+
+export interface SessionConfiguration {
+  supported: boolean;
+  current: {
+    model: string | null;
+    mode: string | null;
+  };
+  options: {
+    models: ModelOption[];
+    modes: ModelOption[];
+  };
+  reasonCode?: string;
+}
+
 export interface CreateAgentSessionInput {
   sessionId: string;
   profile: AgentProfile;
@@ -139,6 +162,8 @@ export interface AgentRuntimeAdapter {
 export interface AgentSessionHandle {
   readonly externalSessionId: string | undefined;
   events(): AsyncIterable<NormalizedAgentEvent>;
+  getConfiguration?(): Promise<SessionConfiguration>;
+  setConfiguration?(patch: SessionConfigurationPatch): Promise<SessionConfiguration>;
   sendTurn(input: AgentTurnInput): Promise<AgentRunRef>;
   resolveApproval(id: string, decision: ApprovalDecision): Promise<void>;
   cancel(runId?: string): Promise<void>;

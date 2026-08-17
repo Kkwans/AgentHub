@@ -1829,6 +1829,19 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
     return created;
   }
 
+  async updateConfiguration(
+    id: string,
+    patch: Pick<typeof agentSessions.$inferInsert, 'model' | 'mode'>,
+  ) {
+    const [updated] = await this.db
+      .update(agentSessions)
+      .set({ ...patch, lastActiveAt: new Date() })
+      .where(eq(agentSessions.id, id))
+      .returning();
+    if (!updated) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
+    return updated;
+  }
+
   async transition(
     id: string,
     to: SessionStatus,

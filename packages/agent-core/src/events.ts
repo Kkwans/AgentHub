@@ -12,6 +12,7 @@ export const AGENT_EVENT_TYPES = [
   'assistant.message.completed',
   'agent.plan.updated',
   'agent.status',
+  'agent.configuration.updated',
   'tool.call.started',
   'tool.call.progress',
   'tool.call.completed',
