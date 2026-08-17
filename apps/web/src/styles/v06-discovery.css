@@ -407,7 +407,9 @@
   .v06-connected {
     grid-column: 2 / -1;
     justify-self: start;
-    grid-row: 3;
+    /* Actions must occupy separate rows on narrow cards. Sharing row 3
+     * makes the primary link and secondary buttons paint over one another. */
+    grid-row: auto;
   }
 
   .v06-panel {

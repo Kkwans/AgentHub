@@ -679,9 +679,16 @@ textarea {
 
   .mobile-menu {
     display: inline-flex !important;
+    /* Keep the menu in the header flow. The legacy fixed rule made it cover
+     * the page title, leaving only the tail of “AGENTHUB” visible on tablets. */
+    position: static;
+    box-sizing: border-box;
     width: 44px;
+    min-width: 44px;
     height: 44px;
-    margin-left: -8px;
+    margin: 0;
+    padding: 0;
+    flex: 0 0 44px;
   }
 
   .mobile-navigation {
