@@ -22,6 +22,15 @@ const runSchema = z.object({
   content: z.array(z.record(z.string(), z.unknown())).max(64).optional(),
   promptVariables: z.record(z.string(), z.unknown()).optional(),
 });
+const configurationSchema = z
+  .object({
+    model: z.string().trim().min(1).max(160).optional(),
+    mode: z.string().trim().min(1).max(80).optional(),
+  })
+  .strict()
+  .refine((value) => (value.model !== undefined) !== (value.mode !== undefined), {
+    message: '一次只能修改一个 Session 配置',
+  });
 
 export function createSessionRouter(service: SessionService): Router {
   const router = Router();
@@ -45,6 +54,39 @@ export function createSessionRouter(service: SessionService): Router {
       next(error);
     }
   });
+
+  router.get(
+    '/:id/configuration',
+    validate({ params: idParams }),
+    async (request, response, next) => {
+      try {
+        const { id } = idParams.parse(request.params);
+        response.json({ data: await service.getConfiguration(id), requestId: String(request.id) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/:id/configuration',
+    validate({ params: idParams, body: configurationSchema }),
+    async (request, response, next) => {
+      try {
+        const { id } = idParams.parse(request.params);
+        const parsed = configurationSchema.parse(request.body);
+        response.json({
+          data: await service.updateConfiguration(id, {
+            ...(parsed.model !== undefined ? { model: parsed.model } : {}),
+            ...(parsed.mode !== undefined ? { mode: parsed.mode } : {}),
+          }),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get('/:id', validate({ params: idParams }), async (request, response, next) => {
     try {

@@ -8,6 +8,8 @@ import type {
   AgentProfile,
   NormalizedAgentEvent,
   RunStatus,
+  SessionConfiguration,
+  SessionConfigurationPatch,
   SessionStatus,
 } from '@agenthub/agent-core';
 import { runProcess } from '@agenthub/agent-core';
@@ -117,6 +119,7 @@ interface CancellationTimer {
 export class SessionService {
   private readonly active = new Map<string, ActiveSession>();
   private readonly cancellationTimers = new Map<string, CancellationTimer>();
+  private readonly configurationQueues = new Map<string, Promise<void>>();
   private readonly cancelConvergenceTimeoutMs: number;
   private readonly approvalDeliveryTimeoutMs: number;
   private taskLifecycle?: TaskRunLifecycleObserver;
@@ -154,6 +157,81 @@ export class SessionService {
     const session = await this.sessions.get(id);
     if (!session) throw new AppError(404, 'SESSION_NOT_FOUND', 'Session 不存在');
     return session;
+  }
+
+  async getConfiguration(id: string): Promise<SessionConfiguration> {
+    const session = await this.get(id);
+    const active = this.active.get(id);
+    if (!active) {
+      return {
+        supported: false,
+        current: { model: session.model, mode: session.mode },
+        options: { models: [], modes: [] },
+        reasonCode: 'SESSION_NOT_CONNECTED',
+      };
+    }
+    if (!active.handle.getConfiguration) {
+      return {
+        supported: false,
+        current: { model: session.model, mode: session.mode },
+        options: { models: [], modes: [] },
+        reasonCode: 'SESSION_CONFIGURATION_UNSUPPORTED',
+      };
+    }
+    try {
+      return await active.handle.getConfiguration();
+    } catch (error) {
+      throw configurationError(error, '读取 Session 配置失败');
+    }
+  }
+
+  async updateConfiguration(
+    id: string,
+    patch: SessionConfigurationPatch,
+  ): Promise<SessionConfiguration> {
+    const fields = Object.keys(patch).filter(
+      (key) => patch[key as keyof SessionConfigurationPatch] !== undefined,
+    );
+    if (fields.length !== 1) {
+      throw new AppError(400, 'SESSION_CONFIGURATION_FAILED', '一次只能修改一个 Session 配置');
+    }
+    const session = await this.get(id);
+    const active = this.active.get(id);
+    if (!active) {
+      throw new AppError(409, 'SESSION_NOT_CONNECTED', 'Session 尚未连接或需要恢复');
+    }
+    if (!active.handle.setConfiguration) {
+      throw new AppError(409, 'SESSION_CONFIGURATION_UNSUPPORTED', '当前 Agent 不支持动态配置');
+    }
+    if (!['READY', 'RUNNING', 'WAITING_APPROVAL'].includes(session.status)) {
+      throw new AppError(409, 'SESSION_NOT_CONNECTED', 'Session 当前未连接 Agent');
+    }
+
+    const previous = this.configurationQueues.get(id) ?? Promise.resolve();
+    const operation = previous.then(async () => {
+      let configuration: SessionConfiguration;
+      try {
+        configuration = await active.handle.setConfiguration!(patch);
+      } catch (error) {
+        throw configurationError(error, '更新 Session 配置失败');
+      }
+      const current = configuration.current;
+      await this.sessions.updateConfiguration(id, {
+        ...(Object.prototype.hasOwnProperty.call(patch, 'model') ? { model: current.model } : {}),
+        ...(Object.prototype.hasOwnProperty.call(patch, 'mode') ? { mode: current.mode } : {}),
+      });
+      await this.publishConfigurationEvent(id, session.projectId, configuration);
+      return configuration;
+    });
+    const settled = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.configurationQueues.set(id, settled);
+    void settled.finally(() => {
+      if (this.configurationQueues.get(id) === settled) this.configurationQueues.delete(id);
+    });
+    return operation;
   }
 
   listMessages(sessionId: string) {
@@ -248,6 +326,7 @@ export class SessionService {
         ...(model ? { model } : {}),
         ...(mode ? { mode } : {}),
       });
+      await this.persistEffectiveConfiguration(id, handle);
       const ready = await this.sessions.transition(id, 'READY', {
         externalSessionId: handle.externalSessionId,
         startedAt: new Date(),
@@ -296,6 +375,7 @@ export class SessionService {
           ? await adapter.loadSession(base)
           : undefined;
       if (!handle) throw new AppError(409, 'SESSION_NOT_RESUMABLE', '该 Agent 不支持恢复 Session');
+      await this.persistEffectiveConfiguration(id, handle);
       const previous = this.detachActive(id);
       if (previous) await this.closeHandleSafely(previous.handle);
       const ready = await this.sessions.transition(id, 'READY');
@@ -662,6 +742,7 @@ export class SessionService {
       throw new AppError(409, 'SESSION_HAS_ACTIVE_RUN', '请先停止当前 Run 再关闭 Session');
     }
     this.clearCancellationTimersForSession(id);
+    this.configurationQueues.delete(id);
     const active = this.detachActive(id);
     if (active) {
       await this.closeHandleSafely(active.handle);
@@ -690,6 +771,7 @@ export class SessionService {
 
   async shutdown(): Promise<void> {
     this.clearCancellationTimers();
+    this.configurationQueues.clear();
     const entries = [...this.active.entries()];
     for (const [sessionId, active] of entries) {
       try {
@@ -780,6 +862,9 @@ export class SessionService {
     let payload = currentActivation
       ? event.payload
       : { ...event.payload, ignored: true, ignoredReason: 'STALE_ACTIVATION' };
+    if (currentActivation && event.type === 'agent.configuration.updated') {
+      await this.persistConfigurationPayload(event.sessionId, payload);
+    }
     if (
       currentActivation &&
       this.isCurrentActivation(event.sessionId, activationId) &&
@@ -984,6 +1069,58 @@ export class SessionService {
 
   private isCurrentActivation(sessionId: string, activationId: string): boolean {
     return this.active.get(sessionId)?.activationId === activationId;
+  }
+
+  private async persistEffectiveConfiguration(
+    sessionId: string,
+    handle: AgentSessionHandle,
+  ): Promise<void> {
+    if (!handle.getConfiguration) return;
+    try {
+      const configuration = await handle.getConfiguration();
+      await this.sessions.updateConfiguration(sessionId, {
+        model: configuration.current.model,
+        mode: configuration.current.mode,
+      });
+    } catch {
+      // Providers without session configuration remain usable. The API will
+      // expose the explicit unsupported state for those handles.
+    }
+  }
+
+  private async persistConfigurationPayload(
+    sessionId: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const current = isRecord(payload.current) ? payload.current : undefined;
+    if (!current) return;
+    const patch: { model?: string | null; mode?: string | null } = {};
+    if (Object.prototype.hasOwnProperty.call(current, 'model')) {
+      patch.model = typeof current.model === 'string' ? current.model : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(current, 'mode')) {
+      patch.mode = typeof current.mode === 'string' ? current.mode : null;
+    }
+    if (Object.keys(patch).length) await this.sessions.updateConfiguration(sessionId, patch);
+  }
+
+  private async publishConfigurationEvent(
+    sessionId: string,
+    projectId: string,
+    configuration: SessionConfiguration,
+  ): Promise<void> {
+    const persisted = await this.events.append({
+      sessionId,
+      type: 'agent.configuration.updated',
+      payload: {
+        current: configuration.current,
+        options: configuration.options,
+        synthetic: true,
+      },
+    });
+    const event = persisted as unknown as Record<string, unknown>;
+    this.publisher.publish(`session:${sessionId}`, event);
+    this.publisher.publish(`project:${projectId}`, event);
   }
 
   private async waitForTerminalRunConvergence(sessionId: string) {
@@ -1250,6 +1387,30 @@ export class HostGitHeadProbe implements GitHeadProbe {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+function configurationError(error: unknown, fallbackMessage: string): AppError {
+  if (error instanceof AppError) return error;
+  const code = isRecord(error) && typeof error.code === 'string' ? error.code : undefined;
+  if (code === 'SESSION_MODEL_UNSUPPORTED') {
+    return new AppError(409, code, 'Agent 不支持当前模型');
+  }
+  if (code === 'SESSION_MODE_UNSUPPORTED') {
+    return new AppError(409, code, 'Agent 不支持当前模式');
+  }
+  if (code === 'SESSION_CONFIGURATION_UNSUPPORTED' || code === 'CAPABILITY_UNSUPPORTED') {
+    return new AppError(409, 'SESSION_CONFIGURATION_UNSUPPORTED', '当前 Agent 不支持动态配置');
+  }
+  if (code === 'SESSION_CLOSED' || code === 'SESSION_NOT_INITIALIZED') {
+    return new AppError(409, 'SESSION_NOT_CONNECTED', 'Session 尚未连接 Agent');
+  }
+  return new AppError(502, 'SESSION_CONFIGURATION_FAILED', fallbackMessage, undefined, {
+    cause: error,
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isRejectApprovalOption(option: Record<string, unknown>): boolean {

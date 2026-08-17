@@ -272,6 +272,43 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await rm(managedRoot, { recursive: true, force: true });
   });
 
+  it('Session 配置读取、动态切换与 Run 快照保持一致', async () => {
+    const fixture = await createFixture('idle');
+    const session = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: '动态配置',
+      cwd: '/tmp',
+      mode: 'agent',
+    });
+
+    expect(await fixture.service.getConfiguration(session.id)).toMatchObject({
+      supported: true,
+      current: { model: 'fixture-model', mode: 'agent' },
+    });
+    const switched = await fixture.service.updateConfiguration(session.id, { mode: 'plan' });
+    expect(switched.current.mode).toBe('plan');
+    expect((await fixture.repositories.sessions.get(session.id))?.mode).toBe('plan');
+    const modelSwitched = await fixture.service.updateConfiguration(session.id, {
+      model: 'fixture-model-2',
+    });
+    expect(modelSwitched.current.model).toBe('fixture-model-2');
+
+    await expect(
+      fixture.service.updateConfiguration(session.id, { model: 'missing-model' }),
+    ).rejects.toMatchObject({ code: 'SESSION_MODEL_UNSUPPORTED' });
+    await expect(
+      fixture.service.updateConfiguration(session.id, { model: 'fixture-model', mode: 'plan' }),
+    ).rejects.toMatchObject({ code: 'SESSION_CONFIGURATION_FAILED' });
+
+    const run = await fixture.service.startRun(session.id, { text: '验证配置快照' });
+    expect(run.mode).toBe('plan');
+    expect(run.model).toBe('fixture-model-2');
+    const events = await fixture.repositories.events.listAfter(session.id, 0, 100);
+    expect(events.some((event) => event.type === 'agent.configuration.updated')).toBe(true);
+    await fixture.service.shutdown();
+  });
+
   it('持久化 Approval 合法选项、exactly-once 决策、消息、事件与 Git 前后 SHA', async () => {
     const fixture = await createFixture('approval');
     const lifecycle: string[] = [];
