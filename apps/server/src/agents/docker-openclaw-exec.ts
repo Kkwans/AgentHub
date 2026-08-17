@@ -77,6 +77,9 @@ export class DockerOpenClawExecLauncher implements OpenClawExecLauncher {
       ],
       maxOutputBytes: 4 * 1024 * 1024,
       cancelGraceMs: 2_000,
+      // `docker exec -i` otherwise keeps the one-shot OpenClaw CLI attached
+      // to an open stdin and the supervisor never observes process close.
+      input: '',
     });
     return {
       wait: () => supervised.wait(),
