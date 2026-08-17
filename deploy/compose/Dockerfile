@@ -17,6 +17,12 @@ WORKDIR /opt/agenthub
 
 COPY . .
 
+# The service itself stays root for the explicitly authorised Docker control
+# boundary, while Host ACP processes run as the project owner.  pnpm's copied
+# store is created root-only by the image build; make runtime dependencies
+# traversable/readable without granting write access to the downgraded user.
+RUN chmod -R a+rX /opt/agenthub/node_modules
+
 RUN test -f apps/server/dist/index.js \
     && test -f apps/web/dist/index.html \
     && test -d node_modules/.pnpm \
