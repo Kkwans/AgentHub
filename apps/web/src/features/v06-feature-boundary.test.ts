@@ -65,7 +65,7 @@ describe('v0.6 feature boundaries', () => {
     const controls = source('../styles/v3-controls.css');
     expect(tasks).toContain('手机端左右滑动查看其他状态');
     expect(tasks).toContain('aria-describedby="task-board-hint"');
-    expect(controls).toContain('grid-template-columns: repeat(5, minmax(0, calc(100vw - 44px)))');
+    expect(controls).toContain('grid-template-columns: repeat(5, calc(100vw - 44px))');
     expect(controls).toContain('scroll-snap-type: x proximity');
   });
 
