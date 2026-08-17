@@ -123,3 +123,17 @@ Host target 且 Agent 为 Docker target 时，仅在注册的 workspace mapping 
 `configOptions`/`modes` 是唯一发现来源；预检 smoke 会持久化 model/mode 选项，创建 Session 时
 使用 `session/set_config_option` 或 `session/set_mode` 透传用户选择。没有真实选项时保留明确的
 Agent 默认状态，不伪造可选值。
+
+## D-021：Codex egress proxy 仅允许按子进程显式启用
+
+状态：已接受（2026-08-17）。NAS 若只能通过本机代理访问 Codex 上游，使用
+`AGENTHUB_CODEX_PROXY_URL` 作为可选 Compose 参数，并只注入 Host Codex ACP 子进程；不把
+`HTTP_PROXY`/`HTTPS_PROXY` 注入 AgentHub 服务端或 Docker Agent。当前部署默认关闭，启用前需明确
+确认该网络外发路径和代理地址。
+
+## D-022：ACP transport warning 不得记为成功
+
+状态：已接受（2026-08-17）。当 ACP assistant stream 仅返回 WebSocket/HTTPS fallback、stream
+disconnected、request connection refused 或 transcript save failure 等传输诊断文本时，归一化为
+`AGENT_TRANSPORT_FAILED`，并对 URL 脱敏；不能因为 ACP response 的 `stopReason=end_turn` 把 Run
+标记为 `COMPLETED`。
