@@ -1523,12 +1523,32 @@ function readAgentCommands(events: EventRecord[] | undefined): ComposerCommand[]
       {
         name: record.name,
         label: 'Agent 命令',
-        description:
-          typeof record.description === 'string' ? record.description : 'Agent 提供的命令',
+        description: describeAgentCommand(record.name),
         ...(typeof record.hint === 'string' ? { hint: record.hint } : {}),
       },
     ];
   });
+}
+
+const AGENT_COMMAND_DESCRIPTIONS: Record<string, string> = {
+  plan: '切换计划模式',
+  mcp: '查看已配置的 MCP 工具',
+  skills: '查看可用 Skill',
+  status: '查看当前 Session 配置和 token 用量',
+  review: '审阅未提交修改，可附加说明',
+  'review-branch': '按基准分支审阅修改',
+  'review-commit': '审阅指定提交',
+  compact: '压缩对话上下文，释放可用空间',
+  goal: '设置持续推进的 Goal',
+  logout: '退出 Codex 登录',
+};
+
+function describeAgentCommand(name: string): string {
+  const normalized = name.trim().toLocaleLowerCase();
+  return (
+    AGENT_COMMAND_DESCRIPTIONS[normalized] ??
+    (normalized.startsWith('$') ? '调用对应的 Agent Skill' : 'Agent 提供的命令')
+  );
 }
 
 function parseLocalSlashCommand(
