@@ -55,6 +55,22 @@ describe('OpenClaw adapter', () => {
     });
     expect(session.getConfiguration).toBeUndefined();
     await session.close();
+
+    // AgentService resolves a new adapter instance after preflight. The
+    // deployment preference must still select exec on that fresh instance.
+    const freshAdapter = new OpenClawAdapter({
+      primary: new ReadyPrimary(),
+      exec: new SuccessfulExec(),
+      preferExec: true,
+    });
+    const freshSession = await freshAdapter.createSession({
+      sessionId: 'session-forced-exec-fresh-adapter',
+      projectId: 'project-1',
+      profile,
+      cwd: '/workspace',
+    });
+    expect(freshSession.getConfiguration).toBeUndefined();
+    await freshSession.close();
   });
 
   it('ACP 失败且 agent exec 可用时降级为明确的单回合能力', async () => {

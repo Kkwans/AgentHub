@@ -132,25 +132,25 @@ export class OpenClawAdapter implements AgentRuntimeAdapter {
   }
 
   async getCapabilities(profile: AgentProfile): Promise<AgentCapabilities> {
-    const mode = this.modes.get(profile.id);
+    const mode = this.transportFor(profile.id);
     if (mode === 'ACP') return this.options.primary.getCapabilities(profile);
     if (mode === 'EXEC') return structuredClone(OPENCLAW_EXEC_CAPABILITIES);
     const report = await this.preflight(profile);
     if (report.status !== 'READY') return structuredClone(NO_AGENT_CAPABILITIES);
-    return this.modes.get(profile.id) === 'ACP'
+    return this.transportFor(profile.id) === 'ACP'
       ? this.options.primary.getCapabilities(profile)
       : structuredClone(OPENCLAW_EXEC_CAPABILITIES);
   }
 
   async createSession(input: CreateAgentSessionInput): Promise<AgentSessionHandle> {
-    if (this.modes.get(input.profile.id) !== 'EXEC') {
+    if (this.transportFor(input.profile.id) !== 'EXEC') {
       return this.options.primary.createSession(input);
     }
     return new OpenClawExecSession(input, this.options.exec, this.now);
   }
 
   loadSession(input: LoadAgentSessionInput): Promise<AgentSessionHandle> {
-    if (this.modes.get(input.profile.id) === 'EXEC') {
+    if (this.transportFor(input.profile.id) === 'EXEC') {
       throw new OpenClawAdapterError('CAPABILITY_UNSUPPORTED', 'OpenClaw exec 回退不支持 load');
     }
     if (!this.options.primary.loadSession) {
@@ -160,13 +160,23 @@ export class OpenClawAdapter implements AgentRuntimeAdapter {
   }
 
   resumeSession(input: ResumeAgentSessionInput): Promise<AgentSessionHandle> {
-    if (this.modes.get(input.profile.id) === 'EXEC') {
+    if (this.transportFor(input.profile.id) === 'EXEC') {
       throw new OpenClawAdapterError('CAPABILITY_UNSUPPORTED', 'OpenClaw exec 回退不支持 resume');
     }
     if (!this.options.primary.resumeSession) {
       throw new OpenClawAdapterError('CAPABILITY_UNSUPPORTED', 'OpenClaw ACP 不支持 resume');
     }
     return this.options.primary.resumeSession(input);
+  }
+
+  /**
+   * The server creates a fresh adapter instance when it resolves a runtime
+   * for Session creation. Keep the deployment-level preference deterministic
+   * instead of relying only on the in-memory result of a previous preflight.
+   */
+  private transportFor(profileId: string): 'ACP' | 'EXEC' | undefined {
+    if (this.options.preferExec) return 'EXEC';
+    return this.modes.get(profileId);
   }
 }
 
