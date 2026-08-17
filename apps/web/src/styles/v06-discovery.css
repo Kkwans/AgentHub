@@ -424,6 +424,13 @@
     flex-wrap: wrap;
   }
 
+  .v06-record > .v06-card-warning {
+    grid-column: 2 / -1;
+    grid-row: auto;
+    justify-self: start;
+    min-width: 0;
+  }
+
   .v06-record-main .v06-record-environment {
     overflow: hidden;
     text-overflow: ellipsis;
