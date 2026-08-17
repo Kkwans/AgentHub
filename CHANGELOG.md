@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 - 2026-08-16
+## 0.6.0 - 2026-08-17
 
 - 以普通用户旅程重构 Web：Project PathPicker、Runtime/Agent Discovery、预检与一键接入，不再要求普通流程手输绝对路径、container ID、hostname/os/arch、executable 或 adapter；
 - 删除 `ControlPages.tsx` God Component，拆分 Projects、Agents、Sessions、Tasks、Settings、PromptOS 与 Workspace feature 边界；统一复用 Radix Themes、Radix primitives、Phosphor、Form/Dialog/Field/Select/Combobox/Picker/State 组件；
@@ -9,10 +9,10 @@
 - 版本元数据统一为 `0.6.0`，真实 live gate 4 个文件/9 个测试通过；当前收尾全仓 Vitest 51 个文件（221 passed/9 skipped）与 Playwright E2E 24/24 通过；GitHub Actions 历史 release gate 保持全绿；
 - 普通 Agent 发现页与 Remote Node inventory 不再向普通用户显示 `ACP/adapter` 实现细节；新增边界测试防止回归。
 - 概览页 Project 列表将 `repoKind` 映射为“Git / 非 Git”，不再向普通用户显示 `GIT` 原始枚举。
-- 正式 NAS Compose 当前为 `agenthub:0.6.0-nas.43`（revision `4a0a73a`），入口为 `192.168.5.110:3210`，容器 root/privileged、running/healthy；升级未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
+- 正式 NAS Compose 当前为 `agenthub:0.6.0-nas.45`（revision `a5903c5`），入口为 `192.168.5.110:3210`，容器 root/privileged、running/healthy；升级未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。
 - UI CSS 共享层已收敛到 `styles/design-system.css`；按钮对比度修复后四视口 axe 与完整 24 项 Playwright E2E 全部通过。
 
-已知边界：当前没有可用浏览器/Computer Use 通道，因此 1440/1024/768/390 人工视觉验收与人工可用性 checklist 保持未验证；请参阅 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。
+已知边界：nas.45 已完成 Playwright Chromium 自动化视觉 gate（四视口、六页面、console 与横向溢出检查）；当前仍没有 TX5Pro/Computer Use 通道，因此人工视觉验收保持未验证；请参阅 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。
 
 ## 0.3.0 - 2026-08-10
 

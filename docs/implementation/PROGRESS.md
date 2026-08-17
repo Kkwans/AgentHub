@@ -4,7 +4,7 @@
 
 ## v0.6 当前 Goal：产品化与可用性重构
 
-状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · M28 / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED · M29 / REMOTE_NODE_COPY_NAS31_DEPLOYED · M30 / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED · M31 / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED · M32 / FINAL_AUTOMATED_GATE_PASS · M33 / COMPOSER_A11Y_NAS33_DEPLOYED · M34 / PROMPTOS_PRESENTATION_CODE_READY · M35 / PROMPTOS_PRESENTATION_NAS34_DEPLOYED · M36 / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED · M37 / FOCUS_STYLE_NAS36_DEPLOYED · M38 / ORDINARY_AGENT_SURFACE_NAS37_DEPLOYED · M39 / DASHBOARD_REPO_KIND_NAS38_DEPLOYED · M40 / USER_ERROR_BOUNDARY_NAS39_DEPLOYED · M41 / MALFORMED_ENVELOPE_NAS40_DEPLOYED · M42 / REALTIME_ENVELOPE_NAS41_DEPLOYED · M43 / ERROR_ENVELOPE_NAS42_DEPLOYED · M44 / PROJECT_PICKER_ERROR_RECOVERY_NAS43_DEPLOYED · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · VISUAL_GATE_PENDING`，尚未声明视觉验收完成。
+状态：`M1-M9 / UX_REFACTOR_COMPLETE · M10 / AUTOMATED_REGRESSION_READY · M12 / NAS11_DEPLOYED · M13 / DISCOVERY_BOUNDARY_NAS12_DEPLOYED · M14 / REMOTE_INVENTORY_NAS13_DEPLOYED · M15 / DISCOVERY_STATUS_NAS14_DEPLOYED · M16 / PROMPTOS_BINDING_UX_NAS15_DEPLOYED · M17 / TASK_REVIEW_COPY_NAS16_DEPLOYED · M18 / REMOTE_PROJECT_PATH_NAS17_DEPLOYED · M19 / ERROR_COPY_NAS18_DEPLOYED · M20 / TERMINAL_COPY_FOCUS_NAS19_DEPLOYED · M24 / RUNTIME_SETTINGS_SURFACE_NAS24_DEPLOYED · M25 / SESSION_CONFIG_NAS25_DEPLOYED · M26 / WORKSPACE_RUN_STATE_NAS26_DEPLOYED · M27 / APPROVAL_TASK_RUNTIME_COPY_NAS28_DEPLOYED · M28 / REMOTE_NODE_ROOT_EDITOR_NAS29_DEPLOYED · M29 / REMOTE_NODE_COPY_NAS31_DEPLOYED · M30 / CLEAN_OVERLAY_RELEASE_NAS31_DEPLOYED · M31 / REMOTE_NODE_GIT_COPY_NAS32_DEPLOYED · M32 / FINAL_AUTOMATED_GATE_PASS · M33 / COMPOSER_A11Y_NAS33_DEPLOYED · M34 / PROMPTOS_PRESENTATION_CODE_READY · M35 / PROMPTOS_PRESENTATION_NAS34_DEPLOYED · M36 / UI_SURFACE_SYMMETRY_NAS35_DEPLOYED · M37 / FOCUS_STYLE_NAS36_DEPLOYED · M38 / ORDINARY_AGENT_SURFACE_NAS37_DEPLOYED · M39 / DASHBOARD_REPO_KIND_NAS38_DEPLOYED · M40 / USER_ERROR_BOUNDARY_NAS39_DEPLOYED · M41 / MALFORMED_ENVELOPE_NAS40_DEPLOYED · M42 / REALTIME_ENVELOPE_NAS41_DEPLOYED · M43 / ERROR_ENVELOPE_NAS42_DEPLOYED · M44 / PROJECT_PICKER_ERROR_RECOVERY_NAS43_DEPLOYED · M45 / PROJECT_PREFLIGHT_RETRY_NAS44_DEPLOYED · M46 / RESPONSIVE_UI_FIX_NAS45_DEPLOYED · AUTOMATED_VISUAL_GATE_PASS · ACP/LIVE/VENDOR_MATRIX/TERMINAL_UI_VERIFIED · TX5PRO_MANUAL_PENDING`。
 
 - 已建立新的 durable Goal，范围以根目录两份 v0.6 方案文档为 Source of Truth。
 - 已读取并冻结 v0.5 基线：HEAD `9040efdf`，Vitest 165 passed/7 skipped，lint、typecheck、
@@ -384,10 +384,13 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 
 - M44 项目目录选择器错误恢复已提交为 `4a0a73a` 并发布 nas.43：目录范围、当前目录和工程扫描分别提供加载、错误和重试入口，避免请求失败被误显示为空状态；focused test、typecheck、lint、build 通过。nas.43 使用基于 nas.42 的 overlay 保留 ARM64 `node-pty` native binding，容器 `running/healthy`，health/root HTTP 200、Compose config 和 `node-pty=READY` 通过。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T1432Z-pre-nas43/`；首次完整构建因 Dockerfile frontend 429 未采用，未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整记录见 `docs/qa/nas/2026-08-16-v06-live43/`。
 
+- M45 Project 预检重试已提交为 `3b01c6a` 并发布 nas.44：预检失败时提供“重新检查目录”入口，重试期间明确显示检查中；focused test、typecheck、lint、build 通过。nas.44 基于 nas.43 overlay 保留 ARM64 `node-pty` native binding，容器 `running/healthy`，health/root HTTP 200、Compose config 和 `node-pty=READY` 通过。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260816T1445Z-pre-nas44/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整记录见 `docs/qa/nas/2026-08-16-v06-live44/`。
+
+- M46 响应式 UI 修复已提交为 `a5903c5` 并发布 nas.45：移动菜单回到页头布局流，修复 768/390 页头标题裁切；Project 手机卡片操作项拆分为独立行，修复操作文本重叠。Web build 与 Project focused test 通过；Playwright Chromium 对 6 个主要页面执行 1440/1024/768/390 截图，console error 为 0，24 组横向溢出检查全部通过。nas.45 容器 `running/healthy`，health/root HTTP 200、Compose config 和 `node-pty=READY` 通过。升级前备份位于 `/volume2/Project/.agenthub/central/deployments/20260817T040419Z-pre-nas45/`；未执行 `compose down`，未删除镜像、卷、用户数据或其他 Agent 容器。完整视觉记录见 `docs/qa/visual/2026-08-17-v06/`。
+
 ### 当前进行中
 
-- 视觉与人工可用性 gate 仍未完成：当前环境没有授权的浏览器/Computer Use/TX5Pro 通道，不能把
-  Playwright fixture 或 NAS `curl` 结果声明为 1440/1024/768/390 实机验收。
+- 自动化视觉 gate 已完成：真实 nas.45 页面在 Chromium headless 下通过 1440/1024/768/390 截图、console 和横向溢出检查；TX5Pro/Computer Use 人工视觉通道仍不可用，因此仅保留 `TX5PRO_MANUAL_PENDING`，不伪称人工通过。
 - 普通用户旅程的后端闭环已有自动化与真实 Codex/Remote Node 证据；Claude Code、Hermes、OpenClaw
   仍按真实 preflight 能力差异呈现，不把缺少 adapter 或 workspace 映射误报为 READY。
 - M24 Runtime 设置入口已在 nas.24 正式发布并完成静态 bundle、健康状态、授权 capability、Terminal smoke 和
@@ -410,8 +413,7 @@ Session → Run → Message → close`；adopt 响应现在返回最新持久化
 
 - 继续把已验证的供应商能力差异落到普通用户路径：缺失 adapter、未授权、容器停止、workspace 未映射
   和普通未知容器都必须给出明确中文下一步；不得把静态发现或 fixture 状态提升为 READY。
-- 在获得授权浏览器通道后，执行 1440/1024/768/390 的视觉审查；当前 NAS v0.6 已发布，但本轮不把
-  `curl`/fixture/静态 build 结果等同于 TX5Pro 视觉验收。
+- 若后续提供 TX5Pro/Computer Use 通道，再补做同一组真实账号状态下的人工视觉审查；当前自动化截图、console 和溢出证据已归档，不把它等同于 TX5Pro 人工验收。
 - 继续按普通用户旅程完善 Project → Agent → Session → Approval → Diff/Git → PromptOS → Task Review
   的真实后端证据，保持每个独立逻辑变更可回退。
 
