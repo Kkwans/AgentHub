@@ -129,6 +129,7 @@ const errorMessages: Record<string, string> = {
   AGENT_EXECUTABLE_REQUIRED: '该 Agent 缺少启动程序配置。',
   AGENT_KIND_INVALID: 'Agent 类型不受支持。',
   AGENT_RUN_START_FAILED: 'Agent Run 启动失败，请查看 Agent 诊断。',
+  AGENT_TRANSPORT_FAILED: 'Agent 实时连接失败，请检查网络代理与 Agent 授权后重试。',
   AGENT_SESSION_CREATE_FAILED: 'Agent Session 创建失败，请先完成 preflight。',
   AGENT_SESSION_RESUME_FAILED: 'Agent Session 恢复失败，请重新检查连接。',
   AGENT_TARGET_CONFIG_INVALID: 'Agent 的执行环境配置不完整。',

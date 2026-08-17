@@ -72,6 +72,19 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     ],
   }))
   .onRequest(AGENT_METHODS.session_prompt, async ({ params, client }) => {
+    if (process.argv.includes('--transport-warning')) {
+      await client.notify(CLIENT_METHODS.session_update, {
+        sessionId: params.sessionId,
+        update: {
+          sessionUpdate: 'agent_message_chunk',
+          content: {
+            type: 'text',
+            text: 'Warning: Falling back from WebSockets to HTTPS transport. stream disconnected before completion: error sending request for url (https://example.invalid/private)\n',
+          },
+        },
+      });
+      return { stopReason: 'end_turn' };
+    }
     await client.notify(CLIENT_METHODS.session_update, {
       sessionId: params.sessionId,
       update: {

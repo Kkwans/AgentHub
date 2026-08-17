@@ -366,30 +366,39 @@ class AcpSessionHandle implements AgentSessionHandle {
       .then((response) => {
         const runId = this.activeRunId;
         if (!runId) return;
-        if (this.messageText) {
-          this.emit('assistant.message.completed', { text: this.messageText }, runId);
-        }
-        if (response.usage) {
-          this.emit(
-            'usage.updated',
-            {
-              inputTokens: response.usage.inputTokens,
-              outputTokens: response.usage.outputTokens,
-              totalTokens: response.usage.totalTokens,
-            },
-            runId,
-          );
-        }
-        if (response.stopReason === 'cancelled') {
-          this.emit('run.cancelled', { stopReason: response.stopReason }, runId);
-        } else if (response.stopReason === 'refusal') {
+        const transportFailure = classifyTransportFailure(this.messageText);
+        if (transportFailure) {
           this.emit(
             'run.failed',
-            { code: 'AGENT_REFUSED', stopReason: response.stopReason },
+            { code: 'AGENT_TRANSPORT_FAILED', message: transportFailure },
             runId,
           );
         } else {
-          this.emit('run.completed', { stopReason: response.stopReason }, runId);
+          if (this.messageText) {
+            this.emit('assistant.message.completed', { text: this.messageText }, runId);
+          }
+          if (response.usage) {
+            this.emit(
+              'usage.updated',
+              {
+                inputTokens: response.usage.inputTokens,
+                outputTokens: response.usage.outputTokens,
+                totalTokens: response.usage.totalTokens,
+              },
+              runId,
+            );
+          }
+          if (response.stopReason === 'cancelled') {
+            this.emit('run.cancelled', { stopReason: response.stopReason }, runId);
+          } else if (response.stopReason === 'refusal') {
+            this.emit(
+              'run.failed',
+              { code: 'AGENT_REFUSED', stopReason: response.stopReason },
+              runId,
+            );
+          } else {
+            this.emit('run.completed', { stopReason: response.stopReason }, runId);
+          }
         }
         this.activeRunId = undefined;
       })
@@ -746,6 +755,20 @@ async function requestWithGrace<T>(
 
 function safeErrorMessage(error: unknown): string {
   return error instanceof AcpAdapterError ? error.message : 'ACP 请求失败';
+}
+
+function classifyTransportFailure(text: string): string | undefined {
+  if (
+    !/falling back from websockets|stream disconnected before completion|error sending request for url|failed to save the conversation transcript/i.test(
+      text,
+    )
+  ) {
+    return undefined;
+  }
+  return text
+    .replace(/https?:\/\/\S+/gi, '[已隐藏地址]')
+    .trim()
+    .slice(0, 2_000);
 }
 
 function errorCode(error: unknown): string | undefined {

@@ -32,6 +32,16 @@ const hangingCloseProfile: AgentProfile = {
   },
 };
 
+const transportWarningProfile: AgentProfile = {
+  ...profile,
+  id: 'acp-fixture-transport-warning',
+  launchSpec: {
+    kind: 'HOST_PROCESS',
+    executable: process.execPath,
+    args: [fixturePath, '--transport-warning'],
+  },
+};
+
 const openSessions: AgentSessionHandle[] = [];
 
 afterEach(async () => {
@@ -148,5 +158,29 @@ describe('ACP v1 adapter wire fixture', () => {
       drained.push(next.value);
     }
     expect(drained.map((event) => event.type)).toContain('session.closed');
+  });
+
+  it('把 Codex transport warning 归类为失败而不是误报 completed', async () => {
+    const adapter = new AcpAdapter();
+    const session = await adapter.createSession({
+      sessionId: 'hub-session-transport-warning',
+      projectId: 'project-1',
+      profile: transportWarningProfile,
+      cwd: process.cwd(),
+    });
+    openSessions.push(session);
+    const iterator = session.events()[Symbol.asyncIterator]();
+    await session.sendTurn({ runId: 'run-transport-warning', text: '测试网络失败' });
+
+    const events = await takeUntil(iterator, 'run.failed');
+    const failed = events.at(-1);
+    expect(failed).toMatchObject({
+      type: 'run.failed',
+      payload: {
+        code: 'AGENT_TRANSPORT_FAILED',
+        message: expect.stringContaining('[已隐藏地址]'),
+      },
+    });
+    expect(events.some((event) => event.type === 'run.completed')).toBe(false);
   });
 });
