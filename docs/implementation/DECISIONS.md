@@ -201,3 +201,11 @@ DNS-over-HTTPS 和 DeepSeek 正常。AgentHub 不修改 NAS 全局 DNS；Heimdal
 因此 adapter 必须设置有界计时器；收到 Session update 时刷新，超时发布稳定的 `ACP_PROMPT_TIMEOUT`、发送
 最佳努力 cancel 并关闭 Session。OpenClaw 默认 30 秒，其他本地 ACP 默认 120 秒；不改变正常 Agent 的
 streaming、approval 或 cancellation 语义，也不把挂起 Run 伪标记为成功。
+
+## D-032：OpenClaw ACP 异常时显式使用单回合 exec 回退
+
+状态：已接受（2026-08-18）。OpenClaw `2026.5.7` 的 Gateway-backed ACP assistant 事件未稳定回传
+终态 `chat` 事件，无法满足 AgentHub 的 streaming Prompt 契约。对该已验证版本，AgentHub 通过部署级
+`AGENTHUB_OPENCLAW_TRANSPORT=exec` 选择 `openclaw agent --agent main --message ... --json` 单回合命令，
+解析 `result.payloads[].text` 并将能力 truthful 地限制为 text prompt/create/close；不显示 streaming、Approval、
+Plan 或 model/mode 控件。Adapter 每次实例化都读取该偏好，避免预检和 Session 创建之间 transport 选择丢失。

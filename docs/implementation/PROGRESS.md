@@ -842,3 +842,32 @@ NAS 实机与部署证据：
 NAS 只读复测显示 `223.6.6.6`、`114.114.114.114` 及局域网 DNS 对普通域名和 DeepSeek 域名均返回 `SERVFAIL`；通过
 代理访问 AliDNS DoH 和 DeepSeek 均正常，故 Heimdall 出网代理兜底仍保留。尚待部署新 AgentHub overlay 后完成 OpenClaw
 真实 Session/Run 及 prompt 超时闭环验收。
+
+### v0.6 OpenClaw exec 回退与 Heimdall 实机闭环（2026-08-18）
+
+本轮新增独立提交：
+
+- `dedeccb`：ACP Prompt 无响应时增加有界终态收敛。
+- `31a9f51`：修复 OpenClaw 当前 CLI 的 `openclaw agent --agent ... --message ... --json` 回退命令和 JSON 回复解析。
+- `a621fe1`：关闭 `docker exec -i` 的单回合 stdin，避免进程完成后管道保持打开。
+- `eedfe37`：让 `preferExec` 在 Server 每次重新实例化 Adapter 后仍然稳定选择 exec transport，并增加回归测试。
+
+根因与运行时决策：
+
+- OpenClaw `2026.5.7` 的 Gateway-backed ACP 会发出 `agent` assistant 事件，但当前 ACP bridge 没有为该路径回传终态 `chat` 事件，导致 AgentHub 的 ACP Prompt 只能超时；不再把该路径伪装成完整 streaming 能力。
+- 当前已验证的回退是 `openclaw agent --agent main --message <prompt> --json --timeout 600`；stdout 的 `result.payloads[].text` 归一化为 Assistant 消息。回退能力明确关闭 streaming、Approval、Plan、model/mode 控件。
+- OpenClaw 主模型固定为 Heimdall `deepseek/deepseek-v4-flash` 对应的 `heimdall/deepseek-v4-flash`，不使用已无额度的 Mimo；Gateway 仍保留已脱敏的 provider 引用。
+
+真实 NAS 验收与部署：
+
+- 备份目录：`/volume2/Project/.agenthub/central/deployments/20260817T184020Z-openclaw-transport-fix/`；未执行 `compose down`，未删除镜像、卷、容器或用户数据。
+- 构建期间 BuildKit 前端镜像代理返回 `429`，改用经典 Docker builder 完成 ARM64 镜像 `agenthub:0.6.0-nas.77`；仅执行 `docker compose config` 和
+  `docker compose up -d --no-deps --force-recreate agenthub`。当前容器 `running/healthy`，revision `eedfe37`，健康接口返回 `status=ok`、`version=0.6.0`、`database=pglite`、`web=true`。
+- `/api/v1/agents` 实测同时返回 READY 的 OpenClaw 和 Codex。临时 Session `abedb199-aa6b-45a8-8fc6-5ef825f1307f` 的 Run
+  `0a0d25dc-0609-4dd0-a395-39dfc13cd2c9` 返回 `COMPLETED`，Assistant 文本为 `OPENCLAW_AGENTHUB_EXEC_V3_OK`；Gateway 日志同时记录该 marker。验收 Session 已关闭。
+- Heimdall `health` 正常；OpenClaw `models status` 当前默认模型为 `heimdall/deepseek-v4-flash`。OpenClaw CLI 仍有未安装/重复插件 warning，不影响本次模型和单回合链路。
+
+DNS 事实边界：
+
+- 当前 NAS `/etc/resolv.conf` 虽包含 `223.6.6.6`、`114.114.114.114`、局域网 DNS 和 IPv6 DNS，但从 NAS 主机对 `www.baidu.com`、`openai.com`、`api.deepseek.com` 的 UDP/TCP 查询全部返回 `SERVFAIL`，响应不带 `ra`（`recursion not available`）。
+- AgentHub 与 Heimdall 容器均通过 Docker `127.0.0.11` 转发到同一组宿主机上游，因此这是 NAS/UGOS/网关的全局递归解析链路问题，不是 Heimdall 单独修改或污染 DNS。Heimdall 通过显式 `HEIMDALL_EGRESS_PROXY` 代理兜底，直连恢复后可移除该环境变量。
