@@ -501,24 +501,25 @@ class AcpSessionHandle implements AgentSessionHandle {
           // wait hook never fires. Surface a normalized disconnect so the
           // Session becomes recoverable instead of returning to READY with a
           // dead activation.
-          if (
+          // A rejected ACP session/prompt request means the live activation
+          // can no longer be trusted. ACP agents commonly return transport
+          // failures as plain JSON-RPC objects, and the stdio wrapper may
+          // stay alive after its app-server child has exited. Converge every
+          // prompt rejection to a recoverable disconnect instead of leaving a
+          // dead Session in READY with a misleading failed Run.
+          const transportFailure =
             this.processExited ||
             this.runtime.process.stdin.destroyed ||
             this.runtime.process.stdout.destroyed ||
-            isConnectionFailure(error)
-          ) {
-            this.emit(
-              'adapter.disconnected',
-              { reason: 'prompt_transport', code: 'ACP_PROMPT_FAILED' },
-              runId,
-            );
-          } else {
-            this.emit(
-              'run.failed',
-              { code: 'ACP_PROMPT_FAILED', message: safeErrorMessage(error) },
-              runId,
-            );
-          }
+            isConnectionFailure(error);
+          this.emit(
+            'adapter.disconnected',
+            {
+              reason: transportFailure ? 'prompt_transport' : 'prompt_request_failed',
+              code: 'ACP_PROMPT_FAILED',
+            },
+            runId,
+          );
           this.activeRunId = undefined;
         }
       });
@@ -950,10 +951,6 @@ async function requestWithGrace<T>(
   } finally {
     if (timer) clearTimeout(timer);
   }
-}
-
-function safeErrorMessage(error: unknown): string {
-  return error instanceof AcpAdapterError ? error.message : 'ACP 请求失败';
 }
 
 function isConnectionFailure(error: unknown): boolean {
