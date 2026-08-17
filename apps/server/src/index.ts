@@ -213,7 +213,6 @@ export async function startServer(
     return {
       ...resolved,
       CODEX_CONFIG: CODEX_HTTP_PROVIDER_CONFIG,
-      MODEL_PROVIDER: 'openai_http',
       HTTP_PROXY: proxy,
       HTTPS_PROXY: proxy,
       ALL_PROXY: proxy,
