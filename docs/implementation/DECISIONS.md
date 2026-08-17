@@ -173,3 +173,16 @@ disconnected、request connection refused 或 transcript save failure 等传输�
 请求拒绝。此类拒绝不再把 Session 留在 READY 并将 Run 标为普通失败；adapter 发布
 `adapter.disconnected`，Server 将 Run 标为 `DISCONNECTED/ADAPTER_DISCONNECTED`，用户可执行
 resume。正常 Agent refusal 仍通过成功的 ACP PromptResponse/`run.failed` 语义处理。
+
+## D-028：Codex 权限模式与计划模式分层呈现
+
+状态：已接受（2026-08-17）。Codex ACP 的 `read-only`、`agent`、`agent-full-access` 是权限与沙箱预设，
+`collaboration_mode` 的 `default`、`plan` 是后续回合的工作流程模式；两类能力均来自真实 `session/new`
+配置，不硬编码供应商选项。核心仍使用供应商无关的 `mode` patch，适配器负责按真实 config ID 调用
+`session/set_mode` 或 `session/set_config_option`。Web 对已知值显示中文标签与说明，未知 provider 值保留原文。
+
+## D-029：Composer 斜杠命令使用 ACP available commands
+
+状态：已接受（2026-08-17）。Composer 输入 `/` 时显示本地配置命令和 ACP `available_commands_update` 提供的
+Agent 原生命令；本地 `/model`、`/mode`、`/effort`、`/plan`、`/help` 只在明确能力存在时执行，其他命令原样发送
+给 Agent。命令元数据只保留名称、说明和 hint，不持久化或展示 ACP 原始 `_meta`。

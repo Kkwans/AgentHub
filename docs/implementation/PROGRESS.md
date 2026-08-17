@@ -793,3 +793,30 @@ NAS 实机与部署证据：
 - 无效 model/mode 与双字段配置请求分别返回 `SESSION_MODEL_UNSUPPORTED`、`SESSION_MODE_UNSUPPORTED`、`VALIDATION_FAILED`，有效值未被污染。
 
 验证边界：`corepack pnpm typecheck`、adapter/server build、Compose config、health 和上述真实 Session/Run 验收通过；完整 Vitest 仍受 ACP child-process harness 与既有环境测试影响，未宣称全仓测试通过。NAS 当前没有 Chromium，按 D-017 不声明视觉验收完成。
+
+### v0.6 Session 配置与 Composer 命令（2026-08-17）
+
+提交 `6b38b80` 完成本轮用户可用性修复：
+
+- ACP `configOptions` 同时透传 model、权限 mode、Codex `collaboration_mode`（包含 `plan`）和
+  `thought_level`（reasoning effort）；配置更新按 Session 串行执行，成功后才更新 Session 当前值。
+- Session REST 增加 reasoning effort 的创建与动态更新；不具备能力的运行时仍返回明确 unsupported，不显示伪造选择器。
+- Workspace 与新建 Session 复用 `SelectField`，将已知安全/计划模式和推理强度显示为中文，并保留 provider
+  model/mode ID 作为专业数据；模式说明明确区分权限范围与计划流程。
+- Composer 支持 `/` 命令提示、键盘选择、`/model`、`/mode`、`/effort`、`/plan`、`/help`，并接收 ACP
+  `available_commands_update` 作为 Agent 原生命令列表；重复命令按名称去重。
+- 新建 Session 默认优先选择 `agent` 或 `default`，避免把 `read-only` 误当成默认执行权限。
+
+自动化验证：ACP stdio fixture 5 项、Session/Web/Agent Core 聚焦测试 46 项通过；typecheck、build 通过。
+全仓 lint 的唯一失败仍是既有 `scripts/qa/real-deployment-visual.cjs` 未声明 Node/DOM 全局，本轮变更文件单独 lint 通过。
+
+真实 NAS 验收与部署：
+
+- 备份目录：`/volume2/Project/.agenthub/central/deployments/20260817T230900Z-pre-session-config/`。
+- 镜像 `agenthub:0.6.0-nas.71`，revision `6b38b80`，ARM64；仅执行 `docker compose config` 和
+  `docker compose up -d --no-deps --force-recreate agenthub`，未执行 `compose down`，未删除镜像、卷、容器或用户数据。
+- 容器 `running/healthy`，`192.168.5.110:3210/api/v1/health` 返回 `status=ok`。真实 `/api/v1/agents`
+  同时返回 READY 的 Codex 与 OpenClaw；OpenClaw Docker mapping 覆盖 `/volume2/Project`。
+- 真实 Codex Session 返回 6 个 model、5 个 mode（`read-only`、`agent`、`agent-full-access`、`default`、
+  `plan`）和 5 个 reasoning effort；同一 Session 成功切换 `agent -> plan`、`max -> high`、
+  `gpt-5.6-luna -> gpt-5.6-sol`，随后已关闭验收 Session。ACP 命令事件包含 `/plan`、`/status`、`/review`。
