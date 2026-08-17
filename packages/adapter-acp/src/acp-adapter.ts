@@ -501,7 +501,12 @@ class AcpSessionHandle implements AgentSessionHandle {
           // wait hook never fires. Surface a normalized disconnect so the
           // Session becomes recoverable instead of returning to READY with a
           // dead activation.
-          if (this.processExited || isConnectionFailure(error)) {
+          if (
+            this.processExited ||
+            this.runtime.process.stdin.destroyed ||
+            this.runtime.process.stdout.destroyed ||
+            isConnectionFailure(error)
+          ) {
             this.emit(
               'adapter.disconnected',
               { reason: 'prompt_transport', code: 'ACP_PROMPT_FAILED' },
