@@ -25,6 +25,7 @@ import {
   type DatabaseClient,
 } from '@agenthub/db';
 import pino from 'pino';
+import type { AgentProfile } from '@agenthub/agent-core';
 
 import { createApp } from './app.js';
 import { AppError } from './errors.js';
@@ -183,10 +184,26 @@ export async function startServer(
   });
   const promptos = new PromptService(promptRepository, skillRepository, projectRepository);
   const resolveEnvironment = async () => ({ ...process.env, ...environment });
+  const resolveHostAgentEnvironment = async (profile: AgentProfile) => {
+    const resolved = await resolveEnvironment();
+    const proxy = environment.AGENTHUB_CODEX_PROXY_URL?.trim();
+    if (profile.agentKind !== 'CODEX' || !proxy) return resolved;
+    // Keep the NAS egress proxy scoped to the Codex ACP child. OpenClaw,
+    // server-side requests, and unrelated host Agents retain their own env.
+    return {
+      ...resolved,
+      HTTP_PROXY: proxy,
+      HTTPS_PROXY: proxy,
+      ALL_PROXY: proxy,
+      http_proxy: proxy,
+      https_proxy: proxy,
+      all_proxy: proxy,
+    };
+  };
   const hostAgentIdentity = resolveHostAgentIdentity(environment);
   const acpLauncher = new RoutedAcpProcessLauncher(
     new HostAcpProcessLauncher({
-      resolveEnvironment,
+      resolveEnvironment: resolveHostAgentEnvironment,
       ...(hostAgentIdentity ? { runAs: hostAgentIdentity } : {}),
     }),
     new DockerAcpProcessLauncher(docker),

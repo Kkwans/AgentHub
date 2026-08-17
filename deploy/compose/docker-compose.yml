@@ -25,6 +25,15 @@ services:
       SUDO_UID: ${AGENTHUB_PROJECT_OWNER_UID:-1000}
       SHELL: /bin/sh
       TZ: Asia/Shanghai
+      AGENTHUB_CODEX_PROXY_URL: ${AGENTHUB_CODEX_PROXY_URL:-}
+      # Codex ACP uses the NAS egress proxy when present. Keep this optional
+      # so host deployments without a proxy retain direct networking.
+      HTTP_PROXY: ${AGENTHUB_PROXY_URL:-}
+      HTTPS_PROXY: ${AGENTHUB_PROXY_URL:-}
+      ALL_PROXY: ${AGENTHUB_PROXY_URL:-}
+      http_proxy: ${AGENTHUB_PROXY_URL:-}
+      https_proxy: ${AGENTHUB_PROXY_URL:-}
+      all_proxy: ${AGENTHUB_PROXY_URL:-}
       AGENTHUB_PROJECT_OWNER_UID: ${AGENTHUB_PROJECT_OWNER_UID:-1000}
       AGENTHUB_PROJECT_OWNER_GID: ${AGENTHUB_PROJECT_OWNER_GID:-10}
       TMPDIR: /volume2/Project/.agenthub/central/tmp
