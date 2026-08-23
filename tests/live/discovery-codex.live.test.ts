@@ -138,11 +138,52 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
         ]),
       );
 
-      await waitForValue(async () => {
+      const codexProcessPid = await findCurrentCodexProcess();
+      process.kill(-codexProcessPid, 'SIGTERM');
+      const disconnected = await waitForValue(async () => {
         const current = await apiRequest<{ status: string }>(apiRoot, `/sessions/${session.id}`);
-        return ['READY', 'CLOSED'].includes(current.status) ? current : undefined;
-      }, 30_000);
+        return current.status === 'DISCONNECTED' ? current : undefined;
+      }, 60_000);
+      expect(disconnected.status).toBe('DISCONNECTED');
+
+      const resumed = await apiRequest<{ status: string }>(
+        apiRoot,
+        `/sessions/${session.id}/resume`,
+        { method: 'POST' },
+      );
+      expect(resumed.status).toBe('READY');
+      const resumedRun = await apiRequest<{ id: string }>(apiRoot, `/sessions/${session.id}/runs`, {
+        method: 'POST',
+        body: { text: '只回复 DISCOVERY_RESUME_OK，不调用任何工具。' },
+      });
+      const resumedCompleted = await waitForValue(async () => {
+        const runs = await apiRequest<
+          Array<{ id: string; status: string; errorCode: string | null }>
+        >(apiRoot, `/sessions/${session.id}/runs`);
+        const current = runs.find((candidate) => candidate.id === resumedRun.id);
+        if (current && ['FAILED', 'CANCELED'].includes(current.status)) {
+          throw new Error(
+            `Discovery Codex resume Run 提前终止：${current.status} ${current.errorCode ?? ''}`,
+          );
+        }
+        return current?.status === 'COMPLETED' ? current : undefined;
+      }, 180_000);
+      expect(resumedCompleted.status).toBe('COMPLETED');
+      const resumedMessages = await apiRequest<Array<{ role: string; text: string | null }>>(
+        apiRoot,
+        `/sessions/${session.id}/messages`,
+      );
+      expect(resumedMessages).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: 'ASSISTANT',
+            text: expect.stringMatching(/DISCOVERY_RESUME_OK/i),
+          }),
+        ]),
+      );
       await apiRequest(apiRoot, `/sessions/${session.id}/close`, { method: 'POST' });
+      const persisted = await apiRequest<{ status: string }>(apiRoot, `/sessions/${session.id}`);
+      expect(persisted.status).toBe('CLOSED');
     } finally {
       await running?.close().catch(() => undefined);
       await rm(fixtureRoot, { recursive: true, force: true });
@@ -379,4 +420,18 @@ async function waitForValue<T>(
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error('等待 discovery Codex live 状态超时');
+}
+
+async function findCurrentCodexProcess(): Promise<number> {
+  const { stdout } = await execFile('/usr/bin/ps', ['-eo', 'pid=,ppid=,args=']);
+  const match = stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .map((line) => /^(\d+)\s+(\d+)\s+(.*)$/.exec(line))
+    .find(
+      (candidate) =>
+        candidate && Number(candidate[2]) === process.pid && /codex/i.test(candidate[3] ?? ''),
+    );
+  if (!match) throw new Error(`没有找到当前 live 测试进程的 Codex 子进程，pid=${process.pid}`);
+  return Number(match[1]);
 }
