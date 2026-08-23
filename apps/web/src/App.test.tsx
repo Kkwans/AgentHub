@@ -2,11 +2,14 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AgentHubProvider } from '@agenthub/ui';
 
 import { App } from './App';
+
+configure({ asyncUtilTimeout: 5_000 });
 
 const project = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -43,18 +46,31 @@ const session = {
 
 vi.mock('./lib/realtime', () => ({
   realtime: {
-    onState(listener: (state: '已断开') => void) { listener('已断开'); return () => undefined; },
-    subscribe() { return () => undefined; },
+    onState(listener: (state: '已断开') => void) {
+      listener('已断开');
+      return () => undefined;
+    },
+    subscribe() {
+      return () => undefined;
+    },
     reconnect() {},
     disconnect() {},
   },
 }));
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 function LocationProbe() {
   const location = useLocation();
-  return <output aria-label="当前地址">{location.pathname}{location.search}</output>;
+  return (
+    <output aria-label="当前地址">
+      {location.pathname}
+      {location.search}
+    </output>
+  );
 }
 
 function renderApp(initialEntries: string[]) {
@@ -62,7 +78,9 @@ function renderApp(initialEntries: string[]) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={initialEntries}>
-        <App />
+        <AgentHubProvider initialPreference="light">
+          <App />
+        </AgentHubProvider>
         <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -70,23 +88,58 @@ function renderApp(initialEntries: string[]) {
 }
 
 function stubApi() {
-  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
-    const url = String(input);
-    let data: unknown = [];
-    if (url.endsWith('/auth/status')) data = auth;
-    else if (url.endsWith('/projects')) data = [project];
-    else if (url.includes(`/projects/${project.id}`)) data = project;
-    else if (url.endsWith(`/sessions/${session.id}`)) data = session;
-    else if (url.endsWith(`/sessions/${session.id}/messages`)) data = [];
-    else if (url.endsWith(`/sessions/${session.id}/runs`)) data = [];
-    else if (url.includes(`/sessions/${session.id}/events`)) data = [];
-    else if (url.includes(`/approvals?sessionId=${session.id}`)) data = [];
-    else if (url.endsWith('/agents')) data = [{ id: session.agentId, targetId: 'target', name: 'Codex', agentKind: 'CODEX', adapterKind: 'ACP', status: 'READY', enabled: true, detectedVersion: '1.0', defaultModel: null, defaultMode: null, capabilitiesJson: {}, lastPreflightAt: null }];
-    else if (url.endsWith(`/sessions/${session.id}/configuration`)) data = { supported: false, current: { model: null, mode: null, reasoningEffort: null }, options: { models: [], modes: [], reasoningEfforts: [] } };
-    else if (url.endsWith('/prompt-context/resolve')) data = { ready: true, finalContext: '', missingVariables: [], items: [] };
-    else if (url.includes('/dashboard')) data = { runningSessions: [], attentionTasks: [], pendingApprovals: [], recentResults: [], agentHealth: [] };
-    return new Response(JSON.stringify({ data, requestId: 'v07-test' }), { status: 200, headers: { 'content-type': 'application/json' } });
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      let data: unknown = [];
+      if (url.endsWith('/auth/status')) data = auth;
+      else if (url.endsWith('/projects')) data = [project];
+      else if (url.includes(`/projects/${project.id}`)) data = project;
+      else if (url.endsWith(`/sessions/${session.id}`)) data = session;
+      else if (url.endsWith(`/sessions/${session.id}/messages`)) data = [];
+      else if (url.endsWith(`/sessions/${session.id}/runs`)) data = [];
+      else if (url.includes(`/sessions/${session.id}/events`)) data = [];
+      else if (url.includes(`/approvals?sessionId=${session.id}`)) data = [];
+      else if (url.endsWith('/agents'))
+        data = [
+          {
+            id: session.agentId,
+            targetId: 'target',
+            name: 'Codex',
+            agentKind: 'CODEX',
+            adapterKind: 'ACP',
+            status: 'READY',
+            enabled: true,
+            detectedVersion: '1.0',
+            defaultModel: null,
+            defaultMode: null,
+            capabilitiesJson: {},
+            lastPreflightAt: null,
+          },
+        ];
+      else if (url.endsWith(`/sessions/${session.id}/configuration`))
+        data = {
+          supported: false,
+          current: { model: null, mode: null, reasoningEffort: null },
+          options: { models: [], modes: [], reasoningEfforts: [] },
+        };
+      else if (url.endsWith('/prompt-context/resolve'))
+        data = { ready: true, finalContext: '', missingVariables: [], items: [] };
+      else if (url.includes('/dashboard'))
+        data = {
+          runningSessions: [],
+          attentionTasks: [],
+          pendingApprovals: [],
+          recentResults: [],
+          agentHealth: [],
+        };
+      return new Response(JSON.stringify({ data, requestId: 'v07-test' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }),
+  );
 }
 
 describe('v0.7 App', () => {
@@ -97,7 +150,10 @@ describe('v0.7 App', () => {
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '首页' })).toHaveAttribute('href', '/home');
     expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute('href', '/projects');
-    expect(screen.getByRole('link', { name: 'Prompt Library' })).toHaveAttribute('href', '/prompts');
+    expect(screen.getByRole('link', { name: 'Prompt Library' })).toHaveAttribute(
+      'href',
+      '/prompts',
+    );
     expect(screen.queryByRole('link', { name: '任务' })).not.toBeInTheDocument();
   });
 
@@ -112,13 +168,17 @@ describe('v0.7 App', () => {
     fireEvent.change(input, { target: { value: 'Prompt' } });
     expect(screen.getByRole('option', { name: /Prompt Library/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('option', { name: /Prompt Library/ }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Prompt 资产' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Prompt 资产' })).toBeInTheDocument(),
+    );
   });
 
   it('keeps legacy deep links as redirects into the new context routes', async () => {
     stubApi();
     renderApp([`/tasks?projectId=${project.id}`]);
-    await waitFor(() => expect(screen.getByLabelText('当前地址')).toHaveTextContent(`/projects/${project.id}/work`));
+    await waitFor(() =>
+      expect(screen.getByLabelText('当前地址')).toHaveTextContent(`/projects/${project.id}/work`),
+    );
     expect(await screen.findByRole('heading', { name: 'Work' })).toBeInTheDocument();
   });
 
@@ -133,7 +193,11 @@ describe('v0.7 App', () => {
     stubApi();
     renderApp(['/settings/runtime']);
     expect(await screen.findByRole('heading', { name: 'Runtime' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: '设置' }).some((link) => link.getAttribute('href') === '/settings/appearance')).toBe(true);
+    expect(
+      screen
+        .getAllByRole('link', { name: '设置' })
+        .some((link) => link.getAttribute('href') === '/settings/appearance'),
+    ).toBe(true);
   });
 
   it('opens a real workspace composition with composer and inspector capabilities', async () => {
