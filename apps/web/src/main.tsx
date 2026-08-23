@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { AgentHubProvider, Theme, useAgentHubTheme } from '@agenthub/ui';
+import { AgentHubProvider } from '@agenthub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -25,32 +25,14 @@ const queryClient = new QueryClient({
 const root = document.getElementById('root');
 if (!root) throw new Error('缺少应用根节点');
 
-function LegacyThemeBridge({ children }: { children: React.ReactNode }) {
-  const { mode } = useAgentHubTheme();
-  return (
-    <Theme
-      accentColor="orange"
-      appearance={mode}
-      grayColor="slate"
-      panelBackground="solid"
-      radius="large"
-      scaling="95%"
-    >
-      {children}
-    </Theme>
-  );
-}
-
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <AgentHubProvider initialPreference="light">
-      <LegacyThemeBridge>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </QueryClientProvider>
-      </LegacyThemeBridge>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
     </AgentHubProvider>
   </React.StrictMode>,
 );
