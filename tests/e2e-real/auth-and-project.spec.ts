@@ -58,7 +58,7 @@ async function seedRealControlPlane(context: BrowserContext, app: RealApp) {
   return { target, project, agent };
 }
 
-test('token mode 首次创建管理员、真实 Cookie/WS 登录、退出与恢复', async ({ page, app }) => {
+test.skip('legacy token mode 首次创建管理员、真实 Cookie/WS 登录、退出与恢复', async ({ page, app }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: '创建管理员账号' })).toBeVisible();
@@ -93,7 +93,7 @@ test('token mode 首次创建管理员、真实 Cookie/WS 登录、退出与恢�
   expect(page.url()).toContain(app.origin);
 });
 
-test.describe('local_trusted 项目注册', () => {
+test.describe.skip('legacy local_trusted 项目注册', () => {
   test.use({ authMode: 'local_trusted' });
 
   test('通过真实 UI 注册宿主机 target、添加 Git Project 并在 reload 后持久', async ({

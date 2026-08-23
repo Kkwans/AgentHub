@@ -51,6 +51,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         AGENTHUB_WEB_DIST: resolve(dirname(fileURLToPath(import.meta.url)), '../../apps/web/dist'),
         AGENTHUB_DATA_DIR: dataRoot,
         AGENTHUB_WORKTREE_ROOT: worktreeRoot,
+        AGENTHUB_WORKSPACE_ROOTS_JSON: JSON.stringify([projectRoot]),
         AGENTHUB_AUTH_MODE: authMode,
         AGENTHUB_SECURE_TRANSPORT: 'false',
         LOG_LEVEL: 'silent',

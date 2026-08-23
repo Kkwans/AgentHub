@@ -16,6 +16,7 @@ const outputDir = path.resolve(
   process.env.AGENTHUB_VISUAL_OUTPUT || path.join('docs', 'qa', 'visual', 'latest'),
 );
 const waitMs = Number(process.env.AGENTHUB_VISUAL_WAIT_MS || 2_500);
+const screenshotTimeoutMs = Number(process.env.AGENTHUB_VISUAL_SCREENSHOT_TIMEOUT_MS || 60_000);
 
 if (!tokenFile) {
   throw new Error(
@@ -124,7 +125,11 @@ async function captureAuthenticated(browser, theme, viewport, routes) {
     await waitForStable(page);
     const layout = await auditPage(page);
     const fileName = `${theme}-${routeFileName(route)}-${viewport.width}x${viewport.height}.png`;
-    await page.screenshot({ path: path.join(outputDir, fileName), fullPage: true });
+    await page.screenshot({
+      path: path.join(outputDir, fileName),
+      fullPage: true,
+      timeout: screenshotTimeoutMs,
+    });
     pages.push({
       route,
       fileName,
