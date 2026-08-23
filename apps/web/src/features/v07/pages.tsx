@@ -6,7 +6,6 @@ import {
   AhInput,
   AhLoadingState,
   AhMetric,
-  AhPageHeader,
   AhProjectContext,
   AhReveal,
   AhSelect,
@@ -15,8 +14,6 @@ import {
   AhThemeSelect,
   ArrowRight,
   Bot,
-  Braces,
-  CheckCircle2,
   CircleStop,
   Copy,
   Eye,
@@ -36,14 +33,17 @@ import {
   Wrench,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 
 import type {
   AgentCandidateRecord,
   AgentRecord,
   ApiTokenRecord,
+  ApprovalRecord,
   DashboardSnapshot,
+  EventRecord,
   ExecutionTargetRecord,
   GoalRecord,
   MessageRecord,
@@ -52,10 +52,13 @@ import type {
   PromptRecord,
   PromptVersionRecord,
   ProjectRecord,
+  ResolvedPromptContextRecord,
   RemoteNodeDiagnostics,
   RemoteNodeRecord,
   RemoteNodeRegistration,
   RuntimeCandidateRecord,
+  RunRecord,
+  SessionConfigurationRecord,
   SessionRecord,
   TaskRecord,
   WorktreeExecutionRecord,
@@ -63,7 +66,10 @@ import type {
 import { api } from '../../lib/api';
 import { realtime } from '../../lib/realtime';
 import { useAgentHubTheme } from '@agenthub/ui';
+import { Composer, Conversation, Inspector, SessionRail } from '../workspace/components/WorkspaceSections';
+import { TerminalDock } from '../workspace/components/TerminalDock';
 import styles from '../surface.module.css';
+import workspaceStyles from './workspaceV07.module.css';
 
 function Screen({
   eyebrow,
@@ -337,6 +343,112 @@ export function SettingsPageV07() {
 }
 
 export function WorkspacePageV07() {
+  const { sessionId = '' } = useParams();
+  const client = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get('view');
+  const tab = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '')
+    ? (viewParam as 'files' | 'diff' | 'git' | 'run')
+    : 'files';
+  const mobileInspectorOpen = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '');
+  const selectedFile = searchParams.get('file') || undefined;
+  const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
+  const sessions = useQuery({ queryKey: ['sessions'], queryFn: () => api.get<SessionRecord[]>('/sessions') });
+  const session = useQuery({ queryKey: ['session', sessionId], queryFn: () => api.get<SessionRecord>(`/sessions/${sessionId}`), enabled: Boolean(sessionId) });
+  const configuration = useQuery({ queryKey: ['session-configuration', sessionId], queryFn: () => api.get<SessionConfigurationRecord>(`/sessions/${sessionId}/configuration`), enabled: Boolean(sessionId) });
+  const messages = useQuery({ queryKey: ['messages', sessionId], queryFn: () => api.get<MessageRecord[]>(`/sessions/${sessionId}/messages`), enabled: Boolean(sessionId), refetchInterval: 3_000 });
+  const runs = useQuery({ queryKey: ['runs', sessionId], queryFn: () => api.get<RunRecord[]>(`/sessions/${sessionId}/runs`), enabled: Boolean(sessionId), refetchInterval: 3_000 });
+  const approvals = useQuery({ queryKey: ['approvals', sessionId], queryFn: () => api.get<ApprovalRecord[]>(`/approvals?sessionId=${sessionId}`), enabled: Boolean(sessionId), refetchInterval: 3_000 });
+  const events = useQuery({ queryKey: ['events', sessionId], queryFn: () => api.get<EventRecord[]>(`/sessions/${sessionId}/events?afterSeq=0&limit=500`), enabled: Boolean(sessionId), refetchInterval: 3_000 });
+  const agents = useQuery({ queryKey: ['agents'], queryFn: () => api.get<AgentRecord[]>('/agents') });
+  const projects = useQuery({ queryKey: ['projects'], queryFn: () => api.get<ProjectRecord[]>('/projects') });
+  const capability = useQuery({ queryKey: ['capabilities'], queryFn: () => api.get<{ terminal: { available: boolean; code?: string; message?: string } }>('/settings/capabilities') });
+  const promptContext = useQuery({
+    queryKey: ['prompt-context', session.data?.projectId, session.data?.agentId, session.data?.taskId, promptVariables],
+    queryFn: () => {
+      if (!session.data) throw new Error('Session 尚未加载');
+      return api.post<ResolvedPromptContextRecord>('/prompt-context/resolve', {
+        projectId: session.data.projectId,
+        agentId: session.data.agentId,
+        ...(session.data.taskId ? { taskId: session.data.taskId } : {}),
+        variables: promptVariables,
+      });
+    },
+    enabled: Boolean(session.data),
+  });
+  const project = projects.data?.find((item) => item.id === session.data?.projectId);
+  const agent = agents.data?.find((item) => item.id === session.data?.agentId);
+  const activeRun = runs.error
+    ? undefined
+    : [...(runs.data ?? [])].reverse().find((run) => ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'].includes(run.status));
+  const latestRunStatus = runs.data?.at(-1)?.status;
+
+  useEffect(() => {
+    if (!sessionId) return;
+    return realtime.subscribe(`session:${sessionId}`, () => {
+      void client.invalidateQueries({ queryKey: ['sessions'] });
+      void client.invalidateQueries({ queryKey: ['session', sessionId] });
+      void client.invalidateQueries({ queryKey: ['session-configuration', sessionId] });
+      void client.invalidateQueries({ queryKey: ['messages', sessionId] });
+      void client.invalidateQueries({ queryKey: ['runs', sessionId] });
+      void client.invalidateQueries({ queryKey: ['approvals', sessionId] });
+      void client.invalidateQueries({ queryKey: ['events', sessionId] });
+    });
+  }, [client, sessionId]);
+
+  const setTab = (nextTab: 'files' | 'diff' | 'git' | 'run') => {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', nextTab);
+    setSearchParams(next);
+  };
+  const setSelectedFile = (path: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', 'files');
+    next.set('file', path);
+    setSearchParams(next);
+  };
+
+  if (session.isLoading) return <AhLoadingState label="正在打开 Coding Workspace" />;
+  if (session.error) return <AhErrorState description={session.error.message} retry={() => void session.refetch()} />;
+  if (!session.data) return <AhEmptyState title="Session 不存在" description="返回 Sessions 选择一个可用会话。" />;
+
+  return <div className={workspaceStyles.workspace} data-testid="v07-workspace">
+    <header className={workspaceStyles.contextbar}>
+      <div className={workspaceStyles.contextTitle}>
+        <Link to={`/projects/${session.data.projectId}/sessions`}>Sessions</Link>
+        <span aria-hidden="true">/</span>
+        <strong>{session.data.title}</strong>
+        <AhStatusPill status={session.data.status} />
+      </div>
+      <div className={workspaceStyles.contextFacts}>
+        <span>{agent?.name ?? 'Agent 未知'}</span>
+        <span>{project?.name ?? 'Project 未知'}</span>
+        <code title={session.data.cwd}>{session.data.cwd}</code>
+      </div>
+    </header>
+    <div className={workspaceStyles.mobileTabs} role="tablist" aria-label="Workspace 视图">
+      <button type="button" role="tab" aria-selected={viewParam === null} onClick={() => setSearchParams({})}>对话</button>
+      {(['files', 'diff', 'git', 'run'] as const).map((item) => <button type="button" role="tab" key={item} aria-selected={tab === item} onClick={() => setTab(item)}>{item === 'files' ? '文件' : item === 'diff' ? 'Diff' : item === 'git' ? 'Git' : '运行'}</button>)}
+    </div>
+    <Group orientation="horizontal" className={workspaceStyles.panels}>
+      <Panel id="sessions" defaultSize="18%" minSize="210px" maxSize="320px" className={`${workspaceStyles.panel} ${workspaceStyles.sessionRail}`}>
+        <SessionRail sessions={sessions} currentId={sessionId} />
+      </Panel>
+      <Separator className={workspaceStyles.separator} />
+      <Panel id="conversation" defaultSize="49%" minSize="360px" className={`${workspaceStyles.panel} ${workspaceStyles.conversationPanel}`}>
+        <Conversation session={session.data} messages={messages} events={events} approvals={approvals} activeRun={activeRun} latestRunStatus={latestRunStatus} />
+      </Panel>
+      <Separator className={workspaceStyles.separator} />
+      <Panel id="inspector" defaultSize="33%" minSize="300px" className={`${workspaceStyles.panel} ${workspaceStyles.inspectorPanel} ${mobileInspectorOpen ? workspaceStyles.inspectorOpen : ''}`}>
+        <Inspector project={project} projects={projects} session={session.data} tab={tab} setTab={setTab} selectedFile={selectedFile} setSelectedFile={setSelectedFile} agent={agent} runs={runs} />
+      </Panel>
+    </Group>
+    <TerminalDock capability={capability.data?.terminal} capabilityError={capability.error} projectId={project?.id} projectRoot={project?.realRootPath} cwd={session.data.cwd} />
+    <Composer session={session.data} agent={agent} events={events} project={project} activeRun={activeRun} promptContext={promptContext.data} promptContextLoading={promptContext.isLoading} promptContextError={promptContext.error} promptContextRetry={() => promptContext.refetch()} promptVariables={promptVariables} setPromptVariables={setPromptVariables} configuration={configuration.data} configurationLoading={configuration.isLoading} configurationError={configuration.error} />
+  </div>;
+}
+
+export function LegacyWorkspacePageV07() {
   const { sessionId } = useParams();
   const client = useQueryClient();
   const session = useQuery({ queryKey: ['session', sessionId], queryFn: () => api.get<SessionRecord>(`/sessions/${sessionId}`), enabled: Boolean(sessionId) });

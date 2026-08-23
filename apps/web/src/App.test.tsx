@@ -27,6 +27,20 @@ const auth = {
   user: null,
 };
 
+const session = {
+  id: '33333333-3333-4333-8333-333333333333',
+  projectId: project.id,
+  agentId: '44444444-4444-4444-8444-444444444444',
+  taskId: null,
+  title: 'v0.7 Workspace',
+  cwd: project.rootPath,
+  branch: 'main',
+  status: 'READY',
+  model: null,
+  mode: null,
+  lastActiveAt: '2026-08-23T00:00:00.000Z',
+};
+
 vi.mock('./lib/realtime', () => ({
   realtime: {
     onState(listener: (state: '已断开') => void) { listener('已断开'); return () => undefined; },
@@ -62,6 +76,14 @@ function stubApi() {
     if (url.endsWith('/auth/status')) data = auth;
     else if (url.endsWith('/projects')) data = [project];
     else if (url.includes(`/projects/${project.id}`)) data = project;
+    else if (url.endsWith(`/sessions/${session.id}`)) data = session;
+    else if (url.endsWith(`/sessions/${session.id}/messages`)) data = [];
+    else if (url.endsWith(`/sessions/${session.id}/runs`)) data = [];
+    else if (url.includes(`/sessions/${session.id}/events`)) data = [];
+    else if (url.includes(`/approvals?sessionId=${session.id}`)) data = [];
+    else if (url.endsWith('/agents')) data = [{ id: session.agentId, targetId: 'target', name: 'Codex', agentKind: 'CODEX', adapterKind: 'ACP', status: 'READY', enabled: true, detectedVersion: '1.0', defaultModel: null, defaultMode: null, capabilitiesJson: {}, lastPreflightAt: null }];
+    else if (url.endsWith(`/sessions/${session.id}/configuration`)) data = { supported: false, current: { model: null, mode: null, reasoningEffort: null }, options: { models: [], modes: [], reasoningEfforts: [] } };
+    else if (url.endsWith('/prompt-context/resolve')) data = { ready: true, finalContext: '', missingVariables: [], items: [] };
     else if (url.includes('/dashboard')) data = { runningSessions: [], attentionTasks: [], pendingApprovals: [], recentResults: [], agentHealth: [] };
     return new Response(JSON.stringify({ data, requestId: 'v07-test' }), { status: 200, headers: { 'content-type': 'application/json' } });
   }));
@@ -112,5 +134,13 @@ describe('v0.7 App', () => {
     renderApp(['/settings/runtime']);
     expect(await screen.findByRole('heading', { name: 'Runtime' })).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: '设置' }).some((link) => link.getAttribute('href') === '/settings/appearance')).toBe(true);
+  });
+
+  it('opens a real workspace composition with composer and inspector capabilities', async () => {
+    stubApi();
+    renderApp([`/workspace/${session.id}`]);
+    expect(await screen.findByText('对话与执行')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab', { name: '文件' }).length).toBeGreaterThanOrEqual(1);
   });
 });
