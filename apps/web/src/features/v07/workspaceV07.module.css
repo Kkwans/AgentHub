@@ -310,9 +310,9 @@
   /* react-resizable-panels keeps sizing the outer data-panel wrapper even
      when its inner panel is hidden; collapse those wrappers as well so the
      conversation remains a true single-column mobile surface. */
-  .panels > [data-panel='sessions'],
-  .panels > [data-panel='inspector'] { display: none !important; }
-  .panels > [data-panel='conversation'] { flex: 1 1 100% !important; width: 100% !important; }
+  .panels > [data-panel][data-testid='sessions'],
+  .panels > [data-panel][data-testid='inspector'] { display: none !important; }
+  .panels > [data-panel][data-testid='conversation'] { flex: 1 1 100% !important; width: 100% !important; }
   .inspectorOpen { position: fixed; z-index: 25; inset: 0; display: block; width: 100% !important; height: 100%; }
   .inspectorOpen :global(.inspector) { height: 100%; }
   .panels > [class*='separator'] { display: none; }
