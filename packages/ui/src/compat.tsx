@@ -230,7 +230,27 @@ function TabsList({ children, ...props }: any) {
 }
 function TabsTrigger({ value, children, ...props }: any) {
   const tabs = useContext(tabsContext);
-  return <button type="button" role="tab" aria-selected={tabs.value === value} {...props} onClick={() => tabs.onChange?.(value)}>{children}</button>;
+  const activate = () => tabs.onChange?.(value);
+  const onClick = props.onClick;
+  const onMouseDown = props.onMouseDown;
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={tabs.value === value}
+      {...props}
+      onMouseDown={(event: any) => {
+        onMouseDown?.(event);
+        activate();
+      }}
+      onClick={(event: any) => {
+        onClick?.(event);
+        activate();
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 export const Tabs = { Root: TabsRoot, List: TabsList, Trigger: TabsTrigger };
 
