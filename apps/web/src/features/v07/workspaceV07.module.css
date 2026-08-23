@@ -2,6 +2,7 @@
   --workspace-bg: var(--ah-canvas, #f7f8fc);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
+  height: calc(100dvh - 68px);
   min-height: calc(100vh - 68px);
   margin: -32px;
   overflow: hidden;
@@ -314,7 +315,7 @@
 }
 
 @media (max-width: 767px) {
-  .workspace { min-height: calc(100vh - 56px); margin: -20px -16px -32px; }
+  .workspace { height: calc(100dvh - 56px); min-height: calc(100vh - 56px); margin: -20px -16px -32px; }
   .contextbar { padding: 12px 16px; }
   .contextFacts { flex-wrap: wrap; }
   .contextFacts code { max-width: 100%; }
@@ -325,4 +326,3 @@
 @media (prefers-reduced-motion: reduce) {
   .separator { transition: none; }
 }
-

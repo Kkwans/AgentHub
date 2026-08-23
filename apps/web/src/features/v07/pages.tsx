@@ -639,7 +639,7 @@ export function WorkspacePageV07() {
     </header>
     <div className={workspaceStyles.mobileTabs} role="tablist" aria-label="Workspace 视图">
       <button type="button" role="tab" aria-selected={viewParam === null} onClick={() => setSearchParams({})}>对话</button>
-      {(['files', 'diff', 'git', 'run'] as const).map((item) => <button type="button" role="tab" key={item} aria-selected={tab === item} onClick={() => setTab(item)}>{item === 'files' ? '文件' : item === 'diff' ? 'Diff' : item === 'git' ? 'Git' : '运行'}</button>)}
+      {(['files', 'diff', 'git', 'run'] as const).map((item) => <button type="button" role="tab" key={item} aria-selected={viewParam === item} onClick={() => setTab(item)}>{item === 'files' ? '文件' : item === 'diff' ? 'Diff' : item === 'git' ? 'Git' : '运行'}</button>)}
     </div>
     <Group orientation="horizontal" className={workspaceStyles.panels}>
       <Panel id="sessions" defaultSize="18%" minSize="210px" maxSize="320px" className={`${workspaceStyles.panel} ${workspaceStyles.sessionRail}`}>

@@ -310,7 +310,15 @@ export function AhDialog({
   fullScreen?: boolean;
 }) {
   return (
-    <Modal opened={open} onClose={onClose} title={title} size={size} fullScreen={fullScreen} centered>
+    <Modal
+      opened={open}
+      onClose={onClose}
+      title={title}
+      size={size}
+      fullScreen={fullScreen}
+      centered
+      closeButtonProps={{ 'aria-label': '关闭' }}
+    >
       {description ? <Text c="dimmed" size="sm" mb="md">{description}</Text> : null}
       {children}
       {actions ? <Group justify="flex-end" mt="xl">{actions}</Group> : null}

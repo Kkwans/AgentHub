@@ -50,6 +50,7 @@ describe('product components', () => {
     );
     expect(screen.getByRole('textbox', { name: '搜索' })).toBeTruthy();
     expect(screen.getByRole('dialog', { name: '测试弹层' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '关闭' })).toBeTruthy();
   });
 
   it('provides an accessible autosizing textarea primitive', () => {

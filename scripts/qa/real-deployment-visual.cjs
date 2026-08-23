@@ -60,9 +60,18 @@ async function auditPage(page) {
     const body = document.body;
     const scrollWidth = Math.max(root?.scrollWidth || 0, body?.scrollWidth || 0);
     const clientWidth = root?.clientWidth || 0;
-    const unnamedButtons = [...document.querySelectorAll('button')].filter(
-      (button) => !button.getAttribute('aria-label') && !(button.textContent || '').trim(),
-    ).length;
+    const unnamedButtons = [...document.querySelectorAll('button')].filter((button) => {
+      // Controls explicitly removed from the accessibility tree (for example,
+      // Mantine's input clear affordance) are implementation details, not
+      // user-facing unnamed actions.
+      if (button.getAttribute('aria-hidden') === 'true') return false;
+      return (
+        !button.getAttribute('aria-label') &&
+        !button.getAttribute('aria-labelledby') &&
+        !button.getAttribute('title') &&
+        !(button.textContent || '').trim()
+      );
+    }).length;
     const hiddenFocus = [...document.querySelectorAll(':focus-visible')].some((element) => {
       const rect = element.getBoundingClientRect();
       return rect.width === 0 || rect.height === 0;
