@@ -32,6 +32,7 @@ import {
   useState,
   type ComponentProps,
   type CSSProperties,
+  type TextareaHTMLAttributes,
   type ReactNode,
 } from 'react';
 
@@ -270,6 +271,23 @@ export function AhThemeSelect() {
 
 export function AhInput({ label, ...props }: ComponentProps<typeof TextInput> & { label?: string }) {
   return <TextInput {...props} label={label} radius="md" />;
+}
+
+export type AhTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label?: string;
+  description?: string;
+  minRows?: number;
+  autosize?: boolean;
+};
+
+export function AhTextarea({ label, description, minRows = 4, autosize: _autosize, ...props }: AhTextareaProps) {
+  return (
+    <label className="ah-textarea-field">
+      {label ? <span className="ah-textarea-label">{label}{props.required ? <span aria-hidden="true"> *</span> : null}</span> : null}
+      <textarea {...props} rows={minRows} className={`ah-textarea${props.className ? ` ${props.className}` : ''}`} />
+      {description ? <span className="ah-textarea-description">{description}</span> : null}
+    </label>
+  );
 }
 
 export function AhDialog({

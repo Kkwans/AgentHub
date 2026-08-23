@@ -12,6 +12,7 @@ import {
   AhResizablePane,
   AhStatusPill,
   AhThemeSelect,
+  AhTextarea,
 } from './product.js';
 import { AgentHubProvider } from './provider.js';
 
@@ -49,6 +50,15 @@ describe('product components', () => {
     );
     expect(screen.getByRole('textbox', { name: '搜索' })).toBeTruthy();
     expect(screen.getByRole('dialog', { name: '测试弹层' })).toBeTruthy();
+  });
+
+  it('provides an accessible autosizing textarea primitive', () => {
+    render(
+      <AgentHubProvider>
+        <AhTextarea label="工作描述" placeholder="描述目标" />
+      </AgentHubProvider>,
+    );
+    expect(screen.getByRole('textbox', { name: '工作描述' })).toBeTruthy();
   });
 
   it('renders project context tabs and theme preference control', () => {

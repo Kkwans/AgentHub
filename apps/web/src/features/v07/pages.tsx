@@ -11,6 +11,7 @@ import {
   AhSelect,
   AhStatusPill,
   AhSurface,
+  AhTextarea,
   AhThemeSelect,
   ArrowRight,
   Bot,
@@ -26,6 +27,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  ScanSearch,
   Server,
   ShieldCheck,
   SquareTerminal,
@@ -114,6 +116,19 @@ function displayDate(value?: string | null): string {
   return Number.isNaN(date.getTime()) ? '暂无记录' : new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
+function useCompactViewport(): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => setCompact(media.matches);
+    update();
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, []);
+  return compact;
+}
+
 export function HomePageV07() {
   const dashboard = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<DashboardSnapshot>('/dashboard') });
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api.get<ProjectRecord[]>('/projects') });
@@ -170,17 +185,56 @@ export function ProjectsPageV07() {
 export function CreateProjectPageV07() {
   const navigate = useNavigate();
   const client = useQueryClient();
+  const compact = useCompactViewport();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [targetId, setTargetId] = useState('');
   const [rootPath, setRootPath] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const targets = useQuery({ queryKey: ['targets'], queryFn: () => api.get<ExecutionTargetRecord[]>('/execution-targets') });
   const roots = useQuery({ queryKey: ['filesystem-roots', targetId], queryFn: () => api.get<Array<{ rootId: string; label: string; path: string }>>(`/execution-targets/${targetId}/filesystem/roots`), enabled: Boolean(targetId) });
   useEffect(() => { if (!targetId && targets.data?.[0]) setTargetId(targets.data[0].id); }, [targetId, targets.data]);
   useEffect(() => { if (roots.data?.[0] && !rootPath) setRootPath(roots.data[0].path); }, [rootPath, roots.data]);
   const preflight = useQuery({ queryKey: ['project-preflight', targetId, rootPath], queryFn: () => api.post<{ status: 'READY' | 'BROKEN'; checks: Array<{ id: string; status: string; message: string }> }>('/projects/preflight', { targetId, rootPath }), enabled: Boolean(targetId && rootPath), staleTime: 2_000 });
   const create = useMutation({ mutationFn: () => api.post<ProjectRecord>('/projects', { name: name.trim(), description: description.trim() || undefined, targetId, rootPath }), onSuccess: (project) => { void client.invalidateQueries({ queryKey: ['projects'] }); navigate(`/projects/${project.id}/overview`); } });
-  return <Screen eyebrow="Create Project" title="创建项目" description="从 AgentHub 已授权的目录中选择工程。路径来自运行环境，不接受越权手工输入。" actions={<Link to="/projects"><AhButton variant="default">返回项目</AhButton></Link>}><AhSurface><div className={styles.surfaceBody}><div className={styles.fieldGrid}><AhInput label="项目名称" value={name} onChange={(event) => setName(event.currentTarget.value)} placeholder="例如 AgentHub" required /><AhSelect label="运行环境" value={targetId} onChange={(value) => { setTargetId(value ?? ''); setRootPath(''); }} data={(targets.data ?? []).map((target) => ({ value: target.id, label: target.name }))} placeholder="选择运行环境" /></div><AhInput label="项目说明" value={description} onChange={(event) => setDescription(event.currentTarget.value)} placeholder="可选" mt="md" /><AhSelect label="允许目录" value={rootPath} onChange={(value) => setRootPath(value ?? '')} data={(roots.data ?? []).map((root) => ({ value: root.path, label: `${root.label} · ${root.path}` }))} placeholder="选择目录" mt="md" /><div className={styles.mutedBox}>{preflight.isFetching ? '正在预检目录…' : preflight.data ? <><strong>{preflight.data.status === 'READY' ? '目录可以使用' : '目录需要处理'}</strong><div>{preflight.data.checks.map((check) => <div key={check.id}>{check.status === 'PASS' ? '✓' : '·'} {check.message}</div>)}</div></> : '选择目录后会自动运行 Project preflight。'}</div>{create.error ? <AhErrorState description={create.error.message} /> : null}<div className={styles.actions}><AhButton onClick={() => create.mutate()} loading={create.isPending} disabled={!name.trim() || !targetId || !rootPath || preflight.data?.status !== 'READY'}>预检并创建</AhButton></div></div></AhSurface></Screen>;
+  const close = () => navigate('/projects');
+  return <>
+    <ProjectsPageV07 />
+    <AhDialog
+      open
+      onClose={close}
+      title="创建项目"
+      description="从 AgentHub 已授权的目录中选择工程。路径来自运行环境，不接受越权手工输入。"
+      size={820}
+      fullScreen={compact}
+      actions={<><AhButton variant="default" onClick={close}>取消</AhButton><AhButton onClick={() => create.mutate()} loading={create.isPending} disabled={!name.trim() || !targetId || !rootPath || preflight.data?.status !== 'READY'}>预检并创建</AhButton></>}
+    >
+      <div className={styles.dialogBody} data-testid="create-project-dialog">
+        <div className={styles.dialogIntro}><span className={styles.dialogStep}>1</span><div><strong>选择 Project 目录</strong><p>先确认运行环境和可访问根目录，AgentHub 会自动识别 Git 与工作区信息。</p></div></div>
+        <div className={styles.fieldGrid}>
+          <AhSelect label="运行环境" value={targetId} onChange={(value) => { setTargetId(value ?? ''); setRootPath(''); }} data={(targets.data ?? []).map((target) => ({ value: target.id, label: `${target.name} · ${target.os}/${target.arch}` }))} placeholder="选择运行环境" />
+          <AhSelect label="允许目录" value={rootPath} onChange={(value) => { setRootPath(value ?? ''); if (!name && value) setName(value.split('/').filter(Boolean).at(-1) ?? ''); }} data={(roots.data ?? []).map((root) => ({ value: root.path, label: `${root.label} · ${root.path}` }))} placeholder={roots.isLoading ? '正在读取目录' : '选择目录'} disabled={!targetId || roots.isLoading} />
+        </div>
+        <div className={styles.dialogSection}>
+          <div className={styles.dialogIntro}><span className={styles.dialogStep}>2</span><div><strong>确认 Project 身份</strong><p>名称默认取目录名，可按团队习惯调整。</p></div></div>
+          <div className={styles.fieldGrid}>
+            <AhInput label="项目名称" value={name} onChange={(event) => setName(event.currentTarget.value)} placeholder="例如 AgentHub" required />
+            <AhTextarea label="项目说明（可选）" value={description} onChange={(event) => setDescription(event.currentTarget.value)} placeholder="描述这个工程的用途" minRows={3} />
+          </div>
+        </div>
+        <div className={styles.mutedBox}>
+          <strong>{preflight.isFetching ? '正在运行 Project preflight…' : preflight.data?.status === 'READY' ? '目录可以使用' : preflight.data ? '目录需要处理' : '选择目录后会自动运行 Project preflight'}</strong>
+          {preflight.data ? <div className={styles.checkList}>{preflight.data.checks.map((check) => <div key={check.id}><span aria-hidden="true">{check.status === 'PASS' ? '✓' : '·'}</span>{check.message}</div>)}</div> : null}
+          {preflight.error ? <div className={styles.dialogError}>{preflight.error.message}</div> : null}
+        </div>
+        <details open={advancedOpen} onToggle={(event) => setAdvancedOpen(event.currentTarget.open)} className={styles.dialogDetails}>
+          <summary>高级设置</summary>
+          <p>Runtime、mount、worktree 和 Git 行为沿用当前执行环境的安全默认值。需要修改时请先完成 Project 创建，再从项目设置进入。</p>
+        </details>
+        {create.error ? <AhErrorState description={create.error.message} /> : null}
+      </div>
+    </AhDialog>
+  </>;
 }
 
 export function ProjectContextLayoutV07() {
@@ -229,12 +283,15 @@ export function ProjectWorkPageV07() {
 export function NewWorkPageV07() {
   const project = useProjectContext();
   const navigate = useNavigate();
+  const compact = useCompactViewport();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [kind, setKind] = useState<'goal' | 'task'>('goal');
+  const [intent, setIntent] = useState('');
+  const [kind, setKind] = useState<'goal' | 'task'>('task');
   const [goalId, setGoalId] = useState('');
   const [agentId, setAgentId] = useState('');
   const [promptId, setPromptId] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const goals = useQuery({ queryKey: ['goals', project.id], queryFn: () => api.get<GoalRecord[]>(`/goals?projectId=${project.id}`) });
   const agents = useQuery({ queryKey: ['agents'], queryFn: () => api.get<AgentRecord[]>('/agents') });
   const prompts = useQuery({ queryKey: ['prompts', project.id], queryFn: () => api.get<PromptRecord[]>(`/prompts?projectId=${project.id}`) });
@@ -243,9 +300,56 @@ export function NewWorkPageV07() {
   const selectedPrompt = prompts.data?.find((prompt) => prompt.id === promptId);
   const contextQuery = () => new URLSearchParams({ ...(agentId ? { agentId } : {}), ...(promptId ? { promptId } : {}) }).toString();
   const createGoal = useMutation({ mutationFn: () => api.post<GoalRecord>('/goals', { projectId: project.id, title: title.trim(), description: description.trim() || undefined }), onSuccess: (goal) => { const query = contextQuery(); navigate(`/projects/${project.id}/work?goal=${goal.id}${query ? `&${query}` : ''}`); } });
-  const createTask = useMutation({ mutationFn: () => api.post<TaskRecord>('/tasks', { projectId: project.id, goalId: goalId || undefined, title: title.trim(), description: description.trim() || undefined, priority: 2 }), onSuccess: (task) => { const query = contextQuery(); navigate(`/projects/${project.id}/work?task=${task.id}${query ? `&${query}` : ''}`); } });
+  const createTask = useMutation({
+    mutationFn: async () => {
+      const task = await api.post<TaskRecord>('/tasks', { projectId: project.id, goalId: goalId || undefined, title: title.trim(), description: description.trim() || undefined, priority: 2 });
+      if (!agentId) return { task, sessionId: undefined };
+      if (task.status === 'BACKLOG') await api.post(`/tasks/${task.id}/transition`, { status: 'READY' });
+      const started = await api.post<{ session: { id: string } }>(`/tasks/${task.id}/start`, { agentId });
+      return { task, sessionId: started.session.id };
+    },
+    onSuccess: ({ task, sessionId }) => {
+      const query = contextQuery();
+      navigate(sessionId ? `/workspace/${sessionId}` : `/projects/${project.id}/work?task=${task.id}${query ? `&${query}` : ''}`);
+    },
+  });
   const workError = createGoal.error ?? createTask.error;
-  return <Screen eyebrow="New Work" title="描述一项工作" description="先表达结果，再选择 Goal、Task、Agent 与 PromptOS 上下文。底层执行参数会在需要时出现。"><AhSurface><div className={styles.surfaceBody}><div className={styles.stepper}><span className={`${styles.step} ${styles.stepActive}`}>1 · 目标</span><span className={`${styles.step} ${title.trim() ? styles.stepActive : ''}`}>2 · 约束</span><span className={styles.step}>3 · 执行</span></div><div className={styles.actions} style={{ marginTop: 24 }}><AhButton size="sm" variant={kind === 'goal' ? 'light' : 'default'} onClick={() => setKind('goal')}>Goal</AhButton><AhButton size="sm" variant={kind === 'task' ? 'light' : 'default'} onClick={() => setKind('task')}>Task</AhButton></div><AhInput label={kind === 'goal' ? '你想达成什么？' : '要完成哪一项任务？'} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：重构登录流程并补齐测试" mt="md" /><AhInput label="补充上下文" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="验收标准、约束或参考资料（可选）" mt="md" />{kind === 'task' ? <AhSelect label="所属 Goal" value={goalId} onChange={(value) => setGoalId(value ?? '')} data={(goals.data ?? []).map((goal) => ({ value: goal.id, label: goal.title }))} placeholder="选择 Goal（可选）" mt="md" /> : null}<div className={styles.fieldGrid} style={{ marginTop: 16 }}><AhSelect label="执行 Agent（可选）" value={agentId} onChange={(value) => setAgentId(value ?? '')} data={(agents.data ?? []).filter((agent) => agent.status === 'READY').map((agent) => ({ value: agent.id, label: agent.name }))} placeholder="创建后再选择" /><AhSelect label="PromptOS 资产（可选）" value={promptId} onChange={(value) => setPromptId(value ?? '')} data={(prompts.data ?? []).map((prompt) => ({ value: prompt.id, label: `${prompt.name} · ${labelPromptKind(prompt.kind)}` }))} placeholder="使用 Project Binding" /></div><div className={styles.mutedBox} style={{ marginTop: 16 }}>{selectedAgent ? `创建后将在 Work Inspector 中使用 ${selectedAgent.name} 启动 Session。` : '创建后可在 Work Inspector 中选择 Agent 并开始 Session。'}{selectedPrompt ? ` PromptOS：${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）` : ' PromptOS 会按当前 Project/Task Binding 解析。'}</div><div className={styles.actions} style={{ marginTop: 24 }}><AhButton onClick={() => kind === 'goal' ? createGoal.mutate() : createTask.mutate()} loading={createGoal.isPending || createTask.isPending} disabled={!title.trim()}>创建并继续</AhButton><Link to={`/projects/${project.id}/work`}><AhButton variant="default">取消</AhButton></Link></div>{workError ? <AhErrorState description={workError.message} /> : null}</div></AhSurface></Screen>;
+  const close = () => navigate(`/projects/${project.id}/work`);
+  const quickIntents = ['Bug', 'Feature', 'Refactor', 'Research'];
+  return <>
+    <ProjectWorkPageV07 />
+    <AhDialog
+      open
+      onClose={close}
+      title="描述一项工作"
+      description="先表达结果，再选择推荐 Agent。创建并开始后会直接进入 Workspace。"
+      size={720}
+      fullScreen={compact}
+      actions={<><AhButton variant="default" onClick={close}>取消</AhButton><AhButton onClick={() => kind === 'goal' ? createGoal.mutate() : createTask.mutate()} loading={createGoal.isPending || createTask.isPending} disabled={!title.trim()}>{kind === 'goal' ? '创建 Goal' : '创建并开始'}</AhButton></>}
+    >
+      <div className={styles.dialogBody} data-testid="new-work-dialog">
+        <div className={styles.dialogContext}><span>当前 Project</span><strong>{project.name}</strong><code title={project.rootPath}>{project.rootPath}</code></div>
+        <AhTextarea label="你想完成什么？" value={title} onChange={(event) => setTitle(event.currentTarget.value)} placeholder="例如：修复登录流程并补齐回归测试" required minRows={5} />
+        <div className={styles.quickIntents} aria-label="快速意图">
+          <span className={styles.subtle}>快速意图（可选）</span>
+          {quickIntents.map((value) => <AhButton key={value} size="xs" variant={intent === value ? 'light' : 'default'} aria-pressed={intent === value} onClick={() => { setIntent(value); if (!title.trim()) setTitle(`${value}：`); }}>{value}</AhButton>)}
+        </div>
+        <AhTextarea label="补充上下文（可选）" value={description} onChange={(event) => setDescription(event.currentTarget.value)} placeholder="验收标准、约束或参考资料" minRows={3} />
+        <AhSelect label="推荐 Agent" value={agentId} onChange={(value) => setAgentId(value ?? '')} data={(agents.data ?? []).filter((agent) => agent.status === 'READY').map((agent) => ({ value: agent.id, label: `${agent.name} · ${agent.detectedVersion ?? '版本待检测'}` }))} placeholder="稍后在 Work Inspector 中选择" />
+        <div className={styles.mutedBox}>{selectedAgent ? <><strong>{selectedAgent.name} 可用</strong><div>创建后会用这个 Agent 启动 Session，并把实时事件带入 Workspace。</div></> : '还没有选择 Agent；创建后仍可在 Work Inspector 中选择并开始。'}</div>
+        <details open={advancedOpen} onToggle={(event) => setAdvancedOpen(event.currentTarget.open)} className={styles.dialogDetails}>
+          <summary>高级设置</summary>
+          <div className={styles.dialogSection}>
+            <div className={styles.actions}><AhButton size="xs" variant={kind === 'task' ? 'light' : 'default'} onClick={() => setKind('task')}>Task</AhButton><AhButton size="xs" variant={kind === 'goal' ? 'light' : 'default'} onClick={() => setKind('goal')}>Goal</AhButton></div>
+            {kind === 'task' ? <AhSelect label="所属 Goal（可选）" value={goalId} onChange={(value) => setGoalId(value ?? '')} data={(goals.data ?? []).map((goal) => ({ value: goal.id, label: goal.title }))} placeholder="选择已有 Goal" mt="md" /> : null}
+            <AhSelect label="PromptOS 资产（可选）" value={promptId} onChange={(value) => setPromptId(value ?? '')} data={(prompts.data ?? []).map((prompt) => ({ value: prompt.id, label: `${prompt.name} · ${labelPromptKind(prompt.kind)}` }))} placeholder="使用 Project Binding" mt="md" />
+            <p className={styles.subtle}>{selectedPrompt ? `已选择 ${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）。` : '未选择时按当前 Project / Task Binding 解析 Prompt。'}</p>
+          </div>
+        </details>
+        {workError ? <AhErrorState title="创建或启动失败" description={workError.message} /> : null}
+      </div>
+    </AhDialog>
+  </>;
 }
 
 export function ProjectSessionsPageV07() {
@@ -266,16 +370,68 @@ export function AgentCenterPageV07() {
   const client = useQueryClient();
   const agents = useQuery({ queryKey: ['agents'], queryFn: () => api.get<AgentRecord[]>('/agents') });
   const candidates = useQuery({ queryKey: ['discovery-agents'], queryFn: () => api.get<AgentCandidateRecord[]>('/discovery/agents') });
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('all');
   const adopt = useMutation({ mutationFn: (candidateId: string) => api.post(`/discovery/agents/${encodeURIComponent(candidateId)}/adopt`), onSuccess: () => { void client.invalidateQueries({ queryKey: ['agents'] }); void client.invalidateQueries({ queryKey: ['discovery-agents'] }); } });
-  return <Screen eyebrow="Agent Center" title="Agent" description="以可用性和健康为中心管理 Agent。底层 adapter、executable 和 container identity 只在 Diagnostics 中展开。" actions={<><Link to="/agents/runtimes"><AhButton variant="default" leftSection={<Server size={16} />}>Runtime</AhButton></Link><Link to="/agents/agents/discover"><AhButton leftSection={<RefreshCw size={16} />}>发现 Agent</AhButton></Link></>}><div className={styles.metrics}><div className={styles.metric}><AhMetric label="已就绪" value={agents.data?.filter((agent) => agent.status === 'READY').length ?? '—'} tone="success" /></div><div className={styles.metric}><AhMetric label="需要处理" value={(candidates.data ?? []).filter((candidate) => candidate.state !== 'READY').length} tone="warning" /></div><div className={styles.metric}><AhMetric label="能力" value="Session / Run" hint="按 Agent capability 呈现" /></div><div className={styles.metric}><AhMetric label="诊断" value={<Link className={styles.link} to="/agents/diagnostics">查看</Link>} /></div></div><AhSurface><div className={styles.surfaceHeader}><div><h3>已接入 Agent</h3><p>每个身份都可以被 Project Work 选择。</p></div><Link className={styles.link} to="/agents/diagnostics">健康诊断</Link></div><div className={styles.surfaceBody}>{(agents.data ?? []).map((agent) => <div className={styles.row} key={agent.id}><div className={styles.rowMain}><span className={styles.rowTitle}>{agent.name}</span><span className={styles.rowMeta}>{agent.detectedVersion ?? '版本待检测'} · 默认模型 {agent.defaultModel ?? '按 Session 选择'}</span></div><AhStatusPill status={agent.status} /><span className={styles.subtle}>{agent.enabled ? '已启用' : '已停用'}</span></div>)}{!agents.data?.length ? <AhEmptyState title="还没有接入 Agent" description="扫描本机或运行环境以发现可用 Agent。" action={<Link to="/agents/agents/discover"><AhButton>开始发现</AhButton></Link>} /> : null}</div></AhSurface><AhSurface><div className={styles.surfaceHeader}><div><h3>候选 Agent</h3><p>扫描结果会保留部分失败原因，支持逐个接入。</p></div></div><div className={styles.surfaceBody}>{(candidates.data ?? []).filter((candidate) => candidate.agentKind !== 'UNKNOWN').map((candidate) => <div className={styles.row} key={candidate.candidateId}><Bot size={19} /><div className={styles.rowMain}><span className={styles.rowTitle}>{candidate.displayName}</span><span className={styles.rowMeta}>{candidate.detectedVersion ?? '版本待检测'}</span></div><AhStatusPill status={candidate.state} /><AhButton size="xs" onClick={() => adopt.mutate(candidate.candidateId)} loading={adopt.isPending} disabled={!candidate.adoptable}>接入</AhButton></div>)}</div></AhSurface></Screen>;
+  const filteredAgents = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return (agents.data ?? []).filter((agent) => {
+      const matchesQuery = !normalized || `${agent.name} ${agent.agentKind} ${agent.detectedVersion ?? ''}`.toLowerCase().includes(normalized);
+      const matchesFilter = filter === 'all' || (filter === 'ready' && agent.status === 'READY') || (filter === 'attention' && agent.status !== 'READY');
+      return matchesQuery && matchesFilter;
+    });
+  }, [agents.data, filter, query]);
+  const capabilitiesFor = (agent: AgentRecord) => {
+    const labels: Record<string, string> = { session: 'Session', sessions: 'Sessions', run: 'Run', runs: 'Runs', approval: 'Approval', approvals: 'Approval', files: '文件', terminal: 'Terminal', git: 'Git' };
+    const keys = Object.keys(agent.capabilitiesJson ?? {}).filter((key) => Boolean(agent.capabilitiesJson[key])).map((key) => labels[key.toLowerCase()] ?? '').filter(Boolean);
+    return Array.from(new Set(['Session', 'Run', ...keys])).slice(0, 4);
+  };
+  const agentKindLabel = (kind: string) => ({ CODEX: 'Codex', CLAUDE_CODE: 'Claude Code', OPENCLAW: 'OpenClaw' }[kind] ?? 'Agent');
+  return <Screen eyebrow="Agent Center" title="Agent" description="以可用性和健康为中心管理 Agent。底层 adapter、executable 和 container identity 只在 Diagnostics 中展开。" actions={<><Link to="/agents/runtimes"><AhButton variant="default" leftSection={<Server size={16} />}>Runtime</AhButton></Link><Link to="/agents/agents/discover"><AhButton leftSection={<RefreshCw size={16} />}>发现 Agent</AhButton></Link></>}><div className={styles.metrics}><div className={styles.metric}><AhMetric label="已就绪" value={agents.data?.filter((agent) => agent.status === 'READY').length ?? '—'} tone="success" /></div><div className={styles.metric}><AhMetric label="需要处理" value={(candidates.data ?? []).filter((candidate) => candidate.state !== 'READY').length} tone="warning" /></div><div className={styles.metric}><AhMetric label="能力" value="Session / Run" hint="按 Agent capability 呈现" /></div><div className={styles.metric}><AhMetric label="诊断" value={<Link className={styles.link} to="/agents/diagnostics">查看</Link>} /></div></div><AhSurface><div className={styles.toolbar}><AhInput label="" aria-label="搜索 Agent" placeholder="搜索名称或版本" value={query} onChange={(event) => setQuery(event.currentTarget.value)} leftSection={<Search size={15} />} /><AhSelect aria-label="Agent 筛选" label="" value={filter} onChange={(value) => setFilter(value ?? 'all')} data={[{ value: 'all', label: '全部' }, { value: 'ready', label: '已接入' }, { value: 'attention', label: '需要处理' }]} /></div><div className={styles.surfaceHeader}><div><h3>已接入 Agent</h3><p>每个身份都可以被 Project Work 选择。</p></div><Link className={styles.link} to="/agents/diagnostics">健康诊断</Link></div><div className={styles.agentCards}>{filteredAgents.map((agent) => <article className={styles.agentCard} key={agent.id}><div className={styles.agentCardHeader}><span className={styles.agentMark}><Bot size={22} /></span><div className={styles.rowMain}><h3>{agent.name}</h3><p>{agentKindLabel(agent.agentKind)} · {agent.detectedVersion ?? '版本待检测'}</p></div><AhStatusPill status={agent.status} /></div><p className={styles.agentDescription}>可用于 Project Work 与 Coding Workspace 的真实执行身份。</p><div className={styles.chipList}>{capabilitiesFor(agent).map((capability) => <span className={styles.chip} key={capability}>{capability}</span>)}</div><div className={styles.agentCardFooter}><span>{agent.enabled ? '已启用' : '已停用'}</span><span>{agent.defaultModel ?? 'Session 中选择模型'}</span></div></article>)}{!agents.isLoading && !filteredAgents.length ? <AhEmptyState title={query || filter !== 'all' ? '没有匹配的 Agent' : '还没有接入 Agent'} description="扫描本机或运行环境以发现可用 Agent。" action={<Link to="/agents/agents/discover"><AhButton>开始发现</AhButton></Link>} /> : null}</div></AhSurface><AhSurface><div className={styles.surfaceHeader}><div><h3>候选 Agent</h3><p>扫描结果会保留部分失败原因，支持逐个接入。</p></div></div><div className={styles.surfaceBody}>{(candidates.data ?? []).filter((candidate) => candidate.agentKind !== 'UNKNOWN').map((candidate) => <div className={styles.row} key={candidate.candidateId}><Bot size={19} /><div className={styles.rowMain}><span className={styles.rowTitle}>{candidate.displayName}</span><span className={styles.rowMeta}>{candidate.detectedVersion ?? '版本待检测'}</span></div><AhStatusPill status={candidate.state} /><AhButton size="xs" onClick={() => adopt.mutate(candidate.candidateId)} loading={adopt.isPending} disabled={!candidate.adoptable}>接入</AhButton></div>)}</div></AhSurface></Screen>;
 }
 
 export function DiscoverAgentsPageV07() {
   const client = useQueryClient();
+  const compact = useCompactViewport();
   const candidates = useQuery({ queryKey: ['discovery-agents'], queryFn: () => api.get<AgentCandidateRecord[]>('/discovery/agents') });
   const rescan = useMutation({ mutationFn: () => api.post('/discovery/agents/rescan'), onSuccess: () => void client.invalidateQueries({ queryKey: ['discovery-agents'] }) });
   const adopt = useMutation({ mutationFn: (id: string) => api.post(`/discovery/agents/${encodeURIComponent(id)}/adopt`), onSuccess: () => void client.invalidateQueries({ queryKey: ['discovery-agents'] }) });
-  return <Screen eyebrow="Discover Agents" title="发现 Agent" description="扫描 → 候选 → 接入 → preflight → Ready，每一步都保留可恢复的状态。" actions={<AhButton variant="default" onClick={() => rescan.mutate()} loading={rescan.isPending} leftSection={<RefreshCw size={16} />}>重新扫描</AhButton>}><AhSurface><div className={styles.surfaceHeader}><div><h3>扫描结果</h3><p>不识别的普通容器不会出现在普通流程中。</p></div><span className={styles.subtle}>{candidates.data?.length ?? 0} 个候选</span></div><div className={styles.surfaceBody}><div className={styles.stepper}><span className={`${styles.step} ${styles.stepActive}`}>扫描</span><span className={styles.step}>选择</span><span className={styles.step}>接入</span><span className={styles.step}>Preflight</span><span className={styles.step}>Ready</span></div><QueryMessage loading={candidates.isLoading} error={candidates.error} retry={() => void candidates.refetch()} label="正在扫描 Agent" />{!candidates.isLoading && !candidates.error ? (candidates.data ?? []).filter((candidate) => candidate.agentKind !== 'UNKNOWN').map((candidate) => <div className={styles.row} key={candidate.candidateId}><Bot size={19} /><div className={styles.rowMain}><span className={styles.rowTitle}>{candidate.displayName}</span><span className={styles.rowMeta}>{candidate.detectedVersion ?? '版本待检测'} · {candidate.reasonCode ? '需要处理' : '已识别'}</span></div><AhStatusPill status={candidate.state} />{candidate.adoptable ? <AhButton size="xs" onClick={() => adopt.mutate(candidate.candidateId)} loading={adopt.isPending}>接入</AhButton> : null}</div>) : null}</div></AhSurface></Screen>;
+  const visibleCandidates = (candidates.data ?? []).filter((candidate) => candidate.agentKind !== 'UNKNOWN');
+  const sourceCount = (prefix: string) => visibleCandidates.filter((candidate) => (candidate.targetCandidateId ?? '').toLowerCase().startsWith(prefix)).length;
+  const sources = [{ label: 'Local Host', hint: '本机已授权目录', count: sourceCount('host') + sourceCount('local') }, { label: 'Remote Nodes', hint: '已连接的远程设备', count: sourceCount('remote') }, { label: 'NAS Docker', hint: '已发现的容器运行环境', count: sourceCount('docker') }];
+  const candidateAction = (candidate: AgentCandidateRecord) => {
+    if (candidate.adoptable) return <AhButton size="xs" onClick={() => adopt.mutate(candidate.candidateId)} loading={adopt.isPending}>{candidate.state === 'AUTH_REQUIRED' ? '去授权' : '添加'}</AhButton>;
+    if (candidate.state === 'STOPPED') return <Link className={styles.rowAction} to="/agents/runtimes">查看 Runtime</Link>;
+    if (candidate.state === 'MISSING_DEPENDENCY') return <Link className={styles.rowAction} to="/agents/diagnostics">查看诊断</Link>;
+    return null;
+  };
+  return <>
+    <AgentCenterPageV07 />
+    <AhDialog
+      open
+      onClose={() => window.history.back()}
+      title="发现 Agent"
+      description="扫描 → 候选 → 接入 → preflight → Ready，每一步都保留可恢复的状态。"
+      size={960}
+      fullScreen={compact}
+      actions={<><AhButton variant="default" onClick={() => window.history.back()}>完成</AhButton><AhButton onClick={() => rescan.mutate()} loading={rescan.isPending} leftSection={<RefreshCw size={16} />}>重新扫描</AhButton></>}
+    >
+      <div className={styles.discoveryDialog} data-testid="discover-agents-dialog">
+        <section className={styles.discoveryScanner} aria-label="扫描进度">
+          <div className={styles.scannerOrb}><ScanSearch size={32} /></div>
+          <span className={styles.eyebrow}>Agent Discovery</span>
+          <h3>{rescan.isPending || candidates.isFetching ? '正在扫描可用 Agent' : '扫描已完成'}</h3>
+          <p>只读取已授权的本机、Remote Node 和 NAS Docker 来源，不会静默修改认证或配置。</p>
+          <div className={styles.discoveryStats}><div><strong>{visibleCandidates.length}</strong><span>发现</span></div><div><strong>{visibleCandidates.filter((candidate) => candidate.state === 'READY').length}</strong><span>可添加</span></div><div><strong>{visibleCandidates.filter((candidate) => candidate.state === 'AUTH_REQUIRED').length}</strong><span>需授权</span></div></div>
+          <div className={styles.mutedBox}>隐私提示：扫描只返回 AgentHub 支持的 Profile；原始 executable、adapter 和 container identity 仅在 Diagnostics 展开。</div>
+        </section>
+        <section className={styles.discoveryResults} aria-label="来源与候选 Agent">
+          <div className={styles.sourceList}>{sources.map((source) => <div className={styles.sourceRow} key={source.label}><span className={styles.sourceIcon}><Server size={16} /></span><div><strong>{source.label}</strong><span>{source.hint}</span></div><AhStatusPill status={source.count ? 'READY' : 'UNAVAILABLE'} /><span className={styles.subtle}>{source.count}</span></div>)}</div>
+          <div className={styles.dialogSection}><div className={styles.surfaceHeader}><div><h3>候选 Agent</h3><p>选择要接入的身份，部分失败不会阻塞其它候选。</p></div><span className={styles.subtle}>{visibleCandidates.length} 个</span></div><QueryMessage loading={candidates.isLoading} error={candidates.error} retry={() => void candidates.refetch()} label="正在扫描 Agent" />{!candidates.isLoading && !candidates.error ? <div className={styles.discoveryCandidates}>{visibleCandidates.map((candidate) => <div className={styles.candidateRow} key={candidate.candidateId}><span className={styles.candidateMark}><Bot size={18} /></span><div className={styles.rowMain}><strong className={styles.rowTitle}>{candidate.displayName}</strong><span className={styles.rowMeta}>{candidate.detectedVersion ?? '版本待检测'} · {candidate.reasonCode ? '需要处理' : '已识别'}</span></div><AhStatusPill status={candidate.state} />{candidateAction(candidate)}</div>)}{!visibleCandidates.length ? <AhEmptyState compact title="暂时没有候选 Agent" description="重新扫描会重新读取授权来源。" /> : null}</div> : null}</div>
+        </section>
+      </div>
+    </AhDialog>
+  </>;
 }
 
 export function InfrastructurePageV07({ kind }: { kind: 'runtimes' | 'nodes' | 'diagnostics' }) {
@@ -331,9 +487,17 @@ export function PromptLibraryPageV07() {
   const client = useQueryClient();
   const { projectId, promptId } = useParams();
   const prompts = useQuery({ queryKey: ['prompts', projectId ?? 'all'], queryFn: () => api.get<PromptRecord[]>(projectId ? `/prompts?projectId=${projectId}` : '/prompts') });
+  const projects = useQuery({ queryKey: ['projects'], queryFn: () => api.get<ProjectRecord[]>('/projects') });
+  const agents = useQuery({ queryKey: ['agents'], queryFn: () => api.get<AgentRecord[]>('/agents') });
+  const tasks = useQuery({ queryKey: ['tasks'], queryFn: () => api.get<TaskRecord[]>('/tasks') });
   const [selectedId, setSelectedId] = useState(promptId ?? '');
   const [tab, setTab] = useState<'content' | 'variables' | 'versions' | 'labels' | 'bindings' | 'playground'>('content');
+  const [search, setSearch] = useState('');
   const selected = prompts.data?.find((prompt) => prompt.id === selectedId) ?? prompts.data?.[0];
+  const filteredPrompts = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+    return (prompts.data ?? []).filter((prompt) => !normalized || `${prompt.name} ${prompt.key} ${prompt.description ?? ''}`.toLowerCase().includes(normalized));
+  }, [prompts.data, search]);
   useEffect(() => { if (promptId) setSelectedId(promptId); }, [promptId]);
   useEffect(() => { if (!selectedId && selected) setSelectedId(selected.id); }, [selected, selectedId]);
   const versions = useQuery({ queryKey: ['prompt-versions', selected?.id], queryFn: () => api.get<PromptVersionRecord[]>(`/prompts/${selected?.id}/versions`), enabled: Boolean(selected) });
@@ -343,10 +507,39 @@ export function PromptLibraryPageV07() {
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const create = useMutation({ mutationFn: () => api.post<PromptRecord>('/prompts', { projectId, key: key.trim(), name: name.trim(), kind: 'TASK', type: 'TEXT' }), onSuccess: (prompt) => { void client.invalidateQueries({ queryKey: ['prompts'] }); setSelectedId(prompt.id); setNewOpen(false); } });
-  const [playground, setPlayground] = useState('');
-  const render = useMutation({ mutationFn: () => api.post<{ text: string }>(`/prompts/${selected?.id}/render`, { variables: {} }), });
+  const [versionOpen, setVersionOpen] = useState(false);
+  const [versionContent, setVersionContent] = useState('');
+  const [versionVariables, setVersionVariables] = useState('{}');
+  const [versionChangelog, setVersionChangelog] = useState('');
+  const versionCreate = useMutation({ mutationFn: () => {
+    if (!selected) throw new Error('请先选择 Prompt');
+    let variables: Record<string, unknown>;
+    try { variables = JSON.parse(versionVariables || '{}') as Record<string, unknown>; } catch { throw new Error('Variables 必须是有效 JSON'); }
+    const content = selected.type === 'CHAT' ? JSON.parse(versionContent || '{"messages":[]}') : { text: versionContent };
+    return api.post(`/prompts/${selected.id}/versions`, { content, variables, changelog: versionChangelog.trim() || undefined });
+  }, onSuccess: () => { setVersionOpen(false); setVersionContent(''); setVersionVariables('{}'); setVersionChangelog(''); void client.invalidateQueries({ queryKey: ['prompt-versions', selected?.id] }); void client.invalidateQueries({ queryKey: ['prompt-labels', selected?.id] }); } });
+  const [labelOpen, setLabelOpen] = useState(false);
+  const [labelName, setLabelName] = useState('production');
+  const [labelVersionId, setLabelVersionId] = useState('');
+  const moveLabel = useMutation({ mutationFn: () => { if (!selected || !labelName.trim() || !labelVersionId) throw new Error('标签和版本不能为空'); return api.put(`/prompts/${selected.id}/labels/${encodeURIComponent(labelName.trim())}`, { versionId: labelVersionId }); }, onSuccess: () => { setLabelOpen(false); void client.invalidateQueries({ queryKey: ['prompt-labels', selected?.id] }); } });
+  const [bindingOpen, setBindingOpen] = useState(false);
+  const [bindingTargetType, setBindingTargetType] = useState<'PROJECT' | 'AGENT' | 'TASK'>('PROJECT');
+  const [bindingTargetId, setBindingTargetId] = useState('');
+  const [bindingSlot, setBindingSlot] = useState('SYSTEM');
+  const [bindingSelector, setBindingSelector] = useState<'LABEL' | 'VERSION'>('LABEL');
+  const [bindingSelectorValue, setBindingSelectorValue] = useState('');
+  const bindingTargets = bindingTargetType === 'PROJECT' ? (projects.data ?? []).map((item) => ({ value: item.id, label: item.name })) : bindingTargetType === 'AGENT' ? (agents.data ?? []).map((item) => ({ value: item.id, label: item.name })) : (tasks.data ?? []).map((item) => ({ value: item.id, label: item.title }));
+  const bindingSelectors = bindingSelector === 'LABEL' ? (labels.data ?? []).map((item) => ({ value: item.label, label: `${item.label} · v${item.version}` })) : (versions.data ?? []).map((item) => ({ value: item.id, label: `v${item.version} · ${item.changelog ?? '无变更说明'}` }));
+  useEffect(() => { if (!bindingTargets.some((item) => item.value === bindingTargetId)) setBindingTargetId(bindingTargets[0]?.value ?? ''); }, [bindingTargetId, bindingTargets]);
+  useEffect(() => { if (!bindingSelectors.some((item) => item.value === bindingSelectorValue)) setBindingSelectorValue(bindingSelectors[0]?.value ?? ''); }, [bindingSelectorValue, bindingSelectors]);
+  const createBinding = useMutation({ mutationFn: () => { if (!selected || !bindingTargetId || !bindingSelectorValue) throw new Error('绑定目标和版本来源不能为空'); return api.post('/prompt-bindings', { targetType: bindingTargetType, targetId: bindingTargetId, slot: bindingSlot, promptId: selected.id, selectorType: bindingSelector, ...(bindingSelector === 'LABEL' ? { label: bindingSelectorValue } : { versionId: bindingSelectorValue }), priority: 0 }); }, onSuccess: () => { setBindingOpen(false); void client.invalidateQueries({ queryKey: ['prompt-bindings', selected?.id] }); } });
+  const toggleBinding = useMutation({ mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => api.patch(`/prompt-bindings/${id}`, { enabled }), onSuccess: () => void client.invalidateQueries({ queryKey: ['prompt-bindings', selected?.id] }) });
+  const [playground, setPlayground] = useState('{}');
+  const render = useMutation({ mutationFn: () => { if (!selected) throw new Error('请先选择 Prompt'); let variables: Record<string, unknown>; try { variables = JSON.parse(playground || '{}') as Record<string, unknown>; } catch { throw new Error('变量 JSON 格式不正确'); } return api.post<{ text: string }>(`/prompts/${selected.id}/render`, { variables }); } });
   const tabLabels = { content: 'Content', variables: 'Variables', versions: 'Versions', labels: 'Labels', bindings: 'Bindings', playground: 'Playground' };
-  return <Screen eyebrow="Prompt Library" title="Prompt 资产" description="以 Master–Detail 方式管理内容、变量、版本、标签、绑定和 Playground。" actions={<AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>新建 Prompt</AhButton>}><QueryMessage loading={prompts.isLoading} error={prompts.error} retry={() => void prompts.refetch()} label="正在加载 Prompt 资产" />{!prompts.isLoading && !prompts.error ? <div className={styles.twoPane}><div className={styles.master}><div className={styles.toolbar}><AhInput label="" aria-label="搜索 Prompt" placeholder="搜索资产" leftSection={<Search size={15} />} /></div>{(prompts.data ?? []).map((prompt) => <button type="button" className={`${styles.masterRow} ${prompt.id === selected?.id ? styles.masterRowActive : ''}`} key={prompt.id} onClick={() => setSelectedId(prompt.id)}><span className={styles.rowTitle}>{prompt.name}</span><span className={styles.rowMeta}>{prompt.key} · {labelPromptType(prompt.type)}</span></button>)}{!prompts.data?.length ? <AhEmptyState compact title="还没有 Prompt" action={<AhButton size="sm" onClick={() => setNewOpen(true)}>创建资产</AhButton>} /> : null}</div><div className={styles.detail}>{selected ? <><div className={styles.surfaceHeader} style={{ padding: '0 0 16px' }}><div><h3>{selected.name}</h3><p>{selected.key} · {labelPromptKind(selected.kind)}</p></div><AhStatusPill status="ACTIVE" /></div><div className={styles.tabs}>{(Object.keys(tabLabels) as Array<keyof typeof tabLabels>).map((item) => <button type="button" key={item} className={`${styles.tab} ${tab === item ? styles.tabActive : ''}`} onClick={() => setTab(item)}>{tabLabels[item]}</button>)}</div><div style={{ paddingTop: 20 }}>{tab === 'content' ? <div className={styles.stack}><p>{selected.description ?? '暂无说明。'}</p><pre className={styles.codeBlock}>{JSON.stringify(versions.data?.[0]?.contentJson ?? { text: '尚未创建版本' }, null, 2)}</pre></div> : tab === 'variables' ? <pre className={styles.codeBlock}>{JSON.stringify(versions.data?.[0]?.variablesJson ?? {}, null, 2)}</pre> : tab === 'versions' ? <div className={styles.list}>{(versions.data ?? []).map((version) => <div className={styles.row} key={version.id}><div className={styles.rowMain}><span className={styles.rowTitle}>v{version.version}</span><span className={styles.rowMeta}>{version.changelog ?? '无变更说明'} · {labelPromptVersionSource(version.source)} · {displayDate(version.createdAt)}</span></div><span className={styles.mono}>{version.contentHash.slice(0, 10)}</span></div>)}{!versions.data?.length ? <AhEmptyState compact title="还没有版本" /> : null}</div> : tab === 'labels' ? <div className={styles.list}>{(labels.data ?? []).map((label) => <div className={styles.row} key={label.label}><Tag size={17} /><div className={styles.rowMain}><span className={styles.rowTitle}>{label.label}</span><span className={styles.rowMeta}>指向 v{label.version}</span></div></div>)}{!labels.data?.length ? <AhEmptyState compact title="还没有 Label" /> : null}</div> : tab === 'bindings' ? <div className={styles.list}>{(bindings.data ?? []).map((binding) => <div className={styles.row} key={binding.id}><Link2 size={17} /><div className={styles.rowMain}><span className={styles.rowTitle}>{labelPromptBindingTarget(binding.targetType)} · {labelPromptSelector(binding.selectorType)}</span><span className={styles.rowMeta}>{labelPromptBindingTarget(binding.targetType)} · {binding.slot} · {binding.label ?? (binding.versionId ? '固定版本' : '当前版本')}</span></div><AhStatusPill status={binding.enabled ? 'ACTIVE' : 'CANCELED'} /></div>)}{!bindings.data?.length ? <AhEmptyState compact title="还没有 Binding" /> : null}</div> : <div className={styles.stack}><AhInput label="变量 JSON" value={playground} onChange={(event) => setPlayground(event.currentTarget.value)} placeholder="{}" /><AhButton onClick={() => render.mutate()} loading={render.isPending} leftSection={<Eye size={15} />}>Render</AhButton><pre className={styles.codeBlock}>{render.data?.text ?? '输入变量并 Render 查看最终内容。'}</pre></div>}</div></> : <AhEmptyState title="选择一个 Prompt" />}</div></div> : null}<AhDialog open={newOpen} onClose={() => setNewOpen(false)} title="新建 Prompt" description="先建立资产，再逐步添加版本和绑定。"><AhInput label="名称" value={name} onChange={(event) => setName(event.currentTarget.value)} /><AhInput label="Key" value={key} onChange={(event) => setKey(event.currentTarget.value)} placeholder="project/task-primer" mt="md" /><div className={styles.actions} style={{ marginTop: 20 }}><AhButton onClick={() => create.mutate()} loading={create.isPending} disabled={!name.trim() || !key.trim()}>创建</AhButton></div>{create.error ? <AhErrorState description={create.error.message} /> : null}</AhDialog></Screen>;
+  const refreshPrompt = () => { void client.invalidateQueries({ queryKey: ['prompt-versions', selected?.id] }); void client.invalidateQueries({ queryKey: ['prompt-labels', selected?.id] }); void client.invalidateQueries({ queryKey: ['prompt-bindings', selected?.id] }); };
+  const targetName = (binding: PromptBindingRecord) => binding.targetType === 'PROJECT' ? projects.data?.find((item) => item.id === binding.targetId)?.name ?? '当前 Project' : binding.targetType === 'AGENT' ? agents.data?.find((item) => item.id === binding.targetId)?.name ?? 'Agent' : tasks.data?.find((item) => item.id === binding.targetId)?.title ?? 'Task';
+  return <Screen eyebrow="Prompt Library" title="Prompt 资产" description="以 Master–Detail 方式管理内容、变量、版本、标签、绑定和 Playground。" actions={<AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>新建 Prompt</AhButton>}><QueryMessage loading={prompts.isLoading} error={prompts.error} retry={() => void prompts.refetch()} label="正在加载 Prompt 资产" />{!prompts.isLoading && !prompts.error ? <div className={styles.twoPane}><div className={styles.master}><div className={styles.toolbar}><AhInput label="" aria-label="搜索 Prompt" placeholder="搜索资产" value={search} onChange={(event) => setSearch(event.currentTarget.value)} leftSection={<Search size={15} />} /></div>{filteredPrompts.map((prompt) => <button type="button" className={`${styles.masterRow} ${prompt.id === selected?.id ? styles.masterRowActive : ''}`} key={prompt.id} onClick={() => { setSelectedId(prompt.id); setTab('content'); }}><span className={styles.rowTitle}>{prompt.name}</span><span className={styles.rowMeta}>{prompt.key} · {labelPromptType(prompt.type)}</span></button>)}{!filteredPrompts.length ? <AhEmptyState compact title={search ? '没有匹配的 Prompt' : '还没有 Prompt'} action={!search ? <AhButton size="sm" onClick={() => setNewOpen(true)}>创建资产</AhButton> : undefined} /> : null}</div><div className={styles.detail}>{selected ? <><div className={styles.surfaceHeader} style={{ padding: '0 0 16px' }}><div><h3>{selected.name}</h3><p>{selected.key} · {labelPromptKind(selected.kind)}</p></div><AhStatusPill status="ACTIVE" /></div><div className={styles.tabs}>{(Object.keys(tabLabels) as Array<keyof typeof tabLabels>).map((item) => <button type="button" key={item} className={`${styles.tab} ${tab === item ? styles.tabActive : ''}`} onClick={() => setTab(item)}>{tabLabels[item]}</button>)}</div><div className={styles.detailToolbar}>{tab === 'content' || tab === 'variables' || tab === 'versions' ? <AhButton size="xs" onClick={() => { setVersionContent(String((versions.data?.[0]?.contentJson?.text as string | undefined) ?? '')); setVersionVariables(JSON.stringify(versions.data?.[0]?.variablesJson ?? {}, null, 2)); setVersionOpen(true); }}>创建新版本</AhButton> : null}{tab === 'labels' ? <AhButton size="xs" onClick={() => { setLabelVersionId(versions.data?.[0]?.id ?? ''); setLabelOpen(true); }}>移动标签</AhButton> : null}{tab === 'bindings' ? <AhButton size="xs" onClick={() => { refreshPrompt(); setBindingOpen(true); }}>新建绑定</AhButton> : null}</div><div style={{ paddingTop: 12 }}>{tab === 'content' ? <div className={styles.stack}><p>{selected.description ?? '暂无说明。'}</p><pre className={styles.codeBlock}>{JSON.stringify(versions.data?.[0]?.contentJson ?? { text: '尚未创建版本' }, null, 2)}</pre></div> : tab === 'variables' ? <pre className={styles.codeBlock}>{JSON.stringify(versions.data?.[0]?.variablesJson ?? {}, null, 2)}</pre> : tab === 'versions' ? <div className={styles.list}>{(versions.data ?? []).map((version) => <div className={styles.row} key={version.id}><div className={styles.rowMain}><span className={styles.rowTitle}>v{version.version}</span><span className={styles.rowMeta}>{version.changelog ?? '无变更说明'} · {labelPromptVersionSource(version.source)} · {displayDate(version.createdAt)}</span></div><span className={styles.mono}>{version.contentHash.slice(0, 10)}</span></div>)}{!versions.data?.length ? <AhEmptyState compact title="还没有版本" /> : null}</div> : tab === 'labels' ? <div className={styles.list}>{(labels.data ?? []).map((label) => <div className={styles.row} key={label.label}><Tag size={17} /><div className={styles.rowMain}><span className={styles.rowTitle}>{label.label}</span><span className={styles.rowMeta}>指向 v{label.version}</span></div></div>)}{!labels.data?.length ? <AhEmptyState compact title="还没有 Label" /> : null}</div> : tab === 'bindings' ? <div className={styles.list}>{(bindings.data ?? []).map((binding) => <div className={styles.row} key={binding.id}><Link2 size={17} /><div className={styles.rowMain}><span className={styles.rowTitle}>{targetName(binding)} · {labelPromptBindingTarget(binding.targetType)} · {labelPromptSelector(binding.selectorType)}</span><span className={styles.rowMeta}>{labelPromptBindingTarget(binding.targetType)} · {binding.slot} · {binding.label ?? (binding.versionId ? '固定版本' : '当前版本')} · 优先级 {binding.priority}</span></div><AhStatusPill status={binding.enabled ? 'ACTIVE' : 'CANCELED'} /><AhButton size="xs" variant="default" onClick={() => toggleBinding.mutate({ id: binding.id, enabled: !binding.enabled })}>{binding.enabled ? '停用' : '启用'}</AhButton></div>)}{!bindings.data?.length ? <AhEmptyState compact title="还没有 Binding" description="将 Prompt 绑定到 Project、Agent 或 Task。" /> : null}</div> : <div className={styles.stack}><AhTextarea label="变量 JSON" value={playground} onChange={(event) => setPlayground(event.currentTarget.value)} placeholder="{}" minRows={6} /><AhButton onClick={() => render.mutate()} loading={render.isPending} leftSection={<Eye size={15} />}>Render</AhButton>{render.error ? <AhErrorState description={render.error.message} /> : null}<pre className={styles.codeBlock}>{render.data?.text ?? '输入变量并 Render 查看最终内容。'}</pre></div>}</div></> : <AhEmptyState title="选择一个 Prompt" />}</div></div> : null}<AhDialog open={newOpen} onClose={() => setNewOpen(false)} title="新建 Prompt" description="先建立资产，再逐步添加版本和绑定。" actions={<><AhButton variant="default" onClick={() => setNewOpen(false)}>取消</AhButton><AhButton onClick={() => create.mutate()} loading={create.isPending} disabled={!name.trim() || !key.trim()}>创建</AhButton></>}>{create.error ? <AhErrorState description={create.error.message} /> : null}<AhInput label="名称" value={name} onChange={(event) => setName(event.currentTarget.value)} /><AhInput label="Key" value={key} onChange={(event) => setKey(event.currentTarget.value)} placeholder="project/task-primer" /></AhDialog><AhDialog open={versionOpen} onClose={() => setVersionOpen(false)} title="创建新版本" description="版本创建后不可覆盖或删除，latest 会自动指向这次创建的版本。" size={760} actions={<><AhButton variant="default" onClick={() => setVersionOpen(false)}>取消</AhButton><AhButton onClick={() => versionCreate.mutate()} loading={versionCreate.isPending} disabled={!versionContent.trim()}>创建版本</AhButton></>}>{versionCreate.error ? <AhErrorState description={versionCreate.error.message} /> : null}<AhTextarea label={selected?.type === 'CHAT' ? 'CHAT 内容 JSON' : 'Prompt 内容'} value={versionContent} onChange={(event) => setVersionContent(event.currentTarget.value)} minRows={selected?.type === 'CHAT' ? 10 : 8} placeholder={selected?.type === 'CHAT' ? '{"messages":[]}' : '输入 {{ variable }} 模板内容'} /><AhTextarea label="Variables JSON" value={versionVariables} onChange={(event) => setVersionVariables(event.currentTarget.value)} minRows={6} /><AhInput label="变更说明" value={versionChangelog} onChange={(event) => setVersionChangelog(event.currentTarget.value)} placeholder="说明本次变化" /></AhDialog><AhDialog open={labelOpen} onClose={() => setLabelOpen(false)} title="移动 Prompt 标签" description="标签是可移动指针；latest 由系统维护。" actions={<><AhButton variant="default" onClick={() => setLabelOpen(false)}>取消</AhButton><AhButton onClick={() => moveLabel.mutate()} loading={moveLabel.isPending} disabled={!labelName.trim() || !labelVersionId}>移动标签</AhButton></>}>{moveLabel.error ? <AhErrorState description={moveLabel.error.message} /> : null}<AhInput label="标签名称" value={labelName} onChange={(event) => setLabelName(event.currentTarget.value)} /><AhSelect label="目标版本" value={labelVersionId} onChange={(value) => setLabelVersionId(value ?? '')} data={(versions.data ?? []).map((version) => ({ value: version.id, label: `v${version.version} · ${version.changelog ?? '无变更说明'}` }))} placeholder="选择版本" /></AhDialog><AhDialog open={bindingOpen} onClose={() => setBindingOpen(false)} title="新建 Prompt 绑定" description="选择绑定目标和版本来源；保存后会参与后续上下文解析。" size={680} actions={<><AhButton variant="default" onClick={() => setBindingOpen(false)}>取消</AhButton><AhButton onClick={() => createBinding.mutate()} loading={createBinding.isPending} disabled={!bindingTargetId || !bindingSelectorValue}>创建绑定</AhButton></>}>{createBinding.error ? <AhErrorState description={createBinding.error.message} /> : null}<AhSelect label="绑定目标类型" value={bindingTargetType} onChange={(value) => { setBindingTargetType((value as typeof bindingTargetType) ?? 'PROJECT'); setBindingTargetId(''); }} data={[{ value: 'PROJECT', label: 'Project' }, { value: 'AGENT', label: 'Agent' }, { value: 'TASK', label: 'Task' }]} /><AhSelect label={labelPromptBindingTarget(bindingTargetType)} value={bindingTargetId} onChange={(value) => setBindingTargetId(value ?? '')} data={bindingTargets} placeholder="选择目标" /><AhSelect label="提示位" value={bindingSlot} onChange={(value) => setBindingSlot(value ?? 'SYSTEM')} data={[{ value: 'SYSTEM', label: '系统' }, { value: 'TASK_PRIMER', label: '任务前置' }, { value: 'REVIEW', label: 'Review' }, { value: 'COMMIT', label: 'Commit' }, { value: 'RULES', label: '规则' }]} /><AhSelect label="选择方式" value={bindingSelector} onChange={(value) => { setBindingSelector((value as typeof bindingSelector) ?? 'LABEL'); setBindingSelectorValue(''); }} data={[{ value: 'LABEL', label: '标签' }, { value: 'VERSION', label: '固定版本' }]} /><AhSelect label={bindingSelector === 'LABEL' ? '标签' : '固定版本'} value={bindingSelectorValue} onChange={(value) => setBindingSelectorValue(value ?? '')} data={bindingSelectors} placeholder="选择来源" /></AhDialog></Screen>;
 }
 
 export function SettingsPageV07() {

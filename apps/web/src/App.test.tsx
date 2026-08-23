@@ -101,6 +101,7 @@ function stubApi() {
       else if (url.endsWith(`/sessions/${session.id}/runs`)) data = [];
       else if (url.includes(`/sessions/${session.id}/events`)) data = [];
       else if (url.includes(`/approvals?sessionId=${session.id}`)) data = [];
+      else if (url.includes('/discovery/agents')) data = [];
       else if (url.endsWith('/agents'))
         data = [
           {
@@ -206,5 +207,30 @@ describe('v0.7 App', () => {
     expect(await screen.findByText('对话与执行')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeInTheDocument();
     expect(screen.getAllByRole('tab', { name: '文件' }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders creation flows as responsive overlay contracts', async () => {
+    stubApi();
+    renderApp(['/projects/new']);
+    expect(await screen.findByRole('dialog', { name: '创建项目' })).toBeInTheDocument();
+    expect(screen.getByTestId('create-project-dialog')).toBeInTheDocument();
+  });
+
+  it('keeps New Work focused on the task description and current Project context', async () => {
+    stubApi();
+    renderApp([`/projects/${project.id}/work/new`]);
+    expect(await screen.findByRole('dialog', { name: '描述一项工作' })).toBeInTheDocument();
+    expect(screen.getByTestId('new-work-dialog')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '你想完成什么？' })).toBeInTheDocument();
+    expect(screen.getAllByText(project.name).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('presents Agent discovery as a two-zone modal with real candidate state', async () => {
+    stubApi();
+    renderApp(['/agents/agents/discover']);
+    expect(await screen.findByRole('dialog', { name: '发现 Agent' })).toBeInTheDocument();
+    expect(screen.getByTestId('discover-agents-dialog')).toBeInTheDocument();
+    expect(screen.getByText('Local Host')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: '候选 Agent' }).length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -56,6 +56,53 @@
   overflow: auto;
 }
 
+.ah-textarea-field {
+  display: grid;
+  gap: 6px;
+}
+
+.ah-textarea-label {
+  color: var(--ah-text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ah-textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  outline: 0;
+  resize: vertical;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  transition: border-color var(--ah-motion-fast), box-shadow var(--ah-motion-fast);
+}
+
+.ah-textarea::placeholder {
+  color: var(--ah-text-tertiary);
+}
+
+.ah-textarea:focus {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+.ah-textarea:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.ah-textarea-description {
+  color: var(--ah-text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .ah-dialog-small {
   max-width: 420px;
 }
