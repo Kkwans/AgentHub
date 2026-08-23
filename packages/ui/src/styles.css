@@ -1,7 +1,6 @@
 @import '@mantine/core/styles.css';
 
-/* Temporary compatibility skin for unmounted v0.6 modules. New v0.7 screens
- * use the Ah* primitives below and do not depend on these selectors. */
+/* Compatibility skin for unmounted feature modules. New screens use Ah* primitives. */
 .ah-compat-button,
 .ah-compat-icon-button {
   display: inline-flex;
@@ -68,6 +67,10 @@
   --ah-motion-fast: 120ms;
   --ah-motion-base: 180ms;
   --ah-motion-panel: 220ms;
+  --ah-radius-control: 8px;
+  --ah-success-soft: #e8f8f1;
+  --ah-warning-soft: #fff4dd;
+  --ah-danger-soft: #fdecee;
 }
 
 :root[data-agenthub-theme='dark'] {
@@ -91,6 +94,65 @@
   --ah-warning: #f1ba52;
   --ah-danger: #ff7379;
   --ah-info: #6daeff;
+  --ah-success-soft: #143d31;
+  --ah-warning-soft: #4b3513;
+  --ah-danger-soft: #4a1f26;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: var(--ah-text-primary);
+  background: var(--ah-canvas);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  border: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+code,
+.mono {
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
 }
 
 .ah-dialog {
@@ -156,7 +218,7 @@
 
 .ah-dialog-header {
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--gray-a5);
+  border-bottom: 1px solid var(--ah-border-subtle);
 }
 
 .ah-dialog-header p {
@@ -183,36 +245,36 @@
 .ah-dialog-close {
   width: 32px;
   padding: 0;
-  color: var(--gray-10);
+  color: var(--ah-text-tertiary);
   background: transparent;
 }
 
 .ah-dialog-close:hover,
 .ah-dialog-secondary:hover {
-  background: var(--gray-a3);
+  background: var(--ah-surface-subtle);
 }
 
 .ah-dialog-primary {
-  color: var(--accent-contrast);
-  background: var(--accent-9);
+  color: #fff;
+  background: var(--ah-accent-primary);
 }
 
 .ah-dialog-primary:hover {
-  background: var(--accent-10);
+  background: var(--ah-accent-hover);
 }
 
 .ah-dialog-danger {
-  color: var(--red-contrast);
-  background: var(--red-9);
+  color: #fff;
+  background: var(--ah-danger);
 }
 
 .ah-dialog-danger:hover {
-  background: var(--red-10);
+  background: color-mix(in srgb, var(--ah-danger) 88%, #000);
 }
 
 .ah-dialog-secondary {
-  color: var(--gray-11);
-  background: var(--gray-a2);
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface-subtle);
 }
 
 .ah-dialog-close:disabled,
@@ -234,7 +296,7 @@
   justify-content: flex-end;
   gap: 8px;
   padding-top: 16px;
-  border-top: 1px solid var(--gray-a5);
+  border-top: 1px solid var(--ah-border-subtle);
 }
 
 .ah-field {
@@ -243,7 +305,7 @@
 }
 
 .ah-field-label {
-  color: var(--gray-12);
+  color: var(--ah-text-primary);
   font-size: 13px;
   font-weight: 600;
 }
@@ -256,7 +318,7 @@
 }
 
 .ah-required {
-  color: var(--gray-9);
+  color: var(--ah-text-tertiary);
   font-size: 11px;
   font-weight: 400;
 }
@@ -270,13 +332,11 @@
   font-weight: 500;
 }
 
-.ah-field[data-invalid='true'] .rt-TextFieldRoot,
-.ah-field[data-invalid='true'] .rt-TextArea,
 .ah-field[data-invalid='true'] .ah-select-trigger,
 .ah-field[data-invalid='true'] .ah-select-native,
 .ah-field[data-invalid='true'] .ah-combobox-control {
-  border-color: var(--red-9);
-  box-shadow: 0 0 0 1px var(--red-9);
+  border-color: var(--ah-danger);
+  box-shadow: 0 0 0 1px var(--ah-danger);
 }
 
 .ah-select-trigger {
@@ -288,9 +348,9 @@
   width: 100%;
   min-height: 36px;
   padding: 0 10px;
-  color: var(--gray-12);
-  background: var(--color-surface);
-  border: 1px solid var(--gray-7);
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
   border-radius: 6px;
   outline: 0;
   font: inherit;
@@ -298,8 +358,8 @@
 }
 
 .ah-select-native:focus {
-  border-color: var(--accent-9);
-  box-shadow: 0 0 0 1px var(--accent-9);
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 1px var(--ah-accent-primary);
 }
 
 .ah-select-native:disabled {
@@ -317,15 +377,15 @@
   gap: 8px;
   min-height: 36px;
   padding: 0 8px 0 10px;
-  color: var(--gray-10);
-  background: var(--color-surface);
-  border: 1px solid var(--gray-7);
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
   border-radius: 6px;
 }
 
 .ah-combobox-control:focus-within {
-  border-color: var(--accent-9);
-  box-shadow: 0 0 0 1px var(--accent-9);
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 1px var(--ah-accent-primary);
 }
 
 .ah-combobox-control input {
@@ -333,7 +393,7 @@
   flex: 1;
   height: 34px;
   padding: 0;
-  color: var(--gray-12);
+  color: var(--ah-text-primary);
   background: transparent;
   border: 0;
   outline: 0;
@@ -345,14 +405,14 @@
   width: 28px;
   height: 28px;
   place-items: center;
-  color: var(--gray-10);
+  color: var(--ah-text-tertiary);
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .ah-combobox-toggle:hover {
-  background: var(--gray-a3);
+  background: var(--ah-surface-subtle);
 }
 
 .ah-combobox-options {
@@ -364,10 +424,10 @@
   max-height: 260px;
   overflow: auto;
   padding: 4px;
-  background: var(--color-panel-solid);
-  border: 1px solid var(--gray-a6);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
   border-radius: 8px;
-  box-shadow: var(--shadow-5);
+  box-shadow: var(--ah-shadow-float, 0 24px 70px rgb(15 23 42 / 14%));
 }
 
 .ah-combobox-option {
@@ -377,7 +437,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 10px;
-  color: var(--gray-12);
+  color: var(--ah-text-primary);
   text-align: left;
   background: transparent;
   border: 0;
@@ -388,7 +448,7 @@
 .ah-combobox-option:hover,
 .ah-combobox-option.active,
 .ah-combobox-option[aria-selected='true'] {
-  background: var(--gray-a3);
+  background: var(--ah-surface-subtle);
 }
 
 .ah-combobox-option span {
@@ -397,24 +457,24 @@
 }
 
 .ah-combobox-option small {
-  color: var(--gray-10);
+  color: var(--ah-text-tertiary);
   font-size: 11px;
 }
 
 .ah-combobox-empty {
   padding: 12px;
-  color: var(--gray-10);
+  color: var(--ah-text-tertiary);
   font-size: 13px;
   text-align: center;
 }
 
 .ah-advanced {
   padding: 12px 0;
-  border-top: 1px solid var(--gray-a4);
+  border-top: 1px solid var(--ah-border-subtle);
 }
 
 .ah-advanced summary {
-  color: var(--gray-12);
+  color: var(--ah-text-primary);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
@@ -454,7 +514,7 @@
 .ah-eyebrow {
   display: block;
   margin-bottom: 6px;
-  color: var(--gray-9);
+  color: var(--ah-text-tertiary);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -469,7 +529,7 @@
   display: block;
   min-height: 12px;
   overflow: hidden;
-  background: linear-gradient(90deg, var(--gray-a3), var(--gray-a5), var(--gray-a3));
+  background: linear-gradient(90deg, var(--ah-border-subtle), var(--ah-border-strong), var(--ah-border-subtle));
   background-size: 220% 100%;
   border-radius: 5px;
   animation: ah-skeleton 1.5s ease-in-out infinite;

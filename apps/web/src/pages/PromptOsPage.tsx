@@ -16,7 +16,6 @@ import { useSearchParams } from 'react-router-dom';
 import { EmptyState, ErrorState, LoadingState, PageIntro } from '../components/Common';
 import { api, type AgentRecord, type ProjectRecord, type PromptRecord } from '../lib/api';
 import '../lib/monaco';
-import '../styles/v3-promptos.css';
 import {
   PromptDetail,
   promptTabs,

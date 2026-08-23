@@ -19,7 +19,6 @@ import {
 } from '../lib/api';
 import '../lib/monaco';
 import { realtime } from '../lib/realtime';
-import '../styles/v3-workspace.css';
 import {
   Composer,
   Conversation,

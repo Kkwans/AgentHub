@@ -6,8 +6,6 @@ import { BrowserRouter } from 'react-router-dom';
 
 import { App } from './App';
 import '@agenthub/ui/styles.css';
-import './styles.css';
-import './styles/design-system.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

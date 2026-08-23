@@ -1,0 +1,27 @@
+.pageIntro { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.pageIntro h2 { margin: 0; color: var(--ah-text-primary); font-size: clamp(24px, 3vw, 32px); line-height: 1.2; }
+.pageIntro p { max-width: 700px; margin: 8px 0 0; color: var(--ah-text-secondary); font-size: 14px; line-height: 1.6; }
+.loading { display: grid; min-height: 136px; align-content: center; gap: 18px; padding: 22px; overflow: hidden; color: var(--ah-text-primary); background: linear-gradient(145deg, var(--ah-surface), var(--ah-surface-subtle)); border: 1px solid var(--ah-border-subtle); border-radius: 12px; }
+.loadingCopy { display: flex; flex-direction: column; gap: 4px; }
+.loadingCopy strong { font-size: 13px; }
+.loadingCopy span { color: var(--ah-text-tertiary); font-size: 12px; }
+.loadingLines { display: grid; gap: 8px; }
+.loadingLines span { display: block; height: 8px; background: var(--ah-border-subtle); border-radius: 6px; }
+.loadingLines span:nth-child(2) { width: 78%; }
+.loadingLines span:nth-child(3) { width: 52%; }
+.error { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; min-height: 0; align-items: center; gap: 12px; padding: 14px 16px; color: var(--ah-danger); background: var(--ah-danger-soft); border: 1px solid color-mix(in srgb, var(--ah-danger) 25%, transparent); border-radius: 12px; }
+.errorIcon { display: grid; width: 34px; height: 34px; place-items: center; background: var(--ah-surface); border-radius: 8px; }
+.errorCopy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.errorCopy strong { font-size: 13px; }
+.errorCopy span { color: var(--ah-text-secondary); font-size: 12px; line-height: 1.5; }
+.errorAction { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 10px; color: var(--ah-danger); background: transparent; border: 1px solid color-mix(in srgb, var(--ah-danger) 30%, transparent); border-radius: 8px; cursor: pointer; }
+.empty { display: grid; justify-items: center; gap: 8px; padding: 48px 16px; color: var(--ah-text-primary); text-align: center; }
+.compact { padding: 24px 16px; }
+.emptyIcon { display: grid; width: 42px; height: 42px; place-items: center; color: var(--ah-accent-primary); background: var(--ah-accent-soft); border-radius: 999px; }
+.empty h3 { margin: 0; font-size: 15px; }
+.empty p { max-width: 480px; margin: 0; color: var(--ah-text-secondary); font-size: 13px; }
+
+@media (max-width: 620px) {
+  .error { grid-template-columns: auto minmax(0, 1fr); }
+  .errorAction { grid-column: 1 / -1; justify-self: stretch; }
+}

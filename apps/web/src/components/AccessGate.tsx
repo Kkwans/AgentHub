@@ -6,6 +6,7 @@ import { ApiError, api, authSession } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { AgentHubLogo } from './AgentHubLogo';
 import { PasswordField } from './PasswordField';
+import styles from './AccessGate.module.css';
 
 export type AuthStatus = {
   mode: 'local_trusted' | 'token';
@@ -104,25 +105,25 @@ export function AccessGate({ children }: PropsWithChildren) {
 
 function AccessLoading() {
   return (
-    <main className="access-gate" aria-busy="true" aria-label="正在连接 AgentHub">
-      <section className="access-card access-card-loading" role="status" aria-live="polite">
-        <header className="access-heading" aria-hidden>
-          <AgentHubLogo className="access-heading-logo" />
-          <div className="access-heading-content">
-            <div className="access-product">
+    <main className={styles.gate} aria-busy="true" aria-label="正在连接 AgentHub">
+      <section className={`${styles.card} ${styles.cardLoading}`} role="status" aria-live="polite">
+        <header className={styles.heading} aria-hidden>
+          <AgentHubLogo className={styles.headingLogo} />
+          <div className={styles.headingContent}>
+            <div className={styles.product}>
               <div>
                 <strong>AgentHub</strong>
                 <small>工程控制平面</small>
               </div>
               <span>正在连接</span>
             </div>
-            <div className="access-loading-copy">
-              <span className="access-loading-line wide" />
-              <span className="access-loading-line" />
+            <div className={styles.loadingCopy}>
+              <span className={`${styles.loadingLine} ${styles.wide}`} />
+              <span className={styles.loadingLine} />
             </div>
           </div>
         </header>
-        <span className="visually-hidden">正在读取服务认证状态…</span>
+        <span className={styles.visuallyHidden}>正在读取服务认证状态…</span>
       </section>
     </main>
   );
@@ -161,19 +162,19 @@ function AccessPrompt({
   }
 
   return (
-    <main className="access-gate">
-      <section className="access-card" aria-labelledby="access-title">
-        <header className="access-heading">
-          <AgentHubLogo className="access-heading-logo" />
-          <div className="access-heading-content">
-            <div className="access-product">
+    <main className={styles.gate}>
+      <section className={styles.card} aria-labelledby="access-title">
+        <header className={styles.heading}>
+          <AgentHubLogo className={styles.headingLogo} />
+          <div className={styles.headingContent}>
+            <div className={styles.product}>
               <div>
                 <strong>AgentHub</strong>
                 <small>工程控制平面</small>
               </div>
               <span>{contextLabel}</span>
             </div>
-            <div className="access-copy">
+            <div className={styles.copy}>
               <h1 id="access-title">
                 {setup ? '创建管理员账号' : unavailable ? '暂时无法连接' : '登录 AgentHub'}
               </h1>
@@ -188,13 +189,13 @@ function AccessPrompt({
           </div>
         </header>
         {(error || formError) && (
-          <div className="access-inline-error" role="alert" aria-live="polite">
+          <div className={styles.inlineError} role="alert" aria-live="polite">
             <AlertTriangle aria-hidden size={17} />
             <span>{formError ?? error}</span>
           </div>
         )}
         {!unavailable ? (
-          <form className="access-form" onSubmit={submit}>
+          <form className={styles.form} onSubmit={submit}>
             <label htmlFor="username">用户名</label>
             <TextField.Root
               id="username"
@@ -219,7 +220,7 @@ function AccessPrompt({
               maxLength={128}
               required
             />
-            {setup && <small className="access-field-help">密码至少 6 个字符。</small>}
+            {setup && <small className={styles.fieldHelp}>密码至少 6 个字符。</small>}
             {setup && (
               <>
                 <label htmlFor="password-confirmation">确认密码</label>

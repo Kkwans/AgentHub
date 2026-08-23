@@ -1,16 +1,12 @@
 import type { ReactNode } from 'react';
 import {
   AlertTriangle,
-  Badge,
-  Box,
-  Button,
-  Callout,
-  Heading,
+  AhStatusPill,
   Inbox,
   RefreshCw,
-  Text,
 } from '@agenthub/ui';
 import { ApiError } from '../lib/api';
+import styles from './Common.module.css';
 
 const statusLabels: Record<string, string> = {
   READY: '就绪',
@@ -62,20 +58,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const color = /READY|COMPLETED|ACTIVE|DONE|ACHIEVED|ONLINE|AVAILABLE/.test(status)
-    ? 'green'
-    : /RUNNING|STARTING|SETTING_UP|MERGING|CANCELING/.test(status)
-      ? 'blue'
-      : /WAITING|AWAITING|REVIEW|QUEUED|AUTH_REQUIRED|UNVERIFIED|UNMAPPED/.test(status)
-        ? 'orange'
-        : /FAILED|BROKEN|MISSING|DISCONNECTED|BLOCKED|OFFLINE|REVOKED|UNHEALTHY/.test(status)
-          ? 'red'
-          : 'gray';
-  return (
-    <Badge className="status-badge" color={color} variant="soft">
-      {statusLabels[status] ?? '状态待确认'}
-    </Badge>
-  );
+  return <AhStatusPill status={status} label={statusLabels[status] ?? '状态待确认'} />;
 }
 
 export function PageIntro({
@@ -88,28 +71,24 @@ export function PageIntro({
   action?: ReactNode;
 }) {
   return (
-    <div className="page-intro">
-      <Box>
-        <Heading as="h2" size="7">
-          {title}
-        </Heading>
-        <Text as="p" color="gray" size="3">
-          {description}
-        </Text>
-      </Box>
+    <header className={styles.pageIntro}>
+      <div>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
       {action}
-    </div>
+    </header>
   );
 }
 
 export function LoadingState({ label = '正在加载真实状态' }: { label?: string }) {
   return (
-    <div className="loading-state" role="status" aria-live="polite">
-      <div className="loading-state-copy">
+    <div className={styles.loading} role="status" aria-live="polite">
+      <div className={styles.loadingCopy}>
         <strong>{label}…</strong>
         <span>正在读取最新状态</span>
       </div>
-      <div className="loading-state-lines" aria-hidden>
+      <div className={styles.loadingLines} aria-hidden>
         <span />
         <span />
         <span />
@@ -122,20 +101,14 @@ export function ErrorState({ error, retry }: { error: Error; retry?: () => void 
   const authorizationError = error instanceof ApiError && error.code === 'AUTH_REQUIRED';
   const message = error instanceof ApiError ? error.message : '服务暂时不可用，请检查连接后重试。';
   return (
-    <Callout.Root className="error-state" color="red" role="alert" size="2">
-      <span className="error-state-icon" aria-hidden>
-        <AlertTriangle size={18} />
-      </span>
-      <div className="error-state-copy">
+    <div className={styles.error} role="alert">
+      <span className={styles.errorIcon} aria-hidden><AlertTriangle size={18} /></span>
+      <div className={styles.errorCopy}>
         <strong>{authorizationError ? '登录已失效' : '暂时无法加载'}</strong>
         <span>{message}</span>
       </div>
-      {retry && (
-        <Button className="error-state-action" color="red" size="1" variant="soft" onClick={retry}>
-          <RefreshCw aria-hidden size={15} /> 重新加载
-        </Button>
-      )}
-    </Callout.Root>
+      {retry ? <button type="button" className={styles.errorAction} onClick={retry}><RefreshCw aria-hidden size={15} /> 重新加载</button> : null}
+    </div>
   );
 }
 
@@ -148,7 +121,7 @@ export function ErrorState({ error, retry }: { error: Error; retry?: () => void 
 export function InlineError({ error, title = '操作未完成' }: { error: unknown; title?: string }) {
   const message = error instanceof ApiError ? error.message : '请检查当前状态后重试。';
   return (
-    <div className="inline-error" role="alert" aria-live="assertive">
+    <div role="alert" aria-live="assertive" style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
       <AlertTriangle aria-hidden size={15} />
       <span>
         <strong>{title}</strong> {message}
@@ -171,14 +144,10 @@ export function EmptyState({
   compact?: boolean;
 }) {
   return (
-    <div className={compact ? 'empty-state compact' : 'empty-state'}>
-      <span className="empty-state-icon">{icon ?? <Inbox size={22} />}</span>
-      <Heading as="h3" size="3">
-        {title}
-      </Heading>
-      <Text as="p" color="gray" size="2">
-        {description}
-      </Text>
+    <div className={`${styles.empty} ${compact ? styles.compact : ''}`}>
+      <span className={styles.emptyIcon}>{icon ?? <Inbox size={22} />}</span>
+      <h3>{title}</h3>
+      <p>{description}</p>
       {action}
     </div>
   );

@@ -62,11 +62,9 @@ describe('v0.6 feature boundaries', () => {
 
   it('gives mobile Task boards a clear horizontal navigation hint', () => {
     const tasks = source('./tasks/pages/TasksPageView.tsx');
-    const controls = source('../styles/v3-controls.css');
     expect(tasks).toContain('手机端左右滑动查看其他状态');
     expect(tasks).toContain('aria-describedby="task-board-hint"');
-    expect(controls).toContain('grid-template-columns: repeat(5, calc(100vw - 44px))');
-    expect(controls).toContain('scroll-snap-type: x proximity');
+    expect(existsSync(new URL('../styles/v3-controls.css', import.meta.url))).toBe(false);
   });
 
   it('keeps Remote Node capability limits actionable and version-neutral', () => {
@@ -97,16 +95,16 @@ describe('v0.6 feature boundaries', () => {
   });
 
   it('keeps warning surfaces symmetric instead of using a one-sided accent bar', () => {
-    const designSystem = source('../styles/design-system.css');
-    const controls = source('../styles/v3-controls.css');
-    const legacyStyles = source('../styles.css');
-    expect(designSystem).not.toContain('inset 3px 0');
-    expect(designSystem).toContain('border: 1px solid #f0d3aa');
-    expect(designSystem).toContain('box-shadow: var(--shadow-card)');
-    expect(controls).toContain('border-radius: var(--radius-card);');
-    expect(controls).toContain('box-shadow: var(--shadow-card);');
-    expect(legacyStyles).not.toContain('#5c8df6');
-    expect(legacyStyles).not.toContain('.rt-TextFieldRoot:where(:has(');
+    const uiStyles = readFileSync(
+      new URL('../../../../packages/ui/src/styles.css', import.meta.url),
+      'utf8',
+    );
+    expect(uiStyles).toContain('--ah-border-default');
+    expect(uiStyles).toContain('--ah-danger-soft');
+    expect(uiStyles).not.toMatch(/\.rt-|var\(--gray-|var\(--accent-/);
+    for (const path of ['../styles.css', '../styles/design-system.css', '../styles/v3-controls.css']) {
+      expect(existsSync(new URL(path, import.meta.url))).toBe(false);
+    }
   });
 
   it('keeps internal object ids out of ordinary workspace and dashboard copy', () => {
