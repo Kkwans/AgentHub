@@ -117,10 +117,20 @@
 }
 
 .workspace :global(.session-list a) {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   min-height: 68px;
   padding: 10px;
   border: 1px solid transparent;
   border-radius: 10px;
+}
+
+.workspace :global(.session-list a > div) {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
 }
 
 .workspace :global(.session-list a:hover) {
@@ -135,13 +145,52 @@
 }
 
 .workspace :global(.session-list strong) {
+  display: block;
+  overflow: hidden;
   color: var(--ah-text-primary);
   font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace :global(.session-list code) {
+  display: block;
+  overflow: hidden;
   color: var(--ah-text-tertiary);
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.session-state-dot) {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ah-success);
+  box-shadow: 0 0 0 3px var(--ah-success-soft);
+}
+
+.workspace :global(.session-state-running),
+.workspace :global(.session-state-starting),
+.workspace :global(.session-state-canceling) {
+  background: var(--ah-info);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ah-info) 16%, transparent);
+}
+
+.workspace :global(.session-state-waiting_approval) {
+  background: var(--ah-warning);
+  box-shadow: 0 0 0 3px var(--ah-warning-soft);
+}
+
+.workspace :global(.session-state-disconnected),
+.workspace :global(.session-state-failed) {
+  background: var(--ah-danger);
+  box-shadow: 0 0 0 3px var(--ah-danger-soft);
+}
+
+.workspace :global(.session-state-closed) {
+  background: var(--ah-text-tertiary);
+  box-shadow: 0 0 0 3px var(--ah-surface-subtle);
 }
 
 .workspace :global(.conversation-title) {
@@ -149,6 +198,9 @@
 }
 
 .workspace :global(.conversation-scroll) {
+  display: grid;
+  align-content: start;
+  gap: 14px;
   flex: 1;
   min-height: 0;
   padding: 22px clamp(18px, 4vw, 52px) 34px;
@@ -166,8 +218,52 @@
 }
 
 .workspace :global(.message-body) {
+  padding: 12px 14px;
   font-size: 14px;
   line-height: 1.7;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.workspace :global(.message) {
+  display: grid;
+  gap: 6px;
+  max-width: min(720px, 92%);
+}
+
+.workspace :global(.message.user) {
+  justify-self: end;
+}
+
+.workspace :global(.message.user .message-body) {
+  color: #fff;
+  background: var(--ah-text-primary);
+  border-color: var(--ah-text-primary);
+}
+
+.workspace :global(.message-meta) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+}
+
+.workspace :global(.message-meta code) {
+  color: var(--ah-text-disabled);
+  font-size: 10px;
+}
+
+.workspace :global(.message-body-error) {
+  color: var(--ah-danger);
+  background: var(--ah-danger-soft);
+  border-color: color-mix(in srgb, var(--ah-danger) 24%, transparent);
+}
+
+.workspace :global(.message-body-error p) {
+  margin: 6px 0 0;
 }
 
 .workspace :global(.message-meta),
@@ -175,6 +271,89 @@
 .workspace :global(.run-state-banner > div > span) {
   color: var(--ah-text-tertiary);
   font-size: 11px;
+}
+
+.workspace :global(.tool-card) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 10px;
+}
+
+.workspace :global(.tool-card > div) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.workspace :global(.tool-card > div > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.workspace :global(.tool-card strong) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.tool-icon) {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 8px;
+}
+
+.workspace :global(.approval-card) {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--ah-warning) 28%, transparent);
+  border-radius: 12px;
+}
+
+.workspace :global(.approval-heading) {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.workspace :global(.approval-heading > span) {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--ah-warning);
+  background: var(--ah-warning-soft);
+  border-radius: 9px;
+}
+
+.workspace :global(.approval-heading-copy) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.workspace :global(.approval-heading-copy strong) {
+  overflow-wrap: anywhere;
+}
+
+.workspace :global(.approval-kicker),
+.workspace :global(.approval-options-label),
+.workspace :global(.approval-impact > span) {
+  color: var(--ah-warning);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .workspace :global(.inspector-tabs) {
@@ -227,6 +406,9 @@
 }
 
 .workspace :global(.composer) {
+  display: grid;
+  flex: none;
+  gap: 10px;
   z-index: 3;
   padding: 14px 24px 18px;
   background: var(--ah-surface);
@@ -235,7 +417,45 @@
 }
 
 .workspace :global(.composer-context) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
   color: var(--ah-text-secondary);
+  font-size: 12px;
+}
+
+.workspace :global(.composer-context > span),
+.workspace :global(.composer-context > button) {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 4px 8px;
+  overflow: hidden;
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 7px;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.composer-context > span strong),
+.workspace :global(.composer-context > button strong) {
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.composer-context > button.active) {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-color: color-mix(in srgb, var(--ah-accent-primary) 20%, transparent);
 }
 
 .workspace :global(.composer-context strong) {
@@ -243,6 +463,11 @@
 }
 
 .workspace :global(.composer-input) {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
   border-color: var(--ah-border-default);
   background: var(--ah-surface);
   border-radius: 12px;
@@ -254,9 +479,41 @@
 }
 
 .workspace :global(.composer-input textarea) {
+  flex: 1;
+  min-width: 0;
   min-height: 52px;
+  padding: 8px 10px;
   color: var(--ah-text-primary);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  resize: vertical;
   font-size: 14px;
+  line-height: 1.5;
+}
+
+.workspace :global(.composer-input .send-button) {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #fff;
+  background: var(--ah-accent-primary);
+  border-radius: 9px;
+}
+
+.workspace :global(.composer-input .send-button:hover:not(:disabled)) { background: var(--ah-accent-hover); }
+.workspace :global(.composer-input .send-button:disabled) { color: var(--ah-text-disabled); background: var(--ah-surface-subtle); }
+
+.workspace :global(.composer-hint) {
+  display: block;
+  margin: 2px 2px 0;
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .workspace :global(.composer-context-preview),
@@ -275,7 +532,11 @@
 }
 
 .workspace :global(.terminal-dock-toolbar) {
+  display: flex;
   min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding-inline: 24px;
   background: var(--ah-surface);
   border: 0;
@@ -286,9 +547,45 @@
   color: var(--ah-text-tertiary);
 }
 
+.workspace :global(.terminal-dock-heading) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-text-primary);
+  font-size: 12px;
+}
+
+.workspace :global(.terminal-dock-heading span) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.terminal-dock-message) {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 24px;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+}
+
+.workspace :global(.terminal-dock-message strong) { flex: 0 0 auto; color: var(--ah-text-primary); }
+.workspace :global(.terminal-dock-message span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .workspace :global(.terminal-dock-body) {
+  position: relative;
+  min-height: 220px;
+  padding: 10px 24px 12px;
   background: #171a21;
 }
+
+.workspace :global(.terminal-viewport) { width: 100%; height: 198px; overflow: hidden; border: 1px solid #343941; border-radius: 8px; }
+.workspace :global(.terminal-viewport .xterm) { height: 100%; padding: 8px 10px; }
+.workspace :global(.terminal-dock-status) { position: absolute; right: 30px; bottom: 20px; padding: 4px 8px; color: #a7adb6; font-size: 11px; background: rgb(23 25 29 / 88%); border: 1px solid #3b414a; border-radius: 6px; }
+.workspace :global(.terminal-dock-status.error) { color: #ffb4aa; border-color: #7b403e; }
 
 @media (max-width: 1023px) {
   .workspace { margin: -24px; }
