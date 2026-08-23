@@ -64,6 +64,7 @@ describe('shared form fields', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Agent')).toHaveValue('codex');
+    expect(screen.getByLabelText('Agent')).toHaveValue('Codex');
+    expect(document.querySelector('select')).not.toBeInTheDocument();
   });
 });

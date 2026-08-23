@@ -1,15 +1,15 @@
 import * as React from 'react';
 import {
-  AlertDialog as RadixAlertDialog,
-  Button as RadixButton,
-  Dialog as RadixDialog,
+  AlertDialog,
+  Button,
+  Dialog,
   Flex,
   Heading,
-  IconButton as RadixIconButton,
+  IconButton,
   Text,
-  TextArea as RadixTextArea,
-  TextField as RadixTextField,
-} from '@radix-ui/themes';
+  TextArea,
+  TextField,
+} from '../compat.js';
 import { CheckIcon } from '@phosphor-icons/react/Check';
 import { CaretDownIcon } from '@phosphor-icons/react/CaretDown';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/MagnifyingGlass';
@@ -35,8 +35,8 @@ export interface FormDialogProps {
   size?: FormDialogSize;
   labelledBy?: string;
   describedBy?: string;
-  onOpenAutoFocus?: React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onOpenAutoFocus'];
-  onCloseAutoFocus?: React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onCloseAutoFocus'];
+  onOpenAutoFocus?: (event: { currentTarget: EventTarget & HTMLElement; defaultPrevented: boolean; preventDefault: () => void }) => void;
+  onCloseAutoFocus?: (event: { currentTarget: EventTarget & HTMLElement; defaultPrevented: boolean; preventDefault: () => void }) => void;
 }
 
 export function FormDialog({
@@ -49,84 +49,83 @@ export function FormDialog({
   size = 'medium',
   labelledBy,
   describedBy,
-  onOpenAutoFocus,
-  onCloseAutoFocus,
+  onOpenAutoFocus: _onOpenAutoFocus,
+  onCloseAutoFocus: _onCloseAutoFocus,
 }: FormDialogProps) {
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
-  const handleOpenAutoFocus = React.useCallback<
-    NonNullable<React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onOpenAutoFocus']>
-  >(
-    (event) => {
+
+  React.useEffect(() => {
+    if (open) {
       const activeElement = document.activeElement;
       if (activeElement instanceof HTMLElement && activeElement !== document.body) {
         restoreFocusRef.current ??= activeElement;
       }
-      onOpenAutoFocus?.(event);
-      if (event.defaultPrevented) return;
-
-      const content = event.currentTarget as HTMLElement;
-      const firstInvalid = Array.from(
-        content.querySelectorAll<HTMLElement>('[aria-invalid="true"], :invalid'),
-      )
-        .map(resolveFocusableControl)
-        .find((element): element is HTMLElement => Boolean(element));
-      const firstControl = content.querySelector<HTMLElement>(FOCUSABLE_CONTROL_SELECTOR);
-      const target = firstInvalid ?? firstControl;
-      if (target) {
-        event.preventDefault();
-        target.focus();
-      }
-    },
-    [onOpenAutoFocus],
-  );
-  const handleCloseAutoFocus = React.useCallback<
-    NonNullable<React.ComponentPropsWithoutRef<typeof RadixDialog.Content>['onCloseAutoFocus']>
-  >(
-    (event) => {
-      onCloseAutoFocus?.(event);
-      if (event.defaultPrevented) return;
-      const opener = restoreFocusRef.current;
-      restoreFocusRef.current = null;
-      if (opener?.isConnected) {
-        event.preventDefault();
-        opener.focus();
-      }
-    },
-    [onCloseAutoFocus],
-  );
+      const focusDialogControl = () => {
+        const content = document.querySelector<HTMLElement>('.ah-dialog');
+        if (!content) return;
+        const event = {
+          currentTarget: content,
+          defaultPrevented: false,
+          preventDefault() { this.defaultPrevented = true; },
+        };
+        _onOpenAutoFocus?.(event);
+        if (event.defaultPrevented) return;
+        const firstInvalid = Array.from(
+          content.querySelectorAll<HTMLElement>('[aria-invalid="true"], :invalid'),
+        )
+          .map(resolveFocusableControl)
+          .find((element): element is HTMLElement => Boolean(element));
+        const firstControl = content.querySelector<HTMLElement>(FOCUSABLE_CONTROL_SELECTOR);
+        (firstInvalid ?? firstControl)?.focus();
+      };
+      const timer = window.setTimeout(focusDialogControl, 25);
+      return () => window.clearTimeout(timer);
+    }
+    const opener = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+    const content = document.querySelector<HTMLElement>('.ah-dialog');
+    if (content) {
+      const event = {
+        currentTarget: content,
+        defaultPrevented: false,
+        preventDefault() { this.defaultPrevented = true; },
+      };
+      _onCloseAutoFocus?.(event);
+      if (event.defaultPrevented) return undefined;
+    }
+    if (opener?.isConnected) opener.focus();
+    return undefined;
+  }, [open, _onCloseAutoFocus, _onOpenAutoFocus]);
 
   return (
-    <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
-      <RadixDialog.Content
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Content
         className={`ah-dialog ah-dialog-${size}`}
-        onOpenAutoFocus={handleOpenAutoFocus}
-        onCloseAutoFocus={handleCloseAutoFocus}
+        trapFocus={false}
       >
         <Flex align="start" justify="between" gap="4" className="ah-dialog-header">
           <div>
-            <RadixDialog.Title {...(labelledBy ? { id: labelledBy } : {})} size="5">
+            <Dialog.Title {...(labelledBy ? { id: labelledBy } : {})}>
               {title}
-            </RadixDialog.Title>
+            </Dialog.Title>
             {description ? (
-              <RadixDialog.Description
+              <Dialog.Description
                 {...(describedBy ? { id: describedBy } : {})}
-                color="gray"
-                size="2"
               >
                 {description}
-              </RadixDialog.Description>
+              </Dialog.Description>
             ) : null}
           </div>
-          <RadixDialog.Close className="ah-dialog-close" aria-label="关闭">
+          <Dialog.Close>
             <button type="button" className="ah-dialog-close" aria-label="关闭">
               <XIcon aria-hidden size={18} />
             </button>
-          </RadixDialog.Close>
+          </Dialog.Close>
         </Flex>
         <div className="ah-dialog-body">{children}</div>
         {footer ? <div className="ah-dialog-footer">{footer}</div> : null}
-      </RadixDialog.Content>
-    </RadixDialog.Root>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
 
@@ -154,27 +153,27 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <RadixAlertDialog.Root open={open} onOpenChange={onOpenChange}>
-      <RadixAlertDialog.Content className="ah-dialog ah-dialog-small">
-        <RadixAlertDialog.Title size="5">{title}</RadixAlertDialog.Title>
-        <RadixAlertDialog.Description size="2" color="gray">
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+      <AlertDialog.Content className="ah-dialog ah-dialog-small">
+        <AlertDialog.Title>{title}</AlertDialog.Title>
+        <AlertDialog.Description>
           {description}
-        </RadixAlertDialog.Description>
+        </AlertDialog.Description>
         <Flex justify="end" gap="2" className="ah-dialog-footer">
-          <RadixAlertDialog.Cancel type="button" className="ah-dialog-secondary" disabled={pending}>
+          <AlertDialog.Cancel type="button" className="ah-dialog-secondary" disabled={pending}>
             {cancelLabel}
-          </RadixAlertDialog.Cancel>
-          <RadixAlertDialog.Action
+          </AlertDialog.Cancel>
+          <AlertDialog.Action
             type="button"
             className={destructive ? 'ah-dialog-danger' : 'ah-dialog-primary'}
             disabled={pending}
             onClick={onConfirm}
           >
             {pending ? '处理中…' : confirmLabel}
-          </RadixAlertDialog.Action>
+          </AlertDialog.Action>
         </Flex>
-      </RadixAlertDialog.Content>
-    </RadixAlertDialog.Root>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
   );
 }
 
@@ -245,7 +244,7 @@ export function Field({
 }
 
 export type FormTextFieldProps = Omit<
-  React.ComponentPropsWithoutRef<typeof RadixTextField.Root>,
+  React.ComponentPropsWithoutRef<typeof TextField.Root>,
   'size'
 > &
   Pick<FieldProps, 'label' | 'description' | 'error' | 'required'>;
@@ -268,7 +267,7 @@ export function FormTextField({
       {...(error ? { error } : {})}
       {...(required ? { required } : {})}
     >
-      <RadixTextField.Root
+      <TextField.Root
         {...(id ? { id } : {})}
         {...(name || id ? { name: name ?? id } : {})}
         size="2"
@@ -280,7 +279,7 @@ export function FormTextField({
   );
 }
 
-export type FormTextAreaProps = Omit<React.ComponentPropsWithoutRef<typeof RadixTextArea>, 'size'> &
+export type FormTextAreaProps = Omit<React.ComponentPropsWithoutRef<typeof TextArea>, 'size'> &
   Pick<FieldProps, 'label' | 'description' | 'error' | 'required'>;
 
 export function FormTextArea({
@@ -301,7 +300,7 @@ export function FormTextArea({
       {...(error ? { error } : {})}
       {...(required ? { required } : {})}
     >
-      <RadixTextArea
+      <TextArea
         {...(id ? { id } : {})}
         {...(name || id ? { name: name ?? id } : {})}
         size="2"
@@ -357,27 +356,14 @@ export function SelectField({
       {...(error ? { error } : {})}
       {...(required ? { required } : {})}
     >
-      <select
+      <Combobox
         id={selectId}
-        {...(value !== undefined ? { value } : {})}
-        {...(defaultValue !== undefined ? { defaultValue } : {})}
-        className="ah-select-native"
-        aria-invalid={Boolean(error) || undefined}
-        {...(disabled !== undefined ? { disabled } : {})}
-        {...(required !== undefined ? { required } : {})}
-        onChange={(event) => onValueChange?.(event.target.value)}
-      >
-        {!value && !defaultValue ? (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        ) : null}
-        {options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        {...(value ?? defaultValue ? { value: value ?? defaultValue } : {})}
+        placeholder={placeholder}
+        options={options}
+        {...(disabled === undefined ? {} : { disabled })}
+        onValueChange={(next) => onValueChange?.(next)}
+      />
     </Field>
   );
 }
@@ -597,13 +583,13 @@ export function LoadingSkeleton({ className = '' }: { className?: string }) {
 export function UiButton({
   children,
   ...props
-}: React.ComponentPropsWithoutRef<typeof RadixButton>) {
-  return <RadixButton {...props}>{children}</RadixButton>;
+}: React.ComponentPropsWithoutRef<typeof Button>) {
+  return <Button {...props}>{children}</Button>;
 }
 
 export function UiIconButton({
   children,
   ...props
-}: React.ComponentPropsWithoutRef<typeof RadixIconButton>) {
-  return <RadixIconButton {...props}>{children}</RadixIconButton>;
+}: React.ComponentPropsWithoutRef<typeof IconButton>) {
+  return <IconButton {...props}>{children}</IconButton>;
 }

@@ -1,5 +1,48 @@
 @import '@mantine/core/styles.css';
-@import '@radix-ui/themes/styles.css';
+
+/* Temporary compatibility skin for unmounted v0.6 modules. New v0.7 screens
+ * use the Ah* primitives below and do not depend on these selectors. */
+.ah-compat-button,
+.ah-compat-icon-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: var(--ah-radius-control, 8px);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  transition: background var(--ah-motion-fast), border-color var(--ah-motion-fast), color var(--ah-motion-fast);
+}
+
+.ah-compat-button[data-size='xs'] { min-height: 28px; padding-inline: 9px; font-size: 12px; }
+.ah-compat-button[data-size='lg'] { min-height: 40px; padding-inline: 14px; }
+.ah-compat-button-filled { color: #fff; background: var(--ah-accent-primary); border-color: var(--ah-accent-primary); }
+.ah-compat-button-light { color: var(--ah-accent-primary); background: var(--ah-accent-soft); border-color: transparent; }
+.ah-compat-button-subtle { color: var(--ah-text-secondary); background: transparent; border-color: transparent; }
+.ah-compat-button-outline { color: var(--ah-accent-primary); border-color: var(--ah-accent-primary); }
+.ah-compat-button:hover:not(:disabled) { filter: brightness(.97); }
+.ah-compat-button:disabled,
+.ah-compat-icon-button:disabled { cursor: not-allowed; opacity: .55; }
+.ah-compat-icon-button { width: 34px; padding: 0; }
+.ah-compat-text-field { position: relative; display: block; width: 100%; }
+.ah-compat-text-field > input { width: 100%; min-height: 38px; padding: 0 11px; color: var(--ah-text-primary); background: var(--ah-surface); border: 1px solid var(--ah-border-default); border-radius: 8px; outline: 0; font: inherit; }
+.ah-compat-text-field > input:focus { border-color: var(--ah-accent-primary); box-shadow: 0 0 0 3px var(--ah-accent-soft); }
+.ah-compat-text-field-slot { position: absolute; top: 50%; right: 5px; display: inline-flex; transform: translateY(-50%); }
+.ah-compat-badge { display: inline-flex; min-height: 24px; align-items: center; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 650; line-height: 1; }
+.ah-compat-badge-green { color: var(--ah-success); background: color-mix(in srgb, var(--ah-success) 12%, transparent); }
+.ah-compat-badge-red { color: var(--ah-danger); background: color-mix(in srgb, var(--ah-danger) 12%, transparent); }
+.ah-compat-badge-gray { color: var(--ah-text-secondary); background: var(--ah-surface-subtle); }
+.ah-compat-badge-orange { color: var(--ah-warning); background: color-mix(in srgb, var(--ah-warning) 12%, transparent); }
+.ah-compat-text-muted { color: var(--ah-text-secondary); }
+.ah-compat-callout { display: flex; gap: 10px; padding: 12px; border: 1px solid var(--ah-border-default); border-radius: 10px; }
+.ah-compat-dialog { position: fixed; z-index: 1000; inset: 50% auto auto 50%; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 20px; background: var(--ah-surface); border: 1px solid var(--ah-border-default); border-radius: 14px; box-shadow: var(--ah-shadow-float, 0 24px 70px rgb(15 23 42 / 18%)); transform: translate(-50%, -50%); }
 
 :root {
   --ah-canvas: #f7f8fc;
