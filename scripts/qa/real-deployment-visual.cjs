@@ -3,9 +3,8 @@
 /**
  * NAS-local visual gate for the real AgentHub deployment.
  *
- * This script intentionally has no remote-device or fixture mode. It reads a
- * short-lived browser token from a caller-provided file, uses it only in the
- * Playwright process, and writes screenshots plus non-sensitive diagnostics.
+ * The caller supplies a short-lived browser token via a file. The token is
+ * read only in this process and never written to reports or screenshots.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -35,18 +34,17 @@ const viewports = [
   ['390', { width: 390, height: 844 }],
 ];
 
-const routes = [
-  '/overview',
-  '/projects',
-  '/tasks',
-  '/agents',
-  '/sessions',
-  '/promptos',
-  '/settings',
-];
+const themes = ['light', 'dark'];
 
 function trimError(value) {
   return String(value).replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+
+function routeFileName(route) {
+  return route
+    .replace(/^\//, '')
+    .replace(/[^a-zA-Z0-9-]+/g, '-')
+    .replace(/^-|-$/g, '') || 'home';
 }
 
 async function waitForStable(page) {
@@ -62,12 +60,119 @@ async function auditPage(page) {
     const body = document.body;
     const scrollWidth = Math.max(root?.scrollWidth || 0, body?.scrollWidth || 0);
     const clientWidth = root?.clientWidth || 0;
+    const unnamedButtons = [...document.querySelectorAll('button')].filter(
+      (button) => !button.getAttribute('aria-label') && !(button.textContent || '').trim(),
+    ).length;
+    const hiddenFocus = [...document.querySelectorAll(':focus-visible')].some((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.width === 0 || rect.height === 0;
+    });
     return {
       scrollWidth,
       clientWidth,
       horizontalOverflow: scrollWidth > clientWidth + 1,
+      unnamedButtons,
+      hiddenFocus,
       visibleTextLength: body?.innerText?.length || 0,
+      resolvedTheme: document.documentElement.dataset.agenthubTheme || 'unknown',
     };
+  });
+}
+
+async function captureAuthenticated(browser, theme, viewport, routes) {
+  const context = await browser.newContext({
+    viewport,
+    extraHTTPHeaders: { authorization: `Bearer ${token}` },
+  });
+  await context.addInitScript(({ apiToken, selectedTheme }) => {
+    window.localStorage.setItem('agenthub-theme', selectedTheme);
+    const NativeWebSocket = window.WebSocket;
+    window.WebSocket = class AgentHubWebSocket extends NativeWebSocket {
+      constructor(url, protocols) {
+        const values = Array.isArray(protocols) ? [...protocols] : protocols ? [protocols] : [];
+        if (!values.some((value) => String(value).startsWith('agenthub-token.'))) {
+          values.push(`agenthub-token.${apiToken}`);
+        }
+        super(url, values);
+      }
+    };
+  }, { apiToken: token, selectedTheme: theme });
+
+  const pages = [];
+  for (const route of routes) {
+    const page = await context.newPage();
+    const consoleErrors = [];
+    const pageErrors = [];
+    const failedRequests = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(trimError(message.text()));
+    });
+    page.on('pageerror', (error) => pageErrors.push(trimError(error.message)));
+    page.on('requestfailed', (request) =>
+      failedRequests.push(trimError(`${request.method()} ${request.url()}`)),
+    );
+    await page.goto(`${baseURL}${route}`, { waitUntil: 'domcontentloaded' });
+    await waitForStable(page);
+    const layout = await auditPage(page);
+    const fileName = `${theme}-${routeFileName(route)}-${viewport.width}x${viewport.height}.png`;
+    await page.screenshot({ path: path.join(outputDir, fileName), fullPage: true });
+    pages.push({
+      route,
+      fileName,
+      title: await page.title(),
+      consoleErrors,
+      pageErrors,
+      failedRequests,
+      layout,
+    });
+    await page.close();
+  }
+  await context.close();
+  return { theme, viewport: `${viewport.width}x${viewport.height}`, pages };
+}
+
+async function discoverRoutes(page) {
+  return page.evaluate(async () => {
+    async function read(pathname) {
+      const response = await fetch(pathname);
+      if (!response.ok) return [];
+      const envelope = await response.json();
+      return envelope.data ?? [];
+    }
+    const [projects, sessions] = await Promise.all([
+      read('/api/v1/projects'),
+      read('/api/v1/sessions'),
+    ]);
+    const routes = [
+      '/home',
+      '/projects',
+      '/projects/new',
+      '/agents/agents',
+      '/agents/agents/discover',
+      '/agents/runtimes',
+      '/agents/nodes',
+      '/agents/nodes/register',
+      '/agents/diagnostics',
+      '/prompts',
+      '/settings/appearance',
+      '/settings/account',
+      '/settings/security',
+      '/settings/integrations',
+      '/settings/system',
+    ];
+    const project = projects[0];
+    if (project?.id) {
+      routes.push(
+        `/projects/${project.id}/overview`,
+        `/projects/${project.id}/work`,
+        `/projects/${project.id}/work/new`,
+        `/projects/${project.id}/sessions`,
+        `/projects/${project.id}/prompts`,
+        `/projects/${project.id}/settings`,
+      );
+    }
+    if (sessions[0]?.id) routes.push(`/workspace/${sessions[0].id}`);
+    return routes;
   });
 }
 
@@ -86,80 +191,56 @@ async function captureUnauthenticated(browser) {
   );
   await page.goto(`${baseURL}/overview`, { waitUntil: 'domcontentloaded' });
   await waitForStable(page);
-  await page.screenshot({ path: path.join(outputDir, '01-login-1440.png'), fullPage: true });
+  await page.screenshot({ path: path.join(outputDir, 'login-1440x1000.png'), fullPage: true });
+  const title = await page.title();
+  const layout = await auditPage(page);
+  await context.close();
   return {
     route: '/overview',
-    title: await page.title(),
+    title,
     consoleErrors,
     pageErrors,
     failedRequests,
-    layout: await auditPage(page),
+    layout,
   };
-}
-
-async function captureAuthenticated(browser, label, viewport) {
-  const context = await browser.newContext({
-    viewport,
-    extraHTTPHeaders: { authorization: `Bearer ${token}` },
-  });
-  await context.addInitScript((apiToken) => {
-    const NativeWebSocket = window.WebSocket;
-    window.WebSocket = class AgentHubWebSocket extends NativeWebSocket {
-      constructor(url, protocols) {
-        const values = Array.isArray(protocols) ? [...protocols] : protocols ? [protocols] : [];
-        if (!values.some((value) => String(value).startsWith('agenthub-token.'))) {
-          values.push(`agenthub-token.${apiToken}`);
-        }
-        super(url, values);
-      }
-    };
-  }, token);
-
-  const pages = [];
-  for (const [index, route] of routes.entries()) {
-    const page = await context.newPage();
-    const consoleErrors = [];
-    const pageErrors = [];
-    const failedRequests = [];
-    page.on('console', (message) => {
-      if (message.type() === 'error') consoleErrors.push(trimError(message.text()));
-    });
-    page.on('pageerror', (error) => pageErrors.push(trimError(error.message)));
-    page.on('requestfailed', (request) =>
-      failedRequests.push(trimError(`${request.method()} ${request.url()}`)),
-    );
-    await page.goto(`${baseURL}${route}`, { waitUntil: 'domcontentloaded' });
-    await waitForStable(page);
-    const layout = await auditPage(page);
-    const fileName = `${String(index + 2).padStart(2, '0')}-${route.slice(1)}-${label}.png`;
-    await page.screenshot({ path: path.join(outputDir, fileName), fullPage: true });
-    pages.push({
-      route,
-      fileName,
-      title: await page.title(),
-      consoleErrors,
-      pageErrors,
-      failedRequests,
-      layout,
-    });
-    await page.close();
-  }
-  await context.close();
-  return { viewport: label, pages };
 }
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    const routeContext = await browser.newContext({
+      viewport: viewports[0][1],
+      extraHTTPHeaders: { authorization: `Bearer ${token}` },
+    });
+    const routePage = await routeContext.newPage();
+    await routeContext.addInitScript((apiToken) => {
+      const NativeWebSocket = window.WebSocket;
+      window.WebSocket = class AgentHubWebSocket extends NativeWebSocket {
+        constructor(url, protocols) {
+          const values = Array.isArray(protocols) ? [...protocols] : protocols ? [protocols] : [];
+          if (!values.some((value) => String(value).startsWith('agenthub-token.'))) {
+            values.push(`agenthub-token.${apiToken}`);
+          }
+          super(url, values);
+        }
+      };
+    }, token);
+    const routes = await discoverRoutes(routePage);
+    await routeContext.close();
+
     const report = {
       capturedAt: new Date().toISOString(),
       baseURL,
+      routes,
       viewports: viewports.map(([label]) => label),
+      themes,
       unauthenticated: await captureUnauthenticated(browser),
       authenticated: [],
     };
-    for (const [label, viewport] of viewports) {
-      report.authenticated.push(await captureAuthenticated(browser, label, viewport));
+    for (const theme of themes) {
+      for (const [label, viewport] of viewports) {
+        report.authenticated.push(await captureAuthenticated(browser, theme, viewport, routes));
+      }
     }
     fs.writeFileSync(path.join(outputDir, 'audit.json'), `${JSON.stringify(report, null, 2)}\n`);
     const pages = report.authenticated.flatMap((entry) => entry.pages);
@@ -167,17 +248,31 @@ async function captureAuthenticated(browser, label, viewport) {
     const pageErrorCount = pages.reduce((sum, page) => sum + page.pageErrors.length, 0);
     const failedRequestCount = pages.reduce((sum, page) => sum + page.failedRequests.length, 0);
     const overflowCount = pages.filter((page) => page.layout.horizontalOverflow).length;
+    const unnamedButtonCount = pages.reduce((sum, page) => sum + page.layout.unnamedButtons, 0);
+    const hiddenFocusCount = pages.reduce((sum, page) => sum + (page.layout.hiddenFocus ? 1 : 0), 0);
     const summary = {
       outputDir,
+      routes,
+      themes,
       viewports: report.viewports,
       consoleErrorCount,
       pageErrorCount,
       failedRequestCount,
       overflowCount,
+      unnamedButtonCount,
+      hiddenFocusCount,
     };
     console.log(JSON.stringify(summary, null, 2));
-    if (consoleErrorCount || pageErrorCount || failedRequestCount || overflowCount)
+    if (
+      consoleErrorCount ||
+      pageErrorCount ||
+      failedRequestCount ||
+      overflowCount ||
+      unnamedButtonCount ||
+      hiddenFocusCount
+    ) {
       process.exitCode = 1;
+    }
   } finally {
     await browser.close();
   }
