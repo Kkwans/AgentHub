@@ -37,7 +37,7 @@ import {
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 
 import type {
   AgentCandidateRecord,
@@ -54,6 +54,7 @@ import type {
   ProjectRecord,
   RemoteNodeDiagnostics,
   RemoteNodeRecord,
+  RemoteNodeRegistration,
   RuntimeCandidateRecord,
   SessionRecord,
   TaskRecord,
@@ -197,7 +198,7 @@ export function ProjectOverviewPageV07() {
 export function ProjectWorkPageV07() {
   const project = useProjectContext();
   const client = useQueryClient();
-  const { search } = window.location;
+  const { search } = useLocation();
   const selectedFromQuery = new URLSearchParams(search).get('task');
   const tasks = useQuery({ queryKey: ['tasks', project.id], queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${project.id}`) });
   const goals = useQuery({ queryKey: ['goals', project.id], queryFn: () => api.get<GoalRecord[]>(`/goals?projectId=${project.id}`) });
@@ -266,6 +267,42 @@ export function InfrastructurePageV07({ kind }: { kind: 'runtimes' | 'nodes' | '
   return <Screen eyebrow="Agent Infrastructure" title={title} description={description} actions={kind === 'runtimes' ? <AhButton variant="default" onClick={() => rescan.mutate()} loading={rescan.isPending} leftSection={<RefreshCw size={16} />}>重新扫描</AhButton> : kind === 'nodes' ? <Link to="/agents/nodes/register"><AhButton leftSection={<Link2 size={16} />}>授权 Node</AhButton></Link> : undefined}>{kind === 'runtimes' ? <AhSurface><div className={styles.surfaceBody}><QueryMessage loading={runtimes.isLoading} error={runtimes.error} retry={() => void runtimes.refetch()} label="正在扫描运行环境" />{(runtimes.data ?? []).map((runtime) => <div className={styles.row} key={runtime.candidateId}><Server size={19} /><div className={styles.rowMain}><span className={styles.rowTitle}>{runtime.displayName}</span><span className={styles.rowMeta}>{runtime.image ?? 'Local Host'} · {runtime.statusText ?? '状态待确认'}</span></div><AhStatusPill status={runtime.state} />{!runtime.targetId && runtime.adoptable ? <AhButton size="xs" onClick={() => adopt.mutate(runtime.candidateId)} loading={adopt.isPending}>接入</AhButton> : runtime.targetId && runtime.state === 'STOPPED' ? <AhButton size="xs" onClick={() => lifecycle.mutate({ id: runtime.targetId!, action: 'start' })} loading={lifecycle.isPending}><Play size={14} /> 启动</AhButton> : runtime.targetId && runtime.state === 'READY' && runtime.kind === 'DOCKER_CONTAINER' ? <AhButton size="xs" variant="default" onClick={() => lifecycle.mutate({ id: runtime.targetId!, action: 'stop' })} loading={lifecycle.isPending}><CircleStop size={14} /> 停止</AhButton> : null}</div>)}{!runtimes.isLoading && !runtimes.error && !runtimes.data?.length ? <AhEmptyState title="暂时没有可管理的 Runtime" description="重新扫描后会显示本机或支持的 Docker 环境。" /> : null}</div></AhSurface> : kind === 'nodes' ? <AhSurface><div className={styles.surfaceBody}><QueryMessage loading={nodes.isLoading} error={nodes.error} retry={() => void nodes.refetch()} label="正在加载 Remote Nodes" />{(nodes.data ?? []).map((node) => <div className={styles.row} key={node.id}><Network size={19} /><div className={styles.rowMain}><span className={styles.rowTitle}>{node.name}</span><span className={styles.rowMeta}>{node.hostname} · {node.allowedRootsJson.length} 个授权目录 · 最近 {displayDate(node.lastSeenAt)}</span></div><AhStatusPill status={node.status} /><Link className={styles.rowAction} to={`/agents/nodes/${node.id}`}>查看</Link></div>)}{!nodes.isLoading && !nodes.error && !nodes.data?.length ? <AhEmptyState title="还没有 Remote Node" description="生成一次性注册码并在目标设备运行 Node daemon。" action={<Link to="/agents/nodes/register"><AhButton>授权 Node</AhButton></Link>} /> : null}</div></AhSurface> : <AhSurface><div className={styles.surfaceHeader}><div><h3>主机诊断</h3><p>高级供应商细节保持在 progressive disclosure 内。</p></div><AhButton variant="default" size="xs" onClick={() => void host.refetch()} leftSection={<RefreshCw size={14} />}>刷新</AhButton></div><div className={styles.surfaceBody}><QueryMessage loading={host.isLoading} error={host.error} retry={() => void host.refetch()} label="正在读取诊断" />{host.data ? <><div className={styles.mutedBox}><strong>结论</strong><p>{typeof host.data.message === 'string' ? host.data.message : '服务诊断已返回，请展开详细信息。'}</p></div><details><summary>查看详细诊断</summary><pre className={styles.codeBlock}>{JSON.stringify(host.data, null, 2)}</pre></details></> : null}</div></AhSurface>}</Screen>;
 }
 
+export function RemoteNodeRegistrationPageV07() {
+  const navigate = useNavigate();
+  const [name, setName] = useState('');
+  const [expiresInMinutes, setExpiresInMinutes] = useState('15');
+  const [rootDraft, setRootDraft] = useState('');
+  const [roots, setRoots] = useState<string[]>([]);
+  const [registration, setRegistration] = useState<RemoteNodeRegistration>();
+  const create = useMutation({
+    mutationFn: () => api.post<RemoteNodeRegistration>('/remote-nodes/registration-tokens', {
+      name: name.trim(),
+      allowedRoots: roots,
+      expiresInMinutes: Number(expiresInMinutes),
+    }),
+    onSuccess: setRegistration,
+  });
+  const addRoot = () => {
+    const value = rootDraft.trim();
+    if (!value || roots.includes(value)) return;
+    setRoots((current) => [...current, value]);
+    setRootDraft('');
+  };
+  return <Screen eyebrow="Remote Nodes" title="授权 Remote Node" description="只授权 Agent 实际需要访问的目录。注册码为一次性凭据，生成后只展示一次。" actions={<AhButton variant="default" onClick={() => navigate('/agents/nodes')}>返回 Nodes</AhButton>}><AhSurface><div className={styles.surfaceBody}>{registration ? <div className={styles.stack}><div className={styles.mutedBox}><strong>注册码已生成</strong><p>请在目标设备完成 Node daemon 配置。关闭页面后 token 不会再次显示。</p><pre className={styles.codeBlock}>{registration.token}</pre><AhButton size="sm" leftSection={<Copy size={14} />} onClick={() => void navigator.clipboard?.writeText(registration.token)}>复制注册码</AhButton></div><div className={styles.mutedBox}><strong>允许目录</strong>{registration.allowedRoots.map((root) => <div className={styles.mono} key={root}>{root}</div>)}</div><div className={styles.actions}><AhButton onClick={() => navigate('/agents/nodes')}>完成</AhButton></div></div> : <div className={styles.stack}><AhInput label="Node 名称" value={name} onChange={(event) => setName(event.currentTarget.value)} placeholder="例如：开发节点" /><AhSelect label="有效期" value={expiresInMinutes} onChange={(value) => setExpiresInMinutes(value ?? '15')} data={[{ value: '5', label: '5 分钟' }, { value: '15', label: '15 分钟' }, { value: '60', label: '1 小时' }]} /><div><AhInput label="授权目录" value={rootDraft} onChange={(event) => setRootDraft(event.currentTarget.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addRoot(); } }} placeholder="/srv/projects/AgentHub" description="目标设备上的绝对路径。按 Enter 加入授权清单。" /><div className={styles.actions} style={{ marginTop: 8 }}>{roots.map((root) => <AhButton key={root} size="xs" variant="default" onClick={() => setRoots((current) => current.filter((item) => item !== root))}>{root} ×</AhButton>)}</div></div>{create.error ? <AhErrorState description={create.error.message} /> : null}<AhButton onClick={() => create.mutate()} loading={create.isPending} disabled={!name.trim() || roots.length === 0}>生成一次性注册码</AhButton></div>}</div></AhSurface></Screen>;
+}
+
+export function RemoteNodeDetailPageV07() {
+  const { nodeId } = useParams();
+  const navigate = useNavigate();
+  const client = useQueryClient();
+  const node = useQuery({ queryKey: ['remote-node-diagnostics', nodeId], queryFn: () => api.get<RemoteNodeDiagnostics>(`/remote-nodes/${nodeId}/diagnostics`), enabled: Boolean(nodeId) });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const revoke = useMutation({ mutationFn: () => api.post(`/remote-nodes/${nodeId}/revoke`), onSuccess: () => { void client.invalidateQueries({ queryKey: ['remote-nodes'] }); navigate('/agents/nodes'); } });
+  if (node.isLoading) return <AhLoadingState label="正在读取 Node 诊断" />;
+  if (node.error || !node.data) return <AhErrorState description={node.error?.message ?? 'Remote Node 不存在'} retry={() => void node.refetch()} />;
+  return <Screen eyebrow="Remote Node" title={node.data.id ? 'Node 详情' : 'Remote Node'} description="身份、授权 roots、inventory 与连接状态。原始指纹只在诊断上下文内展示。" actions={<AhButton variant="default" onClick={() => setConfirmOpen(true)} loading={revoke.isPending}>撤销授权</AhButton>}><div className={styles.grid + ' ' + styles.grid2}><AhSurface><div className={styles.surfaceHeader}><div><h3>连接状态</h3><p>{node.data.lastSeenAt ? displayDate(node.data.lastSeenAt) : '暂无心跳'}</p></div><AhStatusPill status={node.data.status} /></div><div className={styles.surfaceBody}><div className={styles.row}><Network size={17} /><div className={styles.rowMain}><span className={styles.rowTitle}>协议</span><span className={styles.rowMeta}>{node.data.protocolVersion} · daemon {node.data.daemonVersion}</span></div></div><div className={styles.row}><Server size={17} /><div className={styles.rowMain}><span className={styles.rowTitle}>授权目录</span><span className={styles.rowMeta}>{node.data.allowedRoots.length} 个 root</span></div></div><details><summary>查看设备指纹</summary><pre className={styles.codeBlock}>{node.data.fingerprint}</pre></details></div></AhSurface><AhSurface><div className={styles.surfaceHeader}><div><h3>Agent inventory</h3><p>只有固定 Profile 会进入普通流程。</p></div></div><div className={styles.surfaceBody}>{node.data.inventory.map((agent) => <div className={styles.row} key={agent.key}><Bot size={17} /><div className={styles.rowMain}><span className={styles.rowTitle}>{agent.name}</span><span className={styles.rowMeta}>{agent.detectedVersion ?? '版本待检测'}</span></div><AhStatusPill status={agent.status} /></div>)}</div></AhSurface></div><AhDialog open={confirmOpen} onClose={() => setConfirmOpen(false)} title="撤销 Remote Node？" description="撤销后该设备不能再访问授权目录；历史记录会保留。"><div className={styles.actions}><AhButton variant="default" onClick={() => setConfirmOpen(false)}>取消</AhButton><AhButton color="red" onClick={() => revoke.mutate()} loading={revoke.isPending}>确认撤销</AhButton></div></AhDialog></Screen>;
+}
+
 export function PromptLibraryPageV07() {
   const client = useQueryClient();
   const { projectId, promptId } = useParams();
@@ -273,6 +310,7 @@ export function PromptLibraryPageV07() {
   const [selectedId, setSelectedId] = useState(promptId ?? '');
   const [tab, setTab] = useState<'content' | 'variables' | 'versions' | 'labels' | 'bindings' | 'playground'>('content');
   const selected = prompts.data?.find((prompt) => prompt.id === selectedId) ?? prompts.data?.[0];
+  useEffect(() => { if (promptId) setSelectedId(promptId); }, [promptId]);
   useEffect(() => { if (!selectedId && selected) setSelectedId(selected.id); }, [selected, selectedId]);
   const versions = useQuery({ queryKey: ['prompt-versions', selected?.id], queryFn: () => api.get<PromptVersionRecord[]>(`/prompts/${selected?.id}/versions`), enabled: Boolean(selected) });
   const labels = useQuery({ queryKey: ['prompt-labels', selected?.id], queryFn: () => api.get<PromptLabelRecord[]>(`/prompts/${selected?.id}/labels`), enabled: Boolean(selected) });
@@ -292,7 +330,8 @@ export function SettingsPageV07() {
   const auth = useQuery({ queryKey: ['auth-status'], queryFn: () => api.get<{ localTrusted: boolean; authenticated: boolean; user?: { username: string } }>('/auth/status') });
   const capability = useQuery({ queryKey: ['capabilities'], queryFn: () => api.get<{ terminal: { available: boolean; message: string; platform: string; arch: string }; remoteNode: { available: boolean } }>('/settings/capabilities') });
   const tokens = useQuery({ queryKey: ['api-tokens'], queryFn: () => api.get<ApiTokenRecord[]>('/auth/tokens'), enabled: Boolean(auth.data?.localTrusted || auth.data?.authenticated) });
-  const segment = window.location.pathname.split('/').at(-1) ?? 'appearance';
+  const { pathname } = useLocation();
+  const segment = pathname.split('/').at(-1) ?? 'appearance';
   const nav = [['appearance', 'Appearance'], ['account', 'Account'], ['security', 'Security'], ['integrations', 'Integrations'], ['system', 'System']] as const;
   return <Screen eyebrow="Settings" title="设置" description="外观、账号、安全、Integration 和 System 分区独立呈现，避免把诊断细节混进日常设置。"><div className={styles.settingsLayout}><nav className={styles.settingsNav} aria-label="设置分区">{nav.map(([value, label]) => <NavLink key={value} to={`/settings/${value}`} className={({ isActive }) => isActive || segment === value ? styles.settingsNavActive : undefined}>{label}</NavLink>)}</nav><div className={styles.stack}>{segment === 'appearance' ? <AhSurface><div className={styles.surfaceHeader}><div><h3>Appearance</h3><p>默认浅色；支持深色与跟随系统。</p></div><Wrench size={18} /></div><div className={styles.surfaceBody}><AhThemeSelect /><div className={styles.mutedBox} style={{ marginTop: 16 }}>当前解析主题：{preference === 'system' ? '跟随系统' : preference === 'dark' ? '深色' : '浅色'}。Monaco、Terminal 与 Workspace 会同步。</div></div></AhSurface> : segment === 'account' ? <AhSurface><div className={styles.surfaceHeader}><div><h3>Account</h3><p>当前身份与本地信任模式。</p></div></div><div className={styles.surfaceBody}><div className={styles.statusLine}><AhStatusPill status={auth.data?.authenticated ? 'ONLINE' : 'READY'} /><strong>{auth.data?.user?.username ?? '本机管理员'}</strong></div><p className={styles.subtle}>{auth.data?.localTrusted ? '本机可信模式，不要求账号登录。' : '已启用管理员认证。'}</p></div></AhSurface> : segment === 'security' ? <AhSurface><div className={styles.surfaceHeader}><div><h3>Security</h3><p>API token 只在创建时显示一次。</p></div><ShieldCheck size={18} /></div><div className={styles.surfaceBody}>{tokens.isLoading ? <AhLoadingState label="正在读取 token" /> : (tokens.data ?? []).map((token) => <div className={styles.row} key={token.id}><div className={styles.rowMain}><span className={styles.rowTitle}>{token.name}</span><span className={styles.rowMeta}>创建于 {displayDate(token.createdAt)} · {token.revokedAt ? '已撤销' : '有效'}</span></div><AhStatusPill status={token.revokedAt ? 'REVOKED' : 'READY'} /></div>)}{!tokens.data?.length && !tokens.isLoading ? <AhEmptyState compact title="还没有 API token" description="需要自动化访问时，再创建最小权限 token。" /> : null}</div></AhSurface> : segment === 'integrations' ? <AhSurface><div className={styles.surfaceHeader}><div><h3>Integrations</h3><p>只展示已存在的真实能力，不制造虚假开关。</p></div><Network size={18} /></div><div className={styles.surfaceBody}><div className={styles.row}><div className={styles.rowMain}><span className={styles.rowTitle}>Remote Node</span><span className={styles.rowMeta}>远程设备主动连接 AgentHub</span></div><AhStatusPill status={capability.data?.remoteNode.available ? 'READY' : 'UNAVAILABLE'} /></div><div className={styles.row}><div className={styles.rowMain}><span className={styles.rowTitle}>Agent runtime</span><span className={styles.rowMeta}>Local / Docker discovery 与 lifecycle</span></div><Link className={styles.rowAction} to="/agents/runtimes">管理</Link></div></div></AhSurface> : <AhSurface><div className={styles.surfaceHeader}><div><h3>System</h3><p>服务端能力与运行诊断。</p></div><SquareTerminal size={18} /></div><div className={styles.surfaceBody}>{capability.isLoading ? <AhLoadingState label="正在读取系统能力" /> : capability.error ? <AhErrorState description={capability.error.message} /> : <><div className={styles.row}><div className={styles.rowMain}><span className={styles.rowTitle}>Terminal</span><span className={styles.rowMeta}>{capability.data?.terminal.message} · {capability.data?.terminal.platform}/{capability.data?.terminal.arch}</span></div><AhStatusPill status={capability.data?.terminal.available ? 'READY' : 'UNAVAILABLE'} /></div><Link className={styles.rowAction} to="/agents/diagnostics">查看 Diagnostics <ArrowRight size={14} /></Link></>}</div></AhSurface>}</div></div></Screen>;
 }

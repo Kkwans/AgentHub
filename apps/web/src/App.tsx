@@ -19,6 +19,8 @@ const PromptLibraryPage = lazy(() => import('./features/v07/pages').then((module
 const SettingsPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.SettingsPageV07 })));
 const WorkspacePage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.WorkspacePageV07 })));
 const InfrastructurePage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.InfrastructurePageV07 })));
+const RemoteNodeRegistrationPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.RemoteNodeRegistrationPageV07 })));
+const RemoteNodeDetailPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.RemoteNodeDetailPageV07 })));
 
 function DeferredPage({ children }: { children: ReactNode }) {
   return <Suspense fallback={<AhLoadingState label="正在加载页面" />}>{children}</Suspense>;
@@ -69,6 +71,8 @@ export function App() {
           <Route path="agents/agents/discover" element={<DeferredPage><DiscoverAgentsPage /></DeferredPage>} />
           <Route path="agents/runtimes" element={<DeferredPage><InfrastructurePage kind="runtimes" /></DeferredPage>} />
           <Route path="agents/nodes" element={<DeferredPage><InfrastructurePage kind="nodes" /></DeferredPage>} />
+          <Route path="agents/nodes/register" element={<DeferredPage><RemoteNodeRegistrationPage /></DeferredPage>} />
+          <Route path="agents/nodes/:nodeId" element={<DeferredPage><RemoteNodeDetailPage /></DeferredPage>} />
           <Route path="agents/diagnostics" element={<DeferredPage><InfrastructurePage kind="diagnostics" /></DeferredPage>} />
           <Route path="agents" element={<Navigate replace to="/agents/agents" />} />
           <Route path="sessions" element={<SessionsRedirect />} />
