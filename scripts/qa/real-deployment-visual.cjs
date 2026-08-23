@@ -17,6 +17,7 @@ const outputDir = path.resolve(
 );
 const waitMs = Number(process.env.AGENTHUB_VISUAL_WAIT_MS || 2_500);
 const screenshotTimeoutMs = Number(process.env.AGENTHUB_VISUAL_SCREENSHOT_TIMEOUT_MS || 60_000);
+const navigationTimeoutMs = Number(process.env.AGENTHUB_VISUAL_NAVIGATION_TIMEOUT_MS || 60_000);
 
 if (!tokenFile) {
   throw new Error(
@@ -121,7 +122,10 @@ async function captureAuthenticated(browser, theme, viewport, routes) {
     page.on('requestfailed', (request) =>
       failedRequests.push(trimError(`${request.method()} ${request.url()}`)),
     );
-    await page.goto(`${baseURL}${route}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${baseURL}${route}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: navigationTimeoutMs,
+    });
     await waitForStable(page);
     const layout = await auditPage(page);
     const fileName = `${theme}-${routeFileName(route)}-${viewport.width}x${viewport.height}.png`;
@@ -203,7 +207,10 @@ async function captureUnauthenticated(browser) {
   page.on('requestfailed', (request) =>
     failedRequests.push(trimError(`${request.method()} ${request.url()}`)),
   );
-  await page.goto(`${baseURL}/overview`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseURL}/overview`, {
+    waitUntil: 'domcontentloaded',
+    timeout: navigationTimeoutMs,
+  });
   await waitForStable(page);
   await page.screenshot({ path: path.join(outputDir, 'login-1440x1000.png'), fullPage: true });
   const title = await page.title();
@@ -239,7 +246,10 @@ async function captureUnauthenticated(browser) {
         }
       };
     }, token);
-    await routePage.goto(`${baseURL}/home`, { waitUntil: 'domcontentloaded' });
+    await routePage.goto(`${baseURL}/home`, {
+      waitUntil: 'domcontentloaded',
+      timeout: navigationTimeoutMs,
+    });
     const routes = await discoverRoutes(routePage);
     await routeContext.close();
 

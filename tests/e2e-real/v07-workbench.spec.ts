@@ -1,5 +1,15 @@
-import { initializeGitProject, test, expect, type RealApp } from './fixtures.js';
+import { execFile as execFileCallback } from 'node:child_process';
+import { promisify } from 'node:util';
+
+import { initializeGitProject, test, expect as baseExpect, type RealApp } from './fixtures.js';
 import type { BrowserContext } from '@playwright/test';
+
+// NAS-local PGlite/bootstrap and first browser bundle load can exceed the
+// default 30s Playwright budget; keep this real integration gate bounded while
+// allowing one cold start to finish deterministically.
+test.setTimeout(120_000);
+const expect = baseExpect.configure({ timeout: 30_000 });
+const execFile = promisify(execFileCallback);
 
 type Identified = { id: string };
 
@@ -132,5 +142,53 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     await expect(page.getByTestId('v07-workspace')).toBeVisible();
     await expect(page.getByText('对话与执行')).toBeVisible();
     await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
+  });
+
+  test('Workspace 真实 ACP Approval、Diff 与 Git commit 可完成', async ({
+    page,
+    context,
+    app,
+  }) => {
+    await initializeGitProject(app.projectRoot);
+    const { project, agent } = await seedRealControlPlane(context, app);
+    const session = await apiData<Identified>(context, 'post', '/sessions', {
+      projectId: project.id,
+      agentId: agent.id,
+      title: 'v0.7 Approval Workspace Session',
+      cwd: app.projectRoot,
+      branch: 'main',
+    });
+
+    await page.goto(`/workspace/${session.id}`);
+    await expect(page.getByTestId('v07-workspace')).toBeVisible();
+    const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令' });
+    await expect(composer).toBeVisible();
+    await composer.fill('请执行 Fixture 文件变更并等待 Approval。');
+    await page.getByRole('button', { name: '发送' }).click();
+
+    await expect(page.getByRole('button', { name: '允许一次' })).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: '允许一次' }).click();
+    await expect(page.getByText('Fixture 已完成')).toBeVisible({ timeout: 30_000 });
+
+    // Git treats an untracked file as outside `diff` until intent-to-add; the
+    // isolated E2E repo lets us make that state explicit before checking UI.
+    await execFile('/usr/bin/git', ['-C', app.projectRoot, 'add', '-N', '--', 'fixture-output.md']);
+    const diffResponse = await context.request.get(`/api/v1/projects/${project.id}/git/diff`);
+    expect(diffResponse.ok()).toBe(true);
+    const diffEnvelope = (await diffResponse.json()) as { data: { patch: string } };
+    expect(diffEnvelope.data.patch).toContain('fixture-output.md');
+
+    const visibleTabs = page.locator('[role="tab"]:visible');
+    await visibleTabs.filter({ hasText: 'Diff' }).click();
+    await expect(page.locator('.diff-frame')).toBeVisible();
+    await visibleTabs.filter({ hasText: 'Git' }).click();
+    await expect(page.getByLabel('选择 fixture-output.md')).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel('选择 fixture-output.md').check();
+    const commitForm = page.locator('form.git-commit-form');
+    await commitForm.getByLabel('提交说明').fill('test: v0.7 Workspace ACP 输出');
+    await commitForm.getByRole('button', { name: '提交所选文件 (1)' }).click();
+    await expect(page.locator('.git-commit-receipt')).toContainText('提交完成', {
+      timeout: 30_000,
+    });
   });
 });

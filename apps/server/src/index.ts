@@ -113,6 +113,10 @@ export async function startServer(
   const approvalDeliveryTimeoutMs = resolveApprovalDeliveryTimeout(
     approvalDeliveryTimeoutRaw === undefined ? undefined : Number(approvalDeliveryTimeoutRaw),
   );
+  const acpPromptTimeoutRaw = environment.AGENTHUB_ACP_PROMPT_TIMEOUT_MS;
+  const acpPromptTimeoutMs = resolveAcpPromptTimeout(
+    acpPromptTimeoutRaw === undefined ? undefined : Number(acpPromptTimeoutRaw),
+  );
 
   const authMode = resolveAuthMode(host, environment.AGENTHUB_AUTH_MODE);
   const configuredWebDist = environment.AGENTHUB_WEB_DIST;
@@ -245,6 +249,7 @@ export async function startServer(
     (adapterKind, launcher) => {
       const primary = new AcpAdapter({
         launcher,
+        promptTimeoutMs: acpPromptTimeoutMs,
         // OpenClaw's Gateway-backed ACP can publish an upstream error without
         // resolving session/prompt. Keep that path bounded while retaining a
         // longer window for local coding Agents.
@@ -397,6 +402,18 @@ function parseNonNegativeInteger(value: string | undefined): number | undefined 
   if (!value || !/^\d+$/.test(value)) return undefined;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= 0xffff_ffff ? parsed : undefined;
+}
+
+function resolveAcpPromptTimeout(value: number | undefined): number {
+  const resolved = value ?? 120_000;
+  if (!Number.isInteger(resolved) || resolved < 10_000 || resolved > 600_000) {
+    throw new AppError(
+      500,
+      'INVALID_ACP_PROMPT_TIMEOUT_MS',
+      'ACP prompt timeout 必须是 10000-600000 的整数毫秒',
+    );
+  }
+  return resolved;
 }
 
 function resolveWorkspaceRoots(environment: NodeJS.ProcessEnv): string[] {
