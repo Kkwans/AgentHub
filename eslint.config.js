@@ -42,4 +42,28 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
     },
   },
+  {
+    files: ['docs/AgentHub_v0.7_Design_Handoff_Package/08_prototype/app.js'],
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        getComputedStyle: 'readonly',
+        localStorage: 'readonly',
+        window: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': 'off',
+    },
+  },
+  {
+    files: ['tests/fixtures/acp/fake-agent.mjs'],
+    languageOptions: {
+      globals: {
+        Buffer: 'readonly',
+        ReadableStream: 'readonly',
+        WritableStream: 'readonly',
+      },
+    },
+  },
 );
