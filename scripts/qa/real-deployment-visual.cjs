@@ -225,6 +225,7 @@ async function captureUnauthenticated(browser) {
         }
       };
     }, token);
+    await routePage.goto(`${baseURL}/home`, { waitUntil: 'domcontentloaded' });
     const routes = await discoverRoutes(routePage);
     await routeContext.close();
 
