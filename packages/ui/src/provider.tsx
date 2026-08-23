@@ -3,7 +3,7 @@ import {
   type MantineColorScheme,
   type MantineProviderProps,
 } from '@mantine/core';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
   AGENTHUB_THEME_STORAGE_KEY,
@@ -50,7 +50,8 @@ export function AgentHubProvider({
     return () => media.removeEventListener?.('change', listener);
   }, []);
 
-  useEffect(() => {
+  const useSafeLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+  useSafeLayoutEffect(() => {
     window.localStorage.setItem(AGENTHUB_THEME_STORAGE_KEY, preference);
     document.documentElement.dataset.agenthubTheme = mode;
   }, [mode, preference]);

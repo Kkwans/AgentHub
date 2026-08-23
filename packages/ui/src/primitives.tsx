@@ -9,11 +9,11 @@ import {
   type ButtonProps,
   type SelectProps,
 } from '@mantine/core';
-import type { ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-export interface AhButtonProps extends ButtonProps {
+export type AhButtonProps = ButtonProps & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color' | 'style' | 'size'> & {
   children: ReactNode;
-}
+};
 
 export function AhButton({ children, ...props }: AhButtonProps) {
   return (
@@ -72,7 +72,7 @@ function statusColor(status: string): string {
 export function AhStatusBadge({ status, label }: { status: string; label?: string }) {
   return (
     <Badge color={statusColor(status)} variant="light" radius="sm">
-      {label ?? statusLabels[status] ?? status}
+      {label ?? statusLabels[status] ?? '状态'}
     </Badge>
   );
 }

@@ -1,122 +1,90 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
+import { AgentHubProvider, AhLoadingState } from '@agenthub/ui';
 
 import { AccessGate } from './components/AccessGate';
-import { AppShell } from './components/AppShell';
-import { LoadingState } from './components/Common';
+import { AppShell as V07AppShell } from './app/shell/AppShell';
 
-const OverviewPage = lazy(() =>
-  import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })),
-);
-const ProjectsPage = lazy(() =>
-  import('./features/projects/pages/ProjectsPage').then((module) => ({
-    default: module.ProjectsPage,
-  })),
-);
-const TasksPage = lazy(() =>
-  import('./features/tasks/pages/TasksPage').then((module) => ({ default: module.TasksPage })),
-);
-const AgentsPage = lazy(() =>
-  import('./features/agents/pages/AgentsPage').then((module) => ({ default: module.AgentsPage })),
-);
-const SessionsPage = lazy(() =>
-  import('./features/sessions/pages/SessionsPage').then((module) => ({
-    default: module.SessionsPage,
-  })),
-);
-const SettingsPage = lazy(() =>
-  import('./features/settings/pages/SettingsPage').then((module) => ({
-    default: module.SettingsPage,
-  })),
-);
-const WorkspacePage = lazy(() =>
-  import('./features/workspace/pages/WorkspacePage').then((module) => ({
-    default: module.WorkspacePage,
-  })),
-);
-const PromptOsPage = lazy(() =>
-  import('./features/promptos/pages/PromptOsPage').then((module) => ({
-    default: module.PromptOsPage,
-  })),
-);
+const HomePage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.HomePageV07 })));
+const ProjectsPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.ProjectsPageV07 })));
+const CreateProjectPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.CreateProjectPageV07 })));
+const ProjectContextLayout = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.ProjectContextLayoutV07 })));
+const ProjectOverviewPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.ProjectOverviewPageV07 })));
+const ProjectWorkPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.ProjectWorkPageV07 })));
+const NewWorkPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.NewWorkPageV07 })));
+const ProjectSessionsPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.ProjectSessionsPageV07 })));
+const AgentCenterPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.AgentCenterPageV07 })));
+const DiscoverAgentsPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.DiscoverAgentsPageV07 })));
+const PromptLibraryPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.PromptLibraryPageV07 })));
+const SettingsPage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.SettingsPageV07 })));
+const WorkspacePage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.WorkspacePageV07 })));
+const InfrastructurePage = lazy(() => import('./features/v07/pages').then((module) => ({ default: module.InfrastructurePageV07 })));
 
 function DeferredPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<LoadingState label="正在加载页面" />}>{children}</Suspense>;
+  return <Suspense fallback={<AhLoadingState label="正在加载页面" />}>{children}</Suspense>;
+}
+
+function TasksRedirect() {
+  const [params] = useSearchParams();
+  const projectId = params.get('projectId');
+  return <Navigate replace to={projectId ? `/projects/${projectId}/work` : '/projects'} />;
+}
+
+function SessionsRedirect() {
+  const [params] = useSearchParams();
+  const projectId = params.get('projectId');
+  return <Navigate replace to={projectId ? `/projects/${projectId}/sessions` : '/projects'} />;
+}
+
+function WorkspaceCompatRedirect() {
+  const { id } = useParams();
+  return <Navigate replace to={id ? `/workspace/${id}` : '/home'} />;
 }
 
 export function App() {
   return (
-    <AccessGate>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route index element={<Navigate replace to="/overview" />} />
+    <AgentHubProvider initialPreference="light">
+      <AccessGate>
+        <Routes>
+          <Route element={<V07AppShell />}>
+          <Route index element={<Navigate replace to="/home" />} />
+          <Route path="home" element={<DeferredPage><HomePage /></DeferredPage>} />
           <Route
             path="overview"
-            element={
-              <DeferredPage>
-                <OverviewPage />
-              </DeferredPage>
-            }
+            element={<Navigate replace to="/home" />}
           />
-          <Route
-            path="projects"
-            element={
-              <DeferredPage>
-                <ProjectsPage />
-              </DeferredPage>
-            }
-          />
-          <Route
-            path="tasks"
-            element={
-              <DeferredPage>
-                <TasksPage />
-              </DeferredPage>
-            }
-          />
-          <Route
-            path="agents"
-            element={
-              <DeferredPage>
-                <AgentsPage />
-              </DeferredPage>
-            }
-          />
-          <Route
-            path="sessions"
-            element={
-              <DeferredPage>
-                <SessionsPage />
-              </DeferredPage>
-            }
-          />
-          <Route
-            path="sessions/:id"
-            element={
-              <DeferredPage>
-                <WorkspacePage />
-              </DeferredPage>
-            }
-          />
-          <Route
-            path="promptos"
-            element={
-              <DeferredPage>
-                <PromptOsPage />
-              </DeferredPage>
-            }
-          />
-          <Route
-            path="settings"
-            element={
-              <DeferredPage>
-                <SettingsPage />
-              </DeferredPage>
-            }
-          />
-          <Route path="*" element={<Navigate replace to="/overview" />} />
-        </Route>
-      </Routes>
-    </AccessGate>
+          <Route path="projects" element={<DeferredPage><ProjectsPage /></DeferredPage>} />
+          <Route path="projects/new" element={<DeferredPage><CreateProjectPage /></DeferredPage>} />
+          <Route path="projects/:projectId" element={<DeferredPage><ProjectContextLayout /></DeferredPage>}>
+            <Route index element={<Navigate replace to="overview" />} />
+            <Route path="overview" element={<DeferredPage><ProjectOverviewPage /></DeferredPage>} />
+            <Route path="work" element={<DeferredPage><ProjectWorkPage /></DeferredPage>} />
+            <Route path="work/new" element={<DeferredPage><NewWorkPage /></DeferredPage>} />
+            <Route path="sessions" element={<DeferredPage><ProjectSessionsPage /></DeferredPage>} />
+            <Route path="prompts" element={<DeferredPage><PromptLibraryPage /></DeferredPage>} />
+            <Route path="settings" element={<DeferredPage><SettingsPage /></DeferredPage>} />
+          </Route>
+          <Route path="tasks" element={<TasksRedirect />} />
+          <Route path="agents/agents" element={<DeferredPage><AgentCenterPage /></DeferredPage>} />
+          <Route path="agents/agents/discover" element={<DeferredPage><DiscoverAgentsPage /></DeferredPage>} />
+          <Route path="agents/runtimes" element={<DeferredPage><InfrastructurePage kind="runtimes" /></DeferredPage>} />
+          <Route path="agents/nodes" element={<DeferredPage><InfrastructurePage kind="nodes" /></DeferredPage>} />
+          <Route path="agents/diagnostics" element={<DeferredPage><InfrastructurePage kind="diagnostics" /></DeferredPage>} />
+          <Route path="agents" element={<Navigate replace to="/agents/agents" />} />
+          <Route path="sessions" element={<SessionsRedirect />} />
+          <Route path="sessions/:id" element={<WorkspaceCompatRedirect />} />
+          <Route path="promptos" element={<Navigate replace to="/prompts" />} />
+          <Route path="prompts" element={<DeferredPage><PromptLibraryPage /></DeferredPage>} />
+          <Route path="prompts/:promptId" element={<DeferredPage><PromptLibraryPage /></DeferredPage>} />
+          <Route path="workspace/:sessionId" element={<DeferredPage><WorkspacePage /></DeferredPage>} />
+          <Route path="settings/runtime" element={<Navigate replace to="/agents/runtimes" />} />
+          <Route path="settings" element={<Navigate replace to="/settings/appearance" />} />
+          <Route path="settings/:section" element={<DeferredPage><SettingsPage /></DeferredPage>} />
+          <Route path="remote-nodes" element={<Navigate replace to="/agents/nodes" />} />
+          <Route path="*" element={<Navigate replace to="/home" />} />
+          </Route>
+        </Routes>
+      </AccessGate>
+    </AgentHubProvider>
   );
 }
