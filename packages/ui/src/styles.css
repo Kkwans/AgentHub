@@ -1,4 +1,54 @@
+@import '@mantine/core/styles.css';
 @import '@radix-ui/themes/styles.css';
+
+:root {
+  --ah-canvas: #f7f8fc;
+  --ah-canvas-alt: #f3f5fb;
+  --ah-surface: #ffffff;
+  --ah-surface-subtle: #f6f7fb;
+  --ah-surface-tinted: #f8f6ff;
+  --ah-text-primary: #111626;
+  --ah-text-secondary: #59647a;
+  --ah-text-tertiary: #8992a6;
+  --ah-text-disabled: #aeb5c5;
+  --ah-border-subtle: #eaecf3;
+  --ah-border-default: #dde1ec;
+  --ah-border-strong: #c7cddc;
+  --ah-accent-primary: #6246f5;
+  --ah-accent-hover: #573beb;
+  --ah-accent-pressed: #4c32d8;
+  --ah-accent-soft: #f0edff;
+  --ah-success: #0f9f6e;
+  --ah-warning: #c87911;
+  --ah-danger: #dc4850;
+  --ah-info: #2f74d9;
+  --ah-motion-fast: 120ms;
+  --ah-motion-base: 180ms;
+  --ah-motion-panel: 220ms;
+}
+
+:root[data-agenthub-theme='dark'] {
+  --ah-canvas: #090b14;
+  --ah-canvas-alt: #0d101b;
+  --ah-surface: #121827;
+  --ah-surface-subtle: #0f1421;
+  --ah-surface-tinted: #17172a;
+  --ah-text-primary: #f6f7fb;
+  --ah-text-secondary: #adb7c9;
+  --ah-text-tertiary: #7e899f;
+  --ah-text-disabled: #59647a;
+  --ah-border-subtle: #1e2637;
+  --ah-border-default: #2a3448;
+  --ah-border-strong: #39465e;
+  --ah-accent-primary: #8a7aff;
+  --ah-accent-hover: #9a8dff;
+  --ah-accent-pressed: #7869ed;
+  --ah-accent-soft: #292246;
+  --ah-success: #48d3a0;
+  --ah-warning: #f1ba52;
+  --ah-danger: #ff7379;
+  --ah-info: #6daeff;
+}
 
 .ah-dialog {
   width: min(100% - 32px, 640px);

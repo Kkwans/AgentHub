@@ -5,6 +5,23 @@ if (typeof document !== 'undefined' && typeof document.queryCommandSupported !==
   });
 }
 
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      onchange: null,
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
 if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView !== 'function') {
   Object.defineProperty(Element.prototype, 'scrollIntoView', {
     configurable: true,

@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Theme } from '@agenthub/ui';
+import { AgentHubProvider, Theme } from '@agenthub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -26,19 +26,21 @@ const root = document.getElementById('root');
 if (!root) throw new Error('缺少应用根节点');
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <Theme
-      accentColor="orange"
-      appearance="light"
-      grayColor="slate"
-      panelBackground="solid"
-      radius="large"
-      scaling="95%"
-    >
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </QueryClientProvider>
-    </Theme>
+    <AgentHubProvider initialPreference="light">
+      <Theme
+        accentColor="orange"
+        appearance="light"
+        grayColor="slate"
+        panelBackground="solid"
+        radius="large"
+        scaling="95%"
+      >
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </QueryClientProvider>
+      </Theme>
+    </AgentHubProvider>
   </React.StrictMode>,
 );

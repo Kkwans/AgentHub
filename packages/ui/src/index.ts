@@ -55,5 +55,8 @@ export { WrenchIcon as Wrench } from '@phosphor-icons/react/Wrench';
 export { XIcon as X } from '@phosphor-icons/react/X';
 
 export * from './components/index.js';
+export * from './provider.js';
+export * from './primitives.js';
+export * from './theme.js';
 
 export const uiPackage = '@agenthub/ui';
