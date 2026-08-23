@@ -14,7 +14,7 @@ import {
   ListChecks,
   LoaderCircle,
   RefreshCw,
-  SelectField,
+  AhChoiceSelect,
   Send,
   ShieldCheck,
   Tabs,
@@ -1223,7 +1223,7 @@ export function Composer({
             配置 <strong>正在读取…</strong>
           </span>
         ) : configuration?.supported && modelOptions.length ? (
-          <SelectField
+          <AhChoiceSelect
             label="模型"
             value={modelValue}
             options={modelOptions.map((option) => ({
@@ -1240,7 +1240,7 @@ export function Composer({
           </span>
         )}
         {!configurationLoading && configuration?.supported && modeOptions.length ? (
-          <SelectField
+          <AhChoiceSelect
             label="运行模式"
             description="权限模式控制可执行范围；计划模式控制是否先制定计划。"
             value={modeValue}
@@ -1265,7 +1265,7 @@ export function Composer({
           </span>
         ) : null}
         {!configurationLoading && configuration?.supported && reasoningEffortOptions.length ? (
-          <SelectField
+          <AhChoiceSelect
             label="推理强度"
             value={reasoningEffortValue}
             options={reasoningEffortOptions.map((option) => ({

@@ -36,6 +36,37 @@ export function AhSelect({ label, description, ...props }: SelectProps) {
   );
 }
 
+export interface AhChoiceOption {
+  value: string;
+  label: string;
+  description?: string;
+  disabled?: boolean;
+}
+
+export function AhChoiceSelect({
+  options,
+  onValueChange,
+  ...props
+}: Omit<SelectProps, 'data' | 'onChange'> & {
+  label: string;
+  options: AhChoiceOption[];
+  onValueChange?: (value: string) => void;
+}) {
+  return (
+    <AhSelect
+      {...props}
+      data={options.map((option) => ({
+        value: option.value,
+        label: option.description ? `${option.label} · ${option.description}` : option.label,
+        ...(option.disabled === undefined ? {} : { disabled: option.disabled }),
+      }))}
+      onChange={(value) => {
+        if (value !== null) onValueChange?.(value);
+      }}
+    />
+  );
+}
+
 const statusLabels: Record<string, string> = {
   READY: '就绪',
   RUNNING: '执行中',
