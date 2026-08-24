@@ -181,6 +181,14 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
           }),
         ]),
       );
+      // The Run reaches COMPLETED before the Session event consumer has
+      // necessarily converged RUNNING → READY. Wait for that persisted state
+      // before exercising the close contract, otherwise a valid resume path
+      // can fail only at the final cleanup edge with SESSION_HAS_ACTIVE_RUN.
+      await waitForValue(async () => {
+        const current = await apiRequest<{ status: string }>(apiRoot, `/sessions/${session.id}`);
+        return current.status === 'READY' ? current : undefined;
+      }, 30_000);
       await apiRequest(apiRoot, `/sessions/${session.id}/close`, { method: 'POST' });
       const persisted = await apiRequest<{ status: string }>(apiRoot, `/sessions/${session.id}`);
       expect(persisted.status).toBe('CLOSED');
