@@ -17,53 +17,160 @@
   font: inherit;
   font-size: 13px;
   font-weight: 650;
-  transition: background var(--ah-motion-fast), border-color var(--ah-motion-fast), color var(--ah-motion-fast);
+  transition:
+    background var(--ah-motion-fast),
+    border-color var(--ah-motion-fast),
+    color var(--ah-motion-fast);
 }
 
-.ah-compat-button[data-size='xs'] { min-height: 28px; padding-inline: 9px; font-size: 12px; }
-.ah-compat-button[data-size='lg'] { min-height: 40px; padding-inline: 14px; }
-.ah-compat-button-filled { color: #fff; background: var(--ah-accent-primary); border-color: var(--ah-accent-primary); }
-.ah-compat-button-light { color: var(--ah-accent-primary); background: var(--ah-accent-soft); border-color: transparent; }
-.ah-compat-button-subtle { color: var(--ah-text-secondary); background: transparent; border-color: transparent; }
-.ah-compat-button-outline { color: var(--ah-accent-primary); border-color: var(--ah-accent-primary); }
-.ah-compat-button:hover:not(:disabled) { filter: brightness(.97); }
+.ah-compat-button[data-size='xs'] {
+  min-height: 28px;
+  padding-inline: 9px;
+  font-size: 12px;
+}
+.ah-compat-button[data-size='lg'] {
+  min-height: 40px;
+  padding-inline: 14px;
+}
+.ah-compat-button-filled {
+  color: #fff;
+  background: var(--ah-accent-primary);
+  border-color: var(--ah-accent-primary);
+}
+.ah-compat-button-light {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-color: transparent;
+}
+.ah-compat-button-subtle {
+  color: var(--ah-text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+.ah-compat-button-outline {
+  color: var(--ah-accent-primary);
+  border-color: var(--ah-accent-primary);
+}
+.ah-compat-button:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
 .ah-compat-button:disabled,
-.ah-compat-icon-button:disabled { cursor: not-allowed; opacity: .55; }
-.ah-compat-icon-button { width: 34px; padding: 0; }
-.ah-compat-text-field { position: relative; display: block; width: 100%; }
-.ah-compat-text-field > input { width: 100%; min-height: 38px; padding: 0 11px; color: var(--ah-text-primary); background: var(--ah-surface); border: 1px solid var(--ah-border-default); border-radius: 8px; outline: 0; font: inherit; }
-.ah-compat-text-field > input:focus { border-color: var(--ah-accent-primary); box-shadow: 0 0 0 3px var(--ah-accent-soft); }
-.ah-compat-text-field-slot { position: absolute; top: 50%; right: 5px; display: inline-flex; transform: translateY(-50%); }
-.ah-compat-badge { display: inline-flex; min-height: 24px; align-items: center; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 650; line-height: 1; }
-.ah-compat-badge-green { color: var(--ah-success); background: color-mix(in srgb, var(--ah-success) 12%, transparent); }
-.ah-compat-badge-red { color: var(--ah-danger); background: color-mix(in srgb, var(--ah-danger) 12%, transparent); }
-.ah-compat-badge-gray { color: var(--ah-text-secondary); background: var(--ah-surface-subtle); }
-.ah-compat-badge-orange { color: var(--ah-warning); background: color-mix(in srgb, var(--ah-warning) 12%, transparent); }
-.ah-compat-text-muted { color: var(--ah-text-secondary); }
-.ah-compat-callout { display: flex; gap: 10px; padding: 12px; border: 1px solid var(--ah-border-default); border-radius: 10px; }
-.ah-compat-dialog { position: fixed; z-index: 1000; inset: 50% auto auto 50%; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 20px; background: var(--ah-surface); border: 1px solid var(--ah-border-default); border-radius: 14px; box-shadow: var(--ah-shadow-float, 0 24px 70px rgb(15 23 42 / 18%)); transform: translate(-50%, -50%); }
+.ah-compat-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.ah-compat-icon-button {
+  width: 34px;
+  padding: 0;
+}
+.ah-compat-text-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.ah-compat-text-field > input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 11px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  outline: 0;
+  font: inherit;
+}
+.ah-compat-text-field > input:focus {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+.ah-compat-text-field-slot {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: inline-flex;
+  transform: translateY(-50%);
+}
+.ah-compat-badge {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+}
+.ah-compat-badge-green {
+  color: var(--ah-success);
+  background: color-mix(in srgb, var(--ah-success) 12%, transparent);
+}
+.ah-compat-badge-red {
+  color: var(--ah-danger);
+  background: color-mix(in srgb, var(--ah-danger) 12%, transparent);
+}
+.ah-compat-badge-gray {
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface-subtle);
+}
+.ah-compat-badge-orange {
+  color: var(--ah-warning);
+  background: color-mix(in srgb, var(--ah-warning) 12%, transparent);
+}
+.ah-compat-text-muted {
+  color: var(--ah-text-secondary);
+}
+.ah-compat-callout {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ah-border-default);
+  border-radius: 10px;
+}
+.ah-compat-dialog {
+  position: fixed;
+  z-index: 1000;
+  inset: 50% auto auto 50%;
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 20px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 14px;
+  box-shadow: var(--ah-shadow-float, 0 24px 70px rgb(15 23 42 / 18%));
+  transform: translate(-50%, -50%);
+}
 
 :root {
-  --ah-canvas: #f7f8fc;
-  --ah-canvas-alt: #f3f5fb;
+  /* Prototype bridge: keep the semantic names used by Ah* components, but
+     source the actual values from the supplied Aurora Precision prototype. */
+  --ah-canvas: #f4f6fc;
+  --ah-canvas-alt: #eef2fb;
   --ah-surface: #ffffff;
-  --ah-surface-subtle: #f6f7fb;
+  --ah-surface-subtle: #f7f8fc;
   --ah-surface-tinted: #f8f6ff;
+  --ah-surface-elevated: #ffffff;
   --ah-text-primary: #111626;
-  --ah-text-secondary: #59647a;
-  --ah-text-tertiary: #8992a6;
-  --ah-text-disabled: #aeb5c5;
-  --ah-border-subtle: #eaecf3;
-  --ah-border-default: #dde1ec;
-  --ah-border-strong: #c7cddc;
+  --ah-text-secondary: #5d6780;
+  --ah-text-tertiary: #8d96ab;
+  --ah-text-disabled: #b2b8c7;
+  --ah-border-subtle: #eaedf4;
+  --ah-border-default: #dce1ed;
+  --ah-border-strong: #c7cede;
   --ah-accent-primary: #6246f5;
-  --ah-accent-hover: #573beb;
+  --ah-accent-hover: #5639e5;
   --ah-accent-pressed: #4c32d8;
   --ah-accent-soft: #f0edff;
+  --ah-accent-soft-hover: #e9e4ff;
+  --ah-accent-violet: #8b5cf6;
+  --ah-accent-blue: #4f7cff;
+  --ah-accent-cyan: #33c4dc;
   --ah-success: #0f9f6e;
   --ah-warning: #c87911;
   --ah-danger: #dc4850;
   --ah-info: #2f74d9;
+  --ah-info-soft: #eaf2ff;
+  --ah-overlay: rgb(35 41 64 / 45%);
   --ah-motion-fast: 120ms;
   --ah-motion-base: 180ms;
   --ah-motion-panel: 220ms;
@@ -71,6 +178,11 @@
   --ah-success-soft: #e8f8f1;
   --ah-warning-soft: #fff4dd;
   --ah-danger-soft: #fdecee;
+  --ah-shadow-xs: 0 1px 2px rgb(17 22 38 / 3.5%);
+  --ah-shadow-sm: 0 5px 18px -9px rgb(17 22 38 / 13%);
+  --ah-shadow-md: 0 14px 38px -18px rgb(17 22 38 / 20%);
+  --ah-shadow-lg: 0 28px 76px -28px rgb(17 22 38 / 34%);
+  --ah-shadow-accent: 0 12px 34px -12px rgb(98 70 245 / 42%);
 }
 
 :root[data-agenthub-theme='dark'] {
@@ -79,6 +191,7 @@
   --ah-surface: #121827;
   --ah-surface-subtle: #0f1421;
   --ah-surface-tinted: #17172a;
+  --ah-surface-elevated: #171d2d;
   --ah-text-primary: #f6f7fb;
   --ah-text-secondary: #adb7c9;
   --ah-text-tertiary: #7e899f;
@@ -90,13 +203,24 @@
   --ah-accent-hover: #9a8dff;
   --ah-accent-pressed: #7869ed;
   --ah-accent-soft: #292246;
+  --ah-accent-soft-hover: #332a56;
+  --ah-accent-violet: #a77bff;
+  --ah-accent-blue: #6b95ff;
+  --ah-accent-cyan: #4ed0e3;
   --ah-success: #48d3a0;
   --ah-warning: #f1ba52;
   --ah-danger: #ff7379;
   --ah-info: #6daeff;
-  --ah-success-soft: #143d31;
-  --ah-warning-soft: #4b3513;
-  --ah-danger-soft: #4a1f26;
+  --ah-success-soft: #102d27;
+  --ah-warning-soft: #352913;
+  --ah-danger-soft: #38191f;
+  --ah-info-soft: #152743;
+  --ah-overlay: rgb(2 4 10 / 72%);
+  --ah-shadow-xs: 0 1px 2px rgb(0 0 0 / 18%);
+  --ah-shadow-sm: 0 8px 22px -12px rgb(0 0 0 / 50%);
+  --ah-shadow-md: 0 16px 44px -22px rgb(0 0 0 / 62%);
+  --ah-shadow-lg: 0 28px 80px -26px rgb(0 0 0 / 75%);
+  --ah-shadow-accent: 0 12px 34px -12px rgb(98 70 245 / 30%);
 }
 
 html,
@@ -109,8 +233,14 @@ body,
 
 body {
   color: var(--ah-text-primary);
-  background: var(--ah-canvas);
-  font-family: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  background:
+    radial-gradient(
+      circle at 78% -20%,
+      color-mix(in srgb, var(--ah-accent-primary) 8%, transparent),
+      transparent 34%
+    ),
+    var(--ah-canvas);
+  font-family: Inter, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -144,7 +274,7 @@ a {
 
 code,
 .mono {
-  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
 }
 
 button:focus-visible,
@@ -185,7 +315,9 @@ textarea:focus-visible {
   font: inherit;
   font-size: 14px;
   line-height: 1.55;
-  transition: border-color var(--ah-motion-fast), box-shadow var(--ah-motion-fast);
+  transition:
+    border-color var(--ah-motion-fast),
+    box-shadow var(--ah-motion-fast);
 }
 
 .ah-textarea::placeholder {
@@ -199,7 +331,7 @@ textarea:focus-visible {
 
 .ah-textarea:disabled {
   cursor: not-allowed;
-  opacity: .6;
+  opacity: 0.6;
 }
 
 .ah-textarea-description {
@@ -529,7 +661,12 @@ textarea:focus-visible {
   display: block;
   min-height: 12px;
   overflow: hidden;
-  background: linear-gradient(90deg, var(--ah-border-subtle), var(--ah-border-strong), var(--ah-border-subtle));
+  background: linear-gradient(
+    90deg,
+    var(--ah-border-subtle),
+    var(--ah-border-strong),
+    var(--ah-border-subtle)
+  );
   background-size: 220% 100%;
   border-radius: 5px;
   animation: ah-skeleton 1.5s ease-in-out infinite;
@@ -548,6 +685,18 @@ textarea:focus-visible {
   .ah-skeleton {
     animation: none;
   }
+}
+
+/* The Settings preference can opt into the same reduced-motion contract as
+   prefers-reduced-motion without requiring feature code to know about CSS
+   animation implementation details. */
+:root[data-agenthub-reduced-motion='true'] *,
+:root[data-agenthub-reduced-motion='true'] *::before,
+:root[data-agenthub-reduced-motion='true'] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }
 
 @media (max-width: 640px) {

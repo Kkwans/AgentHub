@@ -1,23 +1,40 @@
 .workspace {
-  --workspace-bg: var(--ah-canvas, #f7f8fc);
+  --workspace-bg: var(--ah-canvas, #f4f6fc);
+  --workspace-panel: var(--ah-surface, #fff);
+  --workspace-panel-subtle: color-mix(
+    in srgb,
+    var(--ah-surface-subtle, #f7f8fc) 88%,
+    var(--ah-surface, #fff)
+  );
+  --workspace-inspector: color-mix(
+    in srgb,
+    var(--ah-surface-subtle, #f7f8fc) 78%,
+    var(--ah-surface, #fff)
+  );
+  --workspace-shadow: 0 10px 30px color-mix(in srgb, var(--ah-text-primary) 7%, transparent);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: 48px minmax(0, 1fr);
   height: calc(100dvh - 68px);
   min-height: calc(100vh - 68px);
+  min-width: 0;
   margin: -32px;
   overflow: hidden;
   color: var(--ah-text-primary);
   background: var(--workspace-bg);
+  isolation: isolate;
 }
 
 .contextbar {
+  position: relative;
+  z-index: 4;
   display: flex;
-  min-height: 62px;
+  min-width: 0;
+  min-height: 48px;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 12px 24px;
-  background: var(--ah-surface);
+  gap: 16px;
+  padding: 0 18px;
+  background: color-mix(in srgb, var(--ah-surface) 94%, var(--ah-canvas));
   border-bottom: 1px solid var(--ah-border-subtle);
 }
 
@@ -26,34 +43,49 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .contextTitle a,
 .contextFacts span {
   color: var(--ah-text-secondary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.contextTitle a:hover {
+  color: var(--ah-text-primary);
+}
+
+.contextTitle > span {
+  color: var(--ah-text-disabled);
+  font-size: 13px;
 }
 
 .contextTitle strong {
+  min-width: 0;
   overflow: hidden;
+  color: var(--ah-text-primary);
   font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .contextFacts {
   justify-content: flex-end;
+  overflow: hidden;
   color: var(--ah-text-tertiary);
 }
 
 .contextFacts code {
-  max-width: 360px;
+  max-width: 340px;
   overflow: hidden;
   color: var(--ah-text-tertiary);
-  font-family: var(--ah-font-mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -63,26 +95,102 @@
 }
 
 .panels {
+  display: flex;
+  min-width: 0;
   min-height: 0;
   height: 100%;
+  background: var(--workspace-panel);
+}
+
+.conversationShell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--workspace-panel);
+}
+
+.conversationShell > :global(.conversation) {
+  height: auto;
+  min-height: 0;
+}
+
+/* react-resizable-panels puts the public class on its inner content node;
+   keep the outer panel constraints in sync so the rail really starts at the
+   prototype's 248px while remaining resizable through its min/max props. */
+.panels > [data-panel][data-testid='sessions'] {
+  min-width: 248px;
+}
+
+.panels > [data-panel][data-testid='conversation'] {
+  min-width: 360px;
+}
+
+.panels > [data-panel][data-testid='inspector'] {
+  min-width: 300px;
 }
 
 .panel {
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
-  background: var(--ah-surface);
+  background: var(--workspace-panel);
+}
+
+.sessionRail {
+  min-width: 248px;
+  background: var(--workspace-panel-subtle);
+}
+
+.conversationPanel {
+  min-width: 360px;
+}
+
+.inspectorPanel {
+  min-width: 300px;
+  background: var(--workspace-inspector);
 }
 
 .separator {
-  width: 1px;
+  position: relative;
+  z-index: 3;
+  width: 4px;
+  min-width: 4px;
+  flex: 0 0 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color var(--ah-motion-fast, 120ms) ease;
+}
+
+.separator::before {
+  position: absolute;
+  inset: 0 1px;
   background: var(--ah-border-subtle);
-  transition: background var(--ah-motion-fast, 140ms) ease;
+  content: '';
+  transition: background-color var(--ah-motion-fast, 120ms) ease;
 }
 
 .separator:hover,
 .separator:focus-visible {
-  background: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
   outline: 0;
+}
+
+.separator:hover::before,
+.separator:focus-visible::before {
+  background: color-mix(in srgb, var(--ah-accent-primary) 65%, var(--ah-border-default));
+}
+
+.workspace :global(a:focus-visible),
+.workspace :global(button:focus-visible),
+.workspace :global(textarea:focus-visible),
+.workspace :global(input:focus-visible),
+.workspace :global([role='tab']:focus-visible) {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
 }
 
 .workspace :global(.session-rail),
@@ -91,73 +199,108 @@
   display: flex;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   flex-direction: column;
   color: var(--ah-text-primary);
-  background: var(--ah-surface);
+  background: var(--workspace-panel);
+}
+
+.workspace :global(.session-rail) {
+  background: var(--workspace-panel-subtle);
 }
 
 .workspace :global(.panel-title) {
-  min-height: 52px;
-  padding: 14px 16px;
-  color: var(--ah-text-secondary);
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  padding: 0 14px;
+  color: var(--ah-text-primary);
   font-size: 12px;
-  background: var(--ah-surface);
+  font-weight: 700;
+  background: transparent;
   border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.panel-title > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
 }
 
 .workspace :global(.panel-title small) {
   color: var(--ah-text-tertiary);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .workspace :global(.session-list) {
+  display: grid;
+  align-content: start;
   flex: 1;
+  min-height: 0;
+  gap: 3px;
   padding: 8px;
   overflow: auto;
+  scrollbar-color: var(--ah-border-strong) transparent;
 }
 
 .workspace :global(.session-list a) {
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 64px;
+  align-items: start;
   gap: 8px;
-  min-height: 68px;
-  padding: 10px;
+  padding: 10px 8px;
+  color: var(--ah-text-secondary);
   border: 1px solid transparent;
   border-radius: 10px;
+  transition:
+    background-color var(--ah-motion-fast, 120ms) ease,
+    border-color var(--ah-motion-fast, 120ms) ease,
+    box-shadow var(--ah-motion-fast, 120ms) ease,
+    color var(--ah-motion-fast, 120ms) ease;
 }
 
 .workspace :global(.session-list a > div) {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: 3px;
 }
 
 .workspace :global(.session-list a:hover) {
-  background: var(--ah-surface-subtle);
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
   border-color: var(--ah-border-subtle);
 }
 
 .workspace :global(.session-list a.current) {
   color: var(--ah-text-primary);
-  background: var(--ah-accent-soft);
-  border-color: color-mix(in srgb, var(--ah-accent-primary) 24%, transparent);
+  background: var(--ah-surface);
+  border-color: var(--ah-border-default);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--ah-text-primary) 6%, transparent);
 }
 
 .workspace :global(.session-list strong) {
   display: block;
+  min-width: 0;
   overflow: hidden;
   color: var(--ah-text-primary);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .workspace :global(.session-list code) {
   display: block;
+  min-width: 0;
   overflow: hidden;
   color: var(--ah-text-tertiary);
-  font-size: 11px;
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -165,16 +308,25 @@
 .workspace :global(.session-state-dot) {
   width: 7px;
   height: 7px;
+  margin-top: 5px;
   border-radius: 999px;
-  background: var(--ah-success);
-  box-shadow: 0 0 0 3px var(--ah-success-soft);
+  background: var(--ah-border-strong);
 }
 
 .workspace :global(.session-state-running),
 .workspace :global(.session-state-starting),
-.workspace :global(.session-state-canceling) {
-  background: var(--ah-info);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ah-info) 16%, transparent);
+.workspace :global(.session-state-canceling),
+.workspace :global(.session-state-in_progress),
+.workspace :global(.session-state-review),
+.workspace :global(.session-state-waiting_review) {
+  background: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+.workspace :global(.session-state-completed),
+.workspace :global(.session-state-done) {
+  background: var(--ah-success);
+  box-shadow: 0 0 0 3px var(--ah-success-soft);
 }
 
 .workspace :global(.session-state-waiting_approval) {
@@ -190,97 +342,149 @@
 
 .workspace :global(.session-state-closed) {
   background: var(--ah-text-tertiary);
-  box-shadow: 0 0 0 3px var(--ah-surface-subtle);
 }
 
 .workspace :global(.conversation-title) {
   justify-content: space-between;
+  min-height: 62px;
+  padding: 11px 18px;
+  background: var(--workspace-panel);
+}
+
+.workspace :global(.conversation-title > div) {
+  min-width: 0;
+}
+
+.workspace :global(.conversation-title > div > span) {
+  display: block;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace :global(.conversation-scroll) {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 16px;
   flex: 1;
   min-height: 0;
-  padding: 22px clamp(18px, 4vw, 52px) 34px;
+  padding: 22px clamp(18px, 3.4vw, 48px) 28px;
   overflow: auto;
-  background: var(--ah-canvas);
-}
-
-.workspace :global(.message-body),
-.workspace :global(.tool-card),
-.workspace :global(.approval-card),
-.workspace :global(.run-state-banner) {
-  color: var(--ah-text-primary);
-  background: var(--ah-surface);
-  border-color: var(--ah-border-subtle);
-}
-
-.workspace :global(.message-body) {
-  padding: 12px 14px;
-  font-size: 14px;
-  line-height: 1.7;
-  border: 1px solid var(--ah-border-subtle);
-  border-radius: 10px;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
+  background: var(--workspace-panel);
+  scrollbar-color: var(--ah-border-strong) transparent;
 }
 
 .workspace :global(.message) {
   display: grid;
+  width: min(860px, 100%);
+  max-width: 860px;
+  min-width: 0;
   gap: 6px;
-  max-width: min(720px, 92%);
+  margin: 0 auto;
 }
 
 .workspace :global(.message.user) {
+  max-width: min(760px, 92%);
   justify-self: end;
-}
-
-.workspace :global(.message.user .message-body) {
-  color: #fff;
-  background: var(--ah-text-primary);
-  border-color: var(--ah-text-primary);
 }
 
 .workspace :global(.message-meta) {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 8px;
-  color: var(--ah-text-tertiary);
+  color: var(--ah-text-primary);
   font-size: 11px;
+  font-weight: 700;
 }
 
 .workspace :global(.message-meta code) {
-  color: var(--ah-text-disabled);
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
   font-size: 10px;
+  font-weight: 500;
+}
+
+.workspace :global(.message-body) {
+  min-width: 0;
+  padding: 0;
+  color: var(--ah-text-primary);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.workspace :global(.message.user .message-body) {
+  padding: 11px 14px;
+  background: var(--ah-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--ah-accent-primary) 12%, var(--ah-border-subtle));
+  border-radius: 16px;
+}
+
+.workspace :global(.message.system .message-body) {
+  padding: 11px 14px;
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 12px;
 }
 
 .workspace :global(.message-body-error) {
+  padding: 12px 14px;
   color: var(--ah-danger);
   background: var(--ah-danger-soft);
-  border-color: color-mix(in srgb, var(--ah-danger) 24%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ah-danger) 24%, transparent);
+  border-radius: 12px;
 }
 
 .workspace :global(.message-body-error p) {
   margin: 6px 0 0;
+  color: var(--ah-text-secondary);
 }
 
-.workspace :global(.message-meta),
-.workspace :global(.tool-card small),
-.workspace :global(.run-state-banner > div > span) {
-  color: var(--ah-text-tertiary);
+.workspace :global(.message-debug) {
+  margin-top: 10px;
+  color: var(--ah-text-secondary);
   font-size: 11px;
+}
+
+.workspace :global(.message-debug pre) {
+  max-height: 180px;
+  margin: 8px 0 0;
+  padding: 9px;
+  overflow: auto;
+  color: var(--ah-text-secondary);
+  background: color-mix(in srgb, var(--ah-danger-soft) 55%, var(--ah-surface));
+  border-radius: 8px;
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+  white-space: pre-wrap;
 }
 
 .workspace :global(.tool-card) {
   display: flex;
+  width: min(860px, 100%);
+  min-height: 40px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 11px 13px;
+  margin: 0 auto;
+  padding: 9px 11px;
+  color: var(--ah-text-secondary);
+  background: var(--workspace-panel-subtle);
   border: 1px solid var(--ah-border-subtle);
   border-radius: 10px;
+  transition:
+    background-color var(--ah-motion-fast, 120ms) ease,
+    border-color var(--ah-motion-fast, 120ms) ease;
+}
+
+.workspace :global(.tool-card:hover) {
+  background: var(--ah-surface);
+  border-color: var(--ah-border-default);
 }
 
 .workspace :global(.tool-card > div) {
@@ -293,11 +497,22 @@
 .workspace :global(.tool-card > div > div) {
   display: grid;
   min-width: 0;
-  gap: 3px;
+  gap: 2px;
 }
 
 .workspace :global(.tool-card strong) {
   overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.tool-card small),
+.workspace :global(.event-label) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -315,14 +530,24 @@
 
 .workspace :global(.approval-card) {
   display: grid;
+  width: min(860px, 100%);
   gap: 12px;
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--ah-warning) 28%, transparent);
-  border-radius: 12px;
+  margin: 0 auto;
+  padding: 15px;
+  color: var(--ah-text-primary);
+  background: color-mix(in srgb, var(--ah-warning-soft) 24%, var(--ah-surface));
+  border: 1px solid color-mix(in srgb, var(--ah-warning) 30%, var(--ah-border-subtle));
+  border-radius: 13px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ah-warning) 8%, transparent);
+}
+
+.workspace :global(.approval-card-attention) {
+  border-color: color-mix(in srgb, var(--ah-danger) 34%, var(--ah-border-subtle));
 }
 
 .workspace :global(.approval-heading) {
   display: flex;
+  min-width: 0;
   align-items: flex-start;
   gap: 10px;
 }
@@ -346,38 +571,244 @@
 
 .workspace :global(.approval-heading-copy strong) {
   overflow-wrap: anywhere;
+  font-size: 13px;
 }
 
 .workspace :global(.approval-kicker),
 .workspace :global(.approval-options-label),
 .workspace :global(.approval-impact > span) {
   color: var(--ah-warning);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.workspace :global(.approval-impact) {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  background: color-mix(in srgb, var(--ah-warning-soft) 48%, transparent);
+  border-radius: 9px;
+}
+
+.workspace :global(.approval-impact p) {
+  margin: 0;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.workspace :global(.approval-actions) {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.workspace :global(.approval-no-options),
+.workspace :global(.approval-delivery-status),
+.workspace :global(.workspace-query-status),
+.workspace :global(.workspace-query-error) {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  color: var(--ah-text-secondary);
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 9px;
   font-size: 11px;
+  line-height: 1.5;
+}
+
+.workspace :global(.approval-delivery-status) {
+  display: grid;
+  gap: 2px;
+}
+
+.workspace :global(.approval-delivery-status strong) {
+  color: var(--ah-text-primary);
+}
+
+.workspace :global(.approval-delivery-status-danger),
+.workspace :global(.workspace-query-error) {
+  color: var(--ah-danger);
+  background: var(--ah-danger-soft);
+  border-color: color-mix(in srgb, var(--ah-danger) 20%, var(--ah-border-subtle));
+}
+
+.workspace :global(.approval-delivery-status a) {
+  width: fit-content;
+  color: var(--ah-accent-primary);
   font-weight: 700;
 }
 
+.workspace :global(.approval-debug) {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--ah-warning) 18%, var(--ah-border-subtle));
+}
+
+.workspace :global(.approval-debug summary) {
+  color: var(--ah-text-tertiary);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.workspace :global(.approval-debug dl) {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+.workspace :global(.approval-debug dl > div) {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 10px;
+}
+
+.workspace :global(.approval-debug dt) {
+  color: var(--ah-text-tertiary);
+}
+
+.workspace :global(.approval-debug dd) {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ah-text-secondary);
+}
+
+.workspace :global(.approval-debug code) {
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+}
+
+.workspace :global(.run-state-banner) {
+  display: flex;
+  width: min(860px, 100%);
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto;
+  padding: 8px 11px;
+  color: var(--ah-text-secondary);
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 10px;
+}
+
+.workspace :global(.run-state-marker) {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--ah-text-tertiary);
+}
+
+.workspace :global(.run-state-banner > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.workspace :global(.run-state-banner > div > strong) {
+  color: var(--ah-text-primary);
+  font-size: 11px;
+}
+
+.workspace :global(.run-state-banner > div > span) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.run-state-link) {
+  margin-left: auto;
+  color: var(--ah-accent-primary);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.workspace :global(.run-state-running) :global(.run-state-marker),
+.workspace :global(.run-state-starting) :global(.run-state-marker) {
+  background: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+.workspace :global(.run-state-completed) :global(.run-state-marker),
+.workspace :global(.run-state-ready) :global(.run-state-marker) {
+  background: var(--ah-success);
+}
+
+.workspace :global(.run-state-waiting_approval) :global(.run-state-marker) {
+  background: var(--ah-warning);
+  box-shadow: 0 0 0 3px var(--ah-warning-soft);
+}
+
+.workspace :global(.run-state-disconnected) :global(.run-state-marker),
+.workspace :global(.run-state-failed) :global(.run-state-marker),
+.workspace :global(.run-state-closed) :global(.run-state-marker) {
+  background: var(--ah-danger);
+  box-shadow: 0 0 0 3px var(--ah-danger-soft);
+}
+
+.workspace :global(.inspector) {
+  background: var(--workspace-inspector);
+}
+
 .workspace :global(.inspector-tabs) {
-  padding: 8px 12px 0;
-  background: var(--ah-surface);
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+  overflow-x: auto;
+  background: var(--workspace-inspector);
   border-bottom: 1px solid var(--ah-border-subtle);
+  scrollbar-width: none;
+}
+
+.workspace :global(.inspector-tabs)::-webkit-scrollbar {
+  display: none;
 }
 
 .workspace :global(.inspector-tabs button) {
-  min-height: 42px;
+  min-height: 34px;
+  flex: 0 0 auto;
+  padding: 0 9px;
   color: var(--ah-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition:
+    color var(--ah-motion-fast, 120ms) ease,
+    background-color var(--ah-motion-fast, 120ms) ease,
+    border-color var(--ah-motion-fast, 120ms) ease;
 }
 
-.workspace :global(.inspector-tabs button.active) {
-  color: var(--ah-accent-primary);
-  border-bottom-color: var(--ah-accent-primary);
+.workspace :global(.inspector-tabs button:hover) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+}
+
+.workspace :global(.inspector-tabs button.active),
+.workspace :global(.inspector-tabs button[aria-selected='true']) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border-color: var(--ah-border-subtle);
+  box-shadow: var(--ah-shadow-xs, 0 1px 2px rgb(17 22 38 / 3.5%));
 }
 
 .workspace :global(.inspector-body) {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  background: var(--ah-surface);
+  background: var(--workspace-inspector);
+  scrollbar-color: var(--ah-border-strong) transparent;
 }
 
 .workspace :global(.file-inspector),
@@ -385,7 +816,12 @@
 .workspace :global(.run-inspector) {
   min-height: 100%;
   color: var(--ah-text-primary);
-  background: var(--ah-surface);
+  background: var(--workspace-inspector);
+}
+
+.workspace :global(.file-inspector) {
+  display: grid;
+  grid-template-rows: minmax(130px, 42%) minmax(240px, 1fr);
 }
 
 .workspace :global(.file-tree),
@@ -394,157 +830,884 @@
   border-color: var(--ah-border-subtle);
 }
 
-.workspace :global(.file-tree button),
-.workspace :global(.git-viewbar button),
-.workspace :global(.git-selection-heading button) {
+.workspace :global(.file-tree) {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.mini-heading) {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 7px;
   color: var(--ah-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspace :global(.file-nodes) {
+  display: grid;
+  gap: 2px;
+  color: var(--ah-text-secondary);
+  font-size: 11px;
+}
+
+.workspace :global(.file-nodes .file-nodes) {
+  padding-left: 13px;
+}
+
+.workspace :global(.file-nodes button) {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 29px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 7px;
+  overflow: hidden;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+.workspace :global(.file-nodes button:hover:not(:disabled)),
+.workspace :global(.file-nodes button.selected) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+}
+
+.workspace :global(.file-nodes button:disabled) {
+  color: var(--ah-text-disabled);
+  cursor: not-allowed;
+}
+
+.workspace :global(.file-nodes button span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.file-nodes button small) {
+  margin-left: auto;
+  color: var(--ah-warning);
+  font-size: 9px;
 }
 
 .workspace :global(.editor-frame),
 .workspace :global(.diff-frame) {
-  background: var(--ah-surface-subtle);
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ah-surface);
+}
+
+.workspace :global(.diff-document) {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--ah-surface);
+}
+
+.workspace :global(.diff-document-header) {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: var(--ah-text-primary);
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.diff-document-header > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.workspace :global(.diff-document-header strong) {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.diff-document-header small),
+.workspace :global(.diff-document-note) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+}
+
+.workspace :global(.diff-document-header > span) {
+  flex: 0 0 auto;
+  color: var(--ah-success);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.workspace :global(.diff-document-header em) {
+  color: var(--ah-danger);
+  font-style: normal;
+}
+
+.workspace :global(.diff-document-code) {
+  min-height: 0;
+  margin: 0;
+  padding: 12px 0 18px;
+  overflow: auto;
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.workspace :global(.diff-document-code > span) {
+  display: block;
+  min-width: max-content;
+  padding: 0 12px;
+}
+
+.workspace :global(.diff-document-code .diff-line-add) {
+  color: var(--ah-success);
+  background: var(--ah-success-soft);
+}
+
+.workspace :global(.diff-document-code .diff-line-remove) {
+  color: var(--ah-danger);
+  background: var(--ah-danger-soft);
+}
+
+.workspace :global(.diff-document-code .diff-line-hunk) {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}
+
+.workspace :global(.diff-document-note) {
+  padding: 7px 12px 10px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.git-summary) {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  gap: 9px;
+  padding: 11px;
+  background: var(--workspace-inspector);
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.git-summary > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.workspace :global(.git-summary strong) {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.git-summary code),
+.workspace :global(.git-summary small) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.git-summary small) {
+  font-family: inherit;
+}
+
+.workspace :global(.git-summary > [role='status']) {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.workspace :global(.git-viewbar) {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.git-viewbar [role='tablist']) {
+  display: flex;
+  min-width: 0;
+  gap: 2px;
+}
+
+.workspace :global(.git-viewbar button),
+.workspace :global(.git-selection-heading button) {
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--ah-text-secondary);
+  font-size: 10px;
+  font-weight: 650;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+.workspace :global(.git-viewbar button:hover),
+.workspace :global(.git-selection-heading button:hover) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+}
+
+.workspace :global(.git-viewbar button[aria-selected='true']) {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}
+
+.workspace :global(.git-selection-heading) {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.change-list) {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+}
+
+.workspace :global(.git-change-list label) {
+  display: grid;
+  grid-template-columns: 16px 22px minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 5px 7px;
+  color: var(--ah-text-secondary);
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.workspace :global(.git-change-list label:hover) {
+  background: var(--ah-surface);
+}
+
+.workspace :global(.git-change-list label input) {
+  accent-color: var(--ah-accent-primary);
+}
+
+.workspace :global(.git-change-list label code) {
+  color: var(--ah-accent-primary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+}
+
+.workspace :global(.git-change-list label span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.git-change-list label small) {
+  color: var(--ah-text-tertiary);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.workspace :global(.git-commit-form) {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.git-commit-form label) {
+  display: grid;
+  gap: 5px;
+  color: var(--ah-text-secondary);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.workspace :global(.git-commit-form textarea),
+.workspace :global(.composer-context-preview textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  outline: 0;
+  font: inherit;
+  font-size: 11px;
+  resize: vertical;
+}
+
+.workspace :global(.git-commit-form textarea:focus),
+.workspace :global(.composer-context-preview textarea:focus) {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+.workspace :global(.git-commit-form > small),
+.workspace :global(.git-view-content > small) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.workspace :global(.git-commit-receipt) {
+  margin: 8px 10px 0;
+  padding: 8px 9px;
+  color: var(--ah-success);
+  background: var(--ah-success-soft);
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.workspace :global(.git-view-content) {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 10px;
+  color: var(--ah-text-secondary);
+  font-size: 11px;
+}
+
+.workspace :global(.git-view-content pre) {
+  max-height: 460px;
+  margin: 0;
+  padding: 9px;
+  overflow: auto;
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.workspace :global(.git-diff-toggle) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+}
+
+.workspace :global(.git-history-list),
+.workspace :global(.git-branch-list) {
+  display: grid;
+  gap: 4px;
+}
+
+.workspace :global(.git-history-list article),
+.workspace :global(.git-branch-list article) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+}
+
+.workspace :global(.git-history-list article strong),
+.workspace :global(.git-branch-list article strong) {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.git-history-list article span),
+.workspace :global(.git-history-list article time),
+.workspace :global(.git-branch-list article span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+}
+
+.workspace :global(.git-branch-list article) {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.workspace :global(.git-branch-list article.current) {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}
+
+.workspace :global(.git-branch-list article code) {
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 9px;
+}
+
+.workspace :global(.run-context) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 11px;
+  padding: 13px 11px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.run-context span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+}
+
+.workspace :global(.run-context strong),
+.workspace :global(.run-context code) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.run-context code) {
+  color: var(--ah-text-secondary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+}
+
+.workspace :global(.run-history) {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 10px;
+}
+
+.workspace :global(.run-history > div) {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+}
+
+.workspace :global(.run-history > div > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.workspace :global(.run-history strong) {
+  font-size: 11px;
+}
+
+.workspace :global(.run-history code) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.run-dot) {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
 }
 
 .workspace :global(.composer) {
+  position: relative;
+  z-index: 5;
   display: grid;
   flex: none;
-  gap: 10px;
-  z-index: 3;
-  padding: 14px 24px 18px;
-  background: var(--ah-surface);
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 18px 12px;
+  background: var(--workspace-panel);
   border-top: 1px solid var(--ah-border-subtle);
-  box-shadow: 0 -14px 36px rgb(29 36 54 / 6%);
+  box-shadow: 0 -12px 28px color-mix(in srgb, var(--ah-text-primary) 5%, transparent);
 }
 
 .workspace :global(.composer-context) {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
+  overflow: hidden;
   color: var(--ah-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
+  flex-wrap: nowrap;
 }
 
 .workspace :global(.composer-context > span),
-.workspace :global(.composer-context > button) {
+.workspace :global(.composer-context > button),
+.workspace :global(.composer-context .mantine-Select-root) {
   display: inline-flex;
   min-height: 26px;
+  min-width: 0;
+  max-width: 210px;
   align-items: center;
   gap: 5px;
-  max-width: 100%;
+  flex: 0 1 auto;
   padding: 4px 8px;
   overflow: hidden;
   color: var(--ah-text-secondary);
-  background: var(--ah-surface-subtle);
+  background: var(--workspace-panel-subtle);
   border: 1px solid var(--ah-border-subtle);
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.workspace :global(.composer-context .mantine-Select-root) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.workspace :global(.composer-context .mantine-Select-wrapper),
+.workspace :global(.composer-context .mantine-Select-input) {
+  min-width: 0;
+}
+
+.workspace :global(.composer-context .mantine-Select-input) {
+  min-height: 26px;
+  padding: 4px 25px 4px 8px;
+  color: var(--ah-text-secondary);
+  background: var(--workspace-panel-subtle);
+  border-color: var(--ah-border-subtle);
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .workspace :global(.composer-context > span strong),
 .workspace :global(.composer-context > button strong) {
+  min-width: 0;
   overflow: hidden;
   color: var(--ah-text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.workspace :global(.composer-context > button:hover),
 .workspace :global(.composer-context > button.active) {
   color: var(--ah-accent-primary);
   background: var(--ah-accent-soft);
-  border-color: color-mix(in srgb, var(--ah-accent-primary) 20%, transparent);
+  border-color: color-mix(in srgb, var(--ah-accent-primary) 20%, var(--ah-border-subtle));
 }
 
-.workspace :global(.composer-context strong) {
-  color: var(--ah-text-primary);
+.workspace :global(.composer-context .cwd-chip) {
+  max-width: min(300px, 28vw);
+}
+
+.workspace :global(.composer-context .cwd-chip code) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace :global(.composer-input) {
+  position: relative;
   display: flex;
+  min-width: 0;
+  min-height: 78px;
   align-items: flex-end;
   gap: 8px;
-  min-width: 0;
   padding: 8px;
-  border-color: var(--ah-border-default);
-  background: var(--ah-surface);
-  border-radius: 12px;
+  background: var(--ah-surface-elevated, var(--ah-surface));
+  border: 1px solid var(--ah-border-default);
+  border-radius: 14px;
+  box-shadow: var(--workspace-shadow);
 }
 
 .workspace :global(.composer-input:focus-within) {
-  border-color: var(--ah-accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ah-accent-primary) 16%, transparent);
+  border-color: color-mix(in srgb, var(--ah-accent-primary) 55%, var(--ah-border-default));
+  box-shadow:
+    0 0 0 3px var(--ah-accent-soft),
+    var(--workspace-shadow);
 }
 
 .workspace :global(.composer-input textarea) {
   flex: 1;
   min-width: 0;
-  min-height: 52px;
-  padding: 8px 10px;
+  min-height: 56px;
+  max-height: 210px;
+  padding: 5px 7px 8px;
   color: var(--ah-text-primary);
   background: transparent;
   border: 0;
   outline: 0;
   resize: vertical;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
+}
+
+.workspace :global(.composer-input textarea::placeholder) {
+  color: var(--ah-text-tertiary);
 }
 
 .workspace :global(.composer-input .send-button) {
   display: inline-flex;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   padding: 0;
-  color: #fff;
-  background: var(--ah-accent-primary);
-  border-radius: 9px;
+  color: var(--ah-surface);
+  background: var(--ah-text-primary);
+  border: 0;
+  border-radius: 10px;
+  transition:
+    background-color var(--ah-motion-fast, 120ms) ease,
+    transform var(--ah-motion-fast, 120ms) ease;
 }
 
-.workspace :global(.composer-input .send-button:hover:not(:disabled)) { background: var(--ah-accent-hover); }
-.workspace :global(.composer-input .send-button:disabled) { color: var(--ah-text-disabled); background: var(--ah-surface-subtle); }
+.workspace :global(.composer-input .send-button:hover:not(:disabled)) {
+  background: var(--ah-accent-primary);
+  transform: translateY(-1px);
+}
 
-.workspace :global(.composer-hint) {
+.workspace :global(.composer-input .send-button.stop) {
+  color: #fff;
+  background: var(--ah-danger);
+}
+
+.workspace :global(.composer-input .send-button:disabled) {
+  color: var(--ah-text-disabled);
+  background: var(--ah-surface-subtle);
+  cursor: not-allowed;
+}
+
+.workspace :global(.composer-hint),
+.workspace :global(.composer-error) {
   display: block;
-  margin: 2px 2px 0;
+  margin: 0 2px;
   color: var(--ah-text-tertiary);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.4;
+}
+
+.workspace :global(.composer-error) {
+  color: var(--ah-danger);
 }
 
 .workspace :global(.composer-context-preview),
 .workspace :global(.composer-command-menu) {
   color: var(--ah-text-primary);
-  background: var(--ah-surface);
-  border-color: var(--ah-border-default);
+  background: var(--ah-surface-elevated, var(--ah-surface));
+  border: 1px solid var(--ah-border-default);
+  border-radius: 11px;
+  box-shadow: var(--ah-shadow-md, 0 14px 38px -18px rgb(17 22 38 / 20%));
+}
+
+.workspace :global(.composer-context-preview) {
+  display: grid;
+  gap: 12px;
+  max-height: min(360px, 42dvh);
+  padding: 12px;
+  overflow: auto;
+}
+
+.workspace :global(.context-preview-heading) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.workspace :global(.context-preview-heading > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.workspace :global(.context-preview-heading strong) {
+  font-size: 12px;
+}
+
+.workspace :global(.context-preview-heading span:not([class])) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.workspace :global(.context-preview-heading > span) {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.workspace :global(.composer-context-grid) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.75fr);
+  gap: 12px;
+}
+
+.workspace :global(.composer-provenance) {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.workspace :global(.composer-provenance > div) {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  background: var(--workspace-panel-subtle);
+  border-radius: 8px;
+}
+
+.workspace :global(.composer-provenance span) {
+  color: var(--ah-accent-primary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspace :global(.composer-provenance code),
+.workspace :global(.composer-provenance small) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.composer-provenance code) {
+  color: var(--ah-text-primary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+}
+
+.workspace :global(.composer-provenance small) {
+  color: var(--ah-text-tertiary);
+  font-size: 9px;
+}
+
+.workspace :global(.composer-context-grid > label) {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  color: var(--ah-text-secondary);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.workspace :global(.context-variable-error) {
+  color: var(--ah-danger);
+  font-size: 10px;
+}
+
+.workspace :global(.composer-command-menu) {
+  position: absolute;
+  right: 52px;
+  bottom: calc(100% + 8px);
+  left: 8px;
+  z-index: 8;
+  display: grid;
+  max-height: 260px;
+  padding: 5px;
+  overflow: auto;
+}
+
+.workspace :global(.composer-command-menu button) {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 2px 8px;
+  padding: 8px 9px;
+  color: var(--ah-text-secondary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+.workspace :global(.composer-command-menu button:hover),
+.workspace :global(.composer-command-menu button.active) {
+  color: var(--ah-text-primary);
+  background: var(--ah-accent-soft);
+}
+
+.workspace :global(.composer-command-menu button strong) {
+  grid-row: span 2;
+  color: var(--ah-accent-primary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+}
+
+.workspace :global(.composer-command-menu button span),
+.workspace :global(.composer-command-menu button small),
+.workspace :global(.composer-command-menu button code) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.composer-command-menu button span) {
+  font-size: 10px;
+}
+
+.workspace :global(.composer-command-menu button small),
+.workspace :global(.composer-command-menu button code) {
+  color: var(--ah-text-tertiary);
+  font-size: 9px;
 }
 
 .workspace :global(.terminal-dock-shell) {
-  z-index: 2;
-  margin: 0;
+  z-index: 4;
+  min-width: 0;
   color: var(--ah-text-primary);
-  background: var(--ah-surface);
+  background: var(--workspace-panel-subtle);
   border-top: 1px solid var(--ah-border-subtle);
 }
 
 .workspace :global(.terminal-dock-toolbar) {
   display: flex;
-  min-height: 44px;
+  min-height: 42px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-inline: 24px;
-  background: var(--ah-surface);
+  padding: 0 18px;
+  background: var(--workspace-panel-subtle);
   border: 0;
-}
-
-.workspace :global(.terminal-dock-heading span),
-.workspace :global(.terminal-dock-message span) {
-  color: var(--ah-text-tertiary);
 }
 
 .workspace :global(.terminal-dock-heading) {
@@ -553,7 +1716,12 @@
   align-items: center;
   gap: 8px;
   color: var(--ah-text-primary);
-  font-size: 12px;
+  font-size: 11px;
+}
+
+.workspace :global(.terminal-dock-heading span),
+.workspace :global(.terminal-dock-message span) {
+  color: var(--ah-text-tertiary);
 }
 
 .workspace :global(.terminal-dock-heading span) {
@@ -564,68 +1732,360 @@
 
 .workspace :global(.terminal-dock-message) {
   display: flex;
-  min-height: 52px;
+  min-height: 46px;
   align-items: center;
   gap: 10px;
-  padding: 8px 24px;
+  padding: 7px 18px;
   color: var(--ah-text-secondary);
-  font-size: 12px;
+  font-size: 10px;
 }
 
-.workspace :global(.terminal-dock-message strong) { flex: 0 0 auto; color: var(--ah-text-primary); }
-.workspace :global(.terminal-dock-message span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace :global(.terminal-dock-message strong) {
+  flex: 0 0 auto;
+  color: var(--ah-text-primary);
+}
+
+.workspace :global(.terminal-dock-message span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .workspace :global(.terminal-dock-body) {
   position: relative;
   min-height: 220px;
-  padding: 10px 24px 12px;
+  padding: 9px 18px 11px;
   background: #171a21;
 }
 
-.workspace :global(.terminal-viewport) { width: 100%; height: 198px; overflow: hidden; border: 1px solid #343941; border-radius: 8px; }
-.workspace :global(.terminal-viewport .xterm) { height: 100%; padding: 8px 10px; }
-.workspace :global(.terminal-dock-status) { position: absolute; right: 30px; bottom: 20px; padding: 4px 8px; color: #a7adb6; font-size: 11px; background: rgb(23 25 29 / 88%); border: 1px solid #3b414a; border-radius: 6px; }
-.workspace :global(.terminal-dock-status.error) { color: #ffb4aa; border-color: #7b403e; }
+.workspace :global(.terminal-viewport) {
+  width: 100%;
+  height: 198px;
+  overflow: hidden;
+  background: #171a21;
+  border: 1px solid #343941;
+  border-radius: 8px;
+}
 
-@media (max-width: 1023px) {
-  .workspace { margin: -24px; }
-  .contextbar { padding-inline: 18px; }
-  .contextFacts code { max-width: 220px; }
-  .sessionRail { flex-basis: 200px !important; }
-  .conversationPanel { min-width: 0; }
+.workspace :global(.terminal-viewport .xterm) {
+  height: 100%;
+  padding: 8px 10px;
+}
+
+.workspace :global(.terminal-dock-status) {
+  position: absolute;
+  right: 24px;
+  bottom: 19px;
+  max-width: calc(100% - 48px);
+  padding: 4px 8px;
+  overflow: hidden;
+  color: #a7adb6;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgb(23 25 29 / 88%);
+  border: 1px solid #3b414a;
+  border-radius: 6px;
+}
+
+.workspace :global(.terminal-dock-status.error) {
+  color: #ffb4aa;
+  border-color: #7b403e;
+}
+
+.workspace :global(.spin) {
+  animation: workspace-spin 900ms linear infinite;
+}
+
+@keyframes workspace-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1180px) {
+  .workspace {
+    margin-inline: -26px;
+  }
+
+  .contextbar {
+    padding-inline: 14px;
+  }
+
+  .sessionRail {
+    min-width: 216px;
+  }
+
+  .panels > [data-panel][data-testid='sessions'] {
+    min-width: 216px;
+  }
+
+  .contextFacts code {
+    max-width: 220px;
+  }
 }
 
 @media (max-width: 899px) {
-  .workspace { grid-template-rows: auto auto minmax(0, 1fr) auto auto; margin: -24px; }
-  .contextbar { align-items: flex-start; flex-direction: column; gap: 8px; }
-  .contextFacts { justify-content: flex-start; }
-  .mobileTabs { display: flex; gap: 4px; padding: 8px 12px 0; background: var(--ah-surface); border-bottom: 1px solid var(--ah-border-subtle); }
-  .mobileTabs button { min-height: 38px; padding: 0 12px; color: var(--ah-text-secondary); background: transparent; border: 0; border-bottom: 2px solid transparent; font-size: 12px; font-weight: 650; }
-  .mobileTabs button[aria-selected='true'] { color: var(--ah-accent-primary); border-bottom-color: var(--ah-accent-primary); }
-  .sessionRail { display: none; }
-  .inspectorPanel { display: none; }
-  /* react-resizable-panels keeps sizing the outer data-panel wrapper even
-     when its inner panel is hidden; collapse those wrappers as well so the
-     conversation remains a true single-column mobile surface. */
+  .workspace {
+    grid-template-rows: 48px 45px minmax(0, 1fr);
+  }
+
+  .contextbar {
+    gap: 10px;
+  }
+
+  .contextFacts {
+    flex: 0 1 auto;
+  }
+
+  .contextFacts span:first-child {
+    display: none;
+  }
+
+  .mobileTabs {
+    display: flex;
+    min-width: 0;
+    gap: 3px;
+    padding: 6px 10px 0;
+    overflow-x: auto;
+    background: var(--workspace-panel);
+    border-bottom: 1px solid var(--ah-border-subtle);
+    scrollbar-width: none;
+  }
+
+  .mobileTabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobileTabs button {
+    min-height: 38px;
+    flex: 0 0 auto;
+    padding: 0 11px;
+    color: var(--ah-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+  }
+
+  .mobileTabs button[aria-selected='true'] {
+    color: var(--ah-accent-primary);
+    border-bottom-color: var(--ah-accent-primary);
+  }
+
+  .sessionRail,
+  .inspectorPanel {
+    display: none;
+  }
+
+  /* Panel wrappers keep their flex basis when their contents are hidden. */
   .panels > [data-panel][data-testid='sessions'],
-  .panels > [data-panel][data-testid='inspector'] { display: none !important; }
-  .panels > [data-panel][data-testid='conversation'] { flex: 1 1 100% !important; width: 100% !important; }
-  .inspectorOpen { position: fixed; z-index: 25; inset: 0; display: block; width: 100% !important; height: 100%; }
-  .inspectorOpen :global(.inspector) { height: 100%; }
-  .panels > [class*='separator'] { display: none; }
-  .workspace :global(.conversation-scroll) { padding-inline: 16px; }
-  .workspace :global(.composer) { padding-inline: 14px; }
+  .panels > [data-panel][data-testid='inspector'] {
+    display: none !important;
+  }
+
+  /* The open state lives on Panel's inner content node. Re-open its wrapper
+     for the mobile inspector drawer without changing the JSX contract. */
+  .panels > [data-panel][data-testid='inspector']:has(.inspectorOpen) {
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    display: block !important;
+    width: 100% !important;
+    height: 100%;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--workspace-inspector);
+  }
+
+  .panels > [data-panel][data-testid='inspector']:has(.inspectorOpen) .inspectorOpen {
+    position: static;
+    width: 100% !important;
+    height: 100%;
+  }
+
+  .panels > [data-panel][data-testid='conversation'] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .panels > [class*='separator'] {
+    display: none;
+  }
+
+  .inspectorOpen {
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    display: block;
+    width: 100% !important;
+    height: 100%;
+    min-width: 0;
+    background: var(--workspace-inspector);
+    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%));
+  }
+
+  .inspectorOpen :global(.inspector) {
+    height: 100%;
+  }
+
+  .workspace :global(.conversation-scroll) {
+    padding-inline: 16px;
+  }
+
+  .workspace :global(.composer) {
+    padding-inline: 14px;
+  }
+}
+
+@media (max-width: 860px) {
+  .workspace {
+    margin-inline: -20px;
+  }
 }
 
 @media (max-width: 767px) {
-  .workspace { height: calc(100dvh - 56px); min-height: calc(100vh - 56px); margin: -20px -16px -32px; }
-  .contextbar { padding: 12px 16px; }
-  .contextFacts { flex-wrap: wrap; }
-  .contextFacts code { max-width: 100%; }
-  .workspace :global(.composer-context > span:nth-of-type(n + 4)) { display: none; }
-  .workspace :global(.composer-input textarea) { min-height: 48px; }
+  .workspace {
+    height: calc(100dvh - 56px);
+    min-height: calc(100vh - 56px);
+    margin: -20px -16px -32px;
+  }
+
+  .contextbar {
+    padding-inline: 12px;
+  }
+
+  .contextFacts {
+    max-width: 45%;
+  }
+
+  .contextFacts code {
+    max-width: 100%;
+  }
+
+  .workspace :global(.conversation-title) {
+    min-height: 56px;
+    padding-inline: 14px;
+  }
+
+  .workspace :global(.conversation-scroll) {
+    padding: 16px 12px 20px;
+  }
+
+  .workspace :global(.composer) {
+    padding: 8px 10px 10px;
+  }
+
+  .workspace :global(.composer-context) {
+    gap: 4px;
+  }
+
+  .workspace :global(.composer-context > span:nth-of-type(n + 4)),
+  .workspace :global(.composer-context > button:nth-of-type(n + 2)) {
+    display: none;
+  }
+
+  .workspace :global(.composer-input) {
+    min-height: 70px;
+    border-radius: 12px;
+  }
+
+  .workspace :global(.composer-input textarea) {
+    min-height: 48px;
+    font-size: 13px;
+  }
+
+  .workspace :global(.composer-context-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace :global(.terminal-dock-toolbar),
+  .workspace :global(.terminal-dock-message) {
+    padding-inline: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .contextTitle {
+    flex: 1 1 auto;
+  }
+
+  .contextTitle a,
+  .contextTitle > span,
+  .contextFacts span,
+  .contextFacts code {
+    display: none;
+  }
+
+  .contextTitle strong {
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  .contextFacts {
+    display: none;
+  }
+
+  .mobileTabs {
+    padding-inline: 7px;
+  }
+
+  .mobileTabs button {
+    padding-inline: 9px;
+  }
+
+  .workspace :global(.message),
+  .workspace :global(.message.user),
+  .workspace :global(.tool-card),
+  .workspace :global(.approval-card),
+  .workspace :global(.run-state-banner) {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .workspace :global(.message-body),
+  .workspace :global(.message.user .message-body) {
+    font-size: 13px;
+  }
+
+  .workspace :global(.composer-input) {
+    gap: 5px;
+  }
+
+  .workspace :global(.composer-input textarea) {
+    min-width: 0;
+    padding-inline: 4px;
+  }
+
+  .workspace :global(.composer-input .send-button) {
+    width: 34px;
+    height: 34px;
+  }
+
+  .workspace :global(.terminal-dock-message span) {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .separator { transition: none; }
+  .separator,
+  .separator::before,
+  .workspace :global(.session-list a),
+  .workspace :global(.tool-card),
+  .workspace :global(.inspector-tabs button),
+  .workspace :global(.composer-input .send-button) {
+    transition: none;
+  }
+
+  .workspace :global(.spin) {
+    animation: none;
+  }
 }

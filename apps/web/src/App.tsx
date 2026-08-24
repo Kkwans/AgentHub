@@ -1,9 +1,12 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { AhLoadingState } from '@agenthub/ui';
+import { useQuery } from '@tanstack/react-query';
 
 import { AccessGate } from './components/AccessGate';
 import { AppShell as V07AppShell } from './app/shell/AppShell';
+import type { SessionRecord } from './lib/api';
+import { api } from './lib/api';
 
 const HomePage = lazy(() =>
   import('./features/v07/pages').then((module) => ({ default: module.HomePageV07 })),
@@ -75,6 +78,21 @@ function SessionsRedirect() {
 function WorkspaceCompatRedirect() {
   const { id } = useParams();
   return <Navigate replace to={id ? `/workspace/${id}` : '/home'} />;
+}
+
+function WorkspaceLandingRoute() {
+  const sessions = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+  });
+  if (sessions.isLoading) return <AhLoadingState label="正在打开最近工作区" />;
+  if (sessions.error) return <Navigate replace to="/projects" />;
+  const latest = [...(sessions.data ?? [])].sort((left, right) => {
+    const rightTime = Date.parse(right.lastActiveAt);
+    const leftTime = Date.parse(left.lastActiveAt);
+    return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
+  })[0];
+  return <Navigate replace to={latest ? `/workspace/${latest.id}` : '/projects'} />;
 }
 
 export function App() {
@@ -243,6 +261,7 @@ export function App() {
               </DeferredPage>
             }
           />
+          <Route path="workspace" element={<WorkspaceLandingRoute />} />
           <Route
             path="workspace/:sessionId"
             element={

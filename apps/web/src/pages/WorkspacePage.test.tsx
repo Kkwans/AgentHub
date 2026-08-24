@@ -554,7 +554,12 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(screen.queryByText('未跟踪远端分支')).not.toBeInTheDocument();
     expect(screen.getAllByText(/origin\/main/).length).toBeGreaterThan(0);
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '变更' }), { button: 0 });
+    fireEvent.mouseDown(
+      within(screen.getByRole('tablist', { name: 'Git 工作区视图' })).getByRole('tab', {
+        name: '变更',
+      }),
+      { button: 0 },
+    );
     fireEvent.click(await screen.findByRole('checkbox', { name: '选择 apps/web/src/App.tsx' }));
     fireEvent.change(screen.getByPlaceholderText('说明这次变更解决了什么'), {
       target: { value: 'feat(workspace): 提交选择的文件' },

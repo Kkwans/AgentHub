@@ -147,14 +147,11 @@ describe('v0.7 App', () => {
   it('renders Home as the new default and exposes the product IA', async () => {
     stubApi();
     renderApp(['/']);
-    expect(await screen.findByRole('heading', { name: '今天需要处理什么' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /你好，Kwan/ })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '首页' })).toHaveAttribute('href', '/home');
     expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute('href', '/projects');
-    expect(screen.getByRole('link', { name: 'Prompt Library' })).toHaveAttribute(
-      'href',
-      '/prompts',
-    );
+    expect(screen.getByRole('link', { name: 'Prompt 库' })).toHaveAttribute('href', '/prompts');
     expect(screen.queryByRole('link', { name: '任务' })).not.toBeInTheDocument();
   });
 
@@ -167,10 +164,10 @@ describe('v0.7 App', () => {
     expect(dialog).toBeInTheDocument();
     const input = screen.getByRole('combobox', { name: '搜索' });
     fireEvent.change(input, { target: { value: 'Prompt' } });
-    expect(screen.getByRole('option', { name: /Prompt Library/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('option', { name: /Prompt Library/ }));
+    expect(screen.getByRole('option', { name: /Prompt 库/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('option', { name: /Prompt 库/ }));
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Prompt 资产' })).toBeInTheDocument(),
+      expect(screen.getByRole('heading', { name: 'Prompt 库' })).toBeInTheDocument(),
     );
   });
 
@@ -186,7 +183,7 @@ describe('v0.7 App', () => {
   it('renders the Prompt Library states from the real API envelope', async () => {
     stubApi();
     renderApp(['/promptos']);
-    expect(await screen.findByRole('heading', { name: 'Prompt 资产' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Prompt 库' })).toBeInTheDocument();
     expect(await screen.findByText('还没有 Prompt')).toBeInTheDocument();
   });
 

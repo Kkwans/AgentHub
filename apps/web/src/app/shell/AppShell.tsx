@@ -1,18 +1,25 @@
 import {
+  Activity,
   AhButton,
   AhDialog,
   AhDrawer,
   AhInput,
   AhStatusPill,
   ArrowRight,
+  Bell,
   Bot,
   Braces,
+  ChevronRight,
+  CubeIcon,
   FolderKanban,
   LayoutDashboard,
   Menu,
+  Network,
   Search,
   Settings,
-  Wrench,
+  SquareTerminal,
+  Sun,
+  useAgentHubTheme,
   type IconProps,
 } from '@agenthub/ui';
 import { useEffect, useMemo, useRef, useState, type ComponentType, type FormEvent } from 'react';
@@ -27,30 +34,64 @@ type NavigationItem = {
   label: string;
   description: string;
   icon: ComponentType<IconProps>;
+  shortcut?: string;
 };
 
-const navigation: NavigationItem[] = [
+const primaryNavigation: NavigationItem[] = [
   { to: '/home', label: '首页', description: '关注事项与最近工作', icon: LayoutDashboard },
   { to: '/projects', label: '项目', description: '工程上下文与工作入口', icon: FolderKanban },
-  { to: '/agents/agents', label: 'Agent', description: 'Agent 身份与可用性', icon: Bot },
-  { to: '/prompts', label: 'Prompt Library', description: '可复用的 Prompt 资产', icon: Braces },
-  { to: '/settings/appearance', label: '设置', description: '外观、账号与系统设置', icon: Settings },
+  { to: '/agents/agents', label: 'Agent 中心', description: 'Agent 身份与可用性', icon: Bot },
+  { to: '/prompts', label: 'Prompt 库', description: '可复用的 Prompt 资产', icon: Braces },
+  {
+    to: '/workspace',
+    label: '工作区',
+    description: '进入最近的 Coding Workspace',
+    icon: SquareTerminal,
+    shortcut: '⌘K',
+  },
+];
+
+const secondaryNavigation: NavigationItem[] = [
+  {
+    to: '/agents/runtimes',
+    label: '运行环境',
+    description: 'Local、Docker 与远程执行环境',
+    icon: CubeIcon,
+  },
+  {
+    to: '/agents/nodes',
+    label: '远程节点',
+    description: '连接和管理远程 Agent 节点',
+    icon: Network,
+  },
+  {
+    to: '/agents/diagnostics',
+    label: '监控中心',
+    description: '查看服务能力与运行诊断',
+    icon: Activity,
+  },
+  {
+    to: '/settings/appearance',
+    label: '设置',
+    description: '外观、账号与系统设置',
+    icon: Settings,
+  },
 ];
 
 const commandItems: NavigationItem[] = [
-  ...navigation,
+  ...primaryNavigation,
+  ...secondaryNavigation,
   { to: '/projects', label: '新建项目', description: '从允许目录创建 Project', icon: FolderKanban },
   { to: '/agents/agents', label: '发现 Agent', description: '扫描并接入可用 Agent', icon: Bot },
-  { to: '/settings/appearance', label: '切换主题', description: '浅色、深色或跟随系统', icon: Wrench },
 ];
 
 function Brand() {
   return (
-    <div className={styles.brand}>
-      <AgentHubLogo className={styles.brandMark} />
-      <div>
-        <strong>AgentHub</strong>
-        <span>AI Engineering Workbench</span>
+    <div className={styles.brandRow}>
+      <div className={styles.brand}>
+        <AgentHubLogo className={styles.brandMark} />
+        <span className={styles.brandName}>AgentHub</span>
+        <span className={styles.version}>v0.7</span>
       </div>
     </div>
   );
@@ -58,31 +99,60 @@ function Brand() {
 
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className={styles.navigation} aria-label="主导航">
-      <span className={styles.navLabel}>工作台</span>
-      {navigation.map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/home' || to === '/projects'}
-          className={({ isActive }) => `${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`}
-          onClick={onNavigate}
-        >
-          <span className={styles.navIcon}><Icon aria-hidden size={18} weight="regular" /></span>
-          <span>{label}</span>
-        </NavLink>
-      ))}
-    </nav>
+    <div className={styles.navigationStack}>
+      <nav className={`${styles.navigation} ${styles.primaryNavigation}`} aria-label="主导航">
+        {primaryNavigation.map(({ to, label, icon: Icon, shortcut }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/home' || to === '/projects' || to === '/workspace'}
+            className={({ isActive }) =>
+              `${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`
+            }
+            onClick={onNavigate}
+          >
+            <span className={styles.navIcon}>
+              <Icon aria-hidden size={18} weight="regular" />
+            </span>
+            <span className={styles.navText}>{label}</span>
+            {shortcut ? <span className={styles.navKey}>{shortcut}</span> : null}
+          </NavLink>
+        ))}
+      </nav>
+      <div className={styles.navDivider} aria-hidden="true" />
+      <nav className={`${styles.navigation} ${styles.secondaryNavigation}`} aria-label="辅助导航">
+        {secondaryNavigation.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end
+            className={({ isActive }) =>
+              `${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`
+            }
+            onClick={onNavigate}
+          >
+            <span className={styles.navIcon}>
+              <Icon aria-hidden size={18} weight="regular" />
+            </span>
+            <span className={styles.navText}>{label}</span>
+          </NavLink>
+        ))}
+      </nav>
+    </div>
   );
 }
 
-function titleForPath(pathname: string): string {
-  if (pathname.startsWith('/projects/')) return '项目工作台';
-  if (pathname.startsWith('/agents/')) return 'Agent 基础设施';
-  if (pathname.startsWith('/workspace/')) return 'Coding Workspace';
-  if (pathname.startsWith('/settings/')) return '设置';
-  if (pathname.startsWith('/prompts')) return 'Prompt Library';
-  return navigation.find((item) => pathname === item.to || pathname.startsWith(`${item.to}/`))?.label ?? '首页';
+function ProfileSurface() {
+  return (
+    <button type="button" className={styles.profileCard} aria-label="Kwan，管理员账户">
+      <span className={styles.profileAvatar}>K</span>
+      <span className={styles.profileCopy}>
+        <strong>Kwan</strong>
+        <small>Admin</small>
+      </span>
+      <ChevronRight className={styles.profileChevron} aria-hidden size={15} />
+    </button>
+  );
 }
 
 export function AppShell() {
@@ -94,9 +164,15 @@ export function AppShell() {
   const searchRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { preference, setPreference, sidebarCollapsed, sidebarPreference, setSidebarCollapsed } =
+    useAgentHubTheme();
 
   useEffect(() => realtime.onState(setConnection), []);
   useEffect(() => setDrawerOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (sidebarPreference === 'expanded') setSidebarCollapsed(false);
+    if (sidebarPreference === 'collapsed') setSidebarCollapsed(true);
+  }, [setSidebarCollapsed, sidebarPreference]);
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -111,7 +187,9 @@ export function AppShell() {
   const results = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return normalized
-      ? commandItems.filter((item) => `${item.label} ${item.description}`.toLocaleLowerCase().includes(normalized))
+      ? commandItems.filter((item) =>
+          `${item.label} ${item.description}`.toLocaleLowerCase().includes(normalized),
+        )
       : commandItems;
   }, [query]);
 
@@ -134,32 +212,87 @@ export function AppShell() {
   }
 
   return (
-    <div className={styles.frame}>
-      <a className={styles.skipLink} href="#main-content">跳到主要内容</a>
+    <div className={`${styles.frame}${sidebarCollapsed ? ` ${styles.sidebarCollapsed}` : ''}`}>
+      <a className={styles.skipLink} href="#main-content">
+        跳到主要内容
+      </a>
       <aside className={styles.sidebar}>
         <Brand />
         <Navigation />
         <div className={styles.sidebarFoot}>
-          <AhStatusPill status={connection === '已连接' ? 'ONLINE' : connection === '连接中' ? 'PENDING' : 'OFFLINE'} label={connection} />
-          <span>本地工作台</span>
+          <AhStatusPill
+            status={
+              connection === '已连接' ? 'ONLINE' : connection === '连接中' ? 'PENDING' : 'OFFLINE'
+            }
+            label={connection}
+          />
+          <span>实时连接</span>
         </div>
+        <ProfileSurface />
       </aside>
       <div className={styles.column}>
         <header className={styles.topbar}>
-          <div className={styles.titleBlock}>
-            <AhButton className={styles.mobileMenu} variant="subtle" color="gray" onClick={() => setDrawerOpen(true)} aria-label="打开导航">
-              <Menu size={20} />
+          <div className={styles.menuControls}>
+            <AhButton
+              className={styles.desktopMenu}
+              variant="default"
+              color="gray"
+              onClick={() => {
+                if (sidebarPreference !== 'remember') return;
+                setSidebarCollapsed(!sidebarCollapsed);
+              }}
+              disabled={sidebarPreference !== 'remember'}
+              aria-label={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
+              title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
+              type="button"
+            >
+              <Menu size={18} />
             </AhButton>
-            <div>
-              <span className={styles.eyebrow}>AGENTHUB / WORKBENCH</span>
-              <h1>{titleForPath(location.pathname)}</h1>
-            </div>
+            <AhButton
+              className={styles.mobileMenu}
+              variant="default"
+              color="gray"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="打开导航"
+              type="button"
+            >
+              <Menu size={19} />
+            </AhButton>
           </div>
+          <button
+            type="button"
+            className={styles.globalSearch}
+            onClick={openCommand}
+            aria-label="搜索与跳转"
+          >
+            <Search aria-hidden size={16} />
+            <span>搜索项目 / Agent / Prompt...</span>
+            <kbd>⌘ K</kbd>
+          </button>
           <div className={styles.topbarActions}>
-            <AhButton variant="default" color="gray" className={styles.commandTrigger} onClick={openCommand} leftSection={<Search size={16} />}>
-              搜索与跳转 <kbd>⌘ K</kbd>
-            </AhButton>
-            <AhStatusPill status={connection === '已连接' ? 'ONLINE' : connection === '连接中' ? 'PENDING' : 'OFFLINE'} label={connection} />
+            <button
+              type="button"
+              className={`${styles.iconButton}${preference === 'light' ? ` ${styles.iconButtonActive}` : ''}`}
+              onClick={() => setPreference('light')}
+              aria-label="浅色主题"
+              title="浅色主题"
+            >
+              <Sun aria-hidden size={18} weight="regular" />
+            </button>
+            <button
+              type="button"
+              className={`${styles.iconButton}${preference === 'dark' ? ` ${styles.iconButtonActive}` : ''}`}
+              onClick={() => setPreference('dark')}
+              aria-label="深色主题"
+              title="深色主题"
+            >
+              <span className={styles.themeGlyph} aria-hidden="true">
+                ◐
+              </span>
+            </button>
+            <button type="button" className={styles.iconButton} aria-label="通知" title="通知">
+              <Bell aria-hidden size={18} />
+            </button>
           </div>
         </header>
         <main id="main-content" className={styles.main} tabIndex={-1}>
@@ -167,9 +300,15 @@ export function AppShell() {
         </main>
       </div>
 
-      <AhDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="AgentHub" position="left">
+      <AhDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="AgentHub"
+        position="left"
+      >
         <Brand />
         <Navigation onNavigate={() => setDrawerOpen(false)} />
+        <ProfileSurface />
       </AhDrawer>
 
       <AhDialog
@@ -190,8 +329,16 @@ export function AppShell() {
             role="combobox"
             aria-expanded={commandOpen}
             onKeyDown={(event) => {
-              if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((value) => (value + 1) % Math.max(1, results.length)); }
-              if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((value) => (value - 1 + results.length) % Math.max(1, results.length)); }
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveIndex((value) => (value + 1) % Math.max(1, results.length));
+              }
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveIndex(
+                  (value) => (value - 1 + results.length) % Math.max(1, results.length),
+                );
+              }
             }}
           />
         </form>
@@ -209,7 +356,10 @@ export function AppShell() {
                 onMouseEnter={() => setActiveIndex(index)}
               >
                 <Icon size={18} />
-                <span><strong>{item.label}</strong><small>{item.description}</small></span>
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{item.description}</small>
+                </span>
                 <ArrowRight size={15} />
               </button>
             );

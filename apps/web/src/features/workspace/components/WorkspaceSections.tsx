@@ -25,7 +25,6 @@ import Editor from '@monaco-editor/react';
 import { Link } from 'react-router-dom';
 
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from '../../../components/Common';
-import { SafeDiffEditor } from '../../../components/SafeDiffEditor';
 import {
   ApiError,
   api,
@@ -493,10 +492,10 @@ export function Inspector({
   runs: QueryState<RunRecord[]>;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string }> = [
+    { id: 'diff', label: '变更' },
     { id: 'files', label: '文件' },
-    { id: 'diff', label: 'Diff' },
+    { id: 'run', label: '工具调用' },
     { id: 'git', label: 'Git' },
-    { id: 'run', label: '运行' },
   ];
   return (
     <div className="inspector">
@@ -539,6 +538,7 @@ function FileInspector({
   selected: string | undefined;
   onSelect: (path: string) => void;
 }) {
+  const [monacoReady, setMonacoReady] = useState(false);
   const files = useQuery({
     queryKey: ['files', project.id],
     queryFn: () => api.get<FileEntry[]>(`/projects/${project.id}/files?depth=4`),
@@ -551,6 +551,15 @@ function FileInspector({
       ),
     enabled: Boolean(selected),
   });
+  useEffect(() => {
+    let active = true;
+    void import('../../../lib/monaco').then(() => {
+      if (active) setMonacoReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   return (
     <div className="file-inspector">
       <div className="file-tree">
@@ -561,6 +570,8 @@ function FileInspector({
           <LoadingState />
         ) : files.error ? (
           <ErrorState error={files.error} retry={() => files.refetch()} />
+        ) : !monacoReady ? (
+          <LoadingState label="正在准备文件预览" />
         ) : (
           <FileNodes entries={files.data ?? []} selected={selected} onSelect={onSelect} />
         )}
@@ -639,18 +650,52 @@ function DiffInspector({ project }: { project: ProjectRecord }) {
       ) : !diff.data?.patch ? (
         <EmptyState title="没有未提交 Diff" description="工作区当前没有可展示的差异。" />
       ) : (
-        <SafeDiffEditor
-          height="100%"
-          original=""
-          modified={diff.data.patch}
-          language="diff"
-          options={{
-            readOnly: true,
-            minimap: { enabled: false },
-            renderSideBySide: false,
-            fontSize: 12,
-          }}
-        />
+        <div className="diff-document">
+          <header className="diff-document-header">
+            <div>
+              <strong>工作区变更</strong>
+              <small>未提交 · 只读查看</small>
+            </div>
+            <span>
+              +
+              {
+                diff.data.patch
+                  .split('\n')
+                  .filter((line) => line.startsWith('+') && !line.startsWith('+++')).length
+              }{' '}
+              <em>
+                −
+                {
+                  diff.data.patch
+                    .split('\n')
+                    .filter((line) => line.startsWith('-') && !line.startsWith('---')).length
+                }
+              </em>
+            </span>
+          </header>
+          <pre className="diff-document-code" aria-label="Git Diff">
+            {diff.data.patch.split('\n').map((line, index) => (
+              <span
+                key={`${index}-${line}`}
+                className={
+                  line.startsWith('+') && !line.startsWith('+++')
+                    ? 'diff-line-add'
+                    : line.startsWith('-') && !line.startsWith('---')
+                      ? 'diff-line-remove'
+                      : line.startsWith('@@')
+                        ? 'diff-line-hunk'
+                        : undefined
+                }
+              >
+                {line || ' '}
+                {'\n'}
+              </span>
+            ))}
+          </pre>
+          {diff.data.truncated ? (
+            <small className="diff-document-note">Diff 已截断，仅显示部分变更。</small>
+          ) : null}
+        </div>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ export type { IconProps } from '@phosphor-icons/react/lib';
 export { PulseIcon as Activity } from '@phosphor-icons/react/Pulse';
 export { WarningIcon as AlertTriangle } from '@phosphor-icons/react/Warning';
 export { ArrowRightIcon as ArrowRight } from '@phosphor-icons/react/ArrowRight';
+export { BellIcon as Bell } from '@phosphor-icons/react/Bell';
 export { RobotIcon as Bot } from '@phosphor-icons/react/Robot';
 export { BracketsCurlyIcon as Braces } from '@phosphor-icons/react/BracketsCurly';
 export { CheckIcon as Check } from '@phosphor-icons/react/Check';
@@ -24,6 +25,7 @@ export { FolderSimpleIcon as FolderKanban } from '@phosphor-icons/react/FolderSi
 export { GitBranchIcon as GitBranch } from '@phosphor-icons/react/GitBranch';
 export { ArrowsLeftRightIcon as GitCompareArrows } from '@phosphor-icons/react/ArrowsLeftRight';
 export { GitMergeIcon as GitMerge } from '@phosphor-icons/react/GitMerge';
+export { HandWavingIcon as HandWaving } from '@phosphor-icons/react/HandWaving';
 export { HardDrivesIcon as Server } from '@phosphor-icons/react/HardDrives';
 export { TrayIcon as Inbox } from '@phosphor-icons/react/Tray';
 export { KeyIcon as KeyRound } from '@phosphor-icons/react/Key';
@@ -49,6 +51,7 @@ export { ShareNetworkIcon as ShareNetwork } from '@phosphor-icons/react/ShareNet
 export { GearSixIcon as Settings } from '@phosphor-icons/react/GearSix';
 export { ShieldWarningIcon as ShieldAlert } from '@phosphor-icons/react/ShieldWarning';
 export { ShieldCheckIcon as ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
+export { SunIcon as Sun } from '@phosphor-icons/react/Sun';
 export { TerminalWindowIcon as SquareTerminal } from '@phosphor-icons/react/TerminalWindow';
 export { TagIcon as Tag } from '@phosphor-icons/react/Tag';
 export { WrenchIcon as Wrench } from '@phosphor-icons/react/Wrench';

@@ -4,16 +4,18 @@ import {
   Group,
   Select,
   Stack,
+  Switch,
   Text,
   Title,
   type ButtonProps,
   type SelectProps,
 } from '@mantine/core';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from 'react';
 
-export type AhButtonProps = ButtonProps & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color' | 'style' | 'size'> & {
-  children: ReactNode;
-};
+export type AhButtonProps = ButtonProps &
+  Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color' | 'style' | 'size'> & {
+    children: ReactNode;
+  };
 
 export function AhButton({ children, ...props }: AhButtonProps) {
   return (
@@ -25,15 +27,12 @@ export function AhButton({ children, ...props }: AhButtonProps) {
 
 export function AhSelect({ label, description, ...props }: SelectProps) {
   return (
-    <Select
-      label={label}
-      description={description}
-      searchable
-      clearable
-      radius="md"
-      {...props}
-    />
+    <Select label={label} description={description} searchable clearable radius="md" {...props} />
   );
+}
+
+export function AhSwitch({ label, description, ...props }: ComponentProps<typeof Switch>) {
+  return <Switch label={label} description={description} color="aurora" {...props} />;
 }
 
 export interface AhChoiceOption {
