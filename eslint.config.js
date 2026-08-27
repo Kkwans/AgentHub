@@ -13,6 +13,7 @@ export default tseslint.config(
       '.tmp/**',
       '.tmp-v05/**',
       'test-tmp/**',
+      'docs/AgentHub_v0.8_UIUX_Final/04_prototype/**',
     ],
   },
   eslint.configs.recommended,
