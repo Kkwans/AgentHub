@@ -24,10 +24,9 @@ import {
   Conversation,
   Inspector,
   SessionRail,
+  type InspectorTab,
 } from '../features/workspace/components/WorkspaceSections';
 import { TerminalDock } from '../features/workspace/components/TerminalDock';
-
-type InspectorTab = 'files' | 'diff' | 'git' | 'run';
 
 const EVENT_PAGE_SIZE = 500;
 
@@ -64,11 +63,16 @@ export function WorkspacePage() {
   const client = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
-  const tab: InspectorTab = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '')
-    ? (viewParam as InspectorTab)
-    : 'files';
+  const tab: InspectorTab =
+    viewParam === 'files' || viewParam === 'run' || viewParam === 'tools'
+      ? viewParam
+      : viewParam === 'diff' || viewParam === 'git' || viewParam === 'changes'
+        ? 'changes'
+        : 'files';
   const selectedFile = searchParams.get('file') || undefined;
-  const mobileInspectorOpen = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '');
+  const mobileInspectorOpen = ['files', 'diff', 'git', 'changes', 'tools', 'run'].includes(
+    viewParam ?? '',
+  );
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
 
   const setTab = (nextTab: InspectorTab) => {
@@ -243,8 +247,8 @@ export function WorkspacePage() {
           {(
             [
               ['files', '文件'],
-              ['diff', 'Diff'],
-              ['git', 'Git'],
+              ['changes', 'Git'],
+              ['tools', '工具调用'],
               ['run', '运行'],
             ] as Array<[InspectorTab, string]>
           ).map(([item, label]) => (
@@ -314,6 +318,7 @@ export function WorkspacePage() {
             setSelectedFile={setSelectedFile}
             agent={agent}
             runs={runs}
+            events={events}
           />
         </Panel>
       </Group>

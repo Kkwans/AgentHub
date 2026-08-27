@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Bot,
@@ -15,6 +15,7 @@ import {
   LoaderCircle,
   RefreshCw,
   AhChoiceSelect,
+  AgentHubThemeContext,
   Send,
   ShieldCheck,
   Tabs,
@@ -52,7 +53,7 @@ import {
   WORKSPACE_RUN_STATE_COPY,
 } from '../../../presentation/domain-labels';
 
-type InspectorTab = 'files' | 'diff' | 'git' | 'run';
+export type InspectorTab = 'changes' | 'files' | 'tools' | 'run';
 
 type QueryState<T> = {
   data: T | undefined;
@@ -480,6 +481,7 @@ export function Inspector({
   setSelectedFile,
   agent,
   runs,
+  events,
 }: {
   project: ProjectRecord | undefined;
   projects: QueryState<ProjectRecord[]>;
@@ -490,12 +492,13 @@ export function Inspector({
   setSelectedFile: (path: string) => void;
   agent: AgentRecord | undefined;
   runs: QueryState<RunRecord[]>;
+  events: QueryState<EventRecord[]>;
 }) {
   const tabs: Array<{ id: InspectorTab; label: string }> = [
-    { id: 'diff', label: '变更' },
+    { id: 'changes', label: '变更' },
     { id: 'files', label: '文件' },
-    { id: 'run', label: '工具调用' },
-    { id: 'git', label: 'Git' },
+    { id: 'tools', label: '工具调用' },
+    { id: 'run', label: 'Run' },
   ];
   return (
     <div className="inspector">
@@ -517,14 +520,67 @@ export function Inspector({
           <EmptyState title="Project 不可用" description="该 Session 关联的 Project 可能已归档。" />
         ) : tab === 'files' ? (
           <FileInspector project={project} selected={selectedFile} onSelect={setSelectedFile} />
-        ) : tab === 'diff' ? (
-          <DiffInspector project={project} />
-        ) : tab === 'git' ? (
+        ) : tab === 'changes' ? (
           <GitInspector project={project} />
+        ) : tab === 'tools' ? (
+          <ToolCallsInspector events={events} />
         ) : (
           <RunInspector agent={agent} session={session} runs={runs} />
         )}
       </div>
+    </div>
+  );
+}
+
+function ToolCallsInspector({ events }: { events: QueryState<EventRecord[]> }) {
+  const toolEvents = [...(events.data ?? [])]
+    .filter(
+      (event) =>
+        event.payloadJson.ignored !== true &&
+        (event.type.startsWith('tool.') || event.type === 'agent.plan.updated'),
+    )
+    .reverse();
+  return (
+    <div className="tool-call-inspector">
+      <div className="activity-summary">
+        <div>
+          <strong>Tool Calls</strong>
+          <span>完整参数、结果与错误按时间倒序显示。</span>
+        </div>
+        <span>{toolEvents.length}</span>
+      </div>
+      {events.isLoading ? (
+        <LoadingState label="正在读取 Tool Calls" />
+      ) : events.error ? (
+        <ErrorState error={events.error} retry={() => events.refetch()} />
+      ) : !toolEvents.length ? (
+        <EmptyState
+          title="还没有 Tool Call"
+          description="Agent 调用工具后，详细记录会出现在这里。"
+        />
+      ) : (
+        <div className="tool-call-list">
+          {toolEvents.map((event) => (
+            <details key={event.id}>
+              <summary>
+                <span>
+                  <Wrench size={15} />
+                </span>
+                <div>
+                  <strong>
+                    {String(event.payloadJson.title ?? labelAgentEventType(event.type))}
+                  </strong>
+                  <small>
+                    {labelAgentEventType(event.type)} · #{event.seq}
+                  </small>
+                </div>
+                <time dateTime={event.createdAt}>{formatGitTime(event.createdAt)}</time>
+              </summary>
+              <pre>{JSON.stringify(event.payloadJson, null, 2)}</pre>
+            </details>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -538,6 +594,12 @@ function FileInspector({
   selected: string | undefined;
   onSelect: (path: string) => void;
 }) {
+  const theme = useContext(AgentHubThemeContext);
+  const mode =
+    theme?.mode ??
+    (typeof document !== 'undefined' && document.documentElement.dataset.agenthubTheme === 'dark'
+      ? 'dark'
+      : 'light');
   const [monacoReady, setMonacoReady] = useState(false);
   const files = useQuery({
     queryKey: ['files', project.id],
@@ -588,7 +650,7 @@ function FileInspector({
             height="100%"
             path={selected}
             value={content.data?.content ?? ''}
-            theme="vs-light"
+            theme={mode === 'dark' ? 'vs-dark' : 'vs-light'}
             options={{
               readOnly: true,
               minimap: { enabled: false },
@@ -631,72 +693,6 @@ function FileNodes({
           )}
         </div>
       ))}
-    </div>
-  );
-}
-
-function DiffInspector({ project }: { project: ProjectRecord }) {
-  const diff = useQuery({
-    queryKey: ['git-diff', project.id],
-    queryFn: () =>
-      api.get<{ patch: string; truncated: boolean }>(`/projects/${project.id}/git/diff`),
-  });
-  return (
-    <div className="diff-frame">
-      {diff.isLoading ? (
-        <LoadingState />
-      ) : diff.error ? (
-        <ErrorState error={diff.error} retry={() => diff.refetch()} />
-      ) : !diff.data?.patch ? (
-        <EmptyState title="没有未提交 Diff" description="工作区当前没有可展示的差异。" />
-      ) : (
-        <div className="diff-document">
-          <header className="diff-document-header">
-            <div>
-              <strong>工作区变更</strong>
-              <small>未提交 · 只读查看</small>
-            </div>
-            <span>
-              +
-              {
-                diff.data.patch
-                  .split('\n')
-                  .filter((line) => line.startsWith('+') && !line.startsWith('+++')).length
-              }{' '}
-              <em>
-                −
-                {
-                  diff.data.patch
-                    .split('\n')
-                    .filter((line) => line.startsWith('-') && !line.startsWith('---')).length
-                }
-              </em>
-            </span>
-          </header>
-          <pre className="diff-document-code" aria-label="Git Diff">
-            {diff.data.patch.split('\n').map((line, index) => (
-              <span
-                key={`${index}-${line}`}
-                className={
-                  line.startsWith('+') && !line.startsWith('+++')
-                    ? 'diff-line-add'
-                    : line.startsWith('-') && !line.startsWith('---')
-                      ? 'diff-line-remove'
-                      : line.startsWith('@@')
-                        ? 'diff-line-hunk'
-                        : undefined
-                }
-              >
-                {line || ' '}
-                {'\n'}
-              </span>
-            ))}
-          </pre>
-          {diff.data.truncated ? (
-            <small className="diff-document-note">Diff 已截断，仅显示部分变更。</small>
-          ) : null}
-        </div>
-      )}
     </div>
   );
 }
@@ -1322,6 +1318,12 @@ export function Composer({
             onValueChange={(reasoningEffort) => updateConfiguration.mutate({ reasoningEffort })}
           />
         ) : null}
+        <span>
+          权限 <strong>按需审批</strong>
+        </span>
+        <span>
+          Tools <strong>自动</strong>
+        </span>
         <span>
           Project <strong>{project?.name ?? '未知'}</strong>
         </span>

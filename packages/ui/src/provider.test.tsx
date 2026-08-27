@@ -4,7 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { AgentHubProvider, useAgentHubTheme } from './provider.js';
+import { AgentHubProvider, useAgentHubTheme, useOptionalAgentHubTheme } from './provider.js';
 
 afterEach(() => {
   cleanup();
@@ -39,7 +39,17 @@ function ThemeProbe() {
   );
 }
 
+function OptionalThemeProbe() {
+  const theme = useOptionalAgentHubTheme();
+  return <output aria-label="可选主题">{theme?.mode ?? 'unmanaged'}</output>;
+}
+
 describe('AgentHubProvider', () => {
+  it('allows embeddable UI to provide a fallback outside the provider', () => {
+    render(<OptionalThemeProbe />);
+    expect(screen.getByRole('status', { name: '可选主题' })).toHaveTextContent('unmanaged');
+  });
+
   it('uses light by default and persists a user theme preference', () => {
     render(
       <AgentHubProvider>

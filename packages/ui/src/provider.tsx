@@ -156,8 +156,16 @@ export interface AgentHubThemeContextValue {
 
 export const AgentHubThemeContext = createContext<AgentHubThemeContextValue | undefined>(undefined);
 
+/**
+ * Returns the active AgentHub theme when a feature is mounted inside the app shell.
+ * Embeddable panels and isolated tests may use this hook and provide their own fallback.
+ */
+export function useOptionalAgentHubTheme(): AgentHubThemeContextValue | undefined {
+  return useContext(AgentHubThemeContext);
+}
+
 export function useAgentHubTheme(): AgentHubThemeContextValue {
-  const context = useContext(AgentHubThemeContext);
+  const context = useOptionalAgentHubTheme();
   if (!context) throw new Error('useAgentHubTheme must be used inside AgentHubProvider');
   return context;
 }

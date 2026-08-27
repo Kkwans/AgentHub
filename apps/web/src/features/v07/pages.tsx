@@ -15,6 +15,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Bot,
+  ChevronLeft,
+  ChevronRight,
   CircleStop,
   Copy,
   Eye,
@@ -34,7 +36,7 @@ import {
   Wrench,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Group, Panel, Separator } from 'react-resizable-panels';
+import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Link,
@@ -81,7 +83,13 @@ import {
   Conversation,
   Inspector,
   SessionRail,
+  type InspectorTab,
 } from '../workspace/components/WorkspaceSections';
+import {
+  readWorkspaceLayout,
+  WORKSPACE_PANEL_LIMITS,
+  writeWorkspacePanel,
+} from '../workspace/layoutPreferences';
 import { TerminalDock } from '../workspace/components/TerminalDock';
 import {
   labelPromptBindingTarget,
@@ -4371,11 +4379,28 @@ export function WorkspacePageV07() {
   const client = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
-  const tab = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '')
-    ? (viewParam as 'files' | 'diff' | 'git' | 'run')
-    : 'diff';
-  const mobileInspectorOpen = ['files', 'diff', 'git', 'run'].includes(viewParam ?? '');
+  const tab: InspectorTab =
+    viewParam === 'files'
+      ? 'files'
+      : viewParam === 'tools' || viewParam === 'activity'
+        ? 'tools'
+        : viewParam === 'run'
+          ? 'run'
+          : 'changes';
+  const mobileInspectorOpen = [
+    'changes',
+    'files',
+    'tools',
+    'activity',
+    'run',
+    'diff',
+    'git',
+  ].includes(viewParam ?? '');
+  const mobileSessionsOpen = viewParam === 'sessions';
   const selectedFile = searchParams.get('file') || undefined;
+  const [layout, setLayout] = useState(readWorkspaceLayout);
+  const leftPanelRef = usePanelRef();
+  const rightPanelRef = usePanelRef();
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
   const sessions = useQuery({
     queryKey: ['sessions'],
@@ -4473,9 +4498,17 @@ export function WorkspacePageV07() {
     });
   }, [client, sessionId]);
 
-  const setTab = (nextTab: 'files' | 'diff' | 'git' | 'run') => {
+  const setTab = (nextTab: InspectorTab) => {
     const next = new URLSearchParams(searchParams);
     next.set('view', nextTab);
+    setSearchParams(next);
+  };
+  const setMobileView = (view: 'sessions' | 'conversation' | 'changes' | 'files' | 'activity') => {
+    const next = new URLSearchParams(searchParams);
+    if (view === 'conversation') {
+      next.delete('view');
+      next.delete('file');
+    } else next.set('view', view);
     setSearchParams(next);
   };
   const setSelectedFile = (path: string) => {
@@ -4503,53 +4536,117 @@ export function WorkspacePageV07() {
           <AhStatusPill status={session.data.status} />
         </div>
         <div className={workspaceStyles.contextFacts}>
-          <span>{agent?.name ?? 'Agent 未知'}</span>
           <span>{project?.name ?? 'Project 未知'}</span>
+          <span>{session.data.branch ?? '无 Git 分支'}</span>
           <code title={session.data.cwd}>{session.data.cwd}</code>
+        </div>
+        <div className={workspaceStyles.panelActions}>
+          <button
+            type="button"
+            onClick={() => {
+              const collapsed = !layout.leftCollapsed;
+              if (collapsed) leftPanelRef.current?.collapse();
+              else leftPanelRef.current?.resize(`${layout.leftWidth}px`);
+              setLayout((current) => ({ ...current, leftCollapsed: collapsed }));
+              writeWorkspacePanel('left', { collapsed });
+            }}
+            aria-label={layout.leftCollapsed ? '展开 Session 列表' : '折叠 Session 列表'}
+            title={layout.leftCollapsed ? '展开 Session 列表' : '折叠 Session 列表'}
+          >
+            {layout.leftCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const collapsed = !layout.rightCollapsed;
+              if (collapsed) rightPanelRef.current?.collapse();
+              else rightPanelRef.current?.resize(`${layout.rightWidth}px`);
+              setLayout((current) => ({ ...current, rightCollapsed: collapsed }));
+              writeWorkspacePanel('right', { collapsed });
+            }}
+            aria-label={layout.rightCollapsed ? '展开检查器' : '折叠检查器'}
+            title={layout.rightCollapsed ? '展开检查器' : '折叠检查器'}
+          >
+            {layout.rightCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </button>
         </div>
       </header>
       <div className={workspaceStyles.mobileTabs} role="tablist" aria-label="Workspace 视图">
         <button
           type="button"
           role="tab"
+          aria-selected={mobileSessionsOpen}
+          onClick={() => setMobileView('sessions')}
+        >
+          Session
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={viewParam === null}
-          onClick={() => setSearchParams({})}
+          onClick={() => setMobileView('conversation')}
         >
           对话
         </button>
-        {(['diff', 'files', 'run', 'git'] as const).map((item) => (
+        {(['changes', 'files', 'activity'] as const).map((item) => (
           <button
             type="button"
             role="tab"
             key={item}
             aria-selected={viewParam === item}
-            onClick={() => setTab(item)}
+            onClick={() => setMobileView(item)}
           >
-            {item === 'files'
-              ? '文件'
-              : item === 'diff'
-                ? '变更'
-                : item === 'git'
-                  ? 'Git'
-                  : '工具调用'}
+            {item === 'files' ? '文件' : item === 'changes' ? '变更' : 'Activity'}
           </button>
         ))}
       </div>
-      <Group orientation="horizontal" className={workspaceStyles.panels}>
+      <Group
+        id="workspace-panels"
+        orientation="horizontal"
+        className={workspaceStyles.panels}
+        resizeTargetMinimumSize={{ fine: 12, coarse: 28 }}
+        onLayoutChanged={(_nextLayout, meta) => {
+          if (!meta.isUserInteraction) return;
+          const leftSize = leftPanelRef.current?.getSize();
+          const rightSize = rightPanelRef.current?.getSize();
+          const nextPreference = {
+            ...layout,
+            ...(leftSize && leftSize.inPixels > 0
+              ? { leftWidth: leftSize.inPixels, leftCollapsed: false }
+              : { leftCollapsed: true }),
+            ...(rightSize && rightSize.inPixels > 0
+              ? { rightWidth: rightSize.inPixels, rightCollapsed: false }
+              : { rightCollapsed: true }),
+          };
+          setLayout(nextPreference);
+          writeWorkspacePanel('left', {
+            width: nextPreference.leftWidth,
+            collapsed: nextPreference.leftCollapsed,
+          });
+          writeWorkspacePanel('right', {
+            width: nextPreference.rightWidth,
+            collapsed: nextPreference.rightCollapsed,
+          });
+        }}
+      >
         <Panel
           id="sessions"
-          defaultSize="18%"
-          minSize="210px"
-          maxSize="320px"
-          className={`${workspaceStyles.panel} ${workspaceStyles.sessionRail}`}
+          panelRef={leftPanelRef}
+          defaultSize={layout.leftCollapsed ? '0px' : `${layout.leftWidth}px`}
+          minSize={`${WORKSPACE_PANEL_LIMITS.left.min}px`}
+          maxSize={`${WORKSPACE_PANEL_LIMITS.left.max}px`}
+          collapsedSize="0px"
+          collapsible
+          groupResizeBehavior="preserve-pixel-size"
+          className={`${workspaceStyles.panel} ${workspaceStyles.sessionRail} ${mobileSessionsOpen ? workspaceStyles.sessionOpen : ''}`}
         >
           <SessionRail sessions={sessions} currentId={sessionId} />
         </Panel>
-        <Separator className={workspaceStyles.separator} />
+        <Separator className={workspaceStyles.separator} aria-label="调整 Session 列表宽度" />
         <Panel
           id="conversation"
-          defaultSize="49%"
-          minSize="360px"
+          defaultSize="50%"
+          minSize="460px"
           className={`${workspaceStyles.panel} ${workspaceStyles.conversationPanel}`}
         >
           <div className={workspaceStyles.conversationShell}>
@@ -4586,11 +4683,16 @@ export function WorkspacePageV07() {
             />
           </div>
         </Panel>
-        <Separator className={workspaceStyles.separator} />
+        <Separator className={workspaceStyles.separator} aria-label="调整检查器宽度" />
         <Panel
           id="inspector"
-          defaultSize="33%"
-          minSize="300px"
+          panelRef={rightPanelRef}
+          defaultSize={layout.rightCollapsed ? '0px' : `${layout.rightWidth}px`}
+          minSize={`${WORKSPACE_PANEL_LIMITS.right.min}px`}
+          maxSize={`${WORKSPACE_PANEL_LIMITS.right.max}px`}
+          collapsedSize="0px"
+          collapsible
+          groupResizeBehavior="preserve-pixel-size"
           className={`${workspaceStyles.panel} ${workspaceStyles.inspectorPanel} ${mobileInspectorOpen ? workspaceStyles.inspectorOpen : ''}`}
         >
           <Inspector
@@ -4603,6 +4705,7 @@ export function WorkspacePageV07() {
             setSelectedFile={setSelectedFile}
             agent={agent}
             runs={runs}
+            events={events}
           />
         </Panel>
       </Group>
