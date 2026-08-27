@@ -43,6 +43,9 @@ export function createAgentHubTheme(mode: ResolvedThemeMode): MantineThemeOverri
     primaryColor: 'aurora',
     primaryShade: mode === 'dark' ? 5 : 6,
     colors: { aurora: mode === 'dark' ? auroraDark : auroraLight },
+    defaultRadius: 'md',
+    focusRing: 'auto',
+    respectReducedMotion: true,
     fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif',
     fontFamilyMonospace: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
     headings: {
@@ -51,7 +54,7 @@ export function createAgentHubTheme(mode: ResolvedThemeMode): MantineThemeOverri
       fontWeight: '650',
     },
     fontSizes: {
-      xs: '0.6875rem',
+      xs: '0.71875rem',
       sm: '0.8125rem',
       md: '0.875rem',
       lg: '1rem',
@@ -65,11 +68,11 @@ export function createAgentHubTheme(mode: ResolvedThemeMode): MantineThemeOverri
       xl: '1.5rem',
     },
     radius: {
-      xs: '4px',
-      sm: '6px',
-      md: '8px',
-      lg: '12px',
-      xl: '16px',
+      xs: '7px',
+      sm: '9px',
+      md: '10px',
+      lg: '13px',
+      xl: '17px',
     },
     shadows: {
       xs: '0 1px 2px rgba(17,22,38,.04)',
