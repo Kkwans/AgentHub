@@ -254,6 +254,31 @@ test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }
   await attachViewportScreenshot(page, testInfo, 'agent-nodes');
 });
 
+test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ page }, testInfo) => {
+  await page.goto(`/workspace/${session.id}`);
+  await expect(page.getByText(session.title, { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
+
+  if ((page.viewportSize()?.width ?? 0) >= 1_180) {
+    const inspector = page.getByRole('tablist', { name: '检查器视图' });
+    await expect(inspector.getByRole('tab', { name: '变更' })).toBeVisible();
+    await expect(inspector.getByRole('tab', { name: '文件' })).toBeVisible();
+    await expect(inspector.getByRole('tab', { name: '工具调用' })).toBeVisible();
+    await expect(inspector.getByRole('tab', { name: 'Run' })).toBeVisible();
+    await page.getByRole('button', { name: '折叠 Session 列表' }).click();
+    await page.reload();
+    await expect(page.getByRole('button', { name: '展开 Session 列表' })).toBeVisible();
+  } else {
+    const views = page.getByRole('tablist', { name: 'Workspace 视图' });
+    await views.getByRole('tab', { name: '文件' }).click();
+    await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
+  }
+
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'workspace');
+});
+
 test('Projects 使用 v0.8 高密度实体列表并打开路由弹层', async ({ page }, testInfo) => {
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: '项目' })).toBeVisible();
@@ -433,6 +458,25 @@ async function fulfillFixture(route: Route) {
       checks: [],
     };
   } else if (path.endsWith(`/projects/${project.id}`)) data = project;
+  else if (path.endsWith(`/sessions/${session.id}/configuration`)) {
+    data = {
+      supported: true,
+      current: { model: 'gpt-5.6-sol', mode: 'code', reasoningEffort: 'high' },
+      options: {
+        models: [{ id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' }],
+        modes: [{ id: 'code', label: 'Code' }],
+        reasoningEfforts: [{ id: 'high', label: 'High' }],
+      },
+    };
+  } else if (path.endsWith(`/sessions/${session.id}/messages`)) data = [];
+  else if (path.endsWith(`/sessions/${session.id}/runs`)) data = [];
+  else if (path.endsWith(`/sessions/${session.id}/events`)) data = [];
+  else if (path.endsWith(`/sessions/${session.id}`)) data = session;
+  else if (path.endsWith(`/projects/${project.id}/git/status`))
+    data = { branch: 'main', headSha: 'abcdef1234567890', clean: true, entries: [] };
+  else if (path.endsWith(`/projects/${project.id}/files`)) data = [];
+  else if (path.endsWith('/prompt-context/resolve'))
+    data = { ready: true, finalContext: '', missingVariables: [], items: [] };
   else if (path.endsWith(`/prompts/${prompt.id}/versions`))
     data = [promptVersion, priorPromptVersion];
   else if (path.endsWith(`/prompts/${prompt.id}/diff`)) {
