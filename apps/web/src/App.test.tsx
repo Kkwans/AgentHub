@@ -143,11 +143,13 @@ function stubApi() {
   );
 }
 
-describe('v0.7 App', () => {
+describe('v0.8 App', () => {
   it('renders Home as the new default and exposes the product IA', async () => {
     stubApi();
     renderApp(['/']);
-    expect(await screen.findByRole('heading', { name: /你好，Kwan/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: '把注意力放在工作本身。' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '首页' })).toHaveAttribute('href', '/home');
     expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute('href', '/projects');
@@ -177,7 +179,7 @@ describe('v0.7 App', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('当前地址')).toHaveTextContent(`/projects/${project.id}/work`),
     );
-    expect(await screen.findByRole('heading', { name: 'Work' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: '工作', current: 'page' })).toBeInTheDocument();
   });
 
   it('renders the Prompt Library states from the real API envelope', async () => {
@@ -222,7 +224,7 @@ describe('v0.7 App', () => {
     expect(screen.getByTestId('new-work-dialog')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '你想完成什么？' })).toBeInTheDocument();
     expect(screen.getAllByText(project.name).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole('heading', { name: 'Work' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '工作', current: 'page' })).toBeInTheDocument();
   });
 
   it('presents Agent discovery as a two-zone modal with real candidate state', async () => {

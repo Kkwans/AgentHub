@@ -76,6 +76,13 @@
   font-size: 16px;
 }
 
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .heroCta {
   min-height: 44px;
   padding-inline: 20px;

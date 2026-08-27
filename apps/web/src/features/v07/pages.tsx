@@ -22,7 +22,6 @@ import {
   Eye,
   FolderKanban,
   GitBranch,
-  HandWaving,
   Link2,
   Network,
   Play,
@@ -259,18 +258,9 @@ export function HomePageV07() {
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
   });
-  const prompts = useQuery({
-    queryKey: ['prompts'],
-    queryFn: () => api.get<PromptRecord[]>('/prompts'),
-  });
-  const error =
-    dashboard.error ?? projects.error ?? sessions.error ?? agents.error ?? prompts.error;
+  const error = dashboard.error ?? projects.error ?? sessions.error ?? agents.error;
   const loading =
-    dashboard.isLoading ||
-    projects.isLoading ||
-    sessions.isLoading ||
-    agents.isLoading ||
-    prompts.isLoading;
+    dashboard.isLoading || projects.isLoading || sessions.isLoading || agents.isLoading;
   const activeProject =
     projects.data?.find((project) => project.status === 'ACTIVE') ?? projects.data?.[0];
   const running = dashboard.data?.runningSessions ?? [];
@@ -349,7 +339,6 @@ export function HomePageV07() {
           void projects.refetch();
           void sessions.refetch();
           void agents.refetch();
-          void prompts.refetch();
         }}
         label="正在汇总工作台状态"
       />
@@ -359,16 +348,20 @@ export function HomePageV07() {
             <section className={homeStyles.hero} aria-labelledby="home-hero-title">
               <div className={homeStyles.heroCopy}>
                 <p className={homeStyles.eyebrow}>AI ENGINEERING WORKBENCH</p>
-                <h1 id="home-hero-title">
-                  你好，Kwan{' '}
-                  <HandWaving className={homeStyles.wave} aria-hidden size={28} weight="duotone" />
-                </h1>
-                <p className={homeStyles.heroSubtitle}>欢迎回来，继续与 AI Agent 一起创造。</p>
-                <Link to={activeProject ? `/projects/${activeProject.id}/work/new` : '/projects'}>
-                  <AhButton className={homeStyles.heroCta} leftSection={<Plus size={16} />}>
-                    新建工作
-                  </AhButton>
-                </Link>
+                <h1 id="home-hero-title">把注意力放在工作本身。</h1>
+                <p className={homeStyles.heroSubtitle}>
+                  从最近项目继续，处理需要审阅的结果，或直接交给 Agent 一项新工作。
+                </p>
+                <div className={homeStyles.heroActions}>
+                  <Link to={activeProject ? `/projects/${activeProject.id}/work/new` : '/projects'}>
+                    <AhButton className={homeStyles.heroCta} leftSection={<Plus size={16} />}>
+                      新建工作
+                    </AhButton>
+                  </Link>
+                  <Link to={recentSessions[0] ? `/workspace/${recentSessions[0].id}` : '/projects'}>
+                    <AhButton variant="default">继续最近会话</AhButton>
+                  </Link>
+                </div>
               </div>
               <div className={homeStyles.auroraScene} aria-hidden="true">
                 <span className={`${homeStyles.cube} ${homeStyles.cubeA}`} />
@@ -416,10 +409,10 @@ export function HomePageV07() {
                     <Tag size={17} />
                   </span>
                   <AhMetric
-                    label="Prompt 模板"
-                    value={prompts.data?.length ?? '—'}
-                    hint="可复用模板"
-                    tone="neutral"
+                    label="需要处理"
+                    value={attention.length}
+                    hint="Approval 与 Review"
+                    tone={attention.length ? 'warning' : 'neutral'}
                   />
                 </div>
               </div>
@@ -2372,7 +2365,6 @@ export function ProjectSessionsPageV07() {
 }
 
 export function AgentCenterPageV07() {
-  const client = useQueryClient();
   const agents = useQuery({
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
@@ -2383,14 +2375,6 @@ export function AgentCenterPageV07() {
   });
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  const adopt = useMutation({
-    mutationFn: (candidateId: string) =>
-      api.post(`/discovery/agents/${encodeURIComponent(candidateId)}/adopt`),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['agents'] });
-      void client.invalidateQueries({ queryKey: ['discovery-agents'] });
-    },
-  });
   const filteredAgents = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return (agents.data ?? []).filter((agent) => {
@@ -2433,7 +2417,7 @@ export function AgentCenterPageV07() {
       description="发现、管理和配置 AI Agent，让多个 Agent 协同工作。底层实现细节只在 Diagnostics 中展开。"
       actions={
         <>
-          <Link to="/agents/runtimes">
+          <Link to="/agents/runtime">
             <AhButton variant="default" leftSection={<Server size={16} />}>
               Runtime
             </AhButton>
@@ -2550,38 +2534,6 @@ export function AgentCenterPageV07() {
           ) : null}
         </div>
       </AhSurface>
-      <AhSurface>
-        <div className={styles.surfaceHeader}>
-          <div>
-            <h3>候选 Agent</h3>
-            <p>扫描结果会保留部分失败原因，支持逐个接入。</p>
-          </div>
-        </div>
-        <div className={styles.surfaceBody}>
-          {(candidates.data ?? [])
-            .filter((candidate) => candidate.agentKind !== 'UNKNOWN')
-            .map((candidate) => (
-              <div className={styles.row} key={candidate.candidateId}>
-                <Bot size={19} />
-                <div className={styles.rowMain}>
-                  <span className={styles.rowTitle}>{candidate.displayName}</span>
-                  <span className={styles.rowMeta}>
-                    {candidate.detectedVersion ?? '版本待检测'}
-                  </span>
-                </div>
-                <AhStatusPill status={candidate.state} />
-                <AhButton
-                  size="xs"
-                  onClick={() => adopt.mutate(candidate.candidateId)}
-                  loading={adopt.isPending}
-                  disabled={!candidate.adoptable}
-                >
-                  接入
-                </AhButton>
-              </div>
-            ))}
-        </div>
-      </AhSurface>
     </Screen>
   );
 }
@@ -2630,7 +2582,7 @@ export function DiscoverAgentsPageV07() {
       );
     if (candidate.state === 'STOPPED')
       return (
-        <Link className={styles.rowAction} to="/agents/runtimes">
+        <Link className={styles.rowAction} to="/agents/runtime">
           查看 Runtime
         </Link>
       );
@@ -2837,7 +2789,10 @@ export function InfrastructurePageV07({ kind }: { kind: 'runtimes' | 'nodes' | '
               label="正在扫描运行环境"
             />
             {(runtimes.data ?? []).map((runtime) => (
-              <div className={styles.row} key={runtime.candidateId}>
+              <div
+                className={`${styles.row} ${styles.infrastructureRow}`}
+                key={runtime.candidateId}
+              >
                 <Server size={19} />
                 <div className={styles.rowMain}>
                   <span className={styles.rowTitle}>{runtime.displayName}</span>
@@ -2894,7 +2849,7 @@ export function InfrastructurePageV07({ kind }: { kind: 'runtimes' | 'nodes' | '
               label="正在加载 Remote Nodes"
             />
             {(nodes.data ?? []).map((node) => (
-              <div className={styles.row} key={node.id}>
+              <div className={`${styles.row} ${styles.infrastructureRow}`} key={node.id}>
                 <Network size={19} />
                 <div className={styles.rowMain}>
                   <span className={styles.rowTitle}>{node.name}</span>

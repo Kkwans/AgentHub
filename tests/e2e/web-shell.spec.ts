@@ -143,6 +143,49 @@ const promptBinding = {
   enabled: true,
 };
 
+const agentCandidate = {
+  candidateId: 'codex-local',
+  agentKind: 'CODEX',
+  displayName: 'Codex Local',
+  targetCandidateId: 'local-host',
+  targetId: project.targetId,
+  state: 'READY',
+  adapterKind: 'ACP_STDIO',
+  detectedVersion: '1.1.14',
+  registeredAgentId: agent.id,
+  adoptable: false,
+};
+
+const runtimeCandidate = {
+  candidateId: 'runtime-local',
+  kind: 'LOCAL_HOST',
+  displayName: 'Local Host',
+  state: 'READY',
+  targetId: project.targetId,
+  statusText: 'arm64 · Ready',
+  workspaceMappings: [],
+  adoptable: false,
+};
+
+const remoteNode = {
+  id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  targetId: project.targetId,
+  name: 'NAS-01',
+  hostname: 'DH4300Plus',
+  os: 'linux',
+  arch: 'arm64',
+  fingerprint: 'sha256:test',
+  protocolVersion: '1',
+  daemonVersion: '0.8.0',
+  allowedRootsJson: ['/volume2/Project'],
+  inventoryJson: [],
+  status: 'ONLINE',
+  lastSeenAt: '2026-08-28T01:30:00.000Z',
+  revokedAt: null,
+  createdAt: '2026-08-27T00:00:00.000Z',
+  updatedAt: '2026-08-28T01:30:00.000Z',
+};
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/**', fulfillFixture);
 });
@@ -172,6 +215,43 @@ test('v0.8 全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ 
     await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
   }
   await expectNoHorizontalOverflow(page);
+});
+
+test('Home 以工作续接为主舞台', async ({ page }, testInfo) => {
+  await page.goto('/home');
+  await expect(page.getByRole('heading', { name: '把注意力放在工作本身。' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '继续最近会话' })).toHaveAttribute(
+    'href',
+    `/workspace/${session.id}`,
+  );
+  await expect(page.getByText('需要处理', { exact: true }).first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'home');
+});
+
+test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }, testInfo) => {
+  await page.goto('/agents');
+  await expect(page.getByRole('heading', { name: 'Agent 中心' })).toBeVisible();
+  await expect(page.getByText('Codex', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Runtime' })).toHaveAttribute(
+    'href',
+    '/agents/runtime',
+  );
+
+  await page.getByRole('link', { name: '发现 Agent' }).click();
+  await expect(page).toHaveURL('/agents/agents/discover');
+  await expect(page.getByRole('dialog', { name: '发现 Agent' })).toContainText('Codex Local');
+  await page.goBack();
+  await expect(page.getByRole('dialog', { name: '发现 Agent' })).toBeHidden();
+
+  await page.goto('/agents/runtime');
+  await expect(page.getByRole('heading', { name: 'Runtime' })).toBeVisible();
+  await expect(page.getByText('Local Host', { exact: true })).toBeVisible();
+  await page.goto('/agents/nodes');
+  await expect(page.getByRole('heading', { name: 'Remote Nodes' })).toBeVisible();
+  await expect(page.getByText('NAS-01')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'agent-nodes');
 });
 
 test('Projects 使用 v0.8 高密度实体列表并打开路由弹层', async ({ page }, testInfo) => {
@@ -286,7 +366,11 @@ test('核心 v0.8 页面没有 serious 或 critical axe 问题', async ({ page }
   test.slow();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const routes = [
+    '/home',
     '/projects',
+    '/agents',
+    '/agents/runtime',
+    '/agents/nodes',
     `/projects/${project.id}/overview`,
     `/projects/${project.id}/work`,
     `/projects/${project.id}/sessions`,
@@ -360,6 +444,9 @@ async function fulfillFixture(route: Route) {
     };
   } else if (path.endsWith(`/prompts/${prompt.id}/labels`)) data = [promptLabel];
   else if (path.endsWith('/prompt-bindings')) data = [promptBinding];
+  else if (path.endsWith('/discovery/agents')) data = [agentCandidate];
+  else if (path.endsWith('/discovery/runtimes')) data = [runtimeCandidate];
+  else if (path.endsWith('/remote-nodes')) data = [remoteNode];
   else if (path.endsWith('/projects')) data = [project];
   else if (path.endsWith('/tasks')) data = [task];
   else if (path.endsWith('/sessions')) data = [session];
