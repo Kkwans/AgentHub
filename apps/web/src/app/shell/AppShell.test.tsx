@@ -25,9 +25,7 @@ describe('v0.8 AppShell', () => {
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeTruthy();
     expect(screen.getByRole('link', { name: '首页' }).getAttribute('href')).toBe('/home');
     expect(screen.getByRole('link', { name: '项目' }).getAttribute('href')).toBe('/projects');
-    expect(screen.getByRole('link', { name: 'Agent 中心' }).getAttribute('href')).toBe(
-      '/agents/agents',
-    );
+    expect(screen.getByRole('link', { name: 'Agent 中心' }).getAttribute('href')).toBe('/agents');
     expect(screen.getByRole('link', { name: 'Prompt 库' }).getAttribute('href')).toBe('/prompts');
     expect(screen.getByRole('link', { name: '设置' }).getAttribute('href')).toBe(
       '/settings/appearance',

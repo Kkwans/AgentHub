@@ -40,7 +40,7 @@ type NavigationItem = {
 const primaryNavigation: NavigationItem[] = [
   { to: '/home', label: '首页', description: '关注事项与最近工作', icon: LayoutDashboard },
   { to: '/projects', label: '项目', description: '工程上下文与工作入口', icon: FolderKanban },
-  { to: '/agents/agents', label: 'Agent 中心', description: 'Agent 身份与可用性', icon: Bot },
+  { to: '/agents', label: 'Agent 中心', description: 'Agent 身份与可用性', icon: Bot },
   { to: '/prompts', label: 'Prompt 库', description: '可复用的 Prompt 资产', icon: Braces },
   {
     to: '/settings/appearance',
@@ -52,7 +52,7 @@ const primaryNavigation: NavigationItem[] = [
 
 const secondaryNavigation: NavigationItem[] = [
   {
-    to: '/agents/runtimes',
+    to: '/agents/runtime',
     label: '运行环境',
     description: 'Local、Docker 与远程执行环境',
     icon: CubeIcon,

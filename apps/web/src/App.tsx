@@ -80,6 +80,28 @@ function WorkspaceCompatRedirect() {
   return <Navigate replace to={id ? `/workspace/${id}` : '/home'} />;
 }
 
+function ProjectPromptsRedirect() {
+  const { projectId } = useParams();
+  return (
+    <Navigate
+      replace
+      to={
+        projectId ? `/prompts?projectId=${encodeURIComponent(projectId)}&tab=bindings` : '/prompts'
+      }
+    />
+  );
+}
+
+function ProjectSettingsRedirect() {
+  const { projectId } = useParams();
+  return (
+    <Navigate
+      replace
+      to={projectId ? `/projects/${projectId}/overview?panel=settings` : '/projects'}
+    />
+  );
+}
+
 function WorkspaceLandingRoute() {
   const sessions = useQuery({
     queryKey: ['sessions'],
@@ -99,6 +121,16 @@ export function App() {
   return (
     <AccessGate>
       <Routes>
+        <Route path="workspace" element={<WorkspaceLandingRoute />} />
+        <Route
+          path="workspace/:sessionId"
+          element={
+            <DeferredPage>
+              <WorkspacePage />
+            </DeferredPage>
+          }
+        />
+        <Route path="sessions/:id" element={<WorkspaceCompatRedirect />} />
         <Route element={<V07AppShell />}>
           <Route index element={<Navigate replace to="/home" />} />
           <Route
@@ -167,26 +199,12 @@ export function App() {
                 </DeferredPage>
               }
             />
-            <Route
-              path="prompts"
-              element={
-                <DeferredPage>
-                  <PromptLibraryPage />
-                </DeferredPage>
-              }
-            />
-            <Route
-              path="settings"
-              element={
-                <DeferredPage>
-                  <SettingsPage />
-                </DeferredPage>
-              }
-            />
+            <Route path="prompts" element={<ProjectPromptsRedirect />} />
+            <Route path="settings" element={<ProjectSettingsRedirect />} />
           </Route>
           <Route path="tasks" element={<TasksRedirect />} />
           <Route
-            path="agents/agents"
+            path="agents"
             element={
               <DeferredPage>
                 <AgentCenterPage />
@@ -202,7 +220,7 @@ export function App() {
             }
           />
           <Route
-            path="agents/runtimes"
+            path="agents/runtime"
             element={
               <DeferredPage>
                 <InfrastructurePage kind="runtimes" />
@@ -241,9 +259,9 @@ export function App() {
               </DeferredPage>
             }
           />
-          <Route path="agents" element={<Navigate replace to="/agents/agents" />} />
+          <Route path="agents/agents" element={<Navigate replace to="/agents" />} />
+          <Route path="agents/runtimes" element={<Navigate replace to="/agents/runtime" />} />
           <Route path="sessions" element={<SessionsRedirect />} />
-          <Route path="sessions/:id" element={<WorkspaceCompatRedirect />} />
           <Route path="promptos" element={<Navigate replace to="/prompts" />} />
           <Route
             path="prompts"
@@ -261,16 +279,7 @@ export function App() {
               </DeferredPage>
             }
           />
-          <Route path="workspace" element={<WorkspaceLandingRoute />} />
-          <Route
-            path="workspace/:sessionId"
-            element={
-              <DeferredPage>
-                <WorkspacePage />
-              </DeferredPage>
-            }
-          />
-          <Route path="settings/runtime" element={<Navigate replace to="/agents/runtimes" />} />
+          <Route path="settings/runtime" element={<Navigate replace to="/agents/runtime" />} />
           <Route path="settings" element={<Navigate replace to="/settings/appearance" />} />
           <Route
             path="settings/:section"

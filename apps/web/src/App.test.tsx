@@ -204,6 +204,7 @@ describe('v0.7 App', () => {
     expect(await screen.findByText('对话与执行')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeInTheDocument();
     expect(screen.getAllByRole('tab', { name: '文件' }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole('navigation', { name: '主导航' })).not.toBeInTheDocument();
   });
 
   it('renders creation flows as responsive overlay contracts', async () => {
@@ -211,6 +212,7 @@ describe('v0.7 App', () => {
     renderApp(['/projects/new']);
     expect(await screen.findByRole('dialog', { name: '创建项目' })).toBeInTheDocument();
     expect(screen.getByTestId('create-project-dialog')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '项目' })).toBeInTheDocument();
   });
 
   it('keeps New Work focused on the task description and current Project context', async () => {
@@ -220,6 +222,7 @@ describe('v0.7 App', () => {
     expect(screen.getByTestId('new-work-dialog')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '你想完成什么？' })).toBeInTheDocument();
     expect(screen.getAllByText(project.name).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('heading', { name: 'Work' })).toBeInTheDocument();
   });
 
   it('presents Agent discovery as a two-zone modal with real candidate state', async () => {
@@ -229,5 +232,6 @@ describe('v0.7 App', () => {
     expect(screen.getByTestId('discover-agents-dialog')).toBeInTheDocument();
     expect(screen.getByText('Local Host')).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: '候选 Agent' }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('heading', { name: 'Agent 中心' })).toBeInTheDocument();
   });
 });

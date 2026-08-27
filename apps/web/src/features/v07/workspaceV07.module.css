@@ -14,10 +14,10 @@
   --workspace-shadow: 0 10px 30px color-mix(in srgb, var(--ah-text-primary) 7%, transparent);
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr);
-  height: calc(100dvh - 68px);
-  min-height: calc(100vh - 68px);
+  height: 100dvh;
+  min-height: 100vh;
   min-width: 0;
-  margin: -32px;
+  margin: 0;
   overflow: hidden;
   color: var(--ah-text-primary);
   background: var(--workspace-bg);
