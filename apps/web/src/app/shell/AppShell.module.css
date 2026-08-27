@@ -126,7 +126,7 @@
 .navItem:focus-visible,
 .profileCard:focus-visible,
 .iconButton:focus-visible,
-.desktopMenu:focus-visible,
+.sidebarCollapse:focus-visible,
 .mobileMenu:focus-visible,
 .globalSearch:focus-visible {
   outline: 2px solid var(--ah-accent-primary);
@@ -193,6 +193,46 @@
   color: var(--ah-text-tertiary);
   font-size: 11px;
   white-space: nowrap;
+}
+
+.sidebarCollapse {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 0 10px;
+  color: var(--ah-text-secondary);
+  text-align: left;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 620;
+  transition:
+    color var(--ah-motion-fast),
+    background-color var(--ah-motion-fast);
+}
+
+.sidebarCollapse:hover:not(:disabled) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+}
+
+.sidebarCollapse:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sidebarCollapse kbd {
+  margin-left: auto;
+  padding: 2px 5px;
+  color: var(--ah-text-tertiary);
+  background: var(--ah-surface-subtle);
+  border: 0;
+  border-radius: 5px;
+  font-size: 10px;
 }
 
 .profileCard {
@@ -268,7 +308,6 @@
   gap: 8px;
 }
 
-.topbar .desktopMenu,
 .topbar .mobileMenu {
   display: grid;
   width: 38px;
@@ -365,10 +404,9 @@
 }
 
 .main {
-  width: min(100%, 1320px);
+  width: 100%;
   min-width: 0;
-  margin: 0 auto;
-  padding: 34px 36px 58px;
+  padding: 24px 24px 54px;
   outline: 0;
 }
 
@@ -386,11 +424,17 @@
 .sidebarCollapsed .version,
 .sidebarCollapsed .navText,
 .sidebarCollapsed .navKey,
+.sidebarCollapsed .sidebarCollapse span,
+.sidebarCollapsed .sidebarCollapse kbd,
 .sidebarCollapsed .profileCopy,
 .sidebarCollapsed .profileChevron {
   display: none;
 }
 .sidebarCollapsed .navItem {
+  justify-content: center;
+  padding-inline: 0;
+}
+.sidebarCollapsed .sidebarCollapse {
   justify-content: center;
   padding-inline: 0;
 }
@@ -465,7 +509,9 @@
   .navText,
   .navKey,
   .profileCopy,
-  .profileChevron {
+  .profileChevron,
+  .sidebarCollapse span,
+  .sidebarCollapse kbd {
     display: none;
   }
   .navItem {
@@ -476,8 +522,12 @@
     justify-content: center;
     padding: 9px;
   }
+  .sidebarCollapse {
+    justify-content: center;
+    padding-inline: 0;
+  }
   .main {
-    padding-inline: 26px;
+    padding-inline: 20px;
   }
 }
 
@@ -533,9 +583,6 @@
   }
   .primaryNavigation .navIcon {
     width: 19px;
-  }
-  .topbar .desktopMenu {
-    display: none;
   }
   .topbar .mobileMenu {
     display: grid;

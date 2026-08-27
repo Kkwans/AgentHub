@@ -9,6 +9,7 @@ import {
   Bell,
   Bot,
   Braces,
+  ChevronLeft,
   ChevronRight,
   CubeIcon,
   FolderKanban,
@@ -17,7 +18,6 @@ import {
   Network,
   Search,
   Settings,
-  SquareTerminal,
   Sun,
   useAgentHubTheme,
   type IconProps,
@@ -43,11 +43,10 @@ const primaryNavigation: NavigationItem[] = [
   { to: '/agents/agents', label: 'Agent 中心', description: 'Agent 身份与可用性', icon: Bot },
   { to: '/prompts', label: 'Prompt 库', description: '可复用的 Prompt 资产', icon: Braces },
   {
-    to: '/workspace',
-    label: '工作区',
-    description: '进入最近的 Coding Workspace',
-    icon: SquareTerminal,
-    shortcut: '⌘K',
+    to: '/settings/appearance',
+    label: '设置',
+    description: '外观、账号与系统设置',
+    icon: Settings,
   },
 ];
 
@@ -64,6 +63,17 @@ const secondaryNavigation: NavigationItem[] = [
     description: '连接和管理远程 Agent 节点',
     icon: Network,
   },
+];
+
+const commandItems: NavigationItem[] = [
+  ...primaryNavigation,
+  ...secondaryNavigation,
+  {
+    to: '/workspace',
+    label: '最近工作区',
+    description: '恢复最近的 Coding Session',
+    icon: Activity,
+  },
   {
     to: '/agents/diagnostics',
     label: '监控中心',
@@ -71,18 +81,17 @@ const secondaryNavigation: NavigationItem[] = [
     icon: Activity,
   },
   {
-    to: '/settings/appearance',
-    label: '设置',
-    description: '外观、账号与系统设置',
-    icon: Settings,
+    to: '/projects/new',
+    label: '新建项目',
+    description: '从允许目录创建 Project',
+    icon: FolderKanban,
   },
-];
-
-const commandItems: NavigationItem[] = [
-  ...primaryNavigation,
-  ...secondaryNavigation,
-  { to: '/projects', label: '新建项目', description: '从允许目录创建 Project', icon: FolderKanban },
-  { to: '/agents/agents', label: '发现 Agent', description: '扫描并接入可用 Agent', icon: Bot },
+  {
+    to: '/agents/agents/discover',
+    label: '发现 Agent',
+    description: '扫描并接入可用 Agent',
+    icon: Bot,
+  },
 ];
 
 function Brand() {
@@ -91,7 +100,7 @@ function Brand() {
       <div className={styles.brand}>
         <AgentHubLogo className={styles.brandMark} />
         <span className={styles.brandName}>AgentHub</span>
-        <span className={styles.version}>v0.7</span>
+        <span className={styles.version}>v0.8</span>
       </div>
     </div>
   );
@@ -105,11 +114,12 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
           <NavLink
             key={to}
             to={to}
-            end={to === '/home' || to === '/projects' || to === '/workspace'}
+            end={to === '/home' || to === '/projects'}
             className={({ isActive }) =>
               `${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`
             }
             onClick={onNavigate}
+            aria-label={label}
           >
             <span className={styles.navIcon}>
               <Icon aria-hidden size={18} weight="regular" />
@@ -130,6 +140,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
               `${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`
             }
             onClick={onNavigate}
+            aria-label={label}
           >
             <span className={styles.navIcon}>
               <Icon aria-hidden size={18} weight="regular" />
@@ -179,10 +190,23 @@ export function AppShell() {
         event.preventDefault();
         setCommandOpen((value) => !value);
       }
+      const target = event.target;
+      const isEditing =
+        target instanceof HTMLElement &&
+        (target.matches('input, textarea, select') || target.isContentEditable);
+      if (
+        !isEditing &&
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === 'b' &&
+        sidebarPreference === 'remember'
+      ) {
+        event.preventDefault();
+        setSidebarCollapsed(!sidebarCollapsed);
+      }
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, []);
+  }, [setSidebarCollapsed, sidebarCollapsed, sidebarPreference]);
 
   const results = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -228,26 +252,29 @@ export function AppShell() {
           />
           <span>实时连接</span>
         </div>
+        <button
+          type="button"
+          className={styles.sidebarCollapse}
+          onClick={() => {
+            if (sidebarPreference === 'remember') setSidebarCollapsed(!sidebarCollapsed);
+          }}
+          disabled={sidebarPreference !== 'remember'}
+          aria-label={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
+          title={`${sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'} (Ctrl/⌘ B)`}
+        >
+          {sidebarCollapsed ? (
+            <ChevronRight aria-hidden size={17} />
+          ) : (
+            <ChevronLeft aria-hidden size={17} />
+          )}
+          <span>{sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}</span>
+          <kbd>⌘ B</kbd>
+        </button>
         <ProfileSurface />
       </aside>
       <div className={styles.column}>
         <header className={styles.topbar}>
           <div className={styles.menuControls}>
-            <AhButton
-              className={styles.desktopMenu}
-              variant="default"
-              color="gray"
-              onClick={() => {
-                if (sidebarPreference !== 'remember') return;
-                setSidebarCollapsed(!sidebarCollapsed);
-              }}
-              disabled={sidebarPreference !== 'remember'}
-              aria-label={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
-              title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
-              type="button"
-            >
-              <Menu size={18} />
-            </AhButton>
             <AhButton
               className={styles.mobileMenu}
               variant="default"
