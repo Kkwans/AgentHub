@@ -612,6 +612,15 @@ export function ProjectsPageV07() {
     queryKey: ['projects'],
     queryFn: () => api.get<ProjectRecord[]>('/projects'),
   });
+  const tasks = useQuery({ queryKey: ['tasks'], queryFn: () => api.get<TaskRecord[]>('/tasks') });
+  const sessions = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+  });
+  const agents = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => api.get<AgentRecord[]>('/agents'),
+  });
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [language, setLanguage] = useState('all');
@@ -669,40 +678,61 @@ export function ProjectsPageV07() {
   const visibleProjects = filtered.slice((page - 1) * pageSize, page * pageSize);
   const projectInitial = (project: ProjectRecord) =>
     project.name.trim().slice(0, 1).toUpperCase() || 'P';
+  const readyAgentCount = agents.data
+    ? agents.data.filter((agent) => agent.enabled && agent.status === 'READY').length
+    : null;
   const projectRows = visibleProjects.map((project, index) => {
     const languageValue = projectLanguage(project);
     const timestamp = projectTimestamp(project);
     const repoLabel = project.repoKind === 'GIT' ? 'Git' : project.repoKind ? '目录' : undefined;
+    const activeWorkCount = tasks.data
+      ? tasks.data.filter(
+          (task) => task.projectId === project.id && !['DONE', 'CANCELED'].includes(task.status),
+        ).length
+      : null;
+    const latestSession = (sessions.data ?? [])
+      .filter((session) => session.projectId === project.id)
+      .sort((left, right) => Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt))[0];
     return (
       <Link
         className={projectsStyles.projectRow}
         key={project.id}
         to={`/projects/${project.id}/overview`}
       >
-        <span
-          className={`${projectsStyles.entityLogo} ${index % 3 === 1 ? projectsStyles.entityLogoAlt : index % 3 === 2 ? projectsStyles.entityLogoNeutral : ''}`}
-          aria-hidden="true"
-        >
-          {projectInitial(project)}
-        </span>
-        <span className={projectsStyles.projectMain}>
-          <strong className={projectsStyles.projectTitle}>{project.name}</strong>
-          {project.description ? (
-            <span className={projectsStyles.projectDescription}>{project.description}</span>
-          ) : null}
-          <span className={projectsStyles.projectMeta}>
-            {repoLabel ? <span>{repoLabel}</span> : null}
-            {languageValue ? <span>{languageValue}</span> : null}
-            {project.rootPath ? <span title={project.rootPath}>{project.rootPath}</span> : null}
+        <span className={projectsStyles.projectIdentity}>
+          <span
+            className={`${projectsStyles.entityLogo} ${index % 3 === 1 ? projectsStyles.entityLogoAlt : index % 3 === 2 ? projectsStyles.entityLogoNeutral : ''}`}
+            aria-hidden="true"
+          >
+            {projectInitial(project)}
+          </span>
+          <span className={projectsStyles.projectMain}>
+            <strong className={projectsStyles.projectTitle}>{project.name}</strong>
+            {project.description ? (
+              <span className={projectsStyles.projectDescription}>{project.description}</span>
+            ) : null}
+            <span className={projectsStyles.projectMeta}>
+              {repoLabel ? <span>{repoLabel}</span> : null}
+              {languageValue ? <span>{languageValue}</span> : null}
+              {project.rootPath ? <span title={project.rootPath}>{project.rootPath}</span> : null}
+            </span>
           </span>
         </span>
-        <span className={projectsStyles.projectInfo}>
-          <AhStatusPill status={project.status} />
-          {timestamp ? <span>更新于 {displayDate(timestamp)}</span> : null}
+        <span className={projectsStyles.projectBranch} title={latestSession?.branch ?? undefined}>
+          {latestSession?.branch ?? (sessions.data && project.repoKind === 'GIT' ? 'main' : '—')}
         </span>
-        {repoLabel ? (
-          <span className={projectsStyles.techChip}>{languageValue ?? repoLabel}</span>
-        ) : null}
+        <span className={projectsStyles.projectMetric}>
+          <strong>{activeWorkCount ?? '—'}</strong>
+          <small>进行中</small>
+        </span>
+        <span className={projectsStyles.projectMetric}>
+          <strong>{readyAgentCount ?? '—'}</strong>
+          <small>可用</small>
+        </span>
+        <span className={projectsStyles.projectActivity}>
+          <strong>{displayDate(latestSession?.lastActiveAt ?? timestamp)}</strong>
+          <small>最近活动</small>
+        </span>
       </Link>
     );
   });
@@ -834,7 +864,16 @@ export function ProjectsPageV07() {
             </div>
             {filtered.length ? (
               view === 'list' ? (
-                <div className={projectsStyles.projectList}>{projectRows}</div>
+                <section className={projectsStyles.projectList} aria-label="项目列表">
+                  <div className={projectsStyles.projectListHeader} aria-hidden="true">
+                    <span>项目</span>
+                    <span>分支</span>
+                    <span>工作</span>
+                    <span>Agent</span>
+                    <span>最近活动</span>
+                  </div>
+                  {projectRows}
+                </section>
               ) : (
                 <div className={projectsStyles.projectCardGrid}>{projectCards}</div>
               )
@@ -1101,11 +1140,24 @@ export function CreateProjectPageV07() {
 
 export function ProjectContextLayoutV07() {
   const { projectId } = useParams();
-  const location = useLocation();
   const project = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => api.get<ProjectRecord>(`/projects/${projectId}`),
     enabled: Boolean(projectId),
+  });
+  const sessions = useQuery({
+    queryKey: ['sessions', projectId],
+    queryFn: () => api.get<SessionRecord[]>(`/sessions?projectId=${projectId}`),
+    enabled: Boolean(projectId),
+  });
+  const tasks = useQuery({
+    queryKey: ['tasks', projectId],
+    queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${projectId}`),
+    enabled: Boolean(projectId),
+  });
+  const agents = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => api.get<AgentRecord[]>('/agents'),
   });
   if (project.isLoading) return <AhLoadingState label="正在加载项目上下文" />;
   if (project.error || !project.data)
@@ -1113,12 +1165,19 @@ export function ProjectContextLayoutV07() {
   const base = `/projects/${project.data.id}`;
   const projectType =
     project.data.repoKind === 'GIT' ? 'Git 仓库' : project.data.repoKind ? '目录项目' : undefined;
+  const latestSession = [...(sessions.data ?? [])].sort(
+    (left, right) => Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt),
+  )[0];
+  const activeWorkCount = (tasks.data ?? []).filter(
+    (task) => !['DONE', 'CANCELED'].includes(task.status),
+  ).length;
+  const readyAgentCount = (agents.data ?? []).filter(
+    (agent) => agent.enabled && agent.status === 'READY',
+  ).length;
   const tabs = [
     { to: `${base}/overview`, label: '概览' },
     { to: `${base}/work`, label: '工作' },
     { to: `${base}/sessions`, label: '会话' },
-    { to: `${base}/prompts`, label: 'Prompt' },
-    { to: `${base}/settings`, label: '设置' },
   ];
   return (
     <div className={`${styles.stack} ${projectsStyles.projectPage}`}>
@@ -1141,13 +1200,18 @@ export function ProjectContextLayoutV07() {
               <p className={projectsStyles.identityDescription}>{project.data.description}</p>
             ) : null}
             <div className={projectsStyles.identityFacts}>
-              {projectType ? <span>{projectType}</span> : null}
-              <span title={project.data.rootPath}>{project.data.rootPath}</span>
+              <span title={latestSession?.branch ?? undefined}>
+                <GitBranch size={13} aria-hidden="true" />
+                {latestSession?.branch ?? (project.data.repoKind === 'GIT' ? 'main' : '无 Git')}
+              </span>
+              {projectType ? <span title={project.data.rootPath}>{projectType}</span> : null}
+              <span>{readyAgentCount} Agent</span>
+              <span>{activeWorkCount} 个运行中</span>
             </div>
           </div>
           <div className={projectsStyles.identityActions}>
-            <Link to={`${base}/work`}>
-              <AhButton variant="default">进入 Work</AhButton>
+            <Link to={latestSession ? `/workspace/${latestSession.id}` : `${base}/work`}>
+              <AhButton variant="default">{latestSession ? '继续会话' : '进入 Work'}</AhButton>
             </Link>
             <Link to={`${base}/work/new`}>
               <AhButton leftSection={<Plus size={16} />}>新建工作</AhButton>
@@ -1161,7 +1225,7 @@ export function ProjectContextLayoutV07() {
               to={tab.to}
               end={tab.to.endsWith('/overview')}
               className={({ isActive }) =>
-                `${projectsStyles.contextTab} ${isActive || (tab.to !== `${base}/overview` && location.pathname.startsWith(tab.to)) ? projectsStyles.contextTabActive : ''}`
+                `${projectsStyles.contextTab} ${isActive ? projectsStyles.contextTabActive : ''}`
               }
             >
               {tab.label}
@@ -1192,10 +1256,6 @@ export function ProjectOverviewPageV07() {
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
   });
-  const prompts = useQuery({
-    queryKey: ['prompts', project.id],
-    queryFn: () => api.get<PromptRecord[]>(`/prompts?projectId=${project.id}`),
-  });
   const preflight = useQuery({
     queryKey: ['project-preflight', project.id],
     queryFn: () =>
@@ -1206,11 +1266,6 @@ export function ProjectOverviewPageV07() {
         checks?: Array<{ status: string; message: string }>;
       }>(`/projects/${project.id}/preflight`),
   });
-  const promptContext = useQuery({
-    queryKey: ['prompt-context', project.id],
-    queryFn: () =>
-      api.post<ResolvedPromptContextRecord>('/prompt-context/resolve', { projectId: project.id }),
-  });
   const agentById = useMemo(
     () => new Map((agents.data ?? []).map((agent) => [agent.id, agent])),
     [agents.data],
@@ -1218,7 +1273,12 @@ export function ProjectOverviewPageV07() {
   const activeTasks = useMemo(
     () =>
       [...(tasks.data ?? [])]
-        .filter((task) => task.status !== 'DONE' && task.status !== 'CANCELED')
+        .filter(
+          (task) =>
+            task.status !== 'DONE' &&
+            task.status !== 'CANCELED' &&
+            task.status !== 'WAITING_REVIEW',
+        )
         .sort((left, right) => {
           const rank: Record<TaskRecord['status'], number> = {
             IN_PROGRESS: 0,
@@ -1235,6 +1295,14 @@ export function ProjectOverviewPageV07() {
           );
         })
         .slice(0, 5),
+    [tasks.data],
+  );
+  const reviewTasks = useMemo(
+    () =>
+      [...(tasks.data ?? [])]
+        .filter((task) => task.status === 'WAITING_REVIEW')
+        .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
+        .slice(0, 4),
     [tasks.data],
   );
   const recentSessions = useMemo(
@@ -1269,186 +1337,169 @@ export function ProjectOverviewPageV07() {
         }
       : null,
   ].filter((item): item is { label: string; detail: string; ok: boolean } => Boolean(item));
-  const effectivePrompts = promptContext.data?.items?.length
-    ? promptContext.data.items.map((item) => ({
-        id: item.bindingId,
-        name: item.promptName,
-        detail: `${item.slot === 'SYSTEM' ? '系统' : item.slot === 'TASK_PRIMER' ? '工作' : '项目'}${item.label ? ` · ${item.label}` : ''} · v${item.version}`,
-      }))
-    : (prompts.data ?? []).slice(0, 4).map((prompt) => ({
-        id: prompt.id,
-        name: prompt.name,
-        detail: `${labelPromptKind(prompt.kind)} · ${labelPromptType(prompt.type)}`,
-      }));
   return (
-    <Screen
-      eyebrow="Project Overview"
-      title="概览"
-      description={project.description ?? '从这里了解正在进行的工作、项目状态与有效 Prompt。'}
-      actions={
-        <Link to={`/projects/${project.id}/work/new`}>
-          <AhButton leftSection={<Plus size={16} />}>新建工作</AhButton>
-        </Link>
-      }
-    >
-      <div className={projectsStyles.overviewGrid}>
-        <AhSurface
-          className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelWide}`}
-        >
-          <div className={projectsStyles.panelHeader}>
-            <div>
-              <h3>正在进行</h3>
-              <p>当前项目中的活跃工作。</p>
-            </div>
-            <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
+    <div className={projectsStyles.overviewGrid}>
+      <AhSurface className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelWide}`}>
+        <div className={projectsStyles.panelHeader}>
+          <div>
+            <h3>正在进行</h3>
+            <p>当前项目中的活跃工作。</p>
           </div>
-          <div className={projectsStyles.overviewList}>
-            {activeTasks.map((task) => {
-              const agent = task.assignedAgentId ? agentById.get(task.assignedAgentId) : undefined;
-              return (
-                <Link
-                  className={projectsStyles.overviewWorkRow}
-                  key={task.id}
-                  to={`/projects/${project.id}/work?task=${task.id}`}
-                >
-                  <span
-                    className={`${projectsStyles.workStateDot} ${taskStateClass(task.status)}`}
-                    aria-hidden="true"
-                  />
-                  <span className={projectsStyles.overviewCopy}>
-                    <strong>{task.title}</strong>
-                    <small>
-                      {agent?.name ?? '尚未分配 Agent'}
-                      {task.branch ? ` · ${task.branch}` : ''} · {displayDate(task.updatedAt)}
-                    </small>
-                  </span>
-                  <AhStatusPill status={task.status} />
-                </Link>
-              );
-            })}
-            {!tasks.isLoading && !activeTasks.length ? (
-              <AhEmptyState
-                compact
-                title="没有进行中的 Work"
-                description="从 Work 创建并开始一项工作。"
-                action={
-                  <Link to={`/projects/${project.id}/work/new`}>
-                    <AhButton size="sm">新建工作</AhButton>
-                  </Link>
-                }
-              />
-            ) : null}
-          </div>
-        </AhSurface>
-        <AhSurface
-          className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelNarrow}`}
-        >
-          <div className={projectsStyles.panelHeader}>
-            <div>
-              <h3>项目状态</h3>
-              <p>当前环境与 Agent 可用性。</p>
-            </div>
-          </div>
-          <div className={projectsStyles.healthStack}>
-            {healthItems.map((item) => (
-              <div className={projectsStyles.healthRow} key={item.label}>
+          <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
+        </div>
+        <div className={projectsStyles.overviewList}>
+          {activeTasks.map((task) => {
+            const agent = task.assignedAgentId ? agentById.get(task.assignedAgentId) : undefined;
+            return (
+              <Link
+                className={projectsStyles.overviewWorkRow}
+                key={task.id}
+                to={`/projects/${project.id}/work?task=${task.id}`}
+              >
                 <span
-                  className={`${projectsStyles.healthMark} ${item.ok ? '' : projectsStyles.healthMarkWarning}`}
+                  className={`${projectsStyles.workStateDot} ${taskStateClass(task.status)}`}
                   aria-hidden="true"
-                >
-                  {item.ok ? '✓' : '!'}
+                />
+                <span className={projectsStyles.overviewCopy}>
+                  <strong>{task.title}</strong>
+                  <small>
+                    {agent?.name ?? '尚未分配 Agent'}
+                    {task.branch ? ` · ${task.branch}` : ''} · {displayDate(task.updatedAt)}
+                  </small>
                 </span>
-                <span className={projectsStyles.healthCopy}>
-                  <strong>{item.label}</strong>
-                  <small>{item.detail}</small>
-                </span>
-              </div>
-            ))}
-            {!healthItems.length ? (
-              <AhEmptyState
-                compact
-                title="状态信息暂不可用"
-                description="完成一次项目预检后会在这里显示。"
-              />
-            ) : null}
-          </div>
-        </AhSurface>
-        <AhSurface
-          className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelBottom}`}
-        >
-          <div className={projectsStyles.panelHeader}>
-            <div>
-              <h3>最近会话</h3>
-              <p>继续上一次对话或代码审阅。</p>
-            </div>
-            <Link to={`/projects/${project.id}/sessions`}>全部会话 →</Link>
-          </div>
-          <div className={projectsStyles.overviewList}>
-            {recentSessions.map((session) => {
-              const agent = agentById.get(session.agentId);
-              return (
-                <Link
-                  className={projectsStyles.overviewSessionRow}
-                  key={session.id}
-                  to={`/workspace/${session.id}`}
-                >
-                  <span className={projectsStyles.agentAvatar} aria-hidden="true">
-                    {agent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
-                  </span>
-                  <span className={projectsStyles.overviewCopy}>
-                    <strong>{session.title}</strong>
-                    <small>
-                      {agent?.name ?? 'Agent'}
-                      {session.model ? ` · ${session.model}` : ''} ·{' '}
-                      {displayDate(session.lastActiveAt)}
-                    </small>
-                  </span>
-                  <AhStatusPill status={session.status} />
+                <AhStatusPill status={task.status} />
+              </Link>
+            );
+          })}
+          {!tasks.isLoading && !activeTasks.length ? (
+            <AhEmptyState
+              compact
+              title="没有进行中的 Work"
+              description="从 Work 创建并开始一项工作。"
+              action={
+                <Link to={`/projects/${project.id}/work/new`}>
+                  <AhButton size="sm">新建工作</AhButton>
                 </Link>
-              );
-            })}
-            {!sessions.isLoading && !recentSessions.length ? (
-              <AhEmptyState
-                compact
-                title="还没有 Session"
-                description="从 Work 创建第一项工作，再选择 Agent 运行。"
-              />
-            ) : null}
+              }
+            />
+          ) : null}
+        </div>
+      </AhSurface>
+      <AhSurface
+        className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelNarrow}`}
+      >
+        <div className={projectsStyles.panelHeader}>
+          <div>
+            <h3>项目状态</h3>
+            <p>当前环境与 Agent 可用性。</p>
           </div>
-        </AhSurface>
-        <AhSurface
-          className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelBottomNarrow}`}
-        >
-          <div className={projectsStyles.panelHeader}>
-            <div>
-              <h3>有效 Prompt</h3>
-              <p>项目当前继承与绑定。</p>
+        </div>
+        <div className={projectsStyles.healthStack}>
+          {healthItems.map((item) => (
+            <div className={projectsStyles.healthRow} key={item.label}>
+              <span
+                className={`${projectsStyles.healthMark} ${item.ok ? '' : projectsStyles.healthMarkWarning}`}
+                aria-hidden="true"
+              >
+                {item.ok ? '✓' : '!'}
+              </span>
+              <span className={projectsStyles.healthCopy}>
+                <strong>{item.label}</strong>
+                <small>{item.detail}</small>
+              </span>
             </div>
-            <Link to={`/projects/${project.id}/prompts`}>查看上下文 →</Link>
+          ))}
+          {!healthItems.length ? (
+            <AhEmptyState
+              compact
+              title="状态信息暂不可用"
+              description="完成一次项目预检后会在这里显示。"
+            />
+          ) : null}
+        </div>
+      </AhSurface>
+      <AhSurface
+        className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelBottomNarrow}`}
+      >
+        <div className={projectsStyles.panelHeader}>
+          <div>
+            <h3>最近会话</h3>
+            <p>继续上一次对话或代码审阅。</p>
           </div>
-          <div className={projectsStyles.overviewList}>
-            {effectivePrompts.map((prompt) => (
-              <div className={projectsStyles.promptRow} key={prompt.id}>
-                <span className={projectsStyles.promptMark} aria-hidden="true">
-                  ▤
+          <Link to={`/projects/${project.id}/sessions`}>全部会话 →</Link>
+        </div>
+        <div className={projectsStyles.overviewList}>
+          {recentSessions.map((session) => {
+            const agent = agentById.get(session.agentId);
+            return (
+              <Link
+                className={projectsStyles.overviewSessionRow}
+                key={session.id}
+                to={`/workspace/${session.id}`}
+              >
+                <span className={projectsStyles.agentAvatar} aria-hidden="true">
+                  {agent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
                 </span>
-                <span className={projectsStyles.promptCopy}>
-                  <strong>{prompt.name}</strong>
-                  <small>{prompt.detail}</small>
+                <span className={projectsStyles.overviewCopy}>
+                  <strong>{session.title}</strong>
+                  <small>
+                    {agent?.name ?? 'Agent'}
+                    {session.model ? ` · ${session.model}` : ''} ·{' '}
+                    {displayDate(session.lastActiveAt)}
+                  </small>
                 </span>
-              </div>
-            ))}
-            {!prompts.isLoading && !effectivePrompts.length ? (
-              <AhEmptyState
-                compact
-                title="还没有有效 Prompt"
-                description="在 Prompt 上下文中绑定项目资产。"
-              />
-            ) : null}
+                <AhStatusPill status={session.status} />
+              </Link>
+            );
+          })}
+          {!sessions.isLoading && !recentSessions.length ? (
+            <AhEmptyState
+              compact
+              title="还没有 Session"
+              description="从 Work 创建第一项工作，再选择 Agent 运行。"
+            />
+          ) : null}
+        </div>
+      </AhSurface>
+      <AhSurface
+        className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelBottom}`}
+      >
+        <div className={projectsStyles.panelHeader}>
+          <div>
+            <h3>Review Queue</h3>
+            <p>需要你做决策的工作结果。</p>
           </div>
-        </AhSurface>
-      </div>
-    </Screen>
+          <Link to={`/projects/${project.id}/work?status=WAITING_REVIEW`}>全部审阅 →</Link>
+        </div>
+        <div className={projectsStyles.overviewList}>
+          {reviewTasks.map((task) => (
+            <Link
+              className={projectsStyles.reviewQueueRow}
+              key={task.id}
+              to={`/projects/${project.id}/work?task=${task.id}`}
+            >
+              <span className={projectsStyles.reviewMark} aria-hidden="true">
+                ✓
+              </span>
+              <span className={projectsStyles.overviewCopy}>
+                <strong>{task.title}</strong>
+                <small>
+                  {task.branch ?? '尚未创建分支'} · {displayDate(task.updatedAt)}
+                </small>
+              </span>
+              <span className={projectsStyles.reviewAction}>查看结果</span>
+            </Link>
+          ))}
+          {!tasks.isLoading && !reviewTasks.length ? (
+            <AhEmptyState
+              compact
+              title="没有待审阅结果"
+              description="Agent 完成工作后，会在这里等待你的决策。"
+            />
+          ) : null}
+        </div>
+      </AhSurface>
+    </div>
   );
 }
 
@@ -1460,6 +1511,7 @@ export function ProjectWorkPageV07() {
   const selectedFromQuery = searchParams.get('task');
   const selectedAgentFromQuery = searchParams.get('agentId');
   const selectedPromptId = searchParams.get('promptId');
+  const statusFromQuery = searchParams.get('status');
   const view = searchParams.get('view') === 'board' ? 'board' : 'list';
   const tasks = useQuery({
     queryKey: ['tasks', project.id],
@@ -1483,7 +1535,7 @@ export function ProjectWorkPageV07() {
     queryFn: () => api.get<PromptRecord[]>(`/prompts?projectId=${project.id}`),
   });
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(statusFromQuery ?? 'all');
   const [agentFilter, setAgentFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(selectedFromQuery ?? '');
   const [runAgentId, setRunAgentId] = useState(selectedAgentFromQuery ?? '');
@@ -1497,6 +1549,9 @@ export function ProjectWorkPageV07() {
   useEffect(() => {
     if (selectedAgentFromQuery) setRunAgentId(selectedAgentFromQuery);
   }, [selectedAgentFromQuery]);
+  useEffect(() => {
+    if (statusFromQuery) setStatusFilter(statusFromQuery);
+  }, [statusFromQuery]);
   const filteredTasks = useMemo(() => {
     const value = query.trim().toLowerCase();
     return (tasks.data ?? []).filter((task) => {
@@ -1576,316 +1631,296 @@ export function ProjectWorkPageV07() {
       .filter(Boolean) ?? [];
   const workError = tasks.error ?? goals.error ?? worktrees.error;
   return (
-    <Screen
-      eyebrow="Project Work"
-      title="Work"
-      description="List-first 的目标与任务视图；选择一项工作，在 Inspector 中查看执行与 Review。"
-      actions={
-        <Link to={`/projects/${project.id}/work/new`}>
-          <AhButton leftSection={<Plus size={16} />}>新建工作</AhButton>
-        </Link>
-      }
-    >
-      <div className={projectsStyles.workPage}>
-        <QueryMessage
-          loading={tasks.isLoading || goals.isLoading || worktrees.isLoading}
-          error={workError}
-          retry={() => {
-            void tasks.refetch();
-            void goals.refetch();
-            void worktrees.refetch();
-          }}
-          label="正在加载 Work"
-        />
-        {!tasks.isLoading && !workError ? (
-          <>
-            <div className={projectsStyles.workToolbar} aria-label="工作筛选">
-              <div
-                className={`${projectsStyles.segmented} ${projectsStyles.viewSwitch}`}
-                role="group"
-                aria-label="工作视图"
+    <div className={projectsStyles.workPage}>
+      <QueryMessage
+        loading={tasks.isLoading || goals.isLoading || worktrees.isLoading}
+        error={workError}
+        retry={() => {
+          void tasks.refetch();
+          void goals.refetch();
+          void worktrees.refetch();
+        }}
+        label="正在加载 Work"
+      />
+      {!tasks.isLoading && !workError ? (
+        <>
+          <div className={projectsStyles.workToolbar} aria-label="工作筛选">
+            <div
+              className={`${projectsStyles.segmented} ${projectsStyles.viewSwitch}`}
+              role="group"
+              aria-label="工作视图"
+            >
+              <button
+                type="button"
+                className={`${projectsStyles.segmentedButton} ${view === 'list' ? projectsStyles.segmentedButtonActive : ''}`}
+                aria-pressed={view === 'list'}
+                onClick={() => setWorkView('list')}
               >
-                <button
-                  type="button"
-                  className={`${projectsStyles.segmentedButton} ${view === 'list' ? projectsStyles.segmentedButtonActive : ''}`}
-                  aria-pressed={view === 'list'}
-                  onClick={() => setWorkView('list')}
-                >
-                  列表
-                </button>
-                <button
-                  type="button"
-                  className={`${projectsStyles.segmentedButton} ${view === 'board' ? projectsStyles.segmentedButtonActive : ''}`}
-                  aria-pressed={view === 'board'}
-                  onClick={() => setWorkView('board')}
-                >
-                  看板
-                </button>
-              </div>
-              <div className={projectsStyles.toolbarSearch}>
-                <AhInput
-                  label=""
-                  aria-label="搜索工作"
-                  placeholder="搜索工作…"
-                  value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                  leftSection={<Search size={15} />}
-                />
-              </div>
-              <div className={projectsStyles.toolbarSelect}>
-                <AhSelect
-                  aria-label="工作状态"
-                  label=""
-                  value={statusFilter}
-                  onChange={(value) => setStatusFilter(value ?? 'all')}
-                  data={[
-                    { value: 'all', label: '全部状态' },
-                    ...taskStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
-                  ]}
-                />
-              </div>
-              <div className={projectsStyles.toolbarSelect}>
-                <AhSelect
-                  aria-label="工作 Agent"
-                  label=""
-                  value={agentFilter}
-                  onChange={(value) => setAgentFilter(value ?? 'all')}
-                  data={[
-                    { value: 'all', label: '全部 Agent' },
-                    ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
-                  ]}
-                />
-              </div>
-              <span className={projectsStyles.toolbarSpacer} />
-              <span className={projectsStyles.toolbarCount}>
-                {goals.data?.length ?? 0} 个 Goal · {filteredTasks.length} 个 Work
-              </span>
-              <Link to={`/projects/${project.id}/work/new`}>
-                <AhButton size="sm" leftSection={<Plus size={15} />}>
-                  新建工作
-                </AhButton>
-              </Link>
+                列表
+              </button>
+              <button
+                type="button"
+                className={`${projectsStyles.segmentedButton} ${view === 'board' ? projectsStyles.segmentedButtonActive : ''}`}
+                aria-pressed={view === 'board'}
+                onClick={() => setWorkView('board')}
+              >
+                看板
+              </button>
             </div>
-            {view === 'board' ? (
-              <div className={projectsStyles.board} aria-label="工作看板">
-                {boardColumns.map((column) => {
-                  const columnTasks = filteredTasks.filter((task) => task.status === column.status);
+            <div className={projectsStyles.toolbarSearch}>
+              <AhInput
+                label=""
+                aria-label="搜索工作"
+                placeholder="搜索工作…"
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+                leftSection={<Search size={15} />}
+              />
+            </div>
+            <div className={projectsStyles.toolbarSelect}>
+              <AhSelect
+                aria-label="工作状态"
+                label=""
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value ?? 'all')}
+                data={[
+                  { value: 'all', label: '全部状态' },
+                  ...taskStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
+                ]}
+              />
+            </div>
+            <div className={projectsStyles.toolbarSelect}>
+              <AhSelect
+                aria-label="工作 Agent"
+                label=""
+                value={agentFilter}
+                onChange={(value) => setAgentFilter(value ?? 'all')}
+                data={[
+                  { value: 'all', label: '全部 Agent' },
+                  ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
+                ]}
+              />
+            </div>
+            <span className={projectsStyles.toolbarSpacer} />
+            <span className={projectsStyles.toolbarCount}>
+              {goals.data?.length ?? 0} 个 Goal · {filteredTasks.length} 个 Work
+            </span>
+          </div>
+          {view === 'board' ? (
+            <div className={projectsStyles.board} aria-label="工作看板">
+              {boardColumns.map((column) => {
+                const columnTasks = filteredTasks.filter((task) => task.status === column.status);
+                return (
+                  <section className={projectsStyles.boardColumn} key={column.status}>
+                    <header className={projectsStyles.boardColumnHeader}>
+                      <span>{column.label}</span>
+                      <span>{columnTasks.length}</span>
+                    </header>
+                    <div className={projectsStyles.boardColumnBody}>
+                      {columnTasks.map((task) => (
+                        <button
+                          type="button"
+                          className={projectsStyles.boardCard}
+                          key={task.id}
+                          onClick={() => {
+                            selectTask(task);
+                            setWorkView('list');
+                          }}
+                        >
+                          <strong>{task.title}</strong>
+                          <small>
+                            {task.priority ? `P${task.priority}` : ''}
+                            {task.assignedAgentId
+                              ? ` · ${(agents.data ?? []).find((agent) => agent.id === task.assignedAgentId)?.name ?? '已分配 Agent'}`
+                              : ''}
+                          </small>
+                        </button>
+                      ))}
+                      {!columnTasks.length ? <span className={styles.subtle}>暂无工作</span> : null}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={projectsStyles.workLayout}>
+              <section className={projectsStyles.workListPanel} aria-label="工作列表">
+                <div className={projectsStyles.workListHeader}>
+                  <span aria-hidden="true" />
+                  <span>工作</span>
+                  <span>优先级</span>
+                  <span>Agent</span>
+                  <span>状态</span>
+                  <span>更新</span>
+                </div>
+                {filteredTasks.map((task) => {
+                  const agent = task.assignedAgentId
+                    ? agents.data?.find((item) => item.id === task.assignedAgentId)
+                    : undefined;
                   return (
-                    <section className={projectsStyles.boardColumn} key={column.status}>
-                      <header className={projectsStyles.boardColumnHeader}>
-                        <span>{column.label}</span>
-                        <span>{columnTasks.length}</span>
-                      </header>
-                      <div className={projectsStyles.boardColumnBody}>
-                        {columnTasks.map((task) => (
-                          <button
-                            type="button"
-                            className={projectsStyles.boardCard}
-                            key={task.id}
-                            onClick={() => {
-                              selectTask(task);
-                              setWorkView('list');
-                            }}
-                          >
-                            <strong>{task.title}</strong>
-                            <small>
-                              {task.priority ? `P${task.priority}` : ''}
-                              {task.assignedAgentId
-                                ? ` · ${(agents.data ?? []).find((agent) => agent.id === task.assignedAgentId)?.name ?? '已分配 Agent'}`
-                                : ''}
-                            </small>
-                          </button>
-                        ))}
-                        {!columnTasks.length ? (
-                          <span className={styles.subtle}>暂无工作</span>
-                        ) : null}
-                      </div>
-                    </section>
+                    <button
+                      type="button"
+                      className={`${projectsStyles.workRow} ${task.id === selected?.id ? projectsStyles.workRowSelected : ''}`}
+                      key={task.id}
+                      onClick={() => selectTask(task)}
+                    >
+                      <span
+                        className={`${projectsStyles.workStateDotSmall} ${taskStateClass(task.status)}`}
+                        aria-hidden="true"
+                      />
+                      <span className={projectsStyles.workRowMain}>
+                        <strong>{task.title}</strong>
+                        <small>{task.description ?? '暂无说明'}</small>
+                      </span>
+                      <span className={projectsStyles.priorityChip}>
+                        {task.priority ? `P${task.priority}` : '—'}
+                      </span>
+                      <span className={projectsStyles.agentChip}>{agent?.name ?? '未分配'}</span>
+                      <AhStatusPill status={task.status} />
+                      <span className={projectsStyles.workUpdated}>
+                        {displayDate(task.updatedAt)}
+                      </span>
+                    </button>
                   );
                 })}
-              </div>
-            ) : (
-              <div className={projectsStyles.workLayout}>
-                <section className={projectsStyles.workListPanel} aria-label="工作列表">
-                  <div className={projectsStyles.workListHeader}>
-                    <span aria-hidden="true" />
-                    <span>工作</span>
-                    <span>优先级</span>
-                    <span>Agent</span>
-                    <span>状态</span>
-                    <span>更新</span>
+                {!filteredTasks.length ? (
+                  <div className={projectsStyles.emptyPanel}>
+                    <AhEmptyState
+                      title={
+                        query || statusFilter !== 'all' || agentFilter !== 'all'
+                          ? '没有匹配的工作'
+                          : '还没有 Work'
+                      }
+                      description={
+                        query || statusFilter !== 'all' || agentFilter !== 'all'
+                          ? '尝试调整筛选条件。'
+                          : '先描述一项工作，系统会建立 Goal/Task 上下文。'
+                      }
+                      action={
+                        !query && statusFilter === 'all' && agentFilter === 'all' ? (
+                          <Link to={`/projects/${project.id}/work/new`}>
+                            <AhButton>新建工作</AhButton>
+                          </Link>
+                        ) : undefined
+                      }
+                    />
                   </div>
-                  {filteredTasks.map((task) => {
-                    const agent = task.assignedAgentId
-                      ? agents.data?.find((item) => item.id === task.assignedAgentId)
-                      : undefined;
-                    return (
-                      <button
-                        type="button"
-                        className={`${projectsStyles.workRow} ${task.id === selected?.id ? projectsStyles.workRowSelected : ''}`}
-                        key={task.id}
-                        onClick={() => selectTask(task)}
-                      >
-                        <span
-                          className={`${projectsStyles.workStateDotSmall} ${taskStateClass(task.status)}`}
-                          aria-hidden="true"
-                        />
-                        <span className={projectsStyles.workRowMain}>
-                          <strong>{task.title}</strong>
-                          <small>{task.description ?? '暂无说明'}</small>
-                        </span>
-                        <span className={projectsStyles.priorityChip}>
-                          {task.priority ? `P${task.priority}` : '—'}
-                        </span>
-                        <span className={projectsStyles.agentChip}>{agent?.name ?? '未分配'}</span>
-                        <AhStatusPill status={task.status} />
-                        <span className={projectsStyles.workUpdated}>
-                          {displayDate(task.updatedAt)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                  {!filteredTasks.length ? (
-                    <div className={projectsStyles.emptyPanel}>
-                      <AhEmptyState
-                        title={
-                          query || statusFilter !== 'all' || agentFilter !== 'all'
-                            ? '没有匹配的工作'
-                            : '还没有 Work'
-                        }
-                        description={
-                          query || statusFilter !== 'all' || agentFilter !== 'all'
-                            ? '尝试调整筛选条件。'
-                            : '先描述一项工作，系统会建立 Goal/Task 上下文。'
-                        }
-                        action={
-                          !query && statusFilter === 'all' && agentFilter === 'all' ? (
-                            <Link to={`/projects/${project.id}/work/new`}>
-                              <AhButton>新建工作</AhButton>
-                            </Link>
-                          ) : undefined
-                        }
+                ) : null}
+              </section>
+              <aside className={projectsStyles.workInspector} aria-label="工作 Inspector">
+                {selected ? (
+                  <>
+                    <header className={projectsStyles.inspectorHeader}>
+                      <AhStatusPill status={selected.status} />
+                      <h2>{selected.title}</h2>
+                      {selected.description ? <p>{selected.description}</p> : null}
+                    </header>
+                    {acceptanceCriteria.length ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>验收标准</h4>
+                        <ul className={projectsStyles.criteriaList}>
+                          {acceptanceCriteria.map((criterion) => (
+                            <li key={criterion}>{criterion}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
+                    <section className={projectsStyles.inspectorSection}>
+                      <h4>执行</h4>
+                      <AhSelect
+                        aria-label="运行 Agent"
+                        label=""
+                        value={runAgentId || selected.assignedAgentId || ''}
+                        onChange={(value) => setRunAgentId(value ?? '')}
+                        data={readyAgents.map((agent) => ({
+                          value: agent.id,
+                          label: agent.name,
+                        }))}
+                        placeholder="选择可用 Agent"
                       />
-                    </div>
-                  ) : null}
-                </section>
-                <aside className={projectsStyles.workInspector} aria-label="工作 Inspector">
-                  {selected ? (
-                    <>
-                      <header className={projectsStyles.inspectorHeader}>
-                        <AhStatusPill status={selected.status} />
-                        <h2>{selected.title}</h2>
-                        {selected.description ? <p>{selected.description}</p> : null}
-                      </header>
-                      {acceptanceCriteria.length ? (
-                        <section className={projectsStyles.inspectorSection}>
-                          <h4>验收标准</h4>
-                          <ul className={projectsStyles.criteriaList}>
-                            {acceptanceCriteria.map((criterion) => (
-                              <li key={criterion}>{criterion}</li>
-                            ))}
-                          </ul>
-                        </section>
-                      ) : null}
-                      <section className={projectsStyles.inspectorSection}>
-                        <h4>执行</h4>
-                        <AhSelect
-                          aria-label="运行 Agent"
-                          label=""
-                          value={runAgentId || selected.assignedAgentId || ''}
-                          onChange={(value) => setRunAgentId(value ?? '')}
-                          data={readyAgents.map((agent) => ({
-                            value: agent.id,
-                            label: agent.name,
-                          }))}
-                          placeholder="选择可用 Agent"
-                        />
-                        <div className={projectsStyles.runSummary}>
-                          <span className={projectsStyles.agentAvatar} aria-hidden="true">
-                            {selectedAgent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
-                          </span>
-                          <span>
-                            <strong>{selectedAgent?.name ?? '尚未选择 Agent'}</strong>
-                            <small>
-                              {selected.branch ?? selectedWorktree?.taskBranch ?? '尚未创建分支'}
-                            </small>
-                          </span>
-                        </div>
-                        {selectedWorktree ? (
-                          <AhStatusPill status={selectedWorktree.status} />
-                        ) : null}
-                      </section>
-                      {selectedWorktree?.errorMessage ? (
-                        <section className={projectsStyles.inspectorSection}>
-                          <h4>需要处理</h4>
-                          <p>{selectedWorktree.errorMessage}</p>
-                        </section>
-                      ) : null}
-                      <section className={projectsStyles.inspectorSection}>
-                        <h4>执行信息</h4>
-                        <p>分支：{selected.branch ?? selectedWorktree?.taskBranch ?? '尚未创建'}</p>
-                        <p>
-                          Session：
-                          {selected.sessionId ? (
-                            <Link className={styles.link} to={`/workspace/${selected.sessionId}`}>
-                              打开 Workspace
-                            </Link>
-                          ) : (
-                            '尚未开始'
-                          )}
-                        </p>
-                        {selectedPrompt ? (
-                          <p>
-                            Prompt：{selectedPrompt.name} · {labelPromptType(selectedPrompt.type)}
-                          </p>
-                        ) : null}
-                      </section>
-                      <div className={projectsStyles.inspectorActions}>
-                        <AhButton
-                          size="xs"
-                          variant="light"
-                          onClick={() =>
-                            runAgentId
-                              ? start.mutate({ id: selected.id, agentId: runAgentId })
-                              : transition.mutate({ id: selected.id, status: 'IN_PROGRESS' })
-                          }
-                          loading={transition.isPending || start.isPending}
-                          disabled={
-                            ['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'].includes(
-                              selected.status,
-                            ) ||
-                            (!runAgentId && selected.status !== 'BACKLOG')
-                          }
-                        >
-                          <Play size={14} /> {runAgentId ? '启动 Session' : '开始'}
-                        </AhButton>
-                        <AhButton
-                          size="xs"
-                          variant="default"
-                          onClick={() => transition.mutate({ id: selected.id, status: 'CANCELED' })}
-                          loading={transition.isPending}
-                          disabled={selected.status === 'DONE' || selected.status === 'CANCELED'}
-                        >
-                          <CircleStop size={14} /> 取消
-                        </AhButton>
+                      <div className={projectsStyles.runSummary}>
+                        <span className={projectsStyles.agentAvatar} aria-hidden="true">
+                          {selectedAgent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
+                        </span>
+                        <span>
+                          <strong>{selectedAgent?.name ?? '尚未选择 Agent'}</strong>
+                          <small>
+                            {selected.branch ?? selectedWorktree?.taskBranch ?? '尚未创建分支'}
+                          </small>
+                        </span>
                       </div>
-                    </>
-                  ) : (
-                    <div className={projectsStyles.emptyPanel}>
-                      <AhEmptyState
-                        compact
-                        title="从列表选择工作"
-                        description="选择一项 Work 后查看执行与 Review。"
-                      />
+                      {selectedWorktree ? <AhStatusPill status={selectedWorktree.status} /> : null}
+                    </section>
+                    {selectedWorktree?.errorMessage ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>需要处理</h4>
+                        <p>{selectedWorktree.errorMessage}</p>
+                      </section>
+                    ) : null}
+                    <section className={projectsStyles.inspectorSection}>
+                      <h4>执行信息</h4>
+                      <p>分支：{selected.branch ?? selectedWorktree?.taskBranch ?? '尚未创建'}</p>
+                      <p>
+                        Session：
+                        {selected.sessionId ? (
+                          <Link className={styles.link} to={`/workspace/${selected.sessionId}`}>
+                            打开 Workspace
+                          </Link>
+                        ) : (
+                          '尚未开始'
+                        )}
+                      </p>
+                      {selectedPrompt ? (
+                        <p>
+                          Prompt：{selectedPrompt.name} · {labelPromptType(selectedPrompt.type)}
+                        </p>
+                      ) : null}
+                    </section>
+                    <div className={projectsStyles.inspectorActions}>
+                      <AhButton
+                        size="xs"
+                        variant="light"
+                        onClick={() =>
+                          runAgentId
+                            ? start.mutate({ id: selected.id, agentId: runAgentId })
+                            : transition.mutate({ id: selected.id, status: 'IN_PROGRESS' })
+                        }
+                        loading={transition.isPending || start.isPending}
+                        disabled={
+                          ['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'].includes(
+                            selected.status,
+                          ) ||
+                          (!runAgentId && selected.status !== 'BACKLOG')
+                        }
+                      >
+                        <Play size={14} /> {runAgentId ? '启动 Session' : '开始'}
+                      </AhButton>
+                      <AhButton
+                        size="xs"
+                        variant="default"
+                        onClick={() => transition.mutate({ id: selected.id, status: 'CANCELED' })}
+                        loading={transition.isPending}
+                        disabled={selected.status === 'DONE' || selected.status === 'CANCELED'}
+                      >
+                        <CircleStop size={14} /> 取消
+                      </AhButton>
                     </div>
-                  )}
-                </aside>
-              </div>
-            )}
-          </>
-        ) : null}
-      </div>
-    </Screen>
+                  </>
+                ) : (
+                  <div className={projectsStyles.emptyPanel}>
+                    <AhEmptyState
+                      compact
+                      title="从列表选择工作"
+                      description="选择一项 Work 后查看执行与 Review。"
+                    />
+                  </div>
+                )}
+              </aside>
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -2221,130 +2256,119 @@ export function ProjectSessionsPageV07() {
     );
   };
   return (
-    <Screen
-      eyebrow="Project Sessions"
-      title="Sessions"
-      description="按 Project 查看会话历史，恢复上下文或进入沉浸式 Workspace。"
-      actions={
-        <AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>
-          新建会话
-        </AhButton>
-      }
-    >
-      <div className={projectsStyles.sessionsPage}>
-        <QueryMessage
-          loading={sessions.isLoading || agents.isLoading}
-          error={sessions.error ?? agents.error}
-          retry={() => {
-            void sessions.refetch();
-            void agents.refetch();
-          }}
-          label="正在加载 Sessions"
-        />
-        {!sessions.isLoading && !sessions.error ? (
-          <>
-            <div className={projectsStyles.sessionsToolbar} aria-label="会话筛选">
-              <div className={projectsStyles.toolbarSearch}>
-                <AhInput
-                  label=""
-                  aria-label="搜索会话"
-                  placeholder="搜索会话…"
-                  value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                  leftSection={<Search size={15} />}
-                />
-              </div>
-              <div className={projectsStyles.toolbarSelect}>
-                <AhSelect
-                  aria-label="会话 Agent"
-                  label=""
-                  value={agentFilter}
-                  onChange={(value) => setAgentFilter(value ?? 'all')}
-                  data={[
-                    { value: 'all', label: '全部 Agent' },
-                    ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
-                  ]}
-                />
-              </div>
-              <div className={projectsStyles.toolbarSelect}>
-                <AhSelect
-                  aria-label="会话状态"
-                  label=""
-                  value={statusFilter}
-                  onChange={(value) => setStatusFilter(value ?? 'all')}
-                  data={[
-                    { value: 'all', label: '全部状态' },
-                    ...sessionStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
-                  ]}
-                />
-              </div>
-              <span className={projectsStyles.toolbarSpacer} />
-              <span className={projectsStyles.toolbarCount}>{filteredSessions.length} 个会话</span>
-              <AhButton size="sm" leftSection={<Plus size={15} />} onClick={() => setNewOpen(true)}>
-                新建会话
-              </AhButton>
+    <div className={projectsStyles.sessionsPage}>
+      <QueryMessage
+        loading={sessions.isLoading || agents.isLoading}
+        error={sessions.error ?? agents.error}
+        retry={() => {
+          void sessions.refetch();
+          void agents.refetch();
+        }}
+        label="正在加载 Sessions"
+      />
+      {!sessions.isLoading && !sessions.error ? (
+        <>
+          <div className={projectsStyles.sessionsToolbar} aria-label="会话筛选">
+            <div className={projectsStyles.toolbarSearch}>
+              <AhInput
+                label=""
+                aria-label="搜索会话"
+                placeholder="搜索会话…"
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+                leftSection={<Search size={15} />}
+              />
             </div>
-            {filteredSessions.length ? (
-              <AhSurface className={projectsStyles.sessionLibrary}>
-                {groupLabels.map(renderSessionGroup)}
-              </AhSurface>
-            ) : (
-              <AhSurface className={projectsStyles.emptyPanel}>
-                <AhEmptyState
-                  title={
-                    query || agentFilter !== 'all' || statusFilter !== 'all'
-                      ? '没有匹配的会话'
-                      : '还没有 Session'
-                  }
-                  description={
-                    query || agentFilter !== 'all' || statusFilter !== 'all'
-                      ? '尝试调整筛选条件。'
-                      : '从 New Work 创建第一项工作，再选择 Agent 运行。'
-                  }
-                  action={
-                    !query && agentFilter === 'all' && statusFilter === 'all' ? (
-                      <AhButton onClick={() => setNewOpen(true)}>创建会话</AhButton>
-                    ) : undefined
-                  }
-                />
-              </AhSurface>
-            )}
-          </>
-        ) : null}
-        <AhDialog
-          open={newOpen}
-          onClose={() => setNewOpen(false)}
-          title="新建会话"
-          description="使用当前 Project 作为工作目录。"
-        >
-          <AhInput
-            label="会话名称"
-            value={title}
-            onChange={(event) => setTitle(event.currentTarget.value)}
-          />
-          <AhSelect
-            label="Agent"
-            value={agentId}
-            onChange={(value) => setAgentId(value ?? '')}
-            data={(agents.data ?? [])
-              .filter((agent) => agent.status === 'READY')
-              .map((agent) => ({ value: agent.id, label: agent.name }))}
-            placeholder="选择 Agent"
-            mt="md"
-          />
-          <div className={styles.actions} style={{ marginTop: 20 }}>
-            <AhButton
-              onClick={() => create.mutate()}
-              loading={create.isPending}
-              disabled={!agentId || !title.trim()}
-            >
-              创建并进入 Workspace
+            <div className={projectsStyles.toolbarSelect}>
+              <AhSelect
+                aria-label="会话 Agent"
+                label=""
+                value={agentFilter}
+                onChange={(value) => setAgentFilter(value ?? 'all')}
+                data={[
+                  { value: 'all', label: '全部 Agent' },
+                  ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
+                ]}
+              />
+            </div>
+            <div className={projectsStyles.toolbarSelect}>
+              <AhSelect
+                aria-label="会话状态"
+                label=""
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value ?? 'all')}
+                data={[
+                  { value: 'all', label: '全部状态' },
+                  ...sessionStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
+                ]}
+              />
+            </div>
+            <span className={projectsStyles.toolbarSpacer} />
+            <span className={projectsStyles.toolbarCount}>{filteredSessions.length} 个会话</span>
+            <AhButton size="sm" leftSection={<Plus size={15} />} onClick={() => setNewOpen(true)}>
+              新建会话
             </AhButton>
           </div>
-          {create.error ? <AhErrorState description={create.error.message} /> : null}
-        </AhDialog>
-      </div>
-    </Screen>
+          {filteredSessions.length ? (
+            <AhSurface className={projectsStyles.sessionLibrary}>
+              {groupLabels.map(renderSessionGroup)}
+            </AhSurface>
+          ) : (
+            <AhSurface className={projectsStyles.emptyPanel}>
+              <AhEmptyState
+                title={
+                  query || agentFilter !== 'all' || statusFilter !== 'all'
+                    ? '没有匹配的会话'
+                    : '还没有 Session'
+                }
+                description={
+                  query || agentFilter !== 'all' || statusFilter !== 'all'
+                    ? '尝试调整筛选条件。'
+                    : '从 New Work 创建第一项工作，再选择 Agent 运行。'
+                }
+                action={
+                  !query && agentFilter === 'all' && statusFilter === 'all' ? (
+                    <AhButton onClick={() => setNewOpen(true)}>创建会话</AhButton>
+                  ) : undefined
+                }
+              />
+            </AhSurface>
+          )}
+        </>
+      ) : null}
+      <AhDialog
+        open={newOpen}
+        onClose={() => setNewOpen(false)}
+        title="新建会话"
+        description="使用当前 Project 作为工作目录。"
+      >
+        <AhInput
+          label="会话名称"
+          value={title}
+          onChange={(event) => setTitle(event.currentTarget.value)}
+        />
+        <AhSelect
+          label="Agent"
+          value={agentId}
+          onChange={(value) => setAgentId(value ?? '')}
+          data={(agents.data ?? [])
+            .filter((agent) => agent.status === 'READY')
+            .map((agent) => ({ value: agent.id, label: agent.name }))}
+          placeholder="选择 Agent"
+          mt="md"
+        />
+        <div className={styles.actions} style={{ marginTop: 20 }}>
+          <AhButton
+            onClick={() => create.mutate()}
+            loading={create.isPending}
+            disabled={!agentId || !title.trim()}
+          >
+            创建并进入 Workspace
+          </AhButton>
+        </div>
+        {create.error ? <AhErrorState description={create.error.message} /> : null}
+      </AhDialog>
+    </div>
   );
 }
 
