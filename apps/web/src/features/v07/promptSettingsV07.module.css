@@ -5,10 +5,6 @@
   min-width: 0;
 }
 
-.promptPage {
-  max-width: 1320px;
-}
-
 .pageHeader {
   display: flex;
   align-items: flex-end;
@@ -473,12 +469,44 @@
   font-weight: 700;
 }
 
+.lifecycleGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.lifecycleGrid > section {
+  min-width: 0;
+}
+.diffPanel {
+  grid-column: 1 / -1;
+}
+.diffControls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+.diffPatch {
+  max-height: 280px;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 14px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 12px;
+  font: 12px/1.65 var(--mantine-font-family-monospace);
+  white-space: pre;
+}
+
 .settingsPage {
   max-width: 1180px;
 }
 .settingsLayout {
   display: grid;
-  grid-template-columns: 148px minmax(0, 860px);
+  grid-template-columns: 160px minmax(0, 860px);
   align-items: start;
   gap: 30px;
 }
@@ -487,7 +515,7 @@
   top: 90px;
   display: grid;
   gap: 3px;
-  width: 148px;
+  width: 160px;
 }
 .settingsNav a {
   min-height: 38px;
@@ -510,6 +538,9 @@
 .settingsSection {
   display: grid;
   gap: 12px;
+}
+.settingsSection[hidden] {
+  display: none;
 }
 .settingsSection h2 {
   margin: 0;
@@ -656,6 +687,12 @@
   }
   .settingsNav a {
     white-space: nowrap;
+  }
+  .lifecycleGrid {
+    grid-template-columns: 1fr;
+  }
+  .diffControls {
+    grid-template-columns: 1fr;
   }
 }
 

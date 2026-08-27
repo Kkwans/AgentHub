@@ -151,7 +151,7 @@
   --ah-surface-elevated: #ffffff;
   --ah-text-primary: #151824;
   --ah-text-secondary: #596176;
-  --ah-text-tertiary: #667086;
+  --ah-text-tertiary: #626b80;
   --ah-text-disabled: #b2b8c7;
   --ah-border-subtle: #e9ebf2;
   --ah-border-default: #dde1eb;
@@ -184,6 +184,16 @@
   --ah-shadow-md: 0 14px 38px -18px rgb(17 22 38 / 20%);
   --ah-shadow-lg: 0 28px 76px -28px rgb(17 22 38 / 34%);
   --ah-shadow-accent: 0 12px 34px -12px rgb(98 70 245 / 42%);
+  /* Mantine's default light dimmed gray is below AA at our 13px text size. */
+  --mantine-color-dimmed: var(--ah-text-secondary);
+}
+
+:root[data-mantine-color-scheme='light'] {
+  --mantine-color-dimmed: var(--ah-text-secondary);
+}
+
+:root[data-mantine-color-scheme='dark'] {
+  --mantine-color-dimmed: var(--ah-text-secondary);
 }
 
 :root[data-agenthub-theme='dark'] {
@@ -222,6 +232,7 @@
   --ah-shadow-md: 0 16px 44px -22px rgb(0 0 0 / 62%);
   --ah-shadow-lg: 0 28px 80px -26px rgb(0 0 0 / 75%);
   --ah-shadow-accent: 0 12px 34px -12px rgb(98 70 245 / 30%);
+  --mantine-color-dimmed: var(--ah-text-secondary);
 }
 
 html,

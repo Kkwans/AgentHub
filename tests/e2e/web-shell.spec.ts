@@ -86,6 +86,63 @@ const worktree = {
   updatedAt: task.updatedAt,
 };
 
+const prompt = {
+  id: '88888888-8888-4888-8888-888888888888',
+  projectId: project.id,
+  key: 'review/safe-change',
+  name: '安全变更审阅',
+  description: '基于仓库规范审阅当前变更',
+  kind: 'REVIEW',
+  type: 'TEXT',
+  createdAt: '2026-08-27T00:00:00.000Z',
+  updatedAt: '2026-08-28T01:00:00.000Z',
+};
+
+const promptVersion = {
+  id: '99999999-9999-4999-8999-999999999999',
+  promptId: prompt.id,
+  version: 8,
+  contentJson: { text: '你是一名资深代码审阅者。\n\n请优先识别安全、数据一致性和回归风险。' },
+  variablesJson: { project: { type: 'string' }, task: { type: 'string' } },
+  configJson: {},
+  changelog: '收敛审阅输出格式',
+  source: 'MANUAL',
+  contentHash: 'a'.repeat(64),
+  createdBy: 'admin',
+  createdAt: '2026-08-28T01:00:00.000Z',
+};
+
+const priorPromptVersion = {
+  ...promptVersion,
+  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  version: 7,
+  contentJson: { text: '你是一名代码审阅者。\n\n请识别安全和回归风险。' },
+  changelog: '建立审阅基线',
+  contentHash: 'b'.repeat(64),
+  createdAt: '2026-08-27T01:00:00.000Z',
+};
+
+const promptLabel = {
+  promptId: prompt.id,
+  label: 'production',
+  versionId: promptVersion.id,
+  version: 8,
+  updatedAt: promptVersion.createdAt,
+};
+
+const promptBinding = {
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  targetType: 'PROJECT',
+  targetId: project.id,
+  slot: 'SYSTEM',
+  promptId: prompt.id,
+  selectorType: 'LABEL',
+  label: 'production',
+  versionId: null,
+  priority: 0,
+  enabled: true,
+};
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/**', fulfillFixture);
 });
@@ -182,19 +239,67 @@ test('Sessions 按时间组织并可恢复 Workspace', async ({ page }, testInfo
   await attachViewportScreenshot(page, testInfo, 'project-sessions');
 });
 
+test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板', async ({ page }, testInfo) => {
+  await page.goto(`/prompts?projectId=${project.id}&tab=bindings`);
+  await expect(page.getByRole('heading', { name: 'Prompt 库' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
+  const tabs = page.getByRole('tablist', { name: 'Prompt 资产分区' });
+  await expect(tabs.getByRole('tab')).toHaveText(['内容', '变量', 'Playground', '绑定']);
+  await expect(tabs.getByRole('tab', { name: '绑定' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('region', { name: 'Prompt 编辑器' })).toContainText(project.name);
+  await expect(tabs.getByRole('tab', { name: '版本' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '版本与标签' }).click();
+  const lifecycle = page.getByRole('dialog', { name: '版本与标签' });
+  await expect(lifecycle.getByRole('heading', { name: '版本历史' })).toBeVisible();
+  await expect(lifecycle.getByText('production', { exact: true })).toBeVisible();
+  await expect(lifecycle.getByRole('heading', { name: '版本比较' })).toBeVisible();
+  await expect(lifecycle.getByText('+请优先识别安全、数据一致性和回归风险。')).toBeVisible();
+  await lifecycle.press('Escape');
+  await expect(lifecycle).toBeHidden();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'prompts');
+});
+
+test('Settings 使用窄本地导航和单一内容列', async ({ page }, testInfo) => {
+  await page.goto('/settings/appearance');
+  const navigation = page.getByRole('navigation', { name: '设置分区' });
+  await expect(navigation.getByRole('link')).toHaveText(['外观', '账户', '安全', '集成', '系统']);
+  await expect(page.getByRole('heading', { name: '外观' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '账户' })).toBeHidden();
+
+  if ((page.viewportSize()?.width ?? 0) >= 901) {
+    const width = await navigation.evaluate((element) => element.getBoundingClientRect().width);
+    expect(width).toBeGreaterThanOrEqual(156);
+    expect(width).toBeLessThanOrEqual(168);
+  }
+
+  await navigation.getByRole('link', { name: '安全' }).click();
+  await expect(page).toHaveURL('/settings/security');
+  await expect(page.getByRole('heading', { name: '安全' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '外观' })).toBeHidden();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'settings-security');
+});
+
 test('核心 v0.8 页面没有 serious 或 critical axe 问题', async ({ page }, testInfo) => {
   test.slow();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const routes = [
     '/projects',
     `/projects/${project.id}/overview`,
     `/projects/${project.id}/work`,
     `/projects/${project.id}/sessions`,
+    '/prompts',
+    '/settings/appearance',
   ];
   const violations: Array<Record<string, unknown>> = [];
 
   for (const path of routes) {
     await page.goto(path);
     await page.locator('#main-content').waitFor();
+    // Avoid sampling a control mid-transition, which can create a transient false contrast failure.
+    await page.waitForTimeout(250);
     const result = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
@@ -244,14 +349,31 @@ async function fulfillFixture(route: Route) {
       checks: [],
     };
   } else if (path.endsWith(`/projects/${project.id}`)) data = project;
+  else if (path.endsWith(`/prompts/${prompt.id}/versions`))
+    data = [promptVersion, priorPromptVersion];
+  else if (path.endsWith(`/prompts/${prompt.id}/diff`)) {
+    data = {
+      fromContent: priorPromptVersion.contentJson,
+      toContent: promptVersion.contentJson,
+      patch:
+        '@@ -1,3 +1,3 @@\n-你是一名代码审阅者。\n+你是一名资深代码审阅者。\n-请识别安全和回归风险。\n+请优先识别安全、数据一致性和回归风险。',
+    };
+  } else if (path.endsWith(`/prompts/${prompt.id}/labels`)) data = [promptLabel];
+  else if (path.endsWith('/prompt-bindings')) data = [promptBinding];
   else if (path.endsWith('/projects')) data = [project];
   else if (path.endsWith('/tasks')) data = [task];
   else if (path.endsWith('/sessions')) data = [session];
   else if (path.endsWith('/agents')) data = [agent];
   else if (path.endsWith('/goals')) data = [];
   else if (path.endsWith('/worktree-executions')) data = [worktree];
-  else if (path.endsWith('/prompts')) data = [];
-  else if (path.endsWith('/execution-targets')) data = [];
+  else if (path.endsWith('/prompts')) data = [prompt];
+  else if (path.endsWith('/auth/tokens')) data = [];
+  else if (path.endsWith('/settings/capabilities')) {
+    data = {
+      terminal: { available: true, message: 'Terminal 可用', platform: 'linux', arch: 'arm64' },
+      remoteNode: { available: true },
+    };
+  } else if (path.endsWith('/execution-targets')) data = [];
   else if (path.endsWith('/dashboard')) {
     data = {
       runningSessions: [],

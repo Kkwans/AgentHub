@@ -42,7 +42,6 @@ import {
   Link,
   NavLink,
   Outlet,
-  useLocation,
   useNavigate,
   useOutletContext,
   useParams,
@@ -3201,7 +3200,16 @@ export function RemoteNodeDetailPageV07() {
 
 export function PromptLibraryPageV07() {
   const client = useQueryClient();
-  const { projectId, promptId } = useParams();
+  const routeParams = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectId = routeParams.projectId ?? searchParams.get('projectId') ?? undefined;
+  const promptId = routeParams.promptId ?? searchParams.get('promptId') ?? '';
+  type PromptMainTab = 'content' | 'variables' | 'bindings' | 'playground';
+  const requestedTab = searchParams.get('tab');
+  const initialTab: PromptMainTab =
+    requestedTab === 'variables' || requestedTab === 'bindings' || requestedTab === 'playground'
+      ? requestedTab
+      : 'content';
   const prompts = useQuery({
     queryKey: ['prompts', projectId ?? 'all'],
     queryFn: () =>
@@ -3217,9 +3225,7 @@ export function PromptLibraryPageV07() {
   });
   const tasks = useQuery({ queryKey: ['tasks'], queryFn: () => api.get<TaskRecord[]>('/tasks') });
   const [selectedId, setSelectedId] = useState(promptId ?? '');
-  const [tab, setTab] = useState<
-    'content' | 'variables' | 'versions' | 'labels' | 'bindings' | 'playground'
-  >('content');
+  const [tab, setTab] = useState<PromptMainTab>(initialTab);
   const [search, setSearch] = useState('');
   const [promptFilter, setPromptFilter] = useState<'all' | 'SYSTEM' | 'TASK' | 'REVIEW' | 'RULE'>(
     'all',
@@ -3240,6 +3246,15 @@ export function PromptLibraryPageV07() {
   useEffect(() => {
     if (promptId) setSelectedId(promptId);
   }, [promptId]);
+  useEffect(() => {
+    if (
+      requestedTab === 'content' ||
+      requestedTab === 'variables' ||
+      requestedTab === 'bindings' ||
+      requestedTab === 'playground'
+    )
+      setTab(requestedTab);
+  }, [requestedTab]);
   useEffect(() => {
     if (!selectedId && selected) setSelectedId(selected.id);
   }, [selected, selectedId]);
@@ -3277,6 +3292,9 @@ export function PromptLibraryPageV07() {
     },
   });
   const [versionOpen, setVersionOpen] = useState(false);
+  const [lifecycleOpen, setLifecycleOpen] = useState(false);
+  const [diffFrom, setDiffFrom] = useState('');
+  const [diffTo, setDiffTo] = useState('');
   const [versionContent, setVersionContent] = useState('');
   const [versionVariables, setVersionVariables] = useState('{}');
   const [versionChangelog, setVersionChangelog] = useState('');
@@ -3398,9 +3416,14 @@ export function PromptLibraryPageV07() {
     content: '内容',
     variables: '变量',
     playground: 'Playground',
-    versions: '版本',
-    labels: '标签',
     bindings: '绑定',
+  };
+  const selectMainTab = (nextTab: PromptMainTab) => {
+    setTab(nextTab);
+    const next = new URLSearchParams(searchParams);
+    if (nextTab === 'content') next.delete('tab');
+    else next.set('tab', nextTab);
+    setSearchParams(next, { replace: true });
   };
   const promptFilters: Array<{ value: typeof promptFilter; label: string }> = [
     { value: 'all', label: '全部' },
@@ -3422,6 +3445,25 @@ export function PromptLibraryPageV07() {
         ? (agents.data?.find((item) => item.id === binding.targetId)?.name ?? 'Agent')
         : (tasks.data?.find((item) => item.id === binding.targetId)?.title ?? 'Task');
   const latestVersion = versions.data?.[0];
+  useEffect(() => {
+    const available = versions.data ?? [];
+    const newest = available[0];
+    if (!newest) {
+      setDiffFrom('');
+      setDiffTo('');
+      return;
+    }
+    if (!available.some((version) => String(version.version) === diffFrom))
+      setDiffFrom(String(available.at(-1)?.version ?? newest.version));
+    if (!available.some((version) => String(version.version) === diffTo))
+      setDiffTo(String(newest.version));
+  }, [diffFrom, diffTo, versions.data]);
+  const versionDiff = useQuery({
+    queryKey: ['prompt-diff', selected?.id, diffFrom, diffTo],
+    queryFn: () =>
+      api.get<{ patch: string }>(`/prompts/${selected?.id}/diff?from=${diffFrom}&to=${diffTo}`),
+    enabled: Boolean(selected && diffFrom && diffTo && diffFrom !== diffTo),
+  });
   const contentValue =
     latestVersion?.contentJson &&
     typeof latestVersion.contentJson === 'object' &&
@@ -3458,14 +3500,6 @@ export function PromptLibraryPageV07() {
                 <strong>Prompt 目录</strong>
                 <small>{prompts.data?.length ?? 0} 个资产</small>
               </div>
-              <AhButton
-                size="xs"
-                variant="default"
-                aria-label="新建 Prompt"
-                onClick={() => setNewOpen(true)}
-              >
-                <Plus size={14} />
-              </AhButton>
             </div>
             <label className={promptSettingsStyles.searchField}>
               <Search size={15} aria-hidden="true" />
@@ -3502,6 +3536,10 @@ export function PromptLibraryPageV07() {
                   onClick={() => {
                     setSelectedId(prompt.id);
                     setTab('content');
+                    const next = new URLSearchParams(searchParams);
+                    next.set('promptId', prompt.id);
+                    next.delete('tab');
+                    setSearchParams(next, { replace: true });
                   }}
                 >
                   <span className={promptSettingsStyles.promptRowIcon}>
@@ -3557,6 +3595,9 @@ export function PromptLibraryPageV07() {
                     <AhButton size="sm" variant="default" onClick={refreshPrompt}>
                       刷新
                     </AhButton>
+                    <AhButton size="sm" variant="default" onClick={() => setLifecycleOpen(true)}>
+                      版本与标签
+                    </AhButton>
                     <AhButton
                       size="sm"
                       onClick={() => {
@@ -3571,7 +3612,11 @@ export function PromptLibraryPageV07() {
                     </AhButton>
                   </div>
                 </header>
-                <nav className={promptSettingsStyles.tabs} aria-label="Prompt 资产分区">
+                <nav
+                  className={promptSettingsStyles.tabs}
+                  aria-label="Prompt 资产分区"
+                  role="tablist"
+                >
                   {(Object.keys(tabLabels) as Array<keyof typeof tabLabels>).map((item) => (
                     <button
                       type="button"
@@ -3579,7 +3624,7 @@ export function PromptLibraryPageV07() {
                       aria-selected={tab === item}
                       key={item}
                       className={`${promptSettingsStyles.tab} ${tab === item ? promptSettingsStyles.tabActive : ''}`}
-                      onClick={() => setTab(item)}
+                      onClick={() => selectMainTab(item)}
                     >
                       {tabLabels[item]}
                     </button>
@@ -3700,115 +3745,6 @@ export function PromptLibraryPageV07() {
                       </div>
                     </>
                   ) : null}
-                  {tab === 'versions' ? (
-                    <>
-                      <div className={promptSettingsStyles.sectionHeading}>
-                        <div>
-                          <h3>版本历史</h3>
-                          <p>版本不可变，可比较差异或移动标签。</p>
-                        </div>
-                        <AhButton size="sm" variant="default" onClick={refreshPrompt}>
-                          刷新版本
-                        </AhButton>
-                      </div>
-                      <div className={promptSettingsStyles.versionList}>
-                        {(versions.data ?? []).map((version, index) => (
-                          <div
-                            className={`${promptSettingsStyles.versionRow} ${index === 0 ? promptSettingsStyles.versionRowActive : ''}`}
-                            key={version.id}
-                          >
-                            <b>v{version.version}</b>
-                            <span>
-                              <strong>
-                                {version.changelog ?? (index === 0 ? '当前版本' : '历史版本')}
-                              </strong>
-                              <small>
-                                {labelPromptVersionSource(version.source)} ·{' '}
-                                {displayDate(version.createdAt)}
-                              </small>
-                            </span>
-                            {index === 0 ? (
-                              <AhStatusPill status="READY" />
-                            ) : (
-                              <AhButton
-                                size="xs"
-                                variant="default"
-                                onClick={() => {
-                                  setVersionContent(
-                                    String((version.contentJson as { text?: unknown })?.text ?? ''),
-                                  );
-                                  setVersionVariables(
-                                    JSON.stringify(version.variablesJson ?? {}, null, 2),
-                                  );
-                                  setVersionOpen(true);
-                                }}
-                              >
-                                查看
-                              </AhButton>
-                            )}
-                          </div>
-                        ))}
-                        {!versions.data?.length ? (
-                          <AhEmptyState
-                            compact
-                            title="还没有版本"
-                            description="创建第一个 Prompt 版本。"
-                            action={
-                              <AhButton size="sm" onClick={() => setVersionOpen(true)}>
-                                创建版本
-                              </AhButton>
-                            }
-                          />
-                        ) : null}
-                      </div>
-                    </>
-                  ) : null}
-                  {tab === 'labels' ? (
-                    <>
-                      <div className={promptSettingsStyles.sectionHeading}>
-                        <div>
-                          <h3>标签</h3>
-                          <p>用标签控制生产、测试或实验环境使用哪个版本。</p>
-                        </div>
-                        <AhButton
-                          size="sm"
-                          variant="default"
-                          onClick={() => {
-                            setLabelVersionId(latestVersion?.id ?? '');
-                            setLabelOpen(true);
-                          }}
-                        >
-                          移动标签
-                        </AhButton>
-                      </div>
-                      <div className={promptSettingsStyles.labelList}>
-                        {(labels.data ?? []).map((label) => (
-                          <div className={promptSettingsStyles.labelRow} key={label.label}>
-                            <span>{label.label}</span>
-                            <strong>v{label.version}</strong>
-                            <AhButton
-                              size="xs"
-                              variant="default"
-                              onClick={() => {
-                                setLabelName(label.label);
-                                setLabelVersionId(latestVersion?.id ?? '');
-                                setLabelOpen(true);
-                              }}
-                            >
-                              编辑
-                            </AhButton>
-                          </div>
-                        ))}
-                        {!labels.data?.length ? (
-                          <AhEmptyState
-                            compact
-                            title="还没有 Label"
-                            description="在版本上移动 production 或 latest 标签。"
-                          />
-                        ) : null}
-                      </div>
-                    </>
-                  ) : null}
                   {tab === 'bindings' ? (
                     <>
                       <div className={promptSettingsStyles.sectionHeading}>
@@ -3873,6 +3809,170 @@ export function PromptLibraryPageV07() {
           </section>
         </div>
       ) : null}
+      <AhDialog
+        open={lifecycleOpen}
+        onClose={() => setLifecycleOpen(false)}
+        title="版本与标签"
+        description="版本不可变；标签是指向已发布版本的可移动指针。"
+        size={900}
+      >
+        <div className={promptSettingsStyles.lifecycleGrid}>
+          <section>
+            <div className={promptSettingsStyles.sectionHeading}>
+              <div>
+                <h3>版本历史</h3>
+                <p>查看变更来源，并从任意历史版本创建新版本。</p>
+              </div>
+              <AhButton
+                size="sm"
+                onClick={() => {
+                  setLifecycleOpen(false);
+                  setVersionContent(contentValue);
+                  setVersionVariables(JSON.stringify(latestVersion?.variablesJson ?? {}, null, 2));
+                  setVersionOpen(true);
+                }}
+              >
+                新建版本
+              </AhButton>
+            </div>
+            <div className={promptSettingsStyles.versionList}>
+              {(versions.data ?? []).map((version, index) => (
+                <div
+                  className={`${promptSettingsStyles.versionRow} ${index === 0 ? promptSettingsStyles.versionRowActive : ''}`}
+                  key={version.id}
+                >
+                  <b>v{version.version}</b>
+                  <span>
+                    <strong>{version.changelog ?? (index === 0 ? '当前版本' : '历史版本')}</strong>
+                    <small>
+                      {labelPromptVersionSource(version.source)} · {displayDate(version.createdAt)}
+                    </small>
+                  </span>
+                  {index === 0 ? (
+                    <AhStatusPill status="READY" />
+                  ) : (
+                    <AhButton
+                      size="xs"
+                      variant="default"
+                      onClick={() => {
+                        setLifecycleOpen(false);
+                        setVersionContent(
+                          String((version.contentJson as { text?: unknown })?.text ?? ''),
+                        );
+                        setVersionVariables(JSON.stringify(version.variablesJson ?? {}, null, 2));
+                        setVersionOpen(true);
+                      }}
+                    >
+                      基于此版本
+                    </AhButton>
+                  )}
+                </div>
+              ))}
+              {!versions.data?.length ? (
+                <AhEmptyState compact title="还没有版本" description="创建第一个 Prompt 版本。" />
+              ) : null}
+            </div>
+          </section>
+          <section>
+            <div className={promptSettingsStyles.sectionHeading}>
+              <div>
+                <h3>标签</h3>
+                <p>控制 production、test 或实验环境使用的版本。</p>
+              </div>
+              <AhButton
+                size="sm"
+                variant="default"
+                onClick={() => {
+                  setLifecycleOpen(false);
+                  setLabelVersionId(latestVersion?.id ?? '');
+                  setLabelOpen(true);
+                }}
+              >
+                移动标签
+              </AhButton>
+            </div>
+            <div className={promptSettingsStyles.labelList}>
+              {(labels.data ?? []).map((label) => (
+                <div className={promptSettingsStyles.labelRow} key={label.label}>
+                  <span>{label.label}</span>
+                  <strong>v{label.version}</strong>
+                  <AhButton
+                    size="xs"
+                    variant="default"
+                    onClick={() => {
+                      setLifecycleOpen(false);
+                      setLabelName(label.label);
+                      setLabelVersionId(latestVersion?.id ?? '');
+                      setLabelOpen(true);
+                    }}
+                  >
+                    编辑
+                  </AhButton>
+                </div>
+              ))}
+              {!labels.data?.length ? (
+                <AhEmptyState
+                  compact
+                  title="还没有 Label"
+                  description="在版本上移动 production 或 latest 标签。"
+                />
+              ) : null}
+            </div>
+          </section>
+          <section className={promptSettingsStyles.diffPanel}>
+            <div className={promptSettingsStyles.sectionHeading}>
+              <div>
+                <h3>版本比较</h3>
+                <p>比较任意两个不可变版本，确认内容与变量的实际差异。</p>
+              </div>
+            </div>
+            {(versions.data?.length ?? 0) < 2 ? (
+              <AhEmptyState
+                compact
+                title="至少需要两个版本"
+                description="创建新版本后才能比较差异。"
+              />
+            ) : (
+              <>
+                <div className={promptSettingsStyles.diffControls}>
+                  <AhSelect
+                    label="起始版本"
+                    value={diffFrom}
+                    onChange={(value) => setDiffFrom(value ?? '')}
+                    data={(versions.data ?? []).map((version) => ({
+                      value: String(version.version),
+                      label: `v${version.version}`,
+                    }))}
+                  />
+                  <ArrowRight size={16} aria-hidden="true" />
+                  <AhSelect
+                    label="目标版本"
+                    value={diffTo}
+                    onChange={(value) => setDiffTo(value ?? '')}
+                    data={(versions.data ?? []).map((version) => ({
+                      value: String(version.version),
+                      label: `v${version.version}`,
+                    }))}
+                  />
+                </div>
+                {diffFrom === diffTo ? (
+                  <AhEmptyState
+                    compact
+                    title="请选择不同版本"
+                    description="起始版本和目标版本不能相同。"
+                  />
+                ) : versionDiff.isLoading ? (
+                  <AhLoadingState label="正在比较版本" rows={1} />
+                ) : versionDiff.error ? (
+                  <AhErrorState description={versionDiff.error.message} />
+                ) : (
+                  <pre className={promptSettingsStyles.diffPatch}>{versionDiff.data?.patch}</pre>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+      </AhDialog>
       <AhDialog
         open={newOpen}
         onClose={() => setNewOpen(false)}
@@ -4097,8 +4197,7 @@ export function SettingsPageV07() {
     queryFn: () => api.get<ApiTokenRecord[]>('/auth/tokens'),
     enabled: Boolean(auth.data?.localTrusted || auth.data?.authenticated),
   });
-  const { pathname } = useLocation();
-  const segment = pathname.split('/').at(-1) ?? 'appearance';
+  const { section = 'appearance' } = useParams();
   const nav = [
     ['appearance', '外观'],
     ['account', '账户'],
@@ -4106,6 +4205,7 @@ export function SettingsPageV07() {
     ['integrations', '集成'],
     ['system', '系统'],
   ] as const;
+  const segment = nav.some(([value]) => value === section) ? section : 'appearance';
   const themeOptions: Array<{
     value: 'light' | 'dark' | 'system';
     label: string;
@@ -4158,7 +4258,11 @@ export function SettingsPageV07() {
           ))}
         </nav>
         <section className={promptSettingsStyles.settingsContent}>
-          <section className={promptSettingsStyles.settingsSection} id="appearance">
+          <section
+            className={promptSettingsStyles.settingsSection}
+            id="appearance"
+            hidden={segment !== 'appearance'}
+          >
             <div>
               <h2>外观</h2>
               <p>主题与显示方式。</p>
@@ -4247,7 +4351,11 @@ export function SettingsPageV07() {
               </div>
             </div>
           </section>
-          <section className={promptSettingsStyles.settingsSection} id="account">
+          <section
+            className={promptSettingsStyles.settingsSection}
+            id="account"
+            hidden={segment !== 'account'}
+          >
             <div>
               <h2>账户</h2>
               <p>身份与会话。</p>
@@ -4281,7 +4389,11 @@ export function SettingsPageV07() {
               </div>
             </div>
           </section>
-          <section className={promptSettingsStyles.settingsSection} id="security">
+          <section
+            className={promptSettingsStyles.settingsSection}
+            id="security"
+            hidden={segment !== 'security'}
+          >
             <div>
               <h2>安全</h2>
               <p>高权限能力和 API 访问。</p>
@@ -4325,7 +4437,11 @@ export function SettingsPageV07() {
               ) : null}
             </div>
           </section>
-          <section className={promptSettingsStyles.settingsSection} id="integrations">
+          <section
+            className={promptSettingsStyles.settingsSection}
+            id="integrations"
+            hidden={segment !== 'integrations'}
+          >
             <div>
               <h2>集成</h2>
               <p>模型与外部服务的真实连接能力。</p>
@@ -4345,13 +4461,17 @@ export function SettingsPageV07() {
                   <strong>Agent Runtime</strong>
                   <p>Local / Docker discovery 与 lifecycle。</p>
                 </div>
-                <Link to="/agents/runtimes" className={promptSettingsStyles.rowAction}>
+                <Link to="/agents/runtime" className={promptSettingsStyles.rowAction}>
                   管理
                 </Link>
               </div>
             </div>
           </section>
-          <section className={promptSettingsStyles.settingsSection} id="system">
+          <section
+            className={promptSettingsStyles.settingsSection}
+            id="system"
+            hidden={segment !== 'system'}
+          >
             <div>
               <h2>系统</h2>
               <p>实例级能力与维护入口。</p>
