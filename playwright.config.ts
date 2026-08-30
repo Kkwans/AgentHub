@@ -10,6 +10,9 @@ export default defineConfig({
     baseURL: process.env.AGENTHUB_E2E_BASE_URL ?? 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    launchOptions: {
+      args: ['--disable-gpu'],
+    },
   },
   projects: [
     {

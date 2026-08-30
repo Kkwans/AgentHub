@@ -26,10 +26,7 @@ export function ActivityPanel({ events }: { events: QueryState<EventRecord[]> })
       ) : events.error ? (
         <ErrorState error={events.error} retry={() => events.refetch()} />
       ) : !toolEvents.length ? (
-        <EmptyState
-          title="还没有工具调用"
-          description="Agent 调用工具后，详细记录会出现在这里。"
-        />
+        <EmptyState title="还没有工具调用" description="Agent 调用工具后，详细记录会出现在这里。" />
       ) : (
         <div className="tool-call-list">
           {toolEvents.map((event) => (
@@ -43,7 +40,7 @@ export function ActivityPanel({ events }: { events: QueryState<EventRecord[]> })
                     {String(event.payloadJson.title ?? labelAgentEventType(event.type))}
                   </strong>
                   <small>
-                    {labelAgentEventType(event.type)} · #{event.seq}
+                    {labelAgentEventType(event.type)}，事件 #{event.seq}
                   </small>
                 </div>
                 <time dateTime={event.createdAt}>{formatGitTime(event.createdAt)}</time>

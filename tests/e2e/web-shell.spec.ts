@@ -61,6 +61,139 @@ const session = {
   lastActiveAt: '2026-08-28T01:30:00.000Z',
 };
 
+const sessionHistory = [
+  session,
+  {
+    ...session,
+    id: '55555555-5555-4555-8555-555555555551',
+    taskId: '44444444-4444-4444-8444-444444444441',
+    title: 'Workspace 三栏视觉校准',
+    branch: 'main',
+    status: 'READY',
+    lastActiveAt: '2026-08-28T00:40:00.000Z',
+  },
+  {
+    ...session,
+    id: '55555555-5555-4555-8555-555555555552',
+    taskId: '44444444-4444-4444-8444-444444444442',
+    title: 'PromptOS 绑定审阅',
+    branch: 'feature/prompt-bindings',
+    status: 'CLOSED',
+    lastActiveAt: '2026-08-27T09:20:00.000Z',
+  },
+  {
+    ...session,
+    id: '55555555-5555-4555-8555-555555555553',
+    taskId: '44444444-4444-4444-8444-444444444443',
+    title: 'Real Codex 恢复门禁',
+    branch: 'main',
+    status: 'COMPLETED',
+    lastActiveAt: '2026-08-26T16:10:00.000Z',
+  },
+];
+
+const conversationMessages = [
+  {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddd01',
+    runId: task.finalRunId,
+    role: 'USER',
+    kind: 'TEXT',
+    text: '请审阅 Agent Discovery 页面，收敛信息层级并完成四档视口校正。',
+    sequence: 1,
+    createdAt: '2026-08-28T01:10:00.000Z',
+  },
+  {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddd02',
+    runId: task.finalRunId,
+    role: 'ASSISTANT',
+    kind: 'TEXT',
+    text: '已完成第一轮布局审计。问题集中在主舞台宽度、面板层级与 Composer 控件密度。\n\n我把 Workspace 重构为 Session Rail、Conversation 和 Review Inspector 三个稳定区域。右侧检查器默认收起，展开后仍是可调整宽度的真实第三列；中栏不再被底部 Terminal 和全宽 Composer 切碎。\n\n视觉层改为中性灰阶与单一光学尺寸：正文保持舒适行长，工具活动降级为辅助信息，运行配置收进 Composer 底栏。',
+    sequence: 2,
+    createdAt: '2026-08-28T01:20:00.000Z',
+  },
+  {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddd03',
+    runId: task.finalRunId,
+    role: 'USER',
+    kind: 'TEXT',
+    text: '右侧文件区要默认折叠，但展开后必须保持第三列，不要做成弹窗。',
+    sequence: 3,
+    createdAt: '2026-08-28T01:24:00.000Z',
+  },
+  {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddd04',
+    runId: task.finalRunId,
+    role: 'ASSISTANT',
+    kind: 'TEXT',
+    text: '**关键校正已完成：**\n\n- 桌面首次进入保持右栏收起，点击“变更”后展开独立第三列。\n- 左右面板支持拖拽和折叠，并记住最后一次布局。\n- 1024 以下使用临时覆盖层；移动端复用同一组检查器视图。',
+    sequence: 4,
+    createdAt: '2026-08-28T01:28:00.000Z',
+  },
+];
+
+const conversationEvents = [
+  {
+    id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee00',
+    sessionId: session.id,
+    runId: task.finalRunId,
+    seq: 1,
+    type: 'agent.thought.delta',
+    payloadJson: {
+      messageId: 'thought-workspace-audit',
+      text: '先对照 Codex 的主舞台宽度与左右面板比例，',
+    },
+    createdAt: '2026-08-28T01:10:28.000Z',
+  },
+  {
+    id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee10',
+    sessionId: session.id,
+    runId: task.finalRunId,
+    seq: 2,
+    type: 'agent.thought.delta',
+    payloadJson: {
+      messageId: 'thought-workspace-audit',
+      text: '再检查字体层级、工具流水和 Composer 的信息密度。',
+    },
+    createdAt: '2026-08-28T01:11:00.000Z',
+  },
+  {
+    id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01',
+    sessionId: session.id,
+    runId: task.finalRunId,
+    seq: 3,
+    type: 'tool.call.completed',
+    payloadJson: { tool: 'read_file', path: 'apps/web/src/features/workspace/WorkspacePage.tsx' },
+    createdAt: '2026-08-28T01:12:00.000Z',
+  },
+  {
+    id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee02',
+    sessionId: session.id,
+    runId: task.finalRunId,
+    seq: 4,
+    type: 'tool.call.completed',
+    payloadJson: { tool: 'search', query: 'workspace panel composer inspector' },
+    createdAt: '2026-08-28T01:14:00.000Z',
+  },
+  {
+    id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee03',
+    sessionId: session.id,
+    runId: task.finalRunId,
+    seq: 5,
+    type: 'tool.call.completed',
+    payloadJson: { tool: 'apply_patch', path: 'workspace.module.css' },
+    createdAt: '2026-08-28T01:17:00.000Z',
+  },
+  {
+    id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee04',
+    sessionId: session.id,
+    runId: task.finalRunId,
+    seq: 6,
+    type: 'tool.call.completed',
+    payloadJson: { tool: 'run_tests', command: 'playwright test --project=desktop-1440' },
+    createdAt: '2026-08-28T01:19:00.000Z',
+  },
+];
+
 const worktree = {
   id: '77777777-7777-4777-8777-777777777777',
   taskId: task.id,
@@ -259,16 +392,97 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await expect(page.getByText(session.title, { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
+  await expect(page.locator('.tool-event-row')).toHaveCount(4);
+  await expect(page.locator('.tool-summary')).toHaveCount(0);
+  await expect(page.locator('.message.assistant').last().locator('strong')).toHaveText(
+    '关键校正已完成：',
+  );
+  const thought = page.locator('.thought-event-row');
+  await expect(thought).toHaveCount(1);
+  await expect(thought).not.toHaveAttribute('open', '');
+  await expect(thought.getByText('思考了 32 秒')).toBeVisible();
+  await thought.locator('summary').click();
+  await expect(thought).toHaveAttribute('open', '');
+  await expect(thought.getByText(/先对照 Codex 的主舞台宽度/)).toBeVisible();
+  await thought.locator('summary').click();
+  const firstTool = page.locator('.tool-event-row').first();
+  await expect(firstTool).not.toHaveAttribute('open', '');
+  await firstTool.locator('summary').click();
+  await expect(firstTool).toHaveAttribute('open', '');
+  await firstTool.locator('summary').click();
+  const userMessageBox = await page.locator('.message.user').last().boundingBox();
+  const assistantMessageBox = await page.locator('.message.assistant').last().boundingBox();
+  expect(userMessageBox, '用户消息应可见').not.toBeNull();
+  expect(assistantMessageBox, 'Agent 消息应可见').not.toBeNull();
+  expect(userMessageBox!.x).toBeGreaterThan(assistantMessageBox!.x + 32);
+  await expectNoHorizontalOverflow(page);
+  const geometry = await page
+    .locator('.workspace-panels, .workspace-panel, .resize-handle')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const element = node as HTMLElement;
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          className: element.className,
+          display: style.display,
+          flex: style.flex,
+          minWidth: style.minWidth,
+          maxWidth: style.maxWidth,
+          position: style.position,
+          inlineStyle: element.getAttribute('style'),
+          left: Math.round(rect.left),
+          width: Math.round(rect.width),
+        };
+      }),
+    );
+  await testInfo.attach(`workspace-geometry-${testInfo.project.name}.json`, {
+    body: Buffer.from(JSON.stringify(geometry, null, 2)),
+    contentType: 'application/json',
+  });
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const conversationGeometry = geometry.find(({ className }) =>
+    className.includes('conversation-panel'),
+  );
+  if (viewportWidth < 1_280) {
+    expect(conversationGeometry?.left).toBe(0);
+    expect(conversationGeometry?.width).toBeGreaterThanOrEqual(viewportWidth - 1);
+  }
+  if (viewportWidth < 768) {
+    await expect(page.locator('.composer-select-reasoning')).toBeHidden();
+    await expect(page.locator('.composer-permission')).toBeHidden();
+  }
+  await attachViewportScreenshot(page, testInfo, 'workspace-initial');
 
-  if ((page.viewportSize()?.width ?? 0) >= 1_180) {
+  if (viewportWidth >= 1_280) {
+    await page.getByRole('button', { name: '展开检查器' }).click();
     const inspector = page.getByRole('tablist', { name: '检查器视图' });
     await expect(inspector.getByRole('tab', { name: '变更' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: '文件' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: '工具调用' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: 'Run' })).toBeVisible();
-    await page.getByRole('button', { name: '折叠 Session 列表' }).click();
+    await attachViewportScreenshot(page, testInfo, 'workspace-three-column');
+    await inspector.getByRole('tab', { name: '文件' }).click();
+    const appsDirectory = page.getByRole('button', { name: 'apps', exact: true });
+    await expect(appsDirectory).toHaveAttribute('aria-expanded', 'true');
+    await appsDirectory.click();
+    await expect(appsDirectory).toHaveAttribute('aria-expanded', 'false');
+    await appsDirectory.click();
+    await page.getByRole('button', { name: 'workspace.module.css', exact: true }).click();
+    await expect(page.locator('.file-preview-header')).toContainText('workspace.module.css');
+    await attachViewportScreenshot(page, testInfo, 'workspace-files');
+    await page.getByRole('button', { name: '折叠会话列表' }).click();
     await page.reload();
-    await expect(page.getByRole('button', { name: '展开 Session 列表' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '展开会话列表' })).toBeVisible();
+    await page.getByRole('button', { name: '展开会话列表' }).click();
+  } else if (viewportWidth >= 1_024) {
+    await page.getByRole('button', { name: '打开检查器' }).click();
+    await expect(page.getByRole('button', { name: '关闭检查器' })).toBeVisible();
+    await page
+      .getByRole('tablist', { name: '检查器视图' })
+      .getByRole('tab', { name: '文件' })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
   } else {
     const views = page.getByRole('tablist', { name: 'Workspace 视图' });
     await views.getByRole('tab', { name: '文件' }).click();
@@ -468,13 +682,63 @@ async function fulfillFixture(route: Route) {
         reasoningEfforts: [{ id: 'high', label: 'High' }],
       },
     };
-  } else if (path.endsWith(`/sessions/${session.id}/messages`)) data = [];
+  } else if (path.endsWith(`/sessions/${session.id}/messages`)) data = conversationMessages;
   else if (path.endsWith(`/sessions/${session.id}/runs`)) data = [];
-  else if (path.endsWith(`/sessions/${session.id}/events`)) data = [];
+  else if (path.endsWith(`/sessions/${session.id}/events`)) data = conversationEvents;
   else if (path.endsWith(`/sessions/${session.id}`)) data = session;
   else if (path.endsWith(`/projects/${project.id}/git/status`))
-    data = { branch: 'main', headSha: 'abcdef1234567890', clean: true, entries: [] };
-  else if (path.endsWith(`/projects/${project.id}/files`)) data = [];
+    data = {
+      branch: 'feature/agent-discovery',
+      upstream: 'origin/feature/agent-discovery',
+      headSha: 'abcdef1234567890',
+      clean: false,
+      entries: [
+        {
+          index: ' ',
+          worktree: 'M',
+          path: 'apps/web/src/features/workspace/workspace.module.css',
+          worktreeStats: { additions: 164, deletions: 97 },
+        },
+        {
+          index: 'M',
+          worktree: ' ',
+          path: 'apps/web/src/features/workspace/pages/WorkspacePage.tsx',
+          stagedStats: { additions: 28, deletions: 14 },
+        },
+        {
+          index: ' ',
+          worktree: 'M',
+          path: 'tests/e2e/web-shell.spec.ts',
+          worktreeStats: { additions: 42, deletions: 8 },
+        },
+      ],
+    };
+  else if (path.endsWith(`/projects/${project.id}/files/content`))
+    data = {
+      path: url.searchParams.get('path') ?? '',
+      content: '.workspace {\n  display: grid;\n  grid-template-columns: auto 1fr auto;\n}\n',
+    };
+  else if (path.endsWith(`/projects/${project.id}/files`))
+    data = [
+      {
+        name: 'apps',
+        path: 'apps',
+        type: 'DIRECTORY',
+        children: [
+          {
+            name: 'workspace.module.css',
+            path: 'apps/web/src/features/workspace/workspace.module.css',
+            type: 'FILE',
+          },
+          {
+            name: 'WorkspacePage.tsx',
+            path: 'apps/web/src/features/workspace/pages/WorkspacePage.tsx',
+            type: 'FILE',
+          },
+        ],
+      },
+      { name: 'package.json', path: 'package.json', type: 'FILE' },
+    ];
   else if (path.endsWith('/prompt-context/resolve'))
     data = { ready: true, finalContext: '', missingVariables: [], items: [] };
   else if (path.endsWith(`/prompts/${prompt.id}/versions`))
@@ -493,7 +757,7 @@ async function fulfillFixture(route: Route) {
   else if (path.endsWith('/remote-nodes')) data = [remoteNode];
   else if (path.endsWith('/projects')) data = [project];
   else if (path.endsWith('/tasks')) data = [task];
-  else if (path.endsWith('/sessions')) data = [session];
+  else if (path.endsWith('/sessions')) data = sessionHistory;
   else if (path.endsWith('/agents')) data = [agent];
   else if (path.endsWith('/goals')) data = [];
   else if (path.endsWith('/worktree-executions')) data = [worktree];

@@ -1,4 +1,4 @@
-import { AgentHubThemeContext, ChevronDown, FileCode2, Files } from '@agenthub/ui';
+import { AgentHubThemeContext, ChevronDown, ChevronRight, FileCode2, Files } from '@agenthub/ui';
 import { useContext, useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 
@@ -43,8 +43,6 @@ export function FileInspector({
           <LoadingState />
         ) : files.error ? (
           <ErrorState error={files.error} retry={() => files.refetch()} />
-        ) : !monacoReady ? (
-          <LoadingState label="正在准备文件预览" />
         ) : (
           <FileNodes entries={files.data ?? []} selected={selected} onSelect={onSelect} />
         )}
@@ -56,21 +54,34 @@ export function FileInspector({
           <LoadingState />
         ) : content.error ? (
           <ErrorState error={content.error} retry={() => content.refetch()} />
+        ) : !monacoReady ? (
+          <LoadingState label="正在准备文件预览" />
         ) : (
-          <Editor
-            height="100%"
-            path={selected}
-            value={content.data?.content ?? ''}
-            theme={mode === 'dark' ? 'vs-dark' : 'vs-light'}
-            options={{
-              readOnly: true,
-              minimap: { enabled: false },
-              fontSize: 12,
-              lineNumbersMinChars: 3,
-              scrollBeyondLastLine: false,
-              renderLineHighlight: 'none',
-            }}
-          />
+          <>
+            <div className="file-preview-header">
+              <FileCode2 size={13} aria-hidden="true" />
+              <span title={content.data?.path ?? selected}>{content.data?.path ?? selected}</span>
+              <small>只读</small>
+            </div>
+            <div className="file-preview-editor">
+              <Editor
+                height="100%"
+                path={selected}
+                value={content.data?.content ?? ''}
+                theme={mode === 'dark' ? 'vs-dark' : 'vs-light'}
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  lineHeight: 21,
+                  lineNumbersMinChars: 3,
+                  padding: { top: 10, bottom: 10 },
+                  scrollBeyondLastLine: false,
+                  renderLineHighlight: 'none',
+                }}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -89,21 +100,49 @@ function FileNodes({
   return (
     <div className="file-nodes">
       {entries.map((entry) => (
-        <div key={entry.path}>
-          <button
-            className={entry.path === selected ? 'selected' : ''}
-            disabled={entry.blocked || entry.type !== 'FILE'}
-            onClick={() => onSelect(entry.path)}
-          >
-            {entry.type === 'DIRECTORY' ? <ChevronDown size={13} /> : <FileCode2 size={13} />}
-            <span>{entry.name}</span>
-            {entry.blocked && <small>已阻止</small>}
-          </button>
-          {entry.children && (
-            <FileNodes entries={entry.children} selected={selected} onSelect={onSelect} />
-          )}
-        </div>
+        <FileNode key={entry.path} entry={entry} selected={selected} onSelect={onSelect} />
       ))}
+    </div>
+  );
+}
+
+function FileNode({
+  entry,
+  selected,
+  onSelect,
+}: {
+  entry: FileEntry;
+  selected: string | undefined;
+  onSelect: (path: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const directory = entry.type === 'DIRECTORY';
+  return (
+    <div className="file-node">
+      <button
+        className={entry.path === selected ? 'selected' : ''}
+        disabled={entry.blocked}
+        aria-expanded={directory ? expanded : undefined}
+        onClick={() => {
+          if (directory) setExpanded((value) => !value);
+          else onSelect(entry.path);
+        }}
+      >
+        {directory ? (
+          expanded ? (
+            <ChevronDown size={13} />
+          ) : (
+            <ChevronRight size={13} />
+          )
+        ) : (
+          <FileCode2 size={13} />
+        )}
+        <span>{entry.name}</span>
+        {entry.blocked && <small>已阻止</small>}
+      </button>
+      {directory && expanded && entry.children?.length ? (
+        <FileNodes entries={entry.children} selected={selected} onSelect={onSelect} />
+      ) : null}
     </div>
   );
 }

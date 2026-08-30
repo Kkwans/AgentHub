@@ -1,5 +1,7 @@
 import {
   Button,
+  ChevronDown,
+  ChevronRight,
   FolderGit2,
   GitBranch,
   GitCompareArrows,
@@ -67,7 +69,7 @@ export function GitChangesTree({
       .then((receipt) => {
         setSelectedPaths([]);
         setCommitMessage('');
-        setCommitReceipt(receipt.sha ? `提交完成 · ${receipt.sha.slice(0, 12)}` : '提交完成');
+        setCommitReceipt(receipt.sha ? `提交完成：${receipt.sha.slice(0, 12)}` : '提交完成');
       })
       .catch((error: unknown) => {
         setCommitError(error instanceof Error ? error : new Error('Git 提交失败。'));
@@ -105,8 +107,8 @@ export function GitChangesTree({
           {status.data?.upstream && (
             <small>
               {status.data.upstream}
-              {status.data.ahead ? ` · ahead ${status.data.ahead}` : ''}
-              {status.data.behind ? ` · behind ${status.data.behind}` : ''}
+              {status.data.ahead ? `，ahead ${status.data.ahead}` : ''}
+              {status.data.behind ? `，behind ${status.data.behind}` : ''}
             </small>
           )}
         </div>
@@ -250,10 +252,7 @@ export function GitChangesTree({
                 onChange={(event) =>
                   onWhitespaceChange(
                     event.target.value as
-                      | 'default'
-                      | 'ignore-all-space'
-                      | 'ignore-space-change'
-                      | 'ignore-blank-lines',
+                      'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines',
                   )
                 }
               >
@@ -423,6 +422,7 @@ function GitChangeTreeNode({
   onSelectPath?: ((path: string, view?: 'diff' | 'files') => void) | undefined;
   onSelectView: (view: 'changes' | 'diff' | 'history' | 'branches') => void;
 }) {
+  const [expanded, setExpanded] = useState(true);
   if (node.kind === 'directory') {
     return (
       <div
@@ -431,31 +431,45 @@ function GitChangeTreeNode({
         aria-level={depth + 1}
         aria-label={`${node.path || 'Project 根目录'}，${node.fileCount} 个文件`}
       >
-        <span className="git-change-directory-label" style={{ paddingInlineStart: depth * 14 }}>
+        <button
+          type="button"
+          className="git-change-directory-label"
+          style={{ paddingInlineStart: depth * 14 }}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? (
+            <ChevronDown size={12} aria-hidden="true" />
+          ) : (
+            <ChevronRight size={12} aria-hidden="true" />
+          )}
           <FolderGit2 size={14} aria-hidden="true" />
           <strong>{node.name === '.' ? 'Project 根目录' : node.name}</strong>
           <small>{node.fileCount}</small>
-        </span>
-        <div className="git-change-tree-children">
-          {node.children.map((child) => (
-            <GitChangeTreeNode
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              selectedPath={selectedPath}
-              selectedPaths={selectedPaths}
-              onTogglePath={onTogglePath}
-              onSelectPath={onSelectPath}
-              onSelectView={onSelectView}
-            />
-          ))}
-        </div>
+        </button>
+        {expanded ? (
+          <div className="git-change-tree-children">
+            {node.children.map((child) => (
+              <GitChangeTreeNode
+                key={child.path}
+                node={child}
+                depth={depth + 1}
+                selectedPath={selectedPath}
+                selectedPaths={selectedPaths}
+                onTogglePath={onTogglePath}
+                onSelectPath={onSelectPath}
+                onSelectView={onSelectView}
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
     );
   }
 
   const { entry } = node;
   const presentation = presentGitChange(entry);
+  const lineStats = combineLineStats(entry.stagedStats, entry.worktreeStats);
   const untracked = entry.index === '?' && entry.worktree === '?';
   return (
     <div
@@ -484,9 +498,15 @@ function GitChangeTreeNode({
             <small className="git-change-origin">从 {entry.originalPath}</small>
           ) : null}
         </span>
-        <small className="git-change-state">
-          {presentation.label}
-          {formatLineStats(entry.stagedStats, entry.worktreeStats)}
+        <small className="git-change-state" title={presentation.label}>
+          {lineStats ? (
+            <>
+              <span className="additions">+{lineStats.additions}</span>
+              <span className="deletions">−{lineStats.deletions}</span>
+            </>
+          ) : (
+            presentation.label
+          )}
         </small>
       </label>
       {onSelectPath ? (
@@ -506,11 +526,11 @@ function GitChangeTreeNode({
   );
 }
 
-function presentGitChange(entry: {
-  index: string;
-  worktree: string;
-  originalPath?: string;
-}): { glyph: string; label: string; tone: 'conflict' | 'rename' | 'added' | 'deleted' | 'changed' | 'untracked' } {
+function presentGitChange(entry: { index: string; worktree: string; originalPath?: string }): {
+  glyph: string;
+  label: string;
+  tone: 'conflict' | 'rename' | 'added' | 'deleted' | 'changed' | 'untracked';
+} {
   const { index, worktree } = entry;
   const porcelain = `${index}${worktree}`;
   // Git reports unmerged entries using all six two-letter combinations, not
@@ -529,10 +549,18 @@ function presentGitChange(entry: {
   }
   if (index === '?' && worktree === '?') return { glyph: '+', label: '未跟踪', tone: 'untracked' };
   if (index === 'D' || worktree === 'D') {
-    return { glyph: '−', label: staged && unstaged ? '删除并有未暂存修改' : '已删除', tone: 'deleted' };
+    return {
+      glyph: '−',
+      label: staged && unstaged ? '删除并有未暂存修改' : '已删除',
+      tone: 'deleted',
+    };
   }
   if (index === 'A' || worktree === 'A') {
-    return { glyph: '+', label: staged && unstaged ? '新增并有未暂存修改' : '已新增', tone: 'added' };
+    return {
+      glyph: '+',
+      label: staged && unstaged ? '新增并有未暂存修改' : '已新增',
+      tone: 'added',
+    };
   }
   return {
     glyph: '~',
@@ -541,15 +569,15 @@ function presentGitChange(entry: {
   };
 }
 
-function formatLineStats(
+function combineLineStats(
   staged: { additions: number; deletions: number } | undefined,
   worktree: { additions: number; deletions: number } | undefined,
-): string {
-  const values = [
-    staged ? `暂存 +${staged.additions}/-${staged.deletions}` : '',
-    worktree ? `未暂存 +${worktree.additions}/-${worktree.deletions}` : '',
-  ].filter(Boolean);
-  return values.length ? ` · ${values.join(' · ')}` : '';
+): { additions: number; deletions: number } | undefined {
+  if (!staged && !worktree) return undefined;
+  return {
+    additions: (staged?.additions ?? 0) + (worktree?.additions ?? 0),
+    deletions: (staged?.deletions ?? 0) + (worktree?.deletions ?? 0),
+  };
 }
 
 function formatGitTime(value: string): string {
