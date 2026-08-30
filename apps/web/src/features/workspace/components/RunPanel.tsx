@@ -36,7 +36,8 @@ export function RunPanel({
               <div>
                 <strong>第 {recentRuns.length - index} 次 Run</strong>
                 <code>
-                  {run.gitBeforeSha?.slice(0, 8) ?? '—'} → {run.gitAfterSha?.slice(0, 8) ?? '—'}
+                  {run.gitBeforeSha?.slice(0, 8) ?? '无记录'} →{' '}
+                  {run.gitAfterSha?.slice(0, 8) ?? '无记录'}
                 </code>
               </div>
               <StatusBadge status={run.status} />

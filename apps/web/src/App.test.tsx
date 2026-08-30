@@ -213,7 +213,7 @@ describe('v0.9 App', () => {
   it('opens a real workspace composition with composer and inspector capabilities', async () => {
     stubApi();
     renderApp([`/workspace/${session.id}`]);
-    expect(await screen.findByText('对话与执行')).toBeInTheDocument();
+    expect(await screen.findByText('消息与执行记录')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeInTheDocument();
     expect(screen.getAllByRole('tab', { name: '文件' }).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole('navigation', { name: '主导航' })).not.toBeInTheDocument();

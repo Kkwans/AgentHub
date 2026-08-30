@@ -8,14 +8,21 @@ export function RunStateBanner({
   sessionStatus,
   activeRunStatus,
   latestRunStatus,
+  continuePending,
+  continueError,
+  onContinue,
 }: {
   sessionStatus: string | null | undefined;
   activeRunStatus?: string | null | undefined;
   latestRunStatus?: string | null | undefined;
+  continuePending?: boolean;
+  continueError?: Error | null;
+  onContinue?: () => void;
 }) {
   const state = resolveWorkspaceRunState(sessionStatus, activeRunStatus, latestRunStatus);
   const copy = WORKSPACE_RUN_STATE_COPY[state];
-  const showLink = state === 'DISCONNECTED' || state === 'CLOSED';
+  const showSessionLink = state === 'DISCONNECTED';
+  if (state === 'IDLE') return null;
   return (
     <section
       className={`run-state-banner run-state-${state.toLowerCase()}`}
@@ -27,7 +34,15 @@ export function RunStateBanner({
         <strong>{copy.title}</strong>
         <span>{copy.description}</span>
       </div>
-      {showLink && (
+      {state === 'CLOSED' && onContinue ? (
+        <div className="run-state-action">
+          <button type="button" onClick={onContinue} disabled={continuePending}>
+            {continuePending ? '正在准备' : '基于此上下文继续'}
+          </button>
+          {continueError && <small role="alert">{continueError.message}</small>}
+        </div>
+      ) : null}
+      {showSessionLink && (
         <Link className="run-state-link" to="/sessions">
           返回 Session 列表
         </Link>

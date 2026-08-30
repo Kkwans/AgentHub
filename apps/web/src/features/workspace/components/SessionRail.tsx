@@ -31,9 +31,7 @@ export function SessionRail({
     return result.sort((left, right) => {
       const rightTime = Date.parse(right.lastActiveAt);
       const leftTime = Date.parse(left.lastActiveAt);
-      return (
-        (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime)
-      );
+      return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
     });
   }, [query, sessions.data]);
   const grouped = {
@@ -61,7 +59,7 @@ export function SessionRail({
         <strong>{session.title}</strong>
         <code>
           {session.branch || '无 Git'} · {session.cwd.split('/').at(-1)}
-          {session.continuedFromSessionId ? ' · 继续' : ''}
+          {session.continuedFromSessionId ? '（续接）' : ''}
         </code>
       </div>
     </Link>
@@ -69,15 +67,15 @@ export function SessionRail({
   return (
     <div className="session-rail">
       <div className="panel-title">
-        <span>Session</span>
-        <small>{sessions.data?.length ?? 0} 个</small>
+        <span>AgentHub</span>
+        <small>{sessions.data?.length ?? 0} 个会话</small>
       </div>
       <div className="session-rail-toolbar">
         <label className="session-rail-search">
           <Search size={14} aria-hidden="true" />
           <input
-            aria-label="搜索 Session"
-            placeholder="搜索 Session…"
+            aria-label="搜索会话"
+            placeholder="搜索会话…"
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
           />
@@ -85,7 +83,7 @@ export function SessionRail({
         <Link
           className="session-rail-new"
           to={projectId ? `/projects/${projectId}/sessions?new=1` : '/projects'}
-          aria-label="新建 Session"
+          aria-label="新建会话"
           onClick={onSelect}
         >
           <Plus size={14} aria-hidden="true" />
@@ -94,24 +92,20 @@ export function SessionRail({
       </div>
       <div className="session-list">
         {sessions.isLoading ? (
-          <LoadingState label="正在读取 Session" />
+          <LoadingState label="正在读取会话" />
         ) : sessions.error ? (
           <ErrorState error={sessions.error} retry={() => sessions.refetch()} />
-        ) : (
-          filteredSessions.length ? (
-            (Object.keys(grouped) as Array<keyof typeof grouped>).map((group) =>
-              grouped[group].length ? (
-                <section className="session-group" key={group} aria-label={groupLabels[group]}>
-                  <h3>{groupLabels[group]}</h3>
-                  {grouped[group].map(sessionLink)}
-                </section>
-              ) : null,
-            )
-          ) : (
-            <p className="session-list-empty">
-              {query.trim() ? '没有匹配的 Session' : '还没有 Session'}
-            </p>
+        ) : filteredSessions.length ? (
+          (Object.keys(grouped) as Array<keyof typeof grouped>).map((group) =>
+            grouped[group].length ? (
+              <section className="session-group" key={group} aria-label={groupLabels[group]}>
+                <h3>{groupLabels[group]}</h3>
+                {grouped[group].map(sessionLink)}
+              </section>
+            ) : null,
           )
+        ) : (
+          <p className="session-list-empty">{query.trim() ? '没有匹配的会话' : '还没有会话'}</p>
         )}
       </div>
     </div>

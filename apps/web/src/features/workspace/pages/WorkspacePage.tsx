@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Bot,
-  ChevronLeft,
-  ChevronRight,
-  GitBranch,
-  GitCompareArrows,
-  Menu,
-  Tabs,
-  X,
-} from '@agenthub/ui';
+import { Bot, ChevronRight, GitBranch, GitCompareArrows, Menu, Tabs, X } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -39,10 +30,7 @@ import {
   type TerminalOpenInput,
   type TerminalRecord,
 } from '../components/TerminalDock';
-import {
-  readWorkspaceLayout,
-  writeWorkspacePanel,
-} from '../layoutPreferences';
+import { readWorkspaceLayout, writeWorkspacePanel } from '../layoutPreferences';
 import type {
   GitBranchRecord,
   GitCommitRecord,
@@ -93,7 +81,7 @@ export function WorkspacePage() {
       ? viewParam
       : viewParam === 'diff' || viewParam === 'git' || viewParam === 'changes'
         ? 'changes'
-        : 'files';
+        : 'changes';
   const selectedFile = searchParams.get('file') || undefined;
   const selectedChangePath = searchParams.get('change') || undefined;
   const whitespaceParam = searchParams.get('whitespace');
@@ -120,8 +108,20 @@ export function WorkspacePage() {
       const panel = side === 'left' ? sessionPanelRef.current : inspectorPanelRef.current;
       if (!panel) return;
       const collapsed = panel.isCollapsed();
-      if (collapsed) panel.expand();
-      else panel.collapse();
+      if (collapsed) {
+        panel.expand();
+        requestAnimationFrame(() => {
+          const leftPanel = sessionPanelRef.current;
+          const rightPanel = inspectorPanelRef.current;
+          panel.resize(
+            `${side === 'left' ? workspaceLayout.leftWidth : workspaceLayout.rightWidth}px`,
+          );
+          if (side === 'right' && leftPanel && !leftPanel.isCollapsed())
+            leftPanel.resize(`${workspaceLayout.leftWidth}px`);
+          if (side === 'left' && rightPanel && !rightPanel.isCollapsed())
+            rightPanel.resize(`${workspaceLayout.rightWidth}px`);
+        });
+      } else panel.collapse();
       const nextCollapsed = !collapsed;
       writeWorkspacePanel(side, { collapsed: nextCollapsed });
       setWorkspaceLayout((current) =>
@@ -130,7 +130,7 @@ export function WorkspacePage() {
           : { ...current, rightCollapsed: nextCollapsed },
       );
     },
-    [inspectorPanelRef, sessionPanelRef],
+    [inspectorPanelRef, sessionPanelRef, workspaceLayout.leftWidth, workspaceLayout.rightWidth],
   );
 
   const handleWorkspaceLayoutChanged = useCallback(
@@ -443,7 +443,8 @@ export function WorkspacePage() {
   }, [client, events.data, id]);
 
   useEffect(() => {
-    if (!mobileInspectorOpen && !sessionDrawerOpen) return;
+    const inspectorActsAsDrawer = window.matchMedia('(max-width: 1279px)').matches;
+    if (!sessionDrawerOpen && (!mobileInspectorOpen || !inspectorActsAsDrawer)) return;
 
     const closeButton = sessionDrawerOpen ? sessionCloseRef.current : inspectorCloseRef.current;
     closeButton?.focus();
@@ -479,7 +480,7 @@ export function WorkspacePage() {
   if (session.isLoading) return <LoadingState label="正在打开 Coding Workspace" />;
   if (session.error) return <ErrorState error={session.error} />;
   if (!session.data)
-    return <EmptyState title="Session 不存在" description="返回会话列表选择可用 Session。" />;
+    return <EmptyState title="会话不存在" description="返回会话列表选择可用会话。" />;
 
   return (
     <div className={`${workspaceStyles.workspace} workspace-shell`}>
@@ -487,12 +488,12 @@ export function WorkspacePage() {
         <button
           type="button"
           className="workspace-session-toggle"
-          aria-label="打开 Session 列表"
+          aria-label="打开会话列表"
           aria-expanded={sessionDrawerOpen}
           onClick={() => setSessionDrawerOpen((open) => !open)}
         >
           <Menu size={17} />
-          <span>Session</span>
+          <span>会话</span>
         </button>
         <button
           type="button"
@@ -507,13 +508,15 @@ export function WorkspacePage() {
           <GitCompareArrows size={17} />
           <span>检查器</span>
         </button>
-        <div className="context-title">
+        <div className={workspaceStyles.contextTitle}>
           <Link to="/sessions">会话</Link>
           <ChevronRight size={14} />
           <strong>{session.data.title}</strong>
-          <StatusBadge status={session.data.status} />
+          <span className={workspaceStyles.sessionStatus}>
+            <StatusBadge status={session.data.status} />
+          </span>
         </div>
-        <div className="context-facts">
+        <div className={workspaceStyles.contextFacts}>
           <span>
             <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
           </span>
@@ -525,15 +528,11 @@ export function WorkspacePage() {
         <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
           <button
             type="button"
-            aria-label={workspaceLayout.leftCollapsed ? '展开 Session Rail' : '折叠 Session Rail'}
-            title={workspaceLayout.leftCollapsed ? '展开 Session Rail' : '折叠 Session Rail'}
+            aria-label={workspaceLayout.leftCollapsed ? '展开会话列表' : '折叠会话列表'}
+            title={workspaceLayout.leftCollapsed ? '展开会话列表' : '折叠会话列表'}
             onClick={() => toggleWorkspacePanel('left')}
           >
-            {workspaceLayout.leftCollapsed ? (
-              <ChevronRight size={15} aria-hidden="true" />
-            ) : (
-              <ChevronLeft size={15} aria-hidden="true" />
-            )}
+            <Menu size={15} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -541,11 +540,8 @@ export function WorkspacePage() {
             title={workspaceLayout.rightCollapsed ? '展开检查器' : '折叠检查器'}
             onClick={() => toggleWorkspacePanel('right')}
           >
-            {workspaceLayout.rightCollapsed ? (
-              <ChevronLeft size={15} aria-hidden="true" />
-            ) : (
-              <ChevronRight size={15} aria-hidden="true" />
-            )}
+            <GitCompareArrows size={15} aria-hidden="true" />
+            <span>变更</span>
           </button>
         </div>
         {agents.error && (
@@ -557,35 +553,6 @@ export function WorkspacePage() {
           </div>
         )}
       </div>
-      {session.data.status === 'CLOSED' && (
-        <section className="workspace-continuation-banner" role="status" aria-live="polite">
-          <div>
-            <strong>Session 已关闭</strong>
-            <span>历史记录保持只读；创建 continuation 会复制当前上下文并生成交接包。</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => continueSession.mutate()}
-            disabled={continueSession.isPending}
-          >
-            {continueSession.isPending ? '正在准备…' : '继续此 Session'}
-          </button>
-          {continueSession.error && <small>{continueSession.error.message}</small>}
-        </section>
-      )}
-      {continuation.data && (
-        <details className="workspace-handoff" open>
-          <summary>
-            Session 交接包 · {continuation.data.strategy === 'MODEL' ? '模型摘要' : '确定性摘要'}
-          </summary>
-          <p>{continuation.data.summaryText}</p>
-          {continuation.data.consumedAt ? (
-            <small>交接内容已在首次 Run 中注入。</small>
-          ) : (
-            <small>首次成功发送 Run 时会注入一次，失败重试不会丢失。</small>
-          )}
-        </details>
-      )}
       <Tabs.Root value={mobileInspectorOpen ? tab : 'conversation'}>
         <Tabs.List
           className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
@@ -630,13 +597,13 @@ export function WorkspacePage() {
           minSize="210px"
           maxSize="380px"
           groupResizeBehavior="preserve-pixel-size"
-          className={`${workspaceStyles.panel} ${workspaceStyles.sessionRail} workspace-panel session-rail-panel ${sessionDrawerOpen ? 'mobile-open' : ''}`}
+          className={`${workspaceStyles.panel} ${workspaceStyles.sessionRail} ${!workspaceLayout.leftCollapsed ? workspaceStyles.panelOpen : ''} workspace-panel session-rail-panel ${sessionDrawerOpen ? 'mobile-open' : ''}`}
         >
           {sessionDrawerOpen && (
             <button
               type="button"
               className="workspace-drawer-close"
-              aria-label="关闭 Session 列表"
+              aria-label="关闭会话列表"
               ref={sessionCloseRef}
               onClick={() => setSessionDrawerOpen(false)}
             >
@@ -653,21 +620,59 @@ export function WorkspacePage() {
         <Separator className={`${workspaceStyles.separator} resize-handle`} />
         <Panel
           id="conversation"
-          defaultSize="49%"
           minSize="360px"
           className={`${workspaceStyles.panel} ${workspaceStyles.conversationPanel} workspace-panel conversation-panel`}
         >
-          <Conversation
-            session={session.data}
-            messages={messages}
-            events={events}
-            approvals={approvals}
-            activeRun={activeRun}
-            latestRunStatus={latestRunStatus}
-            onResolveApproval={(approvalId, optionId) =>
-              resolveApproval.mutateAsync({ id: approvalId, optionId })
-            }
-          />
+          <div className={workspaceStyles.conversationShell}>
+            <Conversation
+              session={session.data}
+              messages={messages}
+              events={events}
+              approvals={approvals}
+              activeRun={activeRun}
+              latestRunStatus={latestRunStatus}
+              continuation={continuation.data}
+              continuePending={continueSession.isPending}
+              continueError={continueSession.error}
+              onContinue={() => continueSession.mutate()}
+              onResolveApproval={(approvalId, optionId) =>
+                resolveApproval.mutateAsync({ id: approvalId, optionId })
+              }
+            />
+            <Composer
+              session={session.data}
+              agent={agent}
+              events={events}
+              project={project}
+              activeRun={activeRun}
+              promptContext={promptContext.data}
+              promptContextLoading={promptContext.isLoading}
+              promptContextError={promptContext.error}
+              promptContextRetry={() => promptContext.refetch()}
+              promptVariables={promptVariables}
+              setPromptVariables={setPromptVariables}
+              configuration={configuration.data}
+              configurationLoading={configuration.isLoading}
+              configurationError={configuration.error}
+              onSend={(input) => sendRun.mutateAsync(input)}
+              onStop={(runId) => stopRun.mutateAsync(runId)}
+              onUpdateConfiguration={(patch) => updateConfiguration.mutateAsync(patch)}
+              terminalControl={
+                <TerminalDock
+                  capability={capability.data?.terminal}
+                  capabilityError={capability.error}
+                  projectId={project?.id}
+                  projectRoot={project?.realRootPath}
+                  cwd={session.data.cwd}
+                  openTerminal={openTerminal}
+                  sendInput={sendTerminalInput}
+                  resizeTerminal={resizeTerminal}
+                  closeTerminal={closeTerminal}
+                  subscribe={subscribeTerminal}
+                />
+              }
+            />
+          </div>
         </Panel>
         <Separator className={`${workspaceStyles.separator} resize-handle`} />
         <Panel
@@ -679,7 +684,7 @@ export function WorkspacePage() {
           minSize="320px"
           maxSize="720px"
           groupResizeBehavior="preserve-pixel-size"
-          className={`${workspaceStyles.panel} ${workspaceStyles.inspectorPanel} workspace-panel inspector-panel ${mobileInspectorOpen ? 'mobile-open' : ''}`}
+          className={`${workspaceStyles.panel} ${workspaceStyles.inspectorPanel} ${!workspaceLayout.rightCollapsed ? workspaceStyles.panelOpen : ''} workspace-panel inspector-panel ${mobileInspectorOpen ? 'mobile-open' : ''}`}
         >
           {mobileInspectorOpen && (
             <button
@@ -731,37 +736,6 @@ export function WorkspacePage() {
           }}
         />
       )}
-      <TerminalDock
-        capability={capability.data?.terminal}
-        capabilityError={capability.error}
-        projectId={project?.id}
-        projectRoot={project?.realRootPath}
-        cwd={session.data.cwd}
-        openTerminal={openTerminal}
-        sendInput={sendTerminalInput}
-        resizeTerminal={resizeTerminal}
-        closeTerminal={closeTerminal}
-        subscribe={subscribeTerminal}
-      />
-      <Composer
-        session={session.data}
-        agent={agent}
-        events={events}
-        project={project}
-        activeRun={activeRun}
-        promptContext={promptContext.data}
-        promptContextLoading={promptContext.isLoading}
-        promptContextError={promptContext.error}
-        promptContextRetry={() => promptContext.refetch()}
-        promptVariables={promptVariables}
-        setPromptVariables={setPromptVariables}
-        configuration={configuration.data}
-        configurationLoading={configuration.isLoading}
-        configurationError={configuration.error}
-        onSend={(input) => sendRun.mutateAsync(input)}
-        onStop={(runId) => stopRun.mutateAsync(runId)}
-        onUpdateConfiguration={(patch) => updateConfiguration.mutateAsync(patch)}
-      />
     </div>
   );
 }

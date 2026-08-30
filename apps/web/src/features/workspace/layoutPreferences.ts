@@ -1,13 +1,13 @@
 export const WORKSPACE_LAYOUT_STORAGE_KEYS = {
-  leftWidth: 'agenthub.workspace.left.width',
-  leftCollapsed: 'agenthub.workspace.left.collapsed',
-  rightWidth: 'agenthub.workspace.right.width',
-  rightCollapsed: 'agenthub.workspace.right.collapsed',
+  leftWidth: 'agenthub.workspace.stage-v1.left.width',
+  leftCollapsed: 'agenthub.workspace.stage-v1.left.collapsed',
+  rightWidth: 'agenthub.workspace.stage-v1.right.width',
+  rightCollapsed: 'agenthub.workspace.stage-v1.right.collapsed',
 } as const;
 
 export const WORKSPACE_PANEL_LIMITS = {
-  left: { defaultSize: 260, min: 210, max: 380 },
-  right: { defaultSize: 430, min: 320, max: 720 },
+  left: { defaultSize: 280, min: 220, max: 380 },
+  right: { defaultSize: 500, min: 360, max: 720 },
 } as const;
 
 export interface WorkspaceLayoutPreference {
@@ -34,8 +34,9 @@ function readWidth(
   return Number.isFinite(value) && value > 0 ? clamp(value, min, max) : fallback;
 }
 
-function readCollapsed(storage: LayoutStorage, key: string): boolean {
-  return storage.getItem(key) === 'true';
+function readCollapsed(storage: LayoutStorage, key: string, fallback = false): boolean {
+  const value = storage.getItem(key);
+  return value === null ? fallback : value === 'true';
 }
 
 export function readWorkspaceLayout(
@@ -48,7 +49,7 @@ export function readWorkspaceLayout(
       leftWidth: WORKSPACE_PANEL_LIMITS.left.defaultSize,
       leftCollapsed: false,
       rightWidth: WORKSPACE_PANEL_LIMITS.right.defaultSize,
-      rightCollapsed: false,
+      rightCollapsed: true,
     };
   }
   return {
@@ -67,7 +68,7 @@ export function readWorkspaceLayout(
       WORKSPACE_PANEL_LIMITS.right.min,
       WORKSPACE_PANEL_LIMITS.right.max,
     ),
-    rightCollapsed: readCollapsed(storage, WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed),
+    rightCollapsed: readCollapsed(storage, WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed, true),
   };
 }
 

@@ -183,68 +183,68 @@ export function TerminalDock({
       if (record) void closeTerminal(record.id).catch(() => undefined);
       terminal?.dispose();
     };
-  }, [capability?.available, closeTerminal, cwd, expanded, openTerminal, projectId, projectRoot, resizeTerminal, sendInput, subscribe]);
+  }, [
+    capability?.available,
+    closeTerminal,
+    cwd,
+    expanded,
+    openTerminal,
+    projectId,
+    projectRoot,
+    resizeTerminal,
+    sendInput,
+    subscribe,
+  ]);
 
   const close = () => setExpanded(false);
   const canOpen = Boolean(capability?.available && projectId);
   const capabilityLoading = !capability && !capabilityError;
+  const unavailableReason = capabilityLoading
+    ? '正在检查 Terminal 能力'
+    : (capabilityError?.message ??
+      capability?.message ??
+      (projectId ? '本机 PTY 未就绪' : '当前 Session 尚未绑定 Project'));
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        className="terminal-launcher"
+        disabled={!canOpen}
+        onClick={() => setExpanded(true)}
+        title={canOpen ? '打开 Terminal' : unavailableReason}
+        aria-label={canOpen ? '打开 Terminal' : `打开 Terminal，不可用：${unavailableReason}`}
+      >
+        <SquareTerminal size={14} aria-hidden="true" />
+        <span>Terminal</span>
+      </button>
+    );
+  }
 
   return (
-    <section className={`terminal-dock-shell ${expanded ? 'expanded' : ''}`} aria-label="Terminal">
+    <section className="terminal-dock-shell expanded" aria-label="Terminal">
       <div className="terminal-dock-toolbar">
         <div className="terminal-dock-heading">
           <SquareTerminal size={16} aria-hidden="true" />
           <strong>Terminal</strong>
           <span>Local Project</span>
         </div>
-        {expanded ? (
-          <Button size="1" variant="soft" color="gray" onClick={close}>
-            <X size={14} /> 关闭
-          </Button>
-        ) : (
-          <Button
-            size="1"
-            variant="soft"
-            color="gray"
-            disabled={!canOpen}
-            onClick={() => setExpanded(true)}
-          >
-            <SquareTerminal size={14} /> 打开 Terminal
-          </Button>
+        <Button size="1" variant="soft" color="gray" onClick={close}>
+          <X size={14} /> 关闭
+        </Button>
+      </div>
+      <div className="terminal-dock-body">
+        <div ref={viewportRef} className="terminal-viewport" aria-label="Terminal 输入区" />
+        {state === 'opening' && <span className="terminal-dock-status">正在打开 Terminal…</span>}
+        {state === 'exited' && (
+          <span className="terminal-dock-status">Terminal 已退出，可重新打开。</span>
+        )}
+        {state === 'error' && (
+          <span className="terminal-dock-status error" role="alert">
+            {error ?? 'Terminal 连接失败'}
+          </span>
         )}
       </div>
-      {!canOpen && (
-        <div className="terminal-dock-message" role={capabilityError ? 'alert' : undefined}>
-          <strong>
-            {capabilityLoading
-              ? '正在检查 Terminal 能力'
-              : capabilityError
-                ? 'Terminal 能力检查失败'
-                : 'Terminal 暂不可用'}
-          </strong>
-          <span>
-            {capabilityLoading
-              ? '正在读取本机 PTY 能力。'
-              : (capabilityError?.message ??
-                capability?.message ??
-                (projectId ? '本机 PTY 未就绪。' : '当前 Session 尚未绑定 Project。'))}
-          </span>
-        </div>
-      )}
-      {expanded && (
-        <div className="terminal-dock-body">
-          <div ref={viewportRef} className="terminal-viewport" aria-label="Terminal 输入区" />
-          {state === 'opening' && <span className="terminal-dock-status">正在打开 Terminal…</span>}
-          {state === 'exited' && (
-            <span className="terminal-dock-status">Terminal 已退出，可重新打开。</span>
-          )}
-          {state === 'error' && (
-            <span className="terminal-dock-status error" role="alert">
-              {error ?? 'Terminal 连接失败'}
-            </span>
-          )}
-        </div>
-      )}
     </section>
   );
 }

@@ -214,7 +214,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     });
     renderWorkspace(fetchMock);
 
-    expect(await screen.findByText('工具调用完成')).toBeInTheDocument();
+    expect(await screen.findByLabelText('读取文件，工具调用完成，展开详情')).toBeInTheDocument();
     expect(screen.queryByText('tool.call.completed')).not.toBeInTheDocument();
   });
 
@@ -414,6 +414,19 @@ describe('WorkspacePage 数据分区可靠性', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path === `/api/v1/sessions/${session.id}/runs`) return jsonResponse([run]);
+      if (path === `/api/v1/sessions/${session.id}/events?afterSeq=0&limit=500`) {
+        return jsonResponse([
+          {
+            id: 'thought-running',
+            sessionId: session.id,
+            runId: run.id,
+            seq: 1,
+            type: 'agent.thought.delta',
+            payloadJson: { messageId: 'thought-1', text: '正在核验实现。' },
+            createdAt: '2026-08-11T00:00:01.000Z',
+          },
+        ]);
+      }
       if (
         path === `/api/v1/sessions/${session.id}/runs/${run.id}/cancel` &&
         init?.method === 'POST'
@@ -428,6 +441,8 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(
       await screen.findByRole('region', { name: '当前运行状态：Agent 正在执行' }),
     ).toBeInTheDocument();
+    expect(await screen.findByLabelText('正在思考，展开思考过程')).toBeInTheDocument();
+    expect(screen.getByText('正在思考').closest('details')).toHaveClass('running');
     const stop = await screen.findByRole('button', { name: '停止 Run' });
     fireEvent.click(stop);
     await waitFor(() => expect(stop).toBeDisabled());
@@ -453,11 +468,12 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(
       screen.getByRole('link', { name: /可靠性回归/ }).querySelector('.session-state-dot'),
     ).toHaveClass('session-state-closed');
-    const composer = await screen.findByPlaceholderText('给 Agent 发送工程指令…');
+    const composer = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
     expect(composer).toHaveAttribute('aria-label', '给 Agent 发送工程指令');
     expect(composer).toHaveAttribute('name', 'message');
+    expect(composer).toHaveAttribute('placeholder', '会话已关闭，无法继续发送指令。');
     expect(composer).toBeDisabled();
-    expect(screen.getByText('Session 已关闭，无法继续发送指令。')).toBeInTheDocument();
+    expect(screen.getByText('会话已关闭，无法继续发送指令。')).toBeInTheDocument();
   });
 
   it('PromptOS 服务失败时阻止静默跳过绑定，重新解析成功后恢复发送', async () => {
@@ -579,7 +595,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
         }),
       ),
     );
-    expect(await screen.findByText('提交完成 · abcdef012345')).toBeInTheDocument();
+    expect(await screen.findByText('提交完成：abcdef012345')).toBeInTheDocument();
   });
 
   it('移动检查器提供唯一且可操作的关闭按钮', async () => {

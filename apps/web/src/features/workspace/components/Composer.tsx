@@ -1,15 +1,15 @@
 import {
-  AhChoiceSelect,
-  Bot,
-  Braces,
   Button,
+  ChevronDown,
   CircleStop,
   GitBranch,
   IconButton,
   Plus,
   Send,
+  ShieldCheck,
 } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { ErrorState, LoadingState } from '../../../components/Common';
 import type {
@@ -22,7 +22,6 @@ import type {
   SessionRecord,
 } from '../../../lib/api';
 import {
-  describeSessionMode,
   labelPromptBindingSlot,
   labelPromptBindingTarget,
   labelReasoningEffort,
@@ -83,6 +82,7 @@ export function Composer({
   onSend,
   onStop,
   onUpdateConfiguration,
+  terminalControl,
 }: {
   session: SessionRecord;
   agent: AgentRecord | undefined;
@@ -105,6 +105,7 @@ export function Composer({
     mode?: string;
     reasoningEffort?: string;
   }) => Promise<SessionConfigurationRecord>;
+  terminalControl?: ReactNode;
 }) {
   const [text, setText] = useState('');
   const [contextOpen, setContextOpen] = useState(false);
@@ -133,6 +134,14 @@ export function Composer({
     },
   );
   const sessionLocked = session.status !== 'READY';
+  const sessionLockMessage =
+    sessionLocked && !activeRun
+      ? session.status === 'CLOSED'
+        ? '会话已关闭，无法继续发送指令。'
+        : session.status === 'DISCONNECTED'
+          ? 'Agent 连接已中断，请先恢复会话。'
+          : '会话正在准备中，请稍候。'
+      : undefined;
   const modelOptions = configuration?.options?.models ?? [];
   const modeOptions = configuration?.options?.modes ?? [];
   const reasoningEffortOptions = configuration?.options?.reasoningEfforts ?? [];
@@ -249,39 +258,48 @@ export function Composer({
   return (
     <div className="composer">
       <div className="composer-context">
-        <span>
-          <Bot size={13} /> {agent?.name ?? 'Agent'}
+        <button
+          type="button"
+          className={`composer-context-action${contextOpen ? ' active' : ''}`}
+          onClick={() => setContextOpen(!contextOpen)}
+          aria-expanded={contextOpen}
+          aria-label={`PromptOS ${contextStatus.label}`}
+        >
+          <Plus size={15} />
+          <span>上下文</span>
+          <small>{contextStatus.label}</small>
+        </button>
+        <span className="composer-permission">
+          <ShieldCheck size={15} />
+          <strong>按需审批</strong>
         </span>
+        {terminalControl}
         {configurationLoading ? (
-          <span>
-            配置 <strong>正在读取…</strong>
+          <span className="composer-configuration-loading">
+            <strong>正在读取配置…</strong>
           </span>
         ) : configuration?.supported && modelOptions.length ? (
-          <AhChoiceSelect
+          <CompactChoiceSelect
+            className="composer-select-model"
             label="模型"
             value={modelValue}
-            options={modelOptions.map((option) => ({
-              value: option.id,
-              label: option.label,
-              ...(option.description ? { description: option.description } : {}),
-            }))}
+            options={modelOptions.map((option) => ({ value: option.id, label: option.label }))}
             disabled={updatingModel}
             onValueChange={(model) => updateConfiguration.mutate({ model })}
           />
         ) : (
-          <span>
-            模型 <strong>{modelValue || agent?.defaultModel || '默认'}</strong>
+          <span className="composer-model-fallback">
+            <strong>{modelValue || agent?.defaultModel || '默认模型'}</strong>
           </span>
         )}
         {!configurationLoading && configuration?.supported && modeOptions.length ? (
-          <AhChoiceSelect
+          <CompactChoiceSelect
+            className="composer-select-mode"
             label="运行模式"
-            description="权限模式控制可执行范围；计划模式控制是否先制定计划。"
             value={modeValue}
             options={modeOptions.map((option) => ({
               value: option.id,
               label: labelSessionMode(option.id, option.label),
-              description: describeSessionMode(option.id, option.description),
             }))}
             disabled={updatingMode}
             onValueChange={(mode) => updateConfiguration.mutate({ mode })}
@@ -299,38 +317,18 @@ export function Composer({
           </span>
         ) : null}
         {!configurationLoading && configuration?.supported && reasoningEffortOptions.length ? (
-          <AhChoiceSelect
+          <CompactChoiceSelect
+            className="composer-select-reasoning"
             label="推理强度"
             value={reasoningEffortValue}
             options={reasoningEffortOptions.map((option) => ({
               value: option.id,
               label: labelReasoningEffort(option.id, option.label),
-              ...(option.description ? { description: option.description } : {}),
             }))}
             disabled={updatingReasoningEffort}
             onValueChange={(reasoningEffort) => updateConfiguration.mutate({ reasoningEffort })}
           />
         ) : null}
-        <span>
-          权限 <strong>按需审批</strong>
-        </span>
-        <button
-          type="button"
-          className="composer-add-context"
-          aria-label="添加上下文"
-          onClick={() => setContextOpen(true)}
-        >
-          <Plus size={13} /> 添加上下文
-        </button>
-        <button
-          type="button"
-          className={contextOpen ? 'active' : ''}
-          onClick={() => setContextOpen(!contextOpen)}
-          aria-expanded={contextOpen}
-          aria-label={`PromptOS ${contextStatus.label}`}
-        >
-          <Braces size={13} /> Context · PromptOS <strong>{contextStatus.label}</strong>
-        </button>
       </div>
       {configurationError && (
         <div className="composer-error" role="alert">
@@ -387,61 +385,61 @@ export function Composer({
                 </div>
               </div>
               <div className="composer-context-grid">
-              <div className="composer-provenance">
-                {!promptContext?.items.length ? (
-                  <p>当前 Project、Agent、Task 没有生效的绑定。</p>
-                ) : (
-                  promptContext.items.map((item) => (
-                    <div key={item.bindingId}>
-                      <span>{labelPromptBindingSlot(item.slot)}</span>
-                      <code>
-                        {item.promptKey}@{item.label ?? `v${item.version}`}
-                      </code>
-                      <small>
-                        {labelPromptBindingTarget(item.targetType)} · v{item.version} ·{' '}
-                        {item.contentHash.slice(0, 10)}
-                      </small>
-                    </div>
-                  ))
-                )}
-              </div>
-              <label>
-                变量 JSON
-                <textarea
-                  className="mono"
-                  value={variablesDraft}
-                  onChange={(event) => setVariablesDraft(event.target.value)}
-                  rows={4}
-                />
-                <Button
-                  color="gray"
-                  size="1"
-                  variant="soft"
-                  onClick={() => {
-                    try {
-                      const parsed = JSON.parse(variablesDraft) as unknown;
-                      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-                        throw new Error();
-                      setVariablesError(undefined);
-                      setPromptVariables(parsed as Record<string, unknown>);
-                    } catch {
-                      setVariablesError('变量必须是合法 JSON object');
-                    }
-                  }}
-                >
-                  应用并重新解析
-                </Button>
-                {variablesError && (
-                  <small className="context-variable-error" role="alert">
-                    {variablesError}
-                  </small>
-                )}
-                {promptContext?.ready === false && !variablesError && (
-                  <small className="context-variable-error">
-                    缺少：{promptContext.missingVariables.join('、')}
-                  </small>
-                )}
-              </label>
+                <div className="composer-provenance">
+                  {!promptContext?.items.length ? (
+                    <p>当前 Project、Agent、Task 没有生效的绑定。</p>
+                  ) : (
+                    promptContext.items.map((item) => (
+                      <div key={item.bindingId}>
+                        <span>{labelPromptBindingSlot(item.slot)}</span>
+                        <code>
+                          {item.promptKey}@{item.label ?? `v${item.version}`}
+                        </code>
+                        <small>
+                          {labelPromptBindingTarget(item.targetType)}，v{item.version}，hash{' '}
+                          {item.contentHash.slice(0, 10)}
+                        </small>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <label>
+                  变量 JSON
+                  <textarea
+                    className="mono"
+                    value={variablesDraft}
+                    onChange={(event) => setVariablesDraft(event.target.value)}
+                    rows={4}
+                  />
+                  <Button
+                    color="gray"
+                    size="1"
+                    variant="soft"
+                    onClick={() => {
+                      try {
+                        const parsed = JSON.parse(variablesDraft) as unknown;
+                        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+                          throw new Error();
+                        setVariablesError(undefined);
+                        setPromptVariables(parsed as Record<string, unknown>);
+                      } catch {
+                        setVariablesError('变量必须是合法 JSON object');
+                      }
+                    }}
+                  >
+                    应用并重新解析
+                  </Button>
+                  {variablesError && (
+                    <small className="context-variable-error" role="alert">
+                      {variablesError}
+                    </small>
+                  )}
+                  {promptContext?.ready === false && !variablesError && (
+                    <small className="context-variable-error">
+                      缺少：{promptContext.missingVariables.join('、')}
+                    </small>
+                  )}
+                </label>
               </div>
             </>
           )}
@@ -474,7 +472,7 @@ export function Composer({
               if (command) setText(`/${command.name} `);
             }
           }}
-          placeholder="给 Agent 发送工程指令…"
+          placeholder={sessionLockMessage ?? '给 Agent 发送工程指令…'}
           rows={2}
           disabled={Boolean(activeRun) || sessionLocked}
         />
@@ -548,17 +546,13 @@ export function Composer({
         </span>
       )}
       {commandNotice && (
-        <span className="composer-hint" role="status">
+        <span className="composer-hint composer-command-notice" role="status">
           {commandNotice}
         </span>
       )}
-      {sessionLocked && !activeRun && (
-        <span className="composer-hint" role="status">
-          {session.status === 'CLOSED'
-            ? 'Session 已关闭，无法继续发送指令。'
-            : session.status === 'DISCONNECTED'
-              ? 'Agent 连接已中断，请先恢复 Session。'
-              : 'Session 正在准备中，请稍候。'}
+      {sessionLockMessage && (
+        <span className="composer-hint composer-lock-hint" role="status">
+          {sessionLockMessage}
         </span>
       )}
     </div>
@@ -570,6 +564,41 @@ interface ComposerCommand {
   label: string;
   description: string;
   hint?: string;
+}
+
+function CompactChoiceSelect({
+  className,
+  label,
+  value,
+  options,
+  disabled,
+  onValueChange,
+}: {
+  className: string;
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  disabled: boolean;
+  onValueChange: (value: string) => void;
+}) {
+  return (
+    <label className={`composer-choice ${className}`}>
+      <select
+        aria-label={label}
+        title={label}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onValueChange(event.target.value)}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={11} aria-hidden="true" />
+    </label>
+  );
 }
 
 function readAgentCommands(events: EventRecord[] | undefined): ComposerCommand[] {

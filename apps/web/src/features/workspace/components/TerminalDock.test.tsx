@@ -68,9 +68,13 @@ describe('TerminalDock', () => {
       />,
     );
 
-    expect(screen.getByText('Terminal 暂不可用')).toBeInTheDocument();
-    expect(screen.getByText('当前环境缺少 node-pty native binding')).toBeInTheDocument();
+    expect(screen.queryByText('Terminal 暂不可用')).not.toBeInTheDocument();
+    expect(screen.queryByText('当前环境缺少 node-pty native binding')).not.toBeInTheDocument();
     expect(screen.queryByText('PTY_NATIVE_BINDING_UNAVAILABLE')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /打开 Terminal/ })).toHaveAttribute(
+      'title',
+      '当前环境缺少 node-pty native binding',
+    );
     expect(screen.getByRole('button', { name: /打开 Terminal/ })).toBeDisabled();
   });
 
