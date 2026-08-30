@@ -19,35 +19,34 @@ describe('v0.6 feature boundaries', () => {
     expect(source('./sessions/pages/SessionsPageView.tsx')).toContain('<FormDialog');
     expect(source('./tasks/pages/TasksPageView.tsx')).toContain('<FormDialog');
     expect(source('./settings/pages/SettingsPageView.tsx')).toContain('<FormDialog');
-    expect(source('./promptos/components/PromptOsSections.tsx')).toContain('<FormDialog');
+    expect(source('./promptos/pages/PromptLibraryPage.tsx')).toContain('<AhDialog');
   });
 
   it('keeps Workspace interaction panels outside the route shell', () => {
-    const route = source('../pages/WorkspacePage.tsx');
-    const sections = source('./workspace/components/WorkspaceSections.tsx');
+    const route = source('./workspace/pages/WorkspacePage.tsx');
+    const sections = source('./workspace/components/WorkspaceInspector.tsx');
     const terminal = source('./workspace/components/TerminalDock.tsx');
-    expect(route).toContain("from '../features/workspace/components/WorkspaceSections'");
-    expect(route).toContain("from '../features/workspace/components/TerminalDock'");
+    expect(route).toContain("from '../components/Conversation'");
+    expect(route).toContain("from '../components/TerminalDock'");
     expect(route).not.toContain('function Conversation(');
     expect(route).not.toContain('function Composer(');
-    expect(sections).toContain('export function Conversation(');
-    expect(sections).toContain('export function Composer(');
+    expect(route).toContain("'/terminals'");
+    expect(sections).toContain('export function WorkspaceInspector(');
     expect(terminal).toContain("from '@xterm/xterm'");
-    expect(terminal).toContain("'/terminals'");
   });
 
   it('keeps PromptOS ordinary-user labels in the feature section', () => {
-    const promptos = source('./promptos/components/PromptOsSections.tsx');
+    const promptos = source('./promptos/pages/PromptLibraryPage.tsx');
     expect(promptos).toContain('labelPromptBindingTarget');
-    expect(promptos).toContain('labelPromptBindingSlot');
-    expect(promptos).toContain('通过任务名称选择');
+    expect(promptos).toContain('labelPromptVersionSource');
+    expect(promptos).toContain('新建 Prompt 绑定');
     expect(promptos).not.toContain('<option>PROJECT</option>');
     expect(promptos).not.toContain('可选 UUID');
   });
 
   it('keeps Task and Worktree review copy in Chinese', () => {
     const tasks = source('./tasks/pages/TasksPageView.tsx');
-    const promptos = source('./promptos/components/PromptOsSections.tsx');
+    const promptos = source('./promptos/pages/PromptLibraryPage.tsx');
     expect(tasks).toContain('Task 审阅');
     expect(tasks).toContain('审阅证据');
     expect(tasks).toContain('基准分支');
@@ -56,7 +55,7 @@ describe('v0.6 feature boundaries', () => {
     expect(tasks).not.toContain('Review evidence');
     expect(tasks).not.toContain('<span>base branch</span>');
     expect(tasks).not.toContain('<span>task branch</span>');
-    expect(promptos).toContain('和优先级查看最终内容');
+    expect(promptos).toContain('Prompt 内容');
     expect(promptos).not.toContain('和 priority 查看最终内容');
   });
 
@@ -88,8 +87,8 @@ describe('v0.6 feature boundaries', () => {
   });
 
   it('keeps adapter implementation details out of ordinary Agent surfaces', () => {
-    const discovery = source('../pages/v06/DiscoveryPages.tsx');
-    const remoteNodes = source('../pages/RemoteNodesPanel.tsx');
+    const discovery = source('./agents/pages/AgentCenterPage.tsx');
+    const remoteNodes = source('./agents/components/RemoteNodesPanel.tsx');
     expect(discovery).not.toContain('labelAdapterKind(candidate.adapterKind)');
     expect(remoteNodes).not.toContain('labelAdapterKind(agent.adapterKind)');
   });
@@ -102,24 +101,28 @@ describe('v0.6 feature boundaries', () => {
     expect(uiStyles).toContain('--ah-border-default');
     expect(uiStyles).toContain('--ah-danger-soft');
     expect(uiStyles).not.toMatch(/\.rt-|var\(--gray-|var\(--accent-/);
-    for (const path of ['../styles.css', '../styles/design-system.css', '../styles/v3-controls.css']) {
+    for (const path of [
+      '../styles.css',
+      '../styles/design-system.css',
+      '../styles/v3-controls.css',
+    ]) {
       expect(existsSync(new URL(path, import.meta.url))).toBe(false);
     }
   });
 
   it('keeps internal object ids out of ordinary workspace and dashboard copy', () => {
-    const overview = source('../pages/OverviewPage.tsx');
-    const workspace = source('./workspace/components/WorkspaceSections.tsx');
-    expect(overview).not.toContain('approval.sessionId.slice(0, 8)');
-    expect(overview).not.toContain('run.id.slice(0, 8)');
+    const home = source('./home/pages/HomePage.tsx');
+    const workspace = source('./workspace/components/Conversation.tsx');
+    expect(home).not.toContain('approval.sessionId.slice(0, 8)');
+    expect(home).not.toContain('run.id.slice(0, 8)');
     expect(workspace).not.toContain('activeRun.id.slice(0, 8)');
     expect(workspace).not.toContain('session.agentId.slice(0, 8)');
     expect(workspace).not.toContain('run.id.slice(0, 8)');
   });
 
   it('keeps the dashboard Project repository label in presentation copy', () => {
-    const overview = source('../pages/OverviewPage.tsx');
-    expect(overview).not.toContain('<span>{project.repoKind}</span>');
-    expect(overview).toContain("project.repoKind === 'GIT' ? 'Git' : '非 Git'");
+    const home = source('./home/pages/HomePage.tsx');
+    expect(home).not.toContain('<span>{project.repoKind}</span>');
+    expect(home).toContain("project.repoKind === 'GIT' ? 'Git' : '目录'");
   });
 });

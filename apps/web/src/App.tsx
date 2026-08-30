@@ -4,59 +4,87 @@ import { AhLoadingState } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
 
 import { AccessGate } from './components/AccessGate';
-import { AppShell as V07AppShell } from './app/shell/AppShell';
+import { AppShell } from './app/shell/AppShell';
 import type { SessionRecord } from './lib/api';
 import { api } from './lib/api';
 
 const HomePage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.HomePageV07 })),
+  import('./features/home/pages/HomePage').then((module) => ({ default: module.HomePage })),
 );
 const ProjectsPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.ProjectsPageV07 })),
+  import('./features/projects/pages/ProjectsPage').then((module) => ({
+    default: module.ProjectsPage,
+  })),
 );
 const CreateProjectPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.CreateProjectPageV07 })),
+  import('./features/projects/pages/CreateProjectPage').then((module) => ({
+    default: module.CreateProjectPage,
+  })),
 );
 const ProjectContextLayout = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.ProjectContextLayoutV07 })),
+  import('./features/projects/pages/ProjectContextLayout').then((module) => ({
+    default: module.ProjectContextLayout,
+  })),
 );
 const ProjectOverviewPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.ProjectOverviewPageV07 })),
+  import('./features/projects/pages/ProjectOverviewPage').then((module) => ({
+    default: module.ProjectOverviewPage,
+  })),
 );
 const ProjectWorkPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.ProjectWorkPageV07 })),
+  import('./features/projects/pages/ProjectWorkPage').then((module) => ({
+    default: module.ProjectWorkPage,
+  })),
 );
 const NewWorkPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.NewWorkPageV07 })),
+  import('./features/projects/pages/NewWorkPage').then((module) => ({
+    default: module.NewWorkPage,
+  })),
 );
 const ProjectSessionsPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.ProjectSessionsPageV07 })),
+  import('./features/projects/pages/ProjectSessionsPage').then((module) => ({
+    default: module.ProjectSessionsPage,
+  })),
 );
 const AgentCenterPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.AgentCenterPageV07 })),
+  import('./features/agents/pages/AgentCenterPage').then((module) => ({
+    default: module.AgentCenterPage,
+  })),
 );
 const DiscoverAgentsPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.DiscoverAgentsPageV07 })),
+  import('./features/agents/pages/DiscoverAgentsPage').then((module) => ({
+    default: module.DiscoverAgentsPage,
+  })),
 );
 const PromptLibraryPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.PromptLibraryPageV07 })),
+  import('./features/promptos/pages/PromptLibraryPage').then((module) => ({
+    default: module.PromptLibraryPage,
+  })),
 );
 const SettingsPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.SettingsPageV07 })),
+  import('./features/settings/pages/SettingsPage').then((module) => ({
+    default: module.SettingsPage,
+  })),
 );
 const WorkspacePage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.WorkspacePageV07 })),
+  import('./features/workspace/pages/WorkspacePage').then((module) => ({
+    default: module.WorkspacePage,
+  })),
 );
 const InfrastructurePage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.InfrastructurePageV07 })),
+  import('./features/agents/pages/InfrastructurePage').then((module) => ({
+    default: module.InfrastructurePage,
+  })),
 );
 const RemoteNodeRegistrationPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({
-    default: module.RemoteNodeRegistrationPageV07,
+  import('./features/agents/pages/RemoteNodeRegistrationPage').then((module) => ({
+    default: module.RemoteNodeRegistrationPage,
   })),
 );
 const RemoteNodeDetailPage = lazy(() =>
-  import('./features/v07/pages').then((module) => ({ default: module.RemoteNodeDetailPageV07 })),
+  import('./features/agents/pages/RemoteNodeDetailPage').then((module) => ({
+    default: module.RemoteNodeDetailPage,
+  })),
 );
 
 function DeferredPage({ children }: { children: ReactNode }) {
@@ -123,7 +151,7 @@ export function App() {
       <Routes>
         <Route path="workspace" element={<WorkspaceLandingRoute />} />
         <Route
-          path="workspace/:sessionId"
+          path="workspace/:id"
           element={
             <DeferredPage>
               <WorkspacePage />
@@ -131,7 +159,7 @@ export function App() {
           }
         />
         <Route path="sessions/:id" element={<WorkspaceCompatRedirect />} />
-        <Route element={<V07AppShell />}>
+        <Route element={<AppShell />}>
           <Route index element={<Navigate replace to="/home" />} />
           <Route
             path="home"

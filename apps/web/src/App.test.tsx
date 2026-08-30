@@ -19,6 +19,7 @@ const project = {
   rootPath: '/volume2/Project/AgentHub',
   realRootPath: '/volume2/Project/AgentHub',
   repoKind: 'GIT',
+  kind: 'STANDARD',
   status: 'ACTIVE',
 };
 
@@ -35,12 +36,13 @@ const session = {
   projectId: project.id,
   agentId: '44444444-4444-4444-8444-444444444444',
   taskId: null,
-  title: 'v0.7 Workspace',
+  title: 'v0.9 Workspace',
   cwd: project.rootPath,
   branch: 'main',
   status: 'READY',
   model: null,
   mode: null,
+  reasoningEffort: null,
   lastActiveAt: '2026-08-23T00:00:00.000Z',
 };
 
@@ -88,6 +90,14 @@ function renderApp(initialEntries: string[]) {
 }
 
 function stubApi() {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -143,7 +153,7 @@ function stubApi() {
   );
 }
 
-describe('v0.8 App', () => {
+describe('v0.9 App', () => {
   it('renders Home as the new default and exposes the product IA', async () => {
     stubApi();
     renderApp(['/']);

@@ -100,7 +100,7 @@ function Brand() {
       <div className={styles.brand}>
         <AgentHubLogo className={styles.brandMark} />
         <span className={styles.brandName}>AgentHub</span>
-        <span className={styles.version}>v0.8</span>
+        <span className={styles.version}>v0.9</span>
       </div>
     </div>
   );
