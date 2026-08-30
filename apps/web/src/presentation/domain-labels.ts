@@ -93,6 +93,7 @@ export const AGENT_EVENT_TYPE_LABELS = {
   'run.cancelled': 'Run 已停止',
   'assistant.message.delta': 'Agent 回复更新',
   'assistant.message.completed': 'Agent 回复完成',
+  'agent.thought.delta': 'Agent 思考更新',
   'agent.plan.updated': 'Agent 执行计划更新',
   'agent.status': 'Agent 状态更新',
   'agent.configuration.updated': 'Agent 配置更新',

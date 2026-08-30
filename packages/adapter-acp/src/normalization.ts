@@ -22,6 +22,18 @@ export function normalizeAcpSessionUpdate(update: SessionUpdate): NormalizedUpda
           sourceEventType,
         },
       ];
+    case 'agent_thought_chunk':
+      if (update.content.type !== 'text') return [];
+      return [
+        {
+          type: 'agent.thought.delta',
+          payload: {
+            text: update.content.text,
+            ...(update.messageId ? { messageId: update.messageId } : {}),
+          },
+          sourceEventType,
+        },
+      ];
     case 'tool_call':
       return [
         {
@@ -166,7 +178,6 @@ export function normalizeAcpSessionUpdate(update: SessionUpdate): NormalizedUpda
           sourceEventType,
         },
       ];
-    case 'agent_thought_chunk':
     case 'user_message_chunk':
       return [];
   }

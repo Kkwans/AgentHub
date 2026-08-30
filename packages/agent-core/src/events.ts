@@ -10,6 +10,7 @@ export const AGENT_EVENT_TYPES = [
   'run.cancelled',
   'assistant.message.delta',
   'assistant.message.completed',
+  'agent.thought.delta',
   'agent.plan.updated',
   'agent.status',
   'agent.configuration.updated',

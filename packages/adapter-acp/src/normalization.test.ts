@@ -39,6 +39,22 @@ describe('ACP 事件归一化', () => {
     ).toMatchObject({ type: 'usage.updated', payload: { used: 10, size: 100 } });
   });
 
+  it('保留 ACP 思考文本及 messageId 供客户端流式聚合', () => {
+    expect(
+      normalizeAcpSessionUpdate({
+        sessionUpdate: 'agent_thought_chunk',
+        messageId: 'thought-1',
+        content: { type: 'text', text: '先检查布局约束。' },
+      }),
+    ).toEqual([
+      {
+        type: 'agent.thought.delta',
+        payload: { text: '先检查布局约束。', messageId: 'thought-1' },
+        sourceEventType: 'agent_thought_chunk',
+      },
+    ]);
+  });
+
   it('将 ACP 配置通知归一化为 AgentHub 配置事件', () => {
     expect(
       normalizeAcpSessionUpdate({

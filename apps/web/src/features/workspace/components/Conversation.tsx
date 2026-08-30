@@ -1,5 +1,13 @@
-import { AlertTriangle, Button, LoaderCircle, ShieldCheck, Wrench } from '@agenthub/ui';
-import { useState } from 'react';
+import {
+  AlertTriangle,
+  Button,
+  CheckCircle2,
+  ChevronRight,
+  LoaderCircle,
+  ShieldCheck,
+  Wrench,
+} from '@agenthub/ui';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from '../../../components/Common';
@@ -8,6 +16,7 @@ import type {
   EventRecord,
   MessageRecord,
   RunRecord,
+  SessionContinuationRecord,
   SessionRecord,
 } from '../../../lib/api';
 import {
@@ -18,6 +27,112 @@ import {
 import type { QueryState } from '../workspace-types';
 import { RunStateBanner } from './RunStateBanner';
 
+const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
+
+type ConversationTimelineItem =
+  | { kind: 'message'; id: string; createdAt: string; message: MessageRecord }
+  | { kind: 'tool'; id: string; createdAt: string; event: EventRecord }
+  | {
+      kind: 'thought';
+      id: string;
+      createdAt: string;
+      updatedAt: string;
+      runId: string | null;
+      firstSeq: number;
+      text: string;
+    };
+
+export function buildConversationTimeline(
+  messages: MessageRecord[],
+  events: EventRecord[],
+): ConversationTimelineItem[] {
+  const toolItems = new Map<string, ConversationTimelineItem & { kind: 'tool' }>();
+  const thoughtItems = new Map<string, ConversationTimelineItem & { kind: 'thought' }>();
+  for (const event of events) {
+    if (event.payloadJson.ignored === true) continue;
+    if (event.type === 'agent.thought.delta') {
+      const messageId =
+        typeof event.payloadJson.messageId === 'string' ? event.payloadJson.messageId : undefined;
+      const timelineId = `thought:${event.runId ?? event.sessionId}:${messageId ?? 'default'}`;
+      const previous = thoughtItems.get(timelineId);
+      const text = typeof event.payloadJson.text === 'string' ? event.payloadJson.text : '';
+      thoughtItems.set(
+        timelineId,
+        previous
+          ? { ...previous, updatedAt: event.createdAt, text: `${previous.text}${text}` }
+          : {
+              kind: 'thought',
+              id: timelineId,
+              createdAt: event.createdAt,
+              updatedAt: event.createdAt,
+              runId: event.runId,
+              firstSeq: event.seq,
+              text,
+            },
+      );
+      continue;
+    }
+    if (!event.type.startsWith('tool.') && event.type !== 'agent.plan.updated') {
+      continue;
+    }
+    const toolCallId =
+      event.type.startsWith('tool.') && typeof event.payloadJson.toolCallId === 'string'
+        ? event.payloadJson.toolCallId
+        : undefined;
+    const timelineId = toolCallId ? `tool:${toolCallId}` : `event:${event.id}`;
+    const previous = toolItems.get(timelineId);
+    if (!previous) {
+      toolItems.set(timelineId, {
+        kind: 'tool',
+        id: timelineId,
+        createdAt: event.createdAt,
+        event,
+      });
+      continue;
+    }
+    toolItems.set(timelineId, {
+      ...previous,
+      event: {
+        ...event,
+        id: previous.event.id,
+        seq: Math.min(previous.event.seq, event.seq),
+        createdAt: previous.createdAt,
+        payloadJson: { ...previous.event.payloadJson, ...event.payloadJson },
+      },
+    });
+  }
+  const items: ConversationTimelineItem[] = [
+    ...messages.map((message) => ({
+      kind: 'message' as const,
+      id: message.id,
+      createdAt: message.createdAt,
+      message,
+    })),
+    ...toolItems.values(),
+    ...thoughtItems.values(),
+  ];
+  return items.sort((left, right) => {
+    const leftTime = Date.parse(left.createdAt);
+    const rightTime = Date.parse(right.createdAt);
+    const byTime =
+      (Number.isNaN(leftTime) ? 0 : leftTime) - (Number.isNaN(rightTime) ? 0 : rightTime);
+    if (byTime !== 0) return byTime;
+    const leftOrder =
+      left.kind === 'message'
+        ? left.message.sequence
+        : left.kind === 'thought'
+          ? left.firstSeq
+          : left.event.seq;
+    const rightOrder =
+      right.kind === 'message'
+        ? right.message.sequence
+        : right.kind === 'thought'
+          ? right.firstSeq
+          : right.event.seq;
+    return leftOrder - rightOrder;
+  });
+}
+
 export function Conversation({
   session,
   messages,
@@ -25,6 +140,10 @@ export function Conversation({
   approvals,
   activeRun,
   latestRunStatus,
+  continuation,
+  continuePending,
+  continueError,
+  onContinue,
   onResolveApproval,
 }: {
   session: SessionRecord;
@@ -33,6 +152,10 @@ export function Conversation({
   approvals: QueryState<ApprovalRecord[]>;
   activeRun: RunRecord | undefined;
   latestRunStatus?: string | undefined;
+  continuation: SessionContinuationRecord | undefined;
+  continuePending: boolean;
+  continueError: Error | null;
+  onContinue: () => void;
   onResolveApproval: (id: string, optionId: string) => Promise<ApprovalRecord>;
 }) {
   const [approvalFeedback, setApprovalFeedback] = useState<string>();
@@ -59,11 +182,22 @@ export function Conversation({
       setResolving(undefined);
     }
   };
-  const toolEvents = (events.data ?? []).filter(
-    (event) =>
-      event.payloadJson.ignored !== true &&
-      (event.type.startsWith('tool.') || event.type === 'agent.plan.updated'),
-  );
+  const timeline = buildConversationTimeline(messages.data ?? [], events.data ?? []);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const followTimelineRef = useRef(true);
+  const latestTimelineId = timeline.at(-1)?.id;
+  const activeThoughtId = activeRun
+    ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
+        ?.id
+    : undefined;
+  useEffect(() => {
+    if (!followTimelineRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      const element = scrollRef.current;
+      if (element) element.scrollTop = element.scrollHeight;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [latestTimelineId]);
   const showEmpty =
     !messages.isLoading &&
     !events.isLoading &&
@@ -77,22 +211,45 @@ export function Conversation({
     <div className="conversation">
       <div className="panel-title conversation-title">
         <div>
-          <span>对话与执行</span>
-          <small>{activeRun ? '当前 Run' : '没有活动 Run'}</small>
+          <span>对话</span>
+          <small>{activeRun ? 'Agent 正在处理当前指令' : '消息与执行记录'}</small>
         </div>
         {activeRun && <StatusBadge status={activeRun.status} />}
       </div>
       <div
+        ref={scrollRef}
         className="conversation-scroll"
         role="log"
         aria-live="polite"
         aria-relevant="additions text"
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          followTimelineRef.current =
+            element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+        }}
       >
         <RunStateBanner
           sessionStatus={session.status}
           activeRunStatus={activeRun?.status}
           latestRunStatus={latestRunStatus}
+          continuePending={continuePending}
+          continueError={continueError}
+          onContinue={onContinue}
         />
+        {continuation && (
+          <details className="workspace-handoff">
+            <summary>
+              Session 交接包
+              <span>{continuation.strategy === 'MODEL' ? '模型摘要' : '确定性摘要'}</span>
+            </summary>
+            <p>{continuation.summaryText}</p>
+            <small>
+              {continuation.consumedAt
+                ? '交接内容已在首次 Run 中注入。'
+                : '首次成功发送 Run 时注入一次，失败重试不会丢失。'}
+            </small>
+          </details>
+        )}
         {approvals.isLoading && <LoadingState label="正在读取 Approval" />}
         {approvals.error && (
           <ErrorState error={approvals.error} retry={() => approvals.refetch()} />
@@ -112,12 +269,19 @@ export function Conversation({
             description="Composer 会固定带上 Agent、Project、cwd、branch 与 PromptOS 上下文。"
           />
         )}
-        {(messages.data ?? []).map((message) => {
+        {timeline.map((item) => {
+          if (item.kind === 'tool') return <ToolEventRow key={item.id} event={item.event} />;
+          if (item.kind === 'thought') {
+            return (
+              <ThoughtEventRow key={item.id} thought={item} running={item.id === activeThoughtId} />
+            );
+          }
+          const { message } = item;
           const presentation = presentAgentMessage(message.text);
           return (
             <article className={`message ${message.role.toLowerCase()}`} key={message.id}>
               <div className="message-meta">
-                <span>
+                <span className="message-author">
                   {message.role === 'USER'
                     ? '你'
                     : message.role === 'ASSISTANT'
@@ -136,28 +300,13 @@ export function Conversation({
                   </details>
                 </div>
               ) : (
-                <div className="message-body">{presentation.text}</div>
+                <div className="message-body message-markdown">
+                  <RichMessage text={presentation.text} />
+                </div>
               )}
             </article>
           );
         })}
-        {toolEvents.length > 0 && (
-          <Link className="tool-summary" to="?view=tools" aria-label="查看工具调用详情">
-            <span className="tool-icon">
-              <Wrench size={16} />
-            </span>
-            <span>
-              <strong>执行摘要</strong>
-              <small>
-                {toolEvents.length} 个工具调用 · 最近：
-              </small>
-              <small className="tool-summary-latest">
-                {labelAgentEventType(toolEvents.at(-1)?.type ?? '')}
-              </small>
-            </span>
-              <span className="tool-summary-action">查看详情 →</span>
-          </Link>
-        )}
         {(approvals.data ?? []).map((approval) => {
           const awaitingDecision = approval.status === 'PENDING';
           const deliveryInProgress = ['QUEUED', 'CLAIMED', 'DISPATCHING', 'RETRY_WAIT'].includes(
@@ -342,5 +491,126 @@ export function Conversation({
         })}
       </div>
     </div>
+  );
+}
+
+function ToolEventRow({ event }: { event: EventRecord }) {
+  const status = event.type.endsWith('.failed')
+    ? 'failed'
+    : event.type.endsWith('.completed')
+      ? 'completed'
+      : 'running';
+  const rawTool = event.payloadJson.tool ?? event.payloadJson.name;
+  const title = String(
+    event.payloadJson.title ??
+      (rawTool === undefined
+        ? event.type === 'agent.plan.updated'
+          ? '更新执行计划'
+          : '调用工具'
+        : labelToolName(String(rawTool))),
+  );
+  const detailValue =
+    event.payloadJson.command ??
+    event.payloadJson.path ??
+    event.payloadJson.query ??
+    event.payloadJson.url ??
+    readToolLocation(event.payloadJson.locations) ??
+    event.payloadJson.kind;
+  return (
+    <details className={`tool-event-row tool-event-${status}`}>
+      <summary aria-label={`${title}，${labelAgentEventType(event.type)}，展开详情`}>
+        <span className="tool-event-icon" aria-hidden="true">
+          {status === 'running' ? (
+            <LoaderCircle className="spin" size={14} />
+          ) : status === 'failed' ? (
+            <AlertTriangle size={14} />
+          ) : (
+            <CheckCircle2 size={14} />
+          )}
+        </span>
+        <span className="tool-event-copy">
+          <span>
+            <strong>{title}</strong>
+            <small>
+              {status === 'completed' ? '已完成' : status === 'failed' ? '失败' : '进行中'}
+            </small>
+          </span>
+          {detailValue !== undefined && <code>{String(detailValue)}</code>}
+        </span>
+        <ChevronRight className="tool-event-action" size={13} aria-hidden="true" />
+      </summary>
+      <div className="tool-event-detail">
+        <pre>{JSON.stringify(event.payloadJson, null, 2)}</pre>
+        <Link to="?view=tools">
+          <Wrench size={12} aria-hidden="true" /> 在工具检查器中查看
+        </Link>
+      </div>
+    </details>
+  );
+}
+
+function ThoughtEventRow({
+  thought,
+  running,
+}: {
+  thought: ConversationTimelineItem & { kind: 'thought' };
+  running: boolean;
+}) {
+  const duration = Math.max(0, Date.parse(thought.updatedAt) - Date.parse(thought.createdAt));
+  return (
+    <details className={`thought-event-row${running ? ' running' : ''}`}>
+      <summary aria-label={running ? '正在思考，展开思考过程' : '展开思考过程'}>
+        <span className="thought-event-pulse" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <strong>{running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`}</strong>
+        <ChevronRight className="thought-event-action" size={13} aria-hidden="true" />
+      </summary>
+      <div className="thought-event-content message-markdown">
+        <RichMessage text={thought.text || 'Agent 未提供可展示的思考内容。'} />
+      </div>
+    </details>
+  );
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  read_file: '读取文件',
+  write_file: '写入文件',
+  apply_patch: '修改文件',
+  exec_command: '运行命令',
+  run_tests: '运行测试',
+  search: '搜索代码',
+  search_query: '搜索网页',
+  open: '查看网页',
+};
+
+function labelToolName(value: string): string {
+  const normalized = value.trim().toLocaleLowerCase();
+  return TOOL_LABELS[normalized] ?? value;
+}
+
+function readToolLocation(value: unknown): string | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const first = value[0];
+  if (!first || typeof first !== 'object' || !('path' in first)) return undefined;
+  return typeof first.path === 'string' ? first.path : undefined;
+}
+
+function formatThoughtDuration(milliseconds: number): string {
+  const seconds = Math.max(0, Math.round(milliseconds / 1_000));
+  if (seconds < 1) return '不到 1 秒';
+  if (seconds < 60) return `${seconds} 秒`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return remainder ? `${minutes} 分 ${remainder} 秒` : `${minutes} 分钟`;
+}
+
+function RichMessage({ text }: { text: string }) {
+  return (
+    <Suspense fallback={<span className="message-markdown-loading">{text}</span>}>
+      <MarkdownMessage text={text} />
+    </Suspense>
   );
 }
