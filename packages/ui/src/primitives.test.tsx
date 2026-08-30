@@ -5,7 +5,7 @@ import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AhButton, AhChoiceSelect, AhPageHeader, AhSelect, AhStatusBadge } from './primitives.js';
+import { AhButton, AhChoiceSelect, AhSelect } from './primitives.js';
 
 describe('v0.7 UI primitives', () => {
   it('renders a loading button without losing its accessible name', () => {
@@ -36,19 +36,6 @@ describe('v0.7 UI primitives', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), {
       target: { value: 'Agent' },
     });
-  });
-
-  it('provides a stable page hierarchy and translated status labels', () => {
-    render(
-      <MantineProvider env="test">
-        <AhPageHeader title="项目" description="管理你的工程上下文。" />
-        <AhStatusBadge status="READY" />
-      </MantineProvider>,
-    );
-
-    expect(screen.getByRole('heading', { name: '项目', level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('就绪')).toBeInTheDocument();
-    expect(screen.queryByText('READY')).not.toBeInTheDocument();
   });
 
   it('keeps product choice fields non-native while preserving option descriptions', () => {

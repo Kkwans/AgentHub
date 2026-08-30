@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,7 +9,6 @@ import {
   AhDialog,
   AhInput,
   AhProjectContext,
-  AhResizablePane,
   AhStatusPill,
   AhThemeSelect,
   AhTextarea,
@@ -77,23 +76,5 @@ describe('product components', () => {
       '/projects/p-1/overview',
     );
     expect(screen.getByRole('combobox', { name: '主题' })).toBeTruthy();
-  });
-
-  it('resizes a pane with the keyboard handle and can collapse', () => {
-    render(
-      <AgentHubProvider>
-        <AhResizablePane title="检查器" initialSize={360} minSize={280} maxSize={480} collapsible>
-          <p>内容</p>
-        </AhResizablePane>
-      </AgentHubProvider>,
-    );
-    const handle = screen.getByRole('separator', { name: '调整检查器宽度' });
-    expect(handle.getAttribute('aria-valuenow')).toBe('360');
-    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
-    expect(handle.getAttribute('aria-valuenow')).toBe('344');
-    fireEvent.keyDown(handle, { key: 'Home' });
-    expect(handle.getAttribute('aria-valuenow')).toBe('280');
-    fireEvent.keyDown(handle, { key: 'Enter' });
-    expect(screen.getByRole('button', { name: '展开检查器' })).toBeTruthy();
   });
 });

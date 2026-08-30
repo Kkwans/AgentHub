@@ -1,8 +1,6 @@
 import {
-  ActionIcon,
   Alert,
   Anchor,
-  Box,
   Button,
   Divider,
   Group,
@@ -15,23 +13,15 @@ import {
   Text,
   TextInput,
   ThemeIcon,
-  Tooltip,
   Drawer,
   type PaperProps,
 } from '@mantine/core';
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowLeftIcon } from '@phosphor-icons/react/ArrowLeft';
 import { CheckCircleIcon } from '@phosphor-icons/react/CheckCircle';
 import { InfoIcon } from '@phosphor-icons/react/Info';
 import { WarningCircleIcon } from '@phosphor-icons/react/WarningCircle';
-import { XIcon } from '@phosphor-icons/react/X';
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
   type ComponentProps,
-  type CSSProperties,
   type TextareaHTMLAttributes,
   type ReactNode,
 } from 'react';
@@ -94,7 +84,10 @@ function BadgeLike({ color, children }: { color: string; children: ReactNode }) 
       color: 'var(--ah-accent-primary, #6246f5)',
     },
     red: { background: 'var(--ah-danger-soft, #fdecee)', color: 'var(--ah-danger, #dc4850)' },
-    gray: { background: 'var(--ah-surface-subtle, #f6f7fb)', color: 'var(--ah-text-secondary, #59647a)' },
+    gray: {
+      background: 'var(--ah-surface-subtle, #f6f7fb)',
+      color: 'var(--ah-text-secondary, #59647a)',
+    },
     yellow: { background: 'var(--ah-warning-soft, #fff4dd)', color: 'var(--ah-warning, #c87911)' },
   };
   const colors = palette[color] ?? palette.gray ?? { background: 'transparent', color: 'inherit' };
@@ -144,7 +137,11 @@ export function AhEmptyState({
           {description}
         </Text>
       ) : null}
-      {action ? <Group justify="center" mt={4}>{action}</Group> : null}
+      {action ? (
+        <Group justify="center" mt={4}>
+          {action}
+        </Group>
+      ) : null}
     </Stack>
   );
 }
@@ -168,17 +165,34 @@ export function AhErrorState({
     >
       <Group justify="space-between" align="center" gap="md">
         <Text size="sm">{description ?? '请检查连接后重试。'}</Text>
-        {retry ? <Button size="xs" variant="light" color="red" onClick={retry}>重试</Button> : null}
+        {retry ? (
+          <Button size="xs" variant="light" color="red" onClick={retry}>
+            重试
+          </Button>
+        ) : null}
       </Group>
     </Alert>
   );
 }
 
-export function AhLoadingState({ label = '正在加载', rows = 3 }: { label?: string; rows?: number }) {
+export function AhLoadingState({
+  label = '正在加载',
+  rows = 3,
+}: {
+  label?: string;
+  rows?: number;
+}) {
   return (
     <Stack gap="md" aria-busy="true" aria-label={label}>
-      <Group gap="sm"><Loader size="sm" color="aurora" /><Text c="dimmed" size="sm">{label}</Text></Group>
-      {Array.from({ length: rows }, (_, index) => <Skeleton key={index} height={index === 0 ? 42 : 32} radius="md" />)}
+      <Group gap="sm">
+        <Loader size="sm" color="aurora" />
+        <Text c="dimmed" size="sm">
+          {label}
+        </Text>
+      </Group>
+      {Array.from({ length: rows }, (_, index) => (
+        <Skeleton key={index} height={index === 0 ? 42 : 32} radius="md" />
+      ))}
     </Stack>
   );
 }
@@ -194,13 +208,22 @@ export function AhProjectContext({
     <Stack gap={0}>
       <Group justify="space-between" align="flex-start" gap="md" wrap="wrap">
         <Stack gap={3}>
-          <Text size="xs" fw={700} c="aurora.7" tt="uppercase" lts="0.08em">当前项目</Text>
-          <Text size="xl" fw={700}>{project.name}</Text>
-          <Text size="sm" c="dimmed" ff="monospace" truncate="end" maw={760}>{project.rootPath}</Text>
+          <Text size="xs" fw={700} c="aurora.7" tt="uppercase" lts="0.08em">
+            当前项目
+          </Text>
+          <Text size="xl" fw={700}>
+            {project.name}
+          </Text>
+          <Text size="sm" c="dimmed" ff="monospace" truncate="end" maw={760}>
+            {project.rootPath}
+          </Text>
         </Stack>
         {project.status ? <AhStatusPill status={project.status} /> : null}
       </Group>
-      <nav aria-label="项目上下文" style={{ display: 'flex', gap: 4, overflowX: 'auto', marginTop: 24 }}>
+      <nav
+        aria-label="项目上下文"
+        style={{ display: 'flex', gap: 4, overflowX: 'auto', marginTop: 24 }}
+      >
         {tabs.map((tab) => (
           <Anchor
             key={tab.to}
@@ -214,7 +237,8 @@ export function AhProjectContext({
               fontWeight: 600,
             }}
           >
-            {tab.label}{typeof tab.count === 'number' ? ` ${tab.count}` : ''}
+            {tab.label}
+            {typeof tab.count === 'number' ? ` ${tab.count}` : ''}
           </Anchor>
         ))}
       </nav>
@@ -223,25 +247,56 @@ export function AhProjectContext({
   );
 }
 
-export function AhMetric({ label, value, hint, tone = 'neutral' }: { label: string; value: ReactNode; hint?: string; tone?: 'neutral' | 'accent' | 'success' | 'warning' }) {
-  const colors = { neutral: 'var(--ah-text-primary)', accent: 'var(--ah-accent-primary)', success: 'var(--ah-success)', warning: 'var(--ah-warning)' };
+export function AhMetric({
+  label,
+  value,
+  hint,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  tone?: 'neutral' | 'accent' | 'success' | 'warning';
+}) {
+  const colors = {
+    neutral: 'var(--ah-text-primary)',
+    accent: 'var(--ah-accent-primary)',
+    success: 'var(--ah-success)',
+    warning: 'var(--ah-warning)',
+  };
   return (
     <Stack gap={3}>
-      <Text size="xs" c="dimmed" fw={650}>{label}</Text>
-      <Text size="xl" fw={750} style={{ color: colors[tone] }}>{value}</Text>
-      {hint ? <Text size="xs" c="dimmed">{hint}</Text> : null}
+      <Text size="xs" c="dimmed" fw={650}>
+        {label}
+      </Text>
+      <Text size="xl" fw={750} style={{ color: colors[tone] }}>
+        {value}
+      </Text>
+      {hint ? (
+        <Text size="xs" c="dimmed">
+          {hint}
+        </Text>
+      ) : null}
     </Stack>
   );
 }
 
-export function AhSurface({ children, withBorder = true, ...props }: PaperProps & { children: ReactNode; withBorder?: boolean }) {
+export function AhSurface({
+  children,
+  withBorder = true,
+  ...props
+}: PaperProps & { children: ReactNode; withBorder?: boolean }) {
   return (
     <Paper
       {...props}
       withBorder={withBorder}
       radius="lg"
       shadow="xs"
-      style={{ background: 'var(--ah-surface)', borderColor: 'var(--ah-border-default)', ...props.style }}
+      style={{
+        background: 'var(--ah-surface)',
+        borderColor: 'var(--ah-border-default)',
+        ...props.style,
+      }}
     >
       {children}
     </Paper>
@@ -269,7 +324,10 @@ export function AhThemeSelect() {
   );
 }
 
-export function AhInput({ label, ...props }: ComponentProps<typeof TextInput> & { label?: string }) {
+export function AhInput({
+  label,
+  ...props
+}: ComponentProps<typeof TextInput> & { label?: string }) {
   return <TextInput {...props} label={label} radius="md" />;
 }
 
@@ -280,11 +338,26 @@ export type AhTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   autosize?: boolean;
 };
 
-export function AhTextarea({ label, description, minRows = 4, autosize: _autosize, ...props }: AhTextareaProps) {
+export function AhTextarea({
+  label,
+  description,
+  minRows = 4,
+  autosize: _autosize,
+  ...props
+}: AhTextareaProps) {
   return (
     <label className="ah-textarea-field">
-      {label ? <span className="ah-textarea-label">{label}{props.required ? <span aria-hidden="true"> *</span> : null}</span> : null}
-      <textarea {...props} rows={minRows} className={`ah-textarea${props.className ? ` ${props.className}` : ''}`} />
+      {label ? (
+        <span className="ah-textarea-label">
+          {label}
+          {props.required ? <span aria-hidden="true"> *</span> : null}
+        </span>
+      ) : null}
+      <textarea
+        {...props}
+        rows={minRows}
+        className={`ah-textarea${props.className ? ` ${props.className}` : ''}`}
+      />
       {description ? <span className="ah-textarea-description">{description}</span> : null}
     </label>
   );
@@ -319,9 +392,17 @@ export function AhDialog({
       centered
       closeButtonProps={{ 'aria-label': '关闭' }}
     >
-      {description ? <Text c="dimmed" size="sm" mb="md">{description}</Text> : null}
+      {description ? (
+        <Text c="dimmed" size="sm" mb="md">
+          {description}
+        </Text>
+      ) : null}
       {children}
-      {actions ? <Group justify="flex-end" mt="xl">{actions}</Group> : null}
+      {actions ? (
+        <Group justify="flex-end" mt="xl">
+          {actions}
+        </Group>
+      ) : null}
     </Modal>
   );
 }
@@ -339,75 +420,10 @@ export function AhDrawer({
   children: ReactNode;
   position?: 'left' | 'right' | 'top' | 'bottom';
 }) {
-  return <Drawer opened={open} onClose={onClose} title={title} position={position}>{children}</Drawer>;
-}
-
-export function AhResizablePane({
-  title,
-  children,
-  initialSize = 400,
-  minSize = 340,
-  maxSize = 620,
-  collapsible = false,
-  side = 'right',
-}: {
-  title: string;
-  children: ReactNode;
-  initialSize?: number;
-  minSize?: number;
-  maxSize?: number;
-  collapsible?: boolean;
-  side?: 'left' | 'right';
-}) {
-  const [size, setSize] = useState(initialSize);
-  const [collapsed, setCollapsed] = useState(false);
-  const dragging = useRef(false);
-  const start = useRef({ x: 0, size: initialSize });
-  const clamp = useCallback((value: number) => Math.min(maxSize, Math.max(minSize, value)), [maxSize, minSize]);
-  useEffect(() => {
-    const move = (event: PointerEvent) => {
-      if (!dragging.current) return;
-      const delta = event.clientX - start.current.x;
-      setSize(clamp(side === 'right' ? start.current.size - delta : start.current.size + delta));
-    };
-    const up = () => { dragging.current = false; };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-  }, [clamp, side]);
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'ArrowLeft') { event.preventDefault(); setSize((value) => clamp(value - 16)); }
-    if (event.key === 'ArrowRight') { event.preventDefault(); setSize((value) => clamp(value + 16)); }
-    if (event.key === 'Home') { event.preventDefault(); setSize(minSize); }
-    if (event.key === 'End') { event.preventDefault(); setSize(maxSize); }
-    if (event.key === 'Enter' && collapsible) { event.preventDefault(); setCollapsed((value) => !value); }
-  };
-  const style: CSSProperties = collapsed
-    ? { display: 'none' }
-    : { width: size, minWidth: minSize, maxWidth: maxSize, flex: `0 0 ${size}px`, overflow: 'auto' };
   return (
-    <>
-      <Box style={style} data-pane-title={title}>
-        <Group justify="space-between" px="md" py="sm" style={{ borderBottom: '1px solid var(--ah-border-subtle)' }}>
-          <Text fw={650} size="sm">{title}</Text>
-          {collapsible ? <Tooltip label="收起"><ActionIcon variant="subtle" aria-label={`收起${title}`} onClick={() => setCollapsed(true)}><XIcon size={16} /></ActionIcon></Tooltip> : null}
-        </Group>
-        <Box p="md">{children}</Box>
-      </Box>
-      <Box
-        role="separator"
-        aria-label={`调整${title}宽度`}
-        aria-orientation="vertical"
-        aria-valuemin={minSize}
-        aria-valuemax={maxSize}
-        aria-valuenow={size}
-        tabIndex={0}
-        onKeyDown={handleKeyDown}
-        onPointerDown={(event) => { dragging.current = true; start.current = { x: event.clientX, size }; event.currentTarget.setPointerCapture?.(event.pointerId); }}
-        style={{ width: 8, cursor: 'col-resize', flex: '0 0 8px', background: 'transparent' }}
-      />
-      {collapsed ? <Button variant="light" size="xs" onClick={() => setCollapsed(false)} aria-label={`展开${title}`} leftSection={<ArrowLeftIcon size={14} />}>展开</Button> : null}
-    </>
+    <Drawer opened={open} onClose={onClose} title={title} position={position}>
+      {children}
+    </Drawer>
   );
 }
 
@@ -424,7 +440,13 @@ export function AhReveal({ children, delay = 0 }: { children: ReactNode; delay?:
   );
 }
 
-export function AhToastNotice({ children, onClose }: { children: ReactNode; onClose?: () => void }) {
+export function AhToastNotice({
+  children,
+  onClose,
+}: {
+  children: ReactNode;
+  onClose?: () => void;
+}) {
   return (
     <Alert
       icon={<CheckCircleIcon size={18} />}
