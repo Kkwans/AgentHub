@@ -468,25 +468,34 @@ export function resolveWorkspaceRunState(
   activeRunStatus?: string | null,
   latestRunStatus?: string | null,
 ): WorkspaceRunState {
-  const currentRunStatus =
-    activeRunStatus ??
-    latestRunStatus ??
-    (sessionStatus &&
-    ['QUEUED', 'STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'].includes(sessionStatus)
-      ? sessionStatus
-      : undefined);
-  if (currentRunStatus === 'WAITING_APPROVAL') return 'WAITING_APPROVAL';
-  if (currentRunStatus === 'CANCELING') return 'CANCELING';
-  if (currentRunStatus && ['QUEUED', 'STARTING', 'RUNNING'].includes(currentRunStatus)) {
+  // Keep the persisted Session boundary authoritative for terminal states.
+  // A stale active Run payload must not make a disconnected/failed/closed
+  // Session appear runnable. The only Run state allowed to outrank that
+  // boundary is a pending Approval, because it is an actionable user decision.
+  if (activeRunStatus === 'WAITING_APPROVAL') return 'WAITING_APPROVAL';
+  if (sessionStatus === 'DISCONNECTED') return 'DISCONNECTED';
+  if (sessionStatus === 'FAILED') return 'FAILED';
+  if (sessionStatus === 'CLOSED') return 'CLOSED';
+
+  // An active Run is the only Run state that can override a non-terminal
+  // Session state. Terminal status from a previous Run must not make a
+  // recovered READY Session look failed.
+  if (activeRunStatus === 'CANCELING') return 'CANCELING';
+  if (activeRunStatus && ['QUEUED', 'STARTING', 'RUNNING'].includes(activeRunStatus)) {
     return 'RUNNING';
   }
-  if (sessionStatus === 'DISCONNECTED' || currentRunStatus === 'DISCONNECTED') {
-    return 'DISCONNECTED';
+  if (
+    sessionStatus &&
+    ['QUEUED', 'STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'].includes(sessionStatus)
+  ) {
+    if (sessionStatus === 'WAITING_APPROVAL') return 'WAITING_APPROVAL';
+    if (sessionStatus === 'CANCELING') return 'CANCELING';
+    return 'RUNNING';
   }
-  if (sessionStatus === 'FAILED' || currentRunStatus === 'FAILED') {
-    return 'FAILED';
-  }
-  if (sessionStatus === 'CLOSED') return 'CLOSED';
+  // Keep this fallback for callers that only have a Run payload (for
+  // example, an activity card rendered before Session hydration).
+  if (sessionStatus == null && latestRunStatus === 'DISCONNECTED') return 'DISCONNECTED';
+  if (sessionStatus == null && latestRunStatus === 'FAILED') return 'FAILED';
   return 'IDLE';
 }
 

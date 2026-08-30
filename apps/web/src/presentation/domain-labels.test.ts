@@ -75,7 +75,11 @@ describe('domain presentation labels', () => {
     );
     expect(resolveWorkspaceRunState('READY', 'CANCELING')).toBe('CANCELING');
     expect(resolveWorkspaceRunState('DISCONNECTED')).toBe('DISCONNECTED');
-    expect(resolveWorkspaceRunState('READY', undefined, 'FAILED')).toBe('FAILED');
+    expect(resolveWorkspaceRunState('READY', undefined, 'FAILED')).toBe('IDLE');
+    expect(resolveWorkspaceRunState('READY', 'RUNNING', 'FAILED')).toBe('RUNNING');
+    expect(resolveWorkspaceRunState('DISCONNECTED', 'RUNNING')).toBe('DISCONNECTED');
+    expect(resolveWorkspaceRunState('FAILED', 'RUNNING')).toBe('FAILED');
+    expect(resolveWorkspaceRunState('CLOSED', 'RUNNING')).toBe('CLOSED');
     expect(resolveWorkspaceRunState('CLOSED')).toBe('CLOSED');
   });
 
