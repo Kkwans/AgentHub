@@ -1,2 +1,2 @@
 /** Route-facing PromptOS feature boundary. */
-export { PromptOsPage } from '../../../pages/PromptOsPage';
+export { PromptLibraryPage as PromptOsPage } from './PromptLibraryPage';

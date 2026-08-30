@@ -1,0 +1,772 @@
+.promptPage,
+.settingsPage {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.pageHeader h1,
+.pageHeader h2 {
+  margin: 0 0 4px;
+  font-size: clamp(26px, 3vw, 32px);
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+}
+
+.pageHeader p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--ah-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--ah-accent-primary);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+}
+
+.pageActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.promptLayout {
+  display: grid;
+  grid-template-columns: minmax(240px, 270px) minmax(0, 1fr);
+  min-height: 680px;
+  overflow: hidden;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--ah-shadow-xs);
+}
+
+.libraryPane {
+  min-width: 0;
+  padding: 16px 10px 12px;
+  background: color-mix(in srgb, var(--ah-surface-subtle) 88%, var(--ah-surface));
+  border-right: 1px solid var(--ah-border-subtle);
+}
+
+.libraryHeader,
+.mainHeader,
+.sectionHeading,
+.contentToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.libraryHeader {
+  padding: 0 6px 12px;
+}
+
+.libraryHeader strong,
+.mainHeader h2,
+.sectionHeading h3 {
+  margin: 0;
+  color: var(--ah-text-primary);
+}
+
+.libraryHeader small,
+.mainHeader p,
+.sectionHeading p {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+}
+
+.searchField {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 10px;
+  padding: 0 10px;
+  color: var(--ah-text-tertiary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 10px;
+}
+
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  color: var(--ah-text-primary);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: 13px;
+}
+
+.searchField:focus-within {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+.filterRow {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px 10px;
+  overflow-x: auto;
+}
+
+.filterPill,
+.tab {
+  min-height: 30px;
+  padding: 0 9px;
+  color: var(--ah-text-secondary);
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.filterPill:hover,
+.filterPillActive {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}
+
+.promptList {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.promptListRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 7px;
+  color: var(--ah-text-secondary);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.promptListRow:hover,
+.promptListRowActive {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border-color: var(--ah-border-subtle);
+  box-shadow: var(--ah-shadow-xs);
+}
+
+.promptListRow > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.promptListRow strong,
+.promptListRow small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.promptListRow strong {
+  font-size: 12px;
+}
+.promptListRow small {
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+}
+
+.promptRowIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 8px;
+}
+
+.rowMeta {
+  max-width: 76px;
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mainPane {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  padding: 24px 26px 30px;
+}
+
+.mainHeader {
+  align-items: flex-start;
+  padding-bottom: 18px;
+}
+.mainHeader h2 {
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+.titleLine {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.editorActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.tab {
+  position: relative;
+  min-height: 42px;
+  padding-inline: 12px;
+  border-radius: 0;
+}
+
+.tab::after {
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  background: transparent;
+  content: '';
+}
+
+.tabActive {
+  color: var(--ah-accent-primary);
+}
+.tabActive::after {
+  background: var(--ah-accent-primary);
+}
+
+.tabContent {
+  min-width: 0;
+  padding-top: 18px;
+}
+
+.contentShell,
+.variableTable,
+.playground,
+.versionList,
+.labelList,
+.bindingList {
+  overflow: hidden;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--ah-shadow-xs);
+}
+
+.contentToolbar {
+  min-height: 46px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.contentToolbar strong {
+  font-size: 13px;
+}
+.contentMeta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.prose {
+  max-width: 850px;
+  padding: 24px 26px;
+  color: var(--ah-text-primary);
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.prose p {
+  margin: 0 0 14px;
+}
+.prose ol {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+.prose mark {
+  padding: 1px 4px;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 5px;
+}
+
+.sectionHeading {
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+.sectionHeading h3 {
+  font-size: 20px;
+}
+
+.variableTable > div {
+  display: grid;
+  grid-template-columns: 1.2fr 0.65fr 0.45fr 1.4fr;
+  gap: 14px;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 16px;
+  border-top: 1px solid var(--ah-border-subtle);
+  font-size: 13px;
+}
+
+.variableTable > div:first-child {
+  border-top: 0;
+}
+.variableTable code {
+  color: var(--ah-accent-primary);
+  font-size: 12px;
+}
+.tableHead {
+  color: var(--ah-text-tertiary);
+  background: var(--ah-surface-subtle);
+  font-size: 11px !important;
+  font-weight: 650;
+}
+
+.playground {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+}
+.playgroundForm {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-right: 1px solid var(--ah-border-subtle);
+}
+.playgroundForm label {
+  display: grid;
+  gap: 6px;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+.playgroundForm input,
+.playgroundForm textarea {
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 10px;
+  outline: 0;
+  resize: vertical;
+}
+.playgroundForm textarea {
+  min-height: 100px;
+}
+.playgroundForm input:focus,
+.playgroundForm textarea:focus {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+.playgroundResult {
+  min-width: 0;
+  padding: 22px 24px;
+  color: var(--ah-text-primary);
+  background: color-mix(in srgb, var(--ah-surface-subtle) 60%, var(--ah-surface));
+  font-size: 14px;
+  line-height: 1.8;
+}
+.playgroundResult p {
+  margin: 10px 0 0;
+}
+
+.versionRow,
+.labelRow,
+.bindingRow {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  min-height: 70px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+
+.versionRow:first-child,
+.labelRow:first-child,
+.bindingRow:first-child {
+  border-top: 0;
+}
+.versionRow {
+  grid-template-columns: 55px minmax(0, 1fr) auto;
+  text-align: left;
+}
+.versionRow strong,
+.versionRow small,
+.labelRow span,
+.bindingRow strong,
+.bindingRow small {
+  display: block;
+}
+.versionRow small,
+.bindingRow small {
+  margin-top: 3px;
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+}
+.versionRow > b {
+  font-size: 16px;
+}
+.versionRowActive {
+  background: var(--ah-accent-soft);
+}
+.labelRow {
+  grid-template-columns: 160px 1fr auto;
+}
+.bindingRow {
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+}
+.bindingAvatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 11px;
+  font-weight: 700;
+}
+
+.lifecycleGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.lifecycleGrid > section {
+  min-width: 0;
+}
+.diffPanel {
+  grid-column: 1 / -1;
+}
+.diffControls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+.diffPatch {
+  max-height: 280px;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 14px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 12px;
+  font: 12px/1.65 var(--mantine-font-family-monospace);
+  white-space: pre;
+}
+
+.settingsPage {
+  max-width: 1180px;
+}
+.settingsLayout {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 860px);
+  align-items: start;
+  gap: 30px;
+}
+.settingsNav {
+  position: sticky;
+  top: 90px;
+  display: grid;
+  gap: 3px;
+  width: 160px;
+}
+.settingsNav a {
+  min-height: 38px;
+  padding: 9px 11px;
+  color: var(--ah-text-secondary);
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.settingsNav a:hover,
+.settingsNavActive {
+  color: var(--ah-accent-primary) !important;
+  background: var(--ah-accent-soft);
+}
+.settingsContent {
+  display: grid;
+  gap: 28px;
+  max-width: 860px;
+}
+.settingsSection {
+  display: grid;
+  gap: 12px;
+}
+.settingsSection[hidden] {
+  display: none;
+}
+.settingsSection h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+.settingsSection > p {
+  margin: 0;
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.settingsGroup {
+  overflow: hidden;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--ah-shadow-xs);
+}
+.settingRow {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 17px 18px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+
+:global(html[data-agenthub-density='compact']) .settingRow {
+  min-height: 64px;
+  padding-block: 13px;
+}
+.settingRow:first-child {
+  border-top: 0;
+}
+.settingRow > div {
+  min-width: 0;
+}
+.settingRow strong {
+  display: block;
+  font-size: 14px;
+}
+.settingRow p {
+  max-width: 620px;
+  margin: 4px 0 0;
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.settingControl {
+  width: 142px;
+  flex: 0 0 142px;
+}
+.settingSwitch {
+  flex: 0 0 auto;
+}
+.themeCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.themeCard {
+  display: grid;
+  gap: 8px;
+  min-height: 118px;
+  padding: 12px;
+  color: var(--ah-text-secondary);
+  text-align: left;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 13px;
+  cursor: pointer;
+}
+.themeCard:hover,
+.themeCardActive {
+  color: var(--ah-accent-primary);
+  border-color: color-mix(in srgb, var(--ah-accent-primary) 35%, var(--ah-border-default));
+  box-shadow: var(--ah-shadow-sm);
+}
+.themePreview {
+  height: 52px;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+  background: var(--ah-surface-subtle);
+}
+.themePreviewDark {
+  background: linear-gradient(145deg, #0d101b, #171d2d);
+}
+.themePreviewSystem {
+  background: linear-gradient(90deg, #f7f8fc 0 50%, #171d2d 50%);
+}
+.themeCard strong {
+  font-size: 13px;
+}
+.themeCard small {
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+}
+.dangerZone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: color-mix(in srgb, var(--ah-danger) 5%, var(--ah-surface));
+  border: 1px solid color-mix(in srgb, var(--ah-danger) 17%, var(--ah-border-default));
+  border-radius: 15px;
+}
+.dangerZone > div {
+  min-width: 0;
+}
+.dangerZone strong {
+  display: block;
+  font-size: 14px;
+}
+.dangerZone p {
+  margin: 4px 0 0;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+}
+.dangerZone button {
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  .promptLayout {
+    grid-template-columns: 1fr;
+  }
+  .libraryPane {
+    max-height: 288px;
+    overflow: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--ah-border-subtle);
+  }
+  .settingsLayout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .settingsNav {
+    position: static;
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+  }
+  .settingsNav a {
+    white-space: nowrap;
+  }
+  .lifecycleGrid {
+    grid-template-columns: 1fr;
+  }
+  .diffControls {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .pageHeader {
+    align-items: flex-start;
+  }
+  .pageActions {
+    width: 100%;
+  }
+  .pageActions > * {
+    flex: 1;
+  }
+  .mainPane {
+    padding: 20px 16px 24px;
+  }
+  .mainHeader {
+    display: block;
+  }
+  .editorActions {
+    margin-top: 14px;
+  }
+  .tabs {
+    margin-inline: -16px;
+    padding-inline: 10px;
+  }
+  .variableTable {
+    overflow-x: auto;
+  }
+  .variableTable > div {
+    min-width: 620px;
+  }
+  .playground {
+    grid-template-columns: 1fr;
+  }
+  .playgroundForm {
+    border-right: 0;
+    border-bottom: 1px solid var(--ah-border-subtle);
+  }
+  .labelRow {
+    grid-template-columns: minmax(100px, 1fr) auto auto;
+  }
+  .bindingRow {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
+  .bindingRow > :last-child {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+  .themeCards {
+    grid-template-columns: 1fr;
+  }
+  .settingRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .settingControl {
+    width: 100%;
+    flex-basis: 100%;
+  }
+  .dangerZone {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .dangerZone button {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projectCard,
+  .promptListRow,
+  .themeCard {
+    transition: none;
+  }
+}
