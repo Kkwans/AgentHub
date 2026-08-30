@@ -3,17 +3,15 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 
-import { api } from '../../../lib/api';
-import { realtime } from '../../../lib/realtime';
 import { Button, SquareTerminal, X } from '@agenthub/ui';
 
-type TerminalCapability = {
+export type TerminalCapability = {
   available: boolean;
   message?: string;
   code?: string;
 };
 
-type TerminalRecord = {
+export type TerminalRecord = {
   id: string;
   projectId: string;
   cwd: string;
@@ -21,11 +19,31 @@ type TerminalRecord = {
   topic: string;
 };
 
-type TerminalEvent = {
+export type TerminalEvent = {
   type?: string;
   data?: unknown;
   exitCode?: unknown;
   signal?: unknown;
+};
+
+export type TerminalOpenInput = {
+  projectId: string;
+  path?: string;
+  cols: number;
+  rows: number;
+};
+
+export type TerminalDockProps = {
+  capability: TerminalCapability | undefined;
+  capabilityError: Error | null;
+  projectId: string | undefined;
+  projectRoot: string | undefined;
+  cwd: string;
+  openTerminal: (input: TerminalOpenInput) => Promise<TerminalRecord>;
+  sendInput: (terminalId: string, data: string) => Promise<unknown>;
+  resizeTerminal: (terminalId: string, input: { cols: number; rows: number }) => Promise<unknown>;
+  closeTerminal: (terminalId: string) => Promise<unknown>;
+  subscribe: (topic: string, listener: (event: TerminalEvent) => void) => () => void;
 };
 
 type TerminalState = 'closed' | 'opening' | 'open' | 'exited' | 'error';
@@ -36,13 +54,12 @@ export function TerminalDock({
   projectId,
   projectRoot,
   cwd,
-}: {
-  capability: TerminalCapability | undefined;
-  capabilityError: Error | null;
-  projectId: string | undefined;
-  projectRoot: string | undefined;
-  cwd: string;
-}) {
+  openTerminal,
+  sendInput,
+  resizeTerminal,
+  closeTerminal,
+  subscribe,
+}: TerminalDockProps) {
   const [expanded, setExpanded] = useState(false);
   const [state, setState] = useState<TerminalState>('closed');
   const [error, setError] = useState<string>();
@@ -77,7 +94,7 @@ export function TerminalDock({
       }
     };
 
-    const openTerminal = async () => {
+    const createTerminal = async () => {
       setState('opening');
       setError(undefined);
       terminal = new Terminal({
@@ -116,7 +133,7 @@ export function TerminalDock({
       resize();
 
       const path = relativeWorkspacePath(projectRoot, cwd);
-      record = await api.post<TerminalRecord>('/terminals', {
+      record = await openTerminal({
         projectId,
         ...(path ? { path } : {}),
         cols: terminal.cols,
@@ -124,7 +141,7 @@ export function TerminalDock({
       });
       if (disposed) return;
 
-      unsubscribe = realtime.subscribe(record.topic, (event) => {
+      unsubscribe = subscribe(record.topic, (event) => {
         const message = event as TerminalEvent;
         if (message.type === 'terminal.output' && typeof message.data === 'string') {
           terminal?.write(message.data);
@@ -143,11 +160,11 @@ export function TerminalDock({
 
       dataDisposable = terminal.onData((data) => {
         if (!record) return;
-        void api.post(`/terminals/${record.id}/input`, { data }).catch(showError);
+        void sendInput(record.id, data).catch(showError);
       });
       resizeDisposable = terminal.onResize(({ cols, rows }) => {
         if (!record) return;
-        void api.post(`/terminals/${record.id}/resize`, { cols, rows }).catch(showError);
+        void resizeTerminal(record.id, { cols, rows }).catch(showError);
       });
       resizeObserver = new ResizeObserver(resize);
       resizeObserver.observe(viewportRef.current!);
@@ -155,7 +172,7 @@ export function TerminalDock({
       setState('open');
     };
 
-    void openTerminal().catch(showError);
+    void createTerminal().catch(showError);
 
     return () => {
       disposed = true;
@@ -163,10 +180,10 @@ export function TerminalDock({
       resizeObserver?.disconnect();
       dataDisposable?.dispose();
       resizeDisposable?.dispose();
-      if (record) void api.post(`/terminals/${record.id}/close`).catch(() => undefined);
+      if (record) void closeTerminal(record.id).catch(() => undefined);
       terminal?.dispose();
     };
-  }, [capability?.available, cwd, expanded, projectId, projectRoot]);
+  }, [capability?.available, closeTerminal, cwd, expanded, openTerminal, projectId, projectRoot, resizeTerminal, sendInput, subscribe]);
 
   const close = () => setExpanded(false);
   const canOpen = Boolean(capability?.available && projectId);

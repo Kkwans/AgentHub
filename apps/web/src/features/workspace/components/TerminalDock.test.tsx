@@ -4,8 +4,6 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { api } from '../../../lib/api';
-import { realtime } from '../../../lib/realtime';
 import { TerminalDock } from './TerminalDock';
 
 const terminalRecord = {
@@ -39,17 +37,22 @@ vi.mock('@xterm/addon-fit', () => ({
   },
 }));
 
-vi.mock('../../../lib/realtime', () => ({
-  realtime: { subscribe: vi.fn(() => () => undefined) },
-}));
-
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
 
 describe('TerminalDock', () => {
+  const terminalActions = () => ({
+    openTerminal: vi.fn(async () => terminalRecord),
+    sendInput: vi.fn(async () => undefined),
+    resizeTerminal: vi.fn(async () => undefined),
+    closeTerminal: vi.fn(async () => undefined),
+    subscribe: vi.fn(() => () => undefined),
+  });
+
   it('在能力不可用时说明原因并禁用打开动作', () => {
+    const actions = terminalActions();
     render(
       <TerminalDock
         capability={{
@@ -61,6 +64,7 @@ describe('TerminalDock', () => {
         projectId="project-1"
         projectRoot="/workspace"
         cwd="/workspace/src"
+        {...actions}
       />,
     );
 
@@ -71,11 +75,7 @@ describe('TerminalDock', () => {
   });
 
   it('打开时只把当前 Project 内的相对 cwd 交给 Terminal，并复用 terminal topic', async () => {
-    vi.spyOn(api, 'post').mockImplementation(async (path) => {
-      if (path === '/terminals') return terminalRecord;
-      return terminalRecord;
-    });
-    const subscribe = vi.mocked(realtime.subscribe);
+    const actions = terminalActions();
 
     render(
       <TerminalDock
@@ -84,21 +84,22 @@ describe('TerminalDock', () => {
         projectId="project-1"
         projectRoot="/workspace"
         cwd="/workspace/src"
+        {...actions}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: /打开 Terminal/ }));
     await waitFor(() =>
-      expect(api.post).toHaveBeenCalledWith('/terminals', {
+      expect(actions.openTerminal).toHaveBeenCalledWith({
         projectId: 'project-1',
         path: 'src',
         cols: 80,
         rows: 24,
       }),
     );
-    expect(subscribe).toHaveBeenCalledWith('terminal:terminal-1', expect.any(Function));
+    expect(actions.subscribe).toHaveBeenCalledWith('terminal:terminal-1', expect.any(Function));
 
     fireEvent.click(screen.getByRole('button', { name: /关闭/ }));
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/terminals/terminal-1/close'));
+    await waitFor(() => expect(actions.closeTerminal).toHaveBeenCalledWith('terminal-1'));
   });
 });
