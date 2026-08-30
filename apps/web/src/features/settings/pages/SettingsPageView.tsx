@@ -24,7 +24,7 @@ import {
 import type { AuthStatus } from '../../../components/AccessGate';
 import { PasswordField } from '../../../components/PasswordField';
 import { realtime } from '../../../lib/realtime';
-import { RemoteNodesPanel } from '../../../pages/RemoteNodesPanel';
+import { RemoteNodesPanel } from '../../agents/components/RemoteNodesPanel';
 import { RuntimeDiscoveryPanel } from '../../agents/components/RuntimeDiscoveryPanel';
 
 export function SettingsPage() {
