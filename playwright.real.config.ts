@@ -11,6 +11,12 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',
+    launchOptions: {
+      // DH4300Plus/aarch64 has no usable X11/Mali GPU session; software
+      // rendering keeps NAS-local screenshots deterministic and avoids GPU
+      // process crashes taking down the Chromium worker.
+      args: ['--disable-gpu'],
+    },
   },
   projects: [
     {
