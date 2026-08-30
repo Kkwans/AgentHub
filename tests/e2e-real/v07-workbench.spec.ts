@@ -134,13 +134,13 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     });
 
     await page.goto(`/projects/${project.id}/work?task=${task.id}`);
-    await expect(page.getByRole('heading', { name: 'Work' })).toBeVisible();
+    await expect(page.getByRole('region', { name: '工作列表' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'v0.7 E2E Task' })).toBeVisible();
     await page.goto(`/projects/${project.id}/sessions`);
-    await expect(page.getByRole('heading', { name: 'Sessions' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'v0.7 E2E Session', exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '搜索会话' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /v0\.7 E2E Session/ })).toBeVisible();
     await page.goto(`/workspace/${session.id}`);
-    await expect(page.getByTestId('v07-workspace')).toBeVisible();
+    await expect(page.locator('.workspace-shell')).toBeVisible();
     await expect(page.getByText('对话与执行')).toBeVisible();
     await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
   });
@@ -161,7 +161,7 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     });
 
     await page.goto(`/workspace/${session.id}`);
-    await expect(page.getByTestId('v07-workspace')).toBeVisible();
+    await expect(page.locator('.workspace-shell')).toBeVisible();
     const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令' });
     await expect(composer).toBeVisible();
     await composer.fill('请执行 Fixture 文件变更并等待 Approval。');
@@ -179,10 +179,12 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     const diffEnvelope = (await diffResponse.json()) as { data: { patch: string } };
     expect(diffEnvelope.data.patch).toContain('fixture-output.md');
 
-    const visibleTabs = page.locator('[role="tab"]:visible');
-    await visibleTabs.filter({ hasText: 'Diff' }).click();
+    const inspectorTabs = page.getByRole('tablist', { name: '检查器视图' });
+    await inspectorTabs.getByRole('tab', { name: '变更', exact: true }).click();
+    const gitTabs = page.getByRole('tablist', { name: 'Git 工作区视图' });
+    await gitTabs.getByRole('tab', { name: 'Diff', exact: true }).click();
     await expect(page.locator('.diff-frame')).toBeVisible();
-    await visibleTabs.filter({ hasText: 'Git' }).click();
+    await gitTabs.getByRole('tab', { name: '变更', exact: true }).click();
     await expect(page.getByLabel('选择 fixture-output.md')).toBeVisible({ timeout: 15_000 });
     await page.getByLabel('选择 fixture-output.md').check();
     const commitForm = page.locator('form.git-commit-form');
