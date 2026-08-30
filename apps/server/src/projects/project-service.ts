@@ -14,6 +14,7 @@ export interface AddProjectInput {
   description?: string | undefined;
   targetId: string;
   rootPath: string;
+  kind?: 'STANDARD' | 'TEST' | undefined;
 }
 
 export interface ProjectPreflightReport {
@@ -100,6 +101,7 @@ export class ProjectService {
       rootPath: input.rootPath,
       realRootPath: report.canonicalRoot,
       repoKind: report.git.detected ? 'GIT' : 'NONE',
+      kind: input.kind ?? 'STANDARD',
       status: 'ACTIVE',
     });
   }
@@ -112,7 +114,14 @@ export class ProjectService {
       : this.preflightPath(rootPath);
   }
 
-  async update(id: string, input: { name?: string; description?: string | null }) {
+  async update(
+    id: string,
+    input: {
+      name?: string;
+      description?: string | null;
+      kind?: 'STANDARD' | 'TEST';
+    },
+  ) {
     await this.get(id);
     return this.projects.update(id, input);
   }

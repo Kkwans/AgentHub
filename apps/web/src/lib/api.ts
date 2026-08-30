@@ -193,6 +193,9 @@ const errorMessages: Record<string, string> = {
   SESSION_NOT_DISCONNECTED: 'Session 当前不处于可恢复状态。',
   SESSION_NOT_READY: 'Session 尚未准备好运行。',
   SESSION_NOT_RESUMABLE: 'Session 当前不能恢复。',
+  SESSION_CONTINUATION_NOT_FOUND: '该 Session 没有 continuation 交接包。',
+  SESSION_CONTINUATION_SOURCE_NOT_CLOSED: '只有 CLOSED Session 可以继续。',
+  SESSION_CONTINUATION_UNAVAILABLE: '当前服务未启用 Session continuation。',
   TASK_NOT_FOUND: 'Task 不存在或已被移除。',
   TASK_GOAL_PROJECT_MISMATCH: 'Task、Goal 与 Project 的归属不一致。',
   TASK_PARENT_PROJECT_MISMATCH: 'Task 所属 Project 与当前选择不一致。',
@@ -481,6 +484,7 @@ export interface ProjectRecord {
   rootPath: string;
   realRootPath: string;
   repoKind: string;
+  kind: 'STANDARD' | 'TEST';
   status: string;
 }
 
@@ -495,7 +499,20 @@ export interface SessionRecord {
   status: string;
   model: string | null;
   mode: string | null;
+  reasoningEffort: string | null;
+  continuedFromSessionId?: string | null;
   lastActiveAt: string;
+}
+
+export interface SessionContinuationRecord {
+  id: string;
+  sourceSessionId: string;
+  targetSessionId: string;
+  strategy: 'MODEL' | 'DETERMINISTIC';
+  inputSnapshotJson: Record<string, unknown>;
+  summaryText: string;
+  generatedAt: string;
+  consumedAt: string | null;
 }
 
 export interface SessionConfigurationRecord {

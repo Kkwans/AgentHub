@@ -182,13 +182,17 @@ export const projects = pgTable(
     rootPath: text('root_path').notNull(),
     realRootPath: text('real_root_path').notNull(),
     repoKind: text('repo_kind').notNull(),
+    kind: text('kind').notNull().default('STANDARD'),
     defaultAgentId: uuid('default_agent_id'),
     status: text('status').notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
   },
-  (table) => [unique('projects_target_real_root_unique').on(table.targetId, table.realRootPath)],
+  (table) => [
+    unique('projects_target_real_root_unique').on(table.targetId, table.realRootPath),
+    check('projects_kind_check', sql`${table.kind} in ('STANDARD', 'TEST')`),
+  ],
 );
 
 export const agents = pgTable(
@@ -254,6 +258,7 @@ export const agentSessions = pgTable(
     status: text('status').notNull(),
     model: text('model'),
     mode: text('mode'),
+    reasoningEffort: text('reasoning_effort'),
     lastSeq: bigint('last_seq', { mode: 'number' }).notNull().default(0),
     createdAt: createdAt(),
     startedAt: timestamp('started_at', { withTimezone: true }),
@@ -266,6 +271,32 @@ export const agentSessions = pgTable(
       'agent_sessions_status_check',
       sql`${table.status} in ('CREATED', 'STARTING', 'READY', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED', 'FAILED', 'CLOSED')`,
     ),
+  ],
+);
+
+export const sessionContinuations = pgTable(
+  'session_continuations',
+  {
+    id: uuid('id').primaryKey(),
+    sourceSessionId: uuid('source_session_id')
+      .notNull()
+      .references(() => agentSessions.id),
+    targetSessionId: uuid('target_session_id')
+      .notNull()
+      .references(() => agentSessions.id),
+    strategy: text('strategy').notNull(),
+    inputSnapshotJson: jsonb('input_snapshot_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(emptyObject),
+    summaryText: text('summary_text').notNull(),
+    generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('session_continuations_target_unique').on(table.targetSessionId),
+    index('session_continuations_source_idx').on(table.sourceSessionId, table.generatedAt),
+    check('session_continuations_strategy_check', sql`${table.strategy} in ('MODEL', 'DETERMINISTIC')`),
   ],
 );
 
@@ -749,6 +780,7 @@ export const schema = {
   projects,
   agents,
   agentSessions,
+  sessionContinuations,
   agentRuns,
   messages,
   runEvents,

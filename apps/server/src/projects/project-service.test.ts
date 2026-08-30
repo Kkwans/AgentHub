@@ -56,6 +56,7 @@ describe('Project 预检与只读文件边界', () => {
 
     expect(project.realRootPath).toBe(root);
     expect(project.repoKind).toBe('GIT');
+    expect(project.kind).toBe('STANDARD');
     expect(report).toMatchObject({
       status: 'READY',
       git: { detected: true },
@@ -144,11 +145,13 @@ describe('Project 预检与只读文件边界', () => {
     const updated = await service.update(project.id, {
       name: 'Project Fixture Updated',
       description: '由 v0.6 Dialog 修改',
+      kind: 'TEST',
     });
     expect(updated).toMatchObject({
       id: project.id,
       name: 'Project Fixture Updated',
       description: '由 v0.6 Dialog 修改',
+      kind: 'TEST',
       realRootPath: project.realRootPath,
       targetId: project.targetId,
     });

@@ -46,6 +46,7 @@ import {
   remoteNodeRegistrationTokens,
   remoteNodes,
   runEvents,
+  sessionContinuations,
   skillBindings,
   skills,
   tasks,
@@ -1831,7 +1832,7 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
 
   async updateConfiguration(
     id: string,
-    patch: Pick<typeof agentSessions.$inferInsert, 'model' | 'mode'>,
+    patch: Pick<typeof agentSessions.$inferInsert, 'model' | 'mode' | 'reasoningEffort'>,
   ) {
     const [updated] = await this.db
       .update(agentSessions)
@@ -1878,6 +1879,52 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
       .where(inArray(agentSessions.status, activeSessionStates))
       .returning();
     return recovered.map((row) => row.id);
+  }
+}
+
+export class SessionContinuationRepository<TDatabase extends AgentHubDatabase> {
+  constructor(private readonly db: TDatabase) {}
+
+  async getByTargetSessionId(targetSessionId: string) {
+    const [continuation] = await this.db
+      .select()
+      .from(sessionContinuations)
+      .where(eq(sessionContinuations.targetSessionId, targetSessionId))
+      .limit(1);
+    return continuation;
+  }
+
+  async listByTargetSessionIds(targetSessionIds: string[]) {
+    if (!targetSessionIds.length) return [];
+    return this.db
+      .select({ sourceSessionId: sessionContinuations.sourceSessionId, targetSessionId: sessionContinuations.targetSessionId })
+      .from(sessionContinuations)
+      .where(inArray(sessionContinuations.targetSessionId, targetSessionIds));
+  }
+
+  async create(input: typeof sessionContinuations.$inferInsert) {
+    const [created] = await this.db.insert(sessionContinuations).values(input).returning();
+    if (!created) {
+      throw new DatabaseInvariantError(
+        'SESSION_CONTINUATION_CREATE_FAILED',
+        'Session continuation 创建失败',
+      );
+    }
+    return created;
+  }
+
+  async markConsumed(targetSessionId: string) {
+    const [updated] = await this.db
+      .update(sessionContinuations)
+      .set({ consumedAt: new Date() })
+      .where(
+        and(
+          eq(sessionContinuations.targetSessionId, targetSessionId),
+          sql`${sessionContinuations.consumedAt} is null`,
+        ),
+      )
+      .returning();
+    return updated;
   }
 }
 

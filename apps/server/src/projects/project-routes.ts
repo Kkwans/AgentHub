@@ -10,6 +10,7 @@ const addSchema = z.object({
   description: z.string().max(4_000).optional(),
   targetId: z.string().uuid(),
   rootPath: z.string().min(1).max(4_096),
+  kind: z.enum(['STANDARD', 'TEST']).default('STANDARD'),
 });
 const preflightPathSchema = z.object({ rootPath: z.string().min(1).max(4_096) });
 const preflightTargetSchema = z.object({
@@ -20,6 +21,7 @@ const updateSchema = z
   .object({
     name: z.string().trim().min(1).max(160).optional(),
     description: z.string().max(4_000).nullable().optional(),
+    kind: z.enum(['STANDARD', 'TEST']).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: '至少提供一个修改字段' });
 const treeQuery = z.object({
@@ -133,6 +135,7 @@ export function createProjectRouter(service: ProjectService): Router {
           data: await service.update(id, {
             ...(input.name !== undefined ? { name: input.name } : {}),
             ...(input.description !== undefined ? { description: input.description } : {}),
+            ...(input.kind !== undefined ? { kind: input.kind } : {}),
           }),
           requestId: String(request.id),
         });

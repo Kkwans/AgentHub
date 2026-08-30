@@ -25,6 +25,7 @@ import {
   ProjectRepository,
   RunRepository,
   SessionRepository,
+  SessionContinuationRepository,
 } from '@agenthub/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -74,6 +75,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     const messages = new MessageRepository(database.db);
     const events = new EventRepository(database.db);
     const approvals = new ApprovalRepository(database.db);
+    const continuations = new SessionContinuationRepository(database.db);
     const targetId = randomUUID();
     const projectId = randomUUID();
     const agentId = randomUUID();
@@ -143,10 +145,11 @@ describe('Session/Run/Approval 持久化闭环', () => {
           ? {}
           : { approvalDeliveryTimeoutMs: fixtureOptions.approvalDeliveryTimeoutMs }),
       },
+      continuations,
     );
     return {
       service,
-      repositories: { sessions, runs, messages, events, approvals },
+      repositories: { sessions, runs, messages, events, approvals, continuations },
       projectId,
       agentId,
       published,
@@ -775,6 +778,74 @@ describe('Session/Run/Approval 持久化闭环', () => {
     );
     await resolvedFixture.service.cancelRun(resolvedSession.id, run.id);
     await resolvedFixture.service.shutdown();
+  });
+
+  it('仅 CLOSED Session 可以创建 continuation，并保留一次性、有界交接包', async () => {
+    const fixture = await createFixture('idle');
+    const source = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: '需要继续的 Session',
+      cwd: '/tmp',
+      branch: 'main',
+      model: 'fixture-model-2',
+      mode: 'plan',
+      reasoningEffort: 'high',
+    });
+
+    await expect(fixture.service.continue(source.id)).rejects.toMatchObject({
+      code: 'SESSION_CONTINUATION_SOURCE_NOT_CLOSED',
+    });
+    await fixture.service.close(source.id);
+    const continued = await fixture.service.continue(source.id);
+
+    expect(continued.session).toMatchObject({
+      projectId: source.projectId,
+      agentId: source.agentId,
+      taskId: source.taskId,
+      title: '继续：需要继续的 Session',
+      cwd: source.cwd,
+      branch: source.branch,
+      model: source.model,
+      mode: source.mode,
+      reasoningEffort: source.reasoningEffort,
+      continuedFromSessionId: source.id,
+      status: 'READY',
+    });
+    expect((await fixture.repositories.sessions.get(source.id))?.status).toBe('CLOSED');
+    expect(continued.continuation).toMatchObject({
+      sourceSessionId: source.id,
+      targetSessionId: continued.session.id,
+      strategy: 'DETERMINISTIC',
+      consumedAt: null,
+    });
+    expect(JSON.stringify(continued.continuation.inputSnapshotJson).length).toBeLessThanOrEqual(
+      32 * 1024,
+    );
+    expect((await fixture.service.getContinuation(continued.session.id)).summaryText).toBe(
+      continued.continuation.summaryText,
+    );
+
+    const firstRun = await fixture.service.startRun(continued.session.id, { text: '第一轮继续' });
+    await fixture.service.cancelRun(continued.session.id, firstRun.id);
+    await waitFor(
+      async () => (await fixture.repositories.runs.get(firstRun.id))?.status === 'CANCELED',
+    );
+    const consumed = await fixture.repositories.continuations.getByTargetSessionId(
+      continued.session.id,
+    );
+    expect(consumed?.consumedAt).not.toBeNull();
+
+    const secondRun = await fixture.service.startRun(continued.session.id, { text: '第二轮继续' });
+    await fixture.service.cancelRun(continued.session.id, secondRun.id);
+    await waitFor(
+      async () => (await fixture.repositories.runs.get(secondRun.id))?.status === 'CANCELED',
+    );
+    expect(
+      (await fixture.repositories.continuations.getByTargetSessionId(continued.session.id))
+        ?.consumedAt,
+    ).toEqual(consumed?.consumedAt);
+    await fixture.service.shutdown();
   });
 });
 

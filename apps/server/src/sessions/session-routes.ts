@@ -107,6 +107,38 @@ export function createSessionRouter(service: SessionService): Router {
     }
   });
 
+  router.get(
+    '/:id/continuation',
+    validate({ params: idParams }),
+    async (request, response, next) => {
+      try {
+        const { id } = idParams.parse(request.params);
+        response.json({
+          data: await service.getContinuation(id),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  router.post(
+    '/:id/continuations',
+    validate({ params: idParams }),
+    async (request, response, next) => {
+      try {
+        const { id } = idParams.parse(request.params);
+        response.status(201).json({
+          data: await service.continue(id),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   for (const action of ['resume', 'close'] as const) {
     router.post(
       `/:id/${action}`,

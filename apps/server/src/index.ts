@@ -19,6 +19,7 @@ import {
   RemoteNodeRepository,
   RunRepository,
   SessionRepository,
+  SessionContinuationRepository,
   SkillRepository,
   TaskRepository,
   WorktreeExecutionRepository,
@@ -171,6 +172,7 @@ export async function startServer(
   const agentRepository = new AgentRepository(database.db);
   const projectRepository = new ProjectRepository(database.db);
   const sessionRepository = new SessionRepository(database.db);
+  const sessionContinuationRepository = new SessionContinuationRepository(database.db);
   const runRepository = new RunRepository(database.db);
   const messageRepository = new MessageRepository(database.db);
   const approvalRepository = new ApprovalRepository(database.db);
@@ -285,6 +287,7 @@ export async function startServer(
     git,
     promptos,
     { cancelConvergenceTimeoutMs, approvalDeliveryTimeoutMs },
+    sessionContinuationRepository,
   );
   const tasks = new TaskService(goalRepository, taskRepository, projectRepository, sessions);
   const dataPath = environment.AGENTHUB_DATA_DIR
