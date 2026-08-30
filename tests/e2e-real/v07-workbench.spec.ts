@@ -74,11 +74,11 @@ test('v0.7 token 登录进入 Home，并能进入设置分区', async ({ page })
   await page.getByRole('button', { name: '创建账号并进入' }).click();
 
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole('heading', { name: '今天需要处理什么' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '把注意力放在工作本身。' })).toBeVisible();
   await page.getByRole('link', { name: '设置' }).click();
   await expect(page).toHaveURL(/\/settings\/appearance$/);
-  await expect(page.locator('main').getByRole('heading', { name: '设置' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: '设置分区' })).toBeVisible();
+  await expect(page.locator('main').getByRole('heading', { name: '设置与诊断' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Terminal', exact: true })).toBeVisible();
 });
 
 test.describe('v0.7 local_trusted 项目与 Work', () => {
