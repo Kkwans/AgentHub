@@ -1,0 +1,143 @@
+# Package Inventory
+
+- 文件总数：114
+- 总大小（未压缩）：128,659 bytes
+
+## 类型统计
+- `.css`: 1
+- `.html`: 11
+- `.js`: 1
+- `.json`: 1
+- `.md`: 100
+
+## 目录统计
+- `00_START_HERE.md`: 1
+- `00_audit`: 10
+- `01_product`: 11
+- `02_design_system`: 16
+- `03_screens`: 22
+- `04_architecture`: 10
+- `05_qa`: 14
+- `06_codex`: 8
+- `07_references`: 2
+- `08_prototype`: 14
+- `09_release`: 4
+- `README.md`: 1
+- `V1_FINAL_TECHNICAL_SOLUTION.md`: 1
+
+## 文件列表
+
+- `00_START_HERE.md` — 3,659 B
+- `00_audit/CODE_STRUCTURE_AUDIT.md` — 1,561 B
+- `00_audit/DESIGN_SYSTEM_AUDIT.md` — 997 B
+- `00_audit/PAGE_BY_PAGE_AUDIT.md` — 2,196 B
+- `00_audit/RELEASE_HYGIENE_AUDIT.md` — 910 B
+- `00_audit/SOURCE_EVIDENCE_MATRIX.md` — 1,582 B
+- `00_audit/TECH_DEBT_REGISTER.md` — 1,123 B
+- `00_audit/TEST_QA_AUDIT.md` — 1,130 B
+- `00_audit/UI_UX_VISUAL_AUDIT.md` — 2,569 B
+- `00_audit/V09_CURRENT_STATE_AUDIT.md` — 1,768 B
+- `00_audit/WORKSPACE_DEEP_AUDIT.md` — 1,638 B
+- `01_product/COPY_AND_TERMINOLOGY.md` — 673 B
+- `01_product/DENSITY_AND_SPACE_POLICY.md` — 634 B
+- `01_product/ERROR_EMPTY_LOADING_STATES.md` — 619 B
+- `01_product/GLOBAL_SEARCH_COMMAND_PALETTE.md` — 449 B
+- `01_product/INFORMATION_ARCHITECTURE.md` — 711 B
+- `01_product/KEYBOARD_SHORTCUTS.md` — 522 B
+- `01_product/MICROINTERACTION_CONTRACT.md` — 652 B
+- `01_product/NAVIGATION_MODEL.md` — 567 B
+- `01_product/ONBOARDING_AND_FIRST_RUN.md` — 374 B
+- `01_product/UX_PRINCIPLES.md` — 749 B
+- `01_product/V1_PRODUCT_EXPERIENCE_CONTRACT.md` — 1,021 B
+- `02_design_system/ACCESSIBILITY.md` — 408 B
+- `02_design_system/COLOR_STATUS.md` — 491 B
+- `02_design_system/COMPONENT_ACCEPTANCE.md` — 559 B
+- `02_design_system/CONTENT_WIDTHS.md` — 401 B
+- `02_design_system/CONTROLS.md` — 471 B
+- `02_design_system/DARK_MODE.md` — 350 B
+- `02_design_system/EMPTY_SPACE_RULES.md` — 545 B
+- `02_design_system/FORMS_DIALOGS_DRAWERS.md` — 370 B
+- `02_design_system/ICONOGRAPHY.md` — 309 B
+- `02_design_system/LIST_TABLE.md` — 469 B
+- `02_design_system/RESPONSIVE.md` — 374 B
+- `02_design_system/SPACING_GRID_ALIGNMENT.md` — 638 B
+- `02_design_system/SURFACE_ELEVATION.md` — 411 B
+- `02_design_system/TOKENS.md` — 802 B
+- `02_design_system/TYPOGRAPHY.md` — 631 B
+- `02_design_system/V1_DESIGN_SYSTEM.md` — 728 B
+- `03_screens/AGENT_CENTER_SPEC.md` — 305 B
+- `03_screens/AGENT_DISCOVERY_SPEC.md` — 270 B
+- `03_screens/APP_SHELL_SPEC.md` — 514 B
+- `03_screens/COMMAND_PALETTE_SPEC.md` — 262 B
+- `03_screens/EMPTY_ERROR_SPEC.md` — 305 B
+- `03_screens/HOME_SPEC.md` — 547 B
+- `03_screens/INFRASTRUCTURE_SPEC.md` — 266 B
+- `03_screens/PROJECTS_SPEC.md` — 432 B
+- `03_screens/PROJECT_CONTEXT_SPEC.md` — 373 B
+- `03_screens/PROJECT_SESSIONS_SPEC.md` — 302 B
+- `03_screens/PROJECT_WORK_SPEC.md` — 319 B
+- `03_screens/PROMPT_LIBRARY_SPEC.md` — 469 B
+- `03_screens/SETTINGS_SPEC.md` — 382 B
+- `03_screens/WORKSPACE_ACTIVITY_SPEC.md` — 304 B
+- `03_screens/WORKSPACE_COMPOSER_SPEC.md` — 496 B
+- `03_screens/WORKSPACE_CONVERSATION_SPEC.md` — 528 B
+- `03_screens/WORKSPACE_GIT_DIFF_SPEC.md` — 619 B
+- `03_screens/WORKSPACE_INSPECTOR_SPEC.md` — 282 B
+- `03_screens/WORKSPACE_MASTER_SPEC.md` — 646 B
+- `03_screens/WORKSPACE_RUN_SPEC.md` — 228 B
+- `03_screens/WORKSPACE_SESSION_RAIL_SPEC.md` — 392 B
+- `03_screens/WORKSPACE_TERMINAL_SPEC.md` — 291 B
+- `04_architecture/API_CONTRACT_DELTAS.md` — 467 B
+- `04_architecture/BACKEND_DELTA.md` — 499 B
+- `04_architecture/CSS_OWNERSHIP_MIGRATION.md` — 562 B
+- `04_architecture/DESIGN_COMPONENT_ARCHITECTURE.md` — 372 B
+- `04_architecture/FRONTEND_ARCHITECTURE.md` — 708 B
+- `04_architecture/OBSERVABILITY_UX.md` — 316 B
+- `04_architecture/PERFORMANCE.md` — 501 B
+- `04_architecture/STATE_QUERY_REALTIME.md` — 485 B
+- `04_architecture/STYLE_GUARDRAILS.md` — 436 B
+- `04_architecture/UI_PACKAGE_MIGRATION.md` — 415 B
+- `05_qa/ACCESSIBILITY_QA.md` — 216 B
+- `05_qa/COPY_QA.md` — 302 B
+- `05_qa/CSS_COMPLEXITY_GATE.md` — 350 B
+- `05_qa/E2E_MATRIX.md` — 475 B
+- `05_qa/GEOMETRY_GATES.md` — 432 B
+- `05_qa/HUMAN_9_POINT_SCORECARD.md` — 688 B
+- `05_qa/PERFORMANCE_BUDGETS.md` — 352 B
+- `05_qa/REAL_DATA_FIXTURES.md` — 435 B
+- `05_qa/REGRESSION_STATES.md` — 304 B
+- `05_qa/RELEASE_CHECKLIST.md` — 480 B
+- `05_qa/VISUAL_QUALITY_GATES.md` — 660 B
+- `05_qa/VISUAL_REVIEW_CHECKLIST.md` — 450 B
+- `05_qa/WORKSPACE_VISUAL_MATRIX.md` — 329 B
+- `05_qa/static-validation.json` — 215 B
+- `06_codex/00_PLAN_MODE_PROMPT.md` — 1,078 B
+- `06_codex/01_EXECUTION_PROMPT.md` — 1,194 B
+- `06_codex/COMMIT_PLAN.md` — 905 B
+- `06_codex/DEFINITION_OF_DONE.md` — 334 B
+- `06_codex/FILE_MIGRATION_MAP.md` — 764 B
+- `06_codex/GRILL_BEFORE_BUILD.md` — 582 B
+- `06_codex/REVIEW_LOOP.md` — 339 B
+- `06_codex/TASK_PLAN.md` — 1,120 B
+- `07_references/REFERENCE_BENCHMARK.md` — 947 B
+- `07_references/REFERENCE_TO_AGENTHUB_MAPPING.md` — 531 B
+- `08_prototype/README.md` — 389 B
+- `08_prototype/agents.html` — 2,617 B
+- `08_prototype/assets/v1.css` — 12,349 B
+- `08_prototype/assets/v1.js` — 471 B
+- `08_prototype/design-system.html` — 2,203 B
+- `08_prototype/home.html` — 3,735 B
+- `08_prototype/index.html` — 3,735 B
+- `08_prototype/project-overview.html` — 2,702 B
+- `08_prototype/project-work.html` — 2,894 B
+- `08_prototype/projects.html` — 2,728 B
+- `08_prototype/prompts.html` — 3,144 B
+- `08_prototype/settings.html` — 2,464 B
+- `08_prototype/workspace-diff.html` — 4,920 B
+- `08_prototype/workspace.html` — 4,920 B
+- `09_release/MIGRATION_AND_ROLLBACK.md` — 405 B
+- `09_release/RELEASE_TRUTH_GATE.md` — 396 B
+- `09_release/V1_RELEASE_NOTES_TEMPLATE.md` — 369 B
+- `09_release/V1_SCOPE_AND_NON_GOALS.md` — 379 B
+- `README.md` — 983 B
+- `V1_FINAL_TECHNICAL_SOLUTION.md` — 16,020 B

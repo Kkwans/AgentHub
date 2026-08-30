@@ -1,0 +1,21 @@
+# v1.0 Release Checklist
+
+- [ ] all packages 1.0.0
+- [ ] App badge v1.0
+- [ ] README current v1.0.0
+- [ ] CHANGELOG 1.0.0
+- [ ] RELEASE-v1.0.0.md
+- [ ] no current copy v0.x residue
+- [ ] lint/typecheck/unit/build
+- [ ] e2e
+- [ ] real e2e
+- [ ] visual light/dark matrix
+- [ ] geometry gate
+- [ ] axe
+- [ ] performance budget
+- [ ] real-data fixture
+- [ ] backup/migration test
+- [ ] clean install
+- [ ] upgrade from latest v0.9 data
+- [ ] Docker/NAS smoke
+- [ ] Human score >=9/10

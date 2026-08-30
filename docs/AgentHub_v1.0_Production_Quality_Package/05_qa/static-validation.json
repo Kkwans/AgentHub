@@ -1,0 +1,11 @@
+{
+  "files": 113,
+  "markdown": 100,
+  "html": 11,
+  "css": 1,
+  "js": 1,
+  "errors": [],
+  "warnings": [],
+  "prototype_static_validation": "PASS",
+  "browser_render_validation": "NOT_RUN_ENVIRONMENT_LIMITATION"
+}
