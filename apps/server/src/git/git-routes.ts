@@ -11,6 +11,9 @@ const diffQuery = z.object({
     .transform((value) => value === 'true')
     .default(false),
   path: z.string().max(4_096).optional(),
+  whitespace: z
+    .enum(['default', 'ignore-all-space', 'ignore-space-change', 'ignore-blank-lines'])
+    .default('default'),
 });
 const commitsQuery = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) });
 const commitSchema = z
@@ -48,6 +51,7 @@ export function createGitRouter(service: GitService): Router {
           data: await service.diff(id, {
             staged: input.staged,
             ...(input.path ? { path: input.path } : {}),
+            whitespace: input.whitespace,
           }),
           requestId: String(request.id),
         });

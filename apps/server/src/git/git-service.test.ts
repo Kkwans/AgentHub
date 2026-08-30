@@ -69,6 +69,10 @@ describe('受限 Git Service', () => {
     await writeFile(join(root, 'tracked.txt'), '已修改\n');
     const status = await service.status(projectId);
     const diff = await service.diff(projectId, { path: 'tracked.txt' });
+    const whitespaceDiff = await service.diff(projectId, {
+      path: 'tracked.txt',
+      whitespace: 'ignore-all-space',
+    });
     const commits = await service.commits(projectId);
     const branches = await service.branches(projectId);
 
@@ -76,7 +80,18 @@ describe('受限 Git Service', () => {
     expect(status.entries).toEqual(
       expect.arrayContaining([expect.objectContaining({ path: 'tracked.txt', worktree: 'M' })]),
     );
+    await git(root, ['add', '--', 'tracked.txt']);
+    await writeFile(join(root, 'tracked.txt'), '已暂存后再次修改\n');
+    const dualStatus = await service.status(projectId);
+    const dualEntry = dualStatus.entries.find((entry) => entry.path === 'tracked.txt');
+    expect(dualEntry).toMatchObject({
+      index: 'M',
+      worktree: 'M',
+      stagedStats: { additions: 1, deletions: 1 },
+      worktreeStats: { additions: 1, deletions: 1 },
+    });
     expect(diff.patch).toContain('+已修改');
+    expect(whitespaceDiff).toMatchObject({ staged: false, whitespace: 'ignore-all-space' });
     expect(commits[0]?.subject).toBe('初始提交');
     expect(branches.some((branch) => branch.current)).toBe(true);
   });

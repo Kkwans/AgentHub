@@ -19,6 +19,13 @@ export interface GitStatusEntry {
   worktree: string;
   path: string;
   originalPath?: string;
+  stagedStats?: GitLineStats;
+  worktreeStats?: GitLineStats;
+}
+
+export interface GitLineStats {
+  additions: number;
+  deletions: number;
 }
 
 export interface GitStatusReport {
@@ -43,10 +50,19 @@ export class GitService implements GitHeadProbe {
     return this.statusAt(project.realRootPath);
   }
 
-  async diff(projectId: string, input: { staged?: boolean; path?: string }) {
+  async diff(
+    projectId: string,
+    input: {
+      staged?: boolean;
+      path?: string;
+      whitespace?: 'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines';
+    },
+  ) {
     const project = await this.requireGitProject(projectId);
     const path = input.path
-      ? await validateGitPath(project.realRootPath, input.path, true)
+      // A deleted or renamed path may no longer exist in the worktree, but it
+      // is still a valid Git pathspec for the selected diff.
+      ? await validateGitPath(project.realRootPath, input.path, false)
       : undefined;
     const args = [
       '-C',
@@ -55,12 +71,18 @@ export class GitService implements GitHeadProbe {
       '--no-ext-diff',
       '--no-color',
       '--unified=3',
+      ...(input.whitespace && input.whitespace !== 'default' ? [`--${input.whitespace}`] : []),
       ...(input.staged ? ['--cached'] : []),
       ...(path ? ['--', path] : []),
     ];
     const result = await runGit(args, 4 * 1024 * 1024);
     requireSuccess(result, 'GIT_DIFF_FAILED', 'Git Diff 读取失败');
-    return { patch: result.stdout, truncated: result.truncated, staged: input.staged === true };
+    return {
+      patch: result.stdout,
+      truncated: result.truncated,
+      staged: input.staged === true,
+      whitespace: input.whitespace ?? 'default',
+    };
   }
 
   async commits(projectId: string, limit = 50) {
@@ -193,6 +215,24 @@ export class GitService implements GitHeadProbe {
     }
     const branch = parseBranchHeader(header);
     const headSha = await this.readHead(cwd);
+    const [stagedStats, worktreeStats] = await Promise.all([
+      readLineStats(cwd, true),
+      readLineStats(cwd, false),
+    ]);
+    for (const entry of entries) {
+      if (entry.index !== ' ' && entry.index !== '?') {
+        const stats =
+          stagedStats.get(entry.path) ??
+          (entry.originalPath ? stagedStats.get(entry.originalPath) : undefined);
+        if (stats) entry.stagedStats = stats;
+      }
+      if (entry.worktree !== ' ' && entry.worktree !== '?') {
+        const stats =
+          worktreeStats.get(entry.path) ??
+          (entry.originalPath ? worktreeStats.get(entry.originalPath) : undefined);
+        if (stats) entry.worktreeStats = stats;
+      }
+    }
     return {
       ...branch,
       ...(headSha ? { headSha } : {}),
@@ -219,6 +259,32 @@ export class GitService implements GitHeadProbe {
   private async isRemote(targetId: string): Promise<boolean> {
     return (await this.targets?.get(targetId))?.kind === 'REMOTE_NODE';
   }
+}
+
+async function readLineStats(cwd: string, staged: boolean): Promise<Map<string, GitLineStats>> {
+  const result = await runGit([
+    '-C',
+    cwd,
+    'diff',
+    ...(staged ? ['--cached'] : []),
+    '--numstat',
+    '--no-renames',
+    '--no-ext-diff',
+    '--no-color',
+  ]);
+  if (result.exitCode !== 0) return new Map();
+  const stats = new Map<string, GitLineStats>();
+  for (const line of result.stdout.split('\n')) {
+    if (!line.trim()) continue;
+    const match = /^(\d+|-)\t(\d+|-)\t(.+)$/.exec(line);
+    if (!match) continue;
+    const additions = match[1] === '-' ? undefined : Number(match[1]);
+    const deletions = match[2] === '-' ? undefined : Number(match[2]);
+    const path = match[3];
+    if (additions === undefined || deletions === undefined || !path) continue;
+    stats.set(path, { additions, deletions });
+  }
+  return stats;
 }
 
 async function validateGitPath(
