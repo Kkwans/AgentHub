@@ -90,7 +90,12 @@ describe('Remote Node Project → Agent → Approval 闭环', () => {
     expect(targetPreflight.status).toBe('READY');
     const project = await api<{ id: string; repoKind: string; realRootPath: string }>('/projects', {
       method: 'POST',
-      body: { name: 'Remote fixture', targetId: node.targetId, rootPath: projectRoot },
+      body: {
+        name: 'Remote fixture',
+        targetId: node.targetId,
+        rootPath: projectRoot,
+        kind: 'TEST',
+      },
     });
     expect(project).toMatchObject({ repoKind: 'GIT', realRootPath: projectRoot });
     const tree = await api<Array<{ path: string }>>(`/projects/${project.id}/files?depth=1`);

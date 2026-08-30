@@ -95,7 +95,12 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
 
       const project = await apiRequest<{ id: string; repoKind: string }>(apiRoot, '/projects', {
         method: 'POST',
-        body: { name: 'Discovery live fixture', targetId: target.id, rootPath: repoRoot },
+        body: {
+          name: 'Discovery live fixture',
+          targetId: target.id,
+          rootPath: repoRoot,
+          kind: 'TEST',
+        },
       });
       expect(project.repoKind).toBe('GIT');
       const session = await apiRequest<{ id: string }>(apiRoot, '/sessions', {
@@ -251,7 +256,12 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
 
       const project = await apiRequest<{ id: string }>(apiRoot, '/projects', {
         method: 'POST',
-        body: { name: 'Codex workflow live fixture', targetId: target.id, rootPath: repoRoot },
+        body: {
+          name: 'Codex workflow live fixture',
+          targetId: target.id,
+          rootPath: repoRoot,
+          kind: 'TEST',
+        },
       });
       const session = await apiRequest<{ id: string }>(apiRoot, '/sessions', {
         method: 'POST',

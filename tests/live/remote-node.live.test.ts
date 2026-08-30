@@ -118,7 +118,12 @@ liveDescribe('Remote Node 真实 Codex 闭环', () => {
 
     const project = await api<{ id: string; repoKind: string }>('/projects', {
       method: 'POST',
-      body: { name: 'Remote live fixture', targetId: node.targetId, rootPath: projectRoot },
+      body: {
+        name: 'Remote live fixture',
+        targetId: node.targetId,
+        rootPath: projectRoot,
+        kind: 'TEST',
+      },
     });
     expect(project.repoKind).toBe('GIT');
     const agent = await api<{ id: string }>('/agents', {

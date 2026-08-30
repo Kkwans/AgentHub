@@ -72,6 +72,7 @@ liveDescribe('Worktree Task Runner 真实闭环', () => {
         name: 'Worktree live fixture',
         targetId: target.id,
         rootPath: repositoryRoot,
+        kind: 'TEST',
       },
     });
     expect(project.repoKind).toBe('GIT');

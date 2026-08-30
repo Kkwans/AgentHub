@@ -33,6 +33,7 @@ async function seedRealControlPlane(context: BrowserContext, app: RealApp) {
     name: 'v0.7 E2E Project',
     targetId: target.id,
     rootPath: app.projectRoot,
+    kind: 'TEST',
   });
   const agent = await apiData<Identified & { name: string }>(context, 'post', '/agents', {
     name: 'v0.7 ACP Fixture',

@@ -58,6 +58,20 @@ export default tseslint.config(
     },
   },
   {
+    files: ['docs/AgentHub_v0.9_Product_Quality_Rebuild/04_prototype/app.js'],
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        getComputedStyle: 'readonly',
+        localStorage: 'readonly',
+        window: 'readonly',
+      },
+    },
+    rules: {
+      'no-empty': 'off',
+    },
+  },
+  {
     files: ['tests/fixtures/acp/fake-agent.mjs'],
     languageOptions: {
       globals: {

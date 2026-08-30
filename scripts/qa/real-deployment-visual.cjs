@@ -30,7 +30,8 @@ if (!token) throw new Error('browser token file is empty');
 fs.mkdirSync(outputDir, { recursive: true });
 
 const viewports = [
-  ['1440', { width: 1440, height: 1000 }],
+  ['1600', { width: 1600, height: 1000 }],
+  ['1440', { width: 1440, height: 1024 }],
   ['1024', { width: 1024, height: 900 }],
   ['768', { width: 768, height: 900 }],
   ['390', { width: 390, height: 844 }],
@@ -195,7 +196,8 @@ async function discoverRoutes(page) {
 }
 
 async function captureUnauthenticated(browser) {
-  const context = await browser.newContext({ viewport: viewports[0][1] });
+  const [baselineLabel, baselineViewport] = viewports[0];
+  const context = await browser.newContext({ viewport: baselineViewport });
   const page = await context.newPage();
   const consoleErrors = [];
   const pageErrors = [];
@@ -212,7 +214,10 @@ async function captureUnauthenticated(browser) {
     timeout: navigationTimeoutMs,
   });
   await waitForStable(page);
-  await page.screenshot({ path: path.join(outputDir, 'login-1440x1000.png'), fullPage: true });
+  await page.screenshot({
+    path: path.join(outputDir, `login-${baselineLabel}x${baselineViewport.height}.png`),
+    fullPage: true,
+  });
   const title = await page.title();
   const layout = await auditPage(page);
   await context.close();
