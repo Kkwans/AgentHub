@@ -1,11 +1,7 @@
 import {
-  Activity,
   AhButton,
-  AhDialog,
   AhDrawer,
-  AhInput,
   AhStatusPill,
-  ArrowRight,
   Bell,
   Bot,
   Braces,
@@ -22,11 +18,12 @@ import {
   useAgentHubTheme,
   type IconProps,
 } from '@agenthub/ui';
-import { useEffect, useMemo, useRef, useState, type ComponentType, type FormEvent } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { realtime } from '../../lib/realtime';
 import { AgentHubLogo } from '../../components/AgentHubLogo';
+import { CommandPalette } from './CommandPalette';
 import styles from './AppShell.module.css';
 
 type NavigationItem = {
@@ -62,35 +59,6 @@ const secondaryNavigation: NavigationItem[] = [
     label: '远程节点',
     description: '连接和管理远程 Agent 节点',
     icon: Network,
-  },
-];
-
-const commandItems: NavigationItem[] = [
-  ...primaryNavigation,
-  ...secondaryNavigation,
-  {
-    to: '/workspace',
-    label: '最近工作区',
-    description: '恢复最近的 Coding Session',
-    icon: Activity,
-  },
-  {
-    to: '/agents/diagnostics',
-    label: '监控中心',
-    description: '查看服务能力与运行诊断',
-    icon: Activity,
-  },
-  {
-    to: '/projects/new',
-    label: '新建项目',
-    description: '从允许目录创建 Project',
-    icon: FolderKanban,
-  },
-  {
-    to: '/agents/agents/discover',
-    label: '发现 Agent',
-    description: '扫描并接入可用 Agent',
-    icon: Bot,
   },
 ];
 
@@ -130,25 +98,31 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
       <div className={styles.navDivider} aria-hidden="true" />
-      <nav className={`${styles.navigation} ${styles.secondaryNavigation}`} aria-label="辅助导航">
-        {secondaryNavigation.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end
-            className={({ isActive }) =>
-              `${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`
-            }
-            onClick={onNavigate}
-            aria-label={label}
-          >
-            <span className={styles.navIcon}>
-              <Icon aria-hidden size={18} weight="regular" />
-            </span>
-            <span className={styles.navText}>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
+      <div className={styles.secondaryNavigationGroup}>
+        <span className={styles.navSectionLabel}>Infrastructure</span>
+        <nav
+          className={`${styles.navigation} ${styles.secondaryNavigation}`}
+          aria-label="Infrastructure"
+        >
+          {secondaryNavigation.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end
+              className={({ isActive }) =>
+                `${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`
+              }
+              onClick={onNavigate}
+              aria-label={label}
+            >
+              <span className={styles.navIcon}>
+                <Icon aria-hidden size={18} weight="regular" />
+              </span>
+              <span className={styles.navText}>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </div>
     </div>
   );
 }
@@ -169,10 +143,7 @@ function ProfileSurface() {
 export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [activeIndex, setActiveIndex] = useState(0);
   const [connection, setConnection] = useState<'连接中' | '已连接' | '已断开'>('已断开');
-  const searchRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { preference, setPreference, sidebarCollapsed, sidebarPreference, setSidebarCollapsed } =
@@ -196,6 +167,7 @@ export function AppShell() {
         (target.matches('input, textarea, select') || target.isContentEditable);
       if (
         !isEditing &&
+        !location.pathname.startsWith('/workspace') &&
         (event.metaKey || event.ctrlKey) &&
         event.key.toLowerCase() === 'b' &&
         sidebarPreference === 'remember'
@@ -206,37 +178,20 @@ export function AppShell() {
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, [setSidebarCollapsed, sidebarCollapsed, sidebarPreference]);
-
-  const results = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return normalized
-      ? commandItems.filter((item) =>
-          `${item.label} ${item.description}`.toLocaleLowerCase().includes(normalized),
-        )
-      : commandItems;
-  }, [query]);
-
-  useEffect(() => setActiveIndex(0), [query, commandOpen]);
+  }, [location.pathname, setSidebarCollapsed, sidebarCollapsed, sidebarPreference]);
 
   function openCommand() {
-    setQuery('');
     setCommandOpen(true);
   }
 
-  function goTo(item: NavigationItem) {
-    navigate(item.to);
-    setCommandOpen(false);
-  }
-
-  function submitCommand(event: FormEvent) {
-    event.preventDefault();
-    const item = results[activeIndex];
-    if (item) goTo(item);
-  }
+  const contextProjectId = location.pathname.match(/^\/projects\/([^/]+)/)?.[1];
 
   return (
-    <div className={`${styles.frame}${sidebarCollapsed ? ` ${styles.sidebarCollapsed}` : ''}`}>
+    <div
+      className={`${styles.frame}${sidebarCollapsed ? ` ${styles.sidebarCollapsed}` : ''}`}
+      data-shell="app-shell"
+      data-sidebar-state={sidebarCollapsed ? 'collapsed' : 'expanded'}
+    >
       <a className={styles.skipLink} href="#main-content">
         跳到主要内容
       </a>
@@ -244,12 +199,18 @@ export function AppShell() {
         <Brand />
         <Navigation />
         <div className={styles.sidebarFoot}>
-          <AhStatusPill
-            status={
-              connection === '已连接' ? 'ONLINE' : connection === '连接中' ? 'PENDING' : 'OFFLINE'
-            }
-            label={connection}
-          />
+          <div
+            className={styles.connectionStatus}
+            role="status"
+            aria-label={`实时连接${connection}`}
+          >
+            <AhStatusPill
+              status={
+                connection === '已连接' ? 'ONLINE' : connection === '连接中' ? 'PENDING' : 'OFFLINE'
+              }
+              label={connection}
+            />
+          </div>
           <span>实时连接</span>
         </div>
         <button
@@ -273,7 +234,7 @@ export function AppShell() {
         <ProfileSurface />
       </aside>
       <div className={styles.column}>
-        <header className={styles.topbar}>
+        <header className={styles.topbar} data-shell-topbar="true">
           <div className={styles.menuControls}>
             <AhButton
               className={styles.mobileMenu}
@@ -338,62 +299,12 @@ export function AppShell() {
         <ProfileSurface />
       </AhDrawer>
 
-      <AhDialog
+      <CommandPalette
         open={commandOpen}
         onClose={() => setCommandOpen(false)}
-        title="搜索与跳转"
-        description="查找 Project、Work、Session、Agent 或设置。"
-        size={620}
-      >
-        <form onSubmit={submitCommand}>
-          <AhInput
-            ref={searchRef}
-            label="搜索"
-            value={query}
-            onChange={(event) => setQuery(event.currentTarget.value)}
-            placeholder="例如：Prompt、Runtime 或设置"
-            autoFocus
-            role="combobox"
-            aria-expanded={commandOpen}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                setActiveIndex((value) => (value + 1) % Math.max(1, results.length));
-              }
-              if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                setActiveIndex(
-                  (value) => (value - 1 + results.length) % Math.max(1, results.length),
-                );
-              }
-            }}
-          />
-        </form>
-        <div className={styles.commandResults} role="listbox" aria-label="搜索结果">
-          {results.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={`${item.to}-${item.label}`}
-                type="button"
-                role="option"
-                aria-selected={index === activeIndex}
-                className={`${styles.commandResult}${index === activeIndex ? ` ${styles.commandResultActive}` : ''}`}
-                onClick={() => goTo(item)}
-                onMouseEnter={() => setActiveIndex(index)}
-              >
-                <Icon size={18} />
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.description}</small>
-                </span>
-                <ArrowRight size={15} />
-              </button>
-            );
-          })}
-          {!results.length ? <p className={styles.commandEmpty}>没有匹配结果</p> : null}
-        </div>
-      </AhDialog>
+        onNavigate={(href) => navigate(href)}
+        {...(contextProjectId ? { contextProjectId } : {})}
+      />
     </div>
   );
 }
