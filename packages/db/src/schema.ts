@@ -296,7 +296,10 @@ export const sessionContinuations = pgTable(
   (table) => [
     unique('session_continuations_target_unique').on(table.targetSessionId),
     index('session_continuations_source_idx').on(table.sourceSessionId, table.generatedAt),
-    check('session_continuations_strategy_check', sql`${table.strategy} in ('MODEL', 'DETERMINISTIC')`),
+    check(
+      'session_continuations_strategy_check',
+      sql`${table.strategy} in ('MODEL', 'DETERMINISTIC')`,
+    ),
   ],
 );
 

@@ -17,7 +17,11 @@ describe('v0.8 layout contracts', () => {
   it('keeps ordinary screens on one shared page grid', () => {
     render(
       <PageFrame>
-        <ScreenHeader title="项目" description="工程上下文与工作入口" actions={<button>新建项目</button>} />
+        <ScreenHeader
+          title="项目"
+          description="工程上下文与工作入口"
+          actions={<button>新建项目</button>}
+        />
         <EntityList label="项目列表" header={<span>项目</span>}>
           <EntityRow selected>AgentHub</EntityRow>
         </EntityList>
@@ -33,7 +37,9 @@ describe('v0.8 layout contracts', () => {
     render(
       <>
         <ContextHeader identity="AgentHub" tabs={<a href="/overview">概览</a>} />
-        <InspectorPanel title="Changes" footer={<button>提交</button>}>Diff</InspectorPanel>
+        <InspectorPanel title="Changes" footer={<button>提交</button>}>
+          Diff
+        </InspectorPanel>
         <SettingsLayout navigation={<nav aria-label="设置导航">外观</nav>}>主题</SettingsLayout>
       </>,
     );

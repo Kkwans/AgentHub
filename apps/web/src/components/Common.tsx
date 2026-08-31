@@ -1,10 +1,5 @@
 import type { ReactNode } from 'react';
-import {
-  AlertTriangle,
-  AhStatusPill,
-  Inbox,
-  RefreshCw,
-} from '@agenthub/ui';
+import { AlertTriangle, AhStatusPill, Inbox, RefreshCw } from '@agenthub/ui';
 import { ApiError } from '../lib/api';
 import styles from './Common.module.css';
 
@@ -102,12 +97,18 @@ export function ErrorState({ error, retry }: { error: Error; retry?: () => void 
   const message = error instanceof ApiError ? error.message : '服务暂时不可用，请检查连接后重试。';
   return (
     <div className={styles.error} role="alert">
-      <span className={styles.errorIcon} aria-hidden><AlertTriangle size={18} /></span>
+      <span className={styles.errorIcon} aria-hidden>
+        <AlertTriangle size={18} />
+      </span>
       <div className={styles.errorCopy}>
         <strong>{authorizationError ? '登录已失效' : '暂时无法加载'}</strong>
         <span>{message}</span>
       </div>
-      {retry ? <button type="button" className={styles.errorAction} onClick={retry}><RefreshCw aria-hidden size={15} /> 重新加载</button> : null}
+      {retry ? (
+        <button type="button" className={styles.errorAction} onClick={retry}>
+          <RefreshCw aria-hidden size={15} /> 重新加载
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -121,7 +122,11 @@ export function ErrorState({ error, retry }: { error: Error; retry?: () => void 
 export function InlineError({ error, title = '操作未完成' }: { error: unknown; title?: string }) {
   const message = error instanceof ApiError ? error.message : '请检查当前状态后重试。';
   return (
-    <div role="alert" aria-live="assertive" style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+    <div
+      role="alert"
+      aria-live="assertive"
+      style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}
+    >
       <AlertTriangle aria-hidden size={15} />
       <span>
         <strong>{title}</strong> {message}

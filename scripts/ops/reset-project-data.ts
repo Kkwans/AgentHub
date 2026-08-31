@@ -318,7 +318,10 @@ async function assertManagedRootsSafe(
     { label: 'backup', path: backup },
   ];
   const canonical = await Promise.all(
-    candidates.map(async (candidate) => ({ ...candidate, path: await canonicalPath(candidate.path) })),
+    candidates.map(async (candidate) => ({
+      ...candidate,
+      path: await canonicalPath(candidate.path),
+    })),
   );
   for (let index = 0; index < canonical.length; index += 1) {
     for (let next = index + 1; next < canonical.length; next += 1) {

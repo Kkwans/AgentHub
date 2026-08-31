@@ -26,10 +26,7 @@ import type {
   SessionRecord,
 } from '../../../lib/api';
 import { api } from '../../../lib/api';
-import {
-  QueryMessage,
-  displayDate,
-} from '../../shared/page-primitives';
+import { QueryMessage, displayDate } from '../../shared/page-primitives';
 import homeStyles from '../home.module.css';
 
 export function HomePage() {

@@ -59,7 +59,10 @@ async function seedRealControlPlane(context: BrowserContext, app: RealApp) {
   return { target, project, agent };
 }
 
-test.skip('legacy token mode 首次创建管理员、真实 Cookie/WS 登录、退出与恢复', async ({ page, app }) => {
+test.skip('legacy token mode 首次创建管理员、真实 Cookie/WS 登录、退出与恢复', async ({
+  page,
+  app,
+}) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: '创建管理员账号' })).toBeVisible();

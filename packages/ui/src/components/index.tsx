@@ -35,8 +35,16 @@ export interface FormDialogProps {
   size?: FormDialogSize;
   labelledBy?: string;
   describedBy?: string;
-  onOpenAutoFocus?: (event: { currentTarget: EventTarget & HTMLElement; defaultPrevented: boolean; preventDefault: () => void }) => void;
-  onCloseAutoFocus?: (event: { currentTarget: EventTarget & HTMLElement; defaultPrevented: boolean; preventDefault: () => void }) => void;
+  onOpenAutoFocus?: (event: {
+    currentTarget: EventTarget & HTMLElement;
+    defaultPrevented: boolean;
+    preventDefault: () => void;
+  }) => void;
+  onCloseAutoFocus?: (event: {
+    currentTarget: EventTarget & HTMLElement;
+    defaultPrevented: boolean;
+    preventDefault: () => void;
+  }) => void;
 }
 
 export function FormDialog({
@@ -66,7 +74,9 @@ export function FormDialog({
         const event = {
           currentTarget: content,
           defaultPrevented: false,
-          preventDefault() { this.defaultPrevented = true; },
+          preventDefault() {
+            this.defaultPrevented = true;
+          },
         };
         _onOpenAutoFocus?.(event);
         if (event.defaultPrevented) return;
@@ -88,7 +98,9 @@ export function FormDialog({
       const event = {
         currentTarget: content,
         defaultPrevented: false,
-        preventDefault() { this.defaultPrevented = true; },
+        preventDefault() {
+          this.defaultPrevented = true;
+        },
       };
       _onCloseAutoFocus?.(event);
       if (event.defaultPrevented) return undefined;
@@ -99,19 +111,12 @@ export function FormDialog({
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content
-        className={`ah-dialog ah-dialog-${size}`}
-        trapFocus={false}
-      >
+      <Dialog.Content className={`ah-dialog ah-dialog-${size}`} trapFocus={false}>
         <Flex align="start" justify="between" gap="4" className="ah-dialog-header">
           <div>
-            <Dialog.Title {...(labelledBy ? { id: labelledBy } : {})}>
-              {title}
-            </Dialog.Title>
+            <Dialog.Title {...(labelledBy ? { id: labelledBy } : {})}>{title}</Dialog.Title>
             {description ? (
-              <Dialog.Description
-                {...(describedBy ? { id: describedBy } : {})}
-              >
+              <Dialog.Description {...(describedBy ? { id: describedBy } : {})}>
                 {description}
               </Dialog.Description>
             ) : null}
@@ -156,9 +161,7 @@ export function ConfirmDialog({
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Content className="ah-dialog ah-dialog-small">
         <AlertDialog.Title>{title}</AlertDialog.Title>
-        <AlertDialog.Description>
-          {description}
-        </AlertDialog.Description>
+        <AlertDialog.Description>{description}</AlertDialog.Description>
         <Flex justify="end" gap="2" className="ah-dialog-footer">
           <AlertDialog.Cancel type="button" className="ah-dialog-secondary" disabled={pending}>
             {cancelLabel}
@@ -358,7 +361,7 @@ export function SelectField({
     >
       <Combobox
         id={selectId}
-        {...(value ?? defaultValue ? { value: value ?? defaultValue } : {})}
+        {...((value ?? defaultValue) ? { value: value ?? defaultValue } : {})}
         placeholder={placeholder}
         options={options}
         {...(disabled === undefined ? {} : { disabled })}
@@ -580,10 +583,7 @@ export function LoadingSkeleton({ className = '' }: { className?: string }) {
   return <span className={`ah-skeleton ${className}`.trim()} aria-hidden="true" />;
 }
 
-export function UiButton({
-  children,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof Button>) {
+export function UiButton({ children, ...props }: React.ComponentPropsWithoutRef<typeof Button>) {
   return <Button {...props}>{children}</Button>;
 }
 

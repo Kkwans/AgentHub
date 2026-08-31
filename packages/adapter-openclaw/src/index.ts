@@ -75,7 +75,8 @@ export class OpenClawAdapter implements AgentRuntimeAdapter {
             },
           ],
           repair: {
-            summary: '当前部署要求使用 agent exec 回退，但该命令不可用；请修复 OpenClaw ACP 或安装 agent exec。',
+            summary:
+              '当前部署要求使用 agent exec 回退，但该命令不可用；请修复 OpenClaw ACP 或安装 agent exec。',
           },
         };
       }
@@ -303,7 +304,9 @@ function extractExecText(stdout: string): string {
       if (Array.isArray(payloads)) {
         return payloads
           .map((payload) =>
-            payload && typeof payload === 'object' && typeof (payload as { text?: unknown }).text === 'string'
+            payload &&
+            typeof payload === 'object' &&
+            typeof (payload as { text?: unknown }).text === 'string'
               ? (payload as { text: string }).text
               : '',
           )

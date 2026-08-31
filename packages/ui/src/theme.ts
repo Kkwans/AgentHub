@@ -49,8 +49,7 @@ export function createAgentHubTheme(mode: ResolvedThemeMode): MantineThemeOverri
     fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif',
     fontFamilyMonospace: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
     headings: {
-      fontFamily:
-        'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif',
+      fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif',
       fontWeight: '650',
     },
     fontSizes: {

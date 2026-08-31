@@ -60,9 +60,9 @@ export class GitService implements GitHeadProbe {
   ) {
     const project = await this.requireGitProject(projectId);
     const path = input.path
-      // A deleted or renamed path may no longer exist in the worktree, but it
-      // is still a valid Git pathspec for the selected diff.
-      ? await validateGitPath(project.realRootPath, input.path, false)
+      ? // A deleted or renamed path may no longer exist in the worktree, but it
+        // is still a valid Git pathspec for the selected diff.
+        await validateGitPath(project.realRootPath, input.path, false)
       : undefined;
     const args = [
       '-C',

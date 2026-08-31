@@ -1897,7 +1897,10 @@ export class SessionContinuationRepository<TDatabase extends AgentHubDatabase> {
   async listByTargetSessionIds(targetSessionIds: string[]) {
     if (!targetSessionIds.length) return [];
     return this.db
-      .select({ sourceSessionId: sessionContinuations.sourceSessionId, targetSessionId: sessionContinuations.targetSessionId })
+      .select({
+        sourceSessionId: sessionContinuations.sourceSessionId,
+        targetSessionId: sessionContinuations.targetSessionId,
+      })
       .from(sessionContinuations)
       .where(inArray(sessionContinuations.targetSessionId, targetSessionIds));
   }

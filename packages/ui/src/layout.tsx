@@ -59,7 +59,11 @@ export function ContextHeader({
         {facts ? <div className="ah-context-header-facts">{facts}</div> : null}
         {actions ? <div className="ah-context-header-actions">{actions}</div> : null}
       </div>
-      {tabs ? <nav className="ah-context-tabs" aria-label="项目上下文">{tabs}</nav> : null}
+      {tabs ? (
+        <nav className="ah-context-tabs" aria-label="项目上下文">
+          {tabs}
+        </nav>
+      ) : null}
     </section>
   );
 }

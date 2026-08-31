@@ -153,9 +153,7 @@ class ReadyPrimary extends BrokenPrimary {
     return {
       status: 'READY',
       checkedAt: '2026-08-09T00:00:00.000Z',
-      checks: [
-        { id: 'initialize', label: 'ACP initialize', status: 'PASS', message: '已启动' },
-      ],
+      checks: [{ id: 'initialize', label: 'ACP initialize', status: 'PASS', message: '已启动' }],
     };
   }
 }

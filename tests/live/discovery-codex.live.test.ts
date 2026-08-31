@@ -217,9 +217,13 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
       await execFile(gitExecutable, ['config', 'user.name', 'AgentHub Codex Workflow Live'], {
         cwd: repoRoot,
       });
-      await execFile(gitExecutable, ['config', 'user.email', 'codex-workflow-live@example.invalid'], {
-        cwd: repoRoot,
-      });
+      await execFile(
+        gitExecutable,
+        ['config', 'user.email', 'codex-workflow-live@example.invalid'],
+        {
+          cwd: repoRoot,
+        },
+      );
       await writeFile(join(repoRoot, 'README.md'), '# AgentHub Codex workflow live fixture\n');
       await execFile(gitExecutable, ['add', 'README.md'], { cwd: repoRoot });
       await execFile(gitExecutable, ['commit', '-m', 'chore: initialize Codex workflow fixture'], {
@@ -239,7 +243,8 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
         LOG_LEVEL: 'silent',
       });
       const address = running.server.address();
-      if (!address || typeof address === 'string') throw new Error('无法解析 Codex workflow live 端口');
+      if (!address || typeof address === 'string')
+        throw new Error('无法解析 Codex workflow live 端口');
       const apiRoot = `http://127.0.0.1:${address.port}/api/v1`;
 
       const target = await apiRequest<{ id: string }>(
@@ -276,19 +281,19 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
       const run = await apiRequest<{ id: string }>(apiRoot, `/sessions/${session.id}/runs`, {
         method: 'POST',
         body: {
-          text:
-            '请在当前 Git 仓库根目录创建 approval-live.txt，文件内容严格为 "AgentHub real Codex approval workflow\\n"。这是端到端测试：请先向用户发起文件写入或编辑权限请求，等待批准后再写入；不要修改其他文件。完成后仅回复 LIVE_CODEX_APPROVAL_DONE。',
+          text: '请在当前 Git 仓库根目录创建 approval-live.txt，文件内容严格为 "AgentHub real Codex approval workflow\\n"。这是端到端测试：请先向用户发起文件写入或编辑权限请求，等待批准后再写入；不要修改其他文件。完成后仅回复 LIVE_CODEX_APPROVAL_DONE。',
         },
       });
 
       const pending = await waitForValue(async () => {
-        const runs = await apiRequest<Array<{ id: string; status: string; errorCode: string | null }>>(
-          apiRoot,
-          `/sessions/${session.id}/runs`,
-        );
+        const runs = await apiRequest<
+          Array<{ id: string; status: string; errorCode: string | null }>
+        >(apiRoot, `/sessions/${session.id}/runs`);
         const current = runs.find((candidate) => candidate.id === run.id);
         if (current && ['FAILED', 'CANCELED'].includes(current.status)) {
-          throw new Error(`真实 Codex workflow Run 提前终止：${current.status} ${current.errorCode ?? ''}`);
+          throw new Error(
+            `真实 Codex workflow Run 提前终止：${current.status} ${current.errorCode ?? ''}`,
+          );
         }
         if (current?.status !== 'WAITING_APPROVAL') return undefined;
         const approvalResponse = await fetch(`${apiRoot}/approvals?sessionId=${session.id}`);
@@ -311,7 +316,9 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
       expect(pending.optionsJson.length).toBeGreaterThan(0);
       const allowed =
         pending.optionsJson.find((option) =>
-          /allow|accept|once|always/i.test(`${option.id ?? ''} ${option.label ?? ''} ${option.kind ?? ''}`),
+          /allow|accept|once|always/i.test(
+            `${option.id ?? ''} ${option.label ?? ''} ${option.kind ?? ''}`,
+          ),
         ) ?? pending.optionsJson[0];
       if (!allowed?.id) throw new Error('真实 Codex Approval 没有可选 option id');
       await apiRequest(apiRoot, `/approvals/${pending.id}/resolve`, {
@@ -320,13 +327,14 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
       });
 
       const completed = await waitForValue(async () => {
-        const runs = await apiRequest<Array<{ id: string; status: string; errorCode: string | null }>>(
-          apiRoot,
-          `/sessions/${session.id}/runs`,
-        );
+        const runs = await apiRequest<
+          Array<{ id: string; status: string; errorCode: string | null }>
+        >(apiRoot, `/sessions/${session.id}/runs`);
         const current = runs.find((candidate) => candidate.id === run.id);
         if (current && ['FAILED', 'CANCELED'].includes(current.status)) {
-          throw new Error(`真实 Codex workflow Run 提前终止：${current.status} ${current.errorCode ?? ''}`);
+          throw new Error(
+            `真实 Codex workflow Run 提前终止：${current.status} ${current.errorCode ?? ''}`,
+          );
         }
         // Codex can split one edit into multiple permission requests (for
         // example, a file create followed by a content write). Resolve each
@@ -363,7 +371,10 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
       );
       expect(messages).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ role: 'ASSISTANT', text: expect.stringMatching(/LIVE_CODEX_APPROVAL_DONE/i) }),
+          expect.objectContaining({
+            role: 'ASSISTANT',
+            text: expect.stringMatching(/LIVE_CODEX_APPROVAL_DONE/i),
+          }),
         ]),
       );
 
@@ -393,7 +404,9 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
         apiRoot,
         `/projects/${project.id}/git/commits?limit=10`,
       );
-      expect(commits.some((commit) => commit.subject === 'test: 提交真实 Codex Approval 输出')).toBe(true);
+      expect(
+        commits.some((commit) => commit.subject === 'test: 提交真实 Codex Approval 输出'),
+      ).toBe(true);
 
       await apiRequest(apiRoot, `/sessions/${session.id}/close`, { method: 'POST' });
       const persisted = await apiRequest<{ status: string }>(apiRoot, `/sessions/${session.id}`);

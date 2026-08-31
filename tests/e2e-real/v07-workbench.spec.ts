@@ -21,7 +21,9 @@ async function apiData<T>(
 ): Promise<T> {
   const response = await context.request[method](`/api/v1${path}`, data ? { data } : undefined);
   if (!response.ok()) {
-    throw new Error(`${method.toUpperCase()} ${path} 返回 ${response.status()}：${await response.text()}`);
+    throw new Error(
+      `${method.toUpperCase()} ${path} 返回 ${response.status()}：${await response.text()}`,
+    );
   }
   const envelope = (await response.json()) as { data: T };
   return envelope.data;
@@ -40,10 +42,7 @@ async function seedRealControlPlane(context: BrowserContext, app: RealApp) {
     targetId: target.id,
     agentKind: 'CUSTOM_ACP',
     executable: process.execPath,
-    args: [
-      new URL('../fixtures/acp/fake-agent.mjs', import.meta.url).pathname,
-      '--write-fixture',
-    ],
+    args: [new URL('../fixtures/acp/fake-agent.mjs', import.meta.url).pathname, '--write-fixture'],
   });
   const preflight = await apiData<{ status: string }>(
     context,
@@ -145,11 +144,7 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
   });
 
-  test('Workspace 真实 ACP Approval、Diff 与 Git commit 可完成', async ({
-    page,
-    context,
-    app,
-  }) => {
+  test('Workspace 真实 ACP Approval、Diff 与 Git commit 可完成', async ({ page, context, app }) => {
     await initializeGitProject(app.projectRoot);
     const { project, agent } = await seedRealControlPlane(context, app);
     const session = await apiData<Identified>(context, 'post', '/sessions', {

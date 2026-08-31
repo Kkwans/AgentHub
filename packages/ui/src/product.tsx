@@ -20,11 +20,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { CheckCircleIcon } from '@phosphor-icons/react/CheckCircle';
 import { InfoIcon } from '@phosphor-icons/react/Info';
 import { WarningCircleIcon } from '@phosphor-icons/react/WarningCircle';
-import {
-  type ComponentProps,
-  type TextareaHTMLAttributes,
-  type ReactNode,
-} from 'react';
+import { type ComponentProps, type TextareaHTMLAttributes, type ReactNode } from 'react';
 
 import { useAgentHubTheme } from './provider.js';
 

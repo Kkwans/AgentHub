@@ -45,9 +45,7 @@ describe('shared form fields', () => {
   });
 
   it('gives text areas a stable name and avoids password-manager autofill', () => {
-    render(
-      <FormTextArea id="description" label="说明" rows={3} />,
-    );
+    render(<FormTextArea id="description" label="说明" rows={3} />);
 
     const textarea = screen.getByLabelText('说明');
     expect(textarea).toHaveAttribute('name', 'description');
