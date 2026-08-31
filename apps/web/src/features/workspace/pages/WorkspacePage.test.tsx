@@ -258,6 +258,11 @@ describe('WorkspacePage 数据分区可靠性', () => {
 
     expect(await screen.findByLabelText('读取文件，工具调用完成，展开详情')).toBeInTheDocument();
     expect(screen.queryByText('tool.call.completed')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '在工具检查器中查看' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('?view=activity'),
+    );
+    expect(screen.queryByText(/\"title\"/)).not.toBeInTheDocument();
   });
 
   it('供应商连接诊断在对话中显示中文下一步，原文只在脱敏诊断中出现', async () => {

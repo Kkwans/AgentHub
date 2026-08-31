@@ -581,7 +581,6 @@ function ToolEventRow({ event }: { event: EventRecord }) {
         <ChevronRight className="tool-event-action" size={13} aria-hidden="true" />
       </summary>
       <div className="tool-event-detail">
-        <pre>{JSON.stringify(event.payloadJson, null, 2)}</pre>
         <Link to="?view=activity">
           <Wrench size={12} aria-hidden="true" /> 在工具检查器中查看
         </Link>
