@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -42,6 +42,23 @@ const outputDir = resolve(
 
 async function audit(page: Page) {
   return page.evaluate(measureLayout);
+}
+
+async function captureScreenshot(page: Page, path: string) {
+  // Playwright's screenshot helper waits for all document fonts. On the
+  // NAS aarch64 Chromium build that wait can take down the renderer at the
+  // wide viewports; CDP captures the same surface without that extra phase.
+  const client = await page.context().newCDPSession(page);
+  try {
+    const screenshot = await client.send('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: false,
+    });
+    await writeFile(path, Buffer.from(screenshot.data, 'base64'));
+  } finally {
+    await client.detach();
+  }
 }
 
 test.describe('v1 current-main isolated visual baseline', () => {
@@ -147,11 +164,7 @@ test.describe('v1 current-main isolated visual baseline', () => {
           });
           await page.waitForTimeout(500);
           const filename = `${theme}-${route.replace(/^\//, '').replace(/[^a-zA-Z0-9-]+/g, '-') || 'home'}-${viewportName}.png`;
-          await page.screenshot({
-            path: join(outputDir, filename),
-            fullPage: false,
-            timeout: 15_000,
-          });
+          await captureScreenshot(page, join(outputDir, filename));
           report.push({
             theme,
             viewport: viewportName,
