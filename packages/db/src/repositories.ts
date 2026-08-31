@@ -9,6 +9,7 @@ import {
   gt,
   inArray,
   isNull,
+  lt,
   max,
   or,
   sql,
@@ -2074,12 +2075,24 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
 export class MessageRepository<TDatabase extends AgentHubDatabase> {
   constructor(private readonly db: TDatabase) {}
 
-  list(sessionId: string) {
+  list(sessionId: string, options?: MessageListOptions) {
+    const baseCondition = eq(messages.sessionId, sessionId);
+    if (!options || (options.beforeSequence === undefined && options.limit === undefined)) {
+      return this.db.select().from(messages).where(baseCondition).orderBy(messages.sequence);
+    }
+
+    const limit = options.limit ?? MESSAGE_WINDOW_DEFAULT_LIMIT;
+    const condition =
+      options.beforeSequence === undefined
+        ? baseCondition
+        : and(baseCondition, lt(messages.sequence, options.beforeSequence));
     return this.db
       .select()
       .from(messages)
-      .where(eq(messages.sessionId, sessionId))
-      .orderBy(messages.sequence);
+      .where(condition)
+      .orderBy(desc(messages.sequence))
+      .limit(limit)
+      .then((rows) => rows.reverse());
   }
 
   async append(input: Omit<typeof messages.$inferInsert, 'id' | 'sequence'>) {
@@ -2098,6 +2111,13 @@ export class MessageRepository<TDatabase extends AgentHubDatabase> {
     });
   }
 }
+
+export interface MessageListOptions {
+  beforeSequence?: number | undefined;
+  limit?: number | undefined;
+}
+
+export const MESSAGE_WINDOW_DEFAULT_LIMIT = 100;
 
 export class GitSnapshotRepository<TDatabase extends AgentHubDatabase> {
   constructor(private readonly db: TDatabase) {}

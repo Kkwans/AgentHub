@@ -7,6 +7,12 @@ import type { SessionService } from './session-service.js';
 const idParams = z.object({ id: z.string().uuid() });
 const runParams = z.object({ id: z.string().uuid(), runId: z.string().uuid() });
 const listQuery = z.object({ projectId: z.string().uuid().optional() });
+const messageQuery = z
+  .object({
+    beforeSequence: z.coerce.number().int().nonnegative().optional(),
+    limit: z.coerce.number().int().min(1).max(200).optional(),
+  })
+  .strict();
 const createSchema = z.object({
   projectId: z.string().uuid(),
   agentId: z.string().uuid(),
@@ -154,14 +160,25 @@ export function createSessionRouter(service: SessionService): Router {
     );
   }
 
-  router.get('/:id/messages', validate({ params: idParams }), async (request, response, next) => {
-    try {
-      const { id } = idParams.parse(request.params);
-      response.json({ data: await service.listMessages(id), requestId: String(request.id) });
-    } catch (error) {
-      next(error);
-    }
-  });
+  router.get(
+    '/:id/messages',
+    validate({ params: idParams, query: messageQuery }),
+    async (request, response, next) => {
+      try {
+        const { id } = idParams.parse(request.params);
+        const query = messageQuery.parse(request.query);
+        const hasWindow =
+          Object.prototype.hasOwnProperty.call(request.query, 'beforeSequence') ||
+          Object.prototype.hasOwnProperty.call(request.query, 'limit');
+        response.json({
+          data: await service.listMessages(id, hasWindow ? query : undefined),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get('/:id/runs', validate({ params: idParams }), async (request, response, next) => {
     try {

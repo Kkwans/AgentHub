@@ -11,6 +11,7 @@ import {
 import {
   ApprovalRepository,
   EventRepository,
+  MessageRepository,
   PromptRepository,
   WorktreeExecutionRepository,
 } from './repositories.js';
@@ -22,6 +23,7 @@ import {
   approvalDeliveryOutbox,
   approvalRequests,
   executionTargets,
+  messages,
   projects,
   promptLabels,
   promptVersions,
@@ -370,6 +372,39 @@ describe('数据库不变量', () => {
       .from(agentSessions)
       .where(eq(agentSessions.id, sessionId));
     expect(session?.lastSeq).toBe(2);
+  });
+
+  it('Message window 保持无参数完整响应，并按 sequence 返回最近窗口', async () => {
+    const { sessionId, runId } = await seedRun();
+    const repository = new MessageRepository(client.db);
+    await client.db.insert(messages).values(
+      Array.from({ length: 5 }, (_, index) => ({
+        id: randomUUID(),
+        sessionId,
+        runId,
+        role: index % 2 === 0 ? 'USER' : 'ASSISTANT',
+        kind: 'TEXT',
+        text: `消息 ${index + 1}`,
+        sequence: index + 1,
+      })),
+    );
+
+    expect((await repository.list(sessionId)).map((message) => message.sequence)).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
+    expect(
+      (await repository.list(sessionId, { limit: 2 })).map((message) => message.sequence),
+    ).toEqual([4, 5]);
+    expect(
+      (await repository.list(sessionId, { beforeSequence: 5, limit: 2 })).map(
+        (message) => message.sequence,
+      ),
+    ).toEqual([3, 4]);
+    expect(
+      (await repository.list(sessionId, { beforeSequence: 1, limit: 2 })).map(
+        (message) => message.sequence,
+      ),
+    ).toEqual([]);
   });
 
   it('Worktree Execution 持久化队列并限制每 Project 单活跃项', async () => {

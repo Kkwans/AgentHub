@@ -19,6 +19,7 @@ import type {
   AgentHubDatabase,
   ApprovalRepository,
   EventRepository,
+  MessageListOptions,
   MessageRepository,
   ProjectRepository,
   RunRepository,
@@ -270,8 +271,8 @@ export class SessionService {
     return operation;
   }
 
-  listMessages(sessionId: string) {
-    return this.messages.list(sessionId);
+  listMessages(sessionId: string, options?: MessageListOptions) {
+    return this.messages.list(sessionId, options);
   }
 
   listRuns(sessionId: string) {
