@@ -1,4 +1,4 @@
-import { Plus, Search } from '@agenthub/ui';
+import { ChevronDown, Plus, Search } from '@agenthub/ui';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingState, ErrorState } from '../../../components/Common';
@@ -19,6 +19,13 @@ export function SessionRail({
   projectId?: string | undefined;
 }) {
   const [query, setQuery] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<SessionGroup, boolean>>({
+    today: false,
+    yesterday: false,
+    // A long-lived workspace can contain dozens of closed sessions. Keep the
+    // historical tail quiet until the user asks for it; search always opens it.
+    earlier: true,
+  });
   const filteredSessions = useMemo(() => {
     const value = query.trim().toLocaleLowerCase();
     const result = value
@@ -44,6 +51,9 @@ export function SessionRail({
     ),
   };
   const groupLabels = { today: '今天', yesterday: '昨天', earlier: '更早' } as const;
+  const groupOrder = ['today', 'yesterday', 'earlier'] as const;
+  const toggleGroup = (group: SessionGroup) =>
+    setCollapsedGroups((current) => ({ ...current, [group]: !current[group] }));
   const sessionLink = (session: SessionRecord) => (
     <Link
       className={session.id === currentId ? 'current' : ''}
@@ -96,14 +106,38 @@ export function SessionRail({
         ) : sessions.error ? (
           <ErrorState error={sessions.error} retry={() => sessions.refetch()} />
         ) : filteredSessions.length ? (
-          (Object.keys(grouped) as Array<keyof typeof grouped>).map((group) =>
-            grouped[group].length ? (
+          groupOrder.map((group) => {
+            if (!grouped[group].length) return null;
+            const containsCurrent = grouped[group].some((session) => session.id === currentId);
+            const collapsed = Boolean(query.trim())
+              ? false
+              : collapsedGroups[group] && !containsCurrent;
+            const groupId = `session-group-${group}`;
+            return (
               <section className="session-group" key={group} aria-label={groupLabels[group]}>
-                <h3>{groupLabels[group]}</h3>
-                {grouped[group].map(sessionLink)}
+                <button
+                  type="button"
+                  className="session-group-toggle"
+                  aria-expanded={!collapsed}
+                  aria-controls={groupId}
+                  onClick={() => toggleGroup(group)}
+                >
+                  <span>{groupLabels[group]}</span>
+                  <small>{grouped[group].length}</small>
+                  <ChevronDown
+                    size={13}
+                    aria-hidden="true"
+                    className={collapsed ? 'collapsed' : undefined}
+                  />
+                </button>
+                {!collapsed && (
+                  <div id={groupId} className="session-group-items">
+                    {grouped[group].map(sessionLink)}
+                  </div>
+                )}
               </section>
-            ) : null,
-          )
+            );
+          })
         ) : (
           <p className="session-list-empty">{query.trim() ? '没有匹配的会话' : '还没有会话'}</p>
         )}
@@ -111,3 +145,5 @@ export function SessionRail({
     </div>
   );
 }
+
+type SessionGroup = 'today' | 'yesterday' | 'earlier';

@@ -3476,12 +3476,44 @@
   display: grid;
   gap: 3px;
 }
-.workspace :global(.session-group h3) {
-  margin: 12px 7px 5px;
+.workspace :global(.session-group-toggle) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 14px;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin: 9px 4px 2px;
+  padding: 3px 3px;
   color: var(--ah-text-tertiary);
+  font: inherit;
   font-size: 10.75px;
   font-weight: 650;
   letter-spacing: 0.015em;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.workspace :global(.session-group-toggle:hover),
+.workspace :global(.session-group-toggle:focus-visible) {
+  color: var(--ah-text-primary);
+  background: color-mix(in srgb, var(--ah-surface) 72%, transparent);
+}
+.workspace :global(.session-group-toggle small) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  font-weight: 520;
+}
+.workspace :global(.session-group-toggle svg) {
+  transition: transform var(--ah-motion-fast, 120ms) ease;
+}
+.workspace :global(.session-group-toggle svg.collapsed) {
+  transform: rotate(-90deg);
+}
+.workspace :global(.session-group-items) {
+  display: grid;
+  gap: 3px;
 }
 
 /* Phase 3 workspace geometry: keep the center conversation readable while
