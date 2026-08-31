@@ -1,0 +1,21 @@
+{
+  "sourceReport": "docs/qa/visual/v1.0.0/00-workspace-states-f9c5ca7-swap-full-r7/audit.json",
+  "snapshotCount": 98,
+  "passed": true,
+  "releaseReady": false,
+  "violations": [],
+  "unverifiedStates": [
+    "login",
+    "loading",
+    "error",
+    "offline",
+    "terminal-pty-open-input-resize-close"
+  ],
+  "unmeasuredRules": [
+    "table-column-alignment",
+    "state-frame-shift",
+    "composer-readable-column",
+    "drawer-width"
+  ],
+  "scope": "baseline measurements; not the complete v1 release geometry gate"
+}

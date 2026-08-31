@@ -24,16 +24,15 @@ export type RealApp = {
 type TestFixtures = {
   app: RealApp;
   context: BrowserContext;
-};
-
-type WorkerFixtures = {
   authMode: RealAuthMode;
+  acpPromptTimeoutMs: number | undefined;
 };
 
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<TestFixtures>({
   authMode: ['token', { option: true }],
+  acpPromptTimeoutMs: [undefined, { option: true }],
 
-  app: async ({ authMode }, use) => {
+  app: async ({ authMode, acpPromptTimeoutMs }, use) => {
     const configuredTempBase = process.env.AGENTHUB_E2E_REAL_TMPDIR;
     const tempBase = resolve(configuredTempBase || tmpdir());
     await mkdir(tempBase, { recursive: true });
@@ -55,6 +54,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         AGENTHUB_AUTH_MODE: authMode,
         AGENTHUB_SECURE_TRANSPORT: 'false',
         LOG_LEVEL: 'silent',
+        ...(acpPromptTimeoutMs === undefined
+          ? {}
+          : { AGENTHUB_ACP_PROMPT_TIMEOUT_MS: String(acpPromptTimeoutMs) }),
       };
 
       running = await startServer(environment);

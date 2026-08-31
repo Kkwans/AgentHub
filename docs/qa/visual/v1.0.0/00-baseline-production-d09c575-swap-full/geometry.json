@@ -1,0 +1,15 @@
+{
+  "sourceReport": "docs/qa/visual/v1.0.0/00-baseline-production-d09c575-swap-full/audit.json",
+  "snapshotCount": 154,
+  "passed": true,
+  "releaseReady": false,
+  "violations": [],
+  "unverifiedStates": [],
+  "unmeasuredRules": [
+    "table-column-alignment",
+    "state-frame-shift",
+    "composer-readable-column",
+    "drawer-width"
+  ],
+  "scope": "baseline measurements; not the complete v1 release geometry gate"
+}

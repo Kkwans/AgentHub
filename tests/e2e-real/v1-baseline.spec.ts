@@ -5,10 +5,10 @@ import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
-import { initializeGitProject, test, expect, type RealApp } from './fixtures.js';
-import type { BrowserContext, Page } from '@playwright/test';
+import { test, expect } from './fixtures.js';
+import { apiData, seedWorkspace } from './baseline-support.js';
+import type { Page } from '@playwright/test';
 
-type Identified = { id: string };
 type Health = { status: string; version: string; database: string; web: boolean };
 
 const execFile = promisify(execFileCallback);
@@ -39,58 +39,6 @@ const outputDir = resolve(
   process.env.AGENTHUB_VISUAL_OUTPUT ||
     `../../docs/qa/visual/v1.0.0/00-baseline-isolated-${new Date().toISOString().replace(/[:.]/g, '-')}`,
 );
-
-async function apiData<T>(
-  context: BrowserContext,
-  method: 'get' | 'post',
-  path: string,
-  data?: unknown,
-) {
-  const response = await context.request[method](
-    `/api/v1${path}`,
-    data === undefined ? undefined : { data },
-  );
-  expect(response.ok(), `${method.toUpperCase()} ${path}: ${await response.text()}`).toBe(true);
-  return ((await response.json()) as { data: T }).data;
-}
-
-async function seedWorkspace(context: BrowserContext, app: RealApp) {
-  await initializeGitProject(app.projectRoot);
-  const target = await apiData<Identified>(context, 'post', '/execution-targets', {
-    name: 'v1 baseline host',
-    kind: 'LOCAL_HOST',
-    hostname: '127.0.0.1',
-    os: process.platform,
-    arch: process.arch,
-  });
-  const project = await apiData<Identified>(context, 'post', '/projects', {
-    name: 'v1 baseline project',
-    targetId: target.id,
-    rootPath: app.projectRoot,
-    kind: 'TEST',
-  });
-  const agent = await apiData<Identified>(context, 'post', '/agents', {
-    name: 'v1 baseline agent',
-    targetId: target.id,
-    agentKind: 'CUSTOM_ACP',
-    executable: process.execPath,
-    args: [resolve(dirname(fileURLToPath(import.meta.url)), '../fixtures/acp/fake-agent.mjs')],
-  });
-  const preflight = await apiData<{ status: string }>(
-    context,
-    'post',
-    `/agents/${agent.id}/preflight`,
-    { cwd: app.projectRoot },
-  );
-  expect(preflight.status).toBe('READY');
-  const session = await apiData<Identified>(context, 'post', '/sessions', {
-    projectId: project.id,
-    agentId: agent.id,
-    title: 'v1 baseline session',
-    cwd: app.projectRoot,
-  });
-  return { target, project, agent, session };
-}
 
 async function audit(page: Page) {
   return page.evaluate(measureLayout);
