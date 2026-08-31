@@ -1,0 +1,25 @@
+{
+  "sourceReport": "docs/qa/visual/v1.0.0/02-appshell-9bc6c3d-swap-full/audit.json",
+  "snapshotCount": 140,
+  "passed": true,
+  "releaseReady": false,
+  "violations": [],
+  "unverifiedStates": [
+    "login",
+    "loading",
+    "error",
+    "running",
+    "approval",
+    "failed",
+    "closed",
+    "git-changes",
+    "terminal"
+  ],
+  "unmeasuredRules": [
+    "table-column-alignment",
+    "state-frame-shift",
+    "composer-readable-column",
+    "drawer-width"
+  ],
+  "scope": "baseline measurements; not the complete v1 release geometry gate"
+}
