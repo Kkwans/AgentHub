@@ -35,7 +35,7 @@
 }
 
 .contextbar {
-  flex: 0 0 54px;
+  flex: 0 0 50px;
 }
 
 .workspace :global(.composer) {
@@ -55,7 +55,7 @@
   z-index: 4;
   display: flex;
   min-width: 0;
-  min-height: 54px;
+  min-height: 50px;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
@@ -3482,4 +3482,146 @@
   font-size: 10.75px;
   font-weight: 650;
   letter-spacing: 0.015em;
+}
+
+/* Phase 3 workspace geometry: keep the center conversation readable while
+   moving the two supporting panels to drawers at the agreed breakpoints. */
+@media (min-width: 1180px) {
+  .contextbar {
+    flex-basis: 50px;
+    min-height: 50px;
+  }
+
+  .workspace :global(.session-rail-panel),
+  .workspace :global(.inspector-panel) {
+    display: flex !important;
+    position: relative !important;
+    inset: auto !important;
+    width: auto !important;
+    height: 100% !important;
+    flex: 0 1 auto !important;
+    box-shadow: none !important;
+  }
+
+  .workspace :global(.conversation-panel) {
+    position: relative !important;
+    inset: auto !important;
+    width: auto !important;
+    height: 100% !important;
+    flex: 1 1 auto !important;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1179px) {
+  .workspace :global(.workspace-session-toggle) {
+    display: inline-flex;
+  }
+
+  .workspace :global(.workspace-inspector-toggle) {
+    display: none;
+  }
+
+  .workspace :global(.workspace-layout-actions) {
+    display: none;
+  }
+
+  .workspace :global(.session-rail-panel) {
+    display: none !important;
+  }
+
+  .workspace :global(.session-rail-panel.mobile-open) {
+    position: absolute !important;
+    z-index: 45;
+    inset-block: 0;
+    inset-inline-start: 0;
+    display: block !important;
+    width: min(360px, calc(100% - 24px)) !important;
+    height: 100% !important;
+    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%)) !important;
+  }
+
+  .workspace :global(.inspector-panel) {
+    display: flex !important;
+    position: relative !important;
+    inset: auto !important;
+    width: auto !important;
+    height: 100% !important;
+    flex: 0 1 min(440px, calc(100vw - 520px)) !important;
+    box-shadow: none !important;
+  }
+
+  .workspace :global(.conversation-panel) {
+    position: relative !important;
+    inset: auto !important;
+    width: auto !important;
+    height: 100% !important;
+    flex: 1 1 auto !important;
+  }
+
+  .workspace :global(.workspace-drawer-scrim) {
+    inset: 50px 0 0;
+  }
+}
+
+@media (max-width: 899px) {
+  .workspace :global(.workspace-session-toggle),
+  .workspace :global(.workspace-inspector-toggle) {
+    display: inline-flex;
+  }
+
+  .workspace :global(.workspace-layout-actions) {
+    display: none;
+  }
+
+  .mobileTabs {
+    display: none;
+  }
+
+  .workspace :global(.session-rail-panel),
+  .workspace :global(.inspector-panel) {
+    display: none !important;
+  }
+
+  .workspace :global(.session-rail-panel.mobile-open),
+  .workspace :global(.inspector-panel.mobile-open) {
+    position: absolute !important;
+    z-index: 45;
+    inset-block: 0;
+    display: block !important;
+    width: min(360px, calc(100% - 24px)) !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%)) !important;
+  }
+
+  .workspace :global(.session-rail-panel.mobile-open) {
+    inset-inline-start: 0;
+  }
+
+  .workspace :global(.inspector-panel.mobile-open) {
+    inset-inline-end: 0;
+    width: min(480px, calc(100% - 24px)) !important;
+  }
+
+  .workspace :global(.conversation-panel) {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    flex: none !important;
+  }
+
+  .workspace :global(.workspace-drawer-scrim) {
+    inset: 50px 0 0;
+  }
+}
+
+@media (max-width: 679px) {
+  .mobileTabs {
+    display: flex;
+  }
+
+  .workspace :global(.workspace-drawer-scrim) {
+    inset: 99px 0 0;
+  }
 }

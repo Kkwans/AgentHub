@@ -30,7 +30,11 @@ import {
   type TerminalOpenInput,
   type TerminalRecord,
 } from '../components/TerminalDock';
-import { readWorkspaceLayout, writeWorkspacePanel } from '../layoutPreferences';
+import {
+  readWorkspaceLayout,
+  WORKSPACE_PANEL_LIMITS,
+  writeWorkspacePanel,
+} from '../layoutPreferences';
 import type {
   GitBranchRecord,
   GitCommitRecord,
@@ -41,6 +45,25 @@ import workspaceStyles from '../workspace.module.css';
 
 const EVENT_PAGE_SIZE = 500;
 type DiffWhitespace = 'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines';
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(query).matches
+      : false,
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches);
+    update();
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, [query]);
+
+  return matches;
+}
 
 export async function fetchSessionEventPages(
   sessionId: string,
@@ -77,11 +100,13 @@ export function WorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
   const tab: InspectorTab =
-    viewParam === 'files' || viewParam === 'run' || viewParam === 'tools'
+    viewParam === 'files' || viewParam === 'run' || viewParam === 'activity'
       ? viewParam
-      : viewParam === 'diff' || viewParam === 'git' || viewParam === 'changes'
-        ? 'changes'
-        : 'changes';
+      : viewParam === 'tools'
+        ? 'activity'
+        : viewParam === 'diff' || viewParam === 'git' || viewParam === 'changes'
+          ? 'changes'
+          : 'changes';
   const selectedFile = searchParams.get('file') || undefined;
   const selectedChangePath = searchParams.get('change') || undefined;
   const whitespaceParam = searchParams.get('whitespace');
@@ -91,9 +116,17 @@ export function WorkspacePage() {
     whitespaceParam === 'ignore-blank-lines'
       ? whitespaceParam
       : 'default';
-  const mobileInspectorOpen = ['files', 'diff', 'git', 'changes', 'tools', 'run'].includes(
-    viewParam ?? '',
-  );
+  const mobileInspectorOpen = [
+    'files',
+    'diff',
+    'git',
+    'changes',
+    'activity',
+    'tools',
+    'run',
+  ].includes(viewParam ?? '');
+  const inspectorActsAsDrawer = useMediaQuery('(max-width: 899px)');
+  const inspectorDrawerOpen = inspectorActsAsDrawer && mobileInspectorOpen;
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
   const [stagedDiff, setStagedDiff] = useState(false);
   const [sessionDrawerOpen, setSessionDrawerOpen] = useState(false);
@@ -443,7 +476,6 @@ export function WorkspacePage() {
   }, [client, events.data, id]);
 
   useEffect(() => {
-    const inspectorActsAsDrawer = window.matchMedia('(max-width: 1279px)').matches;
     if (!sessionDrawerOpen && (!mobileInspectorOpen || !inspectorActsAsDrawer)) return;
 
     const closeButton = sessionDrawerOpen ? sessionCloseRef.current : inspectorCloseRef.current;
@@ -475,7 +507,7 @@ export function WorkspacePage() {
     };
     window.addEventListener('keydown', closeOnEscapeAndTrapFocus);
     return () => window.removeEventListener('keydown', closeOnEscapeAndTrapFocus);
-  }, [closeMobileInspector, mobileInspectorOpen, sessionDrawerOpen]);
+  }, [closeMobileInspector, inspectorActsAsDrawer, mobileInspectorOpen, sessionDrawerOpen]);
 
   if (session.isLoading) return <LoadingState label="正在打开 Coding Workspace" />;
   if (session.error) return <ErrorState error={session.error} />;
@@ -499,9 +531,9 @@ export function WorkspacePage() {
           type="button"
           className="workspace-inspector-toggle"
           aria-label="打开检查器"
-          aria-expanded={mobileInspectorOpen}
+          aria-expanded={inspectorDrawerOpen}
           onClick={() => {
-            if (mobileInspectorOpen) closeMobileInspector();
+            if (inspectorDrawerOpen) closeMobileInspector();
             else setTab('changes');
           }}
         >
@@ -553,7 +585,7 @@ export function WorkspacePage() {
           </div>
         )}
       </div>
-      <Tabs.Root value={mobileInspectorOpen ? tab : 'conversation'}>
+      <Tabs.Root value={inspectorDrawerOpen ? tab : 'conversation'}>
         <Tabs.List
           className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
           aria-label="Workspace 视图"
@@ -565,7 +597,7 @@ export function WorkspacePage() {
             [
               ['files', '文件'],
               ['changes', 'Git'],
-              ['tools', '工具调用'],
+              ['activity', '活动'],
               ['run', '运行'],
             ] as Array<[InspectorTab, string]>
           ).map(([item, label]) => (
@@ -594,8 +626,8 @@ export function WorkspacePage() {
           defaultSize={workspaceLayout.leftCollapsed ? '0px' : workspaceLayout.leftWidth}
           collapsedSize="0px"
           collapsible
-          minSize="210px"
-          maxSize="380px"
+          minSize={`${WORKSPACE_PANEL_LIMITS.left.min}px`}
+          maxSize={`${WORKSPACE_PANEL_LIMITS.left.max}px`}
           groupResizeBehavior="preserve-pixel-size"
           className={`${workspaceStyles.panel} ${workspaceStyles.sessionRail} ${!workspaceLayout.leftCollapsed ? workspaceStyles.panelOpen : ''} workspace-panel session-rail-panel ${sessionDrawerOpen ? 'mobile-open' : ''}`}
         >
@@ -620,7 +652,7 @@ export function WorkspacePage() {
         <Separator className={`${workspaceStyles.separator} resize-handle`} />
         <Panel
           id="conversation"
-          minSize="360px"
+          minSize="520px"
           className={`${workspaceStyles.panel} ${workspaceStyles.conversationPanel} workspace-panel conversation-panel`}
         >
           <div className={workspaceStyles.conversationShell}>
@@ -681,12 +713,12 @@ export function WorkspacePage() {
           defaultSize={workspaceLayout.rightCollapsed ? '0px' : workspaceLayout.rightWidth}
           collapsedSize="0px"
           collapsible
-          minSize="320px"
-          maxSize="720px"
+          minSize={`${WORKSPACE_PANEL_LIMITS.right.min}px`}
+          maxSize={`${WORKSPACE_PANEL_LIMITS.right.max}px`}
           groupResizeBehavior="preserve-pixel-size"
-          className={`${workspaceStyles.panel} ${workspaceStyles.inspectorPanel} ${!workspaceLayout.rightCollapsed ? workspaceStyles.panelOpen : ''} workspace-panel inspector-panel ${mobileInspectorOpen ? 'mobile-open' : ''}`}
+          className={`${workspaceStyles.panel} ${workspaceStyles.inspectorPanel} ${!workspaceLayout.rightCollapsed ? workspaceStyles.panelOpen : ''} workspace-panel inspector-panel ${inspectorDrawerOpen ? 'mobile-open' : ''}`}
         >
-          {mobileInspectorOpen && (
+          {inspectorDrawerOpen && (
             <button
               type="button"
               className="workspace-drawer-close"
@@ -724,7 +756,7 @@ export function WorkspacePage() {
           />
         </Panel>
       </Group>
-      {(mobileInspectorOpen || sessionDrawerOpen) && (
+      {(inspectorDrawerOpen || sessionDrawerOpen) && (
         <button
           type="button"
           className="workspace-drawer-scrim"

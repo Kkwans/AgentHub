@@ -78,7 +78,7 @@ export function WorkspaceInspector({
   const tabs: Array<{ id: InspectorTab; label: string }> = [
     { id: 'changes', label: '变更' },
     { id: 'files', label: '文件' },
-    { id: 'tools', label: '工具调用' },
+    { id: 'activity', label: '活动' },
     { id: 'run', label: 'Run' },
   ];
   return (
@@ -122,7 +122,7 @@ export function WorkspaceInspector({
             whitespace={diffWhitespace}
             onWhitespaceChange={setDiffWhitespace}
           />
-        ) : tab === 'tools' ? (
+        ) : tab === 'activity' ? (
           <ActivityPanel events={events} />
         ) : (
           <RunPanel agent={agent} session={session} runs={runs} />

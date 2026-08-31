@@ -5,9 +5,16 @@ export const WORKSPACE_LAYOUT_STORAGE_KEYS = {
   rightCollapsed: 'agenthub.workspace.stage-v1.right.collapsed',
 } as const;
 
+export const LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS = {
+  leftWidth: 'agenthub.workspace.left.width',
+  leftCollapsed: 'agenthub.workspace.left.collapsed',
+  rightWidth: 'agenthub.workspace.right.width',
+  rightCollapsed: 'agenthub.workspace.right.collapsed',
+} as const;
+
 export const WORKSPACE_PANEL_LIMITS = {
-  left: { defaultSize: 280, min: 220, max: 380 },
-  right: { defaultSize: 500, min: 360, max: 720 },
+  left: { defaultSize: 256, min: 216, max: 336 },
+  right: { defaultSize: 440, min: 360, max: 760 },
 } as const;
 
 export interface WorkspaceLayoutPreference {
@@ -25,50 +32,72 @@ function clamp(value: number, min: number, max: number): number {
 
 function readWidth(
   storage: LayoutStorage,
-  key: string,
+  keys: readonly string[],
   fallback: number,
   min: number,
   max: number,
 ) {
-  const value = Number(storage.getItem(key));
+  const stored = keys.map((key) => storage.getItem(key)).find((value) => value !== null);
+  const value = Number(stored);
   return Number.isFinite(value) && value > 0 ? clamp(value, min, max) : fallback;
 }
 
-function readCollapsed(storage: LayoutStorage, key: string, fallback = false): boolean {
-  const value = storage.getItem(key);
-  return value === null ? fallback : value === 'true';
+function readCollapsed(storage: LayoutStorage, keys: readonly string[], fallback = false): boolean {
+  const value = keys.map((key) => storage.getItem(key)).find((item) => item !== null);
+  return value === null || value === undefined ? fallback : value === 'true';
 }
 
 export function readWorkspaceLayout(
   storage: LayoutStorage | undefined = typeof window === 'undefined'
     ? undefined
     : window.localStorage,
+  viewportWidth?: number,
 ): WorkspaceLayoutPreference {
   if (!storage) {
     return {
       leftWidth: WORKSPACE_PANEL_LIMITS.left.defaultSize,
       leftCollapsed: false,
       rightWidth: WORKSPACE_PANEL_LIMITS.right.defaultSize,
-      rightCollapsed: true,
+      rightCollapsed: false,
     };
   }
+  const defaultLeftCollapsed =
+    viewportWidth !== undefined
+      ? viewportWidth < 1_180
+      : typeof window !== 'undefined' &&
+        storage === window.localStorage &&
+        window.innerWidth < 1_180;
   return {
     leftWidth: readWidth(
       storage,
-      WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth,
+      [WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth, LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth],
       WORKSPACE_PANEL_LIMITS.left.defaultSize,
       WORKSPACE_PANEL_LIMITS.left.min,
       WORKSPACE_PANEL_LIMITS.left.max,
     ),
-    leftCollapsed: readCollapsed(storage, WORKSPACE_LAYOUT_STORAGE_KEYS.leftCollapsed),
+    leftCollapsed: readCollapsed(
+      storage,
+      [
+        WORKSPACE_LAYOUT_STORAGE_KEYS.leftCollapsed,
+        LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftCollapsed,
+      ],
+      defaultLeftCollapsed,
+    ),
     rightWidth: readWidth(
       storage,
-      WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth,
+      [WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth, LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth],
       WORKSPACE_PANEL_LIMITS.right.defaultSize,
       WORKSPACE_PANEL_LIMITS.right.min,
       WORKSPACE_PANEL_LIMITS.right.max,
     ),
-    rightCollapsed: readCollapsed(storage, WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed, true),
+    rightCollapsed: readCollapsed(
+      storage,
+      [
+        WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed,
+        LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed,
+      ],
+      false,
+    ),
   };
 }
 

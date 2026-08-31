@@ -603,6 +603,20 @@ describe('WorkspacePage 数据分区可靠性', () => {
   });
 
   it('移动检查器提供唯一且可操作的关闭按钮', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) =>
+        ({
+          matches: query.includes('max-width: 899px'),
+          media: query,
+          onchange: null,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+          addListener: () => undefined,
+          removeListener: () => undefined,
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
     renderWorkspace(
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
         baseFetch(String(input), init?.method),

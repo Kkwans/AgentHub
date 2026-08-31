@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS,
   readWorkspaceLayout,
   WORKSPACE_LAYOUT_STORAGE_KEYS,
   writeWorkspacePanel,
@@ -20,12 +21,12 @@ function memoryStorage(initial: Record<string, string> = {}) {
 }
 
 describe('Workspace layout preferences', () => {
-  it('uses v0.8 defaults and clamps stale widths', () => {
+  it('uses v1 defaults and clamps stale widths', () => {
     expect(readWorkspaceLayout(memoryStorage())).toEqual({
-      leftWidth: 280,
+      leftWidth: 256,
       leftCollapsed: false,
-      rightWidth: 500,
-      rightCollapsed: true,
+      rightWidth: 440,
+      rightCollapsed: false,
     });
     expect(
       readWorkspaceLayout(
@@ -36,11 +37,36 @@ describe('Workspace layout preferences', () => {
         }),
       ),
     ).toEqual({
-      leftWidth: 380,
+      leftWidth: 336,
       leftCollapsed: true,
       rightWidth: 360,
-      rightCollapsed: true,
+      rightCollapsed: false,
     });
+  });
+
+  it('保留旧 key 的宽度和折叠偏好，并在窄屏无显式偏好时折叠 Rail', () => {
+    expect(
+      readWorkspaceLayout(
+        memoryStorage({
+          [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth]: '380',
+          [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth]: '720',
+        }),
+        1024,
+      ),
+    ).toEqual({
+      leftWidth: 336,
+      leftCollapsed: true,
+      rightWidth: 720,
+      rightCollapsed: false,
+    });
+    expect(
+      readWorkspaceLayout(
+        memoryStorage({
+          [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftCollapsed]: 'false',
+        }),
+        1024,
+      ).leftCollapsed,
+    ).toBe(false);
   });
 
   it('stores width and collapsed state independently', () => {

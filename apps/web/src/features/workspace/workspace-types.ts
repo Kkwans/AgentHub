@@ -11,7 +11,7 @@ import type {
   SessionRecord,
 } from '../../lib/api';
 
-export type InspectorTab = 'changes' | 'files' | 'tools' | 'run';
+export type InspectorTab = 'changes' | 'files' | 'activity' | 'run';
 
 export type QueryState<T> = {
   data: T | undefined;
