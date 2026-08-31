@@ -14,12 +14,22 @@ describe('v1 workbench structural contract', () => {
     render(
       <Workbench
         topbar={<span>AgentHub</span>}
-        rail={<WorkbenchPanel side="rail" title="会话">列表</WorkbenchPanel>}
-        inspector={<WorkbenchPanel side="inspector" title="检查器">Changes</WorkbenchPanel>}
+        rail={
+          <WorkbenchPanel side="rail" title="会话">
+            列表
+          </WorkbenchPanel>
+        }
+        inspector={
+          <WorkbenchPanel side="inspector" title="检查器">
+            Changes
+          </WorkbenchPanel>
+        }
         terminal={<pre>Terminal output</pre>}
         labels={{ rail: '会话栏', conversation: '工作对话', inspector: '变更检查器' }}
       >
-        <WorkbenchPanel side="conversation" title="任务">内容</WorkbenchPanel>
+        <WorkbenchPanel side="conversation" title="任务">
+          内容
+        </WorkbenchPanel>
       </Workbench>,
     );
 
