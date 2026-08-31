@@ -11,7 +11,6 @@ import {
   type ApprovalRecord,
   type EventRecord,
   type FileEntry,
-  type MessageRecord,
   type ProjectRecord,
   type ResolvedPromptContextRecord,
   type RunRecord,
@@ -41,6 +40,7 @@ import type {
   GitDiffRecord,
   GitStatusRecord,
 } from '../workspace-types';
+import { useSessionMessages } from '../useSessionMessages';
 import workspaceStyles from '../workspace.module.css';
 
 const EVENT_PAGE_SIZE = 500;
@@ -256,12 +256,7 @@ export function WorkspacePage() {
     queryFn: () => api.get<SessionConfigurationRecord>(`/sessions/${id}/configuration`),
     enabled: Boolean(id),
   });
-  const messages = useQuery({
-    queryKey: ['messages', id],
-    queryFn: () => api.get<MessageRecord[]>(`/sessions/${id}/messages`),
-    enabled: Boolean(id),
-    refetchInterval: 3_000,
-  });
+  const messages = useSessionMessages(id);
   const runs = useQuery({
     queryKey: ['runs', id],
     queryFn: () => api.get<RunRecord[]>(`/sessions/${id}/runs`),
@@ -670,6 +665,9 @@ export function WorkspacePage() {
               onResolveApproval={(approvalId, optionId) =>
                 resolveApproval.mutateAsync({ id: approvalId, optionId })
               }
+              hasPreviousMessages={messages.hasPrevious}
+              isLoadingPreviousMessages={messages.isFetchingPrevious}
+              onLoadPreviousMessages={messages.fetchPrevious}
             />
             <Composer
               session={session.data}

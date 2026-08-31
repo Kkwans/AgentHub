@@ -3625,3 +3625,30 @@
     inset: 99px 0 0;
   }
 }
+
+.workspace :global(.conversation-history-control) {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 12px;
+}
+
+.workspace :global(.conversation-history-control button) {
+  min-height: 30px;
+  padding: 0 12px;
+  color: var(--ah-text-secondary);
+  font-size: 11.5px;
+  font-weight: 650;
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 999px;
+}
+
+.workspace :global(.conversation-history-control button:hover:not(:disabled)) {
+  color: var(--ah-text-primary);
+  background: var(--workspace-selected);
+}
+
+.workspace :global(.conversation-history-control button:disabled) {
+  cursor: wait;
+  opacity: 0.72;
+}

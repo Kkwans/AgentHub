@@ -110,7 +110,7 @@ function baseFetch(path: string, method?: string) {
   if (path === '/api/v1/prompt-context/resolve' && method === 'POST') {
     return jsonResponse({ ready: true, finalContext: '', missingVariables: [], items: [] });
   }
-  if (path === `/api/v1/sessions/${session.id}/messages`) return jsonResponse([]);
+  if (path.startsWith(`/api/v1/sessions/${session.id}/messages`)) return jsonResponse([]);
   if (path === `/api/v1/sessions/${session.id}/runs`) return jsonResponse([]);
   if (path === `/api/v1/sessions/${session.id}/events?afterSeq=0&limit=500`) {
     return jsonResponse([]);
@@ -182,7 +182,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
   it('messages 加载失败时显示可重试错误，不伪装成等待第一条指令', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
-      if (path === `/api/v1/sessions/${session.id}/messages`) {
+      if (path.startsWith(`/api/v1/sessions/${session.id}/messages`)) {
         return errorResponse('消息服务不可用');
       }
       return baseFetch(path, init?.method);
@@ -192,6 +192,48 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(await screen.findByText('请求失败，请稍后重试。')).toBeInTheDocument();
     expect(screen.queryByText('等待第一条指令')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: '重新加载' }).length).toBeGreaterThan(0);
+  });
+
+  it('消息窗口按 beforeSequence 加载更早历史并保持时间线顺序', async () => {
+    const currentPage = Array.from({ length: 100 }, (_, index) => ({
+      id: `message-${index + 101}`,
+      runId: null,
+      role: 'ASSISTANT' as const,
+      kind: 'TEXT',
+      text: `当前消息 ${index + 101}`,
+      sequence: index + 101,
+      createdAt: new Date((index + 101) * 1_000).toISOString(),
+    }));
+    const previousPage = Array.from({ length: 100 }, (_, index) => ({
+      id: `message-${index + 1}`,
+      runId: null,
+      role: 'ASSISTANT' as const,
+      kind: 'TEXT',
+      text: `更早消息 ${index + 1}`,
+      sequence: index + 1,
+      createdAt: new Date((index + 1) * 1_000).toISOString(),
+    }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.startsWith(`/api/v1/sessions/${session.id}/messages`)) {
+        return path.includes('beforeSequence=101')
+          ? jsonResponse(previousPage)
+          : jsonResponse(currentPage);
+      }
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    expect(await screen.findByText('当前消息 200')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: '加载更早消息' }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v1/sessions/${session.id}/messages?limit=100&beforeSequence=101`,
+        expect.any(Object),
+      ),
+    );
+    expect(await screen.findByText('更早消息 1')).toBeInTheDocument();
+    expect(screen.getByText('当前消息 200')).toBeInTheDocument();
   });
 
   it('正常对话视图将 Agent 事件类型翻译成中文，不泄露协议枚举', async () => {
@@ -221,7 +263,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
   it('供应商连接诊断在对话中显示中文下一步，原文只在脱敏诊断中出现', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
-      if (path === `/api/v1/sessions/${session.id}/messages`) {
+      if (path.startsWith(`/api/v1/sessions/${session.id}/messages`)) {
         return jsonResponse([
           {
             id: 'message-error',

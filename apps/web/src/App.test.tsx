@@ -107,7 +107,7 @@ function stubApi() {
       else if (url.endsWith('/projects')) data = [project];
       else if (url.includes(`/projects/${project.id}`)) data = project;
       else if (url.endsWith(`/sessions/${session.id}`)) data = session;
-      else if (url.endsWith(`/sessions/${session.id}/messages`)) data = [];
+      else if (url.includes(`/sessions/${session.id}/messages`)) data = [];
       else if (url.endsWith(`/sessions/${session.id}/runs`)) data = [];
       else if (url.includes(`/sessions/${session.id}/events`)) data = [];
       else if (url.includes(`/approvals?sessionId=${session.id}`)) data = [];

@@ -24,7 +24,7 @@ import {
   labelApprovalStatus,
   presentAgentMessage,
 } from '../../../presentation/domain-labels';
-import type { QueryState } from '../workspace-types';
+import type { MessageQueryState, QueryState } from '../workspace-types';
 import { RunStateBanner } from './RunStateBanner';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
@@ -145,9 +145,12 @@ export function Conversation({
   continueError,
   onContinue,
   onResolveApproval,
+  hasPreviousMessages,
+  isLoadingPreviousMessages,
+  onLoadPreviousMessages,
 }: {
   session: SessionRecord;
-  messages: QueryState<MessageRecord[]>;
+  messages: MessageQueryState;
   events: QueryState<EventRecord[]>;
   approvals: QueryState<ApprovalRecord[]>;
   activeRun: RunRecord | undefined;
@@ -157,6 +160,9 @@ export function Conversation({
   continueError: Error | null;
   onContinue: () => void;
   onResolveApproval: (id: string, optionId: string) => Promise<ApprovalRecord>;
+  hasPreviousMessages?: boolean;
+  isLoadingPreviousMessages?: boolean;
+  onLoadPreviousMessages?: () => Promise<unknown>;
 }) {
   const [approvalFeedback, setApprovalFeedback] = useState<string>();
   const [resolving, setResolving] = useState<string>();
@@ -185,6 +191,7 @@ export function Conversation({
   const timeline = buildConversationTimeline(messages.data ?? [], events.data ?? []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followTimelineRef = useRef(true);
+  const loadingPreviousRef = useRef(false);
   const latestTimelineId = timeline.at(-1)?.id;
   const activeThoughtId = activeRun
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
@@ -198,6 +205,28 @@ export function Conversation({
     });
     return () => cancelAnimationFrame(frame);
   }, [latestTimelineId]);
+  const loadPreviousMessages = async () => {
+    if (
+      !hasPreviousMessages ||
+      !onLoadPreviousMessages ||
+      loadingPreviousRef.current ||
+      isLoadingPreviousMessages
+    )
+      return;
+    const element = scrollRef.current;
+    const previousHeight = element?.scrollHeight ?? 0;
+    const previousTop = element?.scrollTop ?? 0;
+    loadingPreviousRef.current = true;
+    try {
+      await onLoadPreviousMessages();
+      requestAnimationFrame(() => {
+        const current = scrollRef.current;
+        if (current) current.scrollTop = current.scrollHeight - previousHeight + previousTop;
+      });
+    } finally {
+      loadingPreviousRef.current = false;
+    }
+  };
   const showEmpty =
     !messages.isLoading &&
     !events.isLoading &&
@@ -226,8 +255,21 @@ export function Conversation({
           const element = event.currentTarget;
           followTimelineRef.current =
             element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+          if (element.scrollTop < 80) void loadPreviousMessages();
         }}
       >
+        {(hasPreviousMessages || isLoadingPreviousMessages) && (
+          <div className="conversation-history-control">
+            <button
+              type="button"
+              onClick={() => void loadPreviousMessages()}
+              disabled={Boolean(isLoadingPreviousMessages)}
+              aria-label="加载更早消息"
+            >
+              {isLoadingPreviousMessages ? '正在加载更早消息…' : '加载更早消息'}
+            </button>
+          </div>
+        )}
         <RunStateBanner
           sessionStatus={session.status}
           activeRunStatus={activeRun?.status}

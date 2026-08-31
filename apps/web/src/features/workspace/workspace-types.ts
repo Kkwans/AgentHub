@@ -20,6 +20,12 @@ export type QueryState<T> = {
   refetch: () => unknown;
 };
 
+export type MessageQueryState = QueryState<MessageRecord[]> & {
+  hasPrevious: boolean;
+  isFetchingPrevious: boolean;
+  fetchPrevious: () => Promise<unknown>;
+};
+
 export type GitStatusRecord = {
   branch?: string;
   upstream?: string;
@@ -64,7 +70,7 @@ export type WorkspaceData = {
   session: SessionRecord;
   agent: AgentRecord | undefined;
   project: ProjectRecord | undefined;
-  messages: QueryState<MessageRecord[]>;
+  messages: MessageQueryState;
   events: QueryState<EventRecord[]>;
   approvals: QueryState<ApprovalRecord[]>;
   runs: QueryState<RunRecord[]>;
