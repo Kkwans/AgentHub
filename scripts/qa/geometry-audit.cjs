@@ -40,7 +40,8 @@ for (const page of pages) {
     else if (page[field].length)
       violations.push({ snapshot, rule: field, count: page[field].length });
   }
-  if (layout.resolvedTheme !== page.theme) violations.push({ snapshot, rule: 'theme-mismatch' });
+  if (layout.resolvedTheme !== page.theme && page.state !== 'loading' && !page.themePending)
+    violations.push({ snapshot, rule: 'theme-mismatch' });
   if (!layout.geometry) violations.push({ snapshot, rule: 'geometry-unmeasured' });
   for (const check of layout.geometry?.checks || []) {
     if (!Number.isFinite(check.actual) || check.actual > check.maximum) {

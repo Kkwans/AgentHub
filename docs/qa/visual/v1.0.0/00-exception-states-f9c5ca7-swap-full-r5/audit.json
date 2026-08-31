@@ -1,0 +1,4701 @@
+{
+  "source": "isolated-real-server",
+  "complete": true,
+  "routes": [
+    "/overview",
+    "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+    "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+    "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline"
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "viewports": [
+    "1920x1080",
+    "1600x1000",
+    "1440x900",
+    "1280x800",
+    "1024x768",
+    "768x1024",
+    "390x844"
+  ],
+  "pages": [
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/overview",
+      "state": "login",
+      "filename": "light-login-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 776,
+              "y": 523.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 776,
+              "y": 601.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1105,
+              "y": 603.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 776,
+              "y": 658.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "light-error-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "light-offline-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "expectedFailedRequests": [
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/runs",
+        "GET http://127.0.0.1:45881/api/v1/approvals?sessionId=c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/configuration",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/files?depth=4",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/status",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/diff?staged=false&whitespace=default",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/commits?limit=30",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/branches"
+      ],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1802,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1839,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 673,
+              "y": 1019,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 872.5,
+              "y": 1019,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1265,
+              "y": 1019,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1395,
+              "y": 1019,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1473,
+              "y": 1019,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 674,
+              "y": 945,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1490,
+              "y": 969,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1938,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1983,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 2028,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 2098,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1930,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1958,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1994.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 2022.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1938,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1995,
+              "y": 322.921875,
+              "width": 57,
+              "height": 88.75
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1920,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 1026
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 1632,
+              "height": 1026
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "light-loading-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/overview",
+      "state": "login",
+      "filename": "light-login-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 616,
+              "y": 483.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 616,
+              "y": 561.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 945,
+              "y": 563.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 616,
+              "y": 618.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "light-error-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "light-offline-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "expectedFailedRequests": [
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/files?depth=4",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/status",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/diff?staged=false&whitespace=default",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/commits?limit=30",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/branches"
+      ],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1482,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1519,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 513,
+              "y": 939,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 712.5,
+              "y": 939,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1105,
+              "y": 939,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1235,
+              "y": 939,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1313,
+              "y": 939,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 514,
+              "y": 865,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1330,
+              "y": 889,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1618,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1663,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1708,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1778,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1610,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1638,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1674.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1702.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1618,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1675,
+              "y": 322.921875,
+              "width": 57,
+              "height": 88.75
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1600,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 946
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 1312,
+              "height": 946
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "light-loading-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/overview",
+      "state": "login",
+      "filename": "light-login-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 536,
+              "y": 433.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 536,
+              "y": 511.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 865,
+              "y": 513.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 536,
+              "y": 568.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "light-error-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "light-offline-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "expectedFailedRequests": [
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/files?depth=4",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/status",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/diff?staged=false&whitespace=default",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/commits?limit=30",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/branches"
+      ],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1322,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1359,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 433,
+              "y": 839,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 632.5,
+              "y": 839,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1025,
+              "y": 839,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1155,
+              "y": 839,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1233,
+              "y": 839,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 434,
+              "y": 765,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1250,
+              "y": 789,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1458,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1503,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1548,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1618,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1450,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1478,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1514.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1542.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1458,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1515,
+              "y": 322.921875,
+              "width": 57,
+              "height": 88.75
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 846
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 1152,
+              "height": 846
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "light-loading-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/overview",
+      "state": "login",
+      "filename": "light-login-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 456,
+              "y": 383.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 456,
+              "y": 461.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 785,
+              "y": 463.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 456,
+              "y": 518.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "light-error-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "light-offline-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "expectedFailedRequests": [
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/files?depth=4",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/status",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/diff?staged=false&whitespace=default",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/commits?limit=30",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/branches"
+      ],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1162,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1199,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 353,
+              "y": 739,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 552.5,
+              "y": 739,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 945,
+              "y": 739,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1075,
+              "y": 739,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1153,
+              "y": 739,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 354,
+              "y": 665,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1170,
+              "y": 689,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1298,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1343,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1388,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1458,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1290,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1318,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1354.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1382.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1298,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1355,
+              "y": 322.921875,
+              "width": 57,
+              "height": 88.75
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 746
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 992,
+              "height": 746
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "light-loading-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/overview",
+      "state": "login",
+      "filename": "light-login-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 328,
+              "y": 367.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 328,
+              "y": 445.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 657,
+              "y": 447.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 328,
+              "y": 502.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "light-error-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "light-offline-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "expectedFailedRequests": [
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/messages",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/runs",
+        "GET http://127.0.0.1:45881/api/v1/approvals?sessionId=c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/configuration",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/files?depth=4",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/status",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/diff?staged=false&whitespace=default",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/commits?limit=30",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/branches"
+      ],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 14,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 270.046875,
+              "y": 10.5,
+              "width": 74,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 90,
+              "y": 707,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 289.5,
+              "y": 707,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 672,
+              "y": 707,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 802,
+              "y": 707,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 880,
+              "y": 707,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 91,
+              "y": 633,
+              "width": 798,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 897,
+              "y": 657,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1024,
+              "height": 54
+            },
+            "session-rail-panel": null,
+            "conversation-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 1024,
+              "height": 714
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "light-loading-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/overview",
+      "state": "login",
+      "filename": "light-login-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 200,
+              "y": 495.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 200,
+              "y": 573.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 529,
+              "y": 575.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 200,
+              "y": 630.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "light-error-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "light-offline-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 14,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 10,
+              "y": 60,
+              "width": 44,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 57,
+              "y": 60,
+              "width": 44,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 104,
+              "y": 60,
+              "width": 37.796875,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 144.796875,
+              "y": 60,
+              "width": 66,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 213.796875,
+              "y": 60,
+              "width": 44,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 26,
+              "y": 963,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 225.5,
+              "y": 963,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 480,
+              "y": 963,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 610,
+              "y": 963,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 688,
+              "y": 963,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 27,
+              "y": 889,
+              "width": 670,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 705,
+              "y": 913,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 768,
+              "height": 54
+            },
+            "session-rail-panel": null,
+            "conversation-panel": {
+              "x": 0,
+              "y": 99,
+              "width": 768,
+              "height": 925
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "light-loading-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/overview",
+      "state": "login",
+      "filename": "light-login-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41,
+              "y": 404.515625,
+              "width": 308,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41,
+              "y": 482.5625,
+              "width": 308,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 310,
+              "y": 484.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 41,
+              "y": 539.5625,
+              "width": 308,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "light-error-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "light-offline-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "light",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 12,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 7,
+              "y": 60,
+              "width": 40,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 50,
+              "y": 60,
+              "width": 40,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 93,
+              "y": 60,
+              "width": 33.796875,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 129.796875,
+              "y": 60,
+              "width": 62,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 194.796875,
+              "y": 60,
+              "width": 40,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 22,
+              "y": 793,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 136.5,
+              "y": 793,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 252,
+              "y": 793,
+              "width": 116,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 23,
+              "y": 727,
+              "width": 305,
+              "height": 52
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 333,
+              "y": 745,
+              "width": 34,
+              "height": 34
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 54
+            },
+            "session-rail-panel": null,
+            "conversation-panel": {
+              "x": 0,
+              "y": 99,
+              "width": 390,
+              "height": 745
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "light-loading-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/overview",
+      "state": "login",
+      "filename": "dark-login-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 776,
+              "y": 523.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 776,
+              "y": 601.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1105,
+              "y": 603.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 776,
+              "y": 658.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "dark-error-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "dark-offline-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1802,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1839,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 673,
+              "y": 1019,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 872.5,
+              "y": 1019,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1265,
+              "y": 1019,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1395,
+              "y": 1019,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1473,
+              "y": 1019,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 674,
+              "y": 945,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1490,
+              "y": 969,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1938,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1983,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 2028,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 2098,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1930,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1958,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1994.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 2022.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1938,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1920,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 1026
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 1632,
+              "height": 1026
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "dark-loading-1920x1080.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1920,
+        "clientWidth": 1920,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/overview",
+      "state": "login",
+      "filename": "dark-login-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 616,
+              "y": 483.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 616,
+              "y": 561.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 945,
+              "y": 563.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 616,
+              "y": 618.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "dark-error-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "dark-offline-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "expectedFailedRequests": [
+        "GET http://127.0.0.1:45881/api/v1/sessions",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/messages",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/runs",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/events?afterSeq=1&limit=500",
+        "GET http://127.0.0.1:45881/api/v1/approvals?sessionId=c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/configuration",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/files?depth=4",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/status",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/diff?staged=false&whitespace=default",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/commits?limit=30",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/branches"
+      ],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1482,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1519,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 513,
+              "y": 939,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 712.5,
+              "y": 939,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1105,
+              "y": 939,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1235,
+              "y": 939,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1313,
+              "y": 939,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 514,
+              "y": 865,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1330,
+              "y": 889,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1618,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1663,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1708,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1778,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1610,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1638,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1674.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1702.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1618,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1675,
+              "y": 322.921875,
+              "width": 57,
+              "height": 88.75
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1600,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 946
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 1312,
+              "height": 946
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "dark-loading-1600x1000.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1600,
+        "clientWidth": 1600,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/overview",
+      "state": "login",
+      "filename": "dark-login-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 536,
+              "y": 433.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 536,
+              "y": 511.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 865,
+              "y": 513.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 536,
+              "y": 568.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "dark-error-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "dark-offline-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1322,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1359,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 433,
+              "y": 839,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 632.5,
+              "y": 839,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1025,
+              "y": 839,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1155,
+              "y": 839,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1233,
+              "y": 839,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 434,
+              "y": 765,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1250,
+              "y": 789,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1458,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1503,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1548,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1618,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1450,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1478,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1514.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1542.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1458,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 846
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 1152,
+              "height": 846
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "dark-loading-1440x900.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/overview",
+      "state": "login",
+      "filename": "dark-login-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 456,
+              "y": 383.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 456,
+              "y": 461.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 785,
+              "y": 463.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 456,
+              "y": 518.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "dark-error-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "dark-offline-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "expectedFailedRequests": [
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/runs",
+        "GET http://127.0.0.1:45881/api/v1/approvals?sessionId=c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6",
+        "GET http://127.0.0.1:45881/api/v1/sessions/c847d528-8055-4376-92a3-1b9ddcf59de6/configuration",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/files?depth=4",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/status",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/diff?staged=false&whitespace=default",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/commits?limit=30",
+        "GET http://127.0.0.1:45881/api/v1/projects/53f40278-c7e2-43ad-92f3-d938e189b426/git/branches"
+      ],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1162,
+              "y": 10.5,
+              "width": 33,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1199,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41.421875,
+              "y": 136.3125,
+              "width": 144.578125,
+              "height": 19.375
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 353,
+              "y": 739,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 552.5,
+              "y": 739,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 945,
+              "y": 739,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1075,
+              "y": 739,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 1153,
+              "y": 739,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 354,
+              "y": 665,
+              "width": 808,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1170,
+              "y": 689,
+              "width": 36,
+              "height": 36
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1298,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1343,
+              "y": 54,
+              "width": 25,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1388,
+              "y": 54,
+              "width": 50,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1458,
+              "y": 54,
+              "width": 23.34375,
+              "height": 48
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1290,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1318,
+              "y": 166.1875,
+              "width": 34.171875,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1354.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 1382.171875,
+              "y": 166.1875,
+              "width": 26,
+              "height": 37.1875
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1298,
+              "y": 170.28125,
+              "width": 29,
+              "height": 29
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 1355,
+              "y": 322.921875,
+              "width": 57,
+              "height": 88.75
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 54
+            },
+            "session-rail-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 280,
+              "height": 746
+            },
+            "conversation-panel": {
+              "x": 284,
+              "y": 54,
+              "width": 992,
+              "height": 746
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "dark-loading-1280x800.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1280,
+        "clientWidth": 1280,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/overview",
+      "state": "login",
+      "filename": "dark-login-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 328,
+              "y": 367.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 328,
+              "y": 445.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 657,
+              "y": 447.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 328,
+              "y": 502.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "dark-error-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "dark-offline-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 14,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 270.046875,
+              "y": 10.5,
+              "width": 74,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 90,
+              "y": 707,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 289.5,
+              "y": 707,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 672,
+              "y": 707,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 802,
+              "y": 707,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 880,
+              "y": 707,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 91,
+              "y": 633,
+              "width": 798,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 897,
+              "y": 657,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 1024,
+              "height": 54
+            },
+            "session-rail-panel": null,
+            "conversation-panel": {
+              "x": 0,
+              "y": 54,
+              "width": 1024,
+              "height": 714
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "dark-loading-1024x768.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/overview",
+      "state": "login",
+      "filename": "dark-login-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 200,
+              "y": 495.515625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 200,
+              "y": 573.5625,
+              "width": 368,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 529,
+              "y": 575.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 200,
+              "y": 630.5625,
+              "width": 368,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "dark-error-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "dark-offline-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 14,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 10,
+              "y": 60,
+              "width": 44,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 57,
+              "y": 60,
+              "width": 44,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 104,
+              "y": 60,
+              "width": 37.796875,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 144.796875,
+              "y": 60,
+              "width": 66,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 213.796875,
+              "y": 60,
+              "width": 44,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 26,
+              "y": 963,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 225.5,
+              "y": 963,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 480,
+              "y": 963,
+              "width": 128,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 610,
+              "y": 963,
+              "width": 76,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 688,
+              "y": 963,
+              "width": 54,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 27,
+              "y": 889,
+              "width": 670,
+              "height": 60
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 705,
+              "y": 913,
+              "width": 36,
+              "height": 36
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 768,
+              "height": 54
+            },
+            "session-rail-panel": null,
+            "conversation-panel": {
+              "x": 0,
+              "y": 99,
+              "width": 768,
+              "height": 925
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "dark-loading-768x1024.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/overview",
+      "state": "login",
+      "filename": "dark-login-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41,
+              "y": 404.515625,
+              "width": 308,
+              "height": 38
+            },
+            {
+              "tag": "INPUT",
+              "role": null,
+              "x": 41,
+              "y": 482.5625,
+              "width": 308,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 310,
+              "y": 484.5625,
+              "width": 34,
+              "height": 34
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 41,
+              "y": 539.5625,
+              "width": 308,
+              "height": 40
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/workspace/00000000-0000-4000-8000-000000000000?state=error",
+      "state": "error",
+      "filename": "dark-error-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=offline",
+      "state": "offline",
+      "filename": "dark-offline-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "dark",
+        "geometry": {
+          "checks": [],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 12,
+              "y": 10.5,
+              "width": 63,
+              "height": 32
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 7,
+              "y": 60,
+              "width": 40,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 50,
+              "y": 60,
+              "width": 40,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 93,
+              "y": 60,
+              "width": 33.796875,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 129.796875,
+              "y": 60,
+              "width": 62,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": "tab",
+              "x": 194.796875,
+              "y": 60,
+              "width": 40,
+              "height": 38
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 22,
+              "y": 793,
+              "width": 110.5,
+              "height": 30
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 136.5,
+              "y": 793,
+              "width": 82.359375,
+              "height": 30
+            },
+            {
+              "tag": "SELECT",
+              "role": null,
+              "x": 252,
+              "y": 793,
+              "width": 116,
+              "height": 30
+            },
+            {
+              "tag": "TEXTAREA",
+              "role": null,
+              "x": 23,
+              "y": 727,
+              "width": 305,
+              "height": 52
+            },
+            {
+              "tag": "BUTTON",
+              "role": null,
+              "x": 333,
+              "y": 745,
+              "width": 34,
+              "height": 34
+            }
+          ],
+          "workspace": {
+            "workspace-contextbar": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 54
+            },
+            "session-rail-panel": null,
+            "conversation-panel": {
+              "x": 0,
+              "y": 99,
+              "width": 390,
+              "height": 745
+            },
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/workspace/c847d528-8055-4376-92a3-1b9ddcf59de6?state=loading",
+      "state": "loading",
+      "filename": "dark-loading-390x844.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "expectedConsoleErrors": [],
+      "expectedFailedRequests": [],
+      "layout": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "horizontalOverflow": false,
+        "unnamedButtons": 0,
+        "hiddenFocus": false,
+        "resolvedTheme": "unknown",
+        "geometry": {
+          "checks": [],
+          "controls": [],
+          "workspace": {
+            "workspace-contextbar": null,
+            "session-rail-panel": null,
+            "conversation-panel": null,
+            "inspector-panel": null
+          },
+          "unmeasured": [
+            "table-column-alignment",
+            "state-frame-shift",
+            "composer-readable-column",
+            "drawer-width"
+          ]
+        }
+      }
+    }
+  ],
+  "serverHealth": {
+    "status": "ok",
+    "version": "0.6.0",
+    "database": "pglite",
+    "web": true
+  },
+  "fixtureId": "exception-states:c847d528-8055-4376-92a3-1b9ddcf59de6",
+  "fixtureAgent": "isolated ACP fixture; no production Agent or credential",
+  "unverifiedStates": [
+    "PTY lifecycle",
+    "approval delivery after reconnect"
+  ],
+  "expectedNetworkFailures": {
+    "error": "The invalid session route intentionally returns HTTP 404.",
+    "offline": "The context is intentionally taken offline after the workspace shell loads."
+  },
+  "activeSnapshot": "dark/390x844/loading",
+  "failure": ""
+}

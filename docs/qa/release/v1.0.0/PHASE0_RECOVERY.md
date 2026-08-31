@@ -27,6 +27,9 @@
 - 隔离 Git 元数据读取只在该条命令配置已确认仓库的 `safe.directory`，不修改全局 Git 配置。
 - 版本脚本读取真实 `pnpm-workspace.yaml`；损坏的 manifest 必须报错，且明确其仅证明
   package 一致性，不能代替 UI/health/OCI 版本核验。
+- 异常态真实 E2E 使用隔离 token auth、临时管理员和新 Context 的认证 storage state；登录、加载、
+  错误、断网四态均不访问生产。加载态使用真实 CDP 网络节流和 CDP 截图，避免截图 API 等待字体
+  掩盖未完成加载现场；错误 404 与断网失败写入 `expected*`，非预期错误仍由几何审计拦截。
 
 ## 已执行的代码门禁
 
@@ -40,6 +43,8 @@
 | `corepack pnpm build` | passed；保留已有 chunk-size warning |
 | `git diff --check` | passed |
 | `corepack pnpm release:version-truth 1.0.0` | failed，预期：package 仍是 0.6.0 |
+| `tests/e2e-real/v1-exception-states.spec.ts` | 56/56 真实隔离页面通过；0 非预期 console/page/request error；0 横向溢出 |
+| `qa:geometry 00-exception-states.../audit.json` | passed；56 page snapshots；`releaseReady: false` |
 
 这不是 live Agent、完整写流程或视觉验收通过的声明。所有截图基于当前产品代码及
 原任务留下的机械格式化，不是已发布 v1.0；生产仍运行旧镜像。
@@ -110,12 +115,16 @@ network service、GPU process 和 renderer 收到 SIGKILL。其中 renderer PID 
 - 隔离 Workspace 状态矩阵完成 98/98，覆盖 ready/running/approval/failed/closed/Git changes/
   Terminal capability。后端 FAILED 与页面失败横幅缺失、Git drawer 可见性差异已写入
   `stateEvidence`；宿主机 `node-pty` 缺少 ARM64 binding，PTY 生命周期仍未验证。
+- 隔离异常态矩阵完成 56/56，覆盖 login/loading/error/offline × Light/Dark × 7 viewport；
+  0 非预期 console/page/request error、0 横向溢出，几何审计通过。错误态预期 404、断网态预期
+  `ERR_INTERNET_DISCONNECTED` 均保留在报告的 `expected*` 字段。当前加载态没有可见初始 Loading UI，
+  断网态没有独立离线提示，作为后续 Shell/Workspace 阶段的基线差异。
 - 完整矩阵采集过程中临时文件已有换出页，不能直接删除。后续 QA 仍需该容量，
   回滚必须先复核 RAM 余量、成功 `swapoff` 此精确文件，再删除；不得清空系统其他 swap。
 
 ## 剩余门禁与回滚
 
-- 核心两套基线与 Workspace 七状态矩阵已补齐；登录、loading/error/offline、PTY 生命周期、
+- 核心两套基线、Workspace 七状态矩阵与 login/loading/error/offline 异常态矩阵已补齐；PTY 生命周期、
   列对齐、状态位移、Composer 阅读列和 drawer 宽度仍须补齐，之后才能进入 Design System。
 - 规格包实际 102 文件，与其自带清单声明的 114 不一致；原文件保持不改。
   原命令聚合 SHA256 仍为 `edaddefde57bf3d26c4d404ae7aaa6d373b0d8ac35cd5561723f218a3d255e25`。
