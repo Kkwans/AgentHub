@@ -15,7 +15,10 @@ export default defineConfig({
       // DH4300Plus/aarch64 has no usable X11/Mali GPU session; software
       // rendering keeps NAS-local screenshots deterministic and avoids GPU
       // process crashes taking down the Chromium worker.
-      args: ['--disable-gpu'],
+      args: ['--disable-gpu', '--use-gl=angle', '--use-angle=swiftshader'],
+      ...(process.env.AGENTHUB_CHROMIUM_PATH
+        ? { executablePath: process.env.AGENTHUB_CHROMIUM_PATH }
+        : {}),
     },
   },
   projects: [

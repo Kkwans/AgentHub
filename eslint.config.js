@@ -8,6 +8,7 @@ export default tseslint.config(
       '**/coverage/**',
       '**/node_modules/**',
       '**/playwright-report/**',
+      '**/real-playwright-report/**',
       '**/test-results/**',
       '.agenthub/**',
       '.tmp/**',
@@ -33,6 +34,7 @@ export default tseslint.config(
         console: 'readonly',
         document: 'readonly',
         fetch: 'readonly',
+        module: 'readonly',
         process: 'readonly',
         require: 'readonly',
         window: 'readonly',
@@ -41,6 +43,16 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
+    files: ['scripts/release/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        URL: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+      },
     },
   },
   {

@@ -493,7 +493,11 @@ describe('WorkspacePage 数据分区可靠性', () => {
     });
     renderWorkspace(fetchMock);
 
-    const promptButton = await screen.findByRole('button', { name: /PromptOS 服务失败/ });
+    const promptButton = await screen.findByRole(
+      'button',
+      { name: /PromptOS 服务失败/ },
+      { timeout: 5_000 },
+    );
     fireEvent.click(promptButton);
     expect(await screen.findByRole('alert')).toHaveTextContent('请求失败，请稍后重试。');
     expect(screen.getByRole('button', { name: '重新解析' })).toBeInTheDocument();

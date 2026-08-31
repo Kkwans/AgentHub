@@ -1,0 +1,73 @@
+{
+  "capturedAt": "2026-08-31",
+  "repository": {
+    "branch": "main",
+    "head": "f4b5043b7c8a08228938320beecf5c9616f723c3",
+    "applicationSourceHead": "d09c575e2aaad749a8f0c822d89b3531d8634337",
+    "origin": "https://github.com/Kkwans/AgentHub.git",
+    "v1PackageSha256": "edaddefde57bf3d26c4d404ae7aaa6d373b0d8ac35cd5561723f218a3d255e25",
+    "v1PackageChecksumCommand": "find docs/AgentHub_v1.0_Production_Quality_Package -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum",
+    "v1PackagePortableManifestSha256": "46925d1c461f0fe4c7e66b18a24e26f99df476c423f0e3b993222ba9bfe468d2",
+    "v1PackagePortableManifestSort": "Unicode code point order; repo-relative paths"
+  },
+  "source": {
+    "packageVersion": "0.6.0",
+    "workspacePackageCount": 10,
+    "appShellDisplay": "v0.9",
+    "healthVersion": "0.6.0",
+    "packageManifestCount": 11
+  },
+  "deployment": {
+    "host": "DH4300Plus",
+    "architecture": "aarch64",
+    "composeProject": "agenthub",
+    "composeWorkingDirectory": "/volume2/DockerProject/agenthub",
+    "composeConfig": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "container": "agenthub",
+    "imageTag": "agenthub:0.8.0-nas.d09c575",
+    "imageId": "sha256:1fb03d1230c3630fa6f6d74f25e47c4f40b57faf73e696906e153b02df4223b7",
+    "ociVersion": "0.8.0",
+    "ociRevision": "d09c575e2aaad749a8f0c822d89b3531d8634337",
+    "health": {
+      "status": "ok",
+      "version": "0.6.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "toolchain": {
+    "node": "v24.18.0",
+    "pnpm": "11.11.0",
+    "playwright": "1.62.1",
+    "chromium": "/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome",
+    "chromiumVersion": "151.0.7922.34"
+  },
+  "verification": {
+    "lint": "passed: corepack pnpm lint",
+    "format": "passed: corepack pnpm format:check",
+    "typecheck": "passed: corepack pnpm typecheck",
+    "test": "passed: corepack pnpm test; 61 files / 256 tests passed, 4 files / 10 tests skipped, 333.90s",
+    "qaUnit": "passed: node --test scripts/qa/visual-evidence.test.cjs; 4/4",
+    "build": "passed: corepack pnpm build; existing chunk-size warning remains",
+    "diffCheck": "passed: git diff --check",
+    "productionAuthentication": "verified existing protected browser-token reference; no credentials saved in evidence",
+    "productionVisual": "incomplete: two read-only attempts preserved; preflight POST classification corrected; full rerun blocked by host swap pressure",
+    "isolatedVisual": "incomplete: best run captured 69/140 snapshots with zero page/console/request errors or overflow; later renderer SIGKILL attributed to earlyoom",
+    "releaseVersion": "failed as expected: corepack pnpm release:version-truth 1.0.0; current packages remain 0.6.0",
+    "geometry": "failed: incomplete matrix (69/140), 72 completeness violations; unmeasured rules listed; releaseReady=false",
+    "browserBlocker": {
+      "cause": "NAS earlyoom killed Chromium network/GPU/renderer processes while swap was nearly exhausted",
+      "lastRendererPid": 1313321,
+      "lastObservedFreeSwapMiB": 5,
+      "lastObservedFreeSwapPercent": 0.07,
+      "systemChangesMade": false
+    }
+  },
+  "verifiedAt": "2026-08-31T13:35:18.321702+00:00",
+  "specificationInventory": {
+    "actualFileCount": 102,
+    "declaredFileCount": 114,
+    "actualBytes": 86566,
+    "note": "The supplied package inventory describes 114 files, while the preserved supplied Git package has 102. The source package remains unchanged; no prototype was invented."
+  }
+}

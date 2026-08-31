@@ -9,8 +9,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('@playwright/test');
+const { URL } = require('node:url');
+const { measureLayout, writeAudit, isReadOnlyRequest } = require('./visual-evidence.cjs');
 
-const baseURL = (process.env.AGENTHUB_BASE_URL || 'http://127.0.0.1:3210').replace(/\/$/, '');
+const baseURL = (process.env.AGENTHUB_BASE_URL || 'http://192.168.5.110:3210').replace(/\/$/, '');
 const tokenFile = process.env.AGENTHUB_BROWSER_TOKEN_FILE || '';
 const outputDir = path.resolve(
   process.env.AGENTHUB_VISUAL_OUTPUT || path.join('docs', 'qa', 'visual', 'latest'),
@@ -18,6 +20,8 @@ const outputDir = path.resolve(
 const waitMs = Number(process.env.AGENTHUB_VISUAL_WAIT_MS || 2_500);
 const screenshotTimeoutMs = Number(process.env.AGENTHUB_VISUAL_SCREENSHOT_TIMEOUT_MS || 60_000);
 const navigationTimeoutMs = Number(process.env.AGENTHUB_VISUAL_NAVIGATION_TIMEOUT_MS || 60_000);
+const chromiumPath = process.env.AGENTHUB_CHROMIUM_PATH || '';
+let currentReport;
 
 if (!tokenFile) {
   throw new Error(
@@ -27,13 +31,16 @@ if (!tokenFile) {
 
 const token = fs.readFileSync(tokenFile, 'utf8').trim();
 if (!token) throw new Error('browser token file is empty');
-fs.mkdirSync(outputDir, { recursive: true });
+fs.mkdirSync(path.dirname(outputDir), { recursive: true });
+fs.mkdirSync(outputDir); // Never overwrite a previous run's evidence.
 
 const viewports = [
+  ['1920', { width: 1920, height: 1080 }],
   ['1600', { width: 1600, height: 1000 }],
-  ['1440', { width: 1440, height: 1024 }],
-  ['1024', { width: 1024, height: 900 }],
-  ['768', { width: 768, height: 900 }],
+  ['1440', { width: 1440, height: 900 }],
+  ['1280', { width: 1280, height: 800 }],
+  ['1024', { width: 1024, height: 768 }],
+  ['768', { width: 768, height: 1024 }],
   ['390', { width: 390, height: 844 }],
 ];
 
@@ -44,10 +51,12 @@ function trimError(value) {
 }
 
 function routeFileName(route) {
-  return route
-    .replace(/^\//, '')
-    .replace(/[^a-zA-Z0-9-]+/g, '-')
-    .replace(/^-|-$/g, '') || 'home';
+  return (
+    route
+      .replace(/^\//, '')
+      .replace(/[^a-zA-Z0-9-]+/g, '-')
+      .replace(/^-|-$/g, '') || 'home'
+  );
 }
 
 async function waitForStable(page) {
@@ -58,61 +67,60 @@ async function waitForStable(page) {
 }
 
 async function auditPage(page) {
-  return page.evaluate(() => {
-    const root = document.documentElement;
-    const body = document.body;
-    const scrollWidth = Math.max(root?.scrollWidth || 0, body?.scrollWidth || 0);
-    const clientWidth = root?.clientWidth || 0;
-    const unnamedButtons = [...document.querySelectorAll('button')].filter((button) => {
-      // Controls explicitly removed from the accessibility tree (for example,
-      // Mantine's input clear affordance) are implementation details, not
-      // user-facing unnamed actions.
-      if (button.getAttribute('aria-hidden') === 'true') return false;
-      return (
-        !button.getAttribute('aria-label') &&
-        !button.getAttribute('aria-labelledby') &&
-        !button.getAttribute('title') &&
-        !(button.textContent || '').trim()
-      );
-    }).length;
-    const hiddenFocus = [...document.querySelectorAll(':focus-visible')].some((element) => {
-      const rect = element.getBoundingClientRect();
-      return rect.width === 0 || rect.height === 0;
-    });
-    return {
-      scrollWidth,
-      clientWidth,
-      horizontalOverflow: scrollWidth > clientWidth + 1,
-      unnamedButtons,
-      hiddenFocus,
-      visibleTextLength: body?.innerText?.length || 0,
-      resolvedTheme: document.documentElement.dataset.agenthubTheme || 'unknown',
-    };
+  return page.evaluate(measureLayout);
+}
+
+async function protectProductionContext(context) {
+  await context.route('**/*', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.origin !== new URL(baseURL).origin) {
+      const headers = { ...request.headers() };
+      delete headers.authorization;
+      return route.continue({ headers });
+    }
+    if (!isReadOnlyRequest(request.method(), url.pathname)) {
+      if (currentReport) {
+        currentReport.blockedWrites.push(`${request.method()} ${url.pathname}`);
+        writeAudit(outputDir, currentReport);
+      }
+      return route.abort('blockedbyclient');
+    }
+    await route.continue({ headers: { ...request.headers(), authorization: `Bearer ${token}` } });
   });
 }
 
 async function captureAuthenticated(browser, theme, viewport, routes) {
   const context = await browser.newContext({
     viewport,
-    extraHTTPHeaders: { authorization: `Bearer ${token}` },
   });
-  await context.addInitScript(({ apiToken, selectedTheme }) => {
-    window.localStorage.setItem('agenthub-theme', selectedTheme);
-    const NativeWebSocket = window.WebSocket;
-    window.WebSocket = class AgentHubWebSocket extends NativeWebSocket {
-      constructor(url, protocols) {
-        const values = Array.isArray(protocols) ? [...protocols] : protocols ? [protocols] : [];
-        if (!values.some((value) => String(value).startsWith('agenthub-token.'))) {
-          values.push(`agenthub-token.${apiToken}`);
+  await protectProductionContext(context);
+  await context.addInitScript(
+    ({ apiToken, selectedTheme, origin }) => {
+      if (window.location.origin !== origin) return;
+      window.localStorage.setItem('agenthub-theme', selectedTheme);
+      const NativeWebSocket = window.WebSocket;
+      window.WebSocket = class AgentHubWebSocket extends NativeWebSocket {
+        constructor(url, protocols) {
+          const values = Array.isArray(protocols) ? [...protocols] : protocols ? [protocols] : [];
+          if (!values.some((value) => String(value).startsWith('agenthub-token.'))) {
+            if (new URL(url, window.location.href).host === window.location.host)
+              values.push(`agenthub-token.${apiToken}`);
+          }
+          super(url, values);
         }
-        super(url, values);
-      }
-    };
-  }, { apiToken: token, selectedTheme: theme });
+      };
+    },
+    { apiToken: token, selectedTheme: theme, origin: new URL(baseURL).origin },
+  );
 
   const pages = [];
+  const group = { theme, viewport: `${viewport.width}x${viewport.height}`, pages };
+  currentReport.authenticated.push(group);
   for (const route of routes) {
     const page = await context.newPage();
+    currentReport.activeSnapshot = `${theme}/${group.viewport}/${route}`;
+    writeAudit(outputDir, currentReport);
     const consoleErrors = [];
     const pageErrors = [];
     const failedRequests = [];
@@ -127,12 +135,18 @@ async function captureAuthenticated(browser, theme, viewport, routes) {
       waitUntil: 'domcontentloaded',
       timeout: navigationTimeoutMs,
     });
+    if (currentReport.blockedWrites.length)
+      throw new Error('Production capture stopped after a blocked write request');
     await waitForStable(page);
+    await page
+      .locator('main, .workspace-shell')
+      .first()
+      .waitFor({ state: 'visible', timeout: 30_000 });
     const layout = await auditPage(page);
     const fileName = `${theme}-${routeFileName(route)}-${viewport.width}x${viewport.height}.png`;
     await page.screenshot({
       path: path.join(outputDir, fileName),
-      fullPage: true,
+      fullPage: false,
       timeout: screenshotTimeoutMs,
     });
     pages.push({
@@ -144,10 +158,12 @@ async function captureAuthenticated(browser, theme, viewport, routes) {
       failedRequests,
       layout,
     });
+    writeAudit(outputDir, currentReport);
+    console.log(`captured ${theme} ${group.viewport} ${route}`);
     await page.close();
   }
   await context.close();
-  return { theme, viewport: `${viewport.width}x${viewport.height}`, pages };
+  return group;
 }
 
 async function discoverRoutes(page) {
@@ -168,7 +184,7 @@ async function discoverRoutes(page) {
       '/projects/new',
       '/agents/agents',
       '/agents/agents/discover',
-      '/agents/runtimes',
+      '/agents/runtime',
       '/agents/nodes',
       '/agents/nodes/register',
       '/agents/diagnostics',
@@ -232,54 +248,102 @@ async function captureUnauthenticated(browser) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--disable-gpu', '--use-gl=angle', '--use-angle=swiftshader'],
+    ...(chromiumPath ? { executablePath: chromiumPath } : {}),
+  });
   try {
     const routeContext = await browser.newContext({
       viewport: viewports[0][1],
-      extraHTTPHeaders: { authorization: `Bearer ${token}` },
     });
+    await protectProductionContext(routeContext);
+    const authResponse = await routeContext.request.get(`${baseURL}/api/v1/auth/status`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!authResponse.ok() || !(await authResponse.json()).data?.authenticated)
+      throw new Error('Existing browser token is not authenticated');
+    const healthResponse = await routeContext.request.get(`${baseURL}/api/v1/health`);
+    if (!healthResponse.ok()) throw new Error('Production health check failed');
+    const serverHealth = (await healthResponse.json()).data;
     const routePage = await routeContext.newPage();
-    await routeContext.addInitScript((apiToken) => {
-      const NativeWebSocket = window.WebSocket;
-      window.WebSocket = class AgentHubWebSocket extends NativeWebSocket {
-        constructor(url, protocols) {
-          const values = Array.isArray(protocols) ? [...protocols] : protocols ? [protocols] : [];
-          if (!values.some((value) => String(value).startsWith('agenthub-token.'))) {
-            values.push(`agenthub-token.${apiToken}`);
+    await routeContext.addInitScript(
+      ({ apiToken, origin }) => {
+        if (window.location.origin !== origin) return;
+        const NativeWebSocket = window.WebSocket;
+        window.WebSocket = class AgentHubWebSocket extends NativeWebSocket {
+          constructor(url, protocols) {
+            const values = Array.isArray(protocols) ? [...protocols] : protocols ? [protocols] : [];
+            if (!values.some((value) => String(value).startsWith('agenthub-token.'))) {
+              if (new URL(url, window.location.href).host === window.location.host)
+                values.push(`agenthub-token.${apiToken}`);
+            }
+            super(url, values);
           }
-          super(url, values);
-        }
-      };
-    }, token);
+        };
+      },
+      { apiToken: token, origin: new URL(baseURL).origin },
+    );
     await routePage.goto(`${baseURL}/home`, {
       waitUntil: 'domcontentloaded',
       timeout: navigationTimeoutMs,
     });
-    const routes = await discoverRoutes(routePage);
+    const discoveredRoutes = await discoverRoutes(routePage);
+    const routes =
+      process.env.AGENTHUB_VISUAL_SCOPE === 'baseline'
+        ? discoveredRoutes.filter(
+            (route) =>
+              [
+                '/home',
+                '/projects',
+                '/agents/agents',
+                '/agents/runtime',
+                '/agents/nodes',
+                '/prompts',
+                '/settings/appearance',
+              ].includes(route) ||
+              /^\/projects\/[^/]+\/(overview|work|sessions)$/.test(route) ||
+              route.startsWith('/workspace/'),
+          )
+        : discoveredRoutes;
     await routeContext.close();
 
-    const report = {
+    const report = (currentReport = {
+      source: 'production-read-only',
+      scope: process.env.AGENTHUB_VISUAL_SCOPE || 'all-routes',
+      complete: false,
+      activeSnapshot: '',
       capturedAt: new Date().toISOString(),
       baseURL,
+      serverHealth,
+      sourceCommit: process.env.AGENTHUB_DEPLOYED_REVISION || 'unverified',
       routes,
-      viewports: viewports.map(([label]) => label),
+      viewports: viewports.map(([, viewport]) => `${viewport.width}x${viewport.height}`),
       themes,
-      unauthenticated: await captureUnauthenticated(browser),
+      unauthenticated: null,
       authenticated: [],
-    };
+      blockedWrites: [],
+    });
+    writeAudit(outputDir, report);
+    report.unauthenticated = await captureUnauthenticated(browser);
+    writeAudit(outputDir, report);
     for (const theme of themes) {
       for (const [label, viewport] of viewports) {
-        report.authenticated.push(await captureAuthenticated(browser, theme, viewport, routes));
+        await captureAuthenticated(browser, theme, viewport, routes);
       }
     }
-    fs.writeFileSync(path.join(outputDir, 'audit.json'), `${JSON.stringify(report, null, 2)}\n`);
+    report.complete = true;
+    writeAudit(outputDir, report);
     const pages = report.authenticated.flatMap((entry) => entry.pages);
     const consoleErrorCount = pages.reduce((sum, page) => sum + page.consoleErrors.length, 0);
     const pageErrorCount = pages.reduce((sum, page) => sum + page.pageErrors.length, 0);
     const failedRequestCount = pages.reduce((sum, page) => sum + page.failedRequests.length, 0);
     const overflowCount = pages.filter((page) => page.layout.horizontalOverflow).length;
     const unnamedButtonCount = pages.reduce((sum, page) => sum + page.layout.unnamedButtons, 0);
-    const hiddenFocusCount = pages.reduce((sum, page) => sum + (page.layout.hiddenFocus ? 1 : 0), 0);
+    const hiddenFocusCount = pages.reduce(
+      (sum, page) => sum + (page.layout.hiddenFocus ? 1 : 0),
+      0,
+    );
     const summary = {
       outputDir,
       routes,
@@ -307,6 +371,10 @@ async function captureUnauthenticated(browser) {
     await browser.close();
   }
 })().catch((error) => {
+  if (currentReport) {
+    currentReport.failure = trimError(error.message);
+    writeAudit(outputDir, currentReport);
+  }
   console.error(error?.stack || error);
   process.exitCode = 1;
 });
