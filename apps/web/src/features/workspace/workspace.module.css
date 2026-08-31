@@ -3497,18 +3497,14 @@
     display: flex !important;
     position: relative !important;
     inset: auto !important;
-    width: auto !important;
     height: 100% !important;
-    flex: 0 1 auto !important;
     box-shadow: none !important;
   }
 
   .workspace :global(.conversation-panel) {
     position: relative !important;
     inset: auto !important;
-    width: auto !important;
     height: 100% !important;
-    flex: 1 1 auto !important;
   }
 }
 
@@ -3544,18 +3540,14 @@
     display: flex !important;
     position: relative !important;
     inset: auto !important;
-    width: auto !important;
     height: 100% !important;
-    flex: 0 1 min(440px, calc(100vw - 520px)) !important;
     box-shadow: none !important;
   }
 
   .workspace :global(.conversation-panel) {
     position: relative !important;
     inset: auto !important;
-    width: auto !important;
     height: 100% !important;
-    flex: 1 1 auto !important;
   }
 
   .workspace :global(.workspace-drawer-scrim) {

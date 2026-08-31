@@ -234,8 +234,7 @@ export function Conversation({
     !messages.error &&
     !events.error &&
     !approvals.error &&
-    !messages.data?.length &&
-    !events.data?.length;
+    timeline.length === 0;
   return (
     <div className="conversation">
       <div className="panel-title conversation-title">
