@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   AhEmptyState,
@@ -10,10 +12,13 @@ import {
   AhInput,
   AhProjectContext,
   AhStatusPill,
+  AhStatusDot,
   AhThemeSelect,
   AhTextarea,
 } from './product.js';
 import { AgentHubProvider } from './provider.js';
+
+afterEach(cleanup);
 
 describe('product components', () => {
   it('translates unknown domain status without leaking the enum', () => {
@@ -21,6 +26,12 @@ describe('product components', () => {
     const status = screen.getByRole('status');
     expect(status.textContent).toContain('状态');
     expect(status.textContent).not.toContain('SOME_INTERNAL_STATE');
+  });
+
+  it('offers a compact dot status for dense entity rows', () => {
+    render(<AhStatusDot status="RUNNING" />);
+    expect(screen.getByRole('status')).toHaveTextContent('执行中');
+    expect(screen.getByRole('status').querySelector('[aria-hidden="true"]')).toBeTruthy();
   });
 
   it('provides actionable empty and error states', () => {

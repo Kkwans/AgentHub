@@ -1,0 +1,170 @@
+/* AgentHub v1 foundation tokens. Feature CSS must consume these semantic values. */
+:root {
+  color-scheme: light;
+
+  --ah-space-1: 4px;
+  --ah-space-2: 8px;
+  --ah-space-3: 12px;
+  --ah-space-4: 16px;
+  --ah-space-5: 20px;
+  --ah-space-6: 24px;
+  --ah-space-7: 28px;
+  --ah-space-8: 32px;
+  --ah-space-10: 40px;
+  --ah-space-12: 48px;
+
+  --ah-control-xs: 28px;
+  --ah-control-sm: 32px;
+  --ah-control-md: 36px;
+  --ah-control-lg: 40px;
+
+  --ah-row-compact: 48px;
+  --ah-row-default: 60px;
+  --ah-row-comfort: 68px;
+  --ah-row-current: var(--ah-row-comfort);
+
+  --ah-topbar-h: 56px;
+  --ah-sidebar-w: 220px;
+  --ah-sidebar-collapsed-w: 60px;
+  --ah-page-gutter-lg: 28px;
+  --ah-page-gutter-md: 22px;
+  --ah-page-gutter-sm: 16px;
+  --ah-panel-header-h: 48px;
+
+  --ah-radius-control: 8px;
+  --ah-radius-surface: 12px;
+  --ah-radius-overlay: 14px;
+  --ah-radius-dialog: var(--ah-radius-overlay);
+
+  --ah-font-sans:
+    'Geist Variable', 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans CJK SC', system-ui, sans-serif;
+  --ah-font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --ah-font-size-body: 14px;
+  --ah-font-line-body: 1.55;
+  --ah-font-size-label: 12.5px;
+  --ah-font-line-label: 1.4;
+  --ah-font-size-meta: 12px;
+  --ah-font-line-meta: 1.4;
+  --ah-font-size-section: 18px;
+  --ah-font-line-section: 1.3;
+  --ah-font-size-page: 30px;
+  --ah-font-line-page: 1.2;
+
+  --ah-canvas: #f7f8fa;
+  --ah-canvas-alt: #f0f2f5;
+  --ah-surface: #ffffff;
+  --ah-surface-subtle: #f5f6f8;
+  --ah-surface-tinted: #f4f1ff;
+  --ah-surface-elevated: #ffffff;
+  --ah-text-primary: #1b1d22;
+  --ah-text-secondary: #5e626b;
+  --ah-text-tertiary: #747983;
+  --ah-text-disabled: #a5a9b1;
+  --ah-border-subtle: #e5e7eb;
+  --ah-border-default: #d9dce2;
+  --ah-border-strong: #c8ccd4;
+  --ah-accent-primary: #6246f5;
+  --ah-accent-hover: #5538e7;
+  --ah-accent-pressed: #4a2fd0;
+  --ah-accent-soft: #f0edff;
+  --ah-accent-soft-hover: #e8e2ff;
+  --ah-accent-violet: #8b5cf6;
+  --ah-accent-blue: #4f7cff;
+  --ah-accent-cyan: #33c4dc;
+  --ah-success: #087a55;
+  --ah-warning: #b6690b;
+  --ah-danger: #c83b48;
+  --ah-info: #2f74d9;
+  --ah-info-soft: #eaf2ff;
+  --ah-success-soft: #e8f8f1;
+  --ah-warning-soft: #fff4dd;
+  --ah-danger-soft: #fdecee;
+  --ah-overlay: rgb(25 29 38 / 45%);
+
+  --ah-motion-fast: 120ms;
+  --ah-motion-base: 180ms;
+  --ah-motion-panel: 220ms;
+  --ah-focus-width: 2px;
+  --ah-focus-offset: 2px;
+  --ah-shadow-xs: 0 1px 2px rgb(17 22 38 / 3.5%);
+  --ah-shadow-sm: 0 5px 18px -9px rgb(17 22 38 / 13%);
+  --ah-shadow-md: 0 14px 38px -18px rgb(17 22 38 / 20%);
+  --ah-shadow-lg: 0 28px 76px -28px rgb(17 22 38 / 22%);
+  --ah-shadow-accent: 0 12px 34px -12px rgb(98 70 245 / 30%);
+  --mantine-color-dimmed: var(--ah-text-secondary);
+
+  /* Workbench owns only --wb-* names and never overrides global --ah-* semantics. */
+  --wb-canvas: var(--ah-canvas);
+  --wb-panel: var(--ah-surface);
+  --wb-panel-subtle: var(--ah-surface-subtle);
+  --wb-content: var(--ah-surface-elevated);
+  --wb-ink: var(--ah-text-primary);
+  --wb-muted: var(--ah-text-secondary);
+  --wb-border: var(--ah-border-subtle);
+  --wb-topbar-h: 50px;
+  --wb-rail-default: 256px;
+  --wb-rail-min: 216px;
+  --wb-rail-max: 336px;
+  --wb-conversation-min: 520px;
+  --wb-inspector-default: 440px;
+  --wb-inspector-min: 360px;
+  --wb-inspector-max: 760px;
+  --wb-composer-default: 820px;
+  --wb-composer-min: 620px;
+  --wb-composer-max: 920px;
+  --wb-terminal-default: 280px;
+  --wb-terminal-min: 160px;
+  --wb-terminal-max: 55vh;
+}
+
+:root[data-agenthub-density='compact'] {
+  --ah-row-current: var(--ah-row-compact);
+  --ah-density-section-gap: var(--ah-space-4);
+  --ah-density-control-gap: var(--ah-space-2);
+}
+
+:root[data-agenthub-density='comfortable'],
+:root:not([data-agenthub-density]) {
+  --ah-row-current: var(--ah-row-comfort);
+  --ah-density-section-gap: var(--ah-space-6);
+  --ah-density-control-gap: var(--ah-space-3);
+}
+
+:root[data-agenthub-theme='dark'] {
+  color-scheme: dark;
+  --ah-canvas: #0b0d13;
+  --ah-canvas-alt: #10131b;
+  --ah-surface: #141821;
+  --ah-surface-subtle: #10141d;
+  --ah-surface-tinted: #19182a;
+  --ah-surface-elevated: #1a202d;
+  --ah-text-primary: #f4f5f7;
+  --ah-text-secondary: #abb3c1;
+  --ah-text-tertiary: #939dab;
+  --ah-text-disabled: #5d6675;
+  --ah-border-subtle: #242b38;
+  --ah-border-default: #303949;
+  --ah-border-strong: #424d61;
+  --ah-accent-primary: #9a8dff;
+  --ah-accent-hover: #a99dff;
+  --ah-accent-pressed: #8376ed;
+  --ah-accent-soft: #2d2750;
+  --ah-accent-soft-hover: #393160;
+  --ah-accent-violet: #b18aff;
+  --ah-accent-blue: #80a2ff;
+  --ah-accent-cyan: #61d8e8;
+  --ah-success: #55d3a5;
+  --ah-warning: #f0bd5a;
+  --ah-danger: #ff7d83;
+  --ah-info: #7db5ff;
+  --ah-info-soft: #182c4a;
+  --ah-success-soft: #12352b;
+  --ah-warning-soft: #3a2e16;
+  --ah-danger-soft: #3f1d24;
+  --ah-overlay: rgb(2 4 10 / 72%);
+  --ah-shadow-xs: 0 1px 2px rgb(0 0 0 / 20%);
+  --ah-shadow-sm: 0 8px 22px -12px rgb(0 0 0 / 50%);
+  --ah-shadow-md: 0 16px 44px -22px rgb(0 0 0 / 62%);
+  --ah-shadow-lg: 0 28px 80px -26px rgb(0 0 0 / 72%);
+  --ah-shadow-accent: 0 12px 34px -12px rgb(98 70 245 / 32%);
+}

@@ -89,20 +89,21 @@ function BadgeLike({ color, children }: { color: string; children: ReactNode }) 
   const colors = palette[color] ?? palette.gray ?? { background: 'transparent', color: 'inherit' };
   return (
     <span
-      style={{
-        display: 'inline-flex',
-        minHeight: 24,
-        alignItems: 'center',
-        borderRadius: 999,
-        padding: '0 9px',
-        background: colors.background,
-        color: colors.color,
-        fontSize: 12,
-        fontWeight: 650,
-        lineHeight: 1,
-      }}
+      className="ah-status-pill"
+      data-tone={color}
+      style={{ background: colors.background, color: colors.color }}
     >
       {children}
+    </span>
+  );
+}
+
+export function AhStatusDot({ status, label }: { status: string; label?: string }) {
+  const tone = statusColor(status);
+  return (
+    <span className="ah-status-dot" data-tone={tone} role="status">
+      <span aria-hidden="true" />
+      {label ?? humanizeStatus(status)}
     </span>
   );
 }
@@ -286,8 +287,8 @@ export function AhSurface({
     <Paper
       {...props}
       withBorder={withBorder}
-      radius="lg"
-      shadow="xs"
+      radius="md"
+      shadow="none"
       style={{
         background: 'var(--ah-surface)',
         borderColor: 'var(--ah-border-default)',
@@ -315,7 +316,8 @@ export function AhThemeSelect() {
         { value: 'system', label: '跟随系统' },
       ]}
       allowDeselect={false}
-      radius="md"
+      radius="sm"
+      size="md"
     />
   );
 }
@@ -324,7 +326,7 @@ export function AhInput({
   label,
   ...props
 }: ComponentProps<typeof TextInput> & { label?: string }) {
-  return <TextInput {...props} label={label} radius="md" />;
+  return <TextInput {...props} label={label} radius="sm" size="md" />;
 }
 
 export type AhTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {

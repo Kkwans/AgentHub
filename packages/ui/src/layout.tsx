@@ -4,6 +4,91 @@ function cx(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(' ');
 }
 
+export interface ToolbarProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
+  label?: string;
+}
+
+export function Toolbar({ children, label = '工具栏', className, ...props }: ToolbarProps) {
+  return (
+    <div {...props} role="toolbar" aria-label={label} className={cx('ah-toolbar', className)}>
+      {children}
+    </div>
+  );
+}
+
+export interface LocalNavItem {
+  href: string;
+  label: string;
+  active?: boolean;
+  count?: number;
+}
+
+export function LocalNav({
+  items,
+  label = '页面导航',
+  className,
+}: {
+  items: readonly LocalNavItem[];
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <nav aria-label={label} className={cx('ah-local-nav', className)}>
+      {items.map((item) => (
+        <a key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined}>
+          <span>{item.label}</span>
+          {typeof item.count === 'number' ? <small>{item.count}</small> : null}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+export function SettingRow({
+  label,
+  description,
+  control,
+  className,
+}: {
+  label: string;
+  description?: string;
+  control: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cx('ah-setting-row', className)}>
+      <div className="ah-setting-row-copy">
+        <strong>{label}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+      <div className="ah-setting-row-control">{control}</div>
+    </div>
+  );
+}
+
+export function PanelHeader({
+  title,
+  description,
+  actions,
+  className,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <header className={cx('ah-panel-header', className)}>
+      <div className="ah-panel-header-copy">
+        <strong>{title}</strong>
+        {description ? <span>{description}</span> : null}
+      </div>
+      {actions ? <div className="ah-panel-header-actions">{actions}</div> : null}
+    </header>
+  );
+}
+
 export interface PageFrameProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
@@ -146,3 +231,15 @@ export function SettingsLayout({
     </div>
   );
 }
+
+// v1 names are additive aliases so existing feature imports remain stable while
+// new consumers can use the architecture vocabulary from the design contract.
+export const AhPageHeader = ScreenHeader;
+export const AhToolbar = Toolbar;
+export const AhLocalNav = LocalNav;
+export const AhSettingRow = SettingRow;
+export const AhPanelHeader = PanelHeader;
+export const AhEntityList = EntityList;
+export const AhEntityRow = EntityRow;
+export const AhInspectorPanel = InspectorPanel;
+export const AhSettingsLayout = SettingsLayout;

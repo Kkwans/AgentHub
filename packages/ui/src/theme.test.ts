@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AGENTHUB_CONTROL_HEIGHTS,
+  AGENTHUB_RADIUS,
+  AGENTHUB_SPACING,
   AGENTHUB_THEME_STORAGE_KEY,
   createAgentHubTheme,
   resolveThemeMode,
@@ -25,6 +28,13 @@ describe('AgentHub theme bridge', () => {
     expect(AGENTHUB_THEME_STORAGE_KEY).toBe('agenthub-theme');
     expect(createAgentHubTheme('light').primaryColor).toBe('aurora');
     expect(createAgentHubTheme('dark').primaryColor).toBe('aurora');
-    expect(createAgentHubTheme('light').fontFamily).toContain('Inter');
+    expect(createAgentHubTheme('light').fontFamily).toContain('Geist');
+  });
+
+  it('exposes the v1 four-pixel scale and control geometry', () => {
+    expect(AGENTHUB_SPACING).toMatchObject({ one: '4px', four: '16px', eight: '32px' });
+    expect(AGENTHUB_CONTROL_HEIGHTS).toEqual({ xs: '28px', sm: '32px', md: '36px', lg: '40px' });
+    expect(AGENTHUB_RADIUS).toEqual({ control: '8px', surface: '12px', overlay: '14px' });
+    expect(createAgentHubTheme('light').lineHeights?.md).toBe('1.55');
   });
 });

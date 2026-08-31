@@ -1,17 +1,25 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   ContextHeader,
   EntityList,
   EntityRow,
+  AhLocalNav,
+  AhPanelHeader,
+  AhSettingRow,
+  AhToolbar,
   InspectorPanel,
   PageFrame,
   ScreenHeader,
   SettingsLayout,
 } from './layout.js';
+
+afterEach(cleanup);
 
 describe('v0.8 layout contracts', () => {
   it('keeps ordinary screens on one shared page grid', () => {
@@ -47,5 +55,26 @@ describe('v0.8 layout contracts', () => {
     expect(screen.getByRole('navigation', { name: '项目上下文' })).toBeTruthy();
     expect(screen.getByRole('complementary', { name: 'Changes' }).textContent).toContain('Diff');
     expect(screen.getByRole('navigation', { name: '设置导航' })).toBeTruthy();
+  });
+
+  it('provides v1 toolbar, local navigation and setting row contracts', () => {
+    render(
+      <>
+        <AhToolbar label="项目筛选">
+          <button type="button">搜索</button>
+        </AhToolbar>
+        <AhLocalNav
+          label="设置分区"
+          items={[{ href: '/settings/appearance', label: '外观', active: true, count: 2 }]}
+        />
+        <AhSettingRow label="主题" description="控制界面明暗" control={<button>深色</button>} />
+        <AhPanelHeader title="Changes" description="工作区变更" actions={<button>刷新</button>} />
+      </>,
+    );
+
+    expect(screen.getByRole('toolbar', { name: '项目筛选' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /外观/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByText('主题')).toBeInTheDocument();
+    expect(screen.getByText('Changes')).toBeInTheDocument();
   });
 });

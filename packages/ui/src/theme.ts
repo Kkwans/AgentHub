@@ -5,6 +5,30 @@ export type ResolvedThemeMode = Exclude<ThemePreference, 'system'>;
 
 export const AGENTHUB_THEME_STORAGE_KEY = 'agenthub-theme';
 
+export const AGENTHUB_SPACING = {
+  one: '4px',
+  two: '8px',
+  three: '12px',
+  four: '16px',
+  five: '20px',
+  six: '24px',
+  seven: '28px',
+  eight: '32px',
+} as const;
+
+export const AGENTHUB_CONTROL_HEIGHTS = {
+  xs: '28px',
+  sm: '32px',
+  md: '36px',
+  lg: '40px',
+} as const;
+
+export const AGENTHUB_RADIUS = {
+  control: '8px',
+  surface: '12px',
+  overlay: '14px',
+} as const;
+
 const auroraLight: MantineColorsTuple = [
   '#f0edff',
   '#e9e4ff',
@@ -43,41 +67,50 @@ export function createAgentHubTheme(mode: ResolvedThemeMode): MantineThemeOverri
     primaryColor: 'aurora',
     primaryShade: mode === 'dark' ? 5 : 6,
     colors: { aurora: mode === 'dark' ? auroraDark : auroraLight },
-    defaultRadius: 'md',
+    defaultRadius: 'sm',
     focusRing: 'auto',
     respectReducedMotion: true,
-    fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif',
+    fontFamily:
+      'Geist Variable, "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", system-ui, sans-serif',
     fontFamilyMonospace: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
     headings: {
-      fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif',
-      fontWeight: '650',
+      fontFamily:
+        'Geist Variable, "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", system-ui, sans-serif',
+      fontWeight: '680',
     },
     fontSizes: {
-      xs: '0.71875rem',
-      sm: '0.8125rem',
+      xs: '0.75rem',
+      sm: '0.78125rem',
       md: '0.875rem',
-      lg: '1rem',
-      xl: '1.375rem',
+      lg: '1.125rem',
+      xl: '1.875rem',
+    },
+    lineHeights: {
+      xs: '1.4',
+      sm: '1.4',
+      md: '1.55',
+      lg: '1.3',
+      xl: '1.2',
     },
     spacing: {
-      xs: '0.25rem',
-      sm: '0.5rem',
-      md: '0.75rem',
-      lg: '1rem',
-      xl: '1.5rem',
+      xs: AGENTHUB_SPACING.one,
+      sm: AGENTHUB_SPACING.two,
+      md: AGENTHUB_SPACING.three,
+      lg: AGENTHUB_SPACING.four,
+      xl: AGENTHUB_SPACING.six,
     },
     radius: {
-      xs: '7px',
-      sm: '9px',
-      md: '10px',
-      lg: '13px',
-      xl: '17px',
+      xs: '4px',
+      sm: AGENTHUB_RADIUS.control,
+      md: AGENTHUB_RADIUS.surface,
+      lg: AGENTHUB_RADIUS.overlay,
+      xl: '16px',
     },
     shadows: {
       xs: '0 1px 2px rgba(17,22,38,.04)',
-      sm: '0 2px 8px rgba(17,22,38,.055)',
-      md: '0 8px 24px -10px rgba(17,22,38,.13)',
-      lg: '0 18px 48px -18px rgba(17,22,38,.22)',
+      sm: '0 5px 18px -9px rgba(17,22,38,.13)',
+      md: '0 14px 38px -18px rgba(17,22,38,.2)',
+      lg: '0 28px 76px -28px rgba(17,22,38,.22)',
     },
   });
 }

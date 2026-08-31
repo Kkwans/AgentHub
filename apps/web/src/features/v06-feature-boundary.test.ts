@@ -98,8 +98,12 @@ describe('v0.6 feature boundaries', () => {
       new URL('../../../../packages/ui/src/styles.css', import.meta.url),
       'utf8',
     );
+    const uiTokens = readFileSync(
+      new URL('../../../../packages/ui/src/tokens.css', import.meta.url),
+      'utf8',
+    );
     expect(uiStyles).toContain('--ah-border-default');
-    expect(uiStyles).toContain('--ah-danger-soft');
+    expect(uiTokens).toContain('--ah-danger-soft');
     expect(uiStyles).not.toMatch(/\.rt-|var\(--gray-|var\(--accent-/);
     for (const path of [
       '../styles.css',

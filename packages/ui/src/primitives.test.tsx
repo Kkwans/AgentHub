@@ -5,7 +5,7 @@ import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AhButton, AhChoiceSelect, AhSelect } from './primitives.js';
+import { AhButton, AhChoiceSelect, AhIconButton, AhSelect } from './primitives.js';
 
 describe('v0.7 UI primitives', () => {
   it('renders a loading button without losing its accessible name', () => {
@@ -52,5 +52,17 @@ describe('v0.7 UI primitives', () => {
 
     expect(screen.getByRole('combobox', { name: '运行模式' })).toBeInTheDocument();
     expect(document.querySelector('select')).not.toBeInTheDocument();
+  });
+
+  it('keeps icon-only actions named and discoverable', () => {
+    render(
+      <MantineProvider env="test">
+        <AhIconButton label="打开设置" size="sm">
+          ⚙
+        </AhIconButton>
+      </MantineProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: '打开设置' })).toHaveAttribute('title', '打开设置');
   });
 });
