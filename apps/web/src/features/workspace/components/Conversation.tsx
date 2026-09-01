@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   Button,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   LoaderCircle,
   ShieldCheck,
@@ -28,6 +29,9 @@ import type { MessageQueryState, QueryState } from '../workspace-types';
 import { RunStateBanner } from './RunStateBanner';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
+
+export const CONVERSATION_WINDOW_SIZE = 500;
+export const CONVERSATION_WINDOW_STEP = 250;
 
 export type ConversationTimelineItem =
   | { kind: 'message'; id: string; createdAt: string; message: MessageRecord }
@@ -200,6 +204,10 @@ export function summarizeToolExecution(events: EventRecord[]): ToolExecutionSumm
   return { operations: events.length, files: files.size, commands, searches };
 }
 
+export function getConversationWindowStart(itemCount: number): number {
+  return Math.max(0, itemCount - CONVERSATION_WINDOW_SIZE);
+}
+
 function formatToolExecutionSummary(summary: ToolExecutionSummary): string {
   return [
     `执行了 ${summary.operations} 个操作`,
@@ -283,15 +291,32 @@ export function Conversation({
     }
   };
   const timeline = buildConversationTimeline(messages.data ?? [], events.data ?? []);
-  const displayTimeline = groupToolTimeline(timeline);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followTimelineRef = useRef(true);
   const loadingPreviousRef = useRef(false);
-  const latestTimelineId = displayTimeline.at(-1)?.id;
+  const [timelineWindowStart, setTimelineWindowStart] = useState(0);
+  const [isFollowingTimeline, setIsFollowingTimeline] = useState(true);
+  const latestTimelineId = timeline.at(-1)?.id;
+  const latestWindowStart = getConversationWindowStart(timeline.length);
+  const visibleTimeline = timeline.slice(
+    timelineWindowStart,
+    timelineWindowStart + CONVERSATION_WINDOW_SIZE,
+  );
+  const displayTimeline = groupToolTimeline(visibleTimeline);
   const activeThoughtId = activeRun
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
         ?.id
     : undefined;
+  useEffect(() => {
+    followTimelineRef.current = true;
+    setIsFollowingTimeline(true);
+    setTimelineWindowStart(0);
+  }, [session.id]);
+  useEffect(() => {
+    setTimelineWindowStart((current) =>
+      followTimelineRef.current ? latestWindowStart : Math.min(current, latestWindowStart),
+    );
+  }, [latestWindowStart]);
   useEffect(() => {
     if (!followTimelineRef.current) return;
     const frame = requestAnimationFrame(() => {
@@ -300,27 +325,39 @@ export function Conversation({
     });
     return () => cancelAnimationFrame(frame);
   }, [latestTimelineId]);
+  const preserveScrollAnchor = (previousHeight: number, previousTop: number) => {
+    requestAnimationFrame(() => {
+      const current = scrollRef.current;
+      if (current) current.scrollTop = current.scrollHeight - previousHeight + previousTop;
+    });
+  };
   const loadPreviousMessages = async () => {
-    if (
-      !hasPreviousMessages ||
-      !onLoadPreviousMessages ||
-      loadingPreviousRef.current ||
-      isLoadingPreviousMessages
-    )
-      return;
+    const canFetchPrevious = Boolean(
+      hasPreviousMessages && onLoadPreviousMessages && !isLoadingPreviousMessages,
+    );
+    const canRevealOlderWindow = timelineWindowStart > 0;
+    if ((!canFetchPrevious && !canRevealOlderWindow) || loadingPreviousRef.current) return;
     const element = scrollRef.current;
     const previousHeight = element?.scrollHeight ?? 0;
     const previousTop = element?.scrollTop ?? 0;
     loadingPreviousRef.current = true;
     try {
-      await onLoadPreviousMessages();
-      requestAnimationFrame(() => {
-        const current = scrollRef.current;
-        if (current) current.scrollTop = current.scrollHeight - previousHeight + previousTop;
-      });
+      if (canRevealOlderWindow)
+        setTimelineWindowStart((current) => Math.max(0, current - CONVERSATION_WINDOW_STEP));
+      if (canFetchPrevious) await onLoadPreviousMessages?.();
     } finally {
+      preserveScrollAnchor(previousHeight, previousTop);
       loadingPreviousRef.current = false;
     }
+  };
+  const jumpToLatest = () => {
+    followTimelineRef.current = true;
+    setIsFollowingTimeline(true);
+    setTimelineWindowStart(latestWindowStart);
+    requestAnimationFrame(() => {
+      const element = scrollRef.current;
+      if (element) element.scrollTop = element.scrollHeight;
+    });
   };
   const showEmpty =
     !messages.isLoading &&
@@ -347,12 +384,16 @@ export function Conversation({
         aria-relevant="additions text"
         onScroll={(event) => {
           const element = event.currentTarget;
-          followTimelineRef.current =
+          const nextFollowing =
             element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+          followTimelineRef.current = nextFollowing;
+          setIsFollowingTimeline((current) =>
+            current === nextFollowing ? current : nextFollowing,
+          );
           if (element.scrollTop < 80) void loadPreviousMessages();
         }}
       >
-        {(hasPreviousMessages || isLoadingPreviousMessages) && (
+        {(hasPreviousMessages || isLoadingPreviousMessages || timelineWindowStart > 0) && (
           <div className="conversation-history-control">
             <button
               type="button"
@@ -360,7 +401,11 @@ export function Conversation({
               disabled={Boolean(isLoadingPreviousMessages)}
               aria-label="加载更早消息"
             >
-              {isLoadingPreviousMessages ? '正在加载更早消息…' : '加载更早消息'}
+              {isLoadingPreviousMessages
+                ? '正在加载更早消息…'
+                : timelineWindowStart > 0
+                  ? '查看更早消息'
+                  : '加载更早消息'}
             </button>
           </div>
         )}
@@ -628,6 +673,17 @@ export function Conversation({
           );
         })}
       </div>
+      {!isFollowingTimeline && (
+        <button
+          type="button"
+          className="conversation-jump-latest"
+          aria-label="回到最新"
+          onClick={jumpToLatest}
+        >
+          <ChevronDown size={14} aria-hidden="true" />
+          回到最新
+        </button>
+      )}
     </div>
   );
 }

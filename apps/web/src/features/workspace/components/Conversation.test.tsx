@@ -3,9 +3,23 @@ import { describe, expect, it } from 'vitest';
 import type { EventRecord, MessageRecord } from '../../../lib/api';
 import {
   buildConversationTimeline,
+  CONVERSATION_WINDOW_SIZE,
+  CONVERSATION_WINDOW_STEP,
   groupToolTimeline,
+  getConversationWindowStart,
   summarizeToolExecution,
 } from './Conversation';
+
+describe('conversation windowing', () => {
+  it('超过 500 项时从最新窗口开始，并按固定步长向前展开', () => {
+    expect(CONVERSATION_WINDOW_SIZE).toBe(500);
+    expect(CONVERSATION_WINDOW_STEP).toBe(250);
+    expect(getConversationWindowStart(0)).toBe(0);
+    expect(getConversationWindowStart(500)).toBe(0);
+    expect(getConversationWindowStart(501)).toBe(1);
+    expect(getConversationWindowStart(1_000)).toBe(500);
+  });
+});
 
 describe('buildConversationTimeline', () => {
   it('将用户消息、思考、工具调用和 Agent 响应按真实时间合并为单一流水线', () => {

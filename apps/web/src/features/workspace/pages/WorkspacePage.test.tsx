@@ -236,6 +236,44 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(screen.getByText('当前消息 200')).toBeInTheDocument();
   });
 
+  it('超过 500 项时只渲染窗口，并支持展开旧窗口后回到最新', async () => {
+    const longTimeline = Array.from({ length: 600 }, (_, index) => ({
+      id: `message-${index + 1}`,
+      runId: null,
+      role: 'ASSISTANT' as const,
+      kind: 'TEXT',
+      text: `长会话消息 ${index + 1}`,
+      sequence: index + 1,
+      createdAt: new Date((index + 1) * 1_000).toISOString(),
+    }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.startsWith(`/api/v1/sessions/${session.id}/messages`))
+        return jsonResponse(longTimeline);
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    expect(await screen.findByText('长会话消息 600')).toBeInTheDocument();
+    expect(screen.queryByText('长会话消息 1')).not.toBeInTheDocument();
+    const scroll = screen.getByRole('log');
+    Object.defineProperties(scroll, {
+      scrollHeight: { configurable: true, value: 5_000 },
+      clientHeight: { configurable: true, value: 500 },
+      scrollTop: { configurable: true, writable: true, value: 0 },
+    });
+    fireEvent.scroll(scroll);
+
+    expect(await screen.findByText('长会话消息 1')).toBeInTheDocument();
+    expect(screen.queryByText('长会话消息 600')).not.toBeInTheDocument();
+    const jumpLatest = screen.getByRole('button', { name: '回到最新' });
+    fireEvent.click(jumpLatest);
+    await waitFor(() => {
+      expect(screen.getByText('长会话消息 600')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '回到最新' })).not.toBeInTheDocument();
+    });
+  });
+
   it('正常对话视图将 Agent 事件类型翻译成中文，不泄露协议枚举', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
