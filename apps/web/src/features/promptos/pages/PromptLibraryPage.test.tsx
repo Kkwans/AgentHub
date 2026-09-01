@@ -8,6 +8,8 @@ describe('PromptOS ordinary-user contracts', () => {
     expect(source).toContain('新建 Prompt 绑定');
     expect(source).toContain('labelPromptBindingTarget');
     expect(source).toContain('labelPromptVersionSource(version.source)');
+    expect(source).toContain('position="right"');
+    expect(source).toContain('size={420}');
     expect(source).not.toContain('<option>PROJECT</option>');
     expect(source).not.toContain('<option>AGENT</option>');
     expect(source).not.toContain('<strong>{prompt.type} content</strong>');

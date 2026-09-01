@@ -411,15 +411,23 @@ export function AhDrawer({
   onClose,
   children,
   position = 'left',
+  size,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
   position?: 'left' | 'right' | 'top' | 'bottom';
+  size?: number | string;
 }) {
   return (
-    <Drawer opened={open} onClose={onClose} title={title} position={position}>
+    <Drawer
+      opened={open}
+      onClose={onClose}
+      title={title}
+      position={position}
+      {...(size === undefined ? {} : { size })}
+    >
       {children}
     </Drawer>
   );

@@ -469,11 +469,18 @@
   font-weight: 700;
 }
 
+.lifecycleDrawerIntro {
+  margin: 0 0 16px;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .lifecycleGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 20px;
+  gap: 22px;
 }
 
 .lifecycleGrid > section {

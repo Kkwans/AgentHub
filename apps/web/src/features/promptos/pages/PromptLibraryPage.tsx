@@ -2,6 +2,7 @@
 import {
   AhButton,
   AhDialog,
+  AhDrawer,
   AhEmptyState,
   AhErrorState,
   AhInput,
@@ -709,13 +710,16 @@ export function PromptLibraryPage() {
           </section>
         </div>
       ) : null}
-      <AhDialog
+      <AhDrawer
         open={lifecycleOpen}
         onClose={() => setLifecycleOpen(false)}
         title="版本与标签"
-        description="版本不可变；标签是指向已发布版本的可移动指针。"
-        size={900}
+        position="right"
+        size={420}
       >
+        <div className={promptSettingsStyles.lifecycleDrawerIntro}>
+          版本不可变；标签是指向已发布版本的可移动指针。
+        </div>
         <div className={promptSettingsStyles.lifecycleGrid}>
           <section>
             <div className={promptSettingsStyles.sectionHeading}>
@@ -872,7 +876,7 @@ export function PromptLibraryPage() {
             )}
           </section>
         </div>
-      </AhDialog>
+      </AhDrawer>
       <AhDialog
         open={newOpen}
         onClose={() => setNewOpen(false)}
