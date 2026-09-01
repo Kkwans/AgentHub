@@ -1,14 +1,8 @@
-export class ApiError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly status: number,
-    readonly details?: Record<string, unknown>,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+import { ApiError } from './api-error';
+import { authSession } from './auth-api';
+
+export { ApiError } from './api-error';
+export { authSession } from './auth-api';
 
 interface SuccessEnvelope<T> {
   data: T;
@@ -217,20 +211,6 @@ const errorMessages: Record<string, string> = {
   WORKTREE_RUNNER_STOPPING: '隔离执行器正在停止，请稍后重试。',
   WORKTREE_STAGE_CHECK_FAILED: '隔离工作区暂存检查失败，请刷新后重试。',
   WORKTREE_TASK_BRANCH_EXISTS: 'Task 分支已经存在，请刷新后重试。',
-};
-
-const authorizationRequiredEvent = 'agenthub:authorization-required';
-
-export const authSession = {
-  onAuthorizationRequired(listener: () => void): () => void {
-    if (typeof window === 'undefined') return () => undefined;
-    window.addEventListener(authorizationRequiredEvent, listener);
-    return () => window.removeEventListener(authorizationRequiredEvent, listener);
-  },
-  notifyAuthorizationRequired(): void {
-    if (typeof window === 'undefined') return;
-    window.dispatchEvent(new Event(authorizationRequiredEvent));
-  },
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

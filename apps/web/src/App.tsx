@@ -5,12 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import { AccessGate } from './components/AccessGate';
 import { AppShell } from './app/shell/AppShell';
+import { HomePage } from './features/home/pages/HomePage';
 import type { SessionRecord } from './lib/api';
-import { api } from './lib/api';
 
-const HomePage = lazy(() =>
-  import('./features/home/pages/HomePage').then((module) => ({ default: module.HomePage })),
-);
 const ProjectsPage = lazy(() =>
   import('./features/projects/pages/ProjectsPage').then((module) => ({
     default: module.ProjectsPage,
@@ -133,7 +130,10 @@ function ProjectSettingsRedirect() {
 function WorkspaceLandingRoute() {
   const sessions = useQuery({
     queryKey: ['sessions'],
-    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+    queryFn: async () => {
+      const { api } = await import('./lib/api');
+      return api.get<SessionRecord[]>('/sessions');
+    },
   });
   if (sessions.isLoading) return <AhLoadingState label="正在打开最近工作区" />;
   if (sessions.error) return <Navigate replace to="/projects" />;

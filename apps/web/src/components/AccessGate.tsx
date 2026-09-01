@@ -2,7 +2,7 @@ import { type FormEvent, type PropsWithChildren, useEffect, useState } from 'rea
 import { AhButton, AlertTriangle, ShieldCheck } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ApiError, api, authSession } from '../lib/api';
+import { ApiError, authApi, authSession } from '../lib/auth-api';
 import { realtime } from '../lib/realtime';
 import { AgentHubLogo } from './AgentHubLogo';
 import { PasswordField } from './PasswordField';
@@ -21,13 +21,13 @@ export function AccessGate({ children }: PropsWithChildren) {
   const [authorizationRequired, setAuthorizationRequired] = useState(false);
   const auth = useQuery({
     queryKey: ['auth-status'],
-    queryFn: () => api.get<AuthStatus>('/auth/status'),
+    queryFn: () => authApi.get<AuthStatus>('/auth/status'),
     retry: false,
     staleTime: 30_000,
   });
   const authenticate = useMutation({
     mutationFn: (input: { mode: 'setup' | 'login'; username: string; password: string }) =>
-      api.post<{ user: AuthStatus['user'] }>(`/auth/${input.mode}`, {
+      authApi.post<{ user: AuthStatus['user'] }>(`/auth/${input.mode}`, {
         username: input.username,
         password: input.password,
       }),

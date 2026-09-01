@@ -37,7 +37,6 @@ import {
   useAgentHubTheme,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Link,

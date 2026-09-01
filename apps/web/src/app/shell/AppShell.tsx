@@ -152,6 +152,14 @@ export function AppShell() {
   useEffect(() => realtime.onState(setConnection), []);
   useEffect(() => setDrawerOpen(false), [location.pathname]);
   useEffect(() => {
+    // Prime the primary Project route after the shell has painted so the first
+    // navigation does not pay the lazy chunk parse cost on the critical click.
+    const timer = window.setTimeout(() => {
+      void import('../../features/projects/pages/ProjectsPage');
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, []);
+  useEffect(() => {
     if (sidebarPreference === 'expanded') setSidebarCollapsed(false);
     if (sidebarPreference === 'collapsed') setSidebarCollapsed(true);
   }, [setSidebarCollapsed, sidebarPreference]);

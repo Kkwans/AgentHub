@@ -98,6 +98,7 @@ import {
 } from '../../shared/page-primitives';
 import projectsStyles from '../projects.module.css';
 import { useProjectContext } from './ProjectContextLayout';
+import { filterProjectSessions } from './project-session-utils';
 
 export function ProjectSessionsPage() {
   const project = useProjectContext();
@@ -144,20 +145,12 @@ export function ProjectSessionsPage() {
     });
   };
   const filteredSessions = useMemo(() => {
-    const value = query.trim().toLowerCase();
-    return (sessions.data ?? [])
-      .filter((session) => {
-        return (
-          (!value ||
-            `${session.title} ${session.model ?? ''} ${session.branch ?? ''} ${session.cwd}`
-              .toLowerCase()
-              .includes(value)) &&
-          (agentFilter === 'all' || session.agentId === agentFilter) &&
-          (statusFilter === 'all' || session.status === statusFilter)
-        );
-      })
-      .sort((left, right) => Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt));
-  }, [agentFilter, agents.data, query, sessions.data, statusFilter]);
+    return filterProjectSessions(sessions.data ?? [], {
+      query,
+      agentId: agentFilter,
+      status: statusFilter,
+    });
+  }, [agentFilter, query, sessions.data, statusFilter]);
   const sessionStatuses = useMemo(
     () => Array.from(new Set((sessions.data ?? []).map((session) => session.status))),
     [sessions.data],

@@ -151,6 +151,18 @@ export function HomePage() {
         }}
         label="正在汇总工作台状态"
       />
+      {loading ? (
+        <section
+          className={`${homeStyles.continueStrip} ${homeStyles.continueEmpty}`}
+          aria-labelledby="home-loading-title"
+        >
+          <div>
+            <span className={homeStyles.eyebrow}>WORKSPACE</span>
+            <h1 id="home-loading-title">正在加载工作台</h1>
+            <p>正在汇总 Project、Session 与 Agent 状态。</p>
+          </div>
+        </section>
+      ) : null}
       {!loading && !error ? (
         <>
           <section
