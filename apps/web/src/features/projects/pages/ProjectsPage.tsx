@@ -118,6 +118,7 @@ export function ProjectsPage() {
   const [kind, setKind] = useState<'all' | 'STANDARD' | 'TEST'>('all');
   const [sort, setSort] = useState('updated');
   const [view, setView] = useState<'list' | 'grid'>('list');
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const allProjects = projects.data ?? [];
@@ -179,7 +180,7 @@ export function ProjectsPage() {
   const readyAgentCount = agents.data
     ? agents.data.filter((agent) => agent.enabled && agent.status === 'READY').length
     : null;
-  const projectRows = visibleProjects.map((project, index) => {
+  const renderProjectRow = (project: ProjectRecord, index: number) => {
     const languageValue = projectLanguage(project);
     const timestamp = projectTimestamp(project);
     const repoLabel = project.repoKind === 'GIT' ? 'Git' : project.repoKind ? '目录' : undefined;
@@ -208,7 +209,6 @@ export function ProjectsPage() {
             <span className={projectsStyles.projectMeta}>
               {repoLabel ? <span>{repoLabel}</span> : null}
               {languageValue ? <span>{languageValue}</span> : null}
-              {project.rootPath ? <span title={project.rootPath}>{project.rootPath}</span> : null}
             </span>
           </span>
         </Link>
@@ -236,7 +236,13 @@ export function ProjectsPage() {
         </Link>
       </div>
     );
-  });
+  };
+  const visibleStandardProjects = visibleProjects.filter(
+    (project) => (project.kind ?? 'STANDARD') === 'STANDARD',
+  );
+  const visibleTestProjects = visibleProjects.filter((project) => project.kind === 'TEST');
+  const standardProjectRows = visibleStandardProjects.map(renderProjectRow);
+  const testProjectRows = visibleTestProjects.map(renderProjectRow);
   const projectCards = visibleProjects.map((project, index) => {
     const languageValue = projectLanguage(project);
     const timestamp = projectTimestamp(project);
@@ -315,20 +321,6 @@ export function ProjectsPage() {
                   ]}
                 />
               </div>
-              {languageOptions.length ? (
-                <div className={projectsStyles.toolbarSelect}>
-                  <AhSelect
-                    aria-label="项目语言"
-                    label=""
-                    value={language}
-                    onChange={(value) => setLanguage(value ?? 'all')}
-                    data={[
-                      { value: 'all', label: '全部语言' },
-                      ...languageOptions.map((value) => ({ value, label: value })),
-                    ]}
-                  />
-                </div>
-              ) : null}
               <div className={projectsStyles.toolbarSelect}>
                 <AhSelect
                   aria-label="项目类型"
@@ -351,6 +343,36 @@ export function ProjectsPage() {
                   ]}
                 />
               </div>
+              <button
+                type="button"
+                className={`${projectsStyles.toolbarMore} ${moreFiltersOpen ? projectsStyles.toolbarMoreActive : ''}`}
+                aria-expanded={moreFiltersOpen}
+                onClick={() => setMoreFiltersOpen((open) => !open)}
+              >
+                <ScanSearch size={14} />
+                更多筛选
+                {language !== 'all' ? <span className={projectsStyles.filterCount}>1</span> : null}
+              </button>
+              {moreFiltersOpen ? (
+                <div className={projectsStyles.toolbarAdvanced}>
+                  {languageOptions.length ? (
+                    <div className={projectsStyles.toolbarSelect}>
+                      <AhSelect
+                        aria-label="项目语言"
+                        label=""
+                        value={language}
+                        onChange={(value) => setLanguage(value ?? 'all')}
+                        data={[
+                          { value: 'all', label: '全部语言' },
+                          ...languageOptions.map((value) => ({ value, label: value })),
+                        ]}
+                      />
+                    </div>
+                  ) : (
+                    <span className={projectsStyles.toolbarNoFilters}>暂无其他筛选</span>
+                  )}
+                </div>
+              ) : null}
               <span className={projectsStyles.toolbarSpacer} />
               <div className={projectsStyles.segmented} role="group" aria-label="项目视图">
                 <button
@@ -383,7 +405,17 @@ export function ProjectsPage() {
                     <span>最近活动</span>
                     <span>操作</span>
                   </div>
-                  {projectRows}
+                  {standardProjectRows}
+                  {kind === 'all' && testProjectRows.length ? (
+                    <div className={projectsStyles.testProjectGroup}>
+                      <details>
+                        <summary>测试 Project（{testProjectRows.length}）</summary>
+                        <div className={projectsStyles.testProjectRows}>{testProjectRows}</div>
+                      </details>
+                    </div>
+                  ) : (
+                    testProjectRows
+                  )}
                 </section>
               ) : (
                 <div className={projectsStyles.projectCardGrid}>{projectCards}</div>
