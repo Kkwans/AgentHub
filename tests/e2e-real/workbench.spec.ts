@@ -73,11 +73,11 @@ test('token 登录进入 Home，并能进入设置分区', async ({ page }) => {
   await page.getByRole('button', { name: '创建账号并进入' }).click();
 
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole('heading', { name: '把注意力放在工作本身。' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '从一个 Project 开始' })).toBeVisible();
   await page.getByRole('link', { name: '设置' }).click();
   await expect(page).toHaveURL(/\/settings\/appearance$/);
-  await expect(page.locator('main').getByRole('heading', { name: '设置与诊断' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Terminal', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '外观偏好', exact: true })).toBeVisible();
 });
 
 test.describe('local_trusted 项目与 Work', () => {
@@ -137,10 +137,12 @@ test.describe('local_trusted 项目与 Work', () => {
     await expect(page.getByRole('heading', { name: 'QA E2E Task' })).toBeVisible();
     await page.goto(`/projects/${project.id}/sessions`);
     await expect(page.getByRole('textbox', { name: '搜索会话' })).toBeVisible();
-    await expect(page.getByRole('link', { name: /v0\.7 E2E Session/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /QA E2E Session/ })).toBeVisible();
     await page.goto(`/workspace/${session.id}`);
     await expect(page.locator('.workspace-shell')).toBeVisible();
-    await expect(page.getByText('对话与执行')).toBeVisible();
+    await expect(
+      page.locator('.conversation-title').getByText('对话', { exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
   });
 
@@ -176,12 +178,21 @@ test.describe('local_trusted 项目与 Work', () => {
 
     const inspectorTabs = page.getByRole('tablist', { name: '检查器视图' });
     await inspectorTabs.getByRole('tab', { name: '变更', exact: true }).click();
-    const gitTabs = page.getByRole('tablist', { name: 'Git 工作区视图' });
-    await gitTabs.getByRole('tab', { name: 'Diff', exact: true }).click();
-    await expect(page.locator('.diff-frame')).toBeVisible();
-    await gitTabs.getByRole('tab', { name: '变更', exact: true }).click();
-    await expect(page.getByLabel('选择 fixture-output.md')).toBeVisible({ timeout: 15_000 });
-    await page.getByLabel('选择 fixture-output.md').check();
+    const diffPreview = page.getByRole('button', { name: '查看 fixture-output.md Diff' });
+    await expect(diffPreview).toBeVisible({ timeout: 15_000 });
+    await diffPreview.click();
+    await expect(
+      page
+        .getByRole('region', { name: '已选择 fixture-output.md 的 Diff' })
+        .getByText('文件 Diff', {
+          exact: true,
+        }),
+    ).toBeVisible({ timeout: 30_000 });
+    await inspectorTabs.getByRole('tab', { name: '变更', exact: true }).click();
+    const changeTree = page.getByRole('tree', { name: 'Git 文件变更树' });
+    const fixtureCheckbox = changeTree.getByRole('checkbox', { name: '选择 fixture-output.md' });
+    await expect(fixtureCheckbox).toBeVisible({ timeout: 15_000 });
+    await fixtureCheckbox.check();
     const commitForm = page.locator('form.git-commit-form');
     await commitForm.getByLabel('提交说明').fill('test: Workspace ACP 输出');
     await commitForm.getByRole('button', { name: '提交所选文件 (1)' }).click();
