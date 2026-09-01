@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { EventRecord, MessageRecord } from '../../../lib/api';
-import { buildConversationTimeline } from './Conversation';
+import {
+  buildConversationTimeline,
+  groupToolTimeline,
+  summarizeToolExecution,
+} from './Conversation';
 
 describe('buildConversationTimeline', () => {
   it('将用户消息、思考、工具调用和 Agent 响应按真实时间合并为单一流水线', () => {
@@ -101,6 +105,89 @@ describe('buildConversationTimeline', () => {
           locations: [{ path: 'WorkspacePage.tsx' }],
         },
       },
+    });
+  });
+
+  it('为连续工具调用计算文件、命令和搜索摘要', () => {
+    const events = [
+      {
+        id: 'tool-read',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 1,
+        type: 'tool.call.completed',
+        payloadJson: { tool: 'read_file', locations: [{ path: 'src/App.tsx' }] },
+        createdAt: '2026-08-30T01:00:00.000Z',
+      },
+      {
+        id: 'tool-command',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 2,
+        type: 'tool.call.completed',
+        payloadJson: { tool: 'exec_command', command: 'pnpm test', path: 'src/App.tsx' },
+        createdAt: '2026-08-30T01:00:01.000Z',
+      },
+      {
+        id: 'tool-search',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 3,
+        type: 'tool.call.completed',
+        payloadJson: {
+          tool: 'search',
+          query: 'Composer',
+          paths: ['src/App.tsx', 'src/Composer.tsx'],
+        },
+        createdAt: '2026-08-30T01:00:02.000Z',
+      },
+    ] satisfies EventRecord[];
+
+    expect(summarizeToolExecution(events)).toEqual({
+      operations: 3,
+      files: 2,
+      commands: 1,
+      searches: 1,
+    });
+  });
+
+  it('只合并连续工具调用，消息或思考会开启新的执行组', () => {
+    const events = [
+      {
+        id: 'tool-1',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 1,
+        type: 'tool.call.completed',
+        payloadJson: { toolCallId: 'call-1', tool: 'read_file', path: 'a.ts' },
+        createdAt: '2026-08-30T01:00:00.000Z',
+      },
+      {
+        id: 'tool-2',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 2,
+        type: 'tool.call.completed',
+        payloadJson: { toolCallId: 'call-2', tool: 'exec_command', command: 'pnpm test' },
+        createdAt: '2026-08-30T01:00:01.000Z',
+      },
+      {
+        id: 'tool-3',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 3,
+        type: 'tool.call.completed',
+        payloadJson: { toolCallId: 'call-3', tool: 'search', query: 'agent' },
+        createdAt: '2026-08-30T01:00:02.000Z',
+      },
+    ] satisfies EventRecord[];
+    const items = buildConversationTimeline([], events);
+    const grouped = groupToolTimeline(items);
+
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0]).toMatchObject({
+      kind: 'tool-group',
+      events: [events[0], events[1], events[2]],
     });
   });
 });

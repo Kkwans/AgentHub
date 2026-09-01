@@ -1090,6 +1090,49 @@
   font-weight: 560;
 }
 
+.workspace :global(.tool-event-group-list) {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace :global(.tool-event-group-list li) {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  color: var(--workspace-muted);
+  font-size: 11px;
+}
+
+.workspace :global(.tool-event-group-list li strong) {
+  overflow: hidden;
+  color: var(--workspace-ink);
+  font-size: 11.5px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.tool-event-group-list li span) {
+  color: var(--workspace-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.workspace :global(.tool-event-group-list li code) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--workspace-muted);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workspace :global(.thought-event-row > summary) {
   grid-template-columns: 24px minmax(0, 1fr) 18px;
 }

@@ -29,7 +29,7 @@ import { RunStateBanner } from './RunStateBanner';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
-type ConversationTimelineItem =
+export type ConversationTimelineItem =
   | { kind: 'message'; id: string; createdAt: string; message: MessageRecord }
   | { kind: 'tool'; id: string; createdAt: string; event: EventRecord }
   | {
@@ -41,6 +41,14 @@ type ConversationTimelineItem =
       firstSeq: number;
       text: string;
     };
+
+export type ConversationToolGroup = {
+  kind: 'tool-group';
+  id: string;
+  createdAt: string;
+  firstSeq: number;
+  events: EventRecord[];
+};
 
 export function buildConversationTimeline(
   messages: MessageRecord[],
@@ -133,6 +141,92 @@ export function buildConversationTimeline(
   });
 }
 
+/**
+ * Keep adjacent tool calls readable in the primary conversation. A message
+ * or thought between calls deliberately starts a new execution group.
+ */
+export function groupToolTimeline(
+  items: ConversationTimelineItem[],
+): Array<ConversationTimelineItem | ConversationToolGroup> {
+  const grouped: Array<ConversationTimelineItem | ConversationToolGroup> = [];
+  for (const item of items) {
+    if (item.kind !== 'tool') {
+      grouped.push(item);
+      continue;
+    }
+    const previous = grouped.at(-1);
+    if (previous?.kind === 'tool') {
+      grouped[grouped.length - 1] = {
+        kind: 'tool-group',
+        id: previous.id,
+        createdAt: previous.createdAt,
+        firstSeq: previous.event.seq,
+        events: [previous.event, item.event],
+      };
+    } else if (previous?.kind === 'tool-group') {
+      grouped[grouped.length - 1] = {
+        ...previous,
+        events: [...previous.events, item.event],
+      };
+    } else {
+      grouped.push(item);
+    }
+  }
+  return grouped;
+}
+
+export type ToolExecutionSummary = {
+  operations: number;
+  files: number;
+  commands: number;
+  searches: number;
+};
+
+export function summarizeToolExecution(events: EventRecord[]): ToolExecutionSummary {
+  const files = new Set<string>();
+  let commands = 0;
+  let searches = 0;
+  for (const event of events) {
+    const payload = event.payloadJson;
+    for (const path of readToolPaths(payload)) files.add(path);
+    const toolName = String(payload.tool ?? payload.name ?? '').toLocaleLowerCase();
+    if (typeof payload.command === 'string' || ['exec_command', 'run_tests'].includes(toolName)) {
+      commands += 1;
+    }
+    if (typeof payload.query === 'string' || ['search', 'search_query'].includes(toolName)) {
+      searches += 1;
+    }
+  }
+  return { operations: events.length, files: files.size, commands, searches };
+}
+
+function formatToolExecutionSummary(summary: ToolExecutionSummary): string {
+  return [
+    `执行了 ${summary.operations} 个操作`,
+    summary.files ? `${summary.files} 文件` : undefined,
+    summary.commands ? `${summary.commands} 命令` : undefined,
+    summary.searches ? `${summary.searches} 搜索` : undefined,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function readToolPaths(payload: Record<string, unknown>): string[] {
+  const paths = new Set<string>();
+  if (typeof payload.path === 'string' && payload.path) paths.add(payload.path);
+  if (Array.isArray(payload.paths)) {
+    for (const value of payload.paths) if (typeof value === 'string' && value) paths.add(value);
+  }
+  if (Array.isArray(payload.locations)) {
+    for (const value of payload.locations) {
+      if (value && typeof value === 'object' && 'path' in value && typeof value.path === 'string') {
+        paths.add(value.path);
+      }
+    }
+  }
+  return [...paths];
+}
+
 export function Conversation({
   session,
   messages,
@@ -189,10 +283,11 @@ export function Conversation({
     }
   };
   const timeline = buildConversationTimeline(messages.data ?? [], events.data ?? []);
+  const displayTimeline = groupToolTimeline(timeline);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followTimelineRef = useRef(true);
   const loadingPreviousRef = useRef(false);
-  const latestTimelineId = timeline.at(-1)?.id;
+  const latestTimelineId = displayTimeline.at(-1)?.id;
   const activeThoughtId = activeRun
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
         ?.id
@@ -310,7 +405,9 @@ export function Conversation({
             description="Composer 会固定带上 Agent、Project、cwd、branch 与 PromptOS 上下文。"
           />
         )}
-        {timeline.map((item) => {
+        {displayTimeline.map((item) => {
+          if (item.kind === 'tool-group')
+            return <ToolExecutionGroupRow key={item.id} events={item.events} />;
           if (item.kind === 'tool') return <ToolEventRow key={item.id} event={item.event} />;
           if (item.kind === 'thought') {
             return (
@@ -535,28 +632,61 @@ export function Conversation({
   );
 }
 
-function ToolEventRow({ event }: { event: EventRecord }) {
-  const status = event.type.endsWith('.failed')
+function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
+  const summary = summarizeToolExecution(events);
+  const title = formatToolExecutionSummary(summary);
+  const status = events.some((event) => event.type.endsWith('.failed'))
     ? 'failed'
-    : event.type.endsWith('.completed')
-      ? 'completed'
-      : 'running';
-  const rawTool = event.payloadJson.tool ?? event.payloadJson.name;
-  const title = String(
-    event.payloadJson.title ??
-      (rawTool === undefined
-        ? event.type === 'agent.plan.updated'
-          ? '更新执行计划'
-          : '调用工具'
-        : labelToolName(String(rawTool))),
+    : events.some((event) => !event.type.endsWith('.completed'))
+      ? 'running'
+      : 'completed';
+  const labels = [...new Set(events.map((event) => toolEventTitle(event)))];
+  const details = labels.slice(0, 3).join('、');
+  return (
+    <details className={`tool-event-row tool-execution-group tool-event-${status}`}>
+      <summary aria-label={`${title}，展开执行详情`}>
+        <span className="tool-event-icon" aria-hidden="true">
+          {status === 'running' ? (
+            <LoaderCircle className="spin" size={14} />
+          ) : status === 'failed' ? (
+            <AlertTriangle size={14} />
+          ) : (
+            <CheckCircle2 size={14} />
+          )}
+        </span>
+        <span className="tool-event-copy">
+          <span>
+            <strong>{title}</strong>
+            <small>
+              {status === 'completed' ? '已完成' : status === 'failed' ? '部分失败' : '进行中'}
+            </small>
+          </span>
+          {details && <code>{details}</code>}
+        </span>
+        <ChevronRight className="tool-event-action" size={13} aria-hidden="true" />
+      </summary>
+      <div className="tool-event-detail">
+        <ul className="tool-event-group-list">
+          {events.map((event) => (
+            <li key={event.id}>
+              <strong>{toolEventTitle(event)}</strong>
+              <span>{toolEventStatus(event)}</span>
+              {toolEventDetail(event) && <code>{toolEventDetail(event)}</code>}
+            </li>
+          ))}
+        </ul>
+        <Link to="?view=activity">
+          <Wrench size={12} aria-hidden="true" /> 在工具检查器中查看完整记录
+        </Link>
+      </div>
+    </details>
   );
-  const detailValue =
-    event.payloadJson.command ??
-    event.payloadJson.path ??
-    event.payloadJson.query ??
-    event.payloadJson.url ??
-    readToolLocation(event.payloadJson.locations) ??
-    event.payloadJson.kind;
+}
+
+function ToolEventRow({ event }: { event: EventRecord }) {
+  const status = toolEventStatusValue(event);
+  const title = toolEventTitle(event);
+  const detailValue = toolEventDetail(event);
   return (
     <details className={`tool-event-row tool-event-${status}`}>
       <summary aria-label={`${title}，${labelAgentEventType(event.type)}，展开详情`}>
@@ -587,6 +717,42 @@ function ToolEventRow({ event }: { event: EventRecord }) {
       </div>
     </details>
   );
+}
+
+function toolEventStatusValue(event: EventRecord): 'failed' | 'completed' | 'running' {
+  return event.type.endsWith('.failed')
+    ? 'failed'
+    : event.type.endsWith('.completed')
+      ? 'completed'
+      : 'running';
+}
+
+function toolEventStatus(event: EventRecord): string {
+  const status = toolEventStatusValue(event);
+  return status === 'completed' ? '已完成' : status === 'failed' ? '失败' : '进行中';
+}
+
+function toolEventTitle(event: EventRecord): string {
+  const rawTool = event.payloadJson.tool ?? event.payloadJson.name;
+  return String(
+    event.payloadJson.title ??
+      (rawTool === undefined
+        ? event.type === 'agent.plan.updated'
+          ? '更新执行计划'
+          : '调用工具'
+        : labelToolName(String(rawTool))),
+  );
+}
+
+function toolEventDetail(event: EventRecord): string | undefined {
+  const value =
+    event.payloadJson.command ??
+    event.payloadJson.path ??
+    event.payloadJson.query ??
+    event.payloadJson.url ??
+    readToolLocation(event.payloadJson.locations) ??
+    event.payloadJson.kind;
+  return value === undefined ? undefined : String(value);
 }
 
 function ThoughtEventRow({
