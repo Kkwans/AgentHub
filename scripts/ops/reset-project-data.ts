@@ -17,7 +17,7 @@ import { createDatabase } from '../../packages/db/src/index.ts';
 import { sql } from '../../packages/db/node_modules/drizzle-orm/index.js';
 
 /**
- * Controlled v0.9 Project data reset.
+ * Controlled Project data reset.
  *
  * The default mode is a read-only inventory. `--execute` is intentionally
  * required before either the database transaction or managed-directory move

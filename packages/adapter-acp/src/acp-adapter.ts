@@ -279,7 +279,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
           plan: {},
           session: { configOptions: { boolean: {} } },
         },
-        clientInfo: { name: 'agenthub', title: 'AgentHub', version: '0.6.0' },
+        clientInfo: { name: 'agenthub', title: 'AgentHub', version: '1.0.0' },
       });
       if (initialize.protocolVersion !== PROTOCOL_VERSION) {
         throw new AcpAdapterError(

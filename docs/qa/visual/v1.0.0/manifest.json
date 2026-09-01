@@ -1,0 +1,30 @@
+{
+  "releaseVersion": "1.0.0",
+  "complete": false,
+  "status": "in_progress",
+  "sourceCommit": "",
+  "target": "NAS-local Playwright against the real deployed AgentHub target",
+  "requiredViewports": [
+    "1920x1080",
+    "1600x1000",
+    "1440x900",
+    "1280x800",
+    "1024x768",
+    "768x1024",
+    "390x844"
+  ],
+  "themes": ["light", "dark"],
+  "capturedEvidence": [
+    "03-workspace-css-fixed-1440-light-r3",
+    "03-workspace-css-fixed-390-dark-r2"
+  ],
+  "unverifiedGates": [
+    "full viewport/theme matrix",
+    "all exception states",
+    "geometry",
+    "axe",
+    "performance",
+    "real Agent acceptance",
+    "backup and upgrade rehearsal"
+  ]
+}

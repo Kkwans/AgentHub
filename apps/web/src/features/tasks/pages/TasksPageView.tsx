@@ -381,7 +381,7 @@ export function TasksPage() {
               id="v06-goal-title"
               name="title"
               required
-              placeholder="例如发布 AgentHub v0.6"
+              placeholder="例如发布 AgentHub 1.0"
             />
             <FormTextArea
               label="说明"

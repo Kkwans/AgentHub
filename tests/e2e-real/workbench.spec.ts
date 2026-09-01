@@ -32,13 +32,13 @@ async function apiData<T>(
 async function seedRealControlPlane(context: BrowserContext, app: RealApp) {
   const target = await seedTarget(context);
   const project = await apiData<Identified & { name: string }>(context, 'post', '/projects', {
-    name: 'v0.7 E2E Project',
+    name: 'QA E2E Project',
     targetId: target.id,
     rootPath: app.projectRoot,
     kind: 'TEST',
   });
   const agent = await apiData<Identified & { name: string }>(context, 'post', '/agents', {
-    name: 'v0.7 ACP Fixture',
+    name: 'QA ACP Fixture',
     targetId: target.id,
     agentKind: 'CUSTOM_ACP',
     executable: process.execPath,
@@ -56,7 +56,7 @@ async function seedRealControlPlane(context: BrowserContext, app: RealApp) {
 
 async function seedTarget(context: BrowserContext) {
   return apiData<Identified>(context, 'post', '/execution-targets', {
-    name: 'v0.7 E2E 宿主机',
+    name: 'QA E2E 宿主机',
     kind: 'LOCAL_HOST',
     hostname: '127.0.0.1',
     os: process.platform,
@@ -64,7 +64,7 @@ async function seedTarget(context: BrowserContext) {
   });
 }
 
-test('v0.7 token 登录进入 Home，并能进入设置分区', async ({ page }) => {
+test('token 登录进入 Home，并能进入设置分区', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '创建管理员账号' })).toBeVisible();
   await page.getByLabel('用户名').fill('v07admin');
@@ -80,7 +80,7 @@ test('v0.7 token 登录进入 Home，并能进入设置分区', async ({ page })
   await expect(page.getByRole('heading', { name: 'Terminal', exact: true })).toBeVisible();
 });
 
-test.describe('v0.7 local_trusted 项目与 Work', () => {
+test.describe('local_trusted 项目与 Work', () => {
   test.use({ authMode: 'local_trusted' });
 
   test('通过 Create Project 对话框完成真实 preflight/create，并进入 Project Context', async ({
@@ -95,12 +95,12 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('combobox', { name: '运行环境' })).toBeVisible();
     await expect(dialog.getByRole('combobox', { name: '允许目录' })).toBeVisible();
-    await dialog.getByRole('textbox', { name: '项目名称' }).fill('v0.7 UI Project');
+    await dialog.getByRole('textbox', { name: '项目名称' }).fill('QA UI Project');
     await expect(dialog.getByText('目录可以使用')).toBeVisible({ timeout: 15_000 });
     await dialog.getByRole('button', { name: '预检并创建' }).click();
 
     await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+\/overview$/);
-    await expect(page.getByRole('heading', { name: 'v0.7 UI Project' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'QA UI Project' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: '项目上下文' })).toBeVisible();
   });
 
@@ -113,7 +113,7 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     const { project, agent } = await seedRealControlPlane(context, app);
     const task = await apiData<Identified & { title: string }>(context, 'post', '/tasks', {
       projectId: project.id,
-      title: 'v0.7 E2E Task',
+      title: 'QA E2E Task',
       description: '真实 backend 页面集成验证',
       priority: 2,
     });
@@ -128,13 +128,13 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
       projectId: project.id,
       agentId: agent.id,
       taskId: task.id,
-      title: 'v0.7 E2E Session',
+      title: 'QA E2E Session',
       cwd: app.projectRoot,
     });
 
     await page.goto(`/projects/${project.id}/work?task=${task.id}`);
     await expect(page.getByRole('region', { name: '工作列表' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'v0.7 E2E Task' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'QA E2E Task' })).toBeVisible();
     await page.goto(`/projects/${project.id}/sessions`);
     await expect(page.getByRole('textbox', { name: '搜索会话' })).toBeVisible();
     await expect(page.getByRole('link', { name: /v0\.7 E2E Session/ })).toBeVisible();
@@ -150,7 +150,7 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     const session = await apiData<Identified>(context, 'post', '/sessions', {
       projectId: project.id,
       agentId: agent.id,
-      title: 'v0.7 Approval Workspace Session',
+      title: 'QA Approval Workspace Session',
       cwd: app.projectRoot,
       branch: 'main',
     });
@@ -183,7 +183,7 @@ test.describe('v0.7 local_trusted 项目与 Work', () => {
     await expect(page.getByLabel('选择 fixture-output.md')).toBeVisible({ timeout: 15_000 });
     await page.getByLabel('选择 fixture-output.md').check();
     const commitForm = page.locator('form.git-commit-form');
-    await commitForm.getByLabel('提交说明').fill('test: v0.7 Workspace ACP 输出');
+    await commitForm.getByLabel('提交说明').fill('test: Workspace ACP 输出');
     await commitForm.getByRole('button', { name: '提交所选文件 (1)' }).click();
     await expect(page.locator('.git-commit-receipt')).toContainText('提交完成', {
       timeout: 30_000,

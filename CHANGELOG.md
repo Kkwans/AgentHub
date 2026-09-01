@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 - 2026-09-02
+
+- 将 AgentHub 收口为面向 Project → Session → Work → Review 的生产级工作控制台，统一设计系统、AppShell、Workspace、PromptOS、Settings 与领域页面的视觉和交互契约；
+- Workspace 按视图模型、会话列表、对话、Composer、Git/Diff、Terminal 与 Inspector 分离职责；长会话列表和长对话历史按阈值窗口化；
+- PromptOS 资产、版本、标签、绑定、变量与 Playground 进入独立的 Hook/组件边界，保留 immutable Version 和真实 API 状态；
+- 发布版本、应用徽标、README、Docker 元数据与 Release Truth Gate 统一为 1.0.0；真实 NAS 视觉、几何、a11y 和性能证据写入发布记录后才视为 RC 完成。
+
 ## 0.6.0 - 2026-08-17
 
 - 以普通用户旅程重构 Web：Project PathPicker、Runtime/Agent Discovery、预检与一键接入，不再要求普通流程手输绝对路径、container ID、hostname/os/arch、executable 或 adapter；

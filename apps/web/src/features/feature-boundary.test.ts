@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-describe('v0.6 feature boundaries', () => {
+describe('feature boundaries', () => {
   it('removes the legacy ControlPages God Component', () => {
     expect(existsSync(new URL('../pages/ControlPages.tsx', import.meta.url))).toBe(false);
     for (const path of [
@@ -19,24 +19,32 @@ describe('v0.6 feature boundaries', () => {
     expect(source('./sessions/pages/SessionsPageView.tsx')).toContain('<FormDialog');
     expect(source('./tasks/pages/TasksPageView.tsx')).toContain('<FormDialog');
     expect(source('./settings/pages/SettingsPageView.tsx')).toContain('<FormDialog');
-    expect(source('./promptos/pages/PromptLibraryPage.tsx')).toContain('<AhDialog');
+    expect(source('./promptos/components/PromptDialogs.tsx')).toContain('<AhDialog');
   });
 
   it('keeps Workspace interaction panels outside the route shell', () => {
     const route = source('./workspace/pages/WorkspacePage.tsx');
+    const view = source('./workspace/pages/WorkspaceView.tsx');
+    const model = source('./workspace/useWorkspaceViewModel.ts');
     const sections = source('./workspace/components/WorkspaceInspector.tsx');
     const terminal = source('./workspace/components/TerminalDock.tsx');
-    expect(route).toContain("from '../components/Conversation'");
-    expect(route).toContain("from '../components/TerminalDock'");
+    expect(view).toContain("from '../components/Conversation'");
+    expect(view).toContain("from '../components/TerminalDock'");
     expect(route).not.toContain('function Conversation(');
     expect(route).not.toContain('function Composer(');
-    expect(route).toContain("'/terminals'");
+    expect(model).toContain("'/terminals'");
     expect(sections).toContain('export function WorkspaceInspector(');
     expect(terminal).toContain("from '@xterm/xterm'");
   });
 
   it('keeps PromptOS ordinary-user labels in the feature section', () => {
-    const promptos = source('./promptos/pages/PromptLibraryPage.tsx');
+    const promptos = [
+      './promptos/components/PromptDialogs.tsx',
+      './promptos/components/PromptLifecycleDrawer.tsx',
+      './promptos/components/PromptEditor.tsx',
+    ]
+      .map(source)
+      .join('\n');
     expect(promptos).toContain('labelPromptBindingTarget');
     expect(promptos).toContain('labelPromptVersionSource');
     expect(promptos).toContain('新建 Prompt 绑定');
@@ -46,7 +54,7 @@ describe('v0.6 feature boundaries', () => {
 
   it('keeps Task and Worktree review copy in Chinese', () => {
     const tasks = source('./tasks/pages/TasksPageView.tsx');
-    const promptos = source('./promptos/pages/PromptLibraryPage.tsx');
+    const promptos = source('./promptos/components/PromptEditor.tsx');
     expect(tasks).toContain('Task 审阅');
     expect(tasks).toContain('审阅证据');
     expect(tasks).toContain('基准分支');

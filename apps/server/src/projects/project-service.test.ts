@@ -144,13 +144,13 @@ describe('Project 预检与只读文件边界', () => {
     if (!project) throw new Error('Project fixture 不存在');
     const updated = await service.update(project.id, {
       name: 'Project Fixture Updated',
-      description: '由 v0.6 Dialog 修改',
+      description: '由共享 Dialog 修改',
       kind: 'TEST',
     });
     expect(updated).toMatchObject({
       id: project.id,
       name: 'Project Fixture Updated',
-      description: '由 v0.6 Dialog 修改',
+      description: '由共享 Dialog 修改',
       kind: 'TEST',
       realRootPath: project.realRootPath,
       targetId: project.targetId,

@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AhButton, AhChoiceSelect, AhIconButton, AhSelect } from './primitives.js';
 
-describe('v0.7 UI primitives', () => {
+describe('UI primitives', () => {
   it('renders a loading button without losing its accessible name', () => {
     render(
       <MantineProvider env="test">

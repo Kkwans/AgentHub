@@ -1,6 +1,6 @@
-# AgentHub v0.6 NAS Compose 部署
+# AgentHub v1.0 NAS Compose 部署
 
-该配置用于当前 ARM64 绿联 NAS，当前正式镜像为 `agenthub:0.6.0-nas.52`。它按用户明确授权以 root/privileged 运行，并拥有 Project
+该配置用于当前 ARM64 绿联 NAS，当前正式镜像为 `agenthub:1.0.0-nas.1`。它按用户明确授权以 root/privileged 运行，并拥有 Project
 读写、Codex HOME、Git identity 配置、Docker socket 和 host Docker CLI。该能力等同 NAS root，
 只能运行可信镜像。
 
@@ -36,7 +36,7 @@ docker compose --env-file deploy/compose/.env.example \
 均只保存 hash。Compose 以固定 project name `agenthub` 启动后，应同时出现在
 `docker compose ls` 和绿联 Docker 的“项目”列表。
 
-## v0.6 升级顺序
+## v1.0 升级顺序
 
 1. 记录旧 image、Compose、`.env`、data/worktrees、健康、Project/Execution Target 和既有 Agent 容器状态。
 2. 只停止 `agenthub` service，备份正式 Compose、`.env`、兼容 token 和 PGlite data/worktrees。
@@ -44,7 +44,7 @@ docker compose --env-file deploy/compose/.env.example \
 4. 核验 container health、账号登录、Cookie WebSocket、Project/Git、Docker preflight、重启恢复、
    `192.168.5.110:3210` 和绿联项目列表。
 
-本次 v0.6 发布备份：
+本次 v1.0 发布备份：
 
 ```text
 /volume2/Project/.agenthub/central/deployments/20260814T045513Z-pre-v06/

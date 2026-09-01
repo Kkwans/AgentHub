@@ -2,7 +2,7 @@
 # primary reproducible build; this file is used when the NAS image needs a
 # native PTY binding and its registry/build network cannot build dependencies.
 
-ARG AGENTHUB_BASE_IMAGE=agenthub:0.6.0-nas.4
+ARG AGENTHUB_BASE_IMAGE=agenthub:1.0.0-nas.1
 
 FROM ${AGENTHUB_BASE_IMAGE} AS node-pty-builder
 
@@ -32,7 +32,7 @@ RUN npm install --ignore-scripts --no-audit --no-fund \
 
 FROM ${AGENTHUB_BASE_IMAGE}
 
-ARG AGENTHUB_VERSION=0.6.0
+ARG AGENTHUB_VERSION=1.0.0
 ARG AGENTHUB_REVISION=unknown
 
 LABEL org.opencontainers.image.title="AgentHub" \

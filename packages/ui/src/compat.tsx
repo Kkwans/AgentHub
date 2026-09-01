@@ -14,10 +14,10 @@ import {
 } from 'react';
 
 /**
- * Compatibility primitives for the pre-v0.7 feature modules.
+ * Compatibility primitives for legacy feature modules.
  *
  * New screens use the Ah* primitives directly. These small adapters keep the
- * unmounted v0.6 modules type-safe while the route-by-route migration finishes,
+ * unmounted legacy modules type-safe while the route-by-route migration finishes,
  * without exposing a second design-system dependency to feature code.
  */
 

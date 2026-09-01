@@ -36,7 +36,7 @@ const session = {
   projectId: project.id,
   agentId: '44444444-4444-4444-8444-444444444444',
   taskId: null,
-  title: 'v0.9 Workspace',
+  title: 'Production Workspace',
   cwd: project.rootPath,
   branch: 'main',
   status: 'READY',
@@ -153,13 +153,11 @@ function stubApi() {
   );
 }
 
-describe('v0.9 App', () => {
+describe('AgentHub App', () => {
   it('renders Home as the new default and exposes the product IA', async () => {
     stubApi();
     renderApp(['/']);
-    expect(
-      await screen.findByRole('heading', { name: '把注意力放在工作本身。' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '继续工作' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '首页' })).toHaveAttribute('href', '/home');
     expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute('href', '/projects');

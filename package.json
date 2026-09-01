@@ -1,6 +1,6 @@
 {
   "name": "agenthub",
-  "version": "0.6.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.11.0",
@@ -19,7 +19,7 @@
     "test:visual:real": "node scripts/qa/real-deployment-visual.cjs",
     "qa:geometry": "node scripts/qa/geometry-audit.cjs",
     "test:qa": "node --test scripts/qa/*.test.cjs",
-    "release:version-truth": "node scripts/release/version-truth.mjs",
+    "release:version-truth": "node scripts/release/check-version-truth.mjs",
     "test:live": "vitest run --config vitest.live.config.ts",
     "db:reset-project-data": "tsx scripts/ops/reset-project-data.ts",
     "format": "prettier --write .",

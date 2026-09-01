@@ -309,7 +309,7 @@ const remoteNode = {
   arch: 'arm64',
   fingerprint: 'sha256:test',
   protocolVersion: '1',
-  daemonVersion: '0.8.0',
+  daemonVersion: 'fixture-1.0',
   allowedRootsJson: ['/volume2/Project'],
   inventoryJson: [],
   status: 'ONLINE',
@@ -323,7 +323,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/**', fulfillFixture);
 });
 
-test('v0.8 全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ page }) => {
+test('全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ page }) => {
   await page.goto('/projects');
   const viewportWidth = page.viewportSize()?.width ?? 1_000;
   if (viewportWidth < 768) {
@@ -493,7 +493,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await attachViewportScreenshot(page, testInfo, 'workspace');
 });
 
-test('Projects 使用 v0.8 高密度实体列表并打开路由弹层', async ({ page }, testInfo) => {
+test('Projects 使用高密度实体列表并打开路由弹层', async ({ page }, testInfo) => {
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: '项目' })).toBeVisible();
   const list = page.getByRole('region', { name: '项目列表' });
@@ -601,7 +601,7 @@ test('Settings 使用窄本地导航和单一内容列', async ({ page }, testIn
   await attachViewportScreenshot(page, testInfo, 'settings-security');
 });
 
-test('核心 v0.8 页面没有 serious 或 critical axe 问题', async ({ page }, testInfo) => {
+test('核心页面没有 serious 或 critical axe 问题', async ({ page }, testInfo) => {
   test.slow();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const routes = [

@@ -21,7 +21,7 @@ import {
 
 afterEach(cleanup);
 
-describe('v0.8 layout contracts', () => {
+describe('layout contracts', () => {
   it('keeps ordinary screens on one shared page grid', () => {
     render(
       <PageFrame>

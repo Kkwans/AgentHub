@@ -1,10 +1,10 @@
 # AgentHub
 
-AgentHub 是一个面向普通开发者的 AI Coding Agent 控制平面。v0.6 以“发现 Project → 发现 Agent → 创建 Session → 工作 → Diff/Git/审阅”为主线，统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。当前 NAS 使用 privileged Docker Compose 部署；Web Shell 使用 Radix Themes 与 Phosphor 构建中文专业控制界面，既有 Docker Agent 容器仍只允许显式、安全接管。
+AgentHub 是一个面向普通开发者的 AI Coding Agent 工作控制台。v1.0 以“Project → Session → Work → Review”为主线，统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。Web Shell 使用统一的 AgentHub Design System，既有 Docker Agent 容器仍只允许显式、安全接管。
 
 ## 当前版本
 
-当前运行版本为 v0.6.0。代码、自动化、live smoke 与 NAS 发布证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md) 和 [`docs/RELEASE-v0.6.0.md`](docs/RELEASE-v0.6.0.md)。NAS 本地 Playwright 已对真实部署完成自动化视觉 gate；该 gate 是当前视觉验收与发布依据。
+当前代码发布版本为 v1.0.0。代码、自动化、live smoke 与 NAS 发布证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md) 和 [`docs/RELEASE-v1.0.0.md`](docs/RELEASE-v1.0.0.md)。发布前后均以真实部署的 NAS 本地 Playwright 证据作为视觉验收依据。
 
 ## 环境
 
@@ -12,12 +12,13 @@ AgentHub 是一个面向普通开发者的 AI Coding Agent 控制平面。v0.6 �
 - pnpm 11
 - Linux（当前目标为 NAS ARM64）
 - 默认开发监听：`127.0.0.1`
-- 当前 NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）；当前镜像为
-  `agenthub:0.6.0-nas.50`（revision `4c0331f`），容器当前 `running/healthy`；NAS 本地 Playwright 自动化视觉 gate 已完成。
+- NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）；v1.0 RC 镜像目标为
+  `agenthub:1.0.0-nas.1`。实际运行镜像、revision、health 与回滚点以
+  [`docs/RELEASE-v1.0.0.md`](docs/RELEASE-v1.0.0.md) 的部署记录为准。
 
 ## 普通用户快速开始
 
-从 [`docs/QUICK_START-v0.6.md`](docs/QUICK_START-v0.6.md) 开始。首次访问只需在页面创建管理员账号；后续通过用户名和密码登录，不需要复制 token、Session、命令或服务器绝对路径。
+从 [`docs/QUICK_START-v1.0.md`](docs/QUICK_START-v1.0.md) 开始。首次访问只需在页面创建管理员账号；后续通过用户名和密码登录，不需要复制 token、Session、命令或服务器绝对路径。
 
 主流程是：在“项目”中选择已发现的 Project → 在“Agent”中扫描并接入 Agent → 创建 Session → 在 Workspace 中发送指令、处理 Approval、查看 Files/Diff/Git → 在“任务”中创建 Goal/Task 并完成 Review → 在 PromptOS 中维护 Prompt、Version 和 Binding。
 
