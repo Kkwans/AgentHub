@@ -614,19 +614,22 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(await screen.findByText(/origin\/main/)).toBeInTheDocument();
     expect(screen.getByText('2 个变更')).toBeInTheDocument();
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '历史' }), { button: 0 });
+    fireEvent.click(screen.getByText('更多 Git'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '提交历史' }));
     expect(await screen.findByText('feat(workspace): 完成 Git 工作区')).toBeInTheDocument();
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '分支' }), { button: 0 });
+    fireEvent.click(screen.getByText('更多 Git'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '分支' }));
     expect(await screen.findByText('abcdef01')).toBeInTheDocument();
     expect(screen.queryByText('未跟踪远端分支')).not.toBeInTheDocument();
     expect(screen.getAllByText(/origin\/main/).length).toBeGreaterThan(0);
 
-    fireEvent.mouseDown(
-      within(screen.getByRole('tablist', { name: 'Git 工作区视图' })).getByRole('tab', {
-        name: '变更',
-      }),
-      { button: 0 },
-    );
+    fireEvent.click(screen.getByText('更多 Git'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '变更' }));
+    fireEvent.click(await screen.findByRole('button', { name: '查看 apps/web/src/App.tsx Diff' }));
+    expect(
+      await screen.findByRole('region', { name: '已选择 apps/web/src/App.tsx 的 Diff' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '选择 apps/web/src/App.tsx' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('checkbox', { name: '选择 apps/web/src/App.tsx' }));
     fireEvent.change(screen.getByPlaceholderText('说明这次变更解决了什么'), {
       target: { value: 'feat(workspace): 提交选择的文件' },

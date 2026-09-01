@@ -1877,10 +1877,75 @@
   border-bottom: 1px solid var(--ah-border-subtle);
 }
 
-.workspace :global(.git-viewbar [role='tablist']) {
+.workspace :global(.git-viewbar > strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 11.5px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.git-view-actions) {
   display: flex;
   min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspace :global(.git-more-menu) {
+  position: relative;
+}
+
+.workspace :global(.git-more-menu > summary) {
+  display: inline-flex;
+  min-height: 29px;
+  align-items: center;
+  padding: 0 7px;
+  color: var(--ah-text-secondary);
+  font-size: 11.5px;
+  font-weight: 560;
+  border-radius: 7px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.workspace :global(.git-more-menu > summary::-webkit-details-marker) {
+  display: none;
+}
+
+.workspace :global(.git-more-menu > summary:hover),
+.workspace :global(.git-more-menu[open] > summary) {
+  color: var(--ah-text-primary);
+  background: var(--workspace-hover);
+}
+
+.workspace :global(.git-more-menu > div) {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 128px;
   gap: 2px;
+  padding: 4px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  box-shadow: var(--ah-shadow-md, 0 12px 28px rgb(17 22 38 / 14%));
+}
+
+.workspace :global(.git-more-menu > div button) {
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.workspace :global(.git-more-menu > div button:hover),
+.workspace :global(.git-more-menu > div button:focus-visible) {
+  color: var(--ah-text-primary);
+  background: var(--workspace-hover);
 }
 
 .workspace :global(.git-viewbar button),
@@ -1899,11 +1964,6 @@
 .workspace :global(.git-selection-heading button:hover) {
   color: var(--ah-text-primary);
   background: var(--ah-surface);
-}
-
-.workspace :global(.git-viewbar button[aria-selected='true']) {
-  color: var(--workspace-ink);
-  background: var(--workspace-selected);
 }
 
 .workspace :global(.git-selection-heading) {
@@ -2086,11 +2146,41 @@
   border-color: color-mix(in srgb, var(--ah-accent-primary) 22%, transparent);
 }
 
+.workspace :global(.git-commit-dock) {
+  border-top: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.git-commit-dock-summary) {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  color: var(--ah-text-tertiary);
+  font-size: 10.75px;
+}
+
+.workspace :global(.git-commit-dock-summary button) {
+  min-height: 26px;
+  padding: 0 7px;
+  color: var(--ah-accent-primary);
+  font-size: 10.75px;
+  font-weight: 620;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+}
+
+.workspace :global(.git-commit-dock-summary button:hover),
+.workspace :global(.git-commit-dock-summary button:focus-visible) {
+  background: var(--ah-accent-soft);
+}
+
 .workspace :global(.git-commit-form) {
   display: grid;
   gap: 8px;
-  padding: 10px;
-  border-top: 1px solid var(--ah-border-subtle);
+  padding: 0 10px 10px;
 }
 
 .workspace :global(.git-commit-form label) {
@@ -2136,6 +2226,52 @@
   background: var(--ah-success-soft);
   border-radius: 8px;
   font-size: 10.5px;
+}
+
+.workspace :global(.git-selected-diff) {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin: 0 10px 10px;
+  padding: 10px;
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 9px;
+}
+
+.workspace :global(.git-selected-diff-heading) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.workspace :global(.git-selected-diff-heading > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.workspace :global(.git-selected-diff-heading code) {
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 11px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.workspace :global(.git-selected-diff .git-diff-editor) {
+  min-height: 280px;
 }
 
 .workspace :global(.git-view-content) {

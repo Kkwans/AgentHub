@@ -7,7 +7,6 @@ import {
   GitCompareArrows,
   IconButton,
   RefreshCw,
-  Tabs,
 } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Common';
@@ -47,16 +46,14 @@ export function GitChangesTree({
     value: 'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines',
   ) => void;
 }) {
-  type GitView = 'changes' | 'diff' | 'history' | 'branches';
-  // A deep link with `change=` should open Diff immediately. Untracked files
-  // deliberately use the Files inspector instead, so do not derive the view
-  // from a generic selected path after every render.
-  const [view, setView] = useState<GitView>(() => (selectedPath ? 'diff' : 'changes'));
+  type GitView = 'changes' | 'history' | 'branches';
+  const [view, setView] = useState<GitView>('changes');
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [commitMessage, setCommitMessage] = useState('');
   const [commitReceipt, setCommitReceipt] = useState<string>();
   const [commitPending, setCommitPending] = useState(false);
   const [commitError, setCommitError] = useState<Error>();
+  const [commitDockOpen, setCommitDockOpen] = useState(false);
   const changeTree = useMemo(
     () => buildGitChangeTree(status.data?.entries ?? []),
     [status.data?.entries],
@@ -85,16 +82,25 @@ export function GitChangesTree({
 
   const togglePath = (path: string) => {
     setCommitReceipt(undefined);
+    setCommitDockOpen(true);
     setSelectedPaths((current) =>
       current.includes(path) ? current.filter((item) => item !== path) : [...current, path],
     );
   };
 
   const refetchCurrentView = () => {
-    if (view === 'diff') void diff.refetch();
-    else if (view === 'history') void commits.refetch();
+    if (view === 'history') void commits.refetch();
     else if (view === 'branches') void branches.refetch();
-    else void status.refetch();
+    else {
+      void status.refetch();
+      if (selectedPath) void diff.refetch();
+    }
+  };
+
+  const viewLabels: Record<GitView, string> = {
+    changes: selectedPath ? '变更与 Diff' : '变更',
+    history: '提交历史',
+    branches: '分支',
   };
 
   return (
@@ -120,31 +126,32 @@ export function GitChangesTree({
       </div>
 
       <div className="git-viewbar">
-        <Tabs.Root value={view} onValueChange={(value) => setView(value as GitView)}>
-          <Tabs.List aria-label="Git 工作区视图">
-            <Tabs.Trigger value="changes" aria-label="变更">
-              变更
-            </Tabs.Trigger>
-            <Tabs.Trigger value="diff" aria-label="Diff">
-              Diff
-            </Tabs.Trigger>
-            <Tabs.Trigger value="history" aria-label="历史">
-              历史
-            </Tabs.Trigger>
-            <Tabs.Trigger value="branches" aria-label="分支">
-              分支
-            </Tabs.Trigger>
-          </Tabs.List>
-        </Tabs.Root>
-        <IconButton
-          type="button"
-          size="1"
-          variant="ghost"
-          aria-label="刷新 Git 数据"
-          onClick={refetchCurrentView}
-        >
-          <RefreshCw size={15} />
-        </IconButton>
+        <strong>{viewLabels[view]}</strong>
+        <div className="git-view-actions">
+          <details className="git-more-menu">
+            <summary>更多 Git</summary>
+            <div role="menu" aria-label="更多 Git 视图">
+              <button type="button" role="menuitem" onClick={() => setView('changes')}>
+                变更
+              </button>
+              <button type="button" role="menuitem" onClick={() => setView('history')}>
+                提交历史
+              </button>
+              <button type="button" role="menuitem" onClick={() => setView('branches')}>
+                分支
+              </button>
+            </div>
+          </details>
+          <IconButton
+            type="button"
+            size="1"
+            variant="ghost"
+            aria-label="刷新 Git 数据"
+            onClick={refetchCurrentView}
+          >
+            <RefreshCw size={15} />
+          </IconButton>
+        </div>
       </div>
 
       {commitReceipt && (
@@ -167,11 +174,14 @@ export function GitChangesTree({
               <button
                 type="button"
                 onClick={() =>
-                  setSelectedPaths(
-                    selectedPaths.length === status.data?.entries.length
-                      ? []
-                      : (status.data?.entries.map((entry) => entry.path) ?? []),
-                  )
+                  (() => {
+                    const next =
+                      selectedPaths.length === status.data?.entries.length
+                        ? []
+                        : (status.data?.entries.map((entry) => entry.path) ?? []);
+                    setSelectedPaths(next);
+                    setCommitDockOpen(next.length > 0);
+                  })()
                 }
               >
                 {selectedPaths.length === status.data?.entries.length ? '取消全选' : '全选'}
@@ -191,87 +201,119 @@ export function GitChangesTree({
                 />
               ))}
             </div>
-            <form
-              className="git-commit-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (selectedPaths.length && commitMessage.trim()) commit();
-              }}
-            >
-              <label>
-                <span>提交说明</span>
-                <textarea
-                  value={commitMessage}
-                  maxLength={10_000}
-                  rows={3}
-                  placeholder="说明这次变更解决了什么"
-                  onChange={(event) => {
-                    setCommitReceipt(undefined);
-                    setCommitError(undefined);
-                    setCommitMessage(event.target.value);
-                  }}
-                />
-              </label>
-              <Button
-                type="submit"
-                size="2"
-                disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
-              >
-                <GitCompareArrows size={16} />
-                {commitPending ? '正在提交…' : `提交所选文件 (${selectedPaths.length})`}
-              </Button>
-              <small>只提交勾选文件，不会混入其他已暂存变更。</small>
-              {commitError && (
-                <div className="workspace-query-error" role="alert">
-                  <span>{commitError.message}</span>
-                  <button type="button" onClick={commit}>
-                    重试提交
+            <div className={`git-commit-dock${selectedPaths.length ? ' has-selection' : ''}`}>
+              <div className="git-commit-dock-summary">
+                <span>
+                  {selectedPaths.length
+                    ? `已选择 ${selectedPaths.length} 个文件`
+                    : '勾选文件后提交'}
+                </span>
+                {selectedPaths.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setCommitDockOpen((value) => !value)}
+                    aria-expanded={commitDockOpen}
+                  >
+                    {commitDockOpen ? '收起' : '填写提交说明'}
                   </button>
-                </div>
+                )}
+              </div>
+              {selectedPaths.length > 0 && commitDockOpen && (
+                <form
+                  className="git-commit-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (selectedPaths.length && commitMessage.trim()) commit();
+                  }}
+                >
+                  <label>
+                    <span>提交说明</span>
+                    <textarea
+                      value={commitMessage}
+                      maxLength={10_000}
+                      rows={2}
+                      placeholder="说明这次变更解决了什么"
+                      onChange={(event) => {
+                        setCommitReceipt(undefined);
+                        setCommitError(undefined);
+                        setCommitMessage(event.target.value);
+                      }}
+                    />
+                  </label>
+                  <Button
+                    type="submit"
+                    size="2"
+                    disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
+                  >
+                    <GitCompareArrows size={16} />
+                    {commitPending ? '正在提交…' : `提交所选文件 (${selectedPaths.length})`}
+                  </Button>
+                  <small>只提交勾选文件，不会混入其他已暂存变更。</small>
+                  {commitError && (
+                    <div className="workspace-query-error" role="alert">
+                      <span>{commitError.message}</span>
+                      <button type="button" onClick={commit}>
+                        重试提交
+                      </button>
+                    </div>
+                  )}
+                </form>
               )}
-            </form>
+            </div>
+            {selectedPath && (
+              <section className="git-selected-diff" aria-label={`已选择 ${selectedPath} 的 Diff`}>
+                <div className="git-selected-diff-heading">
+                  <div>
+                    <span>选中文件</span>
+                    <code title={selectedPath}>{selectedPath}</code>
+                  </div>
+                  <span>Diff</span>
+                </div>
+                <div className="git-diff-toolbar">
+                  <label className="git-diff-toggle">
+                    <input
+                      type="checkbox"
+                      checked={stagedDiff}
+                      onChange={(event) => onStagedDiffChange(event.target.checked)}
+                    />
+                    staged
+                  </label>
+                  <label className="git-whitespace-select">
+                    <span>空白</span>
+                    <select
+                      aria-label="Diff 空白处理"
+                      value={whitespace}
+                      onChange={(event) =>
+                        onWhitespaceChange(
+                          event.target.value as
+                            | 'default'
+                            | 'ignore-all-space'
+                            | 'ignore-space-change'
+                            | 'ignore-blank-lines',
+                        )
+                      }
+                    >
+                      <option value="default">保留</option>
+                      <option value="ignore-all-space">忽略全部</option>
+                      <option value="ignore-space-change">忽略变化</option>
+                      <option value="ignore-blank-lines">忽略空行</option>
+                    </select>
+                  </label>
+                </div>
+                {diff.isLoading ? (
+                  <LoadingState label="正在读取 Diff" />
+                ) : diff.error ? (
+                  <ErrorState error={diff.error} retry={() => diff.refetch()} />
+                ) : (
+                  <DiffViewer
+                    patch={diff.data?.patch ?? ''}
+                    truncated={Boolean(diff.data?.truncated)}
+                  />
+                )}
+              </section>
+            )}
           </>
         ))}
-
-      {view === 'diff' && (
-        <div className="git-view-content git-diff-view">
-          <div className="git-diff-toolbar">
-            <label className="git-diff-toggle">
-              <input
-                type="checkbox"
-                checked={stagedDiff}
-                onChange={(event) => onStagedDiffChange(event.target.checked)}
-              />
-              查看 staged Diff
-            </label>
-            <label className="git-whitespace-select">
-              <span>空白处理</span>
-              <select
-                aria-label="Diff 空白处理"
-                value={whitespace}
-                onChange={(event) =>
-                  onWhitespaceChange(
-                    event.target.value as
-                      'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines',
-                  )
-                }
-              >
-                <option value="default">保留空白</option>
-                <option value="ignore-all-space">忽略全部空白</option>
-                <option value="ignore-space-change">忽略空白变化</option>
-                <option value="ignore-blank-lines">忽略空白行</option>
-              </select>
-            </label>
-          </div>
-          {diff.isLoading ? (
-            <LoadingState label="正在读取 Diff" />
-          ) : diff.error ? (
-            <ErrorState error={diff.error} retry={() => diff.refetch()} />
-          ) : (
-            <DiffViewer patch={diff.data?.patch ?? ''} truncated={Boolean(diff.data?.truncated)} />
-          )}
-        </div>
-      )}
 
       {view === 'history' && (
         <div className="git-view-content">
@@ -420,7 +462,7 @@ function GitChangeTreeNode({
   selectedPaths: string[];
   onTogglePath: (path: string) => void;
   onSelectPath?: ((path: string, view?: 'diff' | 'files') => void) | undefined;
-  onSelectView: (view: 'changes' | 'diff' | 'history' | 'branches') => void;
+  onSelectView: (view: 'changes' | 'history' | 'branches') => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   if (node.kind === 'directory') {
@@ -515,8 +557,12 @@ function GitChangeTreeNode({
           className="git-change-preview"
           aria-label={`查看 ${entry.path} ${untracked ? '文件' : 'Diff'}`}
           onClick={() => {
-            onSelectPath(entry.path, untracked ? 'files' : 'diff');
-            onSelectView(untracked ? 'changes' : 'diff');
+            if (untracked) {
+              onSelectPath(entry.path, 'files');
+              onSelectView('changes');
+            } else {
+              onSelectPath(entry.path, 'diff');
+            }
           }}
         >
           {untracked ? '文件' : 'Diff'}
