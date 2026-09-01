@@ -1,6 +1,6 @@
 import { Button, GitBranch } from '@agenthub/ui';
 
-import { ErrorState, LoadingState } from '../../../components/Common';
+import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { ProjectRecord, ResolvedPromptContextRecord, SessionRecord } from '../../../lib/api';
 import {
   labelPromptBindingSlot,

@@ -303,41 +303,52 @@ export function ProjectWorkPage() {
             </span>
           </div>
           {view === 'board' ? (
-            <div className={projectsStyles.board} aria-label="工作看板">
-              {boardColumns.map((column) => {
-                const columnTasks = filteredTasks.filter((task) => task.status === column.status);
-                return (
-                  <section className={projectsStyles.boardColumn} key={column.status}>
-                    <header className={projectsStyles.boardColumnHeader}>
-                      <span>{column.label}</span>
-                      <span>{columnTasks.length}</span>
-                    </header>
-                    <div className={projectsStyles.boardColumnBody}>
-                      {columnTasks.map((task) => (
-                        <button
-                          type="button"
-                          className={projectsStyles.boardCard}
-                          key={task.id}
-                          onClick={() => {
-                            selectTask(task);
-                            setWorkView('list');
-                          }}
-                        >
-                          <strong>{task.title}</strong>
-                          <small>
-                            {task.priority ? `P${task.priority}` : ''}
-                            {task.assignedAgentId
-                              ? ` · ${(agents.data ?? []).find((agent) => agent.id === task.assignedAgentId)?.name ?? '已分配 Agent'}`
-                              : ''}
-                          </small>
-                        </button>
-                      ))}
-                      {!columnTasks.length ? <span className={layout.subtle}>暂无工作</span> : null}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
+            <>
+              <p className={projectsStyles.boardHint} id="work-board-hint">
+                手机端左右滑动查看其他状态
+              </p>
+              <div
+                className={projectsStyles.board}
+                aria-label="工作看板"
+                aria-describedby="work-board-hint"
+              >
+                {boardColumns.map((column) => {
+                  const columnTasks = filteredTasks.filter((task) => task.status === column.status);
+                  return (
+                    <section className={projectsStyles.boardColumn} key={column.status}>
+                      <header className={projectsStyles.boardColumnHeader}>
+                        <span>{column.label}</span>
+                        <span>{columnTasks.length}</span>
+                      </header>
+                      <div className={projectsStyles.boardColumnBody}>
+                        {columnTasks.map((task) => (
+                          <button
+                            type="button"
+                            className={projectsStyles.boardCard}
+                            key={task.id}
+                            onClick={() => {
+                              selectTask(task);
+                              setWorkView('list');
+                            }}
+                          >
+                            <strong>{task.title}</strong>
+                            <small>
+                              {task.priority ? `P${task.priority}` : ''}
+                              {task.assignedAgentId
+                                ? ` · ${(agents.data ?? []).find((agent) => agent.id === task.assignedAgentId)?.name ?? '已分配 Agent'}`
+                                : ''}
+                            </small>
+                          </button>
+                        ))}
+                        {!columnTasks.length ? (
+                          <span className={layout.subtle}>暂无工作</span>
+                        ) : null}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <div className={projectsStyles.workLayout}>
               <section className={projectsStyles.workListPanel} aria-label="工作列表">

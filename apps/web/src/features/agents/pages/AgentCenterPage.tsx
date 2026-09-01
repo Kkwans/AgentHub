@@ -16,7 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { ErrorState, LoadingState } from '../../../components/Common';
+import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { AgentCandidateRecord, AgentRecord, ExecutionTargetRecord } from '../../../lib/api';
 import { api } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';

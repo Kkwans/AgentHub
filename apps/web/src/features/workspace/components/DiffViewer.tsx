@@ -1,7 +1,7 @@
 import { AgentHubThemeContext } from '@agenthub/ui';
 import { useContext, useEffect, useMemo, useState } from 'react';
 
-import { EmptyState, LoadingState } from '../../../components/Common';
+import { EmptyState, LoadingState } from '../../../components/Feedback';
 import { SafeDiffEditor } from '../../../components/SafeDiffEditor';
 
 export function DiffViewer({

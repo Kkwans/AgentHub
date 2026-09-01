@@ -18,10 +18,10 @@ afterEach(async () => {
 
 describe('FilesystemService', () => {
   it('keeps directory browsing inside configured roots and discovers projects', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'agenthub-v06-fs-'));
+    const root = await mkdtemp(join(tmpdir(), 'agenthub-qa-fs-'));
     temporaryDirectories.push(root);
     const project = join(root, 'demo');
-    const outside = await mkdtemp(join(tmpdir(), 'agenthub-v06-outside-'));
+    const outside = await mkdtemp(join(tmpdir(), 'agenthub-qa-outside-'));
     temporaryDirectories.push(outside);
     await mkdir(join(project, '.git'), { recursive: true });
     await writeFile(join(project, 'package.json'), '{}');
@@ -62,8 +62,8 @@ describe('FilesystemService', () => {
   });
 
   it('does not expose Docker mounts outside the configured workspace allow-list', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'agenthub-v06-docker-root-'));
-    const outside = await mkdtemp(join(tmpdir(), 'agenthub-v06-docker-outside-'));
+    const root = await mkdtemp(join(tmpdir(), 'agenthub-qa-docker-root-'));
+    const outside = await mkdtemp(join(tmpdir(), 'agenthub-qa-docker-outside-'));
     temporaryDirectories.push(root, outside);
     const service = new FilesystemService(
       {

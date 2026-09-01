@@ -1,6 +1,6 @@
 import { Tabs } from '@agenthub/ui';
 
-import { EmptyState, ErrorState, LoadingState } from '../../../components/Common';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
   AgentRecord,
   EventRecord,

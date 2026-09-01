@@ -145,7 +145,7 @@ function stubApi() {
           recentResults: [],
           agentHealth: [],
         };
-      return new Response(JSON.stringify({ data, requestId: 'v07-test' }), {
+      return new Response(JSON.stringify({ data, requestId: 'qa-app-test' }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });

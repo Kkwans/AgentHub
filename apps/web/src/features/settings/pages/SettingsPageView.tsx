@@ -22,7 +22,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink, useParams } from 'react-router-dom';
 
-import { ErrorState, formatTime, LoadingState, StatusBadge } from '../../../components/Common';
+import { ErrorState, formatTime, LoadingState, StatusBadge } from '../../../components/Feedback';
 import type { AuthStatus } from '../../../components/AccessGate';
 import { PasswordField } from '../../../components/PasswordField';
 import { api, authSession, type ApiTokenRecord } from '../../../lib/api';

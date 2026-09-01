@@ -1,7 +1,7 @@
 import { ChevronDown, Plus, Search } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LoadingState, ErrorState } from '../../../components/Common';
+import { LoadingState, ErrorState } from '../../../components/Feedback';
 import type { SessionRecord } from '../../../lib/api';
 import { resolveWorkspaceRunState } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';

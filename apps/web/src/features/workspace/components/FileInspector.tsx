@@ -2,7 +2,7 @@ import { AgentHubThemeContext, ChevronDown, ChevronRight, FileCode2, Files } fro
 import { useContext, useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 
-import { EmptyState, ErrorState, LoadingState } from '../../../components/Common';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type { FileEntry } from '../../../lib/api';
 import type { QueryState } from '../workspace-types';
 

@@ -25,7 +25,7 @@ import {
   formatTime,
   LoadingState,
   StatusBadge,
-} from '../../../components/Common';
+} from '../../../components/Feedback';
 import {
   api,
   type RemoteNodeDiagnostics,
@@ -100,7 +100,7 @@ export function RemoteNodesPanel() {
   const failure = nodes.error ?? createRegistration.error ?? revoke.error ?? diagnostics.error;
 
   return (
-    <section className="control-section remote-node-section">
+    <section className="panel-section remote-node-section">
       <div className="section-heading remote-node-heading">
         <div>
           <span className="section-kicker">远程连接</span>
@@ -160,7 +160,7 @@ export function RemoteNodesPanel() {
       >
         <form
           id="remote-node-registration-form"
-          className="v06-form remote-node-dialog-form"
+          className="remote-node-dialog-form"
           onSubmit={(event) => {
             event.preventDefault();
             const values = new FormData(event.currentTarget);
@@ -252,7 +252,7 @@ export function RemoteNodesPanel() {
             )}
           </div>
           {createRegistration.error ? (
-            <p className="v06-form-error">{createRegistration.error.message}</p>
+            <p className="form-error">{createRegistration.error.message}</p>
           ) : null}
         </form>
       </FormDialog>

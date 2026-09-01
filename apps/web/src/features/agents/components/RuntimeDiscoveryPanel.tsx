@@ -6,7 +6,7 @@ import { Badge, Button, Play, RefreshCw, SectionHeader, Settings } from '@agenth
 import type { AgentCandidateRecord, RuntimeCandidateRecord } from '../../../lib/api';
 import { api } from '../../../lib/api';
 import { labelExecutionTargetKind, labelRuntimeStatus } from '../../../presentation/domain-labels';
-import { ErrorState, InlineError, LoadingState, EmptyState } from '../../../components/Common';
+import { ErrorState, InlineError, LoadingState, EmptyState } from '../../../components/Feedback';
 
 /**
  * Runtime discovery is a shared control-plane surface. It is intentionally
@@ -75,7 +75,7 @@ export function RuntimeDiscoveryPanel() {
   const actionError = rescan.error ?? adoptRuntime.error ?? lifecycle.error;
 
   return (
-    <section className="v06-panel" data-testid="runtime-discovery-panel">
+    <section className="infrastructure-panel" data-testid="runtime-discovery-panel">
       <SectionHeader
         title="运行环境"
         description="管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。"
@@ -93,7 +93,7 @@ export function RuntimeDiscoveryPanel() {
       />
       {actionError ? <InlineError error={actionError} /> : null}
       {hiddenRuntimeCount ? (
-        <p className="v06-summary-muted">
+        <p className="infrastructure-summary-muted">
           已隐藏 {hiddenRuntimeCount} 个未识别容器；如需接入，请先为容器配置支持的 Agent Profile。
         </p>
       ) : null}
@@ -111,13 +111,13 @@ export function RuntimeDiscoveryPanel() {
           description="重新扫描后，已接入或包含受支持 Agent 的环境会显示在这里。"
         />
       ) : null}
-      <div className="v06-card-grid">
+      <div className="infrastructure-card-grid">
         {visibleRuntimeCandidates.map((runtime) => {
           const statusDetail = labelRuntimeStatusDetail(runtime.statusText);
           return (
-            <article className="v06-discovery-card" key={runtime.candidateId}>
-              <div className="v06-discovery-card-top">
-                <div className="v06-record-icon">
+            <article className="infrastructure-discovery-card" key={runtime.candidateId}>
+              <div className="infrastructure-discovery-card-top">
+                <div className="infrastructure-record-icon">
                   <Settings size={19} />
                 </div>
                 <Badge
@@ -138,7 +138,7 @@ export function RuntimeDiscoveryPanel() {
                 {runtime.image ? ` · ${runtime.image}` : ''}
               </p>
               {statusDetail ? <small>{statusDetail}</small> : null}
-              <div className="v06-discovery-card-actions">
+              <div className="infrastructure-discovery-card-actions">
                 {!runtime.targetId && runtime.adoptable ? (
                   <Button
                     size="2"
@@ -174,10 +174,10 @@ export function RuntimeDiscoveryPanel() {
                     停止
                   </Button>
                 ) : null}
-                {runtime.targetId ? <span className="v06-connected">已接入</span> : null}
+                {runtime.targetId ? <span className="infrastructure-connected">已接入</span> : null}
               </div>
               {runtime.reasonCode ? (
-                <small className="v06-card-warning">
+                <small className="infrastructure-card-warning">
                   {labelRuntimeCandidateReason(runtime.reasonCode)}
                 </small>
               ) : null}

@@ -11,7 +11,7 @@ import {
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from '../../../components/Common';
+import { EmptyState, ErrorState, LoadingState, StatusBadge } from '../../../components/Feedback';
 import type {
   ApprovalRecord,
   EventRecord,

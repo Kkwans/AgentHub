@@ -1,4 +1,4 @@
-import { EmptyState, ErrorState, LoadingState } from '../../../components/Common';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import { useWorkspaceViewModel } from '../useWorkspaceViewModel';
 import { WorkspaceView } from './WorkspaceView';
 

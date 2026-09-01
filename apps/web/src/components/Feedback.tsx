@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { AlertTriangle, AhStatusPill, Inbox, RefreshCw } from '@agenthub/ui';
 import { ApiError } from '../lib/api';
-import styles from './Common.module.css';
+import styles from './Feedback.module.css';
 
 const statusLabels: Record<string, string> = {
   READY: '就绪',

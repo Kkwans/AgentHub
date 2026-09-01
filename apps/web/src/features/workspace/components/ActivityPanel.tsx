@@ -1,5 +1,5 @@
 import { Wrench } from '@agenthub/ui';
-import { EmptyState, ErrorState, LoadingState } from '../../../components/Common';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type { EventRecord } from '../../../lib/api';
 import { labelAgentEventType } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';

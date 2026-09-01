@@ -1,4 +1,4 @@
-import { LoadingState, ErrorState, StatusBadge } from '../../../components/Common';
+import { LoadingState, ErrorState, StatusBadge } from '../../../components/Feedback';
 import type { AgentRecord, RunRecord, SessionRecord } from '../../../lib/api';
 import type { QueryState } from '../workspace-types';
 

@@ -6,18 +6,14 @@ const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'u
 describe('feature boundaries', () => {
   it('removes the legacy ControlPages God Component', () => {
     expect(existsSync(new URL('../pages/ControlPages.tsx', import.meta.url))).toBe(false);
-    for (const path of [
-      './sessions/pages/SessionsPage.tsx',
-      './tasks/pages/TasksPage.tsx',
-      './settings/pages/SettingsPage.tsx',
-    ]) {
-      expect(source(path)).not.toContain('ControlPages');
-    }
+    expect(existsSync(new URL('./sessions/pages/SessionsPage.tsx', import.meta.url))).toBe(false);
+    expect(existsSync(new URL('./tasks/pages/TasksPage.tsx', import.meta.url))).toBe(false);
+    expect(source('./settings/pages/SettingsPage.tsx')).not.toContain('ControlPages');
   });
 
   it('keeps write flows inside the shared Dialog/Form system', () => {
-    expect(source('./sessions/pages/SessionsPageView.tsx')).toContain('<FormDialog');
-    expect(source('./tasks/pages/TasksPageView.tsx')).toContain('<FormDialog');
+    expect(source('./projects/pages/ProjectSessionsPage.tsx')).toContain('<AhDialog');
+    expect(source('./projects/pages/NewWorkPage.tsx')).toContain('<AhDialog');
     expect(source('./settings/pages/SettingsPageView.tsx')).toContain('<FormDialog');
     expect(source('./promptos/components/PromptDialogs.tsx')).toContain('<AhDialog');
   });
@@ -53,12 +49,12 @@ describe('feature boundaries', () => {
   });
 
   it('keeps Task and Worktree review copy in Chinese', () => {
-    const tasks = source('./tasks/pages/TasksPageView.tsx');
+    const tasks = source('./projects/pages/ProjectWorkPage.tsx');
     const promptos = source('./promptos/components/PromptEditor.tsx');
-    expect(tasks).toContain('Task 审阅');
-    expect(tasks).toContain('审阅证据');
-    expect(tasks).toContain('基准分支');
-    expect(tasks).toContain('任务分支');
+    expect(tasks).toContain('待审阅');
+    expect(tasks).toContain('验收标准');
+    expect(tasks).toContain('执行信息');
+    expect(tasks).toContain('分支：');
     expect(tasks).not.toContain('Task Review');
     expect(tasks).not.toContain('Review evidence');
     expect(tasks).not.toContain('<span>base branch</span>');
@@ -68,9 +64,9 @@ describe('feature boundaries', () => {
   });
 
   it('gives mobile Task boards a clear horizontal navigation hint', () => {
-    const tasks = source('./tasks/pages/TasksPageView.tsx');
+    const tasks = source('./projects/pages/ProjectWorkPage.tsx');
     expect(tasks).toContain('手机端左右滑动查看其他状态');
-    expect(tasks).toContain('aria-describedby="task-board-hint"');
+    expect(tasks).toContain('aria-describedby="work-board-hint"');
     expect(existsSync(new URL('../styles/v3-controls.css', import.meta.url))).toBe(false);
   });
 

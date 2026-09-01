@@ -1,7 +1,7 @@
 import { Bot, ChevronRight, GitBranch, GitCompareArrows, Menu, Tabs, X } from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { StatusBadge } from '../../../components/Common';
+import { StatusBadge } from '../../../components/Feedback';
 import { Composer } from '../components/Composer';
 import { Conversation } from '../components/Conversation';
 import { SessionRail } from '../components/SessionRail';
