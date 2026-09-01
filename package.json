@@ -18,6 +18,8 @@
     "test:e2e:real": "corepack pnpm build && corepack pnpm exec playwright test --config=playwright.real.config.ts",
     "test:visual:real": "node scripts/qa/real-deployment-visual.cjs",
     "qa:geometry": "node scripts/qa/geometry-audit.cjs",
+    "qa:css-budget": "node scripts/qa/css-budget.mjs",
+    "qa:performance": "node scripts/qa/performance-gate.cjs",
     "test:qa": "node --test scripts/qa/*.test.cjs",
     "release:version-truth": "node scripts/release/check-version-truth.mjs",
     "test:live": "vitest run --config vitest.live.config.ts",
