@@ -127,6 +127,6 @@ describe('v0.6 feature boundaries', () => {
   it('keeps the dashboard Project repository label in presentation copy', () => {
     const home = source('./home/pages/HomePage.tsx');
     expect(home).not.toContain('<span>{project.repoKind}</span>');
-    expect(home).toContain("project.repoKind === 'GIT' ? 'Git' : '目录'");
+    expect(home).toContain("project.repoKind === 'GIT' ? 'Git 项目' : '目录项目'");
   });
 });
