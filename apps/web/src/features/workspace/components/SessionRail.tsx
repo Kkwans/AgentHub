@@ -1,5 +1,5 @@
 import { ChevronDown, Plus, Search } from '@agenthub/ui';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingState, ErrorState } from '../../../components/Common';
 import type { SessionRecord } from '../../../lib/api';
@@ -7,6 +7,40 @@ import { resolveWorkspaceRunState } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';
 import { sessionGroupKey } from '../../shared/page-primitives';
 import sessionRailStyles from '../sessionRail.module.css';
+
+export const SESSION_VIRTUALIZATION_THRESHOLD = 120;
+export const SESSION_WINDOW_SIZE = 80;
+export const SESSION_WINDOW_STEP = 80;
+
+export type SessionWindow<T> = {
+  items: T[];
+  hiddenCount: number;
+  hasEarlier: boolean;
+};
+
+/**
+ * Keep the session rail bounded for long-lived workspaces while preserving
+ * the current session in the first rendered window.
+ */
+export function getSessionWindow<T extends { id: string }>(
+  items: T[],
+  visibleCount: number,
+  anchorId?: string,
+): SessionWindow<T> {
+  if (items.length <= SESSION_VIRTUALIZATION_THRESHOLD || visibleCount >= items.length) {
+    return { items, hiddenCount: 0, hasEarlier: false };
+  }
+  const size = Math.max(1, visibleCount);
+  const anchorIndex = anchorId ? items.findIndex((item) => item.id === anchorId) : -1;
+  const start =
+    anchorIndex >= size ? Math.min(anchorIndex - Math.floor(size / 2), items.length - size) : 0;
+  const end = Math.min(items.length, start + size);
+  return {
+    items: items.slice(start, end),
+    hiddenCount: items.length - end,
+    hasEarlier: end < items.length,
+  };
+}
 
 export function SessionRail({
   sessions,
@@ -27,6 +61,7 @@ export function SessionRail({
     // historical tail quiet until the user asks for it; search always opens it.
     earlier: true,
   });
+  const [visibleSessionCount, setVisibleSessionCount] = useState(SESSION_WINDOW_SIZE);
   const filteredSessions = useMemo(() => {
     const value = query.trim().toLocaleLowerCase();
     const result = value
@@ -55,6 +90,9 @@ export function SessionRail({
   const groupOrder = ['today', 'yesterday', 'earlier'] as const;
   const toggleGroup = (group: SessionGroup) =>
     setCollapsedGroups((current) => ({ ...current, [group]: !current[group] }));
+  useEffect(() => {
+    setVisibleSessionCount(SESSION_WINDOW_SIZE);
+  }, [query]);
   const sessionLink = (session: SessionRecord) => (
     <Link
       className={session.id === currentId ? 'current' : ''}
@@ -112,6 +150,7 @@ export function SessionRail({
             const containsCurrent = grouped[group].some((session) => session.id === currentId);
             const collapsed = query.trim() ? false : collapsedGroups[group] && !containsCurrent;
             const groupId = `session-group-${group}`;
+            const window = getSessionWindow(grouped[group], visibleSessionCount, currentId);
             return (
               <section className="session-group" key={group} aria-label={groupLabels[group]}>
                 <button
@@ -130,9 +169,22 @@ export function SessionRail({
                   />
                 </button>
                 {!collapsed && (
-                  <div id={groupId} className="session-group-items">
-                    {grouped[group].map(sessionLink)}
-                  </div>
+                  <>
+                    {window.hasEarlier ? (
+                      <button
+                        type="button"
+                        className="session-list-load-more"
+                        onClick={() =>
+                          setVisibleSessionCount((count) => count + SESSION_WINDOW_STEP)
+                        }
+                      >
+                        加载更早会话（还有 ${window.hiddenCount} 个）
+                      </button>
+                    ) : null}
+                    <div id={groupId} className="session-group-items">
+                      {window.items.map(sessionLink)}
+                    </div>
+                  </>
                 )}
               </section>
             );

@@ -6,7 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import type { SessionRecord } from '../../../lib/api';
-import { SessionRail } from './SessionRail';
+import {
+  getSessionWindow,
+  SESSION_VIRTUALIZATION_THRESHOLD,
+  SESSION_WINDOW_SIZE,
+  SessionRail,
+} from './SessionRail';
 
 afterEach(() => cleanup());
 
@@ -28,6 +33,30 @@ function session(id: string, title: string, lastActiveAt: string): SessionRecord
 }
 
 describe('SessionRail', () => {
+  it('长列表按阈值窗口化，并保留当前会话', () => {
+    const items = Array.from({ length: SESSION_VIRTUALIZATION_THRESHOLD + 20 }, (_, index) => ({
+      id: `session-${index}`,
+    }));
+
+    const firstWindow = getSessionWindow(items, SESSION_WINDOW_SIZE);
+    expect(firstWindow.items).toHaveLength(SESSION_WINDOW_SIZE);
+    expect(firstWindow.items[0]?.id).toBe('session-0');
+    expect(firstWindow.hasEarlier).toBe(true);
+    expect(firstWindow.hiddenCount).toBe(items.length - SESSION_WINDOW_SIZE);
+
+    const anchoredWindow = getSessionWindow(items, SESSION_WINDOW_SIZE, 'session-130');
+    expect(anchoredWindow.items.some((item) => item.id === 'session-130')).toBe(true);
+  });
+
+  it('短列表不截断会话', () => {
+    const items = [{ id: 'one' }, { id: 'two' }];
+    expect(getSessionWindow(items, SESSION_WINDOW_SIZE)).toEqual({
+      items,
+      hiddenCount: 0,
+      hasEarlier: false,
+    });
+  });
+
   it('默认收起更早会话，搜索时自动展开历史分组', () => {
     const now = new Date();
     const sessions = [
