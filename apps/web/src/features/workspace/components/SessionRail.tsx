@@ -6,6 +6,7 @@ import type { SessionRecord } from '../../../lib/api';
 import { resolveWorkspaceRunState } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';
 import { sessionGroupKey } from '../../shared/page-primitives';
+import sessionRailStyles from '../sessionRail.module.css';
 
 export function SessionRail({
   sessions,
@@ -75,7 +76,7 @@ export function SessionRail({
     </Link>
   );
   return (
-    <div className="session-rail">
+    <div className={`${sessionRailStyles.owner} session-rail`}>
       <div className="panel-title">
         <span>AgentHub</span>
         <small>{sessions.data?.length ?? 0} 个会话</small>
@@ -109,9 +110,7 @@ export function SessionRail({
           groupOrder.map((group) => {
             if (!grouped[group].length) return null;
             const containsCurrent = grouped[group].some((session) => session.id === currentId);
-            const collapsed = Boolean(query.trim())
-              ? false
-              : collapsedGroups[group] && !containsCurrent;
+            const collapsed = query.trim() ? false : collapsedGroups[group] && !containsCurrent;
             const groupId = `session-group-${group}`;
             return (
               <section className="session-group" key={group} aria-label={groupLabels[group]}>

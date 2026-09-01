@@ -1,0 +1,1083 @@
+:global(.workspace) .owner {
+  color: inherit;
+}
+
+:global(.workspace) :global(.inspector) {
+  background: var(--workspace-panel);
+}
+
+:global(.workspace) :global(.inspector-tabs) {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 20px;
+  padding: 0 18px;
+  overflow-x: auto;
+  background: var(--workspace-panel);
+  border-bottom: 1px solid var(--ah-border-subtle);
+  scrollbar-width: none;
+}
+
+:global(.workspace) :global(.inspector-tabs)::-webkit-scrollbar {
+  display: none;
+}
+
+:global(.workspace) :global(.inspector-tabs button) {
+  min-height: 48px;
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--ah-text-secondary);
+  font-size: 12.5px;
+  font-weight: 570;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  transition:
+    color var(--ah-motion-fast, 120ms) ease,
+    background-color var(--ah-motion-fast, 120ms) ease,
+    border-color var(--ah-motion-fast, 120ms) ease;
+}
+
+:global(.workspace) :global(.inspector-tabs button:hover) {
+  color: var(--ah-text-primary);
+  background: transparent;
+}
+
+:global(.workspace) :global(.inspector-tabs button.active),
+:global(.workspace) :global(.inspector-tabs button[aria-selected='true']) {
+  color: var(--ah-text-primary);
+  background: transparent;
+  border-bottom-color: var(--workspace-ink);
+  box-shadow: none;
+}
+
+:global(.workspace) :global(.inspector-body) {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--workspace-panel);
+  scrollbar-color: var(--ah-border-strong) transparent;
+}
+
+:global(.workspace) :global(.file-inspector),
+:global(.workspace) :global(.git-inspector),
+:global(.workspace) :global(.run-inspector),
+:global(.workspace) :global(.tool-call-inspector) {
+  min-height: 100%;
+  color: var(--ah-text-primary);
+  background: var(--workspace-panel);
+}
+
+:global(.workspace) :global(.git-inspector) {
+  display: flex;
+  flex-direction: column;
+}
+
+:global(.workspace) :global(.activity-summary) {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.activity-summary > div) {
+  display: grid;
+  gap: 2px;
+}
+
+:global(.workspace) :global(.activity-summary strong) {
+  font-size: 12px;
+}
+
+:global(.workspace) :global(.activity-summary span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.activity-summary > span) {
+  display: grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 8px;
+  font-weight: 720;
+}
+
+:global(.workspace) :global(.tool-call-list) {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+}
+
+:global(.workspace) :global(.tool-call-list details) {
+  overflow: hidden;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 9px;
+}
+
+:global(.workspace) :global(.tool-call-list summary) {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  min-height: 54px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+:global(.workspace) :global(.tool-call-list summary > span) {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 8px;
+}
+
+:global(.workspace) :global(.tool-call-list summary > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+:global(.workspace) :global(.tool-call-list strong),
+:global(.workspace) :global(.tool-call-list small),
+:global(.workspace) :global(.tool-call-list time) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.tool-call-list strong) {
+  font-size: 11.5px;
+}
+
+:global(.workspace) :global(.tool-call-list small),
+:global(.workspace) :global(.tool-call-list time) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.tool-call-list pre) {
+  max-height: 320px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  color: var(--ah-text-secondary);
+  background: var(--workspace-panel-subtle);
+  border-top: 1px solid var(--ah-border-subtle);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:global(.workspace) :global(.file-inspector) {
+  display: grid;
+  grid-template-rows: minmax(150px, 38%) minmax(240px, 1fr);
+}
+
+:global(.workspace) :global(.file-tree),
+:global(.workspace) :global(.git-summary),
+:global(.workspace) :global(.run-context) {
+  border-color: var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.file-tree) {
+  min-height: 0;
+  overflow: auto;
+  padding: 7px 10px 12px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.mini-heading) {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 4px;
+  color: var(--ah-text-secondary);
+  font-size: 11.5px;
+  font-weight: 590;
+}
+
+:global(.workspace) :global(.file-nodes) {
+  display: grid;
+  gap: 0;
+  color: var(--ah-text-secondary);
+  font-size: 12.5px;
+}
+
+:global(.workspace) :global(.file-nodes .file-nodes) {
+  margin-left: 7px;
+  padding-left: 9px;
+  border-left: 1px solid var(--workspace-line);
+}
+
+:global(.workspace) :global(.file-nodes button) {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 31px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 6px;
+  overflow: hidden;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+}
+
+:global(.workspace) :global(.file-nodes button:hover:not(:disabled)),
+:global(.workspace) :global(.file-nodes button.selected) {
+  color: var(--ah-text-primary);
+  background: var(--workspace-selected);
+}
+
+:global(.workspace) :global(.file-nodes button:disabled) {
+  color: var(--ah-text-disabled);
+  cursor: not-allowed;
+}
+
+:global(.workspace) :global(.file-nodes button span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.file-nodes button > svg) {
+  flex: 0 0 auto;
+  color: var(--workspace-faint);
+}
+
+:global(.workspace) :global(.file-nodes button small) {
+  margin-left: auto;
+  color: var(--ah-warning);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.editor-frame),
+:global(.workspace) :global(.diff-frame) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ah-surface);
+}
+
+:global(.workspace) :global(.file-preview-header) {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  min-height: 40px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--workspace-muted);
+  border-bottom: 1px solid var(--workspace-line);
+  font-size: 11.5px;
+}
+
+:global(.workspace) :global(.file-preview-header span) {
+  overflow: hidden;
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.file-preview-header small) {
+  color: var(--workspace-faint);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.file-preview-editor) {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+:global(.workspace) :global(.diff-document) {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--ah-surface);
+}
+
+:global(.workspace) :global(.diff-document-header) {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: var(--ah-text-primary);
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.diff-document-header > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+:global(.workspace) :global(.diff-document-header strong) {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.diff-document-header small),
+:global(.workspace) :global(.diff-document-note) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.diff-document-header > span) {
+  flex: 0 0 auto;
+  color: var(--ah-success);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+:global(.workspace) :global(.diff-document-header em) {
+  color: var(--ah-danger);
+  font-style: normal;
+}
+
+:global(.workspace) :global(.diff-document-code) {
+  min-height: 0;
+  margin: 0;
+  padding: 12px 0 18px;
+  overflow: auto;
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre;
+}
+
+:global(.workspace) :global(.diff-document-code > span) {
+  display: block;
+  min-width: max-content;
+  padding: 0 12px;
+}
+
+:global(.workspace) :global(.diff-document-code .diff-line-add) {
+  color: var(--ah-success);
+  background: var(--ah-success-soft);
+}
+
+:global(.workspace) :global(.diff-document-code .diff-line-remove) {
+  color: var(--ah-danger);
+  background: var(--ah-danger-soft);
+}
+
+:global(.workspace) :global(.diff-document-code .diff-line-hunk) {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.diff-document-note) {
+  padding: 7px 12px 10px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.git-summary) {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  background: var(--workspace-panel);
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.git-summary > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+:global(.workspace) :global(.git-summary strong) {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 610;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-summary code),
+:global(.workspace) :global(.git-summary small) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-summary small) {
+  font-family: inherit;
+}
+
+:global(.workspace) :global(.git-summary > [role='status']) {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+:global(.workspace) :global(.git-clean-state) {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0;
+  font-size: 10.5px;
+  font-weight: 560;
+}
+
+:global(.workspace) :global(.git-clean-state.clean) {
+  color: var(--ah-success);
+  background: transparent;
+}
+
+:global(.workspace) :global(.git-clean-state.dirty) {
+  color: var(--ah-warning);
+  background: transparent;
+}
+
+:global(.workspace) :global(.git-viewbar) {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.git-viewbar > strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 11.5px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-view-actions) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+:global(.workspace) :global(.git-more-menu) {
+  position: relative;
+}
+
+:global(.workspace) :global(.git-more-menu > summary) {
+  display: inline-flex;
+  min-height: 29px;
+  align-items: center;
+  padding: 0 7px;
+  color: var(--ah-text-secondary);
+  font-size: 11.5px;
+  font-weight: 560;
+  border-radius: 7px;
+  cursor: pointer;
+  list-style: none;
+}
+
+:global(.workspace) :global(.git-more-menu > summary::-webkit-details-marker) {
+  display: none;
+}
+
+:global(.workspace) :global(.git-more-menu > summary:hover),
+:global(.workspace) :global(.git-more-menu[open] > summary) {
+  color: var(--ah-text-primary);
+  background: var(--workspace-hover);
+}
+
+:global(.workspace) :global(.git-more-menu > div) {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 128px;
+  gap: 2px;
+  padding: 4px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  box-shadow: var(--ah-shadow-md, 0 12px 28px rgb(17 22 38 / 14%));
+}
+
+:global(.workspace) :global(.git-more-menu > div button) {
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+:global(.workspace) :global(.git-more-menu > div button:hover),
+:global(.workspace) :global(.git-more-menu > div button:focus-visible) {
+  color: var(--ah-text-primary);
+  background: var(--workspace-hover);
+}
+
+:global(.workspace) :global(.git-viewbar button),
+:global(.workspace) :global(.git-selection-heading button) {
+  min-height: 29px;
+  padding: 0 7px;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  font-weight: 560;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+:global(.workspace) :global(.git-viewbar button:hover),
+:global(.workspace) :global(.git-selection-heading button:hover) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+}
+
+:global(.workspace) :global(.git-selection-heading) {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  color: var(--ah-text-tertiary);
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.change-list) {
+  display: grid;
+  gap: 0;
+  padding: 6px 8px;
+}
+
+:global(.workspace) :global(.git-change-directory) {
+  min-width: 0;
+}
+
+:global(.workspace) :global(.git-change-directory-label) {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  color: var(--ah-text-tertiary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+:global(.workspace) :global(.git-change-directory-label:hover) {
+  color: var(--workspace-ink);
+  background: var(--workspace-hover);
+}
+
+:global(.workspace) :global(.git-change-directory-label strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-secondary);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-change-directory-label small) {
+  margin-left: auto;
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+}
+
+:global(.workspace) :global(.git-change-tree-children) {
+  display: grid;
+  gap: 2px;
+}
+
+:global(.workspace) :global(.git-change-row) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: center;
+  border-radius: 8px;
+}
+
+:global(.workspace) :global(.git-change-row:hover),
+:global(.workspace) :global(.git-change-row.selected) {
+  background: var(--ah-surface);
+}
+
+:global(.workspace) :global(.git-change-row > label) {
+  display: grid;
+  grid-template-columns: 16px 22px minmax(0, 1fr) minmax(0, auto);
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 3px 7px;
+  color: var(--ah-text-secondary);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+:global(.workspace) :global(.git-change-row label input) {
+  accent-color: var(--ah-accent-primary);
+}
+
+:global(.workspace) :global(.git-change-glyph) {
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 0;
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+:global(.workspace) :global(.git-change-glyph.changed) {
+  color: var(--ah-warning);
+  background: transparent;
+}
+
+:global(.workspace) :global(.git-change-glyph.added),
+:global(.workspace) :global(.git-change-glyph.untracked) {
+  color: var(--ah-success);
+  background: transparent;
+}
+
+:global(.workspace) :global(.git-change-glyph.deleted),
+:global(.workspace) :global(.git-change-glyph.conflict) {
+  color: var(--ah-danger);
+  background: transparent;
+}
+
+:global(.workspace) :global(.git-change-glyph.rename) {
+  color: var(--ah-accent-primary);
+  background: transparent;
+}
+
+:global(.workspace) :global(.git-change-path) {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-change-origin) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-change-state) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-change-state .additions) {
+  color: var(--ah-success);
+}
+
+:global(.workspace) :global(.git-change-state .deletions) {
+  color: var(--ah-danger);
+}
+
+:global(.workspace) :global(.git-change-preview) {
+  min-height: 28px;
+  margin-right: 5px;
+  padding: 0 6px;
+  color: var(--ah-text-tertiary);
+  font-size: 11.5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+:global(.workspace) :global(.git-change-preview:hover),
+:global(.workspace) :global(.git-change-preview:focus-visible) {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-color: color-mix(in srgb, var(--ah-accent-primary) 22%, transparent);
+}
+
+:global(.workspace) :global(.git-commit-dock) {
+  border-top: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.git-commit-dock-summary) {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  color: var(--ah-text-tertiary);
+  font-size: 10.75px;
+}
+
+:global(.workspace) :global(.git-commit-dock-summary button) {
+  min-height: 26px;
+  padding: 0 7px;
+  color: var(--ah-accent-primary);
+  font-size: 10.75px;
+  font-weight: 620;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+}
+
+:global(.workspace) :global(.git-commit-dock-summary button:hover),
+:global(.workspace) :global(.git-commit-dock-summary button:focus-visible) {
+  background: var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.git-commit-form) {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+:global(.workspace) :global(.git-commit-form label) {
+  display: grid;
+  gap: 5px;
+  color: var(--ah-text-secondary);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+:global(.workspace) :global(.git-commit-form textarea),
+:global(.workspace) :global(.composer-context-preview textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  outline: 0;
+  font: inherit;
+  font-size: 11px;
+  resize: vertical;
+}
+
+:global(.workspace) :global(.git-commit-form textarea:focus),
+:global(.workspace) :global(.composer-context-preview textarea:focus) {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.git-commit-form > small),
+:global(.workspace) :global(.git-view-content > small) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+:global(.workspace) :global(.git-commit-receipt) {
+  margin: 8px 10px 0;
+  padding: 8px 9px;
+  color: var(--ah-success);
+  background: var(--ah-success-soft);
+  border-radius: 8px;
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.git-selected-diff) {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 360px;
+  gap: 8px;
+  margin: 0 10px 10px;
+  padding: 10px;
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 9px;
+}
+
+:global(.workspace) :global(.git-selected-diff-heading) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+:global(.workspace) :global(.git-selected-diff-heading > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+:global(.workspace) :global(.git-selected-diff-heading code) {
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 11px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-selected-diff .git-diff-editor) {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+:global(.workspace) :global(.git-selected-diff .git-diff-editor-toolbar) {
+  min-height: 24px;
+}
+
+:global(.workspace) :global(.git-selected-diff .git-diff-editor > div:last-child) {
+  min-height: 0;
+}
+
+:global(.workspace) :global(.git-view-content) {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 10px;
+  color: var(--ah-text-secondary);
+  font-size: 11px;
+}
+
+:global(.workspace) :global(.git-view-content pre) {
+  max-height: 460px;
+  margin: 0;
+  padding: 9px;
+  overflow: auto;
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+:global(.workspace) :global(.git-diff-toggle) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.git-diff-toolbar),
+:global(.workspace) :global(.git-diff-editor-toolbar) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+:global(.workspace) :global(.git-whitespace-select) {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.git-whitespace-select select),
+:global(.workspace) :global(.git-diff-editor-toolbar button) {
+  min-height: 28px;
+  padding: 3px 8px;
+  color: var(--ah-text-secondary);
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 7px;
+  font-size: 11.5px;
+}
+
+:global(.workspace) :global(.git-whitespace-select select:focus-visible),
+:global(.workspace) :global(.git-diff-editor-toolbar button:focus-visible) {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 1px;
+}
+
+:global(.workspace) :global(.git-diff-editor-toolbar) {
+  margin-bottom: 6px;
+  padding: 0 2px;
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.git-diff-editor-toolbar button:hover) {
+  color: var(--ah-text-primary);
+  border-color: var(--ah-border-default);
+}
+
+:global(.workspace) :global(.git-history-list),
+:global(.workspace) :global(.git-branch-list) {
+  display: grid;
+  gap: 4px;
+}
+
+:global(.workspace) :global(.git-history-list article),
+:global(.workspace) :global(.git-branch-list article) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+}
+
+:global(.workspace) :global(.git-history-list article strong),
+:global(.workspace) :global(.git-branch-list article strong) {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.git-history-list article span),
+:global(.workspace) :global(.git-history-list article time),
+:global(.workspace) :global(.git-branch-list article span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.git-branch-list article) {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+:global(.workspace) :global(.git-branch-list article.current) {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.git-branch-list article code) {
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.run-context) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 11px;
+  padding: 13px 11px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.run-context span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.run-context strong),
+:global(.workspace) :global(.run-context code) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.run-context code) {
+  color: var(--ah-text-secondary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.run-history) {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 10px;
+}
+
+:global(.workspace) :global(.run-history > div) {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+}
+
+:global(.workspace) :global(.run-history > div > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+:global(.workspace) :global(.run-history strong) {
+  font-size: 11px;
+}
+
+:global(.workspace) :global(.run-history code) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.run-dot) {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}

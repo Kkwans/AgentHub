@@ -4,6 +4,7 @@ import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 
 import { Button, SquareTerminal, X } from '@agenthub/ui';
+import terminalStyles from '../terminal.module.css';
 
 export type TerminalCapability = {
   available: boolean;
@@ -209,7 +210,7 @@ export function TerminalDock({
     return (
       <button
         type="button"
-        className="terminal-launcher"
+        className={`${terminalStyles.owner} terminal-launcher`}
         disabled={!canOpen}
         onClick={() => setExpanded(true)}
         title={canOpen ? '打开 Terminal' : unavailableReason}
@@ -222,7 +223,10 @@ export function TerminalDock({
   }
 
   return (
-    <section className="terminal-dock-shell expanded" aria-label="Terminal">
+    <section
+      className={`${terminalStyles.owner} terminal-dock-shell expanded`}
+      aria-label="Terminal"
+    >
       <div className="terminal-dock-toolbar">
         <div className="terminal-dock-heading">
           <SquareTerminal size={16} aria-hidden="true" />

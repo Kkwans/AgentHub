@@ -1,0 +1,656 @@
+:global(.workspace) .owner {
+  color: inherit;
+}
+
+:global(.workspace) :global(.composer) {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  width: min(880px, calc(100% - 16px));
+  flex: none;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 auto 20px;
+  padding: 8px 9px 8px;
+  background: var(--ah-surface-elevated, var(--ah-surface));
+  border: 1px solid var(--workspace-line-strong);
+  border-radius: 20px;
+  box-shadow: var(--workspace-shadow);
+}
+
+:global(.workspace) :global(.composer-context) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  order: 2;
+  min-height: 34px;
+  padding: 0 3px;
+  overflow: visible;
+  color: var(--workspace-muted);
+  font-size: 12px;
+  flex-wrap: nowrap;
+}
+
+:global(.workspace) :global(.composer-context > span),
+:global(.workspace) :global(.composer-context > button),
+:global(.workspace) :global(.composer-session-config),
+:global(.workspace) :global(.composer-choice) {
+  display: inline-flex;
+  min-height: 30px;
+  min-width: 0;
+  max-width: 176px;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--workspace-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-session-config) {
+  position: relative;
+  max-width: min(300px, 42%);
+  overflow: visible;
+}
+
+:global(.workspace) :global(.composer-session-config-trigger) {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--workspace-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 560;
+}
+
+:global(.workspace) :global(.composer-session-config-trigger:hover),
+:global(.workspace) :global(.composer-session-config-trigger.active) {
+  color: var(--workspace-ink);
+  background: var(--workspace-hover);
+}
+
+:global(.workspace) :global(.composer-session-config-trigger strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-session-config-popover) {
+  position: absolute;
+  z-index: 14;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  width: min(320px, calc(100vw - 32px));
+  gap: 9px;
+  padding: 12px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-elevated, var(--ah-surface));
+  border: 1px solid var(--ah-border-default);
+  border-radius: 11px;
+  box-shadow: var(--ah-shadow-md, 0 14px 38px -18px rgb(17 22 38 / 20%));
+}
+
+:global(.workspace) :global(.composer-session-config-heading) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.composer-session-config-heading strong) {
+  font-size: 12px;
+}
+
+:global(.workspace) :global(.composer-session-config-heading span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+}
+
+:global(.workspace) :global(.composer-config-choice),
+:global(.workspace) :global(.composer-session-config-fallback) {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.composer-config-choice > div) {
+  position: relative;
+  min-width: 0;
+}
+
+:global(.workspace) :global(.composer-config-choice select) {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 24px 0 8px;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 7px;
+  outline: 0;
+  appearance: none;
+  font-size: 11px;
+}
+
+:global(.workspace) :global(.composer-config-choice select:focus-visible) {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 2px var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.composer-config-choice svg) {
+  position: absolute;
+  top: 9px;
+  right: 7px;
+  pointer-events: none;
+}
+
+:global(.workspace) :global(.composer-session-config-fallback strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 11px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-context-action small) {
+  color: var(--workspace-faint);
+  font-size: 10.5px;
+  font-weight: 520;
+}
+
+:global(.workspace) :global(.composer-permission) {
+  color: var(--workspace-muted);
+}
+
+:global(.workspace) :global(.composer-permission strong) {
+  color: var(--workspace-muted);
+  font-weight: 560;
+}
+
+:global(.workspace) :global(.composer-choice) {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+:global(.workspace) :global(.composer-choice select) {
+  min-width: 0;
+  width: 100%;
+  height: 30px;
+  padding: 0 22px 0 8px;
+  color: var(--workspace-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  outline: 0;
+  appearance: none;
+  font-size: 12px;
+  font-weight: 560;
+  cursor: pointer;
+}
+
+:global(.workspace) :global(.composer-choice > svg) {
+  position: absolute;
+  right: 7px;
+  pointer-events: none;
+}
+
+:global(.workspace) :global(.composer-choice:hover),
+:global(.workspace) :global(.composer-choice:focus-within),
+:global(.workspace) :global(.composer-context > button:hover),
+:global(.workspace) :global(.composer-context > button.active),
+:global(.workspace) :global(.terminal-launcher:hover) {
+  color: var(--workspace-ink);
+  background: var(--workspace-hover);
+}
+
+:global(.workspace) :global(.composer-select-model),
+:global(.workspace) :global(.composer-model-fallback),
+:global(.workspace) :global(.composer-configuration-loading) {
+  margin-left: auto;
+}
+
+:global(.workspace) :global(.composer-select-model) {
+  width: 128px;
+}
+
+:global(.workspace) :global(.composer-select-mode) {
+  width: 76px;
+}
+
+:global(.workspace) :global(.composer-select-reasoning) {
+  width: 54px;
+}
+
+:global(.workspace) :global(.composer-context > span strong),
+:global(.workspace) :global(.composer-context > button strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-context .cwd-chip) {
+  max-width: min(300px, 28vw);
+}
+
+:global(.workspace) :global(.composer-context .cwd-chip code) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-input) {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 82px;
+  align-items: flex-end;
+  gap: 8px;
+  order: 1;
+  padding: 4px;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+:global(.workspace) :global(.composer-input:focus-within) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:global(.workspace) :global(.composer-input textarea) {
+  flex: 1;
+  min-width: 0;
+  min-height: 60px;
+  max-height: 200px;
+  padding: 9px 9px 7px;
+  color: var(--ah-text-primary);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  field-sizing: content;
+  resize: none;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+:global(.workspace) :global(.composer-input textarea::placeholder) {
+  color: var(--ah-text-tertiary);
+}
+
+:global(.workspace) :global(.composer-input .send-button) {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--ah-surface);
+  background: var(--ah-text-primary);
+  border: 0;
+  border-radius: 999px;
+  transition:
+    background-color var(--ah-motion-fast, 120ms) ease,
+    transform var(--ah-motion-fast, 120ms) ease;
+}
+
+:global(.workspace) :global(.composer-input .send-button:hover:not(:disabled)) {
+  background: color-mix(in srgb, var(--ah-text-primary) 84%, var(--ah-surface));
+  transform: translateY(-1px);
+}
+
+:global(.workspace) :global(.composer-input .send-button.stop) {
+  color: #fff;
+  background: var(--ah-danger);
+}
+
+:global(.workspace) :global(.composer-input .send-button:disabled) {
+  color: var(--ah-text-disabled);
+  background: var(--ah-surface-subtle);
+  cursor: not-allowed;
+}
+
+:global(.workspace) :global(.composer-hint),
+:global(.workspace) :global(.composer-error) {
+  display: block;
+  order: 3;
+  margin: 0 8px 2px;
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+:global(.workspace) :global(.composer-lock-hint) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:global(.workspace) :global(.composer-error) {
+  color: var(--ah-danger);
+}
+
+:global(.workspace) :global(.composer-context-preview),
+:global(.workspace) :global(.composer-command-menu) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-elevated, var(--ah-surface));
+  border: 1px solid var(--ah-border-default);
+  border-radius: 11px;
+  box-shadow: var(--ah-shadow-md, 0 14px 38px -18px rgb(17 22 38 / 20%));
+}
+
+:global(.workspace) :global(.composer-context-preview) {
+  position: absolute;
+  z-index: 11;
+  right: 12px;
+  bottom: calc(100% - 1px);
+  left: 12px;
+  display: grid;
+  gap: 12px;
+  max-height: min(420px, 52dvh);
+  padding: 14px;
+  overflow: auto;
+}
+
+:global(.workspace) :global(.context-preview-heading) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+:global(.workspace) :global(.context-preview-heading > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+:global(.workspace) :global(.context-preview-heading strong) {
+  font-size: 12px;
+}
+
+:global(.workspace) :global(.context-preview-heading span:not([class])) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+:global(.workspace) :global(.context-preview-heading > span) {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+:global(.workspace) :global(.composer-context-grid) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.75fr);
+  gap: 12px;
+}
+
+:global(.workspace) :global(.composer-session-facts) {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+:global(.workspace) :global(.composer-session-facts > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 8px;
+  color: var(--ah-text-secondary);
+  background: var(--workspace-panel-subtle);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 8px;
+}
+
+:global(.workspace) :global(.composer-session-facts span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+:global(.workspace) :global(.composer-session-facts strong),
+:global(.workspace) :global(.composer-session-facts code) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-session-facts code) {
+  color: var(--ah-text-secondary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+:global(.workspace) :global(.composer-session-facts .cwd-chip) {
+  max-width: none;
+}
+
+:global(.workspace) :global(.composer-provenance) {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+:global(.workspace) :global(.composer-provenance > div) {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  background: var(--workspace-panel-subtle);
+  border-radius: 8px;
+}
+
+:global(.workspace) :global(.composer-provenance span) {
+  color: var(--ah-accent-primary);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+:global(.workspace) :global(.composer-provenance code),
+:global(.workspace) :global(.composer-provenance small) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-provenance code) {
+  color: var(--ah-text-primary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.composer-provenance small) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.composer-context-grid > label) {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  color: var(--ah-text-secondary);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+:global(.workspace) :global(.context-variable-error) {
+  color: var(--ah-danger);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.composer-command-menu) {
+  position: absolute;
+  right: 52px;
+  bottom: calc(100% + 8px);
+  left: 8px;
+  z-index: 8;
+  display: grid;
+  max-height: 260px;
+  padding: 5px;
+  overflow: auto;
+}
+
+:global(.workspace) :global(.composer-command-menu button) {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 2px 8px;
+  padding: 8px 9px;
+  color: var(--ah-text-secondary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+:global(.workspace) :global(.composer-command-menu button:hover),
+:global(.workspace) :global(.composer-command-menu button.active) {
+  color: var(--ah-text-primary);
+  background: var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.composer-command-menu button strong) {
+  grid-row: span 2;
+  color: var(--ah-accent-primary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.composer-command-menu button span),
+:global(.workspace) :global(.composer-command-menu button small),
+:global(.workspace) :global(.composer-command-menu button code) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-command-menu button span) {
+  font-size: 10.5px;
+}
+
+:global(.workspace) :global(.composer-command-menu button small),
+:global(.workspace) :global(.composer-command-menu button code) {
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+@media (max-width: 1023px) {
+  :global(.workspace) :global(.composer) {
+    padding-inline: 14px;
+  }
+}
+
+@media (max-width: 767px) {
+  :global(.workspace) :global(.composer) {
+    width: calc(100% - 20px);
+    margin-bottom: 10px;
+    padding: 7px 8px 8px;
+    border-radius: 16px;
+  }
+
+  :global(.workspace) :global(.composer-context) {
+    gap: 4px;
+  }
+
+  :global(.workspace) :global(.composer-select-reasoning),
+  :global(.workspace) :global(.composer-permission),
+  :global(.workspace) :global(.composer-select-mode) {
+    display: none !important;
+  }
+
+  :global(.workspace) :global(.composer-select-model) {
+    width: 116px;
+  }
+
+  :global(.workspace) :global(.composer-input) {
+    min-height: 70px;
+    border-radius: 12px;
+  }
+
+  :global(.workspace) :global(.composer-input textarea) {
+    min-height: 52px;
+    font-size: 14px;
+  }
+
+  :global(.workspace) :global(.composer-context-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  :global(.workspace) :global(.composer-session-facts) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  :global(.workspace) :global(.composer-input) {
+    gap: 5px;
+  }
+
+  :global(.workspace) :global(.composer-input textarea) {
+    min-width: 0;
+    padding-inline: 4px;
+  }
+
+  :global(.workspace) :global(.composer-session-facts) {
+    grid-template-columns: 1fr;
+  }
+
+  :global(.workspace) :global(.composer-input .send-button) {
+    width: 34px;
+    height: 34px;
+  }
+}

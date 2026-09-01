@@ -1,0 +1,265 @@
+:global(.workspace) .owner {
+  color: inherit;
+}
+
+:global(.workspace) :global(.session-rail-toolbar) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px 12px;
+  border-bottom: 0;
+}
+
+:global(.workspace) :global(.session-rail > .panel-title) {
+  min-height: 64px;
+  padding: 0 16px;
+}
+
+:global(.workspace) :global(.session-rail > .panel-title > span) {
+  font-size: 18px;
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+:global(.workspace) :global(.session-rail-search) {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--ah-text-tertiary);
+  background: color-mix(in srgb, var(--ah-surface) 72%, var(--workspace-bg));
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+:global(.workspace) :global(.session-rail-search:focus-within) {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 2px var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.session-rail-search input) {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: var(--ah-text-primary);
+  font-size: 12.5px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+:global(.workspace) :global(.session-rail-search input::placeholder) {
+  color: var(--ah-text-tertiary);
+}
+
+:global(.workspace) :global(.session-rail-new) {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 36px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  color: var(--ah-text-primary);
+  font-size: 12px;
+  font-weight: 620;
+  white-space: nowrap;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 10px;
+}
+
+:global(.workspace) :global(.session-rail-new:hover) {
+  color: var(--ah-text-primary);
+  background: color-mix(in srgb, var(--ah-accent-soft) 76%, var(--ah-surface));
+}
+
+:global(.workspace) :global(.panel-title) {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  color: var(--ah-text-primary);
+  font-size: 13.5px;
+  font-weight: 650;
+  background: transparent;
+  border-bottom: 0;
+}
+
+:global(.workspace) :global(.panel-title > div) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+:global(.workspace) :global(.panel-title small) {
+  color: var(--ah-text-tertiary);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+:global(.workspace) :global(.session-list) {
+  display: grid;
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+  gap: 3px;
+  padding: 6px 10px 20px;
+  overflow: auto;
+  scrollbar-color: var(--ah-border-strong) transparent;
+}
+
+:global(.workspace) :global(.session-list-empty) {
+  margin: 16px 8px;
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+  text-align: center;
+}
+
+:global(.workspace) :global(.session-list a) {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  color: var(--ah-text-secondary);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition:
+    background-color var(--ah-motion-fast, 120ms) ease,
+    border-color var(--ah-motion-fast, 120ms) ease,
+    box-shadow var(--ah-motion-fast, 120ms) ease,
+    color var(--ah-motion-fast, 120ms) ease;
+}
+
+:global(.workspace) :global(.session-list a > div) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+:global(.workspace) :global(.session-list a:hover) {
+  color: var(--ah-text-primary);
+  background: color-mix(in srgb, var(--ah-surface) 70%, transparent);
+  border-color: transparent;
+}
+
+:global(.workspace) :global(.session-list a.current) {
+  color: var(--ah-text-primary);
+  background: color-mix(in srgb, var(--ah-text-primary) 6%, var(--ah-surface));
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:global(.workspace) :global(.session-list strong) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 13.5px;
+  font-weight: 620;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.session-list code) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 11.25px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.session-state-dot) {
+  width: 6px;
+  height: 6px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--ah-border-strong);
+}
+
+:global(.workspace) :global(.session-state-running),
+:global(.workspace) :global(.session-state-starting),
+:global(.workspace) :global(.session-state-canceling),
+:global(.workspace) :global(.session-state-in_progress),
+:global(.workspace) :global(.session-state-review),
+:global(.workspace) :global(.session-state-waiting_review) {
+  background: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+:global(.workspace) :global(.session-state-completed),
+:global(.workspace) :global(.session-state-done) {
+  background: var(--ah-success);
+  box-shadow: 0 0 0 3px var(--ah-success-soft);
+}
+
+:global(.workspace) :global(.session-state-waiting_approval) {
+  background: var(--ah-warning);
+  box-shadow: 0 0 0 3px var(--ah-warning-soft);
+}
+
+:global(.workspace) :global(.session-state-disconnected),
+:global(.workspace) :global(.session-state-failed) {
+  background: var(--ah-danger);
+  box-shadow: 0 0 0 3px var(--ah-danger-soft);
+}
+
+:global(.workspace) :global(.session-state-closed) {
+  background: var(--ah-text-tertiary);
+}
+
+:global(.workspace) :global(.session-group) {
+  display: grid;
+  gap: 3px;
+}
+:global(.workspace) :global(.session-group-toggle) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 14px;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin: 9px 4px 2px;
+  padding: 3px 3px;
+  color: var(--ah-text-tertiary);
+  font: inherit;
+  font-size: 10.75px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+:global(.workspace) :global(.session-group-toggle:hover),
+:global(.workspace) :global(.session-group-toggle:focus-visible) {
+  color: var(--ah-text-primary);
+  background: color-mix(in srgb, var(--ah-surface) 72%, transparent);
+}
+:global(.workspace) :global(.session-group-toggle small) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+  font-weight: 520;
+}
+:global(.workspace) :global(.session-group-toggle svg) {
+  transition: transform var(--ah-motion-fast, 120ms) ease;
+}
+:global(.workspace) :global(.session-group-toggle svg.collapsed) {
+  transform: rotate(-90deg);
+}
+:global(.workspace) :global(.session-group-items) {
+  display: grid;
+  gap: 3px;
+}

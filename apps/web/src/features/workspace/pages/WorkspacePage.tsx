@@ -510,7 +510,7 @@ export function WorkspacePage() {
     return <EmptyState title="会话不存在" description="返回会话列表选择可用会话。" />;
 
   return (
-    <div className={`${workspaceStyles.workspace} workspace-shell`}>
+    <div className={`${workspaceStyles.workspace} workspace workspace-shell`}>
       <div className={`${workspaceStyles.contextbar} workspace-contextbar`}>
         <button
           type="button"

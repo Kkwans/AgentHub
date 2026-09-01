@@ -162,7 +162,7 @@ test.describe('v1 current-main isolated visual baseline', () => {
           await expect(page.locator('main, .workspace-shell').first()).toBeVisible({
             timeout: 30_000,
           });
-          await page.waitForTimeout(500);
+          await page.waitForTimeout(3_000);
           const filename = `${theme}-${route.replace(/^\//, '').replace(/[^a-zA-Z0-9-]+/g, '-') || 'home'}-${viewportName}.png`;
           await captureScreenshot(page, join(outputDir, filename));
           report.push({

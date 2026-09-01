@@ -21,6 +21,7 @@ import { ActivityPanel } from './ActivityPanel';
 import { FileInspector } from './FileInspector';
 import { GitChangesTree } from './GitChangesTree';
 import { RunPanel } from './RunPanel';
+import inspectorStyles from '../inspector.module.css';
 
 export type { InspectorTab } from '../workspace-types';
 
@@ -82,7 +83,7 @@ export function WorkspaceInspector({
     { id: 'run', label: 'Run' },
   ];
   return (
-    <div className="inspector">
+    <div className={`${inspectorStyles.owner} inspector`}>
       <Tabs.Root value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
         <Tabs.List className="inspector-tabs" aria-label="检查器视图">
           {tabs.map((item) => (

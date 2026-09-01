@@ -27,6 +27,7 @@ import {
 } from '../../../presentation/domain-labels';
 import type { MessageQueryState, QueryState } from '../workspace-types';
 import { RunStateBanner } from './RunStateBanner';
+import conversationStyles from '../conversation.module.css';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
@@ -368,7 +369,7 @@ export function Conversation({
     !approvals.error &&
     timeline.length === 0;
   return (
-    <div className="conversation">
+    <div className={`${conversationStyles.owner} conversation`}>
       <div className="panel-title conversation-title">
         <div>
           <span>对话</span>

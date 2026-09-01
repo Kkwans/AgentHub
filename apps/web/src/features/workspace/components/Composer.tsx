@@ -14,11 +14,10 @@ import type {
 import {
   labelPromptBindingSlot,
   labelPromptBindingTarget,
-  labelReasoningEffort,
-  labelSessionMode,
 } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';
 import { SessionConfigurationControl } from './SessionConfigurationControl';
+import composerStyles from '../composer.module.css';
 
 function useWorkspaceAction<TInput, TResult>(action: (input: TInput) => Promise<TResult>) {
   const [isPending, setIsPending] = useState(false);
@@ -245,7 +244,7 @@ export function Composer({
               ? { label: '无绑定', kind: 'empty' }
               : { label: `${promptContext.items.length} 项`, kind: 'ready' };
   return (
-    <div className="composer">
+    <div className={`${composerStyles.owner} composer`}>
       <div className="composer-context">
         <button
           type="button"
