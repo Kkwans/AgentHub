@@ -1,7 +1,7 @@
 .workspace {
   --workspace-ink: color-mix(in srgb, var(--ah-text-primary, #20201e) 96%, #20201e);
   --workspace-muted: color-mix(in srgb, var(--ah-text-secondary, #66645f) 88%, #77746d);
-  --workspace-faint: color-mix(in srgb, var(--ah-text-tertiary, #8a8881) 76%, transparent);
+  --workspace-faint: var(--ah-text-tertiary, #626d7b);
   --workspace-line: color-mix(in srgb, var(--workspace-ink) 11%, transparent);
   --workspace-line-strong: color-mix(in srgb, var(--workspace-ink) 17%, transparent);
   --workspace-hover: color-mix(in srgb, var(--workspace-ink) 5%, transparent);

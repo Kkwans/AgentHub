@@ -309,12 +309,13 @@ a {
 }
 
 .ah-button[data-variant='filled'] {
-  color: #fff;
+  color: var(--ah-on-accent);
   background: var(--ah-accent-primary);
   border-color: var(--ah-accent-primary);
 }
 
 .ah-button[data-variant='filled'][data-color='red'] {
+  color: var(--ah-on-danger);
   background: var(--ah-danger);
   border-color: var(--ah-danger);
 }
@@ -407,7 +408,7 @@ a {
 }
 
 .ah-icon-button[data-variant='filled'] {
-  color: #fff;
+  color: var(--ah-on-accent);
   background: var(--ah-accent-primary);
 }
 
@@ -858,7 +859,7 @@ textarea:focus-visible {
 }
 
 .ah-dialog-primary {
-  color: #fff;
+  color: var(--ah-on-accent);
   background: var(--ah-accent-primary);
 }
 
@@ -867,7 +868,7 @@ textarea:focus-visible {
 }
 
 .ah-dialog-danger {
-  color: #fff;
+  color: var(--ah-on-danger);
   background: var(--ah-danger);
 }
 

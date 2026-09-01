@@ -338,7 +338,7 @@
 }
 
 :global(.workspace) :global(.composer-input .send-button.stop) {
-  color: #fff;
+  color: var(--ah-on-danger);
   background: var(--ah-danger);
 }
 

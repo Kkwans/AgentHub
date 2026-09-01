@@ -866,7 +866,7 @@
 :global(.workspace) :global(.run-state-action button) {
   min-height: 32px;
   padding: 0 11px;
-  color: #fff;
+  color: var(--ah-on-accent);
   background: var(--ah-accent-primary);
   border: 0;
   border-radius: 7px;

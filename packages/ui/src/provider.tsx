@@ -116,6 +116,11 @@ export function AgentHubProvider({
     <MantineProvider
       {...props}
       theme={theme}
+      cssVariablesResolver={() => ({
+        variables: {},
+        light: { '--mantine-color-dimmed': 'var(--ah-text-secondary)' },
+        dark: { '--mantine-color-dimmed': 'var(--ah-text-secondary)' },
+      })}
       forceColorScheme={colorScheme}
       defaultColorScheme={colorScheme}
     >

@@ -58,7 +58,7 @@
   --ah-surface-elevated: #ffffff;
   --ah-text-primary: #1b1d22;
   --ah-text-secondary: #5e626b;
-  --ah-text-tertiary: #747983;
+  --ah-text-tertiary: #626d7b;
   --ah-text-disabled: #a5a9b1;
   --ah-border-subtle: #e5e7eb;
   --ah-border-default: #d9dce2;
@@ -79,6 +79,8 @@
   --ah-success-soft: #e8f8f1;
   --ah-warning-soft: #fff4dd;
   --ah-danger-soft: #fdecee;
+  --ah-on-accent: #ffffff;
+  --ah-on-danger: #ffffff;
   --ah-overlay: rgb(25 29 38 / 45%);
 
   --ah-motion-fast: 120ms;
@@ -161,6 +163,8 @@
   --ah-success-soft: #12352b;
   --ah-warning-soft: #3a2e16;
   --ah-danger-soft: #3f1d24;
+  --ah-on-accent: #141821;
+  --ah-on-danger: #141821;
   --ah-overlay: rgb(2 4 10 / 72%);
   --ah-shadow-xs: 0 1px 2px rgb(0 0 0 / 20%);
   --ah-shadow-sm: 0 8px 22px -12px rgb(0 0 0 / 50%);
