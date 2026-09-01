@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 describe('PromptOS ordinary-user contracts', () => {
   it('uses shared dialog/select flows instead of exposing raw binding enums', () => {
-    const source = readFileSync(new URL('./PromptLibraryPage.tsx', import.meta.url), 'utf8');
+    const source = [
+      '../components/PromptLibraryView.tsx',
+      '../components/PromptEditor.tsx',
+      '../components/PromptLifecycleDrawer.tsx',
+      '../components/PromptDialogs.tsx',
+    ]
+      .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8'))
+      .join('\n');
 
     expect(source).toContain('新建 Prompt 绑定');
     expect(source).toContain('labelPromptBindingTarget');
