@@ -37,8 +37,9 @@ describe('presentation architecture boundaries', () => {
 
   it('keeps Workspace route data ownership separate from display panels', () => {
     const route = read('./workspace/pages/WorkspacePage.tsx');
-    expect(route).toContain("from '../components/Conversation'");
-    expect(route).toContain("from '../components/Composer'");
+    const view = read('./workspace/pages/WorkspaceView.tsx');
+    expect(view).toContain("from '../components/Conversation'");
+    expect(view).toContain("from '../components/Composer'");
     expect(route).toContain('fetchSessionEventPages');
     for (const panel of [
       'Conversation',

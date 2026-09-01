@@ -22,12 +22,15 @@ describe('Runtime discovery settings surface', () => {
     expect(source).toContain("runtime.kind === 'LOCAL_HOST' || Boolean(runtime.targetId)");
   });
 
-  it('is mounted from Settings as the primary Runtime management entry', () => {
-    const settingsSource = readFileSync(
-      new URL('../../settings/pages/SettingsPageView.tsx', import.meta.url),
+  it('is mounted from Agents Infrastructure as the primary Runtime management entry', () => {
+    const infrastructureSource = readFileSync(
+      new URL('../pages/InfrastructurePage.tsx', import.meta.url),
       'utf8',
     );
-    expect(settingsSource).toContain('RuntimeDiscoveryPanel');
-    expect(settingsSource).toContain('<RuntimeDiscoveryPanel />');
+    expect(infrastructureSource).toContain(
+      "queryFn: () => api.get<RuntimeCandidateRecord[]>('/discovery/runtimes')",
+    );
+    expect(infrastructureSource).toContain("kind === 'runtimes'");
+    expect(infrastructureSource).toContain('暂时没有可管理的 Runtime');
   });
 });
