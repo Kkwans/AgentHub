@@ -137,12 +137,12 @@
 }
 
 .sessionStatus > span > span {
-  min-height: 20px !important;
-  padding: 0 !important;
-  color: var(--workspace-muted) !important;
-  background: transparent !important;
-  font-size: 11.5px !important;
-  font-weight: 560 !important;
+  min-height: 20px;
+  padding: 0;
+  color: var(--workspace-muted);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 560;
 }
 
 .contextTitle a,
@@ -509,17 +509,17 @@
 
   .workspace :global(.session-rail-panel),
   .workspace :global(.inspector-panel) {
-    display: flex !important;
-    position: relative !important;
-    inset: auto !important;
-    height: 100% !important;
-    box-shadow: none !important;
+    display: flex;
+    position: relative;
+    inset: auto;
+    height: 100%;
+    box-shadow: none;
   }
 
   .workspace :global(.conversation-panel) {
-    position: relative !important;
-    inset: auto !important;
-    height: 100% !important;
+    position: relative;
+    inset: auto;
+    height: 100%;
   }
 }
 
@@ -537,32 +537,32 @@
   }
 
   .workspace :global(.session-rail-panel) {
-    display: none !important;
+    display: none;
   }
 
   .workspace :global(.session-rail-panel.mobile-open) {
-    position: absolute !important;
+    position: absolute;
     z-index: 45;
     inset-block: 0;
     inset-inline-start: 0;
-    display: block !important;
-    width: min(360px, calc(100% - 24px)) !important;
-    height: 100% !important;
-    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%)) !important;
+    display: block;
+    width: min(360px, calc(100% - 24px));
+    height: 100%;
+    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%));
   }
 
   .workspace :global(.inspector-panel) {
-    display: flex !important;
-    position: relative !important;
-    inset: auto !important;
-    height: 100% !important;
-    box-shadow: none !important;
+    display: flex;
+    position: relative;
+    inset: auto;
+    height: 100%;
+    box-shadow: none;
   }
 
   .workspace :global(.conversation-panel) {
-    position: relative !important;
-    inset: auto !important;
-    height: 100% !important;
+    position: relative;
+    inset: auto;
+    height: 100%;
   }
 
   .workspace :global(.workspace-drawer-scrim) {
@@ -586,19 +586,19 @@
 
   .workspace :global(.session-rail-panel),
   .workspace :global(.inspector-panel) {
-    display: none !important;
+    display: none;
   }
 
   .workspace :global(.session-rail-panel.mobile-open),
   .workspace :global(.inspector-panel.mobile-open) {
-    position: absolute !important;
+    position: absolute;
     z-index: 45;
     inset-block: 0;
-    display: block !important;
-    width: min(360px, calc(100% - 24px)) !important;
-    height: 100% !important;
-    min-width: 0 !important;
-    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%)) !important;
+    display: block;
+    width: min(360px, calc(100% - 24px));
+    height: 100%;
+    min-width: 0;
+    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%));
   }
 
   .workspace :global(.session-rail-panel.mobile-open) {
@@ -607,15 +607,15 @@
 
   .workspace :global(.inspector-panel.mobile-open) {
     inset-inline-end: 0;
-    width: min(480px, calc(100% - 24px)) !important;
+    width: min(480px, calc(100% - 24px));
   }
 
   .workspace :global(.conversation-panel) {
-    position: absolute !important;
+    position: absolute;
     inset: 0;
-    width: 100% !important;
-    height: 100% !important;
-    flex: none !important;
+    width: 100%;
+    height: 100%;
+    flex: none;
   }
 
   .workspace :global(.workspace-drawer-scrim) {

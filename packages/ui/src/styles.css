@@ -436,6 +436,31 @@ a {
   line-height: 1;
 }
 
+.ah-status-pill[data-tone='green'] {
+  color: var(--ah-success, #0f9f6e);
+  background: var(--ah-success-soft, #e8f8f1);
+}
+
+.ah-status-pill[data-tone='aurora'] {
+  color: var(--ah-accent-primary, #6246f5);
+  background: var(--ah-accent-soft, #f0edff);
+}
+
+.ah-status-pill[data-tone='red'] {
+  color: var(--ah-danger, #dc4850);
+  background: var(--ah-danger-soft, #fdecee);
+}
+
+.ah-status-pill[data-tone='gray'] {
+  color: var(--ah-text-secondary, #59647a);
+  background: var(--ah-surface-subtle, #f6f7fb);
+}
+
+.ah-status-pill[data-tone='yellow'] {
+  color: var(--ah-warning, #c87911);
+  background: var(--ah-warning-soft, #fff4dd);
+}
+
 .ah-status-dot {
   display: inline-flex;
   align-items: center;

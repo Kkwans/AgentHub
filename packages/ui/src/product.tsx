@@ -73,26 +73,8 @@ export function AhStatusPill({ status, label }: { status: string; label?: string
 }
 
 function BadgeLike({ color, children }: { color: string; children: ReactNode }) {
-  const palette: Record<string, { background: string; color: string }> = {
-    green: { background: 'var(--ah-success-soft, #e8f8f1)', color: 'var(--ah-success, #0f9f6e)' },
-    aurora: {
-      background: 'var(--ah-accent-soft, #f0edff)',
-      color: 'var(--ah-accent-primary, #6246f5)',
-    },
-    red: { background: 'var(--ah-danger-soft, #fdecee)', color: 'var(--ah-danger, #dc4850)' },
-    gray: {
-      background: 'var(--ah-surface-subtle, #f6f7fb)',
-      color: 'var(--ah-text-secondary, #59647a)',
-    },
-    yellow: { background: 'var(--ah-warning-soft, #fff4dd)', color: 'var(--ah-warning, #c87911)' },
-  };
-  const colors = palette[color] ?? palette.gray ?? { background: 'transparent', color: 'inherit' };
   return (
-    <span
-      className="ah-status-pill"
-      data-tone={color}
-      style={{ background: colors.background, color: colors.color }}
-    >
+    <span className="ah-status-pill" data-tone={color}>
       {children}
     </span>
   );

@@ -609,7 +609,7 @@
   :global(.workspace) :global(.composer-select-reasoning),
   :global(.workspace) :global(.composer-permission),
   :global(.workspace) :global(.composer-select-mode) {
-    display: none !important;
+    display: none;
   }
 
   :global(.workspace) :global(.composer-select-model) {

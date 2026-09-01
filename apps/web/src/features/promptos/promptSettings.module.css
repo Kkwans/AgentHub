@@ -361,7 +361,7 @@
 .tableHead {
   color: var(--ah-text-tertiary);
   background: var(--ah-surface-subtle);
-  font-size: 11px !important;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -534,7 +534,7 @@
 }
 .settingsNav a:hover,
 .settingsNavActive {
-  color: var(--ah-accent-primary) !important;
+  color: var(--ah-accent-primary);
   background: var(--ah-accent-soft);
 }
 .settingsContent {

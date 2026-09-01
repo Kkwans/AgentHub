@@ -290,7 +290,7 @@
 }
 .settingsNav a:hover,
 .settingsNavActive {
-  color: var(--ah-accent-primary) !important;
+  color: var(--ah-accent-primary);
   background: var(--ah-accent-soft);
 }
 .fieldGrid {
