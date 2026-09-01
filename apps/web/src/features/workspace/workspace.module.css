@@ -189,6 +189,23 @@
   white-space: nowrap;
 }
 
+.workspace-context-terminal {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.workspace-context-terminal .terminal-dock-shell {
+  top: calc(100% + 1px);
+  right: 0;
+  bottom: auto;
+  left: auto;
+  width: min(720px, calc(100vw - 24px));
+  border-radius: 0 0 12px 12px;
+}
+
 .workspace :global(.workspace-session-toggle) {
   display: none;
   flex: 0 0 auto;
@@ -2526,6 +2543,7 @@
 
 .workspace :global(.composer-context > span),
 .workspace :global(.composer-context > button),
+.workspace :global(.composer-session-config),
 .workspace :global(.composer-choice) {
   display: inline-flex;
   min-height: 30px;
@@ -2541,6 +2559,134 @@
   border: 0;
   border-radius: 8px;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.composer-session-config) {
+  position: relative;
+  max-width: min(300px, 42%);
+  overflow: visible;
+}
+
+.workspace :global(.composer-session-config-trigger) {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--workspace-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.workspace :global(.composer-session-config-trigger:hover),
+.workspace :global(.composer-session-config-trigger.active) {
+  color: var(--workspace-ink);
+  background: var(--workspace-hover);
+}
+
+.workspace :global(.composer-session-config-trigger strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.composer-session-config-popover) {
+  position: absolute;
+  z-index: 14;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  width: min(320px, calc(100vw - 32px));
+  gap: 9px;
+  padding: 12px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-elevated, var(--ah-surface));
+  border: 1px solid var(--ah-border-default);
+  border-radius: 11px;
+  box-shadow: var(--ah-shadow-md, 0 14px 38px -18px rgb(17 22 38 / 20%));
+}
+
+.workspace :global(.composer-session-config-heading) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.composer-session-config-heading strong) {
+  font-size: 12px;
+}
+
+.workspace :global(.composer-session-config-heading span) {
+  color: var(--ah-text-tertiary);
+  font-size: 10px;
+}
+
+.workspace :global(.composer-config-choice),
+.workspace :global(.composer-session-config-fallback) {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-text-tertiary);
+  font-size: 10.5px;
+}
+
+.workspace :global(.composer-config-choice > div) {
+  position: relative;
+  min-width: 0;
+}
+
+.workspace :global(.composer-config-choice select) {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 24px 0 8px;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 7px;
+  outline: 0;
+  appearance: none;
+  font-size: 11px;
+}
+
+.workspace :global(.composer-config-choice select:focus-visible) {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 2px var(--ah-accent-soft);
+}
+
+.workspace :global(.composer-config-choice svg) {
+  position: absolute;
+  top: 9px;
+  right: 7px;
+  pointer-events: none;
+}
+
+.workspace :global(.composer-session-config-fallback strong) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 11px;
+  font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -552,6 +552,20 @@ export function WorkspacePage() {
           </span>
           <code title={session.data.cwd}>{session.data.cwd}</code>
         </div>
+        <div className="workspace-context-terminal">
+          <TerminalDock
+            capability={capability.data?.terminal}
+            capabilityError={capability.error}
+            projectId={project?.id}
+            projectRoot={project?.realRootPath}
+            cwd={session.data.cwd}
+            openTerminal={openTerminal}
+            sendInput={sendTerminalInput}
+            resizeTerminal={resizeTerminal}
+            closeTerminal={closeTerminal}
+            subscribe={subscribeTerminal}
+          />
+        </div>
         <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
           <button
             type="button"
@@ -687,20 +701,6 @@ export function WorkspacePage() {
               onSend={(input) => sendRun.mutateAsync(input)}
               onStop={(runId) => stopRun.mutateAsync(runId)}
               onUpdateConfiguration={(patch) => updateConfiguration.mutateAsync(patch)}
-              terminalControl={
-                <TerminalDock
-                  capability={capability.data?.terminal}
-                  capabilityError={capability.error}
-                  projectId={project?.id}
-                  projectRoot={project?.realRootPath}
-                  cwd={session.data.cwd}
-                  openTerminal={openTerminal}
-                  sendInput={sendTerminalInput}
-                  resizeTerminal={resizeTerminal}
-                  closeTerminal={closeTerminal}
-                  subscribe={subscribeTerminal}
-                />
-              }
             />
           </div>
         </Panel>

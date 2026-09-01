@@ -1,15 +1,5 @@
-import {
-  Button,
-  ChevronDown,
-  CircleStop,
-  GitBranch,
-  IconButton,
-  Plus,
-  Send,
-  ShieldCheck,
-} from '@agenthub/ui';
+import { Button, CircleStop, GitBranch, IconButton, Plus, Send, ShieldCheck } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 
 import { ErrorState, LoadingState } from '../../../components/Common';
 import type {
@@ -28,6 +18,7 @@ import {
   labelSessionMode,
 } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';
+import { SessionConfigurationControl } from './SessionConfigurationControl';
 
 function useWorkspaceAction<TInput, TResult>(action: (input: TInput) => Promise<TResult>) {
   const [isPending, setIsPending] = useState(false);
@@ -82,7 +73,6 @@ export function Composer({
   onSend,
   onStop,
   onUpdateConfiguration,
-  terminalControl,
 }: {
   session: SessionRecord;
   agent: AgentRecord | undefined;
@@ -105,7 +95,6 @@ export function Composer({
     mode?: string;
     reasoningEffort?: string;
   }) => Promise<SessionConfigurationRecord>;
-  terminalControl?: ReactNode;
 }) {
   const [text, setText] = useState('');
   const [contextOpen, setContextOpen] = useState(false);
@@ -273,62 +262,17 @@ export function Composer({
           <ShieldCheck size={15} />
           <strong>按需审批</strong>
         </span>
-        {terminalControl}
-        {configurationLoading ? (
-          <span className="composer-configuration-loading">
-            <strong>正在读取配置…</strong>
-          </span>
-        ) : configuration?.supported && modelOptions.length ? (
-          <CompactChoiceSelect
-            className="composer-select-model"
-            label="模型"
-            value={modelValue}
-            options={modelOptions.map((option) => ({ value: option.id, label: option.label }))}
-            disabled={updatingModel}
-            onValueChange={(model) => updateConfiguration.mutate({ model })}
-          />
-        ) : (
-          <span className="composer-model-fallback">
-            <strong>{modelValue || agent?.defaultModel || '默认模型'}</strong>
-          </span>
-        )}
-        {!configurationLoading && configuration?.supported && modeOptions.length ? (
-          <CompactChoiceSelect
-            className="composer-select-mode"
-            label="运行模式"
-            value={modeValue}
-            options={modeOptions.map((option) => ({
-              value: option.id,
-              label: labelSessionMode(option.id, option.label),
-            }))}
-            disabled={updatingMode}
-            onValueChange={(mode) => updateConfiguration.mutate({ mode })}
-          />
-        ) : !configurationLoading ? (
-          <span>
-            模式{' '}
-            <strong>
-              {modeValue
-                ? labelSessionMode(modeValue)
-                : agent?.defaultMode
-                  ? labelSessionMode(agent.defaultMode)
-                  : '默认'}
-            </strong>
-          </span>
-        ) : null}
-        {!configurationLoading && configuration?.supported && reasoningEffortOptions.length ? (
-          <CompactChoiceSelect
-            className="composer-select-reasoning"
-            label="推理强度"
-            value={reasoningEffortValue}
-            options={reasoningEffortOptions.map((option) => ({
-              value: option.id,
-              label: labelReasoningEffort(option.id, option.label),
-            }))}
-            disabled={updatingReasoningEffort}
-            onValueChange={(reasoningEffort) => updateConfiguration.mutate({ reasoningEffort })}
-          />
-        ) : null}
+        <SessionConfigurationControl
+          configuration={configuration}
+          loading={configurationLoading}
+          model={modelValue || agent?.defaultModel || ''}
+          mode={modeValue || agent?.defaultMode || ''}
+          reasoningEffort={reasoningEffortValue}
+          updatingModel={updatingModel}
+          updatingMode={updatingMode}
+          updatingReasoningEffort={updatingReasoningEffort}
+          onChange={(patch) => updateConfiguration.mutate(patch)}
+        />
       </div>
       {configurationError && (
         <div className="composer-error" role="alert">
@@ -564,41 +508,6 @@ interface ComposerCommand {
   label: string;
   description: string;
   hint?: string;
-}
-
-function CompactChoiceSelect({
-  className,
-  label,
-  value,
-  options,
-  disabled,
-  onValueChange,
-}: {
-  className: string;
-  label: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-  disabled: boolean;
-  onValueChange: (value: string) => void;
-}) {
-  return (
-    <label className={`composer-choice ${className}`}>
-      <select
-        aria-label={label}
-        title={label}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onValueChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={11} aria-hidden="true" />
-    </label>
-  );
 }
 
 function readAgentCommands(events: EventRecord[] | undefined): ComposerCommand[] {
