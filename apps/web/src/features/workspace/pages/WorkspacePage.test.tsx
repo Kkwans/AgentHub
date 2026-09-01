@@ -300,7 +300,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
       'href',
       expect.stringContaining('?view=activity'),
     );
-    expect(screen.queryByText(/\"title\"/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/"title"/)).not.toBeInTheDocument();
   });
 
   it('供应商连接诊断在对话中显示中文下一步，原文只在脱敏诊断中出现', async () => {
