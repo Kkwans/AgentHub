@@ -13,11 +13,6 @@
   --workspace-shadow:
     0 18px 44px -28px color-mix(in srgb, var(--workspace-ink) 38%, transparent),
     0 2px 10px color-mix(in srgb, var(--workspace-ink) 6%, transparent);
-  --ah-accent-primary: var(--workspace-ink);
-  --ah-accent-hover: color-mix(in srgb, var(--workspace-ink) 88%, transparent);
-  --ah-accent-pressed: var(--workspace-ink);
-  --ah-accent-soft: var(--workspace-hover);
-  --ah-accent-soft-hover: var(--workspace-selected);
   display: flex;
   flex-direction: column;
   height: 100dvh;
