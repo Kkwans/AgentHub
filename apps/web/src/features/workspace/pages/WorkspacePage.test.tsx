@@ -604,6 +604,33 @@ describe('WorkspacePage 数据分区可靠性', () => {
     );
   });
 
+  it('Composer 支持 Ctrl/Cmd+Enter 发送，并用 Esc 关闭上下文浮层', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === `/api/v1/sessions/${session.id}/runs` && init?.method === 'POST') {
+        return jsonResponse({ id: 'run-shortcut' }, 201);
+      }
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    const composer = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
+    const contextButton = await screen.findByRole('button', { name: /PromptOS/ });
+    fireEvent.click(contextButton);
+    expect(await screen.findByRole('dialog', { name: 'PromptOS 上下文预览' })).toBeInTheDocument();
+    fireEvent.keyDown(composer, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'PromptOS 上下文预览' })).not.toBeInTheDocument();
+
+    fireEvent.change(composer, { target: { value: '继续执行这项工作' } });
+    fireEvent.keyDown(composer, { key: 'Enter', ctrlKey: true });
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v1/sessions/${session.id}/runs`,
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+  });
+
   it('Git 工作区提供可发现的历史、分支与 selected-files commit', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);

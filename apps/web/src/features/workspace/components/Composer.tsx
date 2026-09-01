@@ -1,7 +1,5 @@
-import { Button, CircleStop, GitBranch, IconButton, Plus, Send, ShieldCheck } from '@agenthub/ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
-import { ErrorState, LoadingState } from '../../../components/Common';
 import type {
   AgentRecord,
   EventRecord,
@@ -11,12 +9,11 @@ import type {
   SessionConfigurationRecord,
   SessionRecord,
 } from '../../../lib/api';
-import {
-  labelPromptBindingSlot,
-  labelPromptBindingTarget,
-} from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';
-import { SessionConfigurationControl } from './SessionConfigurationControl';
+import { ComposerSurface } from './ComposerSurface';
+import { ComposerToolbar, type ComposerContextStatus } from './ComposerToolbar';
+import { ContextPopover } from './ContextPopover';
+import type { ComposerCommand } from './SlashCommandMenu';
 import composerStyles from '../composer.module.css';
 
 function useWorkspaceAction<TInput, TResult>(action: (input: TInput) => Promise<TResult>) {
@@ -96,6 +93,7 @@ export function Composer({
   }) => Promise<SessionConfigurationRecord>;
 }) {
   const [text, setText] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [contextOpen, setContextOpen] = useState(false);
   const [variablesDraft, setVariablesDraft] = useState(() =>
     JSON.stringify(promptVariables, null, 2),
@@ -230,7 +228,7 @@ export function Composer({
     !promptContext ||
     Boolean(variablesError) ||
     promptContext.ready === false;
-  const contextStatus = promptContextLoading
+  const contextStatus: ComposerContextStatus = promptContextLoading
     ? { label: '解析中', kind: 'loading' }
     : variablesError
       ? { label: '解析失败', kind: 'error' }
@@ -243,36 +241,64 @@ export function Composer({
             : promptContext.items.length === 0
               ? { label: '无绑定', kind: 'empty' }
               : { label: `${promptContext.items.length} 项`, kind: 'ready' };
+  const applyVariables = () => {
+    try {
+      const parsed = JSON.parse(variablesDraft) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
+      setVariablesError(undefined);
+      setPromptVariables(parsed as Record<string, unknown>);
+    } catch {
+      setVariablesError('变量必须是合法 JSON object');
+    }
+  };
+  const sendCurrentText = () => {
+    if (!text.trim()) return;
+    if (!executeLocalSlashCommand()) send.mutate(undefined);
+  };
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Escape') {
+      if (contextOpen) {
+        event.preventDefault();
+        setContextOpen(false);
+      }
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendCurrentText();
+      return;
+    }
+    if (!slashMenuOpen || !filteredSlashCommands.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setActiveCommandIndex((index) => (index + 1) % filteredSlashCommands.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveCommandIndex(
+        (index) => (index - 1 + filteredSlashCommands.length) % filteredSlashCommands.length,
+      );
+    } else if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      const command = filteredSlashCommands[activeCommandIndex];
+      if (command) setText(`/${command.name} `);
+    }
+  };
   return (
     <div className={`${composerStyles.owner} composer`}>
-      <div className="composer-context">
-        <button
-          type="button"
-          className={`composer-context-action${contextOpen ? ' active' : ''}`}
-          onClick={() => setContextOpen(!contextOpen)}
-          aria-expanded={contextOpen}
-          aria-label={`PromptOS ${contextStatus.label}`}
-        >
-          <Plus size={15} />
-          <span>上下文</span>
-          <small>{contextStatus.label}</small>
-        </button>
-        <span className="composer-permission">
-          <ShieldCheck size={15} />
-          <strong>按需审批</strong>
-        </span>
-        <SessionConfigurationControl
-          configuration={configuration}
-          loading={configurationLoading}
-          model={modelValue || agent?.defaultModel || ''}
-          mode={modeValue || agent?.defaultMode || ''}
-          reasoningEffort={reasoningEffortValue}
-          updatingModel={updatingModel}
-          updatingMode={updatingMode}
-          updatingReasoningEffort={updatingReasoningEffort}
-          onChange={(patch) => updateConfiguration.mutate(patch)}
-        />
-      </div>
+      <ComposerToolbar
+        contextOpen={contextOpen}
+        contextStatus={contextStatus}
+        onToggleContext={() => setContextOpen((open) => !open)}
+        configuration={configuration}
+        configurationLoading={configurationLoading}
+        model={modelValue || agent?.defaultModel || ''}
+        mode={modeValue || agent?.defaultMode || ''}
+        reasoningEffort={reasoningEffortValue}
+        updatingModel={updatingModel}
+        updatingMode={updatingMode}
+        updatingReasoningEffort={updatingReasoningEffort}
+        onChangeConfiguration={(patch) => updateConfiguration.mutate(patch)}
+      />
       {configurationError && (
         <div className="composer-error" role="alert">
           配置读取失败：{configurationError.message}
@@ -284,229 +310,58 @@ export function Composer({
         </div>
       )}
       {contextOpen && (
-        <div className="composer-context-preview">
-          <div className="context-preview-heading">
-            <div>
-              <strong>PromptOS 上下文预览</strong>
-              <span>发送 Run 前解析，版本、标签与 content hash 会写入来源记录。</span>
-            </div>
-            <span className={contextStatus.kind}>{contextStatus.label}</span>
-          </div>
-          {promptContextLoading ? (
-            <LoadingState label="正在解析 PromptOS 上下文" />
-          ) : promptContextError ? (
-            <div className="prompt-context-error">
-              <ErrorState error={promptContextError} />
-              <Button color="red" size="1" variant="soft" onClick={() => promptContextRetry()}>
-                重新解析
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="composer-session-facts" aria-label="会话上下文事实">
-                <div>
-                  <span>Project</span>
-                  <strong>{project?.name ?? '未知'}</strong>
-                </div>
-                <div className="cwd-chip">
-                  <span>cwd</span>
-                  <code>{session.cwd}</code>
-                </div>
-                <div>
-                  <span>branch</span>
-                  <strong>
-                    <GitBranch size={13} /> {session.branch || '无 Git'}
-                  </strong>
-                </div>
-                <div>
-                  <span>Tools</span>
-                  <strong>自动</strong>
-                </div>
-                <div>
-                  <span>Skill</span>
-                  <strong>自动</strong>
-                </div>
-              </div>
-              <div className="composer-context-grid">
-                <div className="composer-provenance">
-                  {!promptContext?.items.length ? (
-                    <p>当前 Project、Agent、Task 没有生效的绑定。</p>
-                  ) : (
-                    promptContext.items.map((item) => (
-                      <div key={item.bindingId}>
-                        <span>{labelPromptBindingSlot(item.slot)}</span>
-                        <code>
-                          {item.promptKey}@{item.label ?? `v${item.version}`}
-                        </code>
-                        <small>
-                          {labelPromptBindingTarget(item.targetType)}，v{item.version}，hash{' '}
-                          {item.contentHash.slice(0, 10)}
-                        </small>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <label>
-                  变量 JSON
-                  <textarea
-                    className="mono"
-                    value={variablesDraft}
-                    onChange={(event) => setVariablesDraft(event.target.value)}
-                    rows={4}
-                  />
-                  <Button
-                    color="gray"
-                    size="1"
-                    variant="soft"
-                    onClick={() => {
-                      try {
-                        const parsed = JSON.parse(variablesDraft) as unknown;
-                        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-                          throw new Error();
-                        setVariablesError(undefined);
-                        setPromptVariables(parsed as Record<string, unknown>);
-                      } catch {
-                        setVariablesError('变量必须是合法 JSON object');
-                      }
-                    }}
-                  >
-                    应用并重新解析
-                  </Button>
-                  {variablesError && (
-                    <small className="context-variable-error" role="alert">
-                      {variablesError}
-                    </small>
-                  )}
-                  {promptContext?.ready === false && !variablesError && (
-                    <small className="context-variable-error">
-                      缺少：{promptContext.missingVariables.join('、')}
-                    </small>
-                  )}
-                </label>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-      <div className="composer-input">
-        <textarea
-          aria-label="给 Agent 发送工程指令"
-          autoComplete="off"
-          name="message"
-          value={text}
-          onChange={(event) => {
-            setText(event.target.value);
-            setCommandNotice(undefined);
-          }}
-          onKeyDown={(event) => {
-            if (!slashMenuOpen || !filteredSlashCommands.length) return;
-            if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              setActiveCommandIndex((index) => (index + 1) % filteredSlashCommands.length);
-            } else if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              setActiveCommandIndex(
-                (index) =>
-                  (index - 1 + filteredSlashCommands.length) % filteredSlashCommands.length,
-              );
-            } else if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              const command = filteredSlashCommands[activeCommandIndex];
-              if (command) setText(`/${command.name} `);
-            }
-          }}
-          placeholder={sessionLockMessage ?? '给 Agent 发送工程指令…'}
-          rows={2}
-          disabled={Boolean(activeRun) || sessionLocked}
+        <ContextPopover
+          project={project}
+          session={session}
+          promptContext={promptContext}
+          promptContextLoading={promptContextLoading}
+          promptContextError={promptContextError}
+          promptContextRetry={promptContextRetry}
+          variablesDraft={variablesDraft}
+          variablesError={variablesError}
+          contextStatus={contextStatus}
+          onVariablesDraftChange={setVariablesDraft}
+          onApplyVariables={applyVariables}
         />
-        {slashMenuOpen && filteredSlashCommands.length > 0 && (
-          <div className="composer-command-menu" role="listbox" aria-label="可用命令">
-            {filteredSlashCommands.map((command, index) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={index === activeCommandIndex}
-                className={index === activeCommandIndex ? 'active' : ''}
-                key={command.name}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => setText(`/${command.name} `)}
-              >
-                <strong>/{command.name}</strong>
-                <span>{command.label}</span>
-                <small>{command.description}</small>
-                {command.hint && <code>{command.hint}</code>}
-              </button>
-            ))}
-          </div>
-        )}
-        {activeRun ? (
-          <IconButton
-            className="send-button stop"
-            color="red"
-            onClick={() => stop.mutate(undefined)}
-            disabled={stop.isPending}
-            aria-label={stop.isPending ? '正在停止 Run' : '停止 Run'}
-          >
-            <CircleStop size={18} />
-          </IconButton>
-        ) : (
-          <IconButton
-            className="send-button"
-            disabled={
-              !text.trim() ||
-              send.isPending ||
-              updateConfiguration.isPending ||
-              (contextBlocked && !localSlashCommand) ||
-              Boolean(variablesError) ||
-              sessionLocked
-            }
-            onClick={() => {
-              if (!executeLocalSlashCommand()) send.mutate(undefined);
-            }}
-            aria-label="发送"
-          >
-            <Send size={18} />
-          </IconButton>
-        )}
-      </div>
-      {stop.error && (
-        <div className="workspace-query-error" role="alert">
-          <span>停止 Run 失败：{stop.error.message}</span>
-          <Button
-            color="red"
-            size="1"
-            variant="soft"
-            disabled={stop.isPending}
-            onClick={() => stop.mutate(undefined)}
-          >
-            重试停止
-          </Button>
-        </div>
       )}
-      {send.error && (
-        <span className="composer-error" role="alert">
-          {send.error.message}
-        </span>
-      )}
-      {commandNotice && (
-        <span className="composer-hint composer-command-notice" role="status">
-          {commandNotice}
-        </span>
-      )}
-      {sessionLockMessage && (
-        <span className="composer-hint composer-lock-hint" role="status">
-          {sessionLockMessage}
-        </span>
-      )}
+      <ComposerSurface
+        text={text}
+        inputRef={inputRef}
+        activeRun={activeRun}
+        sendPending={send.isPending}
+        stopPending={stop.isPending}
+        sendingBlocked={
+          !text.trim() ||
+          send.isPending ||
+          updateConfiguration.isPending ||
+          (contextBlocked && !localSlashCommand) ||
+          Boolean(variablesError) ||
+          sessionLocked
+        }
+        inputDisabled={Boolean(activeRun) || sessionLocked}
+        placeholder={sessionLockMessage ?? '给 Agent 发送工程指令…'}
+        onTextChange={(value) => {
+          setText(value);
+          setCommandNotice(undefined);
+        }}
+        onKeyDown={handleInputKeyDown}
+        onSend={sendCurrentText}
+        onStop={() => stop.mutate(undefined)}
+        commandNotice={commandNotice}
+        lockHint={sessionLockMessage}
+        sendError={send.error?.message}
+        stopError={stop.error?.message}
+        onRetryStop={() => stop.mutate(undefined)}
+        commands={slashMenuOpen ? filteredSlashCommands : []}
+        activeCommandIndex={activeCommandIndex}
+        onSelectCommand={(command) => {
+          setText(`/${command.name} `);
+          setCommandNotice(undefined);
+          inputRef.current?.focus();
+        }}
+      />
     </div>
   );
-}
-
-interface ComposerCommand {
-  name: string;
-  label: string;
-  description: string;
-  hint?: string;
 }
 
 function readAgentCommands(events: EventRecord[] | undefined): ComposerCommand[] {
