@@ -1,11 +1,11 @@
 import {
-  Button,
+  AhButton,
   ChevronDown,
   ChevronRight,
   FolderGit2,
   GitBranch,
   GitCompareArrows,
-  IconButton,
+  AhIconButton,
   RefreshCw,
 } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -142,15 +142,15 @@ export function GitChangesTree({
               </button>
             </div>
           </details>
-          <IconButton
+          <AhIconButton
             type="button"
-            size="1"
-            variant="ghost"
-            aria-label="刷新 Git 数据"
+            size="xs"
+            variant="subtle"
+            label="刷新 Git 数据"
             onClick={refetchCurrentView}
           >
             <RefreshCw size={15} />
-          </IconButton>
+          </AhIconButton>
         </div>
       </div>
 
@@ -240,14 +240,14 @@ export function GitChangesTree({
                       }}
                     />
                   </label>
-                  <Button
+                  <AhButton
                     type="submit"
-                    size="2"
+                    size="sm"
                     disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
                   >
                     <GitCompareArrows size={16} />
                     {commitPending ? '正在提交…' : `提交所选文件 (${selectedPaths.length})`}
-                  </Button>
+                  </AhButton>
                   <small>只提交勾选文件，不会混入其他已暂存变更。</small>
                   {commitError && (
                     <div className="workspace-query-error" role="alert">

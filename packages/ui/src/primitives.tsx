@@ -1,12 +1,4 @@
-import {
-  ActionIcon,
-  Button,
-  Select,
-  Switch,
-  type ActionIconProps,
-  type ButtonProps,
-  type SelectProps,
-} from '@mantine/core';
+import { Select, Switch, type SelectProps } from '@mantine/core';
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from 'react';
 
 import { AGENTHUB_CONTROL_HEIGHTS } from './theme.js';
@@ -15,25 +7,42 @@ import type { AGENTHUB_RADIUS } from './theme.js';
 export type AhControlSize = keyof typeof AGENTHUB_CONTROL_HEIGHTS;
 type AhRadius = keyof typeof AGENTHUB_RADIUS;
 
-export type AhButtonProps = Omit<ButtonProps, 'size' | 'radius'> &
-  Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color' | 'style' | 'size'> & {
-    children: ReactNode;
-    size?: AhControlSize;
-    radius?: AhRadius;
-  };
+export type AhButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> & {
+  children: ReactNode;
+  size?: AhControlSize;
+  radius?: AhRadius;
+  color?: string;
+  variant?: 'filled' | 'light' | 'subtle' | 'outline' | 'default';
+  loading?: boolean;
+  leftSection?: ReactNode;
+};
 
-export function AhButton({ children, size = 'md', radius = 'control', ...props }: AhButtonProps) {
+export function AhButton({
+  children,
+  size = 'md',
+  radius = 'control',
+  color = 'aurora',
+  variant = 'filled',
+  loading = false,
+  leftSection,
+  className,
+  disabled,
+  ...props
+}: AhButtonProps) {
   return (
-    <Button
+    <button
       {...props}
-      className={['ah-button', props.className].filter(Boolean).join(' ')}
-      size={size}
-      radius={radius === 'control' ? 'sm' : radius}
-      h={AGENTHUB_CONTROL_HEIGHTS[size]}
-      mih={AGENTHUB_CONTROL_HEIGHTS[size]}
+      className={['ah-button', className].filter(Boolean).join(' ')}
+      data-size={size}
+      data-radius={radius}
+      data-color={color}
+      data-variant={variant}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
     >
+      {leftSection}
       {children}
-    </Button>
+    </button>
   );
 }
 
@@ -43,22 +52,26 @@ export function AhIconButton({
   children,
   className,
   ...props
-}: Omit<ActionIconProps, 'size' | 'aria-label' | 'title'> & {
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'aria-label' | 'title'> & {
   label: string;
   size?: AhControlSize;
   children: ReactNode;
+  color?: string;
+  variant?: 'filled' | 'light' | 'subtle' | 'outline' | 'default';
 }) {
   return (
-    <ActionIcon
+    <button
       {...props}
       className={['ah-icon-button', className].filter(Boolean).join(' ')}
       aria-label={label}
       title={label}
-      size={AGENTHUB_CONTROL_HEIGHTS[size]}
-      variant={props.variant ?? 'subtle'}
+      data-size={size}
+      data-color={props.color ?? 'aurora'}
+      data-variant={props.variant ?? 'subtle'}
+      type={props.type ?? 'button'}
     >
       {children}
-    </ActionIcon>
+    </button>
   );
 }
 

@@ -3,7 +3,7 @@ import {
   AhSelect,
   AhSwitch,
   ArrowRight,
-  Button,
+  AhButton,
   CheckCircle2,
   ChevronRight,
   FormDialog,
@@ -192,22 +192,22 @@ export function SettingsPage() {
       description="修改成功后，其他浏览器中的登录会话会立即失效。"
       footer={
         <>
-          <Button
+          <AhButton
             type="button"
             color="gray"
-            variant="soft"
+            variant="light"
             onClick={() => setPasswordDialogOpen(false)}
           >
             取消
-          </Button>
-          <Button
+          </AhButton>
+          <AhButton
             type="submit"
             form="settings-password-form"
             disabled={changePassword.isPending}
             loading={changePassword.isPending}
           >
             更新密码
-          </Button>
+          </AhButton>
         </>
       }
     >
@@ -239,7 +239,6 @@ export function SettingsPage() {
             minLength={6}
             maxLength={128}
             name="currentPassword"
-            size="3"
             autoComplete="current-password"
           />
         </Field>
@@ -250,7 +249,6 @@ export function SettingsPage() {
             minLength={6}
             maxLength={128}
             name="newPassword"
-            size="3"
             autoComplete="new-password"
           />
         </Field>
@@ -261,7 +259,6 @@ export function SettingsPage() {
             minLength={6}
             maxLength={128}
             name="passwordConfirmation"
-            size="3"
             autoComplete="new-password"
           />
         </Field>
@@ -287,22 +284,22 @@ export function SettingsPage() {
       description="token 只显示一次，仅供 CLI、自动化脚本或外部服务使用。"
       footer={
         <>
-          <Button
+          <AhButton
             type="button"
             color="gray"
-            variant="soft"
+            variant="light"
             onClick={() => setTokenDialogOpen(false)}
           >
             取消
-          </Button>
-          <Button
+          </AhButton>
+          <AhButton
             type="submit"
             form="settings-token-form"
             disabled={createToken.isPending || !tokenName.trim()}
             loading={createToken.isPending}
           >
             创建 token
-          </Button>
+          </AhButton>
         </>
       }
     >
@@ -462,18 +459,18 @@ export function SettingsPage() {
             <>
               <SettingSection title="登录安全" description="保护管理员账户和浏览器会话。">
                 <SettingRow label="管理员密码" description="修改后，其他浏览器登录会话会立即失效。">
-                  <Button onClick={() => setPasswordDialogOpen(true)}>修改密码</Button>
+                  <AhButton onClick={() => setPasswordDialogOpen(true)}>修改密码</AhButton>
                 </SettingRow>
                 <SettingRow label="当前会话" description="结束此浏览器的登录状态。">
-                  <Button
+                  <AhButton
                     type="button"
                     color="red"
-                    variant="soft"
+                    variant="light"
                     disabled={logout.isPending || auth.data?.localTrusted === true}
                     onClick={() => logout.mutate()}
                   >
                     {logout.isPending ? '正在退出…' : '退出登录'}
-                  </Button>
+                  </AhButton>
                 </SettingRow>
                 {(passwordMessage || changePassword.error || logout.error) && (
                   <p
@@ -511,9 +508,9 @@ export function SettingsPage() {
                   <strong>API token</strong>
                   <p>token 只显示一次；网页登录不需要 token。</p>
                 </div>
-                <Button onClick={() => setTokenDialogOpen(true)}>
+                <AhButton onClick={() => setTokenDialogOpen(true)}>
                   <Plus size={15} /> 创建 token
-                </Button>
+                </AhButton>
               </div>
               {oneTimeToken ? (
                 <div className={styles.tokenOnce}>
@@ -521,9 +518,14 @@ export function SettingsPage() {
                     <strong>只显示一次，请立即保存</strong>
                     <code>{oneTimeToken}</code>
                   </div>
-                  <Button color="gray" size="1" variant="soft" onClick={() => setOneTimeToken('')}>
+                  <AhButton
+                    color="gray"
+                    size="xs"
+                    variant="light"
+                    onClick={() => setOneTimeToken('')}
+                  >
                     我已保存
-                  </Button>
+                  </AhButton>
                 </div>
               ) : null}
               <div className={styles.tokenList}>
@@ -539,14 +541,14 @@ export function SettingsPage() {
                     </span>
                     <StatusBadge status={token.revokedAt ? 'CANCELED' : 'ACTIVE'} />
                     {!token.revokedAt ? (
-                      <Button
+                      <AhButton
                         color="red"
-                        size="1"
-                        variant="ghost"
+                        size="xs"
+                        variant="subtle"
                         onClick={() => revokeToken.mutate(token.id)}
                       >
                         撤销
-                      </Button>
+                      </AhButton>
                     ) : null}
                   </div>
                 ))}
@@ -626,15 +628,15 @@ export function SettingsPage() {
                 tone="warning"
               >
                 <SettingRow label="退出当前账户" description="清除此浏览器的登录状态。">
-                  <Button
+                  <AhButton
                     type="button"
                     color="red"
-                    variant="soft"
+                    variant="light"
                     disabled={logout.isPending || auth.data?.localTrusted === true}
                     onClick={() => logout.mutate()}
                   >
                     {logout.isPending ? '正在退出…' : '退出登录'}
-                  </Button>
+                  </AhButton>
                 </SettingRow>
               </SettingSection>
             </>

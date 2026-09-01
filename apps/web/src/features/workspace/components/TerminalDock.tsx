@@ -3,7 +3,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 
-import { Button, SquareTerminal, X } from '@agenthub/ui';
+import { AhButton, SquareTerminal, X } from '@agenthub/ui';
 import terminalStyles from '../terminal.module.css';
 
 export type TerminalCapability = {
@@ -233,9 +233,9 @@ export function TerminalDock({
           <strong>Terminal</strong>
           <span>Local Project</span>
         </div>
-        <Button size="1" variant="soft" color="gray" onClick={close}>
+        <AhButton size="xs" variant="light" color="gray" onClick={close}>
           <X size={14} /> 关闭
-        </Button>
+        </AhButton>
       </div>
       <div className="terminal-dock-body">
         <div ref={viewportRef} className="terminal-viewport" aria-label="Terminal 输入区" />

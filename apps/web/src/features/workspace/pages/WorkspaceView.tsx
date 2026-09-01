@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, GitBranch, GitCompareArrows, Menu, Tabs, X } from '@agenthub/ui';
+import { AhTabs, Bot, ChevronRight, GitBranch, GitCompareArrows, Menu, X } from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { StatusBadge } from '../../../components/Feedback';
@@ -161,14 +161,14 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           </div>
         )}
       </div>
-      <Tabs.Root value={inspectorDrawerOpen ? tab : 'conversation'}>
-        <Tabs.List
+      <AhTabs.Root value={inspectorDrawerOpen ? tab : 'conversation'}>
+        <AhTabs.List
           className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
           aria-label="Workspace 视图"
         >
-          <Tabs.Trigger value="conversation" aria-label="对话" onClick={closeMobileInspector}>
+          <AhTabs.Trigger value="conversation" aria-label="对话" onClick={closeMobileInspector}>
             对话
-          </Tabs.Trigger>
+          </AhTabs.Trigger>
           {(
             [
               ['files', '文件'],
@@ -177,7 +177,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               ['run', '运行'],
             ] as Array<[InspectorTab, string]>
           ).map(([item, label]) => (
-            <Tabs.Trigger
+            <AhTabs.Trigger
               key={item}
               value={item}
               aria-label={label}
@@ -186,10 +186,10 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               }}
             >
               {label}
-            </Tabs.Trigger>
+            </AhTabs.Trigger>
           ))}
-        </Tabs.List>
-      </Tabs.Root>
+        </AhTabs.List>
+      </AhTabs.Root>
       <Group
         id="workspace-panels"
         orientation="horizontal"

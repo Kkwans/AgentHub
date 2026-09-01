@@ -1,147 +1,6 @@
 @import '@mantine/core/styles.css';
 @import './tokens.css';
 
-/* Compatibility skin for unmounted feature modules. New screens use Ah* primitives. */
-.ah-compat-button,
-.ah-compat-icon-button {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 12px;
-  color: var(--ah-text-primary);
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-border-default);
-  border-radius: var(--ah-radius-control, 8px);
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  transition:
-    background var(--ah-motion-fast),
-    border-color var(--ah-motion-fast),
-    color var(--ah-motion-fast);
-}
-
-.ah-compat-button[data-size='xs'] {
-  min-height: 28px;
-  padding-inline: 9px;
-  font-size: 12px;
-}
-.ah-compat-button[data-size='lg'] {
-  min-height: 40px;
-  padding-inline: 14px;
-}
-.ah-compat-button-filled {
-  color: #fff;
-  background: var(--ah-accent-primary);
-  border-color: var(--ah-accent-primary);
-}
-.ah-compat-button-light {
-  color: var(--ah-accent-primary);
-  background: var(--ah-accent-soft);
-  border-color: transparent;
-}
-.ah-compat-button-subtle {
-  color: var(--ah-text-secondary);
-  background: transparent;
-  border-color: transparent;
-}
-.ah-compat-button-outline {
-  color: var(--ah-accent-primary);
-  border-color: var(--ah-accent-primary);
-}
-.ah-compat-button:hover:not(:disabled) {
-  filter: brightness(0.97);
-}
-.ah-compat-button:disabled,
-.ah-compat-icon-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.ah-compat-icon-button {
-  width: 34px;
-  padding: 0;
-}
-.ah-compat-text-field {
-  position: relative;
-  display: block;
-  width: 100%;
-}
-.ah-compat-text-field > input {
-  width: 100%;
-  min-height: 38px;
-  padding: 0 11px;
-  color: var(--ah-text-primary);
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-border-default);
-  border-radius: 8px;
-  outline: 0;
-  font: inherit;
-}
-.ah-compat-text-field > input:focus {
-  border-color: var(--ah-accent-primary);
-  box-shadow: 0 0 0 3px var(--ah-accent-soft);
-}
-.ah-compat-text-field-slot {
-  position: absolute;
-  top: 50%;
-  right: 5px;
-  display: inline-flex;
-  transform: translateY(-50%);
-}
-.ah-compat-badge {
-  display: inline-flex;
-  min-height: 24px;
-  align-items: center;
-  padding: 0 9px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1;
-}
-.ah-compat-badge-green {
-  color: var(--ah-success);
-  background: color-mix(in srgb, var(--ah-success) 12%, transparent);
-}
-.ah-compat-badge-red {
-  color: var(--ah-danger);
-  background: color-mix(in srgb, var(--ah-danger) 12%, transparent);
-}
-.ah-compat-badge-gray {
-  color: var(--ah-text-secondary);
-  background: var(--ah-surface-subtle);
-}
-.ah-compat-badge-orange {
-  color: var(--ah-warning);
-  background: color-mix(in srgb, var(--ah-warning) 12%, transparent);
-}
-.ah-compat-text-muted {
-  color: var(--ah-text-secondary);
-}
-.ah-compat-callout {
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--ah-border-default);
-  border-radius: 10px;
-}
-.ah-compat-dialog {
-  position: fixed;
-  z-index: 1000;
-  inset: 50% auto auto 50%;
-  width: min(640px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  overflow: auto;
-  padding: 20px;
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-border-default);
-  border-radius: 14px;
-  box-shadow: var(--ah-shadow-float, 0 24px 70px rgb(15 23 42 / 18%));
-  transform: translate(-50%, -50%);
-}
-
 html,
 body,
 #root {
@@ -412,11 +271,158 @@ a {
 }
 
 .ah-button {
+  display: inline-flex;
+  min-height: var(--ah-control-md);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: var(--ah-radius-control, 8px);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--ah-font-size-body);
   font-weight: 600;
+  line-height: 1;
+  transition:
+    background-color var(--ah-motion-fast),
+    border-color var(--ah-motion-fast),
+    color var(--ah-motion-fast),
+    opacity var(--ah-motion-fast);
+}
+
+.ah-button[data-size='xs'] {
+  min-height: var(--ah-control-xs);
+  padding-inline: 9px;
+  font-size: var(--ah-font-size-meta);
+}
+
+.ah-button[data-size='sm'] {
+  min-height: var(--ah-control-sm);
+}
+
+.ah-button[data-size='lg'] {
+  min-height: var(--ah-control-lg);
+  padding-inline: 14px;
+}
+
+.ah-button[data-variant='filled'] {
+  color: #fff;
+  background: var(--ah-accent-primary);
+  border-color: var(--ah-accent-primary);
+}
+
+.ah-button[data-variant='filled'][data-color='red'] {
+  background: var(--ah-danger);
+  border-color: var(--ah-danger);
+}
+
+.ah-button[data-variant='light'] {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+  border-color: transparent;
+}
+
+.ah-button[data-variant='light'][data-color='red'] {
+  color: var(--ah-danger);
+  background: var(--ah-danger-soft);
+}
+
+.ah-button[data-variant='light'][data-color='gray'],
+.ah-button[data-variant='default'][data-color='gray'] {
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface-subtle);
+}
+
+.ah-button[data-variant='subtle'] {
+  color: var(--ah-text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+
+.ah-button[data-variant='subtle'][data-color='red'] {
+  color: var(--ah-danger);
+}
+
+.ah-button[data-variant='outline'] {
+  color: var(--ah-accent-primary);
+  background: transparent;
+  border-color: var(--ah-accent-primary);
+}
+
+.ah-button:hover:not(:disabled),
+.ah-icon-button:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+.ah-button:disabled,
+.ah-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .ah-icon-button {
+  display: inline-grid;
+  width: var(--ah-control-md);
+  min-width: var(--ah-control-md);
+  height: var(--ah-control-md);
+  min-height: var(--ah-control-md);
+  place-items: center;
+  padding: 0;
+  color: var(--ah-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ah-radius-control, 8px);
+  cursor: pointer;
+  font: inherit;
   flex: 0 0 auto;
+  transition:
+    background-color var(--ah-motion-fast),
+    border-color var(--ah-motion-fast),
+    color var(--ah-motion-fast),
+    opacity var(--ah-motion-fast);
+}
+
+.ah-icon-button[data-size='xs'] {
+  width: var(--ah-control-xs);
+  min-width: var(--ah-control-xs);
+  height: var(--ah-control-xs);
+  min-height: var(--ah-control-xs);
+}
+
+.ah-icon-button[data-size='sm'] {
+  width: var(--ah-control-sm);
+  min-width: var(--ah-control-sm);
+  height: var(--ah-control-sm);
+  min-height: var(--ah-control-sm);
+}
+
+.ah-icon-button[data-size='lg'] {
+  width: var(--ah-control-lg);
+  min-width: var(--ah-control-lg);
+  height: var(--ah-control-lg);
+  min-height: var(--ah-control-lg);
+}
+
+.ah-icon-button[data-variant='filled'] {
+  color: #fff;
+  background: var(--ah-accent-primary);
+}
+
+.ah-icon-button[data-variant='light'] {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}
+
+.ah-icon-button[data-variant='light'][data-color='red'] {
+  color: var(--ah-danger);
+  background: var(--ah-danger-soft);
+}
+
+.ah-icon-button[data-variant='subtle'][data-color='red'] {
+  color: var(--ah-danger);
 }
 
 .ah-status-pill {
@@ -692,10 +698,33 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+.ah-dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: auto;
+  background: rgb(15 23 42 / 42%);
+}
+
+.ah-dialog {
+  width: min(100% - 32px, 640px);
+  padding: 20px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 14px;
+  box-shadow: var(--ah-shadow-float, 0 24px 70px rgb(15 23 42 / 18%));
+  outline: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
 .ah-dialog {
   width: min(100% - 32px, 640px);
   max-height: min(760px, calc(100dvh - 32px));
-  overflow: auto;
 }
 
 .ah-textarea-field {
@@ -756,8 +785,18 @@ textarea:focus-visible {
 }
 
 .ah-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.ah-dialog-header h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.3;
 }
 
 .ah-dialog-header p {
@@ -867,8 +906,102 @@ textarea:focus-visible {
   margin: 0;
 }
 
+.ah-field-description {
+  color: var(--ah-text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .ah-field-error {
+  color: var(--ah-danger);
+  font-size: 12px;
+  line-height: 1.45;
   font-weight: 500;
+}
+
+.ah-field-input,
+.ah-field-textarea,
+.ah-access-input,
+.ah-password-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 11px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  outline: 0;
+  font: inherit;
+  transition:
+    border-color var(--ah-motion-fast),
+    box-shadow var(--ah-motion-fast);
+}
+
+.ah-field-textarea {
+  min-height: 96px;
+  padding-block: 10px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.ah-field-input::placeholder,
+.ah-field-textarea::placeholder,
+.ah-access-input::placeholder,
+.ah-password-input::placeholder {
+  color: var(--ah-text-tertiary);
+}
+
+.ah-field-input:focus,
+.ah-field-textarea:focus,
+.ah-access-input:focus,
+.ah-password-input:focus {
+  border-color: var(--ah-accent-primary);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+
+.ah-field-input:disabled,
+.ah-field-textarea:disabled,
+.ah-access-input:disabled,
+.ah-password-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ah-password-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.ah-password-input {
+  padding-right: 42px;
+}
+
+.ah-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  color: var(--ah-text-tertiary);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.ah-password-toggle:hover {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+}
+
+.ah-password-toggle:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 1px;
 }
 
 .ah-field[data-invalid='true'] .ah-select-trigger,

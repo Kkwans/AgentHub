@@ -1,4 +1,4 @@
-import { Tabs } from '@agenthub/ui';
+import { AhTabs } from '@agenthub/ui';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
@@ -84,15 +84,15 @@ export function WorkspaceInspector({
   ];
   return (
     <div className={`${inspectorStyles.owner} inspector`}>
-      <Tabs.Root value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
-        <Tabs.List className="inspector-tabs" aria-label="检查器视图">
+      <AhTabs.Root value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
+        <AhTabs.List className="inspector-tabs" aria-label="检查器视图">
           {tabs.map((item) => (
-            <Tabs.Trigger key={item.id} value={item.id} aria-label={item.label}>
+            <AhTabs.Trigger key={item.id} value={item.id} aria-label={item.label}>
               {item.label}
-            </Tabs.Trigger>
+            </AhTabs.Trigger>
           ))}
-        </Tabs.List>
-      </Tabs.Root>
+        </AhTabs.List>
+      </AhTabs.Root>
       <div className="inspector-body">
         {projects.isLoading ? (
           <LoadingState label="正在读取 Project" />

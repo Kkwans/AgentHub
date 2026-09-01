@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { Badge, Button, Play, RefreshCw, SectionHeader, Settings } from '@agenthub/ui';
+import { AhButton, AhStatusPill, Play, RefreshCw, SectionHeader, Settings } from '@agenthub/ui';
 
 import type { AgentCandidateRecord, RuntimeCandidateRecord } from '../../../lib/api';
 import { api } from '../../../lib/api';
@@ -80,15 +80,15 @@ export function RuntimeDiscoveryPanel() {
         title="运行环境"
         description="管理 AgentHub、本机与 Docker 运行环境；接入只保存身份和允许的工作区映射。"
         action={
-          <Button
-            variant="soft"
+          <AhButton
+            variant="light"
             color="gray"
             onClick={() => rescan.mutate()}
             disabled={rescan.isPending}
             loading={rescan.isPending}
           >
             <RefreshCw size={16} /> 重新扫描
-          </Button>
+          </AhButton>
         }
       />
       {actionError ? <InlineError error={actionError} /> : null}
@@ -120,17 +120,7 @@ export function RuntimeDiscoveryPanel() {
                 <div className="infrastructure-record-icon">
                   <Settings size={19} />
                 </div>
-                <Badge
-                  color={
-                    runtime.state === 'READY'
-                      ? 'green'
-                      : runtime.state === 'STOPPED'
-                        ? 'orange'
-                        : 'gray'
-                  }
-                >
-                  {labelRuntimeStatus(runtime.state)}
-                </Badge>
+                <AhStatusPill status={runtime.state} label={labelRuntimeStatus(runtime.state)} />
               </div>
               <h3>{runtime.displayName}</h3>
               <p>
@@ -140,31 +130,31 @@ export function RuntimeDiscoveryPanel() {
               {statusDetail ? <small>{statusDetail}</small> : null}
               <div className="infrastructure-discovery-card-actions">
                 {!runtime.targetId && runtime.adoptable ? (
-                  <Button
-                    size="2"
+                  <AhButton
+                    size="sm"
                     onClick={() => adoptRuntime.mutate(runtime.candidateId)}
                     loading={adoptRuntime.isPending}
                   >
                     接入运行环境
-                  </Button>
+                  </AhButton>
                 ) : null}
                 {runtime.targetId && runtime.state === 'STOPPED' ? (
-                  <Button
-                    size="2"
+                  <AhButton
+                    size="sm"
                     onClick={() =>
                       lifecycle.mutate({ targetId: runtime.targetId!, action: 'start' })
                     }
                     loading={lifecycle.isPending}
                   >
                     <Play size={14} /> 启动
-                  </Button>
+                  </AhButton>
                 ) : null}
                 {runtime.targetId &&
                 runtime.state === 'READY' &&
                 runtime.kind === 'DOCKER_CONTAINER' ? (
-                  <Button
-                    size="2"
-                    variant="soft"
+                  <AhButton
+                    size="sm"
+                    variant="light"
                     color="gray"
                     onClick={() =>
                       lifecycle.mutate({ targetId: runtime.targetId!, action: 'stop' })
@@ -172,7 +162,7 @@ export function RuntimeDiscoveryPanel() {
                     loading={lifecycle.isPending}
                   >
                     停止
-                  </Button>
+                  </AhButton>
                 ) : null}
                 {runtime.targetId ? <span className="infrastructure-connected">已接入</span> : null}
               </div>

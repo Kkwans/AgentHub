@@ -1,6 +1,6 @@
 import {
   AlertTriangle,
-  Button,
+  AhButton,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -555,7 +555,7 @@ export function Conversation({
                       {approval.optionsJson.map(
                         (option) =>
                           option.id && (
-                            <Button
+                            <AhButton
                               key={option.id}
                               color={
                                 /reject|deny|refuse/i.test(
@@ -564,13 +564,13 @@ export function Conversation({
                                   ? 'gray'
                                   : 'orange'
                               }
-                              size="1"
+                              size="xs"
                               variant={
                                 /reject|deny|refuse/i.test(
                                   `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
                                 )
-                                  ? 'soft'
-                                  : 'solid'
+                                  ? 'light'
+                                  : 'filled'
                               }
                               onClick={() =>
                                 void resolveApproval({ id: approval.id, optionId: option.id! })
@@ -578,7 +578,7 @@ export function Conversation({
                               disabled={Boolean(resolving)}
                             >
                               {option.label ?? option.id}
-                            </Button>
+                            </AhButton>
                           ),
                       )}
                     </div>
@@ -623,17 +623,17 @@ export function Conversation({
                   <span>{resolveError.message}</span>
                   {((resolveError as Error & { code?: string }).code ?? '') !==
                     'APPROVAL_DECISION_CONFLICT' && (
-                    <Button
+                    <AhButton
                       color="red"
-                      size="1"
-                      variant="soft"
+                      size="xs"
+                      variant="light"
                       disabled={Boolean(resolving)}
                       onClick={() => {
                         if (resolveVariables) void resolveApproval(resolveVariables);
                       }}
                     >
                       重试此选项
-                    </Button>
+                    </AhButton>
                   )}
                 </div>
               )}

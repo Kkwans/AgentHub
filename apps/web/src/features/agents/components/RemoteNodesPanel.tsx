@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
-  AlertDialog,
-  Button,
+  AhButton,
   Copy,
-  Flex,
+  ConfirmDialog,
   Fingerprint,
   FormDialog,
   FormTextField,
@@ -109,7 +108,7 @@ export function RemoteNodesPanel() {
             Remote Node 会主动连接 AgentHub；Central Server 不使用 SSH，也不接收 Agent 登录凭据。
           </p>
         </div>
-        <Button
+        <AhButton
           className="remote-node-register-button"
           onClick={() => {
             setRegistrationOpen((open) => !open);
@@ -121,7 +120,7 @@ export function RemoteNodesPanel() {
           }}
         >
           <KeyRound size={15} /> 生成一次性注册码
-        </Button>
+        </AhButton>
       </div>
 
       <FormDialog
@@ -139,22 +138,22 @@ export function RemoteNodesPanel() {
         description="先添加目标 Node 上的项目目录，再生成一次性注册码。只授权 Agent 实际需要访问的目录。"
         footer={
           <>
-            <Button
+            <AhButton
               type="button"
               color="gray"
-              variant="soft"
+              variant="light"
               onClick={() => setRegistrationOpen(false)}
             >
               取消
-            </Button>
-            <Button
+            </AhButton>
+            <AhButton
               type="submit"
               form="remote-node-registration-form"
               disabled={createRegistration.isPending}
               loading={createRegistration.isPending}
             >
               生成注册码
-            </Button>
+            </AhButton>
           </>
         }
       >
@@ -218,16 +217,16 @@ export function RemoteNodesPanel() {
                 );
               }}
             />
-            <Button
+            <AhButton
               type="button"
               color="gray"
-              variant="soft"
+              variant="light"
               onClick={() =>
                 addAllowedRoot(rootDraft, allowedRoots, setAllowedRoots, setRootDraft, setRootError)
               }
             >
               <Plus size={14} /> 添加目录
-            </Button>
+            </AhButton>
             {allowedRoots.length ? (
               <div className="remote-node-root-chips" aria-label="已添加的授权目录">
                 {allowedRoots.map((root) => (
@@ -271,26 +270,26 @@ export function RemoteNodesPanel() {
           </div>
           <div className="remote-node-copy-row">
             <code aria-label="一次性注册码">{registration.token}</code>
-            <Button
+            <AhButton
               color="gray"
-              size="1"
-              variant="soft"
+              size="xs"
+              variant="light"
               onClick={() => copy('token', registration.token)}
             >
               <Copy size={13} /> {copied === 'token' ? '已复制' : '复制注册码'}
-            </Button>
+            </AhButton>
           </div>
           <div className="remote-node-command">
             <span>在已构建 AgentHub Node 的机器上运行</span>
             <pre>{daemonCommand}</pre>
-            <Button
+            <AhButton
               color="gray"
-              size="1"
-              variant="soft"
+              size="xs"
+              variant="light"
               onClick={() => copy('command', daemonCommand)}
             >
               <Copy size={13} /> {copied === 'command' ? '已复制' : '复制启动命令'}
-            </Button>
+            </AhButton>
           </div>
         </div>
       )}
@@ -349,10 +348,10 @@ export function RemoteNodesPanel() {
                   {!node.inventoryJson.length && <small>Node 尚未报告 Agent inventory</small>}
                 </div>
                 <footer>
-                  <Button
+                  <AhButton
                     color="gray"
-                    size="1"
-                    variant="soft"
+                    size="xs"
+                    variant="light"
                     onClick={() => {
                       setSelectedNodeId(selected ? undefined : node.id);
                       if (selected) return;
@@ -362,17 +361,17 @@ export function RemoteNodesPanel() {
                     }}
                   >
                     <RefreshCw size={13} /> {selected ? '收起诊断' : '查看诊断'}
-                  </Button>
+                  </AhButton>
                   {node.status !== 'REVOKED' && (
-                    <Button
+                    <AhButton
                       color="red"
-                      size="1"
-                      variant="ghost"
+                      size="xs"
+                      variant="subtle"
                       disabled={revoke.isPending}
                       onClick={() => setRevokeCandidate(node)}
                     >
                       撤销设备身份
-                    </Button>
+                    </AhButton>
                   )}
                 </footer>
                 {selected && (
@@ -387,35 +386,21 @@ export function RemoteNodesPanel() {
         </div>
       )}
       {failure && !nodes.error && <p className="inline-error">{failure.message}</p>}
-      <AlertDialog.Root
+      <ConfirmDialog
         open={Boolean(revokeCandidate)}
         onOpenChange={(open) => {
           if (!open && !revoke.isPending) setRevokeCandidate(undefined);
         }}
-      >
-        <AlertDialog.Content maxWidth="440px">
-          <AlertDialog.Title>撤销 Remote Node 身份</AlertDialog.Title>
-          <AlertDialog.Description size="2">
-            撤销 {revokeCandidate?.name} 后，该 Node 会立即断开，并且必须重新注册才能恢复连接。
-          </AlertDialog.Description>
-          <Flex gap="3" justify="end" mt="4">
-            <AlertDialog.Cancel>
-              <Button color="gray" variant="soft" disabled={revoke.isPending}>
-                取消
-              </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button
-                color="red"
-                disabled={revoke.isPending}
-                onClick={() => revokeCandidate && revoke.mutate(revokeCandidate.id)}
-              >
-                {revoke.isPending ? '正在撤销' : '确认撤销'}
-              </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
-      </AlertDialog.Root>
+        title="撤销 Remote Node 身份"
+        description={`撤销 ${revokeCandidate?.name ?? '该 Node'} 后，该 Node 会立即断开，并且必须重新注册才能恢复连接。`}
+        confirmLabel="确认撤销"
+        cancelLabel="取消"
+        destructive
+        pending={revoke.isPending}
+        onConfirm={() => {
+          if (revokeCandidate) revoke.mutate(revokeCandidate.id);
+        }}
+      />
     </section>
   );
 }

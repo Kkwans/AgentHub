@@ -1,5 +1,5 @@
 import { type FormEvent, type PropsWithChildren, useEffect, useState } from 'react';
-import { AlertTriangle, Button, ShieldCheck, TextField } from '@agenthub/ui';
+import { AhButton, AlertTriangle, ShieldCheck } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError, api, authSession } from '../lib/api';
@@ -197,10 +197,10 @@ function AccessPrompt({
         {!unavailable ? (
           <form className={styles.form} onSubmit={submit}>
             <label htmlFor="username">用户名</label>
-            <TextField.Root
+            <input
               id="username"
               name="username"
-              size="3"
+              className="ah-access-input"
               autoFocus
               autoComplete="username"
               spellCheck={false}
@@ -213,7 +213,6 @@ function AccessPrompt({
             <PasswordField
               id="password"
               name="password"
-              size="3"
               autoComplete={setup ? 'new-password' : 'current-password'}
               placeholder="至少 6 个字符"
               minLength={6}
@@ -227,7 +226,6 @@ function AccessPrompt({
                 <PasswordField
                   id="password-confirmation"
                   name="passwordConfirmation"
-                  size="3"
                   autoComplete="new-password"
                   placeholder="再次输入密码"
                   minLength={6}
@@ -236,15 +234,15 @@ function AccessPrompt({
                 />
               </>
             )}
-            <Button size="3" disabled={busy}>
+            <AhButton size="lg" type="submit" disabled={busy}>
               <ShieldCheck aria-hidden size={17} />
               {busy ? (setup ? '正在创建…' : '正在登录…') : setup ? '创建账号并进入' : '登录'}
-            </Button>
+            </AhButton>
           </form>
         ) : (
-          <Button size="3" onClick={onRetry}>
+          <AhButton size="lg" type="button" onClick={onRetry}>
             重试连接
-          </Button>
+          </AhButton>
         )}
         {!unavailable && <footer>此设备将保持登录 7 天。你可以随时从设置页退出。</footer>}
       </section>

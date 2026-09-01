@@ -1,4 +1,4 @@
-import { Button, CircleStop, IconButton, Send } from '@agenthub/ui';
+import { AhButton, AhIconButton, CircleStop, Send } from '@agenthub/ui';
 import { type KeyboardEvent, type RefObject, useEffect } from 'react';
 
 import type { RunRecord } from '../../../lib/api';
@@ -76,33 +76,39 @@ export function ComposerSurface({
           />
         ) : null}
         {activeRun ? (
-          <IconButton
+          <AhIconButton
             className="send-button stop"
             color="red"
             onClick={onStop}
             disabled={stopPending}
-            aria-label={stopPending ? '正在停止 Run' : '停止 Run'}
+            label={stopPending ? '正在停止 Run' : '停止 Run'}
           >
             <CircleStop size={18} />
-          </IconButton>
+          </AhIconButton>
         ) : (
-          <IconButton
+          <AhIconButton
             className="send-button"
             disabled={sendingBlocked}
             aria-busy={sendPending}
             onClick={onSend}
-            aria-label="发送"
+            label="发送"
           >
             <Send size={18} />
-          </IconButton>
+          </AhIconButton>
         )}
       </div>
       {stopError ? (
         <div className="workspace-query-error" role="alert">
           <span>停止 Run 失败：{stopError}</span>
-          <Button color="red" size="1" variant="soft" disabled={stopPending} onClick={onRetryStop}>
+          <AhButton
+            color="red"
+            size="xs"
+            variant="light"
+            disabled={stopPending}
+            onClick={onRetryStop}
+          >
             重试停止
-          </Button>
+          </AhButton>
         </div>
       ) : null}
       {sendError ? (

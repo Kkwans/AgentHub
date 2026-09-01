@@ -1,4 +1,3 @@
-export * from './compat.js';
 export type { IconProps } from '@phosphor-icons/react/lib';
 export { PulseIcon as Activity } from '@phosphor-icons/react/Pulse';
 export { WarningIcon as AlertTriangle } from '@phosphor-icons/react/Warning';

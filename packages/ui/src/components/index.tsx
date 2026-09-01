@@ -1,15 +1,4 @@
 import * as React from 'react';
-import {
-  AlertDialog,
-  Button,
-  Dialog,
-  Flex,
-  Heading,
-  IconButton,
-  Text,
-  TextArea,
-  TextField,
-} from '../compat.js';
 import { CheckIcon } from '@phosphor-icons/react/Check';
 import { CaretDownIcon } from '@phosphor-icons/react/CaretDown';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/MagnifyingGlass';
@@ -109,28 +98,37 @@ export function FormDialog({
     return undefined;
   }, [open, _onCloseAutoFocus, _onOpenAutoFocus]);
 
+  const generatedTitleId = React.useId();
+  if (!open) return null;
+  const titleId = labelledBy ?? `ah-dialog-title-${generatedTitleId.replaceAll(':', '')}`;
+  const descriptionId = describedBy ?? (description ? `${titleId}-description` : undefined);
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content className={`ah-dialog ah-dialog-${size}`} trapFocus={false}>
-        <Flex align="start" justify="between" gap="4" className="ah-dialog-header">
+    <div className="ah-dialog-backdrop" role="presentation">
+      <section
+        className={`ah-dialog ah-dialog-${size}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        {...(descriptionId ? { 'aria-describedby': descriptionId } : {})}
+      >
+        <div className="ah-dialog-header">
           <div>
-            <Dialog.Title {...(labelledBy ? { id: labelledBy } : {})}>{title}</Dialog.Title>
-            {description ? (
-              <Dialog.Description {...(describedBy ? { id: describedBy } : {})}>
-                {description}
-              </Dialog.Description>
-            ) : null}
+            <h2 id={titleId}>{title}</h2>
+            {description ? <p id={descriptionId}>{description}</p> : null}
           </div>
-          <Dialog.Close>
-            <button type="button" className="ah-dialog-close" aria-label="关闭">
-              <XIcon aria-hidden size={18} />
-            </button>
-          </Dialog.Close>
-        </Flex>
+          <button
+            type="button"
+            className="ah-dialog-close"
+            aria-label="关闭"
+            onClick={() => onOpenChange(false)}
+          >
+            <XIcon aria-hidden size={18} />
+          </button>
+        </div>
         <div className="ah-dialog-body">{children}</div>
         {footer ? <div className="ah-dialog-footer">{footer}</div> : null}
-      </Dialog.Content>
-    </Dialog.Root>
+      </section>
+    </div>
   );
 }
 
@@ -158,25 +156,26 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
-      <AlertDialog.Content className="ah-dialog ah-dialog-small">
-        <AlertDialog.Title>{title}</AlertDialog.Title>
-        <AlertDialog.Description>{description}</AlertDialog.Description>
-        <Flex justify="end" gap="2" className="ah-dialog-footer">
-          <AlertDialog.Cancel type="button" className="ah-dialog-secondary" disabled={pending}>
-            {cancelLabel}
-          </AlertDialog.Cancel>
-          <AlertDialog.Action
-            type="button"
-            className={destructive ? 'ah-dialog-danger' : 'ah-dialog-primary'}
-            disabled={pending}
-            onClick={onConfirm}
-          >
-            {pending ? '处理中…' : confirmLabel}
-          </AlertDialog.Action>
-        </Flex>
-      </AlertDialog.Content>
-    </AlertDialog.Root>
+    <FormDialog open={open} onOpenChange={onOpenChange} title={title} description={description}>
+      <div className="ah-dialog-footer">
+        <button
+          type="button"
+          className="ah-dialog-secondary"
+          disabled={pending}
+          onClick={() => onOpenChange(false)}
+        >
+          {cancelLabel}
+        </button>
+        <button
+          type="button"
+          className={destructive ? 'ah-dialog-danger' : 'ah-dialog-primary'}
+          disabled={pending}
+          onClick={onConfirm}
+        >
+          {pending ? '处理中…' : confirmLabel}
+        </button>
+      </div>
+    </FormDialog>
   );
 }
 
@@ -233,23 +232,20 @@ export function Field({
       </div>
       <div className="ah-field-control">{control}</div>
       {description ? (
-        <Text id={descriptionId} as="p" className="ah-field-description" color="gray" size="1">
+        <p id={descriptionId} className="ah-field-description">
           {description}
-        </Text>
+        </p>
       ) : null}
       {error ? (
-        <Text id={errorId} as="p" className="ah-field-error" color="red" size="1" role="alert">
+        <p id={errorId} className="ah-field-error" role="alert">
           {error}
-        </Text>
+        </p>
       ) : null}
     </div>
   );
 }
 
-export type FormTextFieldProps = Omit<
-  React.ComponentPropsWithoutRef<typeof TextField.Root>,
-  'size'
-> &
+export type FormTextFieldProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> &
   Pick<FieldProps, 'label' | 'description' | 'error' | 'required'>;
 
 export function FormTextField({
@@ -270,10 +266,10 @@ export function FormTextField({
       {...(error ? { error } : {})}
       {...(required ? { required } : {})}
     >
-      <TextField.Root
+      <input
         {...(id ? { id } : {})}
         {...(name || id ? { name: name ?? id } : {})}
-        size="2"
+        className={['ah-field-input', props.className].filter(Boolean).join(' ')}
         {...props}
         autoComplete={autoComplete}
         aria-invalid={Boolean(error) || undefined}
@@ -282,7 +278,7 @@ export function FormTextField({
   );
 }
 
-export type FormTextAreaProps = Omit<React.ComponentPropsWithoutRef<typeof TextArea>, 'size'> &
+export type FormTextAreaProps = Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'size'> &
   Pick<FieldProps, 'label' | 'description' | 'error' | 'required'>;
 
 export function FormTextArea({
@@ -303,10 +299,10 @@ export function FormTextArea({
       {...(error ? { error } : {})}
       {...(required ? { required } : {})}
     >
-      <TextArea
+      <textarea
         {...(id ? { id } : {})}
         {...(name || id ? { name: name ?? id } : {})}
-        size="2"
+        className={['ah-field-textarea', props.className].filter(Boolean).join(' ')}
         {...props}
         autoComplete={autoComplete}
         aria-invalid={Boolean(error) || undefined}
@@ -507,6 +503,62 @@ export interface AdvancedSectionProps {
   defaultOpen?: boolean;
 }
 
+type AhTabsContextValue = {
+  value: string;
+  onValueChange?: (value: string) => void;
+};
+
+const ahTabsContext = React.createContext<AhTabsContextValue>({ value: '' });
+
+function AhTabsRoot({
+  value = '',
+  onValueChange,
+  children,
+}: {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <ahTabsContext.Provider value={{ value, ...(onValueChange ? { onValueChange } : {}) }}>
+      {children}
+    </ahTabsContext.Provider>
+  );
+}
+
+function AhTabsList({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div role="tablist" {...props}>
+      {children}
+    </div>
+  );
+}
+
+function AhTabsTrigger({
+  value,
+  children,
+  onClick,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string }) {
+  const tabs = React.useContext(ahTabsContext);
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={tabs.value === value}
+      {...props}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) tabs.onValueChange?.(value);
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+export const AhTabs = { Root: AhTabsRoot, List: AhTabsList, Trigger: AhTabsTrigger };
+
 export function AdvancedSection({
   title = '高级选项',
   description = '普通流程不需要修改这些设置。',
@@ -516,9 +568,7 @@ export function AdvancedSection({
   return (
     <details className="ah-advanced" open={defaultOpen}>
       <summary>{title}</summary>
-      <Text as="p" color="gray" size="1">
-        {description}
-      </Text>
+      <p>{description}</p>
       <div className="ah-advanced-body">{children}</div>
     </details>
   );
@@ -539,14 +589,8 @@ export function PageHeader({
     <header className="ah-page-header">
       <div>
         {eyebrow ? <span className="ah-eyebrow">{eyebrow}</span> : null}
-        <Heading as="h1" size="7">
-          {title}
-        </Heading>
-        {description ? (
-          <Text as="p" color="gray" size="3">
-            {description}
-          </Text>
-        ) : null}
+        <h1>{title}</h1>
+        {description ? <p>{description}</p> : null}
       </div>
       {action ? <div className="ah-page-header-action">{action}</div> : null}
     </header>
@@ -565,14 +609,8 @@ export function SectionHeader({
   return (
     <div className="ah-section-header">
       <div>
-        <Heading as="h2" size="4">
-          {title}
-        </Heading>
-        {description ? (
-          <Text as="p" color="gray" size="2">
-            {description}
-          </Text>
-        ) : null}
+        <h2>{title}</h2>
+        {description ? <p>{description}</p> : null}
       </div>
       {action}
     </div>
@@ -583,13 +621,13 @@ export function LoadingSkeleton({ className = '' }: { className?: string }) {
   return <span className={`ah-skeleton ${className}`.trim()} aria-hidden="true" />;
 }
 
-export function UiButton({ children, ...props }: React.ComponentPropsWithoutRef<typeof Button>) {
-  return <Button {...props}>{children}</Button>;
+export function UiButton({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button {...props}>{children}</button>;
 }
 
 export function UiIconButton({
   children,
   ...props
-}: React.ComponentPropsWithoutRef<typeof IconButton>) {
-  return <IconButton {...props}>{children}</IconButton>;
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button {...props}>{children}</button>;
 }
