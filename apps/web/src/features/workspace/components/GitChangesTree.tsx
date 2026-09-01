@@ -308,6 +308,7 @@ export function GitChangesTree({
                   <DiffViewer
                     patch={diff.data?.patch ?? ''}
                     truncated={Boolean(diff.data?.truncated)}
+                    path={selectedPath}
                   />
                 )}
               </section>

@@ -4,11 +4,20 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { EmptyState, LoadingState } from '../../../components/Common';
 import { SafeDiffEditor } from '../../../components/SafeDiffEditor';
 
-export function DiffViewer({ patch, truncated }: { patch: string; truncated: boolean }) {
+export function DiffViewer({
+  patch,
+  truncated,
+  path,
+}: {
+  patch: string;
+  truncated: boolean;
+  path?: string | undefined;
+}) {
   const theme = useContext(AgentHubThemeContext);
   const [monacoReady, setMonacoReady] = useState(false);
   const [sideBySide, setSideBySide] = useState(true);
   const parsed = useMemo(() => parseUnifiedPatch(patch), [patch]);
+  const language = languageForPath(path);
   useEffect(() => {
     let active = true;
     void import('../../../lib/monaco').then(() => {
@@ -35,8 +44,8 @@ export function DiffViewer({ patch, truncated }: { patch: string; truncated: boo
         </button>
       </div>
       <SafeDiffEditor
-        height="420px"
-        language="plaintext"
+        height="100%"
+        language={language}
         original={parsed.original}
         modified={parsed.modified}
         theme={theme?.mode === 'dark' ? 'vs-dark' : 'vs-light'}
@@ -52,6 +61,44 @@ export function DiffViewer({ patch, truncated }: { patch: string; truncated: boo
       {truncated && <small>Diff 过大，当前仅显示前 4 MiB。</small>}
     </div>
   );
+}
+
+export function languageForPath(path: string | undefined): string {
+  const extension = path?.split('.').at(-1)?.toLocaleLowerCase();
+  if (!extension) return 'plaintext';
+  const languages: Record<string, string> = {
+    bash: 'shell',
+    c: 'c',
+    cc: 'cpp',
+    cjs: 'javascript',
+    cpp: 'cpp',
+    cs: 'csharp',
+    css: 'css',
+    go: 'go',
+    h: 'c',
+    hpp: 'cpp',
+    html: 'html',
+    java: 'java',
+    js: 'javascript',
+    json: 'json',
+    jsx: 'javascript',
+    kt: 'kotlin',
+    md: 'markdown',
+    mjs: 'javascript',
+    py: 'python',
+    rs: 'rust',
+    scss: 'scss',
+    sh: 'shell',
+    sql: 'sql',
+    swift: 'swift',
+    ts: 'typescript',
+    tsx: 'typescript',
+    vue: 'html',
+    xml: 'xml',
+    yaml: 'yaml',
+    yml: 'yaml',
+  };
+  return languages[extension] ?? 'plaintext';
 }
 
 function parseUnifiedPatch(patch: string): { original: string; modified: string } {
