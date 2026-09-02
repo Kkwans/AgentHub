@@ -1,0 +1,33 @@
+{
+  "releaseVersion": "1.0.0",
+  "sourceCommit": "db168e03edc45d1852b328a7614ed30e76c957ae",
+  "capture": "NAS-local Playwright Chromium against an isolated real AgentHub server",
+  "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_VISUAL_OUTPUT=/dev/shm/agenthub-visual-db168e0-workspace corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-workspace-states.spec.ts --workers=1 --timeout=1200000",
+  "serverHealth": {
+    "version": "1.0.0",
+    "database": "pglite",
+    "web": true
+  },
+  "matrix": {
+    "states": 7,
+    "viewports": 7,
+    "themes": 2,
+    "pages": 98
+  },
+  "states": ["ready", "running", "approval", "failed", "closed", "git-changes", "terminal"],
+  "errors": {
+    "unexpectedConsole": 0,
+    "page": 0,
+    "unexpectedFailedRequests": 0,
+    "geometryViolations": 0,
+    "horizontalOverflow": 0
+  },
+  "terminalCapability": {
+    "available": false,
+    "code": "PTY_NATIVE_BINDING_UNAVAILABLE",
+    "platform": "linux",
+    "arch": "arm64"
+  },
+  "fixture": "workspace-states:1329a321-a98a-4b3d-a9d4-a9699d28c505",
+  "productionContainerTouched": false
+}
