@@ -4,6 +4,7 @@ coverage/
 playwright-report/
 real-playwright-report/
 real-test-results/
+real-test-results-noshm/
 test-results/
 apps/web/public/favicon.svg
 packages/db/drizzle/meta/
