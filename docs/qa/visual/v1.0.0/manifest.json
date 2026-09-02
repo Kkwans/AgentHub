@@ -2,7 +2,7 @@
   "releaseVersion": "1.0.0",
   "complete": false,
   "status": "in_progress",
-  "sourceCommit": "",
+  "sourceCommit": "befb8ca4f4557eb6a1918db4536659e31b76aab5",
   "target": "NAS-local Playwright against the real deployed AgentHub target",
   "requiredViewports": [
     "1920x1080",
@@ -15,16 +15,21 @@
   ],
   "themes": ["light", "dark"],
   "capturedEvidence": [
-    "03-workspace-css-fixed-1440-light-r3",
-    "03-workspace-css-fixed-390-dark-r2"
+    "10-rc-befb8ca-baseline",
+    "10-rc-befb8ca-exception",
+    "10-rc-befb8ca-workspace",
+    "10-rc-befb8ca-accessibility.json",
+    "10-rc-befb8ca-performance.json",
+    "10-rc-befb8ca-performance-gate.json"
   ],
   "unverifiedGates": [
-    "full viewport/theme matrix",
-    "all exception states",
-    "geometry",
-    "axe",
-    "performance",
-    "real Agent acceptance",
-    "backup and upgrade rehearsal"
+    "performance budget: Home LCP and project route visible exceed thresholds",
+    "real Agent acceptance against production Codex/ACP",
+    "PTY lifecycle and terminal input/resize/close (arm64 native binding unavailable)",
+    "keyboard-only full Workspace path",
+    "focus return after drawer/dialog",
+    "200% zoom interaction coverage",
+    "backup and upgrade rehearsal",
+    "human visual score"
   ]
 }

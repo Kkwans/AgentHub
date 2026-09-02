@@ -1,0 +1,405 @@
+{
+  "source": "isolated-real-server",
+  "complete": true,
+  "origin": "http://127.0.0.1:35781",
+  "outputPath": "/dev/shm/agenthub-performance-befb8ca.json",
+  "metrics": {
+    "homeLcpMs": 3084,
+    "routeVisibleMs": 312.1,
+    "inputResponseMs": 10.9,
+    "gitTreeBuildMs": 5.08,
+    "sessionFilterMs": 0.48,
+    "minFps": 62
+  },
+  "samples": {
+    "homeLcpEntries": [
+      {
+        "startTime": 2936,
+        "size": 3040,
+        "tag": "SPAN",
+        "id": "",
+        "text": "搜索项目 / Agent / Prompt..."
+      },
+      {
+        "startTime": 3084,
+        "size": 9660,
+        "tag": "H1",
+        "id": "home-continue-title",
+        "text": "从一个 Project 开始"
+      }
+    ],
+    "navigation": {
+      "domContentLoaded": 1033.3999999761581,
+      "loadEventEnd": 1033.6999999284744,
+      "responseEnd": 459.39999997615814,
+      "resources": [
+        {
+          "name": "projects.module-C-ii5GEb.js",
+          "initiatorType": "script",
+          "startTime": 3449.6999999284744,
+          "responseEnd": 3502.399999976158,
+          "duration": 52.700000047683716,
+          "transferSize": 5583
+        },
+        {
+          "name": "ProjectsPage-C6V9H83G.js",
+          "initiatorType": "script",
+          "startTime": 3448.5999999046326,
+          "responseEnd": 3501.6999999284744,
+          "duration": 53.10000002384186,
+          "transferSize": 9913
+        },
+        {
+          "name": "Scan.es-DQOPMC8u.js",
+          "initiatorType": "script",
+          "startTime": 3449.399999976158,
+          "responseEnd": 3500.899999976158,
+          "duration": 51.5,
+          "transferSize": 3422
+        },
+        {
+          "name": "projects-Cg6SOvXV.css",
+          "initiatorType": "link",
+          "startTime": 3450,
+          "responseEnd": 3494.899999976158,
+          "duration": 44.89999997615814,
+          "transferSize": 24483
+        },
+        {
+          "name": "tasks",
+          "initiatorType": "fetch",
+          "startTime": 3450.899999976158,
+          "responseEnd": 3474,
+          "duration": 23.100000023841858,
+          "transferSize": 362
+        },
+        {
+          "name": "agents",
+          "initiatorType": "fetch",
+          "startTime": 2558.0999999046326,
+          "responseEnd": 2624.0999999046326,
+          "duration": 66,
+          "transferSize": 1336
+        },
+        {
+          "name": "sessions",
+          "initiatorType": "fetch",
+          "startTime": 2557.0999999046326,
+          "responseEnd": 2618,
+          "duration": 60.90000009536743,
+          "transferSize": 930
+        },
+        {
+          "name": "projects",
+          "initiatorType": "fetch",
+          "startTime": 2555.899999976158,
+          "responseEnd": 2608.5,
+          "duration": 52.60000002384186,
+          "transferSize": 784
+        },
+        {
+          "name": "dashboard",
+          "initiatorType": "fetch",
+          "startTime": 2554.7999999523163,
+          "responseEnd": 2604,
+          "duration": 49.200000047683716,
+          "transferSize": 1434
+        },
+        {
+          "name": "favicon.svg",
+          "initiatorType": "other",
+          "startTime": 2380.2999999523163,
+          "responseEnd": 2414.6999999284744,
+          "duration": 34.39999997615814,
+          "transferSize": 793
+        },
+        {
+          "name": "status",
+          "initiatorType": "fetch",
+          "startTime": 2354.899999976158,
+          "responseEnd": 2359.2999999523163,
+          "duration": 4.399999976158142,
+          "transferSize": 459
+        },
+        {
+          "name": "api-Dyc-qO4F.js",
+          "initiatorType": "other",
+          "startTime": 613.6999999284744,
+          "responseEnd": 868.8999999761581,
+          "duration": 255.20000004768372,
+          "transferSize": 17643
+        },
+        {
+          "name": "useQuery-COj0F9_u.js",
+          "initiatorType": "other",
+          "startTime": 613.5999999046326,
+          "responseEnd": 866.2999999523163,
+          "duration": 252.70000004768372,
+          "transferSize": 16824
+        },
+        {
+          "name": "useMutation-O-BgttEN.js",
+          "initiatorType": "other",
+          "startTime": 613.6999999284744,
+          "responseEnd": 866.1999999284744,
+          "duration": 252.5,
+          "transferSize": 5905
+        },
+        {
+          "name": "page-primitives-DVenVcCd.js",
+          "initiatorType": "other",
+          "startTime": 614,
+          "responseEnd": 865.8999999761581,
+          "duration": 251.89999997615814,
+          "transferSize": 5371
+        },
+        {
+          "name": "realtime-MK4Qjxo5.js",
+          "initiatorType": "other",
+          "startTime": 613.8999999761581,
+          "responseEnd": 863.2999999523163,
+          "duration": 249.39999997615814,
+          "transferSize": 2804
+        },
+        {
+          "name": "Tag.es-CYPAb_ep.js",
+          "initiatorType": "other",
+          "startTime": 613.5,
+          "responseEnd": 861,
+          "duration": 247.5,
+          "transferSize": 2849
+        },
+        {
+          "name": "MagnifyingGlass.es-D4Xg7rI6.js",
+          "initiatorType": "other",
+          "startTime": 613.1999999284744,
+          "responseEnd": 855.6999999284744,
+          "duration": 242.5,
+          "transferSize": 2008
+        },
+        {
+          "name": "ShieldCheck.es-C4pX45d2.js",
+          "initiatorType": "other",
+          "startTime": 612.8999999761581,
+          "responseEnd": 850.6999999284744,
+          "duration": 237.79999995231628,
+          "transferSize": 7434
+        },
+        {
+          "name": "Network.es-Dy3rpgg1.js",
+          "initiatorType": "other",
+          "startTime": 613,
+          "responseEnd": 850.0999999046326,
+          "duration": 237.09999990463257,
+          "transferSize": 3999
+        },
+        {
+          "name": "PasswordField-BlpTOq0k.js",
+          "initiatorType": "other",
+          "startTime": 612.6999999284744,
+          "responseEnd": 849.5999999046326,
+          "duration": 236.89999997615814,
+          "transferSize": 10602
+        },
+        {
+          "name": "Eye.es-B2EG71oT.js",
+          "initiatorType": "other",
+          "startTime": 612.5999999046326,
+          "responseEnd": 849.3999999761581,
+          "duration": 236.80000007152557,
+          "transferSize": 4571
+        },
+        {
+          "name": "Plus.es-BpPncSnH.js",
+          "initiatorType": "other",
+          "startTime": 613.0999999046326,
+          "responseEnd": 849,
+          "duration": 235.90000009536743,
+          "transferSize": 1913
+        },
+        {
+          "name": "StopCircle.es-BMdaLBq9.js",
+          "initiatorType": "other",
+          "startTime": 612.5,
+          "responseEnd": 845.5999999046326,
+          "duration": 233.09999990463257,
+          "transferSize": 2275
+        },
+        {
+          "name": "Warning.es-DmS7q7SG.js",
+          "initiatorType": "other",
+          "startTime": 612.0999999046326,
+          "responseEnd": 830.5,
+          "duration": 218.40000009536743,
+          "transferSize": 3709
+        },
+        {
+          "name": "Robot.es-sYxLOK-f.js",
+          "initiatorType": "other",
+          "startTime": 612.2999999523163,
+          "responseEnd": 829.6999999284744,
+          "duration": 217.39999997615814,
+          "transferSize": 3757
+        },
+        {
+          "name": "ArrowRight.es-C1p5SAZz.js",
+          "initiatorType": "other",
+          "startTime": 612.0999999046326,
+          "responseEnd": 828.2999999523163,
+          "duration": 216.20000004768372,
+          "transferSize": 1910
+        },
+        {
+          "name": "chunk-62JRHF6Z-DMSBUgy_.js",
+          "initiatorType": "other",
+          "startTime": 611.8999999761581,
+          "responseEnd": 826.5999999046326,
+          "duration": 214.69999992847443,
+          "transferSize": 380015
+        },
+        {
+          "name": "CaretRight.es-CocY81vA.js",
+          "initiatorType": "other",
+          "startTime": 612.3999999761581,
+          "responseEnd": 825.8999999761581,
+          "duration": 213.5,
+          "transferSize": 1758
+        },
+        {
+          "name": "index-CX-k7CkB.css",
+          "initiatorType": "link",
+          "startTime": 614.2999999523163,
+          "responseEnd": 824.6999999284744,
+          "duration": 210.39999997615814,
+          "transferSize": 284537
+        },
+        {
+          "name": "react-CwJFpaho.js",
+          "initiatorType": "other",
+          "startTime": 611.5,
+          "responseEnd": 785.5999999046326,
+          "duration": 174.09999990463257,
+          "transferSize": 7832
+        },
+        {
+          "name": "page-primitives-C9OKv1Iv.css",
+          "initiatorType": "link",
+          "startTime": 614.0999999046326,
+          "responseEnd": 784.6999999284744,
+          "duration": 170.60000002384186,
+          "transferSize": 13527
+        },
+        {
+          "name": "index-DOSDIYIL.js",
+          "initiatorType": "script",
+          "startTime": 610.8999999761581,
+          "responseEnd": 780,
+          "duration": 169.10000002384186,
+          "transferSize": 257787
+        },
+        {
+          "name": "rolldown-runtime-hePW80VL.js",
+          "initiatorType": "other",
+          "startTime": 611.3999999761581,
+          "responseEnd": 778.1999999284744,
+          "duration": 166.79999995231628,
+          "transferSize": 1016
+        },
+        {
+          "name": "preload-helper-Czpn1I53.js",
+          "initiatorType": "other",
+          "startTime": 611.7999999523163,
+          "responseEnd": 777.2999999523163,
+          "duration": 165.5,
+          "transferSize": 1496
+        },
+        {
+          "name": "jsx-runtime-NZYk81nU.js",
+          "initiatorType": "other",
+          "startTime": 611.6999999284744,
+          "responseEnd": 773.0999999046326,
+          "duration": 161.39999997615814,
+          "transferSize": 735
+        }
+      ]
+    },
+    "routeSamples": [
+      276.5,
+      233,
+      257,
+      311,
+      312.09999990463257
+    ],
+    "inputSamples": [
+      3.399999976158142,
+      10.899999976158142,
+      3.399999976158142,
+      2.100000023841858,
+      2.700000047683716
+    ],
+    "gitSamples": [
+      15.289866999999504,
+      4.484991999997874,
+      5.076787999998487,
+      4.68886900000507,
+      4.22628199999599,
+      4.03903100000025,
+      4.036989000000176,
+      3.939863999999943,
+      4.071113999998488,
+      4.06003100000089,
+      4.0364059999992605,
+      4.027947000002314,
+      4.243491000001086,
+      4.188656999998784,
+      4.35199200000352,
+      4.337407999999414,
+      4.247282000003906,
+      4.195074000002933,
+      4.197698000003584,
+      4.135572999999567,
+      4.188948999995773,
+      4.18807299999753
+    ],
+    "sessionSamples": [
+      0.5842120000015711,
+      0.47571199999947567,
+      0.30071000000316417,
+      0.30450199999904726,
+      0.30800299999827985,
+      0.37333599999692524,
+      0.3120859999980894,
+      0.30887800000346033,
+      0.3117939999938244,
+      0.31266900000628084,
+      0.2995440000013332,
+      0.2995440000013332,
+      0.3007099999958882,
+      0.3001269999949727,
+      0.354377999996359,
+      0.29954399999405723,
+      0.3047939999960363,
+      0.30800200000521727,
+      0.3021690000023227,
+      0.34329400000569876,
+      0.30771099999401486,
+      0.31587800000124844
+    ],
+    "fps": {
+      "measuredFps": 62,
+      "minFps": 62,
+      "worstFrameMs": 16.800000000000182,
+      "sustainedFps": [
+        62,
+        62
+      ]
+    }
+  },
+  "dataset": {
+    "gitEntries": 200,
+    "sessionRecords": 500
+  },
+  "failure": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m2000\u001b[39m\nReceived:    \u001b[31m3084\u001b[39m",
+  "sourceCommit": "befb8ca4f4557eb6a1918db4536659e31b76aab5",
+  "fixtureId": "performance:ccc8e7da-4a09-4a4d-bca8-4669c7f2b56c"
+}

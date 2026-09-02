@@ -1,0 +1,34 @@
+{
+  "sourceReport": "../../../dev/shm/agenthub-performance-befb8ca.json",
+  "status": "FAILED",
+  "thresholds": {
+    "homeLcpMs": 2000,
+    "routeVisibleMs": 250,
+    "inputResponseMs": 100,
+    "gitTreeBuildMs": 50,
+    "sessionFilterMs": 50,
+    "minFps": 40
+  },
+  "metrics": {
+    "homeLcpMs": 3084,
+    "routeVisibleMs": 312.1,
+    "inputResponseMs": 10.9,
+    "gitTreeBuildMs": 5.08,
+    "sessionFilterMs": 0.48,
+    "minFps": 62
+  },
+  "missing": [],
+  "errors": [
+    {
+      "metric": "homeLcpMs",
+      "actual": 3084,
+      "threshold": 2000
+    },
+    {
+      "metric": "routeVisibleMs",
+      "actual": 312.1,
+      "threshold": 250
+    }
+  ],
+  "passed": false
+}
