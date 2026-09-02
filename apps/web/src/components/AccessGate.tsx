@@ -1,4 +1,4 @@
-import { type FormEvent, type PropsWithChildren, useEffect, useState } from 'react';
+import { type FormEvent, type PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { AhButton, AlertTriangle, ShieldCheck } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -24,12 +24,16 @@ export function AccessGate({ children }: PropsWithChildren) {
       ? (window as Window & { __agenthubAuthStatusPromise?: Promise<AuthStatus> })
           .__agenthubAuthStatusPromise
       : undefined;
+  const preloadedAuthStatusRef = useRef(preloadedAuthStatus);
   const auth = useQuery({
     queryKey: ['auth-status'],
-    queryFn: () =>
-      preloadedAuthStatus
-        ? preloadedAuthStatus.catch(() => authApi.get<AuthStatus>('/auth/status'))
-        : authApi.get<AuthStatus>('/auth/status'),
+    queryFn: () => {
+      const preload = preloadedAuthStatusRef.current;
+      preloadedAuthStatusRef.current = undefined;
+      return preload
+        ? preload.catch(() => authApi.get<AuthStatus>('/auth/status'))
+        : authApi.get<AuthStatus>('/auth/status');
+    },
     retry: false,
     staleTime: 30_000,
   });
