@@ -147,6 +147,16 @@ export function HomePage() {
     const frame = window.requestAnimationFrame(() => setDetailsReady(true));
     return () => window.cancelAnimationFrame(frame);
   }, [error, loading]);
+  useEffect(() => {
+    if (!detailsReady) return;
+    // Wait until the hero and first summary frame have painted before warming
+    // the primary Project route. This keeps route navigation fast without
+    // competing with the Home LCP resource burst.
+    const timer = window.setTimeout(() => {
+      void import('../../projects/pages/ProjectsPage');
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [detailsReady]);
   return (
     <div className={homeStyles.homePage}>
       <QueryMessage
