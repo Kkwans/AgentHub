@@ -1,0 +1,32 @@
+{
+  "releaseVersion": "1.0.0",
+  "status": "partial",
+  "complete": true,
+  "sourceCommit": "3ce2d83d27421133f7d54fa42520c67d68b405bd",
+  "command": "sudo tar --exclude=postmaster.pid -C /volume2/Project/.agenthub/central/data -cf - . | tar -C <disposable-dir> -xf -; createPgliteDatabase({ dataDir: <disposable-dir> })",
+  "runner": "isolated PGlite migration startup on DH4300Plus",
+  "result": {
+    "mode": "pglite",
+    "publicTableCount": 27,
+    "counts": {
+      "projects": 8,
+      "agentSessions": 48,
+      "prompts": 0
+    },
+    "migrationTable": "drizzle.__drizzle_migrations"
+  },
+  "environment": {
+    "host": "DH4300Plus",
+    "architecture": "aarch64",
+    "sourceData": "/volume2/Project/.agenthub/central/data",
+    "productionContainerTouched": false,
+    "postmasterPidCopied": false,
+    "credentialsRead": false
+  },
+  "unverified": [
+    "latest v0.9 data upgrade (no v0.9 image or tag exists on this host)",
+    "stop-the-service backup consistency and restore rehearsal",
+    "old-image compatibility read"
+  ],
+  "notes": "The live data directory was copied to disposable storage while the service stayed healthy. Current migrations opened the copy and schema queries succeeded; this is compatibility evidence only, not a release backup or upgrade pass."
+}
