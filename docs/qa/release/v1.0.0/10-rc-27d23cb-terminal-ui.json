@@ -1,0 +1,50 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging container real Chromium Terminal UI read-only validation",
+  "sourceCommit": "27d23cb296d2e8ce0598f031f0d44d744e6214e8",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.27d23cb-nas",
+    "id": "sha256:4eb13f355b241040befcaa6059cf9b1d87b2323adfec7d4e56a80444b95cc305",
+    "architecture": "arm64",
+    "base": "agenthub:0.8.0-nas.d09c575-nativebase"
+  },
+  "container": {
+    "name": "agenthub-rc-27d23cb-terminal",
+    "origin": "http://127.0.0.1:3211",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "geometry": {
+    "desktop": {
+      "viewport": "1440x900",
+      "dock": { "x": 708, "y": 51, "width": 720, "height": 316 },
+      "fixed": true,
+      "noHorizontalOverflow": true
+    },
+    "mobile": {
+      "viewport": "390x844",
+      "dock": { "x": 12, "y": 51, "width": 366, "height": 316 },
+      "fixed": true,
+      "noHorizontalOverflow": true
+    }
+  },
+  "interaction": {
+    "inputOutput": true,
+    "viewportResize": true,
+    "close": true,
+    "requestKinds": ["input", "resize", "close"],
+    "httpStatusFailures": 0,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "desktopDock": { "x": 708, "y": 51, "width": 720, "height": 316 },
+    "resizedDock": { "x": 12, "y": 51, "width": 676, "height": 316 },
+    "resizedViewport": "700x800"
+  },
+  "production": "not deployed; existing production container was not modified",
+  "scope": "staging evidence only; production target Agent/ACP, keyboard-only, focus-return, 200% zoom, backup/upgrade rehearsal and human visual score remain unverified"
+}
