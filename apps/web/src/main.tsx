@@ -62,14 +62,6 @@ async function startApp() {
     });
   }
 
-  // Give the authenticated loading shell one paint before requesting the full
-  // React application and its route styles. Without this yield, the dynamic
-  // import's CSS work can delay the first meaningful heading on slower NAS
-  // connections even though the shell is already ready to render.
-  if (!bootstrapShell.hidden) {
-    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-  }
-
   const { mountApp } = await import('./app-entry');
   mountApp(appRoot);
 }
