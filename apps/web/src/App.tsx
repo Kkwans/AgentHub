@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { AhLoadingState } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AccessGate } from './components/AccessGate';
 import { AppShell } from './app/shell/AppShell';
 import { HomePage } from './features/home/pages/HomePage';
+import layout from './features/shared/layout.module.css';
 import type { SessionRecord } from './lib/api';
 
 const ProjectsPage = lazy(() =>
@@ -84,8 +85,30 @@ const RemoteNodeDetailPage = lazy(() =>
   })),
 );
 
-function DeferredPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<AhLoadingState label="正在加载页面" />}>{children}</Suspense>;
+function DeferredPage({ children, title }: { children: ReactNode; title?: string }) {
+  const [ready, setReady] = useState(title === undefined);
+  useEffect(() => {
+    if (title === undefined) return undefined;
+    const frame = window.requestAnimationFrame(() => setReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [title]);
+  const fallback = title ? <RouteLoading title={title} /> : <AhLoadingState label="正在加载页面" />;
+  return <Suspense fallback={fallback}>{ready ? children : fallback}</Suspense>;
+}
+
+function RouteLoading({ title }: { title: string }) {
+  return (
+    <div className={layout.stack} aria-busy="true" aria-label={`正在加载${title}`}>
+      <header className={layout.pageHeader}>
+        <div>
+          <span className={layout.eyebrow}>正在加载</span>
+          <h2>{title}</h2>
+          <p>正在准备页面内容。</p>
+        </div>
+      </header>
+      <AhLoadingState label={`正在加载${title}`} rows={1} />
+    </div>
+  );
 }
 
 function TasksRedirect() {
@@ -173,7 +196,7 @@ export function App() {
           <Route
             path="projects"
             element={
-              <DeferredPage>
+              <DeferredPage title="项目">
                 <ProjectsPage />
               </DeferredPage>
             }

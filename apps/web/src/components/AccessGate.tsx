@@ -19,9 +19,17 @@ export type AuthStatus = {
 export function AccessGate({ children }: PropsWithChildren) {
   const client = useQueryClient();
   const [authorizationRequired, setAuthorizationRequired] = useState(false);
+  const preloadedAuthStatus =
+    typeof window !== 'undefined'
+      ? (window as Window & { __agenthubAuthStatusPromise?: Promise<AuthStatus> })
+          .__agenthubAuthStatusPromise
+      : undefined;
   const auth = useQuery({
     queryKey: ['auth-status'],
-    queryFn: () => authApi.get<AuthStatus>('/auth/status'),
+    queryFn: () =>
+      preloadedAuthStatus
+        ? preloadedAuthStatus.catch(() => authApi.get<AuthStatus>('/auth/status'))
+        : authApi.get<AuthStatus>('/auth/status'),
     retry: false,
     staleTime: 30_000,
   });

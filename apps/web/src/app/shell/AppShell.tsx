@@ -18,13 +18,16 @@ import {
   useAgentHubTheme,
   type IconProps,
 } from '@agenthub/ui';
-import { useEffect, useState, type ComponentType } from 'react';
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { realtime } from '../../lib/realtime';
 import { AgentHubLogo } from '../../components/AgentHubLogo';
-import { CommandPalette } from './CommandPalette';
 import styles from './AppShell.module.css';
+
+const CommandPalette = lazy(() =>
+  import('./CommandPalette').then((module) => ({ default: module.CommandPalette })),
+);
 
 type NavigationItem = {
   to: string;
@@ -299,12 +302,16 @@ export function AppShell() {
         <ProfileSurface />
       </AhDrawer>
 
-      <CommandPalette
-        open={commandOpen}
-        onClose={() => setCommandOpen(false)}
-        onNavigate={(href) => navigate(href)}
-        {...(contextProjectId ? { contextProjectId } : {})}
-      />
+      {commandOpen ? (
+        <Suspense fallback={null}>
+          <CommandPalette
+            open
+            onClose={() => setCommandOpen(false)}
+            onNavigate={(href) => navigate(href)}
+            {...(contextProjectId ? { contextProjectId } : {})}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

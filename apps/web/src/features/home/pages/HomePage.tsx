@@ -31,18 +31,22 @@ export function HomePage() {
   const dashboard = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api.get<DashboardSnapshot>('/dashboard'),
+    staleTime: 30_000,
   });
   const projects = useQuery({
     queryKey: ['projects'],
     queryFn: () => api.get<ProjectRecord[]>('/projects'),
+    staleTime: 30_000,
   });
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => api.get<SessionRecord[]>('/sessions'),
+    staleTime: 30_000,
   });
   const agents = useQuery({
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
+    staleTime: 30_000,
   });
   const error = dashboard.error ?? projects.error ?? sessions.error ?? agents.error;
   const loading =

@@ -101,15 +101,22 @@ export function ProjectsPage() {
   const projects = useQuery({
     queryKey: ['projects'],
     queryFn: () => api.get<ProjectRecord[]>('/projects'),
+    staleTime: 30_000,
   });
-  const tasks = useQuery({ queryKey: ['tasks'], queryFn: () => api.get<TaskRecord[]>('/tasks') });
+  const tasks = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => api.get<TaskRecord[]>('/tasks'),
+    staleTime: 30_000,
+  });
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => api.get<SessionRecord[]>('/sessions'),
+    staleTime: 30_000,
   });
   const agents = useQuery({
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
+    staleTime: 30_000,
   });
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
