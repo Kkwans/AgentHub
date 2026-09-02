@@ -21,7 +21,7 @@
   const shouldPrefetchHome =
     target.location.pathname === '/' || target.location.pathname === '/home';
   if (shouldPrefetchHome) {
-    target.__agenthubHomeDataPromise = authStatusPromise
+    const homeDataPromise = authStatusPromise
       .then((status) => {
         if (!(
           status?.mode === 'local_trusted' ||
@@ -41,5 +41,9 @@
         }));
       })
       .catch(() => undefined);
+    target.__agenthubHomeDataPromise = homeDataPromise;
+    void homeDataPromise.then((data) => {
+      if (data) target.__agenthubHomeDataValue = data;
+    });
   }
 })();

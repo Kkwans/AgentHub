@@ -35,12 +35,17 @@ type HomeData = {
 
 export function HomePage() {
   const queryClient = useQueryClient();
-  const preloadedHomeDataRef = useRef(
+  const bootstrapWindow =
     typeof window !== 'undefined'
-      ? (window as Window & { __agenthubHomeDataPromise?: Promise<HomeData | undefined> })
-          .__agenthubHomeDataPromise
-      : undefined,
+      ? (window as Window & {
+          __agenthubHomeDataPromise?: Promise<HomeData | undefined>;
+          __agenthubHomeDataValue?: HomeData;
+        })
+      : undefined;
+  const preloadedHomeDataRef = useRef(
+    typeof window !== 'undefined' ? bootstrapWindow?.__agenthubHomeDataPromise : undefined,
   );
+  const preloadedHomeDataValueRef = useRef(bootstrapWindow?.__agenthubHomeDataValue);
   const consumedPreloadKeysRef = useRef(new Set<keyof HomeData>());
   const queryWithPreload = <K extends keyof HomeData>(
     key: K,
@@ -56,21 +61,25 @@ export function HomePage() {
   const dashboard = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => queryWithPreload('dashboard', () => api.get<DashboardSnapshot>('/dashboard')),
+    initialData: preloadedHomeDataValueRef.current?.dashboard,
     staleTime: 30_000,
   });
   const projects = useQuery({
     queryKey: ['projects'],
     queryFn: () => queryWithPreload('projects', () => api.get<ProjectRecord[]>('/projects')),
+    initialData: preloadedHomeDataValueRef.current?.projects,
     staleTime: 30_000,
   });
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => queryWithPreload('sessions', () => api.get<SessionRecord[]>('/sessions')),
+    initialData: preloadedHomeDataValueRef.current?.sessions,
     staleTime: 30_000,
   });
   const agents = useQuery({
     queryKey: ['agents'],
     queryFn: () => queryWithPreload('agents', () => api.get<AgentRecord[]>('/agents')),
+    initialData: preloadedHomeDataValueRef.current?.agents,
     staleTime: 30_000,
   });
   const error = dashboard.error ?? projects.error ?? sessions.error ?? agents.error;
