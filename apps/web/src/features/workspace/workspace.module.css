@@ -189,7 +189,7 @@
   white-space: nowrap;
 }
 
-.workspace-context-terminal {
+:global(.workspace-context-terminal) {
   position: relative;
   z-index: 12;
   display: flex;
@@ -197,7 +197,7 @@
   align-items: center;
 }
 
-.workspace-context-terminal .terminal-dock-shell {
+:global(.workspace-context-terminal .terminal-dock-shell) {
   top: calc(100% + 1px);
   right: 0;
   bottom: auto;
