@@ -12,7 +12,7 @@ import {
   Tag,
 } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import type {
@@ -138,6 +138,15 @@ export function HomePage() {
     };
   });
   const hasProjects = standardProjects.length > 0;
+  const [detailsReady, setDetailsReady] = useState(!loading && !error);
+  useEffect(() => {
+    if (loading || error) {
+      setDetailsReady(false);
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => setDetailsReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [error, loading]);
   return (
     <div className={homeStyles.homePage}>
       <QueryMessage
@@ -192,248 +201,257 @@ export function HomePage() {
             </div>
           </section>
 
-          <section className={homeStyles.metricStrip} aria-label="工作台摘要">
-            {[
-              {
-                label: '活跃项目',
-                value: activeProjectCount,
-                hint: '当前可用 Project',
-                Icon: FolderKanban,
-                tone: 'metricViolet',
-              },
-              {
-                label: '运行中的工作',
-                value: running.length,
-                hint: '当前活跃 Session',
-                Icon: CircleStop,
-                tone: 'metricBlue',
-              },
-              {
-                label: '可用 Agent',
-                value: readyAgentCount ?? '—',
-                hint: '已接入并就绪',
-                Icon: Bot,
-                tone: 'metricGreen',
-              },
-              {
-                label: '需要处理',
-                value: attention.length,
-                hint: 'Approval 与 Review',
-                Icon: Tag,
-                tone: 'metricPurple',
-              },
-            ].map(({ label, value, hint, Icon, tone }) => (
-              <div className={homeStyles.metricCard} key={label}>
-                <span className={`${homeStyles.metricIcon} ${homeStyles[tone]}`}>
-                  <Icon size={16} />
-                </span>
-                <span className={homeStyles.metricCopy}>
-                  <small>{label}</small>
-                  <strong>{value}</strong>
-                  <span>{hint}</span>
-                </span>
-              </div>
-            ))}
-          </section>
-
-          <section className={homeStyles.contentGrid} aria-label="最近项目与工作">
-            <section className={homeStyles.recentSection} aria-labelledby="recent-projects-title">
-              <div className={homeStyles.sectionHeading}>
-                <div>
-                  <h2 id="recent-projects-title">最近项目</h2>
-                  <p>继续最近工作，或打开项目上下文。</p>
-                </div>
-                <Link className={homeStyles.sectionLink} to="/projects">
-                  查看全部 <ArrowRight size={14} />
-                </Link>
-              </div>
-              {standardProjects.length ? (
-                <div className={homeStyles.projectList}>
-                  {standardProjects.slice(0, 6).map((project, index) => {
-                    const latestSession = (sessions.data ?? [])
-                      .filter((session) => session.projectId === project.id)
-                      .sort(
-                        (left, right) =>
-                          Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt),
-                      )[0];
-                    const workCount = dashboardTasks.filter(
-                      (task) =>
-                        task.projectId === project.id &&
-                        !['DONE', 'CANCELED'].includes(task.status),
-                    ).length;
-                    return (
-                      <Link
-                        className={homeStyles.projectRow}
-                        key={project.id}
-                        to={`/projects/${project.id}/overview`}
-                      >
-                        <span
-                          className={`${homeStyles.entityLogo} ${homeStyles[`entityColor${index % 4}`]}`}
-                        >
-                          {project.name.slice(0, 1).toUpperCase()}
-                        </span>
-                        <span className={homeStyles.projectRowCopy}>
-                          <strong>{project.name}</strong>
-                          <small>
-                            {project.description ??
-                              (project.repoKind === 'GIT' ? 'Git 项目' : '目录项目')}
-                          </small>
-                        </span>
-                        <span className={homeStyles.projectRowMeta}>
-                          <AhStatusPill status={project.status} />
-                          <small>
-                            {workCount
-                              ? `${workCount} 项进行中`
-                              : latestSession
-                                ? displayDate(latestSession.lastActiveAt)
-                                : '暂无活动'}
-                          </small>
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className={homeStyles.emptyProjectPanel}>
-                  <AhEmptyState
-                    title="还没有项目"
-                    description="从允许访问的目录创建第一个 Project。"
-                    action={
-                      <Link to="/projects/new">
-                        <AhButton size="sm">创建项目</AhButton>
-                      </Link>
-                    }
-                  />
-                </div>
-              )}
-              {testProjects.length ? (
-                <details className={homeStyles.testProjects}>
-                  <summary>测试 Project（{testProjects.length}）</summary>
-                  <div className={homeStyles.testProjectList}>
-                    {testProjects.map((project) => (
-                      <Link
-                        key={project.id}
-                        className={homeStyles.testProjectRow}
-                        to={`/projects/${project.id}/overview`}
-                      >
-                        <span>
-                          <strong>{project.name}</strong>
-                          <small>{project.description ?? '测试数据'}</small>
-                        </span>
-                        <AhStatusPill status={project.status} />
-                      </Link>
-                    ))}
+          {detailsReady ? (
+            <>
+              <section className={homeStyles.metricStrip} aria-label="工作台摘要">
+                {[
+                  {
+                    label: '活跃项目',
+                    value: activeProjectCount,
+                    hint: '当前可用 Project',
+                    Icon: FolderKanban,
+                    tone: 'metricViolet',
+                  },
+                  {
+                    label: '运行中的工作',
+                    value: running.length,
+                    hint: '当前活跃 Session',
+                    Icon: CircleStop,
+                    tone: 'metricBlue',
+                  },
+                  {
+                    label: '可用 Agent',
+                    value: readyAgentCount ?? '—',
+                    hint: '已接入并就绪',
+                    Icon: Bot,
+                    tone: 'metricGreen',
+                  },
+                  {
+                    label: '需要处理',
+                    value: attention.length,
+                    hint: 'Approval 与 Review',
+                    Icon: Tag,
+                    tone: 'metricPurple',
+                  },
+                ].map(({ label, value, hint, Icon, tone }) => (
+                  <div className={homeStyles.metricCard} key={label}>
+                    <span className={`${homeStyles.metricIcon} ${homeStyles[tone]}`}>
+                      <Icon size={16} />
+                    </span>
+                    <span className={homeStyles.metricCopy}>
+                      <small>{label}</small>
+                      <strong>{value}</strong>
+                      <span>{hint}</span>
+                    </span>
                   </div>
-                </details>
-              ) : null}
-            </section>
+                ))}
+              </section>
 
-            <aside className={homeStyles.sideColumn}>
-              <AhSurface className={homeStyles.panel}>
-                <div className={homeStyles.panelTitle}>
-                  <div>
-                    <h3>需要处理</h3>
-                    <p>优先显示阻塞你工作的事件。</p>
+              <section className={homeStyles.contentGrid} aria-label="最近项目与工作">
+                <section
+                  className={homeStyles.recentSection}
+                  aria-labelledby="recent-projects-title"
+                >
+                  <div className={homeStyles.sectionHeading}>
+                    <div>
+                      <h2 id="recent-projects-title">最近项目</h2>
+                      <p>继续最近工作，或打开项目上下文。</p>
+                    </div>
+                    <Link className={homeStyles.sectionLink} to="/projects">
+                      查看全部 <ArrowRight size={14} />
+                    </Link>
                   </div>
-                  {attentionItems.length ? (
-                    <span className={homeStyles.countPill}>{attentionItems.length}</span>
+                  {standardProjects.length ? (
+                    <div className={homeStyles.projectList}>
+                      {standardProjects.slice(0, 6).map((project, index) => {
+                        const latestSession = (sessions.data ?? [])
+                          .filter((session) => session.projectId === project.id)
+                          .sort(
+                            (left, right) =>
+                              Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt),
+                          )[0];
+                        const workCount = dashboardTasks.filter(
+                          (task) =>
+                            task.projectId === project.id &&
+                            !['DONE', 'CANCELED'].includes(task.status),
+                        ).length;
+                        return (
+                          <Link
+                            className={homeStyles.projectRow}
+                            key={project.id}
+                            to={`/projects/${project.id}/overview`}
+                          >
+                            <span
+                              className={`${homeStyles.entityLogo} ${homeStyles[`entityColor${index % 4}`]}`}
+                            >
+                              {project.name.slice(0, 1).toUpperCase()}
+                            </span>
+                            <span className={homeStyles.projectRowCopy}>
+                              <strong>{project.name}</strong>
+                              <small>
+                                {project.description ??
+                                  (project.repoKind === 'GIT' ? 'Git 项目' : '目录项目')}
+                              </small>
+                            </span>
+                            <span className={homeStyles.projectRowMeta}>
+                              <AhStatusPill status={project.status} />
+                              <small>
+                                {workCount
+                                  ? `${workCount} 项进行中`
+                                  : latestSession
+                                    ? displayDate(latestSession.lastActiveAt)
+                                    : '暂无活动'}
+                              </small>
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className={homeStyles.emptyProjectPanel}>
+                      <AhEmptyState
+                        title="还没有项目"
+                        description="从允许访问的目录创建第一个 Project。"
+                        action={
+                          <Link to="/projects/new">
+                            <AhButton size="sm">创建项目</AhButton>
+                          </Link>
+                        }
+                      />
+                    </div>
+                  )}
+                  {testProjects.length ? (
+                    <details className={homeStyles.testProjects}>
+                      <summary>测试 Project（{testProjects.length}）</summary>
+                      <div className={homeStyles.testProjectList}>
+                        {testProjects.map((project) => (
+                          <Link
+                            key={project.id}
+                            className={homeStyles.testProjectRow}
+                            to={`/projects/${project.id}/overview`}
+                          >
+                            <span>
+                              <strong>{project.name}</strong>
+                              <small>{project.description ?? '测试数据'}</small>
+                            </span>
+                            <AhStatusPill status={project.status} />
+                          </Link>
+                        ))}
+                      </div>
+                    </details>
                   ) : null}
-                </div>
-                <div className={homeStyles.attentionList}>
-                  {attentionItems.length ? (
-                    attentionItems.map((item) => (
-                      <Link className={homeStyles.attentionRow} key={item.id} to={item.href}>
-                        <span
-                          className={`${homeStyles.attentionIcon} ${attentionToneClasses[item.tone]}`}
-                        >
-                          {item.tone === 'warning' ? (
-                            <AlertTriangle size={15} />
-                          ) : item.tone === 'danger' ? (
-                            <CircleStop size={15} />
-                          ) : (
-                            <Bot size={15} />
-                          )}
-                        </span>
-                        <span className={homeStyles.attentionCopy}>
-                          <strong>{item.title}</strong>
-                          {item.description || item.meta ? (
-                            <small>
-                              {item.description ?? item.meta}
-                              {item.description && item.meta ? ` · ${item.meta}` : ''}
-                            </small>
-                          ) : null}
-                        </span>
-                        <span className={homeStyles.attentionAction}>
-                          {item.action} <ArrowRight size={13} />
-                        </span>
-                      </Link>
-                    ))
-                  ) : (
-                    <AhEmptyState
-                      compact
-                      title="没有待处理项"
-                      description="新的 Approval 与 Review 会在这里出现。"
-                      action={
-                        <Link className={homeStyles.sectionLink} to="/projects">
-                          查看项目 <ArrowRight size={14} />
-                        </Link>
-                      }
-                    />
-                  )}
-                </div>
-              </AhSurface>
-              <AhSurface className={homeStyles.panel}>
-                <div className={homeStyles.panelTitle}>
-                  <div>
-                    <h3>最近工作</h3>
-                    <p>跨项目的最近活动。</p>
-                  </div>
-                </div>
-                <div className={homeStyles.workList}>
-                  {recentSessions.length ? (
-                    recentSessions.map((session) => {
-                      const agent = agentById.get(session.agentId);
-                      return (
-                        <Link
-                          className={homeStyles.workRow}
-                          key={session.id}
-                          to={`/workspace/${session.id}`}
-                        >
-                          <span
-                            className={`${homeStyles.miniStatus} ${session.status === 'RUNNING' || session.status === 'IN_PROGRESS' ? homeStyles.miniRunning : session.status === 'WAITING_REVIEW' || session.status === 'REVIEW' ? homeStyles.miniReview : session.status === 'DONE' || session.status === 'COMPLETED' ? homeStyles.miniDone : homeStyles.miniIdle}`}
-                          />
-                          <span className={homeStyles.workCopy}>
-                            <strong>{session.title}</strong>
-                            <small>
-                              {projectName(session.projectId) ?? '项目'}
-                              {agent?.name ? ` · ${agent.name}` : ''} ·{' '}
-                              {displayDate(session.lastActiveAt)}
-                            </small>
-                          </span>
-                        </Link>
-                      );
-                    })
-                  ) : (
-                    <AhEmptyState
-                      compact
-                      title="还没有最近工作"
-                      description="从 Project Work 创建一项工作。"
-                      action={
-                        <Link
-                          className={homeStyles.sectionLink}
-                          to={
-                            activeProject ? `/projects/${activeProject.id}/work/new` : '/projects'
+                </section>
+
+                <aside className={homeStyles.sideColumn}>
+                  <AhSurface className={homeStyles.panel}>
+                    <div className={homeStyles.panelTitle}>
+                      <div>
+                        <h3>需要处理</h3>
+                        <p>优先显示阻塞你工作的事件。</p>
+                      </div>
+                      {attentionItems.length ? (
+                        <span className={homeStyles.countPill}>{attentionItems.length}</span>
+                      ) : null}
+                    </div>
+                    <div className={homeStyles.attentionList}>
+                      {attentionItems.length ? (
+                        attentionItems.map((item) => (
+                          <Link className={homeStyles.attentionRow} key={item.id} to={item.href}>
+                            <span
+                              className={`${homeStyles.attentionIcon} ${attentionToneClasses[item.tone]}`}
+                            >
+                              {item.tone === 'warning' ? (
+                                <AlertTriangle size={15} />
+                              ) : item.tone === 'danger' ? (
+                                <CircleStop size={15} />
+                              ) : (
+                                <Bot size={15} />
+                              )}
+                            </span>
+                            <span className={homeStyles.attentionCopy}>
+                              <strong>{item.title}</strong>
+                              {item.description || item.meta ? (
+                                <small>
+                                  {item.description ?? item.meta}
+                                  {item.description && item.meta ? ` · ${item.meta}` : ''}
+                                </small>
+                              ) : null}
+                            </span>
+                            <span className={homeStyles.attentionAction}>
+                              {item.action} <ArrowRight size={13} />
+                            </span>
+                          </Link>
+                        ))
+                      ) : (
+                        <AhEmptyState
+                          compact
+                          title="没有待处理项"
+                          description="新的 Approval 与 Review 会在这里出现。"
+                          action={
+                            <Link className={homeStyles.sectionLink} to="/projects">
+                              查看项目 <ArrowRight size={14} />
+                            </Link>
                           }
-                        >
-                          新建工作 <ArrowRight size={14} />
-                        </Link>
-                      }
-                    />
-                  )}
-                </div>
-              </AhSurface>
-            </aside>
-          </section>
+                        />
+                      )}
+                    </div>
+                  </AhSurface>
+                  <AhSurface className={homeStyles.panel}>
+                    <div className={homeStyles.panelTitle}>
+                      <div>
+                        <h3>最近工作</h3>
+                        <p>跨项目的最近活动。</p>
+                      </div>
+                    </div>
+                    <div className={homeStyles.workList}>
+                      {recentSessions.length ? (
+                        recentSessions.map((session) => {
+                          const agent = agentById.get(session.agentId);
+                          return (
+                            <Link
+                              className={homeStyles.workRow}
+                              key={session.id}
+                              to={`/workspace/${session.id}`}
+                            >
+                              <span
+                                className={`${homeStyles.miniStatus} ${session.status === 'RUNNING' || session.status === 'IN_PROGRESS' ? homeStyles.miniRunning : session.status === 'WAITING_REVIEW' || session.status === 'REVIEW' ? homeStyles.miniReview : session.status === 'DONE' || session.status === 'COMPLETED' ? homeStyles.miniDone : homeStyles.miniIdle}`}
+                              />
+                              <span className={homeStyles.workCopy}>
+                                <strong>{session.title}</strong>
+                                <small>
+                                  {projectName(session.projectId) ?? '项目'}
+                                  {agent?.name ? ` · ${agent.name}` : ''} ·{' '}
+                                  {displayDate(session.lastActiveAt)}
+                                </small>
+                              </span>
+                            </Link>
+                          );
+                        })
+                      ) : (
+                        <AhEmptyState
+                          compact
+                          title="还没有最近工作"
+                          description="从 Project Work 创建一项工作。"
+                          action={
+                            <Link
+                              className={homeStyles.sectionLink}
+                              to={
+                                activeProject
+                                  ? `/projects/${activeProject.id}/work/new`
+                                  : '/projects'
+                              }
+                            >
+                              新建工作 <ArrowRight size={14} />
+                            </Link>
+                          }
+                        />
+                      )}
+                    </div>
+                  </AhSurface>
+                </aside>
+              </section>
+            </>
+          ) : null}
         </>
       ) : null}
     </div>
