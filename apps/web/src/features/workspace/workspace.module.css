@@ -199,10 +199,11 @@
 }
 
 :global(.workspace-context-terminal .terminal-dock-shell) {
-  top: calc(100% + 1px);
-  right: auto;
+  position: fixed;
+  top: 51px;
+  right: 12px;
   bottom: auto;
-  left: 0;
+  left: auto;
   width: min(720px, calc(100vw - 24px));
   border-radius: 0 0 12px 12px;
 }
