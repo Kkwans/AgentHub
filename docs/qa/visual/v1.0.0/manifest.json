@@ -28,12 +28,14 @@
     "../../../qa/release/v1.0.0/10-rc-f686361-performance.json",
     "../../../qa/release/v1.0.0/10-rc-c4250f2-performance-bootstrap.json",
     "../../../qa/release/v1.0.0/10-rc-64b4bbf-performance.json",
+    "../../../qa/release/v1.0.0/10-rc-64b4bbf-token-e2e-setup-timeout.json",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
   ],
   "unverifiedGates": [
     "performance budget: 64b4bbf exact candidate run failed only cached route visibility (263.7ms > 250ms); Home LCP 1852ms, input 11ms, Git tree p95 5.09ms, Session filter p95 0.4ms, minimum FPS 62. Earlier c4250f2 and d9e8846 failures remain archived for trend context",
+    "token real E2E: 64b4bbf run blocked during isolated fixture app setup at the 120s timeout; no login assertion ran",
     "production target Agent/ACP read-only acceptance",
     "PTY lifecycle and terminal input/resize/close (arm64 native binding unavailable)",
     "keyboard-only full Workspace path",

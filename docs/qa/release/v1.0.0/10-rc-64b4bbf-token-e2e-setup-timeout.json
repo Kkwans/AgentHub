@@ -1,0 +1,12 @@
+{
+  "releaseVersion": "1.0.0",
+  "candidateCommit": "64b4bbf5e9df62bc3c494694969057c837fb94fc",
+  "status": "blocked",
+  "complete": false,
+  "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/workbench.spec.ts --grep 'token 登录' --workers=1",
+  "runner": "NAS-local Playwright Chromium against an isolated real AgentHub server",
+  "failure": "Test timeout of 120000ms exceeded while setting up fixture app",
+  "assertionsRun": false,
+  "productionContainerTouched": false,
+  "notes": "The test did not reach the token login assertions. Existing earlier token evidence remains separate; this candidate requires a clean rerun after the fixture startup resource issue is resolved."
+}
