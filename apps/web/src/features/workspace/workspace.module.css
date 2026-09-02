@@ -199,9 +199,9 @@
 
 :global(.workspace-context-terminal .terminal-dock-shell) {
   top: calc(100% + 1px);
-  right: 0;
+  right: auto;
   bottom: auto;
-  left: auto;
+  left: 0;
   width: min(720px, calc(100vw - 24px));
   border-radius: 0 0 12px 12px;
 }
