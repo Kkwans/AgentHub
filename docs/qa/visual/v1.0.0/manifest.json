@@ -20,11 +20,12 @@
     "10-rc-befb8ca-workspace",
     "10-rc-befb8ca-accessibility.json",
     "10-rc-befb8ca-performance.json",
-    "10-rc-befb8ca-performance-gate.json"
+    "10-rc-befb8ca-performance-gate.json",
+    "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
   ],
   "unverifiedGates": [
     "performance budget: Home LCP and project route visible exceed thresholds",
-    "real Agent acceptance against production Codex/ACP",
+    "production target Agent/ACP read-only acceptance",
     "PTY lifecycle and terminal input/resize/close (arm64 native binding unavailable)",
     "keyboard-only full Workspace path",
     "focus return after drawer/dialog",

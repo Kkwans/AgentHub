@@ -1,0 +1,28 @@
+{
+  "releaseVersion": "1.0.0",
+  "status": "passed",
+  "complete": true,
+  "sourceCommit": "befb8ca4f4557eb6a1918db4536659e31b76aab5",
+  "evidenceCommit": "96ba4957268d2805aab7bf195d1c4bab8e95b10b",
+  "codeTreeUnchanged": true,
+  "command": "AGENTHUB_E2E_LIVE=1 TMPDIR=/dev/shm corepack pnpm test:live",
+  "runner": "Vitest live config, serial execution",
+  "durationMs": 266890,
+  "files": 4,
+  "tests": 10,
+  "coverage": [
+    "Agent preflight",
+    "Codex discovery",
+    "Remote node",
+    "Worktree runner"
+  ],
+  "environment": {
+    "server": "isolated loopback AgentHub server",
+    "database": "disposable PGlite data directory",
+    "worktrees": "disposable Git directories",
+    "agent": "real local Codex ACP process",
+    "credentials": "existing credential reference only; no credential copied into evidence"
+  },
+  "productionTargetAgentAcceptance": "unverified",
+  "notes": "This is an isolated real-Agent functional gate. It does not claim acceptance against the currently deployed production container."
+}
