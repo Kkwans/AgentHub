@@ -46,6 +46,7 @@ const statusLabels: Record<string, string> = {
   DISCONNECTED: '已断开',
   UNAVAILABLE: '不可用',
   AUTH_REQUIRED: '需要授权',
+  CLOSED: '已关闭',
   MISSING_DEPENDENCY: '缺少依赖',
   UNSUPPORTED: '不支持',
   UNKNOWN: '未知',
@@ -56,7 +57,7 @@ function statusColor(status: string): string {
   if (['RUNNING', 'IN_PROGRESS', 'REVIEW', 'WAITING_REVIEW', 'PENDING'].includes(status))
     return 'aurora';
   if (['BLOCKED', 'FAILED', 'BROKEN', 'REVOKED', 'AUTH_REQUIRED'].includes(status)) return 'red';
-  if (['STOPPED', 'OFFLINE', 'DISCONNECTED', 'CANCELED'].includes(status)) return 'gray';
+  if (['STOPPED', 'OFFLINE', 'DISCONNECTED', 'CANCELED', 'CLOSED'].includes(status)) return 'gray';
   return 'yellow';
 }
 

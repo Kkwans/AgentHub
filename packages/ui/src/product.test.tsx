@@ -34,6 +34,12 @@ describe('product components', () => {
     expect(screen.getByRole('status').querySelector('[aria-hidden="true"]')).toBeTruthy();
   });
 
+  it('maps terminal closed status to the neutral tone', () => {
+    render(<AhStatusPill status="CLOSED" />);
+    expect(screen.getByRole('status')).toHaveTextContent('已关闭');
+    expect(screen.getByRole('status').querySelector('[data-tone="gray"]')).toBeTruthy();
+  });
+
   it('provides actionable empty and error states', () => {
     const retry = () => undefined;
     render(

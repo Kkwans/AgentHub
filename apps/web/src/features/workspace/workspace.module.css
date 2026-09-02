@@ -571,6 +571,29 @@
 }
 
 @media (max-width: 899px) {
+  .workspace :global(.workspace-drawer-close) {
+    position: absolute;
+    z-index: 2;
+    top: 10px;
+    right: 10px;
+    display: inline-grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    color: var(--workspace-muted);
+    background: var(--workspace-panel);
+    border: 1px solid var(--ah-border-subtle);
+    border-radius: 8px;
+  }
+
+  .workspace :global(.workspace-drawer-close:hover),
+  .workspace :global(.workspace-drawer-close:focus-visible) {
+    color: var(--workspace-ink);
+    background: var(--ah-surface-subtle);
+    outline: 2px solid var(--ah-accent-soft);
+    outline-offset: 1px;
+  }
+
   .workspace :global(.workspace-session-toggle),
   .workspace :global(.workspace-inspector-toggle) {
     display: inline-flex;
@@ -626,6 +649,13 @@
 @media (max-width: 679px) {
   .mobileTabs {
     display: flex;
+  }
+
+  .workspace :global(.session-rail-panel.mobile-open),
+  .workspace :global(.inspector-panel.mobile-open),
+  .workspace :global(.conversation-panel) {
+    inset-block-start: 99px;
+    height: calc(100% - 99px);
   }
 
   .workspace :global(.workspace-drawer-scrim) {
