@@ -11,7 +11,7 @@ import {
   Plus,
   Tag,
 } from '@agenthub/ui';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -20,12 +20,14 @@ import type {
   DashboardSnapshot,
   ProjectRecord,
   SessionRecord,
+  TaskRecord,
 } from '../../../lib/api';
 import { api } from '../../../lib/api';
 import { QueryMessage, displayDate } from '../../shared/page-primitives';
 import homeStyles from '../home.module.css';
 
 export function HomePage() {
+  const queryClient = useQueryClient();
   const dashboard = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api.get<DashboardSnapshot>('/dashboard'),
@@ -154,9 +156,13 @@ export function HomePage() {
     // competing with the Home LCP resource burst.
     const timer = window.setTimeout(() => {
       void import('../../projects/pages/ProjectsPage');
+      void queryClient.prefetchQuery({
+        queryKey: ['tasks'],
+        queryFn: () => api.get<TaskRecord[]>('/tasks'),
+      });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [detailsReady]);
+  }, [detailsReady, queryClient]);
   return (
     <div className={homeStyles.homePage}>
       <QueryMessage
