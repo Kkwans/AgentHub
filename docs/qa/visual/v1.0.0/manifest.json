@@ -21,10 +21,11 @@
     "10-rc-befb8ca-accessibility.json",
     "10-rc-befb8ca-performance.json",
     "10-rc-befb8ca-performance-gate.json",
+    "../../../qa/release/v1.0.0/10-rc-f686361-performance.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
   ],
   "unverifiedGates": [
-    "performance budget: Home LCP and project route visible exceed thresholds",
+    "performance budget: f686361 Project route max sample 290.4ms exceeds 250ms; earlier befb8ca Home LCP was 3084ms",
     "production target Agent/ACP read-only acceptance",
     "PTY lifecycle and terminal input/resize/close (arm64 native binding unavailable)",
     "keyboard-only full Workspace path",

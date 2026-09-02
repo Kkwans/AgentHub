@@ -1,0 +1,33 @@
+{
+  "releaseVersion": "1.0.0",
+  "status": "failed",
+  "complete": true,
+  "sourceCommit": "f6863617bb73987e9c81d49478e38b2ab080f869",
+  "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_PERFORMANCE_OUTPUT=/dev/shm/agenthub-performance-f686361.json corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-performance.spec.ts --workers=1",
+  "runner": "NAS-local Playwright Chromium against an isolated real AgentHub server",
+  "metrics": {
+    "homeLcpMs": 1908,
+    "routeVisibleMs": 290.4,
+    "inputResponseMs": 15.4,
+    "gitTreeBuildMs": 12.1,
+    "sessionFilterMs": 0.45,
+    "minFps": 60
+  },
+  "thresholds": {
+    "homeLcpMs": 2000,
+    "routeVisibleMs": 250,
+    "inputResponseMs": 100,
+    "gitTreeBuildMs": 50,
+    "sessionFilterMs": 50,
+    "minFps": 40
+  },
+  "routeSamplesMs": [290.4, 201.7, 191.2, 202.7, 222.3],
+  "failedMetrics": ["routeVisibleMs"],
+  "environment": {
+    "host": "DH4300Plus",
+    "architecture": "aarch64",
+    "database": "disposable PGlite data directory",
+    "productionContainerTouched": false
+  },
+  "notes": "Capture completed. Home LCP, input, data transforms and FPS passed in this run; the maximum cached Project route sample exceeded 250ms. This evidence does not certify the production container."
+}
