@@ -22,7 +22,8 @@ export function mountApp(root: HTMLElement) {
     <React.StrictMode>
       <AgentHubProvider initialPreference="light">
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
+          {/* Client-only routes have no loader transition to coordinate; commit navigation immediately. */}
+          <BrowserRouter useTransitions={false}>
             <App />
           </BrowserRouter>
         </QueryClientProvider>

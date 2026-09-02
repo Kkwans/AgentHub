@@ -178,7 +178,10 @@ export function HomePage() {
     };
   });
   const hasProjects = standardProjects.length > 0;
-  const [detailsReady, setDetailsReady] = useState(!loading && !error);
+  // Keep the route shell interactive while the summary sections wait for their
+  // first post-data frame. This also prevents a cached Home remount from
+  // competing with the next client-side navigation.
+  const [detailsReady, setDetailsReady] = useState(false);
   useEffect(() => {
     if (loading || error) {
       setDetailsReady(false);
