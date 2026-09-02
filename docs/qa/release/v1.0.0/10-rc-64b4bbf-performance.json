@@ -1,0 +1,445 @@
+{
+  "source": "isolated-real-server",
+  "complete": true,
+  "origin": "http://127.0.0.1:34605",
+  "outputPath": "/dev/shm/agenthub-performance-64b4bbf.json",
+  "metrics": {
+    "homeLcpMs": 1852,
+    "routeVisibleMs": 263.7,
+    "inputResponseMs": 11,
+    "gitTreeBuildMs": 5.09,
+    "sessionFilterMs": 0.4,
+    "minFps": 62
+  },
+  "samples": {
+    "homeLcpEntries": [
+      {
+        "startTime": 1216,
+        "size": 8976,
+        "tag": "H1",
+        "id": "",
+        "text": "从一个 Project 开始"
+      },
+      {
+        "startTime": 1852,
+        "size": 9660,
+        "tag": "H1",
+        "id": "home-continue-title",
+        "text": "从一个 Project 开始"
+      }
+    ],
+    "navigation": {
+      "domContentLoaded": 327.8000000715256,
+      "loadEventEnd": 337.3000000715256,
+      "responseEnd": 186.40000009536743,
+      "resources": [
+        {
+          "name": "projects.module-C-ii5GEb.js",
+          "initiatorType": "script",
+          "startTime": 1901.3000000715256,
+          "responseEnd": 1928.8000000715256,
+          "duration": 27.5,
+          "transferSize": 5583
+        },
+        {
+          "name": "ProjectsPage-Bg0NbVzQ.js",
+          "initiatorType": "script",
+          "startTime": 1900.5,
+          "responseEnd": 1928.3000000715256,
+          "duration": 27.800000071525574,
+          "transferSize": 9999
+        },
+        {
+          "name": "Scan.es-B0HNNN5Q.js",
+          "initiatorType": "script",
+          "startTime": 1900.9000000953674,
+          "responseEnd": 1927.4000000953674,
+          "duration": 26.5,
+          "transferSize": 3411
+        },
+        {
+          "name": "tasks",
+          "initiatorType": "fetch",
+          "startTime": 1903,
+          "responseEnd": 1926.6000000238419,
+          "duration": 23.600000023841858,
+          "transferSize": 362
+        },
+        {
+          "name": "projects-Cg6SOvXV.css",
+          "initiatorType": "link",
+          "startTime": 1901.4000000953674,
+          "responseEnd": 1921.4000000953674,
+          "duration": 20,
+          "transferSize": 24483
+        },
+        {
+          "name": "page-primitives-D5oX8QnA.js",
+          "initiatorType": "script",
+          "startTime": 416.8000000715256,
+          "responseEnd": 554.4000000953674,
+          "duration": 137.60000002384186,
+          "transferSize": 5361
+        },
+        {
+          "name": "api-Dyc-qO4F.js",
+          "initiatorType": "script",
+          "startTime": 415.2000000476837,
+          "responseEnd": 540.3000000715256,
+          "duration": 125.10000002384186,
+          "transferSize": 17643
+        },
+        {
+          "name": "useQuery-DFexP2un.js",
+          "initiatorType": "script",
+          "startTime": 413.40000009536743,
+          "responseEnd": 540,
+          "duration": 126.59999990463257,
+          "transferSize": 16824
+        },
+        {
+          "name": "realtime-MK4Qjxo5.js",
+          "initiatorType": "script",
+          "startTime": 416,
+          "responseEnd": 539.8000000715256,
+          "duration": 123.80000007152557,
+          "transferSize": 2804
+        },
+        {
+          "name": "useMutation-ClLtrZ11.js",
+          "initiatorType": "script",
+          "startTime": 414.40000009536743,
+          "responseEnd": 539.4000000953674,
+          "duration": 125,
+          "transferSize": 5905
+        },
+        {
+          "name": "MagnifyingGlass.es-BL04WE_z.js",
+          "initiatorType": "script",
+          "startTime": 411,
+          "responseEnd": 534.1000000238419,
+          "duration": 123.10000002384186,
+          "transferSize": 1997
+        },
+        {
+          "name": "chunk-62JRHF6Z-CsShfKgf.js",
+          "initiatorType": "script",
+          "startTime": 412.60000002384186,
+          "responseEnd": 528.5,
+          "duration": 115.89999997615814,
+          "transferSize": 46419
+        },
+        {
+          "name": "PasswordField-DEi9oTlm.js",
+          "initiatorType": "script",
+          "startTime": 405.5,
+          "responseEnd": 528.1000000238419,
+          "duration": 122.60000002384186,
+          "transferSize": 10591
+        },
+        {
+          "name": "Tag.es-BxcK4q9q.js",
+          "initiatorType": "script",
+          "startTime": 411.8000000715256,
+          "responseEnd": 527.8000000715256,
+          "duration": 116,
+          "transferSize": 2838
+        },
+        {
+          "name": "Network.es-B8nCgkrA.js",
+          "initiatorType": "script",
+          "startTime": 409.2000000476837,
+          "responseEnd": 527.4000000953674,
+          "duration": 118.20000004768372,
+          "transferSize": 3988
+        },
+        {
+          "name": "Plus.es-CcgJ1KrP.js",
+          "initiatorType": "script",
+          "startTime": 410.10000002384186,
+          "responseEnd": 527.1000000238419,
+          "duration": 117,
+          "transferSize": 1902
+        },
+        {
+          "name": "ShieldCheck.es-PCkVr1FQ.js",
+          "initiatorType": "script",
+          "startTime": 408.40000009536743,
+          "responseEnd": 497.2000000476837,
+          "duration": 88.79999995231628,
+          "transferSize": 5360
+        },
+        {
+          "name": "Eye.es-BZZa-yWK.js",
+          "initiatorType": "script",
+          "startTime": 406.7000000476837,
+          "responseEnd": 497,
+          "duration": 90.29999995231628,
+          "transferSize": 4560
+        },
+        {
+          "name": "FolderSimple.es-Bf6953jz.js",
+          "initiatorType": "script",
+          "startTime": 407.5,
+          "responseEnd": 496.7000000476837,
+          "duration": 89.20000004768372,
+          "transferSize": 2507
+        },
+        {
+          "name": "jsx-runtime-NZYk81nU.js",
+          "initiatorType": "script",
+          "startTime": 396.8000000715256,
+          "responseEnd": 488.2000000476837,
+          "duration": 91.39999997615814,
+          "transferSize": 735
+        },
+        {
+          "name": "AppShell.module-DkMKBT-V.js",
+          "initiatorType": "script",
+          "startTime": 401,
+          "responseEnd": 487.7000000476837,
+          "duration": 86.70000004768372,
+          "transferSize": 21704
+        },
+        {
+          "name": "StopCircle.es-BGz4LBnO.js",
+          "initiatorType": "script",
+          "startTime": 404.40000009536743,
+          "responseEnd": 487.3000000715256,
+          "duration": 82.89999997615814,
+          "transferSize": 2264
+        },
+        {
+          "name": "Robot.es-CgKw7Ped.js",
+          "initiatorType": "script",
+          "startTime": 400.10000002384186,
+          "responseEnd": 486,
+          "duration": 85.89999997615814,
+          "transferSize": 3746
+        },
+        {
+          "name": "CaretRight.es-BrdV7MGn.js",
+          "initiatorType": "script",
+          "startTime": 403.3000000715256,
+          "responseEnd": 485.40000009536743,
+          "duration": 82.10000002384186,
+          "transferSize": 1747
+        },
+        {
+          "name": "dist-atPcveG9.js",
+          "initiatorType": "script",
+          "startTime": 396,
+          "responseEnd": 484.10000002384186,
+          "duration": 88.10000002384186,
+          "transferSize": 333768
+        },
+        {
+          "name": "Warning.es-CXfcStUA.js",
+          "initiatorType": "script",
+          "startTime": 398.40000009536743,
+          "responseEnd": 476.8000000715256,
+          "duration": 78.39999997615814,
+          "transferSize": 3698
+        },
+        {
+          "name": "app-entry-BkfNdwdS.css",
+          "initiatorType": "link",
+          "startTime": 418.5,
+          "responseEnd": 472.8000000715256,
+          "duration": 54.300000071525574,
+          "transferSize": 272958
+        },
+        {
+          "name": "app-entry-B6E4NecH.js",
+          "initiatorType": "script",
+          "startTime": 392.60000002384186,
+          "responseEnd": 472.2000000476837,
+          "duration": 79.60000002384186,
+          "transferSize": 227091
+        },
+        {
+          "name": "ArrowRight.es-Dal3li8n.js",
+          "initiatorType": "script",
+          "startTime": 399.3000000715256,
+          "responseEnd": 471.40000009536743,
+          "duration": 72.10000002384186,
+          "transferSize": 1899
+        },
+        {
+          "name": "react-CwJFpaho.js",
+          "initiatorType": "script",
+          "startTime": 394.40000009536743,
+          "responseEnd": 459.5,
+          "duration": 65.09999990463257,
+          "transferSize": 7832
+        },
+        {
+          "name": "rolldown-runtime-hePW80VL.js",
+          "initiatorType": "script",
+          "startTime": 393.5,
+          "responseEnd": 459.2000000476837,
+          "duration": 65.70000004768372,
+          "transferSize": 1016
+        },
+        {
+          "name": "page-primitives-C9OKv1Iv.css",
+          "initiatorType": "link",
+          "startTime": 417.5,
+          "responseEnd": 459,
+          "duration": 41.5,
+          "transferSize": 13527
+        },
+        {
+          "name": "AppShell-Bxy4pakc.css",
+          "initiatorType": "link",
+          "startTime": 401.8000000715256,
+          "responseEnd": 458.60000002384186,
+          "duration": 56.799999952316284,
+          "transferSize": 12097
+        },
+        {
+          "name": "agents",
+          "initiatorType": "fetch",
+          "startTime": 388.8000000715256,
+          "responseEnd": 431.40000009536743,
+          "duration": 42.60000002384186,
+          "transferSize": 1336
+        },
+        {
+          "name": "sessions",
+          "initiatorType": "fetch",
+          "startTime": 388,
+          "responseEnd": 425.90000009536743,
+          "duration": 37.90000009536743,
+          "transferSize": 930
+        },
+        {
+          "name": "favicon.svg",
+          "initiatorType": "other",
+          "startTime": 384,
+          "responseEnd": 417.90000009536743,
+          "duration": 33.90000009536743,
+          "transferSize": 793
+        },
+        {
+          "name": "projects",
+          "initiatorType": "fetch",
+          "startTime": 387.3000000715256,
+          "responseEnd": 415.8000000715256,
+          "duration": 28.5,
+          "transferSize": 784
+        },
+        {
+          "name": "dashboard",
+          "initiatorType": "fetch",
+          "startTime": 386.40000009536743,
+          "responseEnd": 411.5,
+          "duration": 25.09999990463257,
+          "transferSize": 1434
+        },
+        {
+          "name": "status",
+          "initiatorType": "fetch",
+          "startTime": 320.7000000476837,
+          "responseEnd": 328.7000000476837,
+          "duration": 8,
+          "transferSize": 459
+        },
+        {
+          "name": "index-DnlrQEe3.js",
+          "initiatorType": "script",
+          "startTime": 229.20000004768372,
+          "responseEnd": 323,
+          "duration": 93.79999995231628,
+          "transferSize": 4282
+        },
+        {
+          "name": "auth-preload.js",
+          "initiatorType": "script",
+          "startTime": 228.30000007152557,
+          "responseEnd": 314,
+          "duration": 85.69999992847443,
+          "transferSize": 1867
+        }
+      ]
+    },
+    "routeSamples": [
+      263.6999999284744,
+      221.79999995231628,
+      208.70000004768372,
+      208.60000002384186,
+      214
+    ],
+    "inputSamples": [
+      3.1999999284744263,
+      11,
+      7.399999976158142,
+      5.899999976158142,
+      6.199999928474426
+    ],
+    "gitSamples": [
+      10.755173999998078,
+      5.091316999998526,
+      4.660817999996652,
+      4.463651999998547,
+      4.148654000004171,
+      4.040153000001737,
+      4.020320999996329,
+      4.028487000003224,
+      4.0101119999962975,
+      4.018278999996255,
+      4.048904000002949,
+      4.02119600000151,
+      4.020903000004182,
+      4.014779000004637,
+      4.103153999996721,
+      4.012736999997287,
+      4.029653999998118,
+      4.027028999997128,
+      4.00544500000251,
+      3.9996119999996154,
+      4.022070999999414,
+      4.017402999998012
+    ],
+    "sessionSamples": [
+      0.5468739999996615,
+      0.4048320000001695,
+      0.2415000000037253,
+      0.2432489999991958,
+      0.23858199999813223,
+      0.2412079999994603,
+      0.23974900000030175,
+      0.2210830000040005,
+      0.24383299999317387,
+      0.24820699999690987,
+      0.23129100000369363,
+      0.2356660000004922,
+      0.2318749999976717,
+      0.23362400000041816,
+      0.22808200000145007,
+      0.22254099999554455,
+      0.223124000003736,
+      0.21962499999790452,
+      0.23216600000159815,
+      0.27066600000398466,
+      0.23712399999931222,
+      0.23041599999851314
+    ],
+    "fps": {
+      "measuredFps": 62,
+      "minFps": 62,
+      "worstFrameMs": 16.800000000000182,
+      "sustainedFps": [
+        62,
+        62
+      ]
+    }
+  },
+  "dataset": {
+    "gitEntries": 200,
+    "sessionRecords": 500
+  },
+  "failure": "\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: <= \u001b[32m250\u001b[39m\nReceived:    \u001b[31m263.7\u001b[39m",
+  "sourceCommit": "64b4bbf5e9df62bc3c494694969057c837fb94fc",
+  "fixtureId": "performance:ee396f22-e1e4-45ce-9889-0daed5589d9a"
+}

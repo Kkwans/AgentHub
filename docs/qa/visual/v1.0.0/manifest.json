@@ -2,7 +2,7 @@
   "releaseVersion": "1.0.0",
   "complete": false,
   "status": "in_progress",
-  "sourceCommit": "c4250f29c333a60ab385a4a8059f0ff3ba162088",
+  "sourceCommit": "64b4bbf5e9df62bc3c494694969057c837fb94fc",
   "target": "NAS-local Playwright against the real deployed AgentHub target",
   "requiredViewports": [
     "1920x1080",
@@ -27,12 +27,13 @@
     "10-rc-befb8ca-performance-gate.json",
     "../../../qa/release/v1.0.0/10-rc-f686361-performance.json",
     "../../../qa/release/v1.0.0/10-rc-c4250f2-performance-bootstrap.json",
+    "../../../qa/release/v1.0.0/10-rc-64b4bbf-performance.json",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
   ],
   "unverifiedGates": [
-    "performance budget: c4250f2 bootstrap run failed (Home LCP 2732ms, cached route max 464.4ms, Git tree p95 114.92ms); follow-up run blocked by a 180s real fixture server setup timeout",
+    "performance budget: 64b4bbf exact candidate run failed only cached route visibility (263.7ms > 250ms); Home LCP 1852ms, input 11ms, Git tree p95 5.09ms, Session filter p95 0.4ms, minimum FPS 62. Earlier c4250f2 and d9e8846 failures remain archived for trend context",
     "production target Agent/ACP read-only acceptance",
     "PTY lifecycle and terminal input/resize/close (arm64 native binding unavailable)",
     "keyboard-only full Workspace path",
