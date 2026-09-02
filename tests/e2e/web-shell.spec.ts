@@ -352,7 +352,7 @@ test('全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ page 
 
 test('Home 以工作续接为主舞台', async ({ page }, testInfo) => {
   await page.goto('/home');
-  await expect(page.getByRole('heading', { name: '把注意力放在工作本身。' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '继续工作' })).toBeVisible();
   await expect(page.getByRole('link', { name: '继续最近会话' })).toHaveAttribute(
     'href',
     `/workspace/${session.id}`,
@@ -366,10 +366,12 @@ test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }
   await page.goto('/agents');
   await expect(page.getByRole('heading', { name: 'Agent 中心' })).toBeVisible();
   await expect(page.getByText('Codex', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Runtime' })).toHaveAttribute(
-    'href',
-    '/agents/runtime',
-  );
+  if ((page.viewportSize()?.width ?? 1_000) >= 641) {
+    await expect(page.getByRole('link', { name: '运行环境' })).toHaveAttribute(
+      'href',
+      '/agents/runtime',
+    );
+  }
 
   await page.getByRole('link', { name: '发现 Agent' }).click();
   await expect(page).toHaveURL('/agents/agents/discover');
@@ -392,7 +394,8 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await expect(page.getByText(session.title, { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
-  await expect(page.locator('.tool-event-row')).toHaveCount(4);
+  await expect(page.locator('.tool-execution-group')).toHaveCount(1);
+  await expect(page.locator('.tool-event-group-list li')).toHaveCount(4);
   await expect(page.locator('.tool-summary')).toHaveCount(0);
   await expect(page.locator('.message.assistant').last().locator('strong')).toHaveText(
     '关键校正已完成：',
@@ -444,8 +447,10 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   const conversationGeometry = geometry.find(({ className }) =>
     className.includes('conversation-panel'),
   );
-  if (viewportWidth < 1_280) {
-    expect(conversationGeometry?.left).toBe(0);
+  if (viewportWidth < 1_180) {
+    expect(conversationGeometry?.left).toBeLessThanOrEqual(4);
+  }
+  if (viewportWidth < 900) {
     expect(conversationGeometry?.width).toBeGreaterThanOrEqual(viewportWidth - 1);
   }
   if (viewportWidth < 768) {
@@ -455,11 +460,11 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await attachViewportScreenshot(page, testInfo, 'workspace-initial');
 
   if (viewportWidth >= 1_280) {
-    await page.getByRole('button', { name: '展开检查器' }).click();
+    await expect(page.getByRole('button', { name: '折叠检查器' })).toBeVisible();
     const inspector = page.getByRole('tablist', { name: '检查器视图' });
     await expect(inspector.getByRole('tab', { name: '变更' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: '文件' })).toBeVisible();
-    await expect(inspector.getByRole('tab', { name: '工具调用' })).toBeVisible();
+    await expect(inspector.getByRole('tab', { name: '活动' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: 'Run' })).toBeVisible();
     await attachViewportScreenshot(page, testInfo, 'workspace-three-column');
     await inspector.getByRole('tab', { name: '文件' }).click();
@@ -475,7 +480,11 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await page.reload();
     await expect(page.getByRole('button', { name: '展开会话列表' })).toBeVisible();
     await page.getByRole('button', { name: '展开会话列表' }).click();
-  } else if (viewportWidth >= 1_024) {
+  } else if (viewportWidth >= 900) {
+    const inspector = page.getByRole('tablist', { name: '检查器视图' });
+    await inspector.getByRole('tab', { name: '文件' }).click();
+    await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
+  } else if (viewportWidth >= 680) {
     await page.getByRole('button', { name: '打开检查器' }).click();
     await expect(page.getByRole('button', { name: '关闭检查器' })).toBeVisible();
     await page
@@ -505,7 +514,7 @@ test('Projects 使用高密度实体列表并打开路由弹层', async ({ page 
   }
   if ((page.viewportSize()?.width ?? 1_000) >= 1_024)
     await expect(list.getByText('Agent', { exact: true })).toBeVisible();
-  await expect(list.getByRole('link', { name: /AgentHub/ })).toBeVisible();
+  await expect(list.locator('a').filter({ hasText: project.name }).first()).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
   await page
@@ -583,17 +592,29 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
 test('Settings 使用窄本地导航和单一内容列', async ({ page }, testInfo) => {
   await page.goto('/settings/appearance');
   const navigation = page.getByRole('navigation', { name: '设置分区' });
-  await expect(navigation.getByRole('link')).toHaveText(['外观', '账户', '安全', '集成', '系统']);
+  await expect(navigation.locator('strong')).toHaveText([
+    '外观',
+    '账号',
+    '安全',
+    '集成',
+    '系统',
+    '高级',
+  ]);
   await expect(page.getByRole('heading', { name: '外观' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '账户' })).toBeHidden();
 
-  if ((page.viewportSize()?.width ?? 0) >= 901) {
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  if (viewportWidth > 1_060) {
     const width = await navigation.evaluate((element) => element.getBoundingClientRect().width);
-    expect(width).toBeGreaterThanOrEqual(156);
-    expect(width).toBeLessThanOrEqual(168);
+    expect(width).toBeGreaterThanOrEqual(180);
+    expect(width).toBeLessThanOrEqual(192);
+  } else if (viewportWidth >= 761) {
+    const width = await navigation.evaluate((element) => element.getBoundingClientRect().width);
+    expect(width).toBeGreaterThanOrEqual(164);
+    expect(width).toBeLessThanOrEqual(172);
   }
 
-  await navigation.getByRole('link', { name: '安全' }).click();
+  await navigation.getByRole('link').filter({ hasText: '安全' }).click();
   await expect(page).toHaveURL('/settings/security');
   await expect(page.getByRole('heading', { name: '安全' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '外观' })).toBeHidden();
