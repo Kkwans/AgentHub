@@ -2,7 +2,7 @@
   "releaseVersion": "1.0.0",
   "complete": false,
   "status": "in_progress",
-  "sourceCommit": "26a8a5760255d939e7656b105fc838ab8573fe66",
+  "sourceCommit": "c4250f29c333a60ab385a4a8059f0ff3ba162088",
   "target": "NAS-local Playwright against the real deployed AgentHub target",
   "requiredViewports": [
     "1920x1080",
@@ -26,12 +26,13 @@
     "10-rc-befb8ca-performance.json",
     "10-rc-befb8ca-performance-gate.json",
     "../../../qa/release/v1.0.0/10-rc-f686361-performance.json",
+    "../../../qa/release/v1.0.0/10-rc-c4250f2-performance-bootstrap.json",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
   ],
   "unverifiedGates": [
-    "performance budget: f686361 Project route max sample 290.4ms exceeds 250ms; earlier befb8ca Home LCP was 3084ms",
+    "performance budget: c4250f2 bootstrap run failed (Home LCP 2732ms, cached route max 464.4ms, Git tree p95 114.92ms); follow-up run blocked by a 180s real fixture server setup timeout",
     "production target Agent/ACP read-only acceptance",
     "PTY lifecycle and terminal input/resize/close (arm64 native binding unavailable)",
     "keyboard-only full Workspace path",
