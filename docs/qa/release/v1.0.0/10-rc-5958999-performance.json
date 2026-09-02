@@ -1,0 +1,34 @@
+{
+  "source": "isolated-real-server",
+  "sourceCommit": "595899910d417ea770f15f2431ba1a8ecef92d8e",
+  "complete": true,
+  "status": "PASS",
+  "fixtureId": "performance:b1a1eeee-bc11-40aa-8972-ac1560eff73a",
+  "fixtureStorage": "/volume2/Project/AgentHub/.tmp/qa-real-e291b33",
+  "dataset": {
+    "gitEntries": 200,
+    "sessionRecords": 500
+  },
+  "metrics": {
+    "homeLcpMs": 1636,
+    "routeVisibleMs": 203.5,
+    "inputResponseMs": 45.4,
+    "gitTreeBuildMs": 4.72,
+    "sessionFilterMs": 0.45,
+    "minFps": 62
+  },
+  "samples": {
+    "routeVisibleMs": [175.4, 140.4, 139.2, 175.7, 203.5]
+  },
+  "budgets": {
+    "homeLcpMs": 2000,
+    "routeVisibleMs": 250,
+    "inputResponseMs": 100,
+    "gitTreeBuildMs": 50,
+    "sessionFilterMs": 50,
+    "minFps": 40
+  },
+  "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/volume2/Project/AgentHub/.tmp/qa-real-e291b33 AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_PERFORMANCE_OUTPUT=/dev/shm/agenthub-performance-5958999-diskfixture.json corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-performance.spec.ts --workers=1",
+  "observedAt": "2026-09-02T18:18:16+08:00",
+  "notes": "真实 Chromium、真实 server 与临时 PGlite/Git fixture；fixture 存储移至空闲的 /volume2 以隔离 NAS /tmp 换页压力，浏览器 profile 仍在 /dev/shm。"
+}
