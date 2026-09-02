@@ -584,6 +584,7 @@
   .navigationStack .secondaryNavigation,
   .navDivider,
   .sidebarFoot,
+  .sidebarCollapse,
   .profileCard {
     display: none;
   }
@@ -593,13 +594,24 @@
   .primaryNavigation {
     grid-template-columns: repeat(5, 1fr);
     gap: 3px;
+    min-width: 0;
   }
   .primaryNavigation .navItem {
     height: 48px;
     min-height: 48px;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 4px;
   }
   .primaryNavigation .navIcon {
     width: 19px;
+  }
+  .primaryNavigation .navText {
+    max-width: 100%;
+    font-size: 11px;
+    text-align: center;
   }
   .topbar .mobileMenu {
     display: grid;
