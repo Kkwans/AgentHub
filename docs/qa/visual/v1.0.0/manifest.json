@@ -22,6 +22,7 @@
     "10-rc-befb8ca-performance.json",
     "10-rc-befb8ca-performance-gate.json",
     "../../../qa/release/v1.0.0/10-rc-f686361-performance.json",
+    "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
   ],
   "unverifiedGates": [

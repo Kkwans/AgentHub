@@ -1,0 +1,22 @@
+{
+  "releaseVersion": "1.0.0",
+  "status": "passed",
+  "complete": true,
+  "sourceCommit": "5c615a468d1253ccfe767b38c651afdcf76726ba",
+  "command": "git archive --format=tar HEAD | tar -xf - -C <disposable-dir>; TMPDIR=/dev/shm corepack pnpm install --frozen-lockfile --ignore-scripts",
+  "runner": "clean tracked Git archive on DH4300Plus",
+  "durationMs": 281900,
+  "packages": {
+    "resolved": 573,
+    "downloaded": 573,
+    "installed": 573
+  },
+  "environment": {
+    "host": "DH4300Plus",
+    "architecture": "aarch64",
+    "temporaryRoot": "/dev/shm",
+    "productionContainerTouched": false,
+    "credentialsRead": false
+  },
+  "notes": "Install completed from tracked files only with lifecycle scripts disabled; the disposable checkout was isolated from the repository and production data."
+}
