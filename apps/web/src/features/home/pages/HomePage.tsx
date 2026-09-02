@@ -12,7 +12,7 @@ import {
   Tag,
 } from '@agenthub/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import type {
@@ -26,26 +26,51 @@ import { api } from '../../../lib/api';
 import { QueryMessage, displayDate } from '../../shared/page-primitives';
 import homeStyles from '../home.module.css';
 
+type HomeData = {
+  dashboard: DashboardSnapshot;
+  projects: ProjectRecord[];
+  sessions: SessionRecord[];
+  agents: AgentRecord[];
+};
+
 export function HomePage() {
   const queryClient = useQueryClient();
+  const preloadedHomeDataRef = useRef(
+    typeof window !== 'undefined'
+      ? (window as Window & { __agenthubHomeDataPromise?: Promise<HomeData | undefined> })
+          .__agenthubHomeDataPromise
+      : undefined,
+  );
+  const consumedPreloadKeysRef = useRef(new Set<keyof HomeData>());
+  const queryWithPreload = <K extends keyof HomeData>(
+    key: K,
+    fallback: () => Promise<HomeData[K]>,
+  ) => {
+    const preload = preloadedHomeDataRef.current;
+    if (!preload || consumedPreloadKeysRef.current.has(key)) return fallback();
+    consumedPreloadKeysRef.current.add(key);
+    return preload
+      .then((data) => (data?.[key] === undefined ? fallback() : data[key]))
+      .catch(fallback);
+  };
   const dashboard = useQuery({
     queryKey: ['dashboard'],
-    queryFn: () => api.get<DashboardSnapshot>('/dashboard'),
+    queryFn: () => queryWithPreload('dashboard', () => api.get<DashboardSnapshot>('/dashboard')),
     staleTime: 30_000,
   });
   const projects = useQuery({
     queryKey: ['projects'],
-    queryFn: () => api.get<ProjectRecord[]>('/projects'),
+    queryFn: () => queryWithPreload('projects', () => api.get<ProjectRecord[]>('/projects')),
     staleTime: 30_000,
   });
   const sessions = useQuery({
     queryKey: ['sessions'],
-    queryFn: () => api.get<SessionRecord[]>('/sessions'),
+    queryFn: () => queryWithPreload('sessions', () => api.get<SessionRecord[]>('/sessions')),
     staleTime: 30_000,
   });
   const agents = useQuery({
     queryKey: ['agents'],
-    queryFn: () => api.get<AgentRecord[]>('/agents'),
+    queryFn: () => queryWithPreload('agents', () => api.get<AgentRecord[]>('/agents')),
     staleTime: 30_000,
   });
   const error = dashboard.error ?? projects.error ?? sessions.error ?? agents.error;
