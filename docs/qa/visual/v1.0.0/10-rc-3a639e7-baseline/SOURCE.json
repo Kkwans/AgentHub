@@ -1,0 +1,26 @@
+{
+  "releaseVersion": "1.0.0",
+  "sourceCommit": "3a639e762390484645200ccbf1f178d4a0f2fc21",
+  "capture": "NAS-local Playwright Chromium against an isolated real AgentHub server",
+  "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_VISUAL_OUTPUT=/dev/shm/agenthub-visual-3ce2d83-r2 corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-baseline.spec.ts --workers=1 --timeout=1200000",
+  "serverHealth": {
+    "version": "1.0.0",
+    "database": "pglite",
+    "web": true
+  },
+  "matrix": {
+    "routes": 10,
+    "viewports": 7,
+    "themes": 2,
+    "pages": 140
+  },
+  "errors": {
+    "console": 0,
+    "page": 0,
+    "failedRequests": 0,
+    "geometryViolations": 0,
+    "horizontalOverflow": 0
+  },
+  "fixture": "v1-baseline:cb364f3c-6785-49cc-9a83-7d4872ffc606",
+  "productionContainerTouched": false
+}
