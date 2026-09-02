@@ -1,0 +1,44 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "arm64 staging container read-only validation",
+  "sourceCommit": "81e1d6886fd913e4c1ed89d86b8bdd9e403428e5",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.81e1d68-nas",
+    "id": "sha256:feace17db92f8b4e203dc1fd694f83f1f0f25fd4ddab6edff19c5bc94f05868a",
+    "architecture": "arm64",
+    "base": "agenthub:0.8.0-nas.d09c575-nativebase"
+  },
+  "container": {
+    "name": "agenthub-rc-81e1d68-token",
+    "origin": "http://127.0.0.1:3211",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "pty": {
+    "opened": true,
+    "input": true,
+    "resized": true,
+    "closed": true,
+    "exitCode": 0
+  },
+  "visual": {
+    "scope": "baseline",
+    "routes": 7,
+    "viewports": 7,
+    "themes": 2,
+    "pages": 98,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "horizontalOverflow": 0,
+    "unnamedButtons": 0,
+    "hiddenFocus": 0,
+    "blockedWrites": 0,
+    "evidencePath": ".tmp/rc-visual-81e1d68"
+  },
+  "production": "not deployed; existing production container was not modified"
+}

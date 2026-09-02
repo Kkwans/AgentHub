@@ -37,6 +37,7 @@
     "../../../qa/release/v1.0.0/10-rc-e291b33-fixture-e2e.json",
     "../../../qa/release/v1.0.0/10-rc-e291b33-token-e2e.json",
     "../../../qa/release/v1.0.0/10-rc-5958999-performance.json",
+    "../../../qa/release/v1.0.0/10-rc-81e1d68-staging-runtime.json",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
