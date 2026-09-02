@@ -1,0 +1,13 @@
+{
+  "source": "fixture-browser-regression",
+  "sourceCommit": "e291b339b77f93ad79246308325ac24566f8b7ee",
+  "complete": true,
+  "status": "PASS",
+  "projects": ["desktop-1440", "desktop-1024", "tablet-768", "mobile-390"],
+  "tests": 40,
+  "passed": 40,
+  "failed": 0,
+  "command": "TMPDIR=/dev/shm corepack pnpm exec playwright test --grep-invert axe --workers=1",
+  "observedAt": "2026-09-02T18:15:33+08:00",
+  "notes": "当前候选同步路由与首页摘要延迟调整后的 fixture 浏览器回归通过。"
+}

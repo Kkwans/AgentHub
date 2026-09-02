@@ -1,0 +1,14 @@
+{
+  "source": "isolated-real-server",
+  "sourceCommit": "e291b339b77f93ad79246308325ac24566f8b7ee",
+  "complete": true,
+  "status": "PASS",
+  "authMode": "token",
+  "tests": 1,
+  "passed": 1,
+  "failed": 0,
+  "setupTimeout": false,
+  "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/workbench.spec.ts --grep 'token 登录' --workers=1",
+  "observedAt": "2026-09-02T18:03:44+08:00",
+  "notes": "Token 登录、Home 首屏与设置分区导航通过；此前 fixture 启动超时未复现。"
+}
