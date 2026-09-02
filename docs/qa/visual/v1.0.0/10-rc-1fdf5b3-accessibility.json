@@ -1,0 +1,1022 @@
+{
+  "source": "isolated-real-server",
+  "complete": true,
+  "failure": "",
+  "sourceCommit": "1fdf5b316d8e4cdbe62528b7b088ba029fb9abe6",
+  "baseURL": "http://127.0.0.1:46711",
+  "fixtureId": "v1-accessibility:6aba6fc9-64ce-43ba-b92c-4f028461881e",
+  "routes": [
+    "/home",
+    "/projects",
+    "/agents",
+    "/prompts",
+    "/settings/appearance",
+    "/agents/runtime",
+    "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+    "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+    "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+    "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e"
+  ],
+  "viewports": [
+    "1920x1080",
+    "1600x1000",
+    "1440x900",
+    "1280x800",
+    "1024x768",
+    "768x1024",
+    "390x844"
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "pages": [
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1920x1080",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1600x1000",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1440x900",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1280x800",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "1024x768",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "768x1024",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 0
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 0
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "light",
+      "viewport": "390x844",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1920x1080",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1600x1000",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1440x900",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1280x800",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "1024x768",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "768x1024",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/home",
+      "violations": [],
+      "incomplete": 0
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/projects",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/agents",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/prompts",
+      "violations": [],
+      "incomplete": 0
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/settings/appearance",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/agents/runtime",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/overview",
+      "violations": [],
+      "incomplete": 1
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/work",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/projects/e08fe3df-925c-4522-8ad6-df2cf71b9512/sessions",
+      "violations": [],
+      "incomplete": 2
+    },
+    {
+      "theme": "dark",
+      "viewport": "390x844",
+      "route": "/workspace/6aba6fc9-64ce-43ba-b92c-4f028461881e",
+      "violations": [],
+      "incomplete": 1
+    }
+  ],
+  "violations": [],
+  "unverified": [
+    "keyboard-only full Workspace path",
+    "focus return after drawer/dialog",
+    "PTY lifecycle and terminal input",
+    "200% zoom interaction coverage"
+  ]
+}
