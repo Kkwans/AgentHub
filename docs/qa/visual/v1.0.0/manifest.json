@@ -2,7 +2,7 @@
   "releaseVersion": "1.0.0",
   "complete": false,
   "status": "in_progress",
-  "sourceCommit": "befb8ca4f4557eb6a1918db4536659e31b76aab5",
+  "sourceCommit": "26a8a5760255d939e7656b105fc838ab8573fe66",
   "target": "NAS-local Playwright against the real deployed AgentHub target",
   "requiredViewports": [
     "1920x1080",
@@ -17,6 +17,7 @@
   "capturedEvidence": [
     "10-rc-befb8ca-baseline",
     "10-rc-3a639e7-baseline",
+    "10-rc-26a8a57-exception",
     "10-rc-befb8ca-exception",
     "10-rc-befb8ca-workspace",
     "10-rc-befb8ca-accessibility.json",

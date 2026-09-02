@@ -1,0 +1,31 @@
+{
+  "releaseVersion": "1.0.0",
+  "sourceCommit": "26a8a5760255d939e7656b105fc838ab8573fe66",
+  "capture": "NAS-local Playwright Chromium against an isolated real AgentHub server",
+  "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_VISUAL_OUTPUT=/dev/shm/agenthub-visual-26a8a57-exception corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-exception-states.spec.ts --workers=1 --timeout=1200000",
+  "serverHealth": {
+    "version": "1.0.0",
+    "database": "pglite",
+    "web": true
+  },
+  "matrix": {
+    "states": 4,
+    "viewports": 7,
+    "themes": 2,
+    "pages": 56
+  },
+  "states": ["login", "loading", "error", "offline"],
+  "errors": {
+    "unexpectedConsole": 0,
+    "page": 0,
+    "unexpectedFailedRequests": 0,
+    "geometryViolations": 0,
+    "horizontalOverflow": 0
+  },
+  "fixture": "exception-states:ccf0492b-50aa-46a1-9af9-6a042d6cf299",
+  "expectedFailures": {
+    "error": "invalid session route returns HTTP 404",
+    "offline": "context is intentionally taken offline after the workspace shell loads"
+  },
+  "productionContainerTouched": false
+}

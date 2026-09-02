@@ -1,0 +1,18 @@
+{
+  "sourceReport": "docs/qa/visual/v1.0.0/10-rc-26a8a57-exception/audit.json",
+  "snapshotCount": 56,
+  "passed": true,
+  "releaseReady": false,
+  "violations": [],
+  "unverifiedStates": [
+    "PTY lifecycle",
+    "approval delivery after reconnect"
+  ],
+  "unmeasuredRules": [
+    "table-column-alignment",
+    "state-frame-shift",
+    "composer-readable-column",
+    "drawer-width"
+  ],
+  "scope": "baseline measurements; not the complete v1 release geometry gate"
+}
