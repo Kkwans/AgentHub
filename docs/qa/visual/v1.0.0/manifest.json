@@ -44,6 +44,7 @@
     "../../../qa/release/v1.0.0/10-rc-b1eea12-keyboard-focus-zoom.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-terminal-ui.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-old-image-compatibility.json",
+    "../../../qa/release/v1.0.0/10-rc-b1eea12-workbench-e2e.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-agent-visual-review.md",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",

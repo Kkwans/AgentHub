@@ -1,0 +1,44 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging candidate isolated real-server Workbench browser E2E",
+  "sourceCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.b1eea12-nas",
+    "id": "sha256:29ce32786f4098d2bcb681539ff1e7041170e41c358c2fd046267f25b29363e7",
+    "architecture": "arm64"
+  },
+  "runner": "NAS-local Playwright Chromium against isolated real AgentHub servers",
+  "results": [
+    {
+      "authMode": "token",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "PASS",
+      "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/workbench.spec.ts --grep 'token 登录' --workers=1 --timeout=300000",
+      "observedAt": "2026-09-05T04:29:28+08:00",
+      "notes": "Token 登录、Home 首屏与设置分区导航通过。"
+    },
+    {
+      "authMode": "local_trusted",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "status": "PASS",
+      "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/dev/shm AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/workbench.spec.ts --grep 'local_trusted' --workers=1",
+      "observedAt": "2026-09-05T04:29:28+08:00",
+      "notes": "Create Project/preflight、真实 Project/Task/Session 页面与 Workspace ACP Approval/Diff/Git commit 全部通过。"
+    }
+  ],
+  "complete": true,
+  "status": "PASS",
+  "initialResourcePressureAttempt": {
+    "tests": 4,
+    "passed": 3,
+    "failed": 1,
+    "failure": "Token 测试在等待设置链接时达到文件内 120000ms 超时，Playwright 随后关闭页面；没有业务断言失败。",
+    "rerun": "Token 单测与 local_trusted 三测分别隔离复跑后通过。"
+  },
+  "productionContainerTouched": false,
+  "notes": "首次组合运行受 NAS swap/Chromium/PGlite 冷启动资源压力影响；隔离复跑确认当前候选功能门禁通过。该证据不替代生产 Agent/ACP、native PTY、备份升级与生产视觉门禁。"
+}
