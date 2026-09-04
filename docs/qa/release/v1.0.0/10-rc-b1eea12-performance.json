@@ -1,0 +1,63 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 current-candidate isolated real-server performance gate",
+  "sourceCommit": "7abd1ecf065bf0d796091218e2be106d6fa85397",
+  "runtimeCodeCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "candidateImage": {
+    "tag": "agenthub:1.0.0-rc.b1eea12-nas",
+    "id": "sha256:29ce32786f4098d2bcb681539ff1e7041170e41c358c2fd046267f25b29363e7",
+    "architecture": "arm64"
+  },
+  "runner": "NAS-local Playwright Chromium against isolated real AgentHub servers",
+  "dataset": {
+    "gitEntries": 200,
+    "sessionRecords": 500
+  },
+  "budgets": {
+    "homeLcpMs": 2000,
+    "routeVisibleMs": 250,
+    "inputResponseMs": 100,
+    "gitTreeBuildMs": 50,
+    "sessionFilterMs": 50,
+    "minFps": 40
+  },
+  "attempts": [
+    {
+      "status": "FAILED",
+      "metrics": {
+        "homeLcpMs": 2676,
+        "routeVisibleMs": 211.3,
+        "inputResponseMs": 17.2,
+        "gitTreeBuildMs": 9.66,
+        "sessionFilterMs": 0.61,
+        "minFps": 58
+      },
+      "sourceReport": "/dev/shm/agenthub-performance-b1eea12.json",
+      "observedAt": "2026-09-05T04:34:04+08:00"
+    },
+    {
+      "status": "FAILED",
+      "metrics": {
+        "homeLcpMs": 3256,
+        "routeVisibleMs": 239.6,
+        "inputResponseMs": 13.7,
+        "gitTreeBuildMs": 4.92,
+        "sessionFilterMs": 0.41,
+        "minFps": 62
+      },
+      "sourceReport": "/dev/shm/agenthub-performance-b1eea12-rerun.json",
+      "observedAt": "2026-09-05T04:35:52+08:00"
+    }
+  ],
+  "status": "FAILED",
+  "complete": true,
+  "failedMetrics": ["homeLcpMs"],
+  "commands": [
+    "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/volume2/Project/AgentHub/.tmp/qa-real-b1eea12 AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_PERFORMANCE_OUTPUT=/dev/shm/agenthub-performance-b1eea12.json corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-performance.spec.ts --workers=1",
+    "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/volume2/Project/AgentHub/.tmp/qa-real-b1eea12 AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_PERFORMANCE_OUTPUT=/dev/shm/agenthub-performance-b1eea12-rerun.json corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-performance.spec.ts --workers=1",
+    "corepack pnpm qa:performance /dev/shm/agenthub-performance-b1eea12-rerun.json"
+  ],
+  "diagnosis": "两次隔离运行均只有 Home LCP 超预算；缓存路由、输入响应、Git tree、Session filter 与 FPS 均达标。首屏 app-entry 资源在 NAS swap/CPU 压力下延迟启动，不能据此豁免 2s 门禁，也没有证据表明是首页代码回归。",
+  "productionContainerTouched": false,
+  "notes": "当前候选性能门禁保持阻塞；需要在资源稳定或完成有证据的首屏优化后重新通过，生产不得部署。"
+}

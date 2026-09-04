@@ -45,6 +45,7 @@
     "../../../qa/release/v1.0.0/10-rc-b1eea12-terminal-ui.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-old-image-compatibility.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-workbench-e2e.json",
+    "../../../qa/release/v1.0.0/10-rc-b1eea12-performance.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-agent-visual-review.md",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
@@ -57,6 +58,7 @@
     "old-image compatibility read and v0.9 data upgrade (no v0.9 image/tag; live-copy snapshot aborted)",
     "exact seven-viewport real production visual matrix and geometry audit",
     "state-specific geometry measurements: table-column-alignment, state-frame-shift, composer-readable-column, drawer-width",
-    "human visual score"
+    "human visual score",
+    "current candidate Home LCP performance gate (two isolated runs exceeded 2s under NAS resource pressure)"
   ]
 }
