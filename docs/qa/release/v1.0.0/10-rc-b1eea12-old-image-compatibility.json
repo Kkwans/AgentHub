@@ -1,0 +1,27 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "Disposable production-data-copy old-image compatibility read",
+  "sourceCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "oldImage": {
+    "tag": "agenthub:0.8.0-nas.d09c575",
+    "id": "sha256:1fb03d1230c3630fa6f6d74f25e47c4f40b57faf73e696906e153b02df4223b7",
+    "architecture": "arm64"
+  },
+  "dataCopy": {
+    "source": "/volume2/Project/.agenthub/central/data",
+    "destination": ".tmp/rc-compat-b1eea12/data",
+    "size": "58M",
+    "postmasterPidCopied": false,
+    "productionContainerTouched": false
+  },
+  "result": {
+    "status": "UNVERIFIED",
+    "container": "agenthub-compat-0-8-b1eea12",
+    "startup": "failed",
+    "failure": "PGlite aborted while executing CREATE SCHEMA IF NOT EXISTS drizzle against a live-copy snapshot",
+    "health": "not reached"
+  },
+  "command": "docker run --name agenthub-compat-0-8-b1eea12 ... agenthub:0.8.0-nas.d09c575",
+  "observedAt": "2026-09-05T04:05:22+08:00",
+  "scope": "The source was copied while production stayed healthy; the resulting snapshot is not a stop-service-consistent backup. A v0.9 image/tag is unavailable on this host, so v0.9 upgrade, old-image read compatibility and stop-service restore rehearsal remain unverified. The disposable container was removed after logs were captured."
+}
