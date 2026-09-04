@@ -121,6 +121,9 @@ export function useWorkspaceViewModel() {
   const inspectorPanelRef = usePanelRef();
   const sessionCloseRef = useRef<HTMLButtonElement>(null);
   const inspectorCloseRef = useRef<HTMLButtonElement>(null);
+  const sessionToggleRef = useRef<HTMLButtonElement>(null);
+  const inspectorToggleRef = useRef<HTMLButtonElement>(null);
+  const drawerStateRef = useRef({ session: false, inspector: false });
 
   const toggleWorkspacePanel = useCallback(
     (side: 'left' | 'right') => {
@@ -457,9 +460,29 @@ export function useWorkspaceViewModel() {
   }, [client, events.data, id]);
 
   useEffect(() => {
-    if (!sessionDrawerOpen && (!mobileInspectorOpen || !inspectorActsAsDrawer)) return;
+    const inspectorDrawerIsOpen = inspectorDrawerOpen;
+    const previousState = drawerStateRef.current;
+    const nextState = {
+      session: sessionDrawerOpen,
+      inspector: inspectorDrawerIsOpen,
+    };
+    const openedSession = nextState.session && !previousState.session;
+    const openedInspector = nextState.inspector && !previousState.inspector;
+    const closedSession = !nextState.session && previousState.session;
+    const closedInspector = !nextState.inspector && previousState.inspector;
 
-    const closeButton = sessionDrawerOpen ? sessionCloseRef.current : inspectorCloseRef.current;
+    if (openedSession || openedInspector) {
+      const closeButton = openedSession ? sessionCloseRef.current : inspectorCloseRef.current;
+      closeButton?.focus();
+    } else if (closedSession || closedInspector) {
+      const opener = closedSession ? sessionToggleRef.current : inspectorToggleRef.current;
+      if (opener?.isConnected) opener.focus();
+    }
+    drawerStateRef.current = nextState;
+
+    if (!nextState.session && !nextState.inspector) return;
+
+    const closeButton = nextState.session ? sessionCloseRef.current : inspectorCloseRef.current;
     closeButton?.focus();
     const drawer = closeButton?.closest<HTMLElement>('.session-rail-panel, .inspector-panel');
     const closeOnEscapeAndTrapFocus = (event: KeyboardEvent) => {
@@ -488,7 +511,7 @@ export function useWorkspaceViewModel() {
     };
     window.addEventListener('keydown', closeOnEscapeAndTrapFocus);
     return () => window.removeEventListener('keydown', closeOnEscapeAndTrapFocus);
-  }, [closeMobileInspector, inspectorActsAsDrawer, mobileInspectorOpen, sessionDrawerOpen]);
+  }, [closeMobileInspector, inspectorDrawerOpen, sessionDrawerOpen]);
 
   return {
     id,
@@ -514,6 +537,8 @@ export function useWorkspaceViewModel() {
     inspectorPanelRef,
     sessionCloseRef,
     inspectorCloseRef,
+    sessionToggleRef,
+    inspectorToggleRef,
     toggleWorkspacePanel,
     handleWorkspaceLayoutChanged,
     setSelectedFile,

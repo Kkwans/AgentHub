@@ -140,6 +140,40 @@ afterEach(() => {
 });
 
 describe('WorkspacePage 数据分区可靠性', () => {
+  it('移动抽屉关闭后把焦点还给对应触发按钮', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query === '(max-width: 899px)',
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    );
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      baseFetch(String(input), init?.method),
+    );
+    renderWorkspace(fetchMock);
+
+    const inspectorToggle = await screen.findByRole('button', { name: '打开检查器' });
+    fireEvent.click(inspectorToggle);
+    const inspectorClose = await screen.findByRole('button', { name: '关闭检查器' });
+    await waitFor(() => expect(document.activeElement).toBe(inspectorClose));
+    fireEvent.click(inspectorClose);
+    await waitFor(() => expect(document.activeElement).toBe(inspectorToggle));
+
+    const sessionToggle = screen.getByRole('button', { name: '打开会话列表' });
+    fireEvent.click(sessionToggle);
+    const sessionClose = await screen.findByRole('button', { name: '关闭会话列表' });
+    expect(document.activeElement).toBe(sessionClose);
+    fireEvent.keyDown(sessionClose, { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(sessionToggle));
+  });
+
   it('按 seq 分页拉取长 Session 事件并合并去重', async () => {
     const firstPage = Array.from({ length: 500 }, (_, index) => ({
       id: `event-${index + 1}`,

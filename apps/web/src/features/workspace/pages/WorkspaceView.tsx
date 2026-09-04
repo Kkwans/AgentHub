@@ -36,6 +36,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     sessions,
     sessionPanelRef,
     sessionCloseRef,
+    sessionToggleRef,
+    inspectorToggleRef,
     handleWorkspaceLayoutChanged,
     messages,
     events,
@@ -82,6 +84,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <button
           type="button"
           className="workspace-session-toggle"
+          ref={sessionToggleRef}
           aria-label="打开会话列表"
           aria-expanded={sessionDrawerOpen}
           onClick={() => setSessionDrawerOpen((open) => !open)}
@@ -92,6 +95,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <button
           type="button"
           className="workspace-inspector-toggle"
+          ref={inspectorToggleRef}
           aria-label="打开检查器"
           aria-expanded={inspectorDrawerOpen}
           onClick={() => {
