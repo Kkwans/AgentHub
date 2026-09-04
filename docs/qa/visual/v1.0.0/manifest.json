@@ -47,6 +47,7 @@
     "../../../qa/release/v1.0.0/10-rc-b1eea12-workbench-e2e.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-performance.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-live.json",
+    "../../../qa/release/v1.0.0/10-rc-b1eea12-scale-fixture-gap.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-agent-visual-review.md",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
@@ -60,6 +61,7 @@
     "exact seven-viewport real production visual matrix and geometry audit",
     "state-specific geometry measurements: table-column-alignment, state-frame-shift, composer-readable-column, drawer-width",
     "human visual score",
-    "current candidate Home LCP performance gate (two isolated runs exceeded 2s under NAS resource pressure)"
+    "current candidate Home LCP performance gate (two isolated runs exceeded 2s under NAS resource pressure)",
+    "approved-plan scale fixture coverage (8 STANDARD + 20 TEST projects, 50 sessions, 100 prompts, 500 messages and 1000 tool events)"
   ]
 }

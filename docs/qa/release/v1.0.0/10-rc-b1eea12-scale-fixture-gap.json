@@ -1,0 +1,39 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "Current-candidate approved-plan scale-fixture coverage audit",
+  "sourceCommit": "ce2fa836e5821edbb8a9c75b0c6e90c0cc5f8969",
+  "runtimeCodeCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "status": "UNVERIFIED",
+  "complete": true,
+  "approvedFixture": {
+    "standardProjects": 8,
+    "testProjects": 20,
+    "sessions": 50,
+    "gitEntries": 200,
+    "prompts": 100,
+    "promptVersions": 20,
+    "promptBindings": 15,
+    "toolEvents": 1000,
+    "messages": 500
+  },
+  "observedCoverage": {
+    "realWorkbench": "Per test one disposable Project/Agent/Session and one Git fixture",
+    "realLive": "Per suite disposable repositories and sessions; no approved-plan scale dataset",
+    "performance": "200 Git entries and 500 Session records are generated for in-memory transform measurements only",
+    "persistedPromptsMessagesEvents": "No current release report proves 100 persisted Prompts, 20 Versions, 15 Bindings, 1000 Tool Events and 500 Messages together"
+  },
+  "missing": [
+    "8 STANDARD + 20 TEST persisted projects",
+    "50 persisted sessions in one fixture",
+    "100 persisted prompts with 20 versions and 15 bindings",
+    "500 persisted messages and 1000 tool events",
+    "End-to-end UI behavior and performance against the complete scale fixture"
+  ],
+  "evidence": [
+    "tests/e2e-real/baseline-support.ts",
+    "tests/e2e-real/v1-performance.spec.ts",
+    "docs/qa/release/v1.0.0/approved-plan.md"
+  ],
+  "productionContainerTouched": false,
+  "notes": "This is a coverage gap record, not a product failure claim. It remains a release gate until a disposable complete fixture and its browser/API evidence are added."
+}
