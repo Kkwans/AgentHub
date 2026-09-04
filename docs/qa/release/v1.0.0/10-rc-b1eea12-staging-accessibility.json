@@ -1,0 +1,43 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging container real Chromium axe scan",
+  "sourceCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.b1eea12-nas",
+    "id": "sha256:29ce32786f4098d2bcb681539ff1e7041170e41c358c2fd046267f25b29363e7",
+    "architecture": "arm64"
+  },
+  "container": {
+    "name": "agenthub-rc-b1eea12-visual",
+    "origin": "http://127.0.0.1:3214",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "matrix": {
+    "routes": 11,
+    "pages": 154,
+    "viewports": [
+      "1920x1080",
+      "1600x1000",
+      "1440x900",
+      "1280x800",
+      "1024x768",
+      "768x1024",
+      "390x844"
+    ],
+    "themes": ["light", "dark"],
+    "complete": true,
+    "seriousCriticalViolations": 0,
+    "incompleteChecks": 198,
+    "errors": 0,
+    "sourceReport": ".tmp/rc-accessibility-b1eea12.json"
+  },
+  "command": "node /dev/shm/agenthub-staging-a11y-b1eea12-stable.cjs",
+  "observedAt": "2026-09-05T03:42:13+08:00",
+  "production": "not deployed; existing production container was not modified",
+  "scope": "staging axe evidence; incomplete axe checks are retained for review and do not include serious or critical violations"
+}

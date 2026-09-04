@@ -2,7 +2,7 @@
   "releaseVersion": "1.0.0",
   "complete": false,
   "status": "in_progress",
-  "sourceCommit": "1fdf5b316d8e4cdbe62528b7b088ba029fb9abe6",
+  "sourceCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
   "target": "NAS-local Playwright against the real deployed AgentHub target",
   "requiredViewports": [
     "1920x1080",
@@ -39,18 +39,20 @@
     "../../../qa/release/v1.0.0/10-rc-5958999-performance.json",
     "../../../qa/release/v1.0.0/10-rc-81e1d68-staging-runtime.json",
     "../../../qa/release/v1.0.0/10-rc-27d23cb-terminal-ui.json",
+    "../../../qa/release/v1.0.0/10-rc-b1eea12-staging-visual.json",
+    "../../../qa/release/v1.0.0/10-rc-b1eea12-staging-accessibility.json",
+    "../../../qa/release/v1.0.0/10-rc-b1eea12-keyboard-focus-zoom.json",
+    "../../../qa/release/v1.0.0/10-rc-b1eea12-terminal-ui.json",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
   ],
   "unverifiedGates": [
     "production target Agent/ACP read-only acceptance",
-    "PTY lifecycle and terminal input/resize/close (arm64 native binding unavailable)",
-    "keyboard-only full Workspace path",
-    "focus return after drawer/dialog",
-    "200% zoom interaction coverage",
+    "production target native PTY parity",
     "backup and upgrade rehearsal",
-    "exact 5958999 seven-viewport real deployed visual matrix and geometry audit",
+    "exact seven-viewport real production visual matrix and geometry audit",
+    "state-specific geometry measurements: table-column-alignment, state-frame-shift, composer-readable-column, drawer-width",
     "human visual score"
   ]
 }

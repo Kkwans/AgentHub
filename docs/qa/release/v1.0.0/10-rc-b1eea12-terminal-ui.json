@@ -1,0 +1,52 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging container real Chromium Terminal UI lifecycle and geometry validation",
+  "sourceCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.b1eea12-nas",
+    "id": "sha256:29ce32786f4098d2bcb681539ff1e7041170e41c358c2fd046267f25b29363e7",
+    "architecture": "arm64",
+    "base": "agenthub:0.8.0-nas.d09c575-nativebase"
+  },
+  "container": {
+    "name": "agenthub-rc-b1eea12-visual",
+    "origin": "http://127.0.0.1:3214",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "geometry": {
+    "desktop": {
+      "viewport": "1440x900",
+      "dock": { "x": 708, "y": 51, "width": 720, "height": 316 },
+      "fixed": true,
+      "noHorizontalOverflow": true
+    },
+    "mobile": {
+      "viewport": "390x844",
+      "dock": { "x": 12, "y": 51, "width": 366, "height": 316 },
+      "fixed": true,
+      "noHorizontalOverflow": true
+    }
+  },
+  "interaction": {
+    "inputOutput": true,
+    "viewportResize": true,
+    "close": true,
+    "requestKinds": ["input", "resize", "close"],
+    "httpStatusFailures": 0,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "desktopDock": { "x": 708, "y": 51, "width": 720, "height": 316 },
+    "resizedDock": { "x": 12, "y": 51, "width": 676, "height": 316 },
+    "resizedViewport": "700x800"
+  },
+  "command": "node /dev/shm/agenthub-ui-pty-interaction-b1eea12.cjs; node /dev/shm/agenthub-ui-pty-geometry-b1eea12.cjs",
+  "observedAt": "2026-09-05T03:42:13+08:00",
+  "production": "not deployed; existing production container was not modified",
+  "scope": "staging Terminal UI API lifecycle and layout evidence; production target native PTY parity and complete release geometry matrix remain separate gates"
+}
