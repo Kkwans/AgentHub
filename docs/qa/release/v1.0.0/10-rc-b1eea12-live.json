@@ -1,0 +1,31 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 current-candidate real Agent/ACP and execution live gate",
+  "sourceCommit": "0e12cc670ed6047eb75c748c476a5a784ac080d0",
+  "runtimeCodeCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "status": "PASS",
+  "complete": true,
+  "command": "AGENTHUB_E2E_LIVE=1 TMPDIR=/dev/shm corepack pnpm test:live",
+  "runner": "Vitest live config, serial execution on DH4300Plus aarch64",
+  "files": 4,
+  "tests": 10,
+  "passed": 10,
+  "failed": 0,
+  "durationMs": 397000,
+  "coverage": [
+    "Agent preflight, real Codex stream and cancel",
+    "Codex discovery/adoption, disconnect/resume and persisted close",
+    "Real ACP Approval, Diff, Commit and session lifecycle",
+    "Remote Node outbound Codex session",
+    "Worktree Task Runner review and merge commit"
+  ],
+  "environment": {
+    "server": "isolated loopback AgentHub servers",
+    "database": "disposable PGlite data directories",
+    "worktrees": "disposable Git directories",
+    "agent": "real local Codex ACP process and disposable remote Node",
+    "credentials": "existing auth reference via disposable CODEX_HOME symlink; no credential copied or persisted",
+    "productionContainerTouched": false
+  },
+  "notes": "This current-candidate isolated live gate does not claim acceptance against the deployed production container. Full-scale v1 fixture counts and production read-only Agent acceptance remain separate release gates."
+}
