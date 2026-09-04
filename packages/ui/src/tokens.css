@@ -72,7 +72,8 @@
   --ah-accent-blue: #4f7cff;
   --ah-accent-cyan: #33c4dc;
   --ah-success: #087a55;
-  --ah-warning: #b6690b;
+  /* Keep warning text readable on both the warning-soft and white surfaces. */
+  --ah-warning: #8c4f00;
   --ah-danger: #c83b48;
   --ah-info: #2f74d9;
   --ah-info-soft: #eaf2ff;
