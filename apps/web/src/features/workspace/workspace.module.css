@@ -255,6 +255,7 @@
 }
 
 .panels {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
@@ -656,8 +657,8 @@
   .workspace :global(.session-rail-panel.mobile-open),
   .workspace :global(.inspector-panel.mobile-open),
   .workspace :global(.conversation-panel) {
-    inset-block-start: 99px;
-    height: calc(100% - 99px);
+    inset-block-start: 0;
+    height: 100%;
   }
 
   .workspace :global(.workspace-drawer-scrim) {
