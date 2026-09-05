@@ -69,7 +69,7 @@
     "old-image compatibility read and v0.9 data upgrade (no v0.9 image/tag; live-copy snapshot aborted)",
     "exact seven-viewport real production visual matrix and geometry audit",
     "state-specific geometry measurements: table-column-alignment, state-frame-shift, composer-readable-column, drawer-width",
-    "human visual score",
+    "human visual score for production target (candidate staging proxy recorded; production remains unverified)",
     "approved-plan scale fixture coverage (data/API and selected seven-viewport smoke pass; complete persisted-scale performance and all-state UI remain unverified)"
   ]
 }
