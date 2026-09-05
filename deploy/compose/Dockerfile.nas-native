@@ -48,6 +48,22 @@ COPY --from=node-pty-builder /tmp/node-pty/typings /opt/agenthub/node_modules/.p
 COPY --from=node-pty-builder /tmp/node-pty/build/Release/pty.node /opt/agenthub/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/build/Release/pty.node
 COPY apps/server/dist /opt/agenthub/apps/server/dist
 COPY apps/web/dist /opt/agenthub/apps/web/dist
+# The native-PTY fallback starts from an older runtime image. Refresh every
+# workspace package that the server resolves through pnpm symlinks; copying
+# only the app bundles leaves @agenthub/shared (and its reported version) stale.
+COPY apps/server/package.json /opt/agenthub/apps/server/package.json
+COPY packages/adapter-acp/package.json /opt/agenthub/packages/adapter-acp/package.json
+COPY packages/adapter-acp/dist /opt/agenthub/packages/adapter-acp/dist
+COPY packages/adapter-openclaw/package.json /opt/agenthub/packages/adapter-openclaw/package.json
+COPY packages/adapter-openclaw/dist /opt/agenthub/packages/adapter-openclaw/dist
+COPY packages/agent-core/package.json /opt/agenthub/packages/agent-core/package.json
+COPY packages/agent-core/dist /opt/agenthub/packages/agent-core/dist
+COPY packages/db/package.json /opt/agenthub/packages/db/package.json
+COPY packages/db/dist /opt/agenthub/packages/db/dist
+COPY packages/shared/package.json /opt/agenthub/packages/shared/package.json
+COPY packages/shared/dist /opt/agenthub/packages/shared/dist
+COPY packages/ui/package.json /opt/agenthub/packages/ui/package.json
+COPY packages/ui/dist /opt/agenthub/packages/ui/dist
 
 RUN cd /opt/agenthub/apps/server \
     && node -e "const p=require('node-pty'); if (typeof p.spawn !== 'function') process.exit(1)"
