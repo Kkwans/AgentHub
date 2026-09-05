@@ -30,6 +30,16 @@
   ],
   "complete": true,
   "status": "PASS",
+  "candidateContainerChecks": {
+    "origin": "http://127.0.0.1:3216",
+    "sessionId": "cdf979e8-8a75-4c19-b08d-8c4dc2c02c2e",
+    "tokenLoginHomeSettings": "PASS",
+    "workspaceApprovalDiffGitCommit": "PASS",
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "sourceReport": "/dev/shm/agenthub-candidate-workbench-a383ccf.out"
+  },
   "productionContainerTouched": false,
   "notes": "测试在当前源码构建后执行；候选镜像另以 154 页视觉、Axe、键盘和 Terminal 证据核验。首次组合运行的资源压力超时不影响隔离复跑结果。"
 }
