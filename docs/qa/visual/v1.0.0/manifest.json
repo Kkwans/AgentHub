@@ -70,6 +70,6 @@
     "exact seven-viewport real production visual matrix and geometry audit",
     "state-specific geometry measurements: table-column-alignment, state-frame-shift, composer-readable-column, drawer-width",
     "human visual score",
-    "approved-plan scale fixture coverage (8 STANDARD + 20 TEST projects, 50 sessions, 100 prompts, 500 messages and 1000 tool events)"
+    "approved-plan scale fixture coverage (data/API and selected seven-viewport smoke pass; complete persisted-scale performance and all-state UI remain unverified)"
   ]
 }
