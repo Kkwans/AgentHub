@@ -48,6 +48,7 @@ COPY --from=node-pty-builder /tmp/node-pty/typings /opt/agenthub/node_modules/.p
 COPY --from=node-pty-builder /tmp/node-pty/build/Release/pty.node /opt/agenthub/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/build/Release/pty.node
 COPY apps/server/dist /opt/agenthub/apps/server/dist
 COPY apps/web/dist /opt/agenthub/apps/web/dist
+COPY package.json /opt/agenthub/package.json
 # The native-PTY fallback starts from an older runtime image. Refresh every
 # workspace package that the server resolves through pnpm symlinks; copying
 # only the app bundles leaves @agenthub/shared (and its reported version) stale.
