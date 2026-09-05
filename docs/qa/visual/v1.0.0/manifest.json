@@ -57,6 +57,7 @@
     "../../../qa/release/v1.0.0/10-rc-a383ccf-performance.json",
     "../../../qa/release/v1.0.0/10-rc-a383ccf-scale-fixture.json",
     "../../../qa/release/v1.0.0/10-rc-a383ccf-production-readonly.json",
+    "../../../qa/release/v1.0.0/10-rc-a383ccf-agent-visual-review.md",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
