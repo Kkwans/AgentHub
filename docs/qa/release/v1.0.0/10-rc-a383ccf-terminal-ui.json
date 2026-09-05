@@ -1,0 +1,53 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging candidate real Chromium Terminal UI lifecycle and geometry validation",
+  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.a383ccf-nas",
+    "id": "sha256:0f71f0a632af475ddc6ec2f1e91d601a68c19a25873788b8d5fae3ff26ae05e9",
+    "architecture": "arm64",
+    "base": "agenthub:0.8.0-nas.d09c575-nativebase"
+  },
+  "container": {
+    "name": "agenthub-rc-a383ccf-visual",
+    "origin": "http://127.0.0.1:3216",
+    "route": "/workspace/cdf979e8-8a75-4c19-b08d-8c4dc2c02c2e",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "geometry": {
+    "desktop": {
+      "viewport": "1440x900",
+      "dock": { "x": 708, "y": 51, "width": 720, "height": 316 },
+      "fixed": true,
+      "noHorizontalOverflow": true
+    },
+    "mobile": {
+      "viewport": "390x844",
+      "dock": { "x": 12, "y": 51, "width": 366, "height": 316 },
+      "fixed": true,
+      "noHorizontalOverflow": true
+    }
+  },
+  "interaction": {
+    "inputOutput": true,
+    "viewportResize": true,
+    "close": true,
+    "requestKinds": ["input", "resize", "close"],
+    "httpStatusFailures": 0,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "desktopDock": { "x": 708, "y": 51, "width": 720, "height": 316 },
+    "resizedDock": { "x": 12, "y": 51, "width": 676, "height": 316 },
+    "resizedViewport": "700x800"
+  },
+  "command": "TMPDIR=/dev/shm node /dev/shm/agenthub-ui-pty-interaction-a383ccf.cjs; TMPDIR=/dev/shm node /dev/shm/agenthub-ui-pty-geometry-a383ccf.cjs",
+  "observedAt": "2026-09-05T10:57:47+08:00",
+  "production": "not deployed; existing production container was not modified",
+  "scope": "candidate staging Terminal UI API lifecycle and layout evidence; production target native PTY parity remains separate"
+}

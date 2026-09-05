@@ -1,0 +1,60 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging candidate real Chromium visual and geometry validation",
+  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.a383ccf-nas",
+    "id": "sha256:0f71f0a632af475ddc6ec2f1e91d601a68c19a25873788b8d5fae3ff26ae05e9",
+    "architecture": "arm64",
+    "base": "agenthub:0.8.0-nas.d09c575-nativebase"
+  },
+  "container": {
+    "name": "agenthub-rc-a383ccf-visual",
+    "origin": "http://127.0.0.1:3216",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "matrix": {
+    "routes": 11,
+    "pages": 154,
+    "viewports": [
+      "1920x1080",
+      "1600x1000",
+      "1440x900",
+      "1280x800",
+      "1024x768",
+      "768x1024",
+      "390x844"
+    ],
+    "themes": ["light", "dark"],
+    "complete": true,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "horizontalOverflow": 0,
+    "unnamedButtons": 0,
+    "hiddenFocus": 0,
+    "sourceReport": ".tmp/rc-visual-a383ccf-r2/audit.json"
+  },
+  "geometry": {
+    "snapshotCount": 154,
+    "passed": true,
+    "releaseReady": false,
+    "violations": [],
+    "unmeasuredRules": [
+      "table-column-alignment",
+      "state-frame-shift",
+      "composer-readable-column",
+      "drawer-width"
+    ],
+    "sourceReport": ".tmp/rc-visual-a383ccf-r2/geometry.json"
+  },
+  "command": "TMPDIR=/dev/shm AGENTHUB_BASE_URL=http://127.0.0.1:3216 AGENTHUB_VISUAL_SCOPE=baseline AGENTHUB_VISUAL_OUTPUT=.tmp/rc-visual-a383ccf-r2 AGENTHUB_DEPLOYED_REVISION=a383ccfd191d163d1672656f103ef20b27b3c391 corepack pnpm exec node scripts/qa/real-deployment-visual.cjs; TMPDIR=/dev/shm corepack pnpm qa:geometry .tmp/rc-visual-a383ccf-r2/audit.json .tmp/rc-visual-a383ccf-r2/geometry.json",
+  "observedAt": "2026-09-05T10:57:47+08:00",
+  "production": "not deployed; existing production container was not modified",
+  "scope": "candidate staging baseline; exact production matrix, state-specific geometry and human visual score remain separate release gates"
+}

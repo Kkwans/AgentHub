@@ -1,0 +1,76 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 current candidate isolated real-server performance gate",
+  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
+  "candidateImage": {
+    "tag": "agenthub:1.0.0-rc.a383ccf-nas",
+    "id": "sha256:0f71f0a632af475ddc6ec2f1e91d601a68c19a25873788b8d5fae3ff26ae05e9",
+    "architecture": "arm64"
+  },
+  "runner": "NAS-local Playwright Chromium against isolated real AgentHub servers",
+  "dataset": {
+    "gitEntries": 200,
+    "sessionRecords": 500
+  },
+  "budgets": {
+    "homeLcpMs": 2000,
+    "routeVisibleMs": 250,
+    "inputResponseMs": 100,
+    "gitTreeBuildMs": 50,
+    "sessionFilterMs": 50,
+    "minFps": 40
+  },
+  "finalAttempts": [
+    {
+      "status": "PASS",
+      "metrics": {
+        "homeLcpMs": 1556,
+        "routeVisibleMs": 190.3,
+        "inputResponseMs": 15,
+        "gitTreeBuildMs": 4.9,
+        "sessionFilterMs": 0.49,
+        "minFps": 58
+      },
+      "sourceReport": "/dev/shm/agenthub-performance-bootstrap48.json",
+      "observedAt": "2026-09-05T10:57:47+08:00"
+    },
+    {
+      "status": "PASS",
+      "metrics": {
+        "homeLcpMs": 1316,
+        "routeVisibleMs": 221,
+        "inputResponseMs": 3,
+        "gitTreeBuildMs": 14.67,
+        "sessionFilterMs": 0.39,
+        "minFps": 58
+      },
+      "sourceReport": "/dev/shm/agenthub-performance-bootstrap48-rerun.json",
+      "observedAt": "2026-09-05T10:57:47+08:00"
+    }
+  ],
+  "exploratoryAttempts": [
+    {
+      "status": "FAILED",
+      "metrics": {
+        "homeLcpMs": 2256,
+        "routeVisibleMs": 225.2,
+        "inputResponseMs": 17.7,
+        "gitTreeBuildMs": 169.72,
+        "sessionFilterMs": 0.45,
+        "minFps": 58
+      },
+      "sourceReport": "/dev/shm/agenthub-performance-preload-data-rerun.json",
+      "notes": "未采用启动层字号调整的探索性运行；失败项保留，不能作为通过证据。"
+    }
+  ],
+  "status": "PASS",
+  "complete": true,
+  "failedMetrics": [],
+  "commands": [
+    "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/volume2/Project/AgentHub/.tmp/qa-real-bootstrap48 AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_PERFORMANCE_OUTPUT=/dev/shm/agenthub-performance-bootstrap48.json corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-performance.spec.ts --workers=1",
+    "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/volume2/Project/AgentHub/.tmp/qa-real-bootstrap48-rerun AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome AGENTHUB_PERFORMANCE_OUTPUT=/dev/shm/agenthub-performance-bootstrap48-rerun.json corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/v1-performance.spec.ts --workers=1"
+  ],
+  "diagnosis": "认证与首页数据并行预加载，并将启动层标题设置为可见首屏候选；两次独立新 fixture 均在预算内。探索性失败运行保留为历史记录，不豁免门禁。",
+  "productionContainerTouched": false,
+  "notes": "性能测试为当前源码的 isolated-real-server 证据；候选镜像以同一源码 SHA 构建并完成 staging 视觉/交互验证，生产未部署。"
+}

@@ -1,0 +1,35 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 candidate-source isolated real-server Workbench browser E2E",
+  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.a383ccf-nas",
+    "id": "sha256:0f71f0a632af475ddc6ec2f1e91d601a68c19a25873788b8d5fae3ff26ae05e9",
+    "architecture": "arm64"
+  },
+  "runner": "NAS-local Playwright Chromium against isolated real AgentHub servers",
+  "results": [
+    {
+      "authMode": "token",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "status": "PASS",
+      "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/volume2/Project/AgentHub/.tmp/qa-workbench-preload-token AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/workbench.spec.ts --grep 'token 登录' --workers=1 --timeout=300000",
+      "notes": "Token 登录、Home 首屏与设置分区导航通过。"
+    },
+    {
+      "authMode": "local_trusted",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "status": "PASS",
+      "command": "TMPDIR=/dev/shm AGENTHUB_E2E_REAL_TMPDIR=/volume2/Project/AgentHub/.tmp/qa-workbench-preload-local AGENTHUB_CHROMIUM_PATH=/home/Kkwans/.cache/ms-playwright/chromium-1234/chrome-linux/chrome corepack pnpm exec playwright test --config=playwright.real.config.ts tests/e2e-real/workbench.spec.ts --grep 'local_trusted' --workers=1",
+      "notes": "Create Project/preflight、真实 Project/Task/Session 页面与 Workspace ACP Approval/Diff/Git commit 全部通过。"
+    }
+  ],
+  "complete": true,
+  "status": "PASS",
+  "productionContainerTouched": false,
+  "notes": "测试在当前源码构建后执行；候选镜像另以 154 页视觉、Axe、键盘和 Terminal 证据核验。首次组合运行的资源压力超时不影响隔离复跑结果。"
+}

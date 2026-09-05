@@ -1,0 +1,43 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging candidate keyboard, focus-return and 200% equivalent zoom gate",
+  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.a383ccf-nas",
+    "id": "sha256:0f71f0a632af475ddc6ec2f1e91d601a68c19a25873788b8d5fae3ff26ae05e9",
+    "architecture": "arm64"
+  },
+  "container": {
+    "name": "agenthub-rc-a383ccf-visual",
+    "origin": "http://127.0.0.1:3216",
+    "route": "/workspace/cdf979e8-8a75-4c19-b08d-8c4dc2c02c2e",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "checks": {
+    "count": 10,
+    "passed": true,
+    "keyboardReachesWorkspaceControls": true,
+    "inspectorOpenFocusesClose": true,
+    "inspectorCloseRestoresFocus": true,
+    "sessionOpenFocusesClose": true,
+    "sessionFocusTrapStartsInsideDrawer": true,
+    "sessionCloseRestoresFocus": true,
+    "390NoHorizontalOverflow": true,
+    "200PercentEquivalentViewport": "640x400",
+    "200PercentEquivalentNoHorizontalOverflow": true,
+    "200PercentEquivalentInspectorOpenClose": true,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "blockedWrites": 0
+  },
+  "command": "TMPDIR=/dev/shm node /dev/shm/rc-a383ccf-keyboard.cjs",
+  "observedAt": "2026-09-05T10:57:47+08:00",
+  "production": "not deployed; existing production container was not modified",
+  "scope": "candidate staging keyboard and focus evidence; the 200% check uses a 640x400 CSS viewport equivalent to 1280 CSS pixels at 200% zoom"
+}

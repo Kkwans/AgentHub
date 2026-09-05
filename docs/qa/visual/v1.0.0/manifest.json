@@ -2,7 +2,7 @@
   "releaseVersion": "1.0.0",
   "complete": false,
   "status": "in_progress",
-  "sourceCommit": "b1eea1285da1830c96e46375e577bcb5e7a736f8",
+  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
   "target": "NAS-local Playwright against the real deployed AgentHub target",
   "requiredViewports": [
     "1920x1080",
@@ -49,6 +49,12 @@
     "../../../qa/release/v1.0.0/10-rc-b1eea12-live.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-scale-fixture-gap.json",
     "../../../qa/release/v1.0.0/10-rc-b1eea12-agent-visual-review.md",
+    "../../../qa/release/v1.0.0/10-rc-a383ccf-staging-visual.json",
+    "../../../qa/release/v1.0.0/10-rc-a383ccf-staging-accessibility.json",
+    "../../../qa/release/v1.0.0/10-rc-a383ccf-keyboard-focus-zoom.json",
+    "../../../qa/release/v1.0.0/10-rc-a383ccf-terminal-ui.json",
+    "../../../qa/release/v1.0.0/10-rc-a383ccf-workbench-e2e.json",
+    "../../../qa/release/v1.0.0/10-rc-a383ccf-performance.json",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
     "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
@@ -61,7 +67,6 @@
     "exact seven-viewport real production visual matrix and geometry audit",
     "state-specific geometry measurements: table-column-alignment, state-frame-shift, composer-readable-column, drawer-width",
     "human visual score",
-    "current candidate Home LCP performance gate (two isolated runs exceeded 2s under NAS resource pressure)",
     "approved-plan scale fixture coverage (8 STANDARD + 20 TEST projects, 50 sessions, 100 prompts, 500 messages and 1000 tool events)"
   ]
 }
