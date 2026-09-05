@@ -1,0 +1,117 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 candidate isolated complete approved-plan scale fixture",
+  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.a383ccf-nas",
+    "id": "sha256:0f71f0a632af475ddc6ec2f1e91d601a68c19a25873788b8d5fae3ff26ae05e9",
+    "architecture": "arm64"
+  },
+  "target": {
+    "origin": "http://127.0.0.1:3217",
+    "runtime": "isolated host-process server using the candidate source and built web dist",
+    "root": "/volume2/Project/AgentHub/.tmp/rc-scale-a383ccf",
+    "authMode": "local_trusted",
+    "productionContainerTouched": false
+  },
+  "health": {
+    "status": "ok",
+    "version": "1.0.0",
+    "database": "pglite",
+    "web": true
+  },
+  "fixture": {
+    "projects": {
+      "total": 28,
+      "standard": 8,
+      "test": 20
+    },
+    "sessions": {
+      "total": 50,
+      "statusCounts": {
+        "CLOSED": 30,
+        "FAILED": 5,
+        "WAITING_APPROVAL": 2,
+        "RUNNING": 2,
+        "READY": 11
+      }
+    },
+    "prompts": {
+      "total": 100,
+      "versions": 100,
+      "bindings": 15
+    },
+    "messages": 504,
+    "toolEvents": 1095,
+    "runs": 58,
+    "minimumsMet": true
+  },
+  "git": {
+    "project": "STANDARD Scale Project 01",
+    "indexedTrackedEntries": 200,
+    "workingTreeFileEntries": 143,
+    "statusEntries": 104,
+    "clean": false,
+    "branch": "main",
+    "headSha": "9e1fa11319df051958ec14012de368d593d1c64b",
+    "statusKinds": {
+      "modified": 50,
+      "added": 1,
+      "deleted": 1,
+      "renamed": 1,
+      "untracked": 51,
+      "binaryFixture": "binary-fixture.bin (5 bytes, untracked)"
+    },
+    "stagedDiffKinds": ["added", "deleted", "renamed"],
+    "readOnlyApiVerified": true
+  },
+  "browserSmoke": {
+    "sourceReport": ".tmp/rc-scale-a383ccf/scale-visual-smoke.json",
+    "routes": [
+      "/home",
+      "/projects",
+      "/agents/agents",
+      "/prompts",
+      "/settings/appearance",
+      "/projects/:gitProjectId/overview",
+      "/projects/:gitProjectId/sessions",
+      "/workspace/:closedGitSessionId"
+    ],
+    "pages": 112,
+    "viewports": [
+      "1920x1080",
+      "1600x1000",
+      "1440x900",
+      "1280x800",
+      "1024x768",
+      "768x1024",
+      "390x844"
+    ],
+    "themes": ["light", "dark"],
+    "complete": true,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "blockedWrites": 0,
+    "horizontalOverflowPages": 0,
+    "maxPageDurationMs": 2619
+  },
+  "performance": {
+    "status": "UNVERIFIED",
+    "reason": "本次规模浏览器 smoke 验证渲染稳定性与错误/溢出；尚未在完整持久化 fixture 上执行独立性能预算门禁。"
+  },
+  "status": "PARTIAL",
+  "complete": false,
+  "commands": [
+    "TMPDIR=/dev/shm NODE_OPTIONS=--max-old-space-size=2048 node /dev/shm/agenthub-scale-visual-a383ccf.cjs",
+    "GET /api/v1/health, /api/v1/projects, /api/v1/sessions, /api/v1/prompts, /api/v1/prompt-bindings and per-session messages/events/runs",
+    "GET /api/v1/projects/:id/git/status, git/diff, git/commits, git/branches and files"
+  ],
+  "observedAt": "2026-09-05T11:57:39+08:00",
+  "notes": [
+    "规模数据通过一次性确定性 PGlite seed 写入隔离根目录；浏览器仅使用 GET/HEAD/OPTIONS 读请求。",
+    "为使 Git 门禁显示当前 M/A/D/R/U/binary，额外变更仅发生在隔离 project-01；没有写入生产数据或主仓库。",
+    "local_trusted 非 loopback 容器尝试因 INSECURE_NON_LOOPBACK_BIND 被应用拒绝，重复容器启动还遇到 PGlite 锁；最终以同一候选源码的隔离 NAS 主机进程验证，均属于基础设施尝试。",
+    "该证据覆盖完整规模数据、API 计数和选定路由的双主题七视口 smoke；完整持久化规模性能、所有状态路由、生产目标验收及全局 release gate 仍保持未验证。"
+  ]
+}
