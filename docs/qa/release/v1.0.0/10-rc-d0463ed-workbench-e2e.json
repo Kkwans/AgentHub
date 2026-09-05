@@ -1,0 +1,28 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 candidate-source isolated real-server Workbench browser E2E",
+  "sourceCommit": "d0463ed1bc9c42d1875933b10c8fcb6a3d34b157",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.d0463ed-nas",
+    "id": "sha256:1c5f1496d58a640e9098dc0824cb80ad3e43e3652edab8dbde66d5dcc72b6209",
+    "architecture": "arm64"
+  },
+  "runner": "NAS-local Playwright Chromium against the isolated real AgentHub server",
+  "container": {
+    "name": "agenthub-rc-d0463ed-visual-v4b",
+    "origin": "http://127.0.0.1:3222",
+    "sessionId": "6a10464c-73d8-4d7e-be77-e963931971be"
+  },
+  "checks": {
+    "workspace": true,
+    "approval": true,
+    "agentMessage": true,
+    "diff": true,
+    "gitCommit": true,
+    "errors": [],
+    "status": "PASS"
+  },
+  "productionContainerTouched": false,
+  "observedAt": "2026-09-05T16:04:41+08:00",
+  "scope": "candidate Workbench flow only; the Git commit was made in a disposable project and production data was not written"
+}

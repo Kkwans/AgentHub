@@ -1,0 +1,37 @@
+{
+  "releaseVersion": "1.0.0",
+  "schema": "agenthub.state-geometry.v1",
+  "source": "ARM64 isolated persisted scale fixture using the current web dist",
+  "sourceCommit": "29435f5b2f4c0ad0bf944d5ede87e34de1d72057",
+  "packagingCommits": [
+    "d0463ed1bc9c42d1875933b10c8fcb6a3d34b157",
+    "d72da99572a34336ab169cff60b72b3edf0de48c"
+  ],
+  "target": {
+    "origin": "http://127.0.0.1:3217",
+    "runtime": "isolated NAS host-process server using the same web dist as the candidate",
+    "isolationRoot": "/volume2/Project/AgentHub/.tmp/rc-scale-a383ccf",
+    "productionContainerTouched": false
+  },
+  "dataset": {"projects": 28, "sessions": 50},
+  "viewports": ["1440x900", "1024x768", "768x1024", "390x844"],
+  "themes": ["light", "dark"],
+  "states": ["READY", "RUNNING", "WAITING_APPROVAL", "FAILED", "CLOSED"],
+  "pages": 40,
+  "stateComparisons": 8,
+  "drawerChecks": 8,
+  "complete": true,
+  "status": "PASS",
+  "maxStateFrameDelta": 0,
+  "violations": {
+    "tableColumnAlignment": [],
+    "metricTiles": [],
+    "stateFrameShift": [],
+    "composerReadableColumn": [],
+    "drawerWidth": []
+  },
+  "unmeasuredRules": ["table-column-alignment"],
+  "expectedReadConflicts": 40,
+  "observedAt": "2026-09-05T14:25:00+08:00",
+  "scope": "candidate web-source-equivalent state geometry; production state geometry and the table-column-alignment rule remain outside this evidence"
+}

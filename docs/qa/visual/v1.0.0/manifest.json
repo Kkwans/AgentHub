@@ -1,8 +1,8 @@
 {
   "releaseVersion": "1.0.0",
   "complete": false,
-  "status": "in_progress",
-  "sourceCommit": "a383ccfd191d163d1672656f103ef20b27b3c391",
+  "status": "deployed_pending_acceptance",
+  "sourceCommit": "d72da99572a34336ab169cff60b72b3edf0de48c",
   "target": "NAS-local Playwright against the real deployed AgentHub target",
   "requiredViewports": [
     "1920x1080",
@@ -60,16 +60,23 @@
     "../../../qa/release/v1.0.0/10-rc-a383ccf-agent-visual-review.md",
     "../../../qa/release/v1.0.0/10-rc-5c615a4-clean-install.json",
     "../../../qa/release/v1.0.0/10-rc-3ce2d83-existing-data-migration.json",
-    "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json"
+    "../../../qa/release/v1.0.0/10-rc-befb8ca-live.json",
+    "../../../qa/release/v1.0.0/10-rc-d0463ed-staging-visual.json",
+    "../../../qa/release/v1.0.0/10-rc-d0463ed-staging-accessibility.json",
+    "../../../qa/release/v1.0.0/10-rc-d0463ed-keyboard-focus-zoom.json",
+    "../../../qa/release/v1.0.0/10-rc-d0463ed-terminal-ui.json",
+    "../../../qa/release/v1.0.0/10-rc-d0463ed-workbench-e2e.json",
+    "../../../qa/release/v1.0.0/10-rc-d0463ed-state-geometry.json",
+    "../../../qa/release/v1.0.0/10-rc-d0463ed-scale-performance.json",
+    "../../../qa/release/v1.0.0/10-rc-d72da99-production-readonly.json"
   ],
   "unverifiedGates": [
-    "production target Agent/ACP read-only acceptance",
+    "production target Agent/ACP read-only acceptance with the owner's token",
     "production target native PTY parity",
-    "backup and upgrade rehearsal",
-    "old-image compatibility read and v0.9 data upgrade (no v0.9 image/tag; live-copy snapshot aborted)",
-    "exact seven-viewport real production visual matrix and geometry audit",
-    "state-specific geometry measurements: table-column-alignment, state-frame-shift, composer-readable-column, drawer-width",
-    "human visual score for production target (candidate staging proxy recorded; production remains unverified)",
-    "approved-plan scale fixture coverage (data/API and selected seven-viewport smoke pass; complete persisted-scale performance and all-state UI remain unverified)"
+    "exact seven-viewport real production visual and geometry matrix",
+    "production protected business-flow reads and human visual score",
+    "old-image compatibility, v0.9 data upgrade and upgrade rehearsal",
+    "production scale/performance under the approved fixture",
+    "table-column-alignment in state geometry"
   ]
 }

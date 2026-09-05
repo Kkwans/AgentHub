@@ -1,0 +1,82 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "Formal NAS deployment and post-deploy read-only smoke",
+  "sourceCommit": "d72da99572a34336ab169cff60b72b3edf0de48c",
+  "candidateSourceCommit": "d0463ed1bc9c42d1875933b10c8fcb6a3d34b157",
+  "target": {
+    "host": "DH4300Plus",
+    "architecture": "aarch64",
+    "origin": "http://192.168.5.110:3210",
+    "composeProject": "agenthub",
+    "composePath": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "service": "agenthub",
+    "container": "agenthub",
+    "imageTag": "agenthub:1.0.0-nas.d72da99",
+    "imageId": "sha256:a668dcfdfcb22ab9f78e43bedd7df92cf7da9d8ddda8c10b9df47395802e6cac",
+    "containerStatus": "running",
+    "containerHealth": "healthy",
+    "ociVersion": "1.0.0",
+    "ociRevision": "d72da99572a34336ab169cff60b72b3edf0de48c"
+  },
+  "deployment": {
+    "command": "docker compose --project-directory /volume2/DockerProject/agenthub -f /volume2/DockerProject/agenthub/docker-compose.yml up -d --no-deps --no-build agenthub",
+    "oldImageTag": "agenthub:0.8.0-nas.d09c575",
+    "oldImageId": "sha256:1fb03d1230c3630fa6f6d74f25e47c4f40b57faf73e696906e153b02df4223b7",
+    "rollbackDir": "/volume2/DockerProject/agenthub/backups/v1.0.0-20260905T081225Z",
+    "rollbackDataBackup": "central-data-worktrees.tgz",
+    "rollbackChecksums": "SHA256SUMS",
+    "unrelatedServicesRecreated": false
+  },
+  "health": {
+    "status": "ok",
+    "version": "1.0.0",
+    "database": "pglite",
+    "web": true
+  },
+  "auth": {
+    "mode": "token",
+    "setupRequired": false,
+    "authenticated": false,
+    "productionToken": "not read or persisted"
+  },
+  "staticRoutes": {
+    "/login": 200,
+    "/home": 200,
+    "/projects": 200,
+    "/agents/agents": 200,
+    "/settings/appearance": 200
+  },
+  "protectedReadOnlyChecks": {
+    "/api/v1/projects": 401,
+    "/api/v1/agents": 401,
+    "/api/v1/sessions": 401,
+    "/api/v1/prompts": 401,
+    "writes": "NOT ATTEMPTED"
+  },
+  "runtimePackageVersions": {
+    "/opt/agenthub/package.json": "1.0.0",
+    "apps/server": "1.0.0",
+    "packages/adapter-acp": "1.0.0",
+    "packages/adapter-openclaw": "1.0.0",
+    "packages/agent-core": "1.0.0",
+    "packages/db": "1.0.0",
+    "packages/shared": "1.0.0",
+    "packages/ui": "1.0.0"
+  },
+  "status": "DEPLOYED_PENDING_ACCEPTANCE",
+  "complete": false,
+  "unverifiedGates": [
+    "production target Agent/ACP read-only acceptance with the owner's token",
+    "production target native PTY parity",
+    "exact seven-viewport real production visual and geometry matrix",
+    "production protected business-flow reads and human visual score",
+    "old-image compatibility, v0.9 data upgrade and upgrade rehearsal",
+    "production scale/performance under the approved fixture",
+    "table-column-alignment in state geometry"
+  ],
+  "observedAt": "2026-09-05T16:21:00+08:00",
+  "notes": [
+    "Only the agenthub Compose service was recreated; existing mounts and the old image remain available for rollback.",
+    "The user explicitly deferred specialized production acceptance to perform it after deployment."
+  ]
+}

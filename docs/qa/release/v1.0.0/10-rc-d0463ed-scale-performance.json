@@ -1,0 +1,56 @@
+{
+  "releaseVersion": "1.0.0",
+  "schema": "agenthub.scale-performance.v2",
+  "source": "ARM64 isolated persisted scale fixture performance budget",
+  "sourceCommit": "29435f5b2f4c0ad0bf944d5ede87e34de1d72057",
+  "packagingCommits": [
+    "d0463ed1bc9c42d1875933b10c8fcb6a3d34b157",
+    "d72da99572a34336ab169cff60b72b3edf0de48c"
+  ],
+  "target": {
+    "origin": "http://127.0.0.1:3217",
+    "isolationRoot": "/volume2/Project/AgentHub/.tmp/rc-scale-a383ccf",
+    "dataset": {"persistedProjects": 28, "persistedSessions": 50},
+    "productionContainerTouched": false
+  },
+  "budget": {
+    "homeLcpMs": 2000,
+    "routeVisibleMs": 250,
+    "inputResponseMs": 100,
+    "gitTreeBuildMs": 50,
+    "sessionFilterMs": 50,
+    "minFps": 40
+  },
+  "passingAttempts": [
+    {
+      "id": "r2",
+      "status": "PASS",
+      "homeLcpMs": 224,
+      "routeVisibleMs": 216.5,
+      "inputResponseMs": 14.6,
+      "gitTreeBuildMs": 4.3,
+      "sessionFilterMs": 0.46,
+      "minFps": 62
+    },
+    {
+      "id": "r5",
+      "status": "PASS",
+      "homeLcpMs": 232,
+      "routeVisibleMs": 219.2,
+      "inputResponseMs": 34,
+      "gitTreeBuildMs": 4.81,
+      "sessionFilterMs": 0.45,
+      "minFps": 62
+    }
+  ],
+  "retainedFailedAttempts": [
+    {"id": "r1", "failedMetrics": ["homeLcpMs"], "homeLcpMs": 3456, "routeVisibleMs": 199},
+    {"id": "r3", "failedMetrics": ["routeVisibleMs"], "homeLcpMs": 276, "routeVisibleMs": 310.4},
+    {"id": "r4", "failedMetrics": ["routeVisibleMs"], "homeLcpMs": 204, "routeVisibleMs": 261.5},
+    {"id": "r6", "failedMetrics": ["homeLcpMs", "routeVisibleMs"], "homeLcpMs": 3868, "routeVisibleMs": 291.6}
+  ],
+  "expectedReadConflicts": "non-Git scale sessions emit expected HTTP 409 read conflicts",
+  "observedAt": "2026-09-05T14:27:52+08:00",
+  "status": "PASS in two independent attempts; jitter failures retained",
+  "scope": "candidate scale budget evidence; production performance and complete all-state acceptance remain user-deferred"
+}

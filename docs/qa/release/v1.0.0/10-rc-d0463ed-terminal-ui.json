@@ -1,0 +1,50 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging candidate real Chromium Terminal UI lifecycle and geometry validation",
+  "sourceCommit": "d0463ed1bc9c42d1875933b10c8fcb6a3d34b157",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.d0463ed-nas",
+    "id": "sha256:1c5f1496d58a640e9098dc0824cb80ad3e43e3652edab8dbde66d5dcc72b6209",
+    "architecture": "arm64"
+  },
+  "container": {
+    "name": "agenthub-rc-d0463ed-visual-v4b",
+    "origin": "http://127.0.0.1:3222",
+    "route": "/workspace/6a10464c-73d8-4d7e-be77-e963931971be",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "geometry": {
+    "desktop": {
+      "viewport": "1440x900",
+      "dock": {"x": 708, "y": 51, "width": 720, "height": 316},
+      "fixed": true,
+      "noHorizontalOverflow": true
+    },
+    "resized": {
+      "viewport": "700x800",
+      "dock": {"x": 12, "y": 51, "width": 676, "height": 316},
+      "fixed": true,
+      "noHorizontalOverflow": true
+    }
+  },
+  "interaction": {
+    "inputOutputVisible": true,
+    "terminalInputRequests": true,
+    "resizeAfterViewportChange": true,
+    "closeRequest": true,
+    "requestKinds": ["close", "input", "resize"],
+    "terminalResponseCount": 23,
+    "httpStatusFailures": 0,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0
+  },
+  "observedAt": "2026-09-05T16:03:57+08:00",
+  "production": "production was untouched during this staging run",
+  "scope": "candidate Terminal UI API lifecycle and layout evidence; production native PTY parity remains user-deferred"
+}

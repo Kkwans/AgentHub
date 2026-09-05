@@ -1,0 +1,63 @@
+{
+  "releaseVersion": "1.0.0",
+  "source": "ARM64 staging candidate real Chromium visual and baseline geometry validation",
+  "sourceCommit": "d0463ed1bc9c42d1875933b10c8fcb6a3d34b157",
+  "image": {
+    "tag": "agenthub:1.0.0-rc.d0463ed-nas",
+    "id": "sha256:1c5f1496d58a640e9098dc0824cb80ad3e43e3652edab8dbde66d5dcc72b6209",
+    "architecture": "arm64",
+    "os": "linux",
+    "versionLabel": "1.0.0",
+    "revisionLabel": "d0463ed"
+  },
+  "container": {
+    "name": "agenthub-rc-d0463ed-visual-v4b",
+    "origin": "http://127.0.0.1:3222",
+    "health": {
+      "status": "ok",
+      "version": "1.0.0",
+      "database": "pglite",
+      "web": true
+    }
+  },
+  "matrix": {
+    "reportSets": 14,
+    "routes": 11,
+    "pages": 154,
+    "viewports": [
+      "1920x1080",
+      "1600x1000",
+      "1440x900",
+      "1280x800",
+      "1024x768",
+      "768x1024",
+      "390x844"
+    ],
+    "themes": ["light", "dark"],
+    "complete": true,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "failedRequests": 0,
+    "horizontalOverflow": 0,
+    "unnamedButtons": 0,
+    "hiddenFocus": 0,
+    "sourceReportRoot": ".tmp/rc-visual-d0463ed-v4-*"
+  },
+  "geometry": {
+    "reportSets": 14,
+    "snapshotCount": 154,
+    "passed": true,
+    "releaseReady": false,
+    "violations": [],
+    "unmeasuredRules": [
+      "table-column-alignment",
+      "state-frame-shift",
+      "composer-readable-column",
+      "drawer-width"
+    ],
+    "sourceReportRoot": ".tmp/rc-visual-d0463ed-v4-*/geometry.json"
+  },
+  "observedAt": "2026-09-05T15:17:56+08:00",
+  "production": "production was untouched during this staging run; the formal service was deployed afterward",
+  "scope": "candidate staging baseline evidence; releaseReady remains false because the complete production geometry and human acceptance gates are separate"
+}
