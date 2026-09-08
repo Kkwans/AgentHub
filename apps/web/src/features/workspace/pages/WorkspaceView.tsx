@@ -369,17 +369,6 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           className="h-full min-h-0"
         />
       </div>
-      {(inspectorDrawerOpen || sessionDrawerOpen) && (
-        <button
-          type="button"
-          className="workspace-drawer-scrim"
-          aria-hidden="true"
-          tabIndex={-1}
-          onClick={() => {
-            closeMobileInspector();
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ export { PulseIcon as Activity } from '@phosphor-icons/react/Pulse';
 export { WarningIcon as AlertTriangle } from '@phosphor-icons/react/Warning';
 export { ArrowRightIcon as ArrowRight } from '@phosphor-icons/react/ArrowRight';
 export { BellIcon as Bell } from '@phosphor-icons/react/Bell';
+export { BrainIcon as Brain } from '@phosphor-icons/react/Brain';
 export { RobotIcon as Bot } from '@phosphor-icons/react/Robot';
 export { BracketsCurlyIcon as Braces } from '@phosphor-icons/react/BracketsCurly';
 export { CheckIcon as Check } from '@phosphor-icons/react/Check';

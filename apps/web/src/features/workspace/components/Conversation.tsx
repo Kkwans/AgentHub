@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   AhButton,
+  Brain,
   Bot,
   CheckCircle2,
   ChevronDown,
@@ -477,17 +478,17 @@ function ConversationTurnView({ turn, ...itemProps }: ConversationTurnViewProps)
   );
   return (
     <article
-      className="conversation-turn min-w-0 space-y-1.5 px-0.5 py-1 sm:space-y-2"
+      className="conversation-turn min-w-0 px-0.5 py-1 animate-[hci-entry_var(--anim-entry-fast)_var(--ease-out-expo)_both]"
       data-turn-id={turn.id}
     >
       {userEntries.map((item) => (
         <ConversationTimelineItemView key={item.id} item={item} {...itemProps} />
       ))}
       {assistantEntries.length > 0 && (
-        <section className="relative mx-3 mb-1 min-w-0 py-2 pl-3 before:absolute before:bottom-1 before:left-0 before:top-1 before:w-px before:rounded-full before:bg-[hsl(var(--primary))]/25 before:content-[''] before:animate-[hci-stripe-grow_var(--anim-entry)_var(--ease-out-expo)_both] sm:mx-5 sm:pl-4">
+        <section className="mx-4 mb-1 min-w-0 py-2 sm:mx-5">
           <header className="mb-2 flex items-center gap-1.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--primary))]/[0.08]">
-              <Bot className="h-3.5 w-3.5 text-[hsl(var(--primary))]/80" />
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[hsl(var(--primary))]/[0.08]">
+              <Bot className="h-3 w-3 text-[hsl(var(--primary))]/80" />
             </span>
             <span className="text-[12px] font-medium text-[hsl(var(--foreground-muted))]">
               Agent
@@ -559,7 +560,11 @@ function ConversationTimelineItemView({
     : '';
   return (
     <div
-      className={isUser ? 'group/msg flex justify-end px-3 py-1.5 sm:px-4' : 'min-w-0 px-0.5 py-1'}
+      className={
+        isUser
+          ? 'group/msg flex justify-end px-3 py-1.5 animate-[hci-entry_var(--anim-entry-fast)_var(--ease-out-expo)_both] sm:px-4'
+          : 'min-w-0 px-0.5 py-1'
+      }
       data-chat-entry
     >
       {isUser && timestamp ? (
@@ -570,7 +575,7 @@ function ConversationTimelineItemView({
       <article
         className={
           isUser
-            ? 'message user message-user max-w-[88%] rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-[hsl(var(--primary))]/[0.08] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/30 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)] sm:max-w-[78%]'
+            ? 'message user message-user min-w-0 max-w-[88%] sm:max-w-[78%]'
             : `message ${message.role.toLowerCase()} message-assistant min-w-0 text-[15px] leading-[1.72] tracking-[-0.008em] text-[hsl(var(--foreground))]`
         }
         data-streaming={item.streaming ? 'true' : undefined}
@@ -592,7 +597,9 @@ function ConversationTimelineItemView({
             </details>
           </div>
         ) : (
-          <div className="message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <div
+            className={`message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${isUser ? 'rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-gradient-to-br from-[hsl(var(--primary))]/[0.09] to-[hsl(var(--primary))]/[0.05] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/28 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)]' : ''}`}
+          >
             <RichMessage text={presentation.text} />
             {item.streaming && (
               <span
@@ -968,21 +975,31 @@ function ThoughtEventRow({
   running: boolean;
 }) {
   const duration = Math.max(0, Date.parse(thought.updatedAt) - Date.parse(thought.createdAt));
+  const label = running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`;
   return (
     <details
-      className={`thought-event-row tool-entry-motion tool-entry-card${running ? ' running tool-entry-card--active' : ''}`}
+      className={`thought-event-row tool-entry-motion my-1 overflow-hidden rounded-lg border border-violet-200/60 bg-gradient-to-r from-violet-500/[0.04] to-indigo-500/[0.02] dark:border-violet-500/20 dark:from-violet-500/[0.08] dark:to-indigo-500/[0.04]${running ? ' running tool-entry-card--active' : ''}`}
     >
       <summary
-        className="tool-entry-trigger tool-entry-trigger--interactive"
+        className="tool-entry-trigger tool-entry-trigger--interactive rounded-lg px-2.5 py-1.5"
         aria-label={running ? '正在思考，展开思考过程' : '展开思考过程'}
       >
-        <span className="thought-event-pulse tool-entry-icon" aria-hidden="true">
-          <i />
-          <i />
-          <i />
+        <span
+          className="thought-event-pulse tool-entry-icon flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-800/50 dark:to-indigo-800/40"
+          aria-hidden="true"
+        >
+          {running ? (
+            <>
+              <i />
+              <i />
+              <i />
+            </>
+          ) : (
+            <Brain className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+          )}
         </span>
-        <strong className="tool-entry-badge">
-          {running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`}
+        <strong className="tool-entry-badge text-violet-600/90 dark:text-violet-300/90">
+          {label}
         </strong>
         <ChevronRight
           className="thought-event-action tool-entry-chevron"
@@ -990,7 +1007,7 @@ function ThoughtEventRow({
           aria-hidden="true"
         />
       </summary>
-      <div className="thought-event-content tool-entry-detail message-markdown border-t border-[hsl(var(--border))]/35 px-3 py-2">
+      <div className="thought-event-content tool-entry-detail message-markdown border-t border-violet-200/50 bg-[hsl(var(--surface))]/60 px-3 py-2 dark:border-violet-500/15">
         <RichMessage text={thought.text || 'Agent 未提供可展示的思考内容。'} />
       </div>
     </details>

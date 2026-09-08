@@ -3680,10 +3680,22 @@ a:focus-visible {
 .workspace.workspace-page .message.user .message-body {
   padding: 0.625rem 0.875rem;
   color: hsl(var(--foreground));
-  background: hsl(var(--primary-soft));
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.055));
   border: 1px solid hsl(var(--primary) / 0.16);
   border-radius: 1rem 1rem 0.3rem 1rem;
   box-shadow: var(--shadow-sm);
+}
+
+/* PinHarness 的气泡只有一层 surface：外层负责定位，内层负责视觉。 */
+.workspace.workspace-page .message.user {
+  display: block;
+  width: fit-content;
+  max-width: min(620px, 76%);
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .workspace.workspace-page .session-list a.current {

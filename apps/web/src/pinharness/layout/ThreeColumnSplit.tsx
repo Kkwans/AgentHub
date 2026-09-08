@@ -28,8 +28,12 @@ function lsSet(key: string, value: string): void {
 }
 
 const SINGLE_PANEL_BREAKPOINT = 768;
-const WIDE_LAYOUT_BREAKPOINT = 1440;
-const MIN_MIDDLE_WIDTH = 640;
+// PinHarness keeps the three-column workbench once the viewport can hold the
+// 256px rail, 560px conversation and a compact inspector. Below this point the
+// conversation remains the primary surface and the auxiliary panels become a
+// switchable drawer.
+const WIDE_LAYOUT_BREAKPOINT = 1180;
+const MIN_MIDDLE_WIDTH = 560;
 const MAX_LEFT_WIDTH = 380;
 const MAX_RIGHT_WIDTH = 520;
 
@@ -455,14 +459,6 @@ export function ThreeColumnSplit({
     if (layoutMode === 'single' && (previousMode !== 'single' || defaultPanelChanged)) {
       setActiveCompactPanel(defaultCompactPanel);
       return;
-    }
-
-    if (
-      layoutMode === 'medium' &&
-      activeCompactPanel === 'middle' &&
-      controlledCompactPanel === undefined
-    ) {
-      setActiveCompactPanel('left');
     }
   }, [
     layoutMode,
