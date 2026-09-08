@@ -344,8 +344,10 @@ test('全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ page 
     await expect(page.getByRole('button', { name: '折叠侧边栏' })).toHaveCount(1);
     await page.getByRole('button', { name: '深色主题' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
+    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
+    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
   }
   await expectNoHorizontalOverflow(page);
 });
