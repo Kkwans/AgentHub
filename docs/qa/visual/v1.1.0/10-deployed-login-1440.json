@@ -1,0 +1,58 @@
+{
+  "capturedAt": "2026-09-08T15:06:13.541Z",
+  "target": "http://192.168.5.110:3210/",
+  "route": "/",
+  "authenticated": false,
+  "browser": "NAS-local Playwright Chromium (headless)",
+  "viewports": [
+    {
+      "name": "desktop-1440",
+      "width": 1440,
+      "height": 900,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "overflow": false,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    },
+    {
+      "name": "desktop-1024",
+      "width": 1024,
+      "height": 900,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "overflow": false,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    },
+    {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 900,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "overflow": false,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    },
+    {
+      "name": "mobile-390",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "overflow": false,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    }
+  ],
+  "bodySummary": "AgentHub 工程控制平面 / 安全登录 / 登录 AgentHub",
+  "consoleWarnings": [
+    "Origin-Agent-Cluster warning emitted by Chromium for the IP origin"
+  ],
+  "scope": "Unauthenticated static/login smoke only; this is not the authenticated Workspace acceptance matrix."
+}

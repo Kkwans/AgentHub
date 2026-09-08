@@ -1,8 +1,8 @@
 {
   "releaseVersion": "1.1.0",
-  "status": "implementation_pending_visual_acceptance",
+  "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "fdad2c08a5d33b7b1187919c4625c6cfe8797371",
+  "sourceCommit": "15baf3661ddba815ac42d27fdd92dbeee9bd6818",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -11,11 +11,41 @@
     "architecture": "arm64",
     "preserve": true
   },
-  "productionReadOnly": {
+  "preDeploymentReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.0.0",
     "health": "healthy",
     "deploymentChanged": false
+  },
+  "productionReadOnly": {
+    "endpoint": "http://192.168.5.110:3210",
+    "version": "1.1.0",
+    "health": "healthy",
+    "image": "agenthub:2026.9.8-v1",
+    "imageId": "sha256:873fefed290c0b28b36ea66da9491b335c31de7539a447726cd59d68ca7c0b47",
+    "checkedAt": "2026-09-08T14:58:45Z",
+    "deploymentChanged": true
+  },
+  "deployment": {
+    "status": "healthy",
+    "service": "agenthub",
+    "composeProject": "agenthub",
+    "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
+    "endpoint": "http://192.168.5.110:3210",
+    "image": "agenthub:2026.9.8-v1",
+    "imageId": "sha256:873fefed290c0b28b36ea66da9491b335c31de7539a447726cd59d68ca7c0b47",
+    "architecture": "arm64",
+    "revision": "15baf3661ddba815ac42d27fdd92dbeee9bd6818",
+    "created": "2026-09-08T14:51:52Z",
+    "deployedAt": "2026-09-08T14:58:45Z",
+    "healthHttpStatus": 200,
+    "healthVersion": "1.1.0",
+    "containerHealth": "healthy",
+    "composeConfig": "pass",
+    "dataVolumesChanged": false,
+    "otherServicesChanged": false,
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T145710Z-pre-v110/",
+    "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
     "source": "/volume2/Project/PinHarness/web",
@@ -55,6 +85,26 @@
       "status": "unverified",
       "mockFixture": "Latest Workspace 4/4 passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; full route matrix first pass 42/44 with two Settings locator timeouts under NAS load, then 2/2 isolated rerun passed; fixture is not production evidence",
       "independentReview": "P0=0, P1=0 on current source and mock matrix; touch intent P2 fixed in fdad2c0. Real deployment visual gate remains unverified. Top safe-area/device validation remains unverified.",
+      "realDeploymentSmoke": {
+        "status": "pass",
+        "route": "/",
+        "authenticated": false,
+        "viewports": [
+          "desktop-1440",
+          "desktop-1024",
+          "tablet-768",
+          "mobile-390"
+        ],
+        "httpStatus": 200,
+        "overflow": false,
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "requestFailures": 0,
+        "knownWarnings": [
+          "Origin-Agent-Cluster warning emitted by Chromium for the IP origin"
+        ],
+        "evidence": "docs/qa/visual/v1.1.0/10-deployed-login-1440.json"
+      },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
         "console/page/request errors",
@@ -66,7 +116,8 @@
       "status": "unverified",
       "evidence": [
         "pnpm qa:performance: UNVERIFIED (exit 2; requires a real NAS performance report)",
-        "production health/version/image read-only preflight captured; no service or data mutation"
+        "production pre-deploy health/version/image read-only preflight captured",
+        "production post-deploy health 200, version 1.1.0, image healthy, no data-volume or other-service change"
       ],
       "required": [
         "real Agent/ACP",
@@ -78,7 +129,8 @@
     }
   },
   "notes": [
-    "1.0.0 production remains the rollback point until all gates pass.",
-    "This manifest intentionally remains incomplete; build/health/static evidence does not substitute for visual or runtime acceptance."
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; 1.0.0 remains tagged and retained as the rollback point.",
+    "Pre-deploy Compose/.env/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T145710Z-pre-v110/.",
+    "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }

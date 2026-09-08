@@ -14,11 +14,18 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；候选镜像标签：`agenthub:2026.9.8-v1`；OCI `revision` 必须为最终已推送 commit SHA；
-- 当前候选源码提交：`fdad2c08a5d33b7b1187919c4625c6cfe8797371`（`main` 与 `origin/main` 已同步）；
+- 软件版本：`1.1.0`；候选镜像标签：`agenthub:2026.9.8-v1`；镜像为 Linux `arm64`，OCI `revision` 固定为 `15baf3661ddba815ac42d27fdd92dbeee9bd6818`；
+- 当前候选源码提交：`15baf3661ddba815ac42d27fdd92dbeee9bd6818`（构建时 `main` 与 `origin/main` 已同步）；镜像 ID 为 `sha256:873fefed290c0b28b36ea66da9491b335c31de7539a447726cd59d68ca7c0b47`；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
-- 生产只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；本轮未替换服务；
-- 发布只替换 `agenthub` service，不执行 `docker compose down`，不触碰 Project、PGlite/Postgres、worktrees、token 或其他容器。
+- 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
+- 2026-09-08 22:58:45（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
+- 部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T145710Z-pre-v110/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+
+## 本轮真实部署 smoke
+
+- NAS 本地 Playwright Chromium 已连接真实 `1.1.0` 地址，未登录首页在 1440、1024、768、390 四个视口均返回 HTTP 200、页面标题 `AgentHub`，横向溢出为 0，console error/page error/request failure 均为 0；记录见 [`docs/qa/visual/v1.1.0/10-deployed-login-1440.json`](qa/visual/v1.1.0/10-deployed-login-1440.json)。
+- 该 smoke 只证明真实静态登录入口可达，不等同于认证后的 Workspace、Agent/ACP、Terminal 或完整视觉验收；Chromium 记录了一个 IP origin 的 `Origin-Agent-Cluster` warning，未产生页面或请求错误。
 
 ## 代码级验证
 
@@ -34,4 +41,6 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 尚未宣称完成的门禁
 
-发布候选必须继续完成真实 NAS Playwright 四视口（1440/1024/768/390，light/dark）、console/page/request error、几何/横向溢出、真实 Agent/ACP、native PTY、备份恢复、性能和独立视觉复核。当前无 `AGENTHUB_BROWSER_TOKEN_FILE`，真实部署截图、性能报告和运行时能力仍为 `UNVERIFIED`；独立复核已在当前源码/mock 上确认 P0=0、P1=0，但不能替代真实部署视觉验收；Mock fixture 结果不能替代这些证据。对应证据应写入 `docs/qa/visual/v1.1.0/manifest.json`，在 `complete: true` 前不得把本版本视为完整验收通过，也不得替换生产服务。
+发布候选仍需完成真实 NAS Playwright 的认证后 Workspace 四视口（1440/1024/768/390，light/dark）、console/page/request error、几何/横向溢出、真实 Agent/ACP、native PTY、备份恢复、性能和独立视觉复核。当前无 `AGENTHUB_BROWSER_TOKEN_FILE`，上述认证流程、性能报告和运行时能力仍为 `UNVERIFIED`；独立复核已在当前源码/mock 上确认 P0=0、P1=0，但不能替代真实部署视觉验收；Mock fixture 和未登录 smoke 都不能替代这些证据。对应证据应写入 `docs/qa/visual/v1.1.0/manifest.json`，在 `complete: true` 前不得把本版本称为完整验收通过。
+
+- 本次生产替换是用户明确要求下的可回滚候选部署，不改变 `complete: false` 的验收结论；若后续门禁失败，使用上述备份恢复 1.0.0 Compose/`.env` 并只重建 `agenthub` service。
