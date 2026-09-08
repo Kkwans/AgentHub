@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "implementation_pending_visual_acceptance",
   "complete": false,
-  "sourceCommit": "444f817",
+  "sourceCommit": "5653772",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -31,11 +31,15 @@
         "pnpm format:check",
         "pnpm --filter @agenthub/web typecheck",
         "pnpm --filter @agenthub/web build",
+        "pnpm qa:css-budget",
+        "pnpm test (70 files, 295 passed, 10 skipped)",
+        "pnpm test:e2e --timeout=120000 (44 mock fixture tests passed)",
         "git diff --check"
       ]
     },
     "visual": {
       "status": "unverified",
+      "mockFixture": "44/44 tests passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; this is not production evidence",
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
         "console/page/request errors",
