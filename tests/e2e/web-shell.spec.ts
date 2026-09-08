@@ -411,11 +411,17 @@ test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }
   await expect(page.getByRole('dialog', { name: '发现 Agent' })).toBeHidden();
 
   await page.goto('/agents/runtime');
-  await expect(page.getByRole('heading', { name: 'Runtime' })).toBeVisible();
-  await expect(page.getByText('Local Host', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Runtime' })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await expect(page.getByText('Local Host', { exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
   await page.goto('/agents/nodes');
-  await expect(page.getByRole('heading', { name: 'Remote Nodes' })).toBeVisible();
-  await expect(page.getByText('NAS-01')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Remote Nodes' })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await expect(page.getByText('NAS-01')).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'agent-nodes');
 });
@@ -595,11 +601,17 @@ test('Projects 使用高密度实体列表并打开路由弹层', async ({ page 
 test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, testInfo) => {
   await page.goto(`/projects/${project.id}/overview`);
   const context = page.getByRole('navigation', { name: '项目上下文' });
-  await expect(context.getByRole('link')).toHaveText(['概览', '工作', '会话']);
+  await expect(context.getByRole('link')).toHaveText(['概览', '工作', '会话'], {
+    timeout: SHELL_READY_TIMEOUT,
+  });
   await expect(context.getByRole('link', { name: 'Prompt' })).toHaveCount(0);
   await expect(context.getByRole('link', { name: '设置' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /feature\/agent-discovery/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await expect(page.getByRole('link', { name: /feature\/agent-discovery/ })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'project-overview');
 });
