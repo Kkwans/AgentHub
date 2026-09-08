@@ -659,8 +659,8 @@
     top: 10px;
     right: 10px;
     display: inline-grid;
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
     place-items: center;
     color: var(--workspace-muted);
     background: var(--workspace-panel);
@@ -690,6 +690,10 @@
     opacity: 1;
     pointer-events: auto;
     transition: opacity var(--ah-motion-normal, 180ms) ease;
+  }
+
+  .workspace :global(.workspace-context-disclosure-summary) {
+    min-height: 44px;
   }
 }
 
