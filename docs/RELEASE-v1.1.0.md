@@ -47,6 +47,15 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 2026-09-09 02:14:28（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200`、容器 `running/healthy`，其他 14 个容器未变；即时回滚快照位于 `/volume2/Project/.agenthub/central/deployments/20260908T180958Z-pre-mobile-tabs/`；
 - 最新未登录四视口 smoke 见 [`docs/qa/visual/v1.1.0/13-deployed-login-20260909-mobile-tabs.json`](qa/visual/v1.1.0/13-deployed-login-20260909-mobile-tabs.json)，仍不等同认证 Workspace/Agent/PTY 完整验收。
 
+### Command Bar 第三轮直接迁移追加（2026-09-09）
+
+- 按 PinHarness `ChatCommandBar` 的真实层级重排 Composer：输入区只保留编辑与 slash command，底部工具栏承载上下文、Approval、运行状态、Session 配置、快捷键提示和发送/停止同位变形；移除旧输入区按钮和重复对话标题；
+- 代码提交 `26afa55560fe51e1a2a1c1f3924c5cbf03044457` 已推送 `main`；全仓 `pnpm lint`、`pnpm typecheck`、Workspace/Composer Vitest（3 files，26/26）、Web build、`pnpm format:check`、四视口 Workspace mock Playwright（4/4）均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v4`，image ID `sha256:8618522cbdda35a7c6d48c0428b85a310b632e8ccc491f56c5bf6d1d56090958`，OCI revision `26afa55560fe51e1a2a1c1f3924c5cbf03044457`，架构 `linux/arm64`；
+- 2026-09-09 02:40:20（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200`、容器 `running/healthy`、exit `0`、OOM `false`；`2026.9.9-v3`、`2026.9.9-v2` 与 1.0.0 回滚镜像均保留；
+- 部署前快照与有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T183609Z-pre-commandbar/`；未执行 `docker compose down`，未触碰数据卷和其他 Compose service；
+- NAS-local Playwright 未登录静态 smoke 见 [`docs/qa/visual/v1.1.0/14-deployed-commandbar-20260909.json`](qa/visual/v1.1.0/14-deployed-commandbar-20260909.json)，四视口 HTTP `200`、无横向溢出、console/page/request error 为 `0`；认证 Workspace、真实 Agent/PTY、性能和独立视觉复核仍未验证。
+
 ## 本轮真实部署 smoke
 
 - NAS 本地 Playwright Chromium 已连接真实 `1.1.0` 地址，未登录首页在 1440、1024、768、390 四个视口均返回 HTTP 200、页面标题 `AgentHub`，横向溢出为 0，console error/page error/request failure 均为 0；记录见 [`docs/qa/visual/v1.1.0/10-deployed-login-1440.json`](qa/visual/v1.1.0/10-deployed-login-1440.json)。

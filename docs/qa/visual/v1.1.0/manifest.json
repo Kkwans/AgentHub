@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "2c973fefe297c7d552ec598a332e1aeb6a485bd2",
+  "sourceCommit": "26afa55560fe51e1a2a1c1f3924c5cbf03044457",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -21,19 +21,19 @@
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v2",
-    "imageId": "sha256:62a7bac83c14a12ea7d2a17c0cb26538f66eddd682fc1edeafb1ba77bc0d529f",
-    "revision": "a16f11ea073be99d8c1903ff17c15372eb24a9e4",
+    "image": "agenthub:2026.9.9-v3",
+    "imageId": "sha256:5aff86d41329b48dcb2d88e9df4999cf8ac2df2974a052d2a7fa12ad344c2106",
+    "revision": "2c973fefe297c7d552ec598a332e1aeb6a485bd2",
     "preserve": true
   },
   "productionReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v3",
-    "imageId": "sha256:5aff86d41329b48dcb2d88e9df4999cf8ac2df2974a052d2a7fa12ad344c2106",
-    "revision": "2c973fefe297c7d552ec598a332e1aeb6a485bd2",
-    "checkedAt": "2026-09-08T18:15:19.368Z",
+    "image": "agenthub:2026.9.9-v4",
+    "imageId": "sha256:8618522cbdda35a7c6d48c0428b85a310b632e8ccc491f56c5bf6d1d56090958",
+    "revision": "26afa55560fe51e1a2a1c1f3924c5cbf03044457",
+    "checkedAt": "2026-09-08T18:41:42.345Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -42,19 +42,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v3",
-    "imageId": "sha256:5aff86d41329b48dcb2d88e9df4999cf8ac2df2974a052d2a7fa12ad344c2106",
+    "image": "agenthub:2026.9.9-v4",
+    "imageId": "sha256:8618522cbdda35a7c6d48c0428b85a310b632e8ccc491f56c5bf6d1d56090958",
     "architecture": "arm64",
-    "revision": "2c973fefe297c7d552ec598a332e1aeb6a485bd2",
-    "created": "2026-09-08T18:10:07Z",
-    "deployedAt": "2026-09-08T18:14:28Z",
+    "revision": "26afa55560fe51e1a2a1c1f3924c5cbf03044457",
+    "created": "2026-09-08T18:36:19Z",
+    "deployedAt": "2026-09-08T18:40:20Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T180958Z-pre-mobile-tabs/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T183609Z-pre-commandbar/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -116,8 +116,8 @@
         "knownWarnings": [
           "Origin-Agent-Cluster warning emitted by Chromium for the IP origin"
         ],
-        "evidence": "docs/qa/visual/v1.1.0/13-deployed-login-20260909-mobile-tabs.json",
-        "capturedAt": "2026-09-08T18:15:19.368Z"
+      "evidence": "docs/qa/visual/v1.1.0/14-deployed-commandbar-20260909.json",
+      "capturedAt": "2026-09-08T18:41:42.345Z"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -144,9 +144,9 @@
   },
   "notes": [
     "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v3 and 1.0.0 remains tagged and retained as the rollback point.",
-    "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e and 2c973fe were pushed to main before the 2026.9.9-v3 image build.",
-    "The latest unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
-    "Pre-deploy Compose/.env/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T180958Z-pre-mobile-tabs/.",
+    "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe and 26afa55 were pushed to main before the 2026.9.9-v4 image build.",
+    "The v4 unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
+    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T183609Z-pre-commandbar/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }
