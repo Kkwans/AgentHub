@@ -198,7 +198,6 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <AhTabs.Root value={legacyMobilePanel}>
           <AhTabs.List
             className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
-            style={isMobileViewport ? { display: 'none' } : undefined}
             aria-label="Workspace 视图"
           >
             <AhTabs.Trigger value="sessions" aria-label="会话" onClick={openSessionDrawer}>
@@ -362,6 +361,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           compactPanel={compactPanel}
           onCompactPanelChange={handleCompactPanelChange}
           compactPanelOrder={['middle', 'left', 'right']}
+          compactTabsVisible={!isMobileViewport}
           leftRatioKey="agenthub.workspace.layout-v3.left.ratio"
           rightRatioKey="agenthub.workspace.layout-v3.right.ratio"
           leftRatioDefault={leftRatioDefault}

@@ -85,6 +85,8 @@ export interface ThreeColumnSplitProps {
   onCompactPanelChange?: (panel: CompactPanel) => void;
   /** compact 模式 Tab 顺序；默认详情、左栏、右栏 */
   compactPanelOrder?: CompactPanel[];
+  /** 是否由外层宿主提供 compact tabs（移动端保留完整业务 tab bar）。 */
+  compactTabsVisible?: boolean;
   /** 实际容器宽度对应的布局模式变化 */
   onLayoutModeChange?: (mode: ThreeColumnLayoutMode) => void;
   /** localStorage key：左栏宽度比例 */
@@ -108,47 +110,51 @@ function CompactThreeColumnLayout({
   order,
   tabs,
   onKeyDown,
+  tabsVisible,
 }: {
   activePanel: CompactPanel;
   panel: React.ReactNode;
   order: CompactPanel[];
   tabs: CompactTabs;
   onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  tabsVisible: boolean;
 }) {
   return (
     <div className="three-column-compact-shell relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
-      <div
-        role="tablist"
-        aria-label="Workspace 视图"
-        onKeyDown={onKeyDown}
-        className="three-column-compact-tabs workspace-mobile-tabs grid shrink-0 grid-cols-3 items-center gap-1 border-b border-[hsl(var(--border))]/60 bg-[hsl(var(--surface))]/95 p-1.5"
-      >
-        {order.map((panelId) => {
-          const tab = tabs[panelId];
-          const selected = activePanel === panelId;
-          return (
-            <button
-              key={panelId}
-              role="tab"
-              id={`compact-tab-${panelId}`}
-              aria-selected={selected}
-              aria-controls={`compact-panel-${panelId}`}
-              data-compact-panel={panelId}
-              tabIndex={selected ? 0 : -1}
-              type="button"
-              onClick={tab.open}
-              className={cn(
-                'three-column-compact-tab flex min-h-11 min-w-0 items-center justify-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-colors duration-150',
-                selected
-                  ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))] shadow-[0_1px_2px_hsl(var(--primary)/0.1)]'
-                  : 'text-[hsl(var(--foreground-subtle))] hover:bg-[hsl(var(--surface-muted))] hover:text-[hsl(var(--foreground))]',
-              )}
-            >
-              <span className="truncate">{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {tabsVisible && (
+        <div
+          role="tablist"
+          aria-label="Workspace 视图"
+          onKeyDown={onKeyDown}
+          className="three-column-compact-tabs workspace-mobile-tabs grid shrink-0 grid-cols-3 items-center gap-1 border-b border-[hsl(var(--border))]/60 bg-[hsl(var(--surface))]/95 p-1.5"
+        >
+          {order.map((panelId) => {
+            const tab = tabs[panelId];
+            const selected = activePanel === panelId;
+            return (
+              <button
+                key={panelId}
+                role="tab"
+                id={`compact-tab-${panelId}`}
+                aria-selected={selected}
+                aria-controls={`compact-panel-${panelId}`}
+                data-compact-panel={panelId}
+                tabIndex={selected ? 0 : -1}
+                type="button"
+                onClick={tab.open}
+                className={cn(
+                  'three-column-compact-tab flex min-h-11 min-w-0 items-center justify-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-colors duration-150',
+                  selected
+                    ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))] shadow-[0_1px_2px_hsl(var(--primary)/0.1)]'
+                    : 'text-[hsl(var(--foreground-subtle))] hover:bg-[hsl(var(--surface-muted))] hover:text-[hsl(var(--foreground))]',
+                )}
+              >
+                <span className="truncate">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div
         key={activePanel}
         id={`compact-panel-${activePanel}`}
@@ -277,6 +283,7 @@ export function ThreeColumnSplit({
   compactPanel: controlledCompactPanel,
   onCompactPanelChange,
   compactPanelOrder = ['middle', 'left', 'right'],
+  compactTabsVisible = true,
   onLayoutModeChange,
   leftRatioKey,
   rightRatioKey,
@@ -608,6 +615,7 @@ export function ThreeColumnSplit({
           order={compactPanelOrder}
           tabs={compactTabs}
           onKeyDown={handleCompactTabKeyDown}
+          tabsVisible={compactTabsVisible}
         />
       ) : layoutMode === 'medium' ? (
         <MediumThreeColumnLayout
