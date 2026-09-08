@@ -94,6 +94,11 @@ export function AgentHubProvider({
   useSafeLayoutEffect(() => {
     window.localStorage.setItem(AGENTHUB_THEME_STORAGE_KEY, preference);
     document.documentElement.dataset.agenthubTheme = mode;
+    // The PinHarness stylesheet uses the conventional `.dark` scope for its
+    // Tailwind variant and component-level dark surfaces. Keep the existing
+    // data attribute as the public AgentHub contract, but mirror the resolved
+    // mode onto the root class so both token systems resolve the same frame.
+    document.documentElement.classList.toggle('dark', mode === 'dark');
     window.localStorage.setItem(AGENTHUB_SIDEBAR_PREFERENCE_STORAGE_KEY, sidebarPreference);
     window.localStorage.setItem(AGENTHUB_SIDEBAR_COLLAPSED_STORAGE_KEY, String(sidebarCollapsed));
     window.localStorage.setItem(AGENTHUB_DENSITY_STORAGE_KEY, density);

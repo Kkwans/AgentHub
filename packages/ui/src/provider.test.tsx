@@ -10,6 +10,8 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   window.localStorage.clear();
+  document.documentElement.classList.remove('dark');
+  delete document.documentElement.dataset.agenthubTheme;
 });
 
 vi.stubGlobal(
@@ -66,6 +68,7 @@ describe('AgentHubProvider', () => {
     expect(screen.getByRole('status', { name: '当前主题' })).toHaveTextContent('dark');
     expect(window.localStorage.getItem('agenthub-theme')).toBe('dark');
     expect(document.documentElement).toHaveAttribute('data-agenthub-theme', 'dark');
+    expect(document.documentElement).toHaveClass('dark');
   });
 
   it('persists density and exposes the active density on the document root', () => {
