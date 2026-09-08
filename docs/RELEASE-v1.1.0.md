@@ -80,7 +80,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 ### 共享布局组件第八轮直接迁移追加（2026-09-09）
 
 - 将 PinHarness 结构同源的 `ThreeColumnSplit` 从 `apps/web` 私有路径直接迁移至 `@agenthub/ui` 共享入口；Workspace 改为使用共享导出，保留三栏拖拽、折叠、断点 tabs 与 localStorage 比例约束；
-- 代码提交 `d759bff62f55001aa23a7447a4992f102158963a` 已推送 `main`；共享布局断点/偏好测试与 primitives/provider 聚焦套件为 3 files、6 passed，`@agenthub/ui`/Web typecheck、全仓 lint/typecheck/build、CSS budget、format 与 diff check 均通过；
+- 代码提交 `d759bff62f55001aa23a7447a4992f102158963a` 已推送 `main`；共享布局断点/偏好测试与 primitives/provider 聚焦套件为 3 files、6 passed，`@agenthub/ui` 全套 Vitest 为 8 files、28 passed；`@agenthub/ui`/Web typecheck、全仓 lint/typecheck/build、CSS budget、format 与 diff check 均通过；
 - 当前生产镜像为 `agenthub:2026.9.9-v9`，image ID `sha256:176dfc9c003ac875faf7ebb4d4e8ec08e1e28a2305d8f48c68b4f490f184b50e`，OCI revision `d759bff62f55001aa23a7447a4992f102158963a`，架构 `linux/arm64`；
 - 2026-09-09 05:26:26（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`，容器 `running/healthy`、exit `0`、OOM `false`；其它容器 name/image identity 未变；
 - 部署前快照、v8/v9 image inspect、容器清单和有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T212617Z-pre-shared-layout/`；`agenthub:2026.9.9-v8` 与 1.0.0 回滚镜像均保留；

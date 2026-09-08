@@ -96,6 +96,7 @@
         "pnpm exec vitest run packages/ui/src/provider.test.tsx apps/web/src/App.test.tsx --pool=forks --maxWorkers=1 (12 passed)",
         "pnpm exec vitest run packages/ui/src --pool=forks --maxWorkers=1 (7 files, 26 passed)",
         "pnpm exec vitest run packages/ui/src/three-column-split.test.ts packages/ui/src/pinharness.test.tsx packages/ui/src/provider.test.tsx --pool=forks --maxWorkers=1 (3 files, 6 passed)",
+        "pnpm exec vitest run packages/ui/src --pool=forks --maxWorkers=1 (8 files, 28 passed; after shared layout move)",
         "pnpm --filter @agenthub/ui typecheck && pnpm --filter @agenthub/web typecheck (pass after shared layout move)",
         "pnpm qa:css-budget (pass; PinHarness source snapshot provenance envelope plus strict feature budgets)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=mobile-390 --grep 'Home 深色主题' --workers=1 (2/2 passed; .dark/color-scheme/画布/overflow assertions)",
