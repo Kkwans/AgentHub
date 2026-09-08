@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   Wrench,
 } from '@agenthub/ui';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -117,6 +117,12 @@ export function Conversation({
   const timeline = turns.flatMap((turn) => turn.entries);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followTimelineRef = useRef(true);
+  // Layout effects and the virtualizer can emit a synthetic scroll event while
+  // the panel is still acquiring its real height. Keep the initial follow
+  // intent authoritative until the first non-zero viewport has been aligned.
+  const initialFollowPendingRef = useRef(true);
+  const userScrollIntentRef = useRef(false);
+  const userScrollIntentTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const loadingPreviousRef = useRef(false);
   const [timelineWindowStart, setTimelineWindowStart] = useState(0);
   const [isFollowingTimeline, setIsFollowingTimeline] = useState(true);
@@ -155,11 +161,31 @@ export function Conversation({
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
         ?.id
     : undefined;
+  const clearUserScrollIntent = useCallback(() => {
+    userScrollIntentRef.current = false;
+    if (userScrollIntentTimerRef.current !== undefined) {
+      clearTimeout(userScrollIntentTimerRef.current);
+      userScrollIntentTimerRef.current = undefined;
+    }
+  }, []);
+  const markUserScrollIntent = useCallback(() => {
+    userScrollIntentRef.current = true;
+    if (userScrollIntentTimerRef.current !== undefined) {
+      clearTimeout(userScrollIntentTimerRef.current);
+    }
+    userScrollIntentTimerRef.current = setTimeout(() => {
+      userScrollIntentRef.current = false;
+      userScrollIntentTimerRef.current = undefined;
+    }, 240);
+  }, []);
   useEffect(() => {
+    initialFollowPendingRef.current = true;
     followTimelineRef.current = true;
+    clearUserScrollIntent();
     setIsFollowingTimeline(true);
     setTimelineWindowStart(0);
-  }, [session.id]);
+  }, [clearUserScrollIntent, session.id]);
+  useEffect(() => clearUserScrollIntent, [clearUserScrollIntent]);
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
@@ -183,11 +209,14 @@ export function Conversation({
     let trailingFrame: number | undefined;
     const scrollToLatest = () => {
       const element = scrollRef.current;
-      if (element) element.scrollTop = element.scrollHeight;
+      if (!element || element.clientHeight <= 0 || userScrollIntentRef.current) return;
+      initialFollowPendingRef.current = false;
+      element.scrollTop = element.scrollHeight;
     };
     const scheduleScroll = () => {
-      if (!followTimelineRef.current) return;
+      if (!followTimelineRef.current || userScrollIntentRef.current) return;
       requestAnimationFrame(() => {
+        if (!followTimelineRef.current || userScrollIntentRef.current) return;
         trailingFrame = requestAnimationFrame(scrollToLatest);
       });
     };
@@ -213,7 +242,15 @@ export function Conversation({
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const element = scrollRef.current;
-        if (element && followTimelineRef.current) element.scrollTop = element.scrollHeight;
+        if (
+          element &&
+          followTimelineRef.current &&
+          !userScrollIntentRef.current &&
+          element.clientHeight > 0
+        ) {
+          initialFollowPendingRef.current = false;
+          element.scrollTop = element.scrollHeight;
+        }
       });
     });
   };
@@ -243,6 +280,8 @@ export function Conversation({
     }
   };
   const jumpToLatest = () => {
+    initialFollowPendingRef.current = false;
+    clearUserScrollIntent();
     followTimelineRef.current = true;
     setIsFollowingTimeline(true);
     setTimelineWindowStart(latestWindowStart);
@@ -279,10 +318,28 @@ export function Conversation({
         role="log"
         aria-live="polite"
         aria-relevant="additions text"
+        onWheel={markUserScrollIntent}
+        onPointerDown={markUserScrollIntent}
+        onTouchStart={markUserScrollIntent}
+        onKeyDown={(event) => {
+          if (
+            ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)
+          ) {
+            markUserScrollIntent();
+          }
+        }}
         onScroll={(event) => {
           const element = event.currentTarget;
           const nextFollowing =
             element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+          const userInitiated = userScrollIntentRef.current;
+          if (userInitiated) clearUserScrollIntent();
+          if (!userInitiated && followTimelineRef.current) {
+            if (!nextFollowing) scheduleLatestScroll();
+            return;
+          }
+          if (!userInitiated && initialFollowPendingRef.current && !nextFollowing) return;
+          if (initialFollowPendingRef.current) initialFollowPendingRef.current = false;
           followTimelineRef.current = nextFollowing;
           setIsFollowingTimeline((current) =>
             current === nextFollowing ? current : nextFollowing,

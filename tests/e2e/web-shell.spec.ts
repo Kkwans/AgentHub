@@ -410,6 +410,10 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await expect(page.locator('.message.assistant').last().locator('strong')).toHaveText(
     '关键校正已完成：',
   );
+  const contextDisclosure = page.locator('.workspace-context-disclosure');
+  await contextDisclosure.locator('summary').click();
+  await expect(contextDisclosure.locator('code')).toHaveText(project.rootPath);
+  await contextDisclosure.locator('summary').click();
   const thought = page.locator('.thought-event-row');
   await expect(thought).toHaveCount(1);
   await expect(thought).not.toHaveAttribute('open', '');
@@ -428,6 +432,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   expect(userMessageBox, '用户消息应可见').not.toBeNull();
   expect(assistantMessageBox, 'Agent 消息应可见').not.toBeNull();
   expect(userMessageBox!.x).toBeGreaterThan(assistantMessageBox!.x + 32);
+  await expect(page.getByRole('button', { name: '回到最新' })).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   const geometry = await page
     .locator('.workspace-panels, .workspace-panel, .resize-handle')

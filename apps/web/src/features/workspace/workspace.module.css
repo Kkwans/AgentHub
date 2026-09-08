@@ -174,13 +174,11 @@
 }
 
 .contextFacts {
-  justify-content: flex-end;
-  overflow: hidden;
   color: var(--ah-text-tertiary);
 }
 
 .contextFacts code {
-  display: none;
+  min-width: 0;
   overflow: hidden;
   color: var(--ah-text-tertiary);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
@@ -256,6 +254,8 @@
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .workspace :global(.workspace-context-disclosure-summary small) {
@@ -463,10 +463,6 @@
   .contextbar {
     padding-inline: 14px;
   }
-
-  .contextFacts code {
-    max-width: 220px;
-  }
 }
 
 @media (max-width: 1023px) {
@@ -476,15 +472,6 @@
 
   .contextbar {
     gap: 10px;
-  }
-
-  .contextFacts {
-    flex: 0 1 auto;
-  }
-
-  .contextFacts span:first-child,
-  .contextFacts code {
-    display: none;
   }
 
   .mobileTabs {
@@ -505,10 +492,6 @@
 
   .contextFacts {
     max-width: 45%;
-  }
-
-  .contextFacts code {
-    max-width: 100%;
   }
 
   .mobileTabs {
@@ -548,7 +531,6 @@
 
 @media (max-width: 480px) {
   .workspace {
-    max-width: 100vw;
     overflow-x: hidden;
   }
 
@@ -556,9 +538,7 @@
     flex: 1 1 auto;
   }
 
-  .contextTitle a,
-  .contextFacts span,
-  .contextFacts code {
+  .contextTitle a {
     display: none;
   }
 
@@ -581,7 +561,21 @@
   }
 
   .contextFacts {
-    display: none;
+    display: grid;
+    max-width: none;
+    gap: 8px;
+  }
+
+  .contextFacts span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: normal;
+  }
+
+  .contextFacts code {
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .mobileTabs {
@@ -590,6 +584,14 @@
 
   .mobileTabs button {
     padding-inline: 9px;
+  }
+
+  .workspace :global(.workspace-context-disclosure) {
+    max-width: min(180px, 44vw);
+  }
+
+  .workspace :global(.workspace-context-disclosure-summary small) {
+    max-width: 64px;
   }
 }
 

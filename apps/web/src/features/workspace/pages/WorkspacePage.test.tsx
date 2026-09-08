@@ -317,6 +317,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
       clientHeight: { configurable: true, value: 500 },
       scrollTop: { configurable: true, writable: true, value: 0 },
     });
+    fireEvent.wheel(scroll);
     fireEvent.scroll(scroll);
 
     expect(await screen.findByText('长会话消息 1')).toBeInTheDocument();
