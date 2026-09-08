@@ -90,6 +90,9 @@
         "pnpm exec vitest run apps/web/src/app/shell/AppShell.test.tsx apps/web/src/features/workspace/pages/WorkspacePage.test.tsx apps/web/src/features/workspace/components/Conversation.test.tsx apps/web/src/features/agents/pages/AgentPages.test.tsx apps/web/src/features/promptos/pages/PromptLibraryPage.test.tsx (32 passed)",
         "pnpm lint (pass)",
         "pnpm build (pass; web Vite build 15.64s)",
+        "pnpm exec vitest run apps/web/src/features/workspace/pages/WorkspacePage.test.tsx apps/web/src/features/workspace/components/SessionConfigurationControl.test.tsx apps/web/src/features/workspace/components/Conversation.test.tsx (26 passed)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=mobile-390 --grep 'Home 以工作续接' (2/2 passed)",
+        "pnpm --filter @agenthub/web build (pass; v5 candidate)",
         "pnpm release:version-truth 1.1.0 --allow-incomplete",
         "git diff --check"
       ]
