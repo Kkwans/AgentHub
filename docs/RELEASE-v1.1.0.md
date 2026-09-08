@@ -65,6 +65,15 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 部署前快照与有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T184849Z-pre-home/`；未执行 `docker compose down`，未触碰数据卷和其他 Compose service；
 - NAS-local Playwright 未登录静态 smoke 见 [`docs/qa/visual/v1.1.0/15-deployed-home-20260909.json`](qa/visual/v1.1.0/15-deployed-home-20260909.json)，四视口 HTTP `200`、无横向溢出、console/page/request error 为 `0`；认证 Workspace、真实 Agent/PTY、性能和独立视觉复核仍未验证。
 
+### 响应式语义第五轮直接迁移追加（2026-09-09）
+
+- 修复无 `matchMedia` 宿主下的断点判定：显式 `max/min-width` 统一读取真实 `innerWidth`，保留 Workspace 辅助 tab 的可访问语义；对话标题仅以 `sr-only` 保留测试和读屏锚点，不回退视觉层；
+- 代码提交 `d12ab1df6b66732b90a15c865f3c3e5f8d724e31` 已推送 `main`；App 9/9、WorkspacePage 16/16、Workspace 四视口 Playwright 4/4、Web build、全仓 lint/typecheck 均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v6`，image ID `sha256:55461561fa96e9c7c1950b2b5a3e1805d17b74569229f3d5e6974a134d34b94f`，OCI revision `d12ab1df6b66732b90a15c865f3c3e5f8d724e31`，架构 `linux/arm64`；
+- 2026-09-09 03:16:22（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200`、容器 `running/healthy`、exit `0`、OOM `false`；v5/v4/v3/v2 与 1.0.0 回滚镜像均保留；
+- 部署前快照与有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T190903Z-pre-responsive-semantics/`；未执行 `docker compose down`，未触碰数据卷和其他 Compose service；
+- NAS-local Playwright 未登录静态 smoke 见 [`docs/qa/visual/v1.1.0/16-deployed-responsive-semantics-20260909.json`](qa/visual/v1.1.0/16-deployed-responsive-semantics-20260909.json)，四视口 HTTP `200`、无横向溢出、console/page/request error 为 `0`；认证 Workspace、真实 Agent/PTY、性能和独立视觉复核仍未验证。
+
 ## 本轮真实部署 smoke
 
 - NAS 本地 Playwright Chromium 已连接真实 `1.1.0` 地址，未登录首页在 1440、1024、768、390 四个视口均返回 HTTP 200、页面标题 `AgentHub`，横向溢出为 0，console error/page error/request failure 均为 0；记录见 [`docs/qa/visual/v1.1.0/10-deployed-login-1440.json`](qa/visual/v1.1.0/10-deployed-login-1440.json)。

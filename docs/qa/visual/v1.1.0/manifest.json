@@ -21,19 +21,19 @@
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v4",
-    "imageId": "sha256:8618522cbdda35a7c6d48c0428b85a310b632e8ccc491f56c5bf6d1d56090958",
-    "revision": "26afa55560fe51e1a2a1c1f3924c5cbf03044457",
+    "image": "agenthub:2026.9.9-v5",
+    "imageId": "sha256:cd7587784e8f6a103e46be583cce4e300e9d8de25b55b4813fb1d345c5d28e66",
+    "revision": "50eeb3647f357fcb124d083e1a68f0541f39aa4e",
     "preserve": true
   },
   "productionReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v5",
-    "imageId": "sha256:cd7587784e8f6a103e46be583cce4e300e9d8de25b55b4813fb1d345c5d28e66",
-    "revision": "50eeb3647f357fcb124d083e1a68f0541f39aa4e",
-    "checkedAt": "2026-09-08T18:55:40.510Z",
+    "image": "agenthub:2026.9.9-v6",
+    "imageId": "sha256:55461561fa96e9c7c1950b2b5a3e1805d17b74569229f3d5e6974a134d34b94f",
+    "revision": "d12ab1df6b66732b90a15c865f3c3e5f8d724e31",
+    "checkedAt": "2026-09-08T19:17:20.885Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -42,19 +42,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v5",
-    "imageId": "sha256:cd7587784e8f6a103e46be583cce4e300e9d8de25b55b4813fb1d345c5d28e66",
+    "image": "agenthub:2026.9.9-v6",
+    "imageId": "sha256:55461561fa96e9c7c1950b2b5a3e1805d17b74569229f3d5e6974a134d34b94f",
     "architecture": "arm64",
-    "revision": "50eeb3647f357fcb124d083e1a68f0541f39aa4e",
-    "created": "2026-09-08T18:48:59Z",
-    "deployedAt": "2026-09-08T18:54:25Z",
+    "revision": "d12ab1df6b66732b90a15c865f3c3e5f8d724e31",
+    "created": "2026-09-08T19:11:52Z",
+    "deployedAt": "2026-09-08T19:16:22Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T184849Z-pre-home/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T190903Z-pre-responsive-semantics/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -119,8 +119,8 @@
         "knownWarnings": [
           "Origin-Agent-Cluster warning emitted by Chromium for the IP origin"
         ],
-        "evidence": "docs/qa/visual/v1.1.0/15-deployed-home-20260909.json",
-        "capturedAt": "2026-09-08T18:55:40.510Z"
+        "evidence": "docs/qa/visual/v1.1.0/16-deployed-responsive-semantics-20260909.json",
+        "capturedAt": "2026-09-08T19:17:20.885Z"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -147,9 +147,9 @@
   },
   "notes": [
     "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v3 and 1.0.0 remains tagged and retained as the rollback point.",
-    "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55 and 50eeb36 were pushed to main before the 2026.9.9-v5 image build.",
-    "The v5 unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
-    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T184849Z-pre-home/.",
+    "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36 and d12ab1d were pushed to main before the 2026.9.9-v6 image build.",
+    "The v6 unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
+    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T190903Z-pre-responsive-semantics/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }
