@@ -51,6 +51,7 @@ export { GearSixIcon as Settings } from '@phosphor-icons/react/GearSix';
 export { ShieldWarningIcon as ShieldAlert } from '@phosphor-icons/react/ShieldWarning';
 export { ShieldCheckIcon as ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
 export { SunIcon as Sun } from '@phosphor-icons/react/Sun';
+export { MoonIcon as Moon } from '@phosphor-icons/react/Moon';
 export { TerminalWindowIcon as SquareTerminal } from '@phosphor-icons/react/TerminalWindow';
 export { TagIcon as Tag } from '@phosphor-icons/react/Tag';
 export { WrenchIcon as Wrench } from '@phosphor-icons/react/Wrench';

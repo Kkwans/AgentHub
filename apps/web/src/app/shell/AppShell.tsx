@@ -11,6 +11,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   Menu,
+  Moon,
   Network,
   Search,
   Settings,
@@ -277,9 +278,7 @@ export function AppShell() {
               aria-label="深色主题"
               title="深色主题"
             >
-              <span className={styles.themeGlyph} aria-hidden="true">
-                ◐
-              </span>
+              <Moon aria-hidden size={18} weight="regular" />
             </button>
             <button type="button" className={styles.iconButton} aria-label="通知" title="通知">
               <Bell aria-hidden size={18} />

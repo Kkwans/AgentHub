@@ -835,11 +835,11 @@
 @keyframes workspace-streaming-reveal {
   from {
     opacity: 0.58;
-    filter: blur(0.35px);
+    transform: translateY(2px);
   }
   to {
     opacity: 1;
-    filter: blur(0);
+    transform: translateY(0);
   }
 }
 
