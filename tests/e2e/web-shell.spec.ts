@@ -595,6 +595,12 @@ test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, te
 
 test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', async ({ page }, testInfo) => {
   await page.goto(`/projects/${project.id}/work?status=WAITING_REVIEW`);
+  // ProjectContextLayout loads the project shell before the nested Work route;
+  // wait for that real readiness boundary instead of racing the 5s assertion
+  // against the context skeleton on slower NAS workers.
+  await expect(page.getByRole('heading', { name: project.name })).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByRole('link', { name: '工作', exact: true })).toHaveAttribute(
     'aria-current',
     'page',
