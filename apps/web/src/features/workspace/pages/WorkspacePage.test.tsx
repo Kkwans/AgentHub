@@ -140,7 +140,7 @@ afterEach(() => {
 });
 
 describe('WorkspacePage 数据分区可靠性', () => {
-  it('移动抽屉关闭后把焦点还给对应触发按钮', async () => {
+  it('共享辅助栏关闭后把焦点还给对应触发按钮', async () => {
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({
@@ -159,19 +159,25 @@ describe('WorkspacePage 数据分区可靠性', () => {
     );
     renderWorkspace(fetchMock);
 
-    const inspectorToggle = await screen.findByRole('button', { name: '打开检查器' });
-    fireEvent.click(inspectorToggle);
+    const supportToggle = await screen.findByRole('button', { name: '打开辅助栏' });
+    fireEvent.click(supportToggle);
+    const sessionClose = await screen.findByRole('button', { name: '关闭会话列表' });
+    await waitFor(() => expect(document.activeElement).toBe(sessionClose));
+    fireEvent.click(sessionClose);
+    await waitFor(() => expect(document.activeElement).toBe(supportToggle));
+
+    fireEvent.click(supportToggle);
+    const auxiliaryTabs = await screen.findByRole('tablist', { name: '辅助栏视图' });
+    fireEvent.click(within(auxiliaryTabs).getByRole('tab', { name: '检查器' }));
     const inspectorClose = await screen.findByRole('button', { name: '关闭检查器' });
     await waitFor(() => expect(document.activeElement).toBe(inspectorClose));
     fireEvent.click(inspectorClose);
-    await waitFor(() => expect(document.activeElement).toBe(inspectorToggle));
+    await waitFor(() => expect(document.activeElement).toBe(supportToggle));
 
-    const sessionToggle = screen.getByRole('button', { name: '打开会话列表' });
-    fireEvent.click(sessionToggle);
-    const sessionClose = await screen.findByRole('button', { name: '关闭会话列表' });
-    expect(document.activeElement).toBe(sessionClose);
-    fireEvent.keyDown(sessionClose, { key: 'Escape' });
-    await waitFor(() => expect(document.activeElement).toBe(sessionToggle));
+    fireEvent.click(supportToggle);
+    const sessionCloseAgain = await screen.findByRole('button', { name: '关闭会话列表' });
+    fireEvent.keyDown(sessionCloseAgain, { key: 'Escape' });
+    await waitFor(() => expect(document.activeElement).toBe(supportToggle));
   });
 
   it('按 seq 分页拉取长 Session 事件并合并去重', async () => {

@@ -31,6 +31,7 @@ import { useSessionMessages } from './useSessionMessages';
 export const EVENT_PAGE_SIZE = 500;
 export type DiffWhitespace =
   'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines';
+export type WorkspaceAuxiliaryPanel = 'sessions' | 'inspector';
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
@@ -115,10 +116,13 @@ export function useWorkspaceViewModel() {
   // drawers below the PinHarness-derived 1180px workbench breakpoint.
   const inspectorActsAsDrawer = useMediaQuery('(max-width: 1179px)');
   const isMobileViewport = useMediaQuery('(max-width: 767px)');
-  const inspectorDrawerOpen = inspectorActsAsDrawer && mobileInspectorOpen;
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
   const [stagedDiff, setStagedDiff] = useState(false);
-  const [sessionDrawerOpen, setSessionDrawerOpen] = useState(false);
+  const [auxiliaryPanel, setAuxiliaryPanel] = useState<WorkspaceAuxiliaryPanel | null>(null);
+  const sessionDrawerOpen = inspectorActsAsDrawer && auxiliaryPanel === 'sessions';
+  const inspectorDrawerOpen =
+    inspectorActsAsDrawer &&
+    (auxiliaryPanel === 'inspector' || (mobileInspectorOpen && auxiliaryPanel !== 'sessions'));
   const [workspaceLayout, setWorkspaceLayout] = useState(readWorkspaceLayout);
   const sessionPanelRef = usePanelRef();
   const inspectorPanelRef = usePanelRef();
@@ -126,6 +130,7 @@ export function useWorkspaceViewModel() {
   const inspectorCloseRef = useRef<HTMLButtonElement>(null);
   const sessionToggleRef = useRef<HTMLButtonElement>(null);
   const inspectorToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileSessionsRef = useRef<HTMLButtonElement>(null);
   const drawerStateRef = useRef({ session: false, inspector: false });
 
   const toggleWorkspacePanel = useCallback(
@@ -230,10 +235,39 @@ export function useWorkspaceViewModel() {
   };
 
   const closeMobileInspector = useCallback(() => {
+    setAuxiliaryPanel(null);
     const next = new URLSearchParams(searchParams);
     next.delete('view');
     setSearchParams(next);
   }, [searchParams, setSearchParams]);
+  const openSessionDrawer = useCallback(() => {
+    setAuxiliaryPanel('sessions');
+    const next = new URLSearchParams(searchParams);
+    next.delete('view');
+    next.delete('file');
+    next.delete('change');
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
+  const closeSessionDrawer = useCallback(() => {
+    setAuxiliaryPanel((current) => (current === 'sessions' ? null : current));
+  }, []);
+  const openInspectorDrawer = useCallback(
+    (nextTab: InspectorTab = 'changes') => {
+      setAuxiliaryPanel('inspector');
+      const next = new URLSearchParams(searchParams);
+      next.set('view', nextTab);
+      setSearchParams(next);
+    },
+    [searchParams, setSearchParams],
+  );
+  const setAuxiliaryPanelFromTab = useCallback(
+    (panel: WorkspaceAuxiliaryPanel | null) => {
+      if (panel === 'sessions') openSessionDrawer();
+      else if (panel === 'inspector') openInspectorDrawer(tab);
+      else closeMobileInspector();
+    },
+    [closeMobileInspector, openInspectorDrawer, openSessionDrawer, tab],
+  );
   const sessions = useQuery({
     queryKey: ['sessions'],
     queryFn: () => api.get<SessionRecord[]>('/sessions'),
@@ -478,7 +512,7 @@ export function useWorkspaceViewModel() {
       const closeButton = openedSession ? sessionCloseRef.current : inspectorCloseRef.current;
       closeButton?.focus();
     } else if (closedSession || closedInspector) {
-      const opener = closedSession ? sessionToggleRef.current : inspectorToggleRef.current;
+      const opener = isMobileViewport ? mobileSessionsRef.current : sessionToggleRef.current;
       if (opener?.isConnected) opener.focus();
     }
     drawerStateRef.current = nextState;
@@ -491,7 +525,6 @@ export function useWorkspaceViewModel() {
     const closeOnEscapeAndTrapFocus = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        setSessionDrawerOpen(false);
         closeMobileInspector();
         return;
       }
@@ -530,12 +563,16 @@ export function useWorkspaceViewModel() {
     inspectorActsAsDrawer,
     isMobileViewport,
     inspectorDrawerOpen,
+    auxiliaryPanel,
     promptVariables,
     setPromptVariables,
     stagedDiff,
     setStagedDiff,
     sessionDrawerOpen,
-    setSessionDrawerOpen,
+    openSessionDrawer,
+    closeSessionDrawer,
+    openInspectorDrawer,
+    setAuxiliaryPanel: setAuxiliaryPanelFromTab,
     workspaceLayout,
     sessionPanelRef,
     inspectorPanelRef,
@@ -543,6 +580,7 @@ export function useWorkspaceViewModel() {
     inspectorCloseRef,
     sessionToggleRef,
     inspectorToggleRef,
+    mobileSessionsRef,
     toggleWorkspacePanel,
     handleWorkspaceLayoutChanged,
     setSelectedFile,

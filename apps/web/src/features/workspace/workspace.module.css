@@ -213,7 +213,7 @@
   border-radius: 12px 12px 0 0;
 }
 
-.workspace :global(.workspace-session-toggle) {
+.workspace :global(.workspace-support-toggle) {
   display: none;
   flex: 0 0 auto;
   align-items: center;
@@ -228,31 +228,101 @@
   font-weight: 700;
 }
 
-.workspace :global(.workspace-inspector-toggle) {
-  display: none;
-  flex: 0 0 auto;
+.workspace :global(.workspace-support-toggle:hover),
+.workspace :global(.workspace-support-toggle[aria-expanded='true']) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+}
+
+.workspace :global(.workspace-context-disclosure) {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: min(360px, 42vw);
+  flex: 0 1 auto;
+  color: var(--workspace-muted);
+  border: 0;
+}
+
+.workspace :global(.workspace-context-disclosure-summary) {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 32px;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
   padding: 0 8px;
-  color: var(--ah-text-secondary);
-  background: transparent;
-  border: 1px solid var(--ah-border-subtle);
+  color: var(--workspace-muted);
+  border: 1px solid transparent;
   border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.workspace :global(.workspace-session-toggle:hover),
-.workspace :global(.workspace-session-toggle[aria-expanded='true']) {
-  color: var(--ah-text-primary);
-  background: var(--ah-surface-subtle);
+.workspace :global(.workspace-context-disclosure-summary small) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--workspace-faint);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.workspace :global(.workspace-inspector-toggle:hover),
-.workspace :global(.workspace-inspector-toggle[aria-expanded='true']) {
-  color: var(--ah-text-primary);
-  background: var(--ah-surface-subtle);
+.workspace :global(.workspace-context-disclosure[open] .workspace-context-disclosure-summary),
+.workspace :global(.workspace-context-disclosure-summary:hover),
+.workspace :global(.workspace-context-disclosure-summary:focus-visible) {
+  color: var(--workspace-ink);
+  background: var(--workspace-hover);
+  border-color: var(--ah-border-subtle);
+}
+
+.workspace :global(.workspace-context-disclosure .ah-workbench-disclosure-chevron) {
+  display: none;
+}
+
+.workspace :global(.workspace-context-disclosure .ah-workbench-disclosure-content) {
+  position: absolute;
+  z-index: 18;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(420px, calc(100vw - 32px));
+  padding: 10px;
+  background: var(--workspace-panel);
+  border: 1px solid var(--ah-border-default);
+  border-radius: 10px;
+  box-shadow: var(--ah-shadow-md, 0 14px 38px -18px rgb(17 22 38 / 20%));
+}
+
+.workspace :global(.workspace-auxiliary-switcher) {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 10px;
+  background: var(--workspace-panel);
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.workspace :global(.workspace-auxiliary-switcher button) {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  color: var(--workspace-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.workspace :global(.workspace-auxiliary-switcher button[aria-selected='true']),
+.workspace :global(.workspace-auxiliary-switcher button:hover),
+.workspace :global(.workspace-auxiliary-switcher button:focus-visible) {
+  color: var(--workspace-ink);
+  background: var(--workspace-hover);
+  border-color: var(--ah-border-subtle);
 }
 
 .mobileTabs {
@@ -418,37 +488,7 @@
   }
 
   .mobileTabs {
-    display: flex;
-    flex: 0 0 auto;
-    min-width: 0;
-    gap: 3px;
-    padding: 6px 10px 0;
-    overflow-x: auto;
-    background: var(--workspace-panel);
-    border-bottom: 1px solid var(--ah-border-subtle);
-    scrollbar-width: none;
-  }
-
-  .mobileTabs::-webkit-scrollbar {
     display: none;
-  }
-
-  .mobileTabs button {
-    min-height: 38px;
-    flex: 0 0 auto;
-    padding: 0 11px;
-    color: var(--ah-text-secondary);
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-    background: transparent;
-    border: 0;
-    border-bottom: 2px solid transparent;
-  }
-
-  .mobileTabs button[aria-selected='true'] {
-    color: var(--ah-accent-primary);
-    border-bottom-color: var(--ah-accent-primary);
   }
 }
 
@@ -469,6 +509,40 @@
 
   .contextFacts code {
     max-width: 100%;
+  }
+
+  .mobileTabs {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    gap: 3px;
+    padding: 6px 10px 0;
+    overflow-x: auto;
+    background: var(--workspace-panel);
+    border-bottom: 1px solid var(--ah-border-subtle);
+    scrollbar-width: none;
+  }
+
+  .mobileTabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobileTabs button {
+    min-height: 44px;
+    flex: 0 0 auto;
+    padding: 0 11px;
+    color: var(--ah-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+  }
+
+  .mobileTabs button[aria-selected='true'] {
+    color: var(--ah-accent-primary);
+    border-bottom-color: var(--ah-accent-primary);
   }
 }
 
@@ -550,8 +624,7 @@
    outer data-panel host is positioned by WorkspaceView's responsive host
    effect; these rules keep the inner scroll host in normal flow. */
 @media (max-width: 1179px) {
-  .workspace :global(.workspace-session-toggle),
-  .workspace :global(.workspace-inspector-toggle) {
+  .workspace :global(.workspace-support-toggle) {
     display: inline-flex;
   }
 
@@ -621,6 +694,10 @@
 }
 
 @media (max-width: 767px) {
+  .workspace :global(.workspace-support-toggle) {
+    display: none;
+  }
+
   .workspace :global(.conversation-panel) {
     position: relative;
     inset: auto;

@@ -1,5 +1,14 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
-import { AhTabs, Bot, ChevronRight, GitBranch, GitCompareArrows, Menu, X } from '@agenthub/ui';
+import {
+  AhTabs,
+  Bot,
+  ChevronRight,
+  GitBranch,
+  GitCompareArrows,
+  Menu,
+  WorkbenchDisclosure,
+  X,
+} from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { StatusBadge } from '../../../components/Feedback';
@@ -144,7 +153,11 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     id,
     session,
     sessionDrawerOpen,
-    setSessionDrawerOpen,
+    auxiliaryPanel,
+    openSessionDrawer,
+    closeSessionDrawer,
+    openInspectorDrawer,
+    setAuxiliaryPanel,
     inspectorActsAsDrawer,
     isMobileViewport,
     inspectorDrawerOpen,
@@ -166,7 +179,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     sessionPanelRef,
     sessionCloseRef,
     sessionToggleRef,
-    inspectorToggleRef,
+    mobileSessionsRef,
     handleWorkspaceLayoutChanged,
     messages,
     events,
@@ -214,6 +227,9 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     'left',
     workspaceDrawerWidths.left,
   );
+  const compactAuxiliaryOpen = sessionDrawerOpen || inspectorDrawerOpen;
+  const mobilePanel = sessionDrawerOpen ? 'sessions' : inspectorDrawerOpen ? tab : 'conversation';
+  const activeAuxiliaryPanel = inspectorDrawerOpen ? 'inspector' : auxiliaryPanel;
   useResponsiveConversationHost(conversationPanelHostRef, inspectorActsAsDrawer, isMobileViewport);
   useResponsiveDrawerHost(
     inspectorPanelHostRef,
@@ -235,28 +251,17 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
       <div className={`${workspaceStyles.contextbar} workspace-contextbar`}>
         <button
           type="button"
-          className="workspace-session-toggle"
+          className="workspace-support-toggle"
           ref={sessionToggleRef}
-          aria-label="打开会话列表"
-          aria-expanded={sessionDrawerOpen}
-          onClick={() => setSessionDrawerOpen((open) => !open)}
-        >
-          <Menu size={17} />
-          <span>会话</span>
-        </button>
-        <button
-          type="button"
-          className="workspace-inspector-toggle"
-          ref={inspectorToggleRef}
-          aria-label="打开检查器"
-          aria-expanded={inspectorDrawerOpen}
+          aria-label={compactAuxiliaryOpen ? '关闭辅助栏' : '打开辅助栏'}
+          aria-expanded={compactAuxiliaryOpen}
           onClick={() => {
-            if (inspectorDrawerOpen) closeMobileInspector();
-            else setTab('changes');
+            if (compactAuxiliaryOpen) closeMobileInspector();
+            else openSessionDrawer();
           }}
         >
-          <GitCompareArrows size={17} />
-          <span>检查器</span>
+          <Menu size={17} />
+          <span>辅助栏</span>
         </button>
         <div className={workspaceStyles.contextTitle}>
           <Link to="/sessions">会话</Link>
@@ -266,15 +271,26 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
             <StatusBadge status={currentSession.status} />
           </span>
         </div>
-        <div className={workspaceStyles.contextFacts}>
-          <span>
-            <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
-          </span>
-          <span>
-            <GitBranch size={14} /> {currentSession.branch || '无 Git'}
-          </span>
-          <code title={currentSession.cwd}>{currentSession.cwd}</code>
-        </div>
+        <WorkbenchDisclosure
+          className="workspace-context-disclosure"
+          summary={
+            <span className="workspace-context-disclosure-summary">
+              <Bot size={14} aria-hidden="true" />
+              <span>上下文</span>
+              <small>{agent?.name ?? 'Agent 未知'}</small>
+            </span>
+          }
+        >
+          <div className={workspaceStyles.contextFacts}>
+            <span>
+              <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
+            </span>
+            <span>
+              <GitBranch size={14} /> {currentSession.branch || '无 Git'}
+            </span>
+            <code title={currentSession.cwd}>{currentSession.cwd}</code>
+          </div>
+        </WorkbenchDisclosure>
         <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
           <button
             type="button"
@@ -303,11 +319,19 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           </div>
         )}
       </div>
-      <AhTabs.Root value={inspectorDrawerOpen ? tab : 'conversation'}>
+      <AhTabs.Root value={mobilePanel}>
         <AhTabs.List
           className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
           aria-label="Workspace 视图"
         >
+          <AhTabs.Trigger
+            value="sessions"
+            aria-label="会话"
+            ref={mobileSessionsRef}
+            onClick={openSessionDrawer}
+          >
+            会话
+          </AhTabs.Trigger>
           <AhTabs.Trigger value="conversation" aria-label="对话" onClick={closeMobileInspector}>
             对话
           </AhTabs.Trigger>
@@ -323,9 +347,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               key={item}
               value={item}
               aria-label={label}
-              onClick={() => {
-                setTab(item);
-              }}
+              onClick={() => openInspectorDrawer(item)}
             >
               {label}
             </AhTabs.Trigger>
@@ -356,16 +378,22 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               className="workspace-drawer-close"
               aria-label="关闭会话列表"
               ref={sessionCloseRef}
-              onClick={() => setSessionDrawerOpen(false)}
+              onClick={closeSessionDrawer}
             >
               <X size={18} />
             </button>
+          )}
+          {sessionDrawerOpen && !isMobileViewport && (
+            <AuxiliarySwitcher
+              active={activeAuxiliaryPanel}
+              onSelect={(panel) => setAuxiliaryPanel(panel)}
+            />
           )}
           <SessionRail
             sessions={sessions}
             currentId={id}
             projectId={project?.id}
-            onSelect={() => setSessionDrawerOpen(false)}
+            onSelect={closeSessionDrawer}
           />
         </Panel>
         <Separator className={`${workspaceStyles.separator} resize-handle`} />
@@ -454,6 +482,12 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               <X size={18} />
             </button>
           )}
+          {inspectorDrawerOpen && !isMobileViewport && (
+            <AuxiliarySwitcher
+              active={activeAuxiliaryPanel}
+              onSelect={(panel) => setAuxiliaryPanel(panel)}
+            />
+          )}
           <WorkspaceInspector
             project={project}
             projects={projects}
@@ -488,11 +522,41 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           aria-hidden="true"
           tabIndex={-1}
           onClick={() => {
-            setSessionDrawerOpen(false);
             closeMobileInspector();
           }}
         />
       )}
+    </div>
+  );
+}
+
+function AuxiliarySwitcher({
+  active,
+  onSelect,
+}: {
+  active: 'sessions' | 'inspector' | null;
+  onSelect: (panel: 'sessions' | 'inspector') => void;
+}) {
+  return (
+    <div className="workspace-auxiliary-switcher" role="tablist" aria-label="辅助栏视图">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active === 'sessions'}
+        onClick={() => onSelect('sessions')}
+      >
+        <Menu size={15} aria-hidden="true" />
+        会话
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active === 'inspector'}
+        onClick={() => onSelect('inspector')}
+      >
+        <GitCompareArrows size={15} aria-hidden="true" />
+        检查器
+      </button>
     </div>
   );
 }

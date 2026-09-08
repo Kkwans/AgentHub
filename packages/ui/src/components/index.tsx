@@ -534,15 +534,14 @@ function AhTabsList({ children, ...props }: React.HTMLAttributes<HTMLDivElement>
   );
 }
 
-function AhTabsTrigger({
-  value,
-  children,
-  onClick,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string }) {
+const AhTabsTrigger = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string }
+>(function AhTabsTrigger({ value, children, onClick, ...props }, ref) {
   const tabs = React.useContext(ahTabsContext);
   return (
     <button
+      ref={ref}
       type="button"
       role="tab"
       aria-selected={tabs.value === value}
@@ -555,7 +554,8 @@ function AhTabsTrigger({
       {children}
     </button>
   );
-}
+});
+AhTabsTrigger.displayName = 'AhTabsTrigger';
 
 export const AhTabs = { Root: AhTabsRoot, List: AhTabsList, Trigger: AhTabsTrigger };
 
