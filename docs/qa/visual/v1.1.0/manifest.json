@@ -97,6 +97,7 @@
         "pnpm exec vitest run packages/ui/src --pool=forks --maxWorkers=1 (7 files, 26 passed)",
         "pnpm qa:css-budget (pass; PinHarness source snapshot provenance envelope plus strict feature budgets)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=mobile-390 --grep 'Home 深色主题' --workers=1 (2/2 passed; .dark/color-scheme/画布/overflow assertions)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=desktop-1024 --project=tablet-768 --project=mobile-390 --workers=1 --timeout=120000 (48/48 passed; current HEAD full four-viewport route/axe matrix)",
         "pnpm release:version-truth 1.1.0 --allow-incomplete",
         "git diff --check"
       ]
