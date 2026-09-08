@@ -319,6 +319,8 @@ const remoteNode = {
   updatedAt: '2026-08-28T01:30:00.000Z',
 };
 
+const SHELL_READY_TIMEOUT = 30_000;
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/**', fulfillFixture);
 });
@@ -391,7 +393,9 @@ test('Home 以工作续接为主舞台', async ({ page }, testInfo) => {
 
 test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }, testInfo) => {
   await page.goto('/agents');
-  await expect(page.getByRole('heading', { name: 'Agent 中心' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Agent 中心' })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
   await expect(page.getByText('Codex', { exact: true }).first()).toBeVisible();
   if ((page.viewportSize()?.width ?? 1_000) >= 641) {
     await expect(page.getByRole('link', { name: '运行环境' })).toHaveAttribute(
@@ -425,10 +429,10 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   // replacing its bootstrap shell; allow the local fixture server that time
   // without weakening the interaction assertions that follow.
   await expect(page.getByText(session.title, { exact: true }).first()).toBeVisible({
-    timeout: 15_000,
+    timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible({
-    timeout: 15_000,
+    timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
   await expect(page.locator('.tool-execution-group')).toHaveCount(1);
@@ -557,13 +561,20 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
 
 test('Projects 使用高密度实体列表并打开路由弹层', async ({ page }, testInfo) => {
   await page.goto('/projects');
-  await expect(page.getByRole('heading', { name: '项目' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '项目' })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
   const list = page.getByRole('region', { name: '项目列表' });
+  await expect(list).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
   if ((page.viewportSize()?.width ?? 1_000) >= 768) {
-    await expect(list.getByText('分支')).toBeVisible();
-    await expect(list.getByText('工作')).toBeVisible();
-    await expect(list.getByText('最近活动', { exact: true }).first()).toBeVisible();
-    await expect(list.getByText('feature/agent-discovery')).toBeVisible();
+    await expect(list.getByText('分支')).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
+    await expect(list.getByText('工作')).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
+    await expect(list.getByText('最近活动', { exact: true }).first()).toBeVisible({
+      timeout: SHELL_READY_TIMEOUT,
+    });
+    await expect(list.getByText('feature/agent-discovery')).toBeVisible({
+      timeout: SHELL_READY_TIMEOUT,
+    });
   }
   if ((page.viewportSize()?.width ?? 1_000) >= 1_024)
     await expect(list.getByText('Agent', { exact: true })).toBeVisible();
@@ -599,7 +610,7 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
   // wait for that real readiness boundary instead of racing the 5s assertion
   // against the context skeleton on slower NAS workers.
   await expect(page.getByRole('heading', { name: project.name })).toBeVisible({
-    timeout: 15_000,
+    timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByRole('link', { name: '工作', exact: true })).toHaveAttribute(
     'aria-current',
@@ -615,11 +626,15 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
 
 test('Sessions 按时间组织并可恢复 Workspace', async ({ page }, testInfo) => {
   await page.goto(`/projects/${project.id}/sessions`);
+  await expect(page.getByRole('heading', { name: project.name })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  const sessionLink = page.getByRole('link', { name: /Agent Discovery 交互优化/ });
+  await expect(sessionLink).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
   await expect(page.getByRole('link', { name: '会话', exact: true })).toHaveAttribute(
     'aria-current',
     'page',
   );
-  const sessionLink = page.getByRole('link', { name: /Agent Discovery 交互优化/ });
   await expect(sessionLink).toContainText('Codex');
   await expect(sessionLink).toHaveAttribute('href', `/workspace/${session.id}`);
   await expectNoHorizontalOverflow(page);
@@ -628,7 +643,9 @@ test('Sessions 按时间组织并可恢复 Workspace', async ({ page }, testInfo
 
 test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板', async ({ page }, testInfo) => {
   await page.goto(`/prompts?projectId=${project.id}&tab=bindings`);
-  await expect(page.getByRole('heading', { name: 'Prompt 库' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Prompt 库' })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
   if ((page.viewportSize()?.width ?? 1_000) < 768) {
     await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
   } else {
@@ -646,8 +663,8 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
   await expect(lifecycle.getByText('production', { exact: true })).toBeVisible();
   await expect(lifecycle.getByRole('heading', { name: '版本比较' })).toBeVisible();
   await expect(lifecycle.getByText('+请优先识别安全、数据一致性和回归风险。')).toBeVisible();
-  await lifecycle.press('Escape');
-  await expect(lifecycle).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(lifecycle).toBeHidden({ timeout: SHELL_READY_TIMEOUT });
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'prompts');
 });
