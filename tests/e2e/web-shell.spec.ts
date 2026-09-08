@@ -495,7 +495,12 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     });
     await page.getByRole('button', { name: '展开会话列表' }).click();
   } else if (viewportWidth >= 768) {
-    await page.getByRole('button', { name: '打开检查器' }).click();
+    await expect(page.getByRole('button', { name: '打开辅助栏' })).toBeVisible();
+    await expect(page.locator('.workspace-mobile-tabs')).toBeHidden();
+    await page.getByRole('button', { name: '打开辅助栏' }).click();
+    await expect(page.getByRole('button', { name: '关闭会话列表' })).toBeVisible();
+    const auxiliary = page.getByRole('tablist', { name: '辅助栏视图' });
+    await auxiliary.getByRole('tab', { name: '检查器' }).click();
     await expect(page.getByRole('button', { name: '关闭检查器' })).toBeVisible();
     await page
       .getByRole('tablist', { name: '检查器视图' })
@@ -504,6 +509,8 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
   } else {
     const views = page.getByRole('tablist', { name: 'Workspace 视图' });
+    await expect(views.getByRole('tab', { name: '会话' })).toBeVisible();
+    await expect(page.locator('.workspace-support-toggle')).toBeHidden();
     await views.getByRole('tab', { name: '文件' }).click();
     await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
   }
