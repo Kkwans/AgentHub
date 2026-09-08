@@ -511,6 +511,9 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     const views = page.getByRole('tablist', { name: 'Workspace 视图' });
     await expect(views.getByRole('tab', { name: '会话' })).toBeVisible();
     await expect(page.locator('.workspace-support-toggle')).toBeHidden();
+    await views.getByRole('tab', { name: '会话' }).click();
+    await expect(page.getByRole('button', { name: '关闭会话列表' })).toBeVisible();
+    await views.getByRole('tab', { name: '对话' }).click();
     await views.getByRole('tab', { name: '文件' }).click();
     await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
   }
