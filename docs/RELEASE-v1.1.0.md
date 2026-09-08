@@ -14,8 +14,8 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v7`，镜像为 Linux `arm64`，OCI `revision` 为 `c23770ae2b91a01a146f51ee78be5efbd693222f`；
-- 当前生产源码提交：`c23770ae2b91a01a146f51ee78be5efbd693222f`（已推送 `main`）；镜像 ID 为 `sha256:47d594bd22e9d0634307f0d964472f33b5146df7f463f295cd75ba1a3152dff6`；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v8`，镜像为 Linux `arm64`，OCI `revision` 为 `db68ed11429f1c88c3a0e34558044b3dbe0b83fe`；
+- 当前生产源码提交：`db68ed11429f1c88c3a0e34558044b3dbe0b83fe`（已推送 `main`）；镜像 ID 为 `sha256:263b904a2448a2cb44b2293f42baca6f08f06473c186dd19dcf1d6653c06a30a`；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
 - 2026-09-08 22:58:45（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
@@ -64,6 +64,16 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 2026-09-09 02:54:25（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200`、容器 `running/healthy`、exit `0`、OOM `false`；`2026.9.9-v4`、`2026.9.9-v3`、`2026.9.9-v2` 与 1.0.0 回滚镜像均保留；
 - 部署前快照与有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T184849Z-pre-home/`；未执行 `docker compose down`，未触碰数据卷和其他 Compose service；
 - NAS-local Playwright 未登录静态 smoke 见 [`docs/qa/visual/v1.1.0/15-deployed-home-20260909.json`](qa/visual/v1.1.0/15-deployed-home-20260909.json)，四视口 HTTP `200`、无横向溢出、console/page/request error 为 `0`；认证 Workspace、真实 Agent/PTY、性能和独立视觉复核仍未验证。
+
+### 共享 primitives 第七轮直接部署追加（2026-09-09）
+
+- 将直接迁移的 PinHarness Button、Card、Badge、Input、Textarea、Skeleton 与 `cn` 收归 `@agenthub/ui`，页面不再从 `apps/web/src/pinharness/ui` 私有入口引用；保留现有 AgentHub 领域契约；
+- `qa:css-budget` 增加唯一 PinHarness source snapshot 的 provenance/独立上限，feature CSS 仍按原有严格预算检查；
+- 代码提交 `db68ed11429f1c88c3a0e34558044b3dbe0b83fe` 已推送 `main`；共享包 7 files/26 tests、全量 Vitest 70 files/295 passed、全仓 lint/typecheck/build、Web mock Workspace/页面门禁均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v8`，image ID `sha256:263b904a2448a2cb44b2293f42baca6f08f06473c186dd19dcf1d6653c06a30a`，OCI revision `db68ed11429f1c88c3a0e34558044b3dbe0b83fe`，架构 `linux/arm64`；
+- 2026-09-09 04:31:59（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200` 返回 `version: 1.1.0`，容器 `running/healthy`，其他容器 identity 未变；
+- 部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260908T203142Z-pre-shared-primitives/`；v7、v6/v5/v4/v3/v2 与 1.0.0 回滚镜像均保留；
+- NAS-local Playwright 未登录静态 smoke 证据见 [`docs/qa/visual/v1.1.0/18-deployed-shared-primitives-20260909.json`](qa/visual/v1.1.0/18-deployed-shared-primitives-20260909.json)，四视口 HTTP `200`、无横向溢出、console/page/request error 为 `0`；认证后的深色 Workspace、Agent/PTY 与完整视觉验收仍未验证。
 
 ### 深色主题桥接第六轮直接部署追加（2026-09-09）
 
