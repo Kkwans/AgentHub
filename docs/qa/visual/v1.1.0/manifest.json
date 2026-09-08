@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "d12ab1df6b66732b90a15c865f3c3e5f8d724e31",
+  "sourceCommit": "c23770ae2b91a01a146f51ee78be5efbd693222f",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -21,19 +21,19 @@
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v5",
-    "imageId": "sha256:cd7587784e8f6a103e46be583cce4e300e9d8de25b55b4813fb1d345c5d28e66",
-    "revision": "50eeb3647f357fcb124d083e1a68f0541f39aa4e",
+    "image": "agenthub:2026.9.9-v6",
+    "imageId": "sha256:55461561fa96e9c7c1950b2b5a3e1805d17b74569229f3d5e6974a134d34b94f",
+    "revision": "d12ab1df6b66732b90a15c865f3c3e5f8d724e31",
     "preserve": true
   },
   "productionReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v6",
-    "imageId": "sha256:55461561fa96e9c7c1950b2b5a3e1805d17b74569229f3d5e6974a134d34b94f",
-    "revision": "d12ab1df6b66732b90a15c865f3c3e5f8d724e31",
-    "checkedAt": "2026-09-08T19:17:20.885Z",
+    "image": "agenthub:2026.9.9-v7",
+    "imageId": "sha256:47d594bd22e9d0634307f0d964472f33b5146df7f463f295cd75ba1a3152dff6",
+    "revision": "c23770ae2b91a01a146f51ee78be5efbd693222f",
+    "checkedAt": "2026-09-08T19:48:10.528Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -42,19 +42,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v6",
-    "imageId": "sha256:55461561fa96e9c7c1950b2b5a3e1805d17b74569229f3d5e6974a134d34b94f",
+    "image": "agenthub:2026.9.9-v7",
+    "imageId": "sha256:47d594bd22e9d0634307f0d964472f33b5146df7f463f295cd75ba1a3152dff6",
     "architecture": "arm64",
-    "revision": "d12ab1df6b66732b90a15c865f3c3e5f8d724e31",
-    "created": "2026-09-08T19:11:52Z",
-    "deployedAt": "2026-09-08T19:16:22Z",
+    "revision": "c23770ae2b91a01a146f51ee78be5efbd693222f",
+    "created": "2026-09-08T19:42:36Z",
+    "deployedAt": "2026-09-08T19:47:12Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T190903Z-pre-responsive-semantics/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T194646Z-pre-dark-theme/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -93,6 +93,7 @@
         "pnpm exec vitest run apps/web/src/features/workspace/pages/WorkspacePage.test.tsx apps/web/src/features/workspace/components/SessionConfigurationControl.test.tsx apps/web/src/features/workspace/components/Conversation.test.tsx (26 passed)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=mobile-390 --grep 'Home 以工作续接' (2/2 passed)",
         "pnpm --filter @agenthub/web build (pass; v5 candidate)",
+        "pnpm exec vitest run packages/ui/src/provider.test.tsx apps/web/src/App.test.tsx --pool=forks --maxWorkers=1 (12 passed)",
         "pnpm release:version-truth 1.1.0 --allow-incomplete",
         "git diff --check"
       ]
@@ -116,11 +117,9 @@
         "consoleErrors": 0,
         "pageErrors": 0,
         "requestFailures": 0,
-        "knownWarnings": [
-          "Origin-Agent-Cluster warning emitted by Chromium for the IP origin"
-        ],
-        "evidence": "docs/qa/visual/v1.1.0/16-deployed-responsive-semantics-20260909.json",
-        "capturedAt": "2026-09-08T19:17:20.885Z"
+        "knownWarnings": [],
+        "evidence": "docs/qa/visual/v1.1.0/17-deployed-dark-theme-20260909.json",
+        "capturedAt": "2026-09-08T19:48:10.528Z"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -146,11 +145,11 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v6 and 1.0.0 remains tagged and retained as the rollback point.",
-    "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36 and d12ab1d were pushed to main before the 2026.9.9-v6 image build.",
-    "The v6 unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v7 and 1.0.0 remains tagged and retained as the rollback point.",
+    "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36, d12ab1d and c23770a were pushed to main before the 2026.9.9-v7 image build.",
+    "The v7 unauthenticated production smoke was run after the theme bridge fix; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
     "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 70 files (66 passed, 4 skipped), 305 tests (295 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
-    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T190903Z-pre-responsive-semantics/.",
+    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T194646Z-pre-dark-theme/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }
