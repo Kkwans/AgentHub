@@ -12,14 +12,10 @@
   justify-content: space-between;
   gap: 24px;
   padding: 22px 24px;
-  background: linear-gradient(
-    108deg,
-    color-mix(in srgb, var(--ah-accent-soft) 62%, var(--ah-surface)),
-    var(--ah-surface) 70%
-  );
+  background: color-mix(in srgb, var(--ah-accent-soft) 48%, var(--ah-surface));
   border: 1px solid color-mix(in srgb, var(--ah-accent-primary) 15%, var(--ah-border-subtle));
   border-radius: 14px;
-  box-shadow: var(--ah-shadow-xs);
+  box-shadow: var(--ah-shadow-sm);
 }
 
 .continueEmpty {
@@ -63,7 +59,7 @@
   min-height: 38px;
   padding-inline: 15px;
   border-radius: 9px;
-  box-shadow: var(--ah-shadow-accent);
+  box-shadow: var(--ah-shadow-xs);
 }
 
 .heroCta:hover {
@@ -244,11 +240,11 @@
 }
 
 .entityColor0 {
-  background: linear-gradient(145deg, #2d87ff, #6246f5);
+  background: var(--ah-accent-primary);
 }
 
 .entityColor1 {
-  background: linear-gradient(145deg, #5f9dff, #a35aff);
+  background: var(--ah-info);
 }
 
 .entityColor2 {
@@ -259,7 +255,7 @@
 }
 
 .entityColor3 {
-  background: linear-gradient(145deg, #e75766, #a81532);
+  background: var(--ah-danger);
 }
 
 .projectRowCopy {

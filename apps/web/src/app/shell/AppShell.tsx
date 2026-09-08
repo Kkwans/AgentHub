@@ -71,7 +71,6 @@ function Brand() {
       <div className={styles.brand}>
         <AgentHubLogo className={styles.brandMark} />
         <span className={styles.brandName}>AgentHub</span>
-        <span className={styles.version}>v1.0</span>
       </div>
     </div>
   );

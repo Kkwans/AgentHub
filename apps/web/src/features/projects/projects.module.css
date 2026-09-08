@@ -16,10 +16,10 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 12px;
+  padding: 10px 12px;
   background: var(--ah-surface);
   border: 1px solid var(--ah-border-subtle);
-  border-radius: 14px;
+  border-radius: var(--ah-radius-surface);
   box-shadow: var(--ah-shadow-xs);
 }
 
@@ -229,16 +229,16 @@
   flex: 0 0 auto;
   place-items: center;
   color: #fff;
-  background: linear-gradient(145deg, var(--ah-accent-blue), var(--ah-accent-primary));
-  border-radius: 11px;
-  box-shadow: var(--ah-shadow-sm);
+  background: var(--ah-accent-primary);
+  border-radius: var(--ah-radius-control);
+  box-shadow: var(--ah-shadow-xs);
   font-size: 15px;
   font-weight: 760;
   letter-spacing: -0.04em;
 }
 
 .entityLogoAlt {
-  background: linear-gradient(145deg, var(--ah-accent-violet), var(--ah-accent-primary));
+  background: var(--ah-info);
 }
 
 .entityLogoNeutral {
