@@ -91,7 +91,7 @@
   min-width: 0;
   overflow: hidden;
   color: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -128,7 +128,7 @@
 
 :global(.workspace) :global(.composer-session-config-heading span) {
   color: var(--ah-text-tertiary);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-config-choice),
@@ -139,7 +139,7 @@
   align-items: center;
   gap: 8px;
   color: var(--ah-text-tertiary);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-config-choice > div) {
@@ -161,7 +161,7 @@
   border-radius: 7px;
   outline: 0;
   appearance: none;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-config-choice select:focus-visible) {
@@ -180,7 +180,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--ah-text-primary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -188,7 +188,7 @@
 
 :global(.workspace) :global(.composer-context-action small) {
   color: var(--workspace-faint);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 520;
 }
 
@@ -274,7 +274,7 @@
   overflow: hidden;
   color: var(--ah-text-tertiary);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -386,7 +386,7 @@
   order: 3;
   margin: 0 8px 2px;
   color: var(--ah-text-tertiary);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -446,7 +446,7 @@
 
 :global(.workspace) :global(.context-preview-heading span:not([class])) {
   color: var(--ah-text-tertiary);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -456,7 +456,7 @@
   color: var(--ah-accent-primary);
   background: var(--ah-accent-soft);
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -485,7 +485,7 @@
 
 :global(.workspace) :global(.composer-session-facts span) {
   color: var(--ah-text-tertiary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -495,7 +495,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--ah-text-primary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -504,7 +504,7 @@
 :global(.workspace) :global(.composer-session-facts code) {
   color: var(--ah-text-secondary);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -528,7 +528,7 @@
 
 :global(.workspace) :global(.composer-provenance span) {
   color: var(--ah-accent-primary);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -542,12 +542,12 @@
 :global(.workspace) :global(.composer-provenance code) {
   color: var(--ah-text-primary);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-provenance small) {
   color: var(--ah-text-tertiary);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-context-grid > label) {
@@ -555,13 +555,13 @@
   align-content: start;
   gap: 6px;
   color: var(--ah-text-secondary);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
 }
 
 :global(.workspace) :global(.context-variable-error) {
   color: var(--ah-danger);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-command-menu) {
@@ -598,7 +598,7 @@
   grid-row: span 2;
   color: var(--ah-accent-primary);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-command-menu button span),
@@ -611,13 +611,13 @@
 }
 
 :global(.workspace) :global(.composer-command-menu button span) {
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.composer-command-menu button small),
 :global(.workspace) :global(.composer-command-menu button code) {
   color: var(--ah-text-tertiary);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 @media (max-width: 1023px) {

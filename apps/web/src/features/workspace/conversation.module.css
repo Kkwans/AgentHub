@@ -283,7 +283,7 @@
 :global(.workspace) :global(.message-debug) {
   margin-top: 10px;
   color: var(--ah-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.message-debug pre) {
@@ -295,7 +295,7 @@
   background: color-mix(in srgb, var(--ah-danger-soft) 55%, var(--ah-surface));
   border-radius: 8px;
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10.5px;
+  font-size: 12px;
   white-space: pre-wrap;
 }
 
@@ -363,7 +363,7 @@
 :global(.workspace) :global(.tool-summary-action) {
   overflow: hidden;
   color: var(--ah-text-tertiary);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -399,7 +399,7 @@
 :global(.workspace) :global(.event-label) {
   overflow: hidden;
   color: var(--ah-text-tertiary);
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -499,14 +499,14 @@
 :global(.workspace) :global(.tool-event-copy small) {
   flex: 0 0 auto;
   color: var(--workspace-faint);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.tool-event-copy code) {
   overflow: hidden;
   color: var(--workspace-muted);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -544,7 +544,7 @@
   overflow: auto;
   color: var(--workspace-muted);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -556,7 +556,7 @@
   align-items: center;
   gap: 5px;
   color: var(--workspace-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 560;
 }
 
@@ -575,13 +575,13 @@
   gap: 7px;
   min-width: 0;
   color: var(--workspace-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.tool-event-group-list li strong) {
   overflow: hidden;
   color: var(--workspace-ink);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -589,7 +589,7 @@
 
 :global(.workspace) :global(.tool-event-group-list li span) {
   color: var(--workspace-faint);
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -598,7 +598,7 @@
   overflow: hidden;
   color: var(--workspace-muted);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -710,7 +710,7 @@
 :global(.workspace) :global(.approval-options-label),
 :global(.workspace) :global(.approval-impact > span) {
   color: var(--ah-warning);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 750;
   letter-spacing: 0.04em;
 }
@@ -748,7 +748,7 @@
   background: var(--workspace-panel-subtle);
   border: 1px solid var(--ah-border-subtle);
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -782,7 +782,7 @@
 :global(.workspace) :global(.approval-debug summary) {
   color: var(--ah-text-tertiary);
   cursor: pointer;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.approval-debug dl) {
@@ -795,7 +795,7 @@
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr);
   gap: 8px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.approval-debug dt) {
@@ -884,7 +884,7 @@
 :global(.workspace) :global(.run-state-banner > div:first-of-type > span) {
   overflow: hidden;
   color: var(--ah-text-tertiary);
-  font-size: 11.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -892,7 +892,7 @@
 :global(.workspace) :global(.run-state-link) {
   margin-left: auto;
   color: var(--ah-accent-primary);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -938,7 +938,7 @@
   border: 0;
   border-radius: 7px;
   cursor: pointer;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
   transition:
@@ -963,7 +963,7 @@
 :global(.workspace) :global(.run-state-action small) {
   max-width: 180px;
   color: var(--ah-danger);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 :global(.workspace) :global(.workspace-handoff) {
@@ -989,7 +989,7 @@
 }
 :global(.workspace) :global(.workspace-handoff summary span) {
   color: var(--ah-text-tertiary);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
 }
 :global(.workspace) :global(.workspace-handoff p) {
@@ -1012,7 +1012,7 @@
   min-height: 30px;
   padding: 0 12px;
   color: var(--ah-text-secondary);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 650;
   background: var(--workspace-panel-subtle);
   border: 1px solid var(--ah-border-subtle);
@@ -1045,7 +1045,7 @@
   border-radius: 999px;
   box-shadow: var(--ah-shadow-sm);
   cursor: pointer;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   transition:
     background-color var(--ah-motion-fast, 120ms) ease,

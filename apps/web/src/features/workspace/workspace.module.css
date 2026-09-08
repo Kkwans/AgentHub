@@ -141,7 +141,7 @@
   padding: 0;
   color: var(--workspace-muted);
   background: transparent;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 560;
 }
 
@@ -184,7 +184,7 @@
   overflow: hidden;
   color: var(--ah-text-tertiary);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -224,7 +224,7 @@
   background: transparent;
   border: 1px solid var(--ah-border-subtle);
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -570,7 +570,7 @@
 
   .sessionStatus > span > span {
     overflow: hidden;
-    font-size: 11.5px;
+    font-size: 12px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -593,8 +593,6 @@
   }
 }
 
-/* Phase 3 workspace geometry: keep the center conversation readable while
-   moving the two supporting panels to drawers at the agreed breakpoints. */
 @media (min-width: 1180px) {
   .contextbar {
     flex-basis: 50px;
@@ -620,9 +618,6 @@
   }
 }
 
-/* Below the desktop breakpoint the supporting panels are real drawers. The
-   outer data-panel host is positioned by WorkspaceView's responsive host
-   effect; these rules keep the inner scroll host in normal flow. */
 @media (max-width: 1179px) {
   .workspace :global(.workspace-support-toggle) {
     display: inline-flex;
