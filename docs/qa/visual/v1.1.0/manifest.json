@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "26afa55560fe51e1a2a1c1f3924c5cbf03044457",
+  "sourceCommit": "d12ab1df6b66732b90a15c865f3c3e5f8d724e31",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -146,9 +146,10 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v3 and 1.0.0 remains tagged and retained as the rollback point.",
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v6 and 1.0.0 remains tagged and retained as the rollback point.",
     "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36 and d12ab1d were pushed to main before the 2026.9.9-v6 image build.",
     "The v6 unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
+    "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 70 files (66 passed, 4 skipped), 305 tests (295 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
     "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T190903Z-pre-responsive-semantics/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
