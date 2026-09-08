@@ -412,6 +412,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   );
   const contextDisclosure = page.locator('.workspace-context-disclosure');
   await contextDisclosure.locator('summary').click();
+  await expect(contextDisclosure.locator('code')).toBeVisible();
   await expect(contextDisclosure.locator('code')).toHaveText(project.rootPath);
   await contextDisclosure.locator('summary').click();
   const thought = page.locator('.thought-event-row');
