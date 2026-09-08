@@ -14,7 +14,7 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } fr
 import { Link } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from '../../../components/Feedback';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
   ApprovalRecord,
   EventRecord,
@@ -301,13 +301,6 @@ export function Conversation({
     <section
       className={`${conversationStyles.owner} conversation flex min-h-0 h-full flex-col overflow-hidden bg-[hsl(var(--background))]`}
     >
-      <div className="panel-title conversation-title hidden">
-        <div>
-          <span>对话</span>
-          <small>{activeRun ? 'Agent 正在处理当前指令' : '消息与执行记录'}</small>
-        </div>
-        {activeRun && <StatusBadge status={activeRun.status} />}
-      </div>
       <div
         ref={scrollRef}
         className="group/chatscroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--background))] px-0.5 py-2 sm:px-1 sm:py-3"

@@ -295,6 +295,13 @@ export function Composer({
             : promptContext.items.length === 0
               ? { label: '无绑定', kind: 'empty' }
               : { label: `${promptContext.items.length} 项`, kind: 'ready' };
+  const sendingBlocked =
+    !text.trim() ||
+    send.isPending ||
+    updateConfiguration.isPending ||
+    (contextBlocked && !localSlashCommand) ||
+    Boolean(variablesError) ||
+    sessionLocked;
   const applyVariables = () => {
     try {
       const parsed = JSON.parse(variablesDraft) as unknown;
@@ -357,6 +364,12 @@ export function Composer({
           updatingMode={updatingMode}
           updatingReasoningEffort={updatingReasoningEffort}
           onChangeConfiguration={(patch) => updateConfiguration.mutate(patch)}
+          activeRun={Boolean(activeRun)}
+          sendPending={send.isPending}
+          stopPending={stop.isPending}
+          sendingBlocked={sendingBlocked}
+          onSend={sendCurrentText}
+          onStop={() => stop.mutate(undefined)}
         />
         {configurationError && (
           <div className="composer-error" role="alert">
@@ -391,16 +404,7 @@ export function Composer({
           onResizeMove={handleResizeMove}
           onResizeEnd={handleResizeEnd}
           activeRun={activeRun}
-          sendPending={send.isPending}
           stopPending={stop.isPending}
-          sendingBlocked={
-            !text.trim() ||
-            send.isPending ||
-            updateConfiguration.isPending ||
-            (contextBlocked && !localSlashCommand) ||
-            Boolean(variablesError) ||
-            sessionLocked
-          }
           inputDisabled={Boolean(activeRun) || sessionLocked}
           placeholder={sessionLockMessage ?? '给 Agent 发送工程指令…'}
           onTextChange={(value) => {
@@ -408,8 +412,6 @@ export function Composer({
             setCommandNotice(undefined);
           }}
           onKeyDown={handleInputKeyDown}
-          onSend={sendCurrentText}
-          onStop={() => stop.mutate(undefined)}
           commandNotice={commandNotice}
           lockHint={sessionLockMessage}
           sendError={send.error?.message}

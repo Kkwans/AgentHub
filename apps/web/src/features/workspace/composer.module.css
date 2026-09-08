@@ -27,7 +27,8 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 2px;
+  justify-content: space-between;
+  gap: 8px;
   order: 2;
   min-height: 40px;
   padding: 0 10px;
@@ -38,6 +39,208 @@
   color: var(--workspace-muted);
   font-size: 12px;
   flex-wrap: nowrap;
+}
+
+:global(.workspace) :global(.composer-context-tools),
+:global(.workspace) :global(.composer-context-actions) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+:global(.workspace) :global(.composer-context-tools) {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+:global(.workspace) :global(.composer-context-actions) {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+:global(.workspace) :global(.composer-context-action),
+:global(.workspace) :global(.composer-permission),
+:global(.workspace) :global(.composer-run-state) {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--workspace-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-context-action) {
+  cursor: pointer;
+}
+
+:global(.workspace) :global(.composer-context-action:hover),
+:global(.workspace) :global(.composer-context-action.active),
+:global(.workspace) :global(.composer-context-action:focus-visible) {
+  color: var(--workspace-ink);
+  background: var(--workspace-hover);
+}
+
+:global(.workspace) :global(.composer-context-action small) {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--workspace-faint);
+  font-size: 12px;
+  font-weight: 520;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-permission) {
+  color: var(--workspace-muted);
+}
+
+:global(.workspace) :global(.composer-permission strong) {
+  color: inherit;
+  font-weight: 560;
+}
+
+:global(.workspace) :global(.composer-run-state) {
+  flex: 0 0 auto;
+  gap: 5px;
+  padding-inline: 7px;
+  color: var(--workspace-faint);
+  font-size: 11px;
+}
+
+:global(.workspace) :global(.composer-run-state-dot) {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--ah-success);
+}
+
+:global(.workspace) :global(.composer-run-state[data-running='true']) {
+  color: var(--ah-warning);
+}
+
+:global(.workspace) :global(.composer-run-state[data-running='true'] .composer-run-state-dot) {
+  background: var(--ah-warning);
+  box-shadow: 0 0 0 3px var(--ah-warning-soft);
+  animation: composer-status-pulse 1.2s ease-in-out infinite;
+}
+
+:global(.workspace) :global(.composer-keyboard-hints) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--workspace-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.composer-keyboard-hints kbd) {
+  display: inline-flex;
+  min-width: 30px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 5px;
+  color: var(--workspace-muted);
+  background: var(--workspace-panel);
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 5px;
+  box-shadow: 0 1px 0 var(--ah-border-subtle);
+  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 10px;
+  line-height: 1;
+}
+
+:global(.workspace) :global(.composer-send-slot) {
+  position: relative;
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+:global(.workspace) :global(.composer-send-button) {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--ah-text-disabled);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.78);
+  transition:
+    opacity var(--ah-motion-base, 180ms) var(--ah-ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--ah-motion-base, 180ms) var(--ah-ease-emphasized, cubic-bezier(0.16, 1, 0.3, 1)),
+    background-color var(--ah-motion-fast, 120ms) ease,
+    color var(--ah-motion-fast, 120ms) ease;
+}
+
+:global(.workspace) :global(.composer-send-button.is-visible) {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+:global(.workspace) :global(.composer-send-button-send:not(:disabled).is-visible) {
+  color: var(--ah-on-accent);
+  background: var(--ah-accent-primary);
+  box-shadow: var(--ah-shadow-xs);
+}
+
+:global(.workspace) :global(.composer-send-button-send:not(:disabled).is-visible:hover) {
+  background: var(--ah-accent-hover);
+  transform: translateY(-1px) scale(1.02);
+}
+
+:global(.workspace) :global(.composer-send-button-send:disabled.is-visible) {
+  color: var(--ah-text-disabled);
+  background: var(--ah-surface-subtle);
+  cursor: not-allowed;
+}
+
+:global(.workspace) :global(.composer-send-button-stop.is-visible) {
+  color: var(--ah-danger);
+}
+
+:global(.workspace) :global(.composer-send-button-stop.is-visible:hover:not(:disabled)) {
+  background: var(--ah-danger-soft);
+}
+
+:global(.workspace) :global(.composer-send-button:focus-visible) {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+
+:global(.workspace) :global(.composer-send-button svg) {
+  animation: none;
+}
+
+@keyframes composer-status-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 :global(.workspace) :global(.composer-context > span),
@@ -643,8 +846,16 @@
   }
 
   :global(.workspace) :global(.composer-select-reasoning),
-  :global(.workspace) :global(.composer-context) > :global(.composer-permission),
+  :global(.workspace) :global(.composer-context) :global(.composer-permission),
   :global(.workspace) :global(.composer-select-mode) {
+    display: none;
+  }
+
+  :global(.workspace) :global(.composer-run-state) {
+    display: none;
+  }
+
+  :global(.workspace) :global(.composer-keyboard-hints) {
     display: none;
   }
 
@@ -669,6 +880,17 @@
     border-radius: 0 0 13px 13px;
   }
 
+  :global(.workspace) :global(.composer-context-action),
+  :global(.workspace) :global(.composer-session-config-trigger),
+  :global(.workspace) :global(.composer-send-slot) {
+    min-height: 44px;
+  }
+
+  :global(.workspace) :global(.composer-send-slot) {
+    width: 44px;
+    height: 44px;
+  }
+
   :global(.workspace) :global(.composer-context-grid) {
     grid-template-columns: 1fr;
   }
@@ -677,8 +899,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  :global(.workspace) :global(.composer-context > span),
-  :global(.workspace) :global(.composer-context > button),
+  :global(.workspace) :global(.composer-context-action),
   :global(.workspace) :global(.composer-session-config-trigger),
   :global(.workspace) :global(.composer-choice select),
   :global(.workspace) :global(.composer-config-choice select),

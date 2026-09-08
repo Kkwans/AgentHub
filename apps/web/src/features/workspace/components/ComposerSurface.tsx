@@ -1,4 +1,4 @@
-import { AhButton, AhIconButton, CircleStop, Send } from '@agenthub/ui';
+import { AhButton } from '@agenthub/ui';
 import { type KeyboardEvent, type PointerEvent, type RefObject, useEffect } from 'react';
 
 import type { RunRecord } from '../../../lib/api';
@@ -12,15 +12,11 @@ export function ComposerSurface({
   onResizeMove,
   onResizeEnd,
   activeRun,
-  sendPending,
   stopPending,
-  sendingBlocked,
   inputDisabled,
   placeholder,
   onTextChange,
   onKeyDown,
-  onSend,
-  onStop,
   commandNotice,
   lockHint,
   sendError,
@@ -37,15 +33,11 @@ export function ComposerSurface({
   onResizeMove: (event: PointerEvent<HTMLDivElement>) => void;
   onResizeEnd: (event: PointerEvent<HTMLDivElement>) => void;
   activeRun: RunRecord | undefined;
-  sendPending: boolean;
   stopPending: boolean;
-  sendingBlocked: boolean;
   inputDisabled: boolean;
   placeholder: string;
   onTextChange: (value: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-  onSend: () => void;
-  onStop: () => void;
   commandNotice: string | undefined;
   lockHint: string | undefined;
   sendError: string | undefined;
@@ -100,27 +92,6 @@ export function ComposerSurface({
             onSelect={onSelectCommand}
           />
         ) : null}
-        {activeRun ? (
-          <AhIconButton
-            className="send-button stop"
-            color="red"
-            onClick={onStop}
-            disabled={stopPending}
-            label={stopPending ? '正在停止 Run' : '停止 Run'}
-          >
-            <CircleStop size={18} />
-          </AhIconButton>
-        ) : (
-          <AhIconButton
-            className="send-button"
-            disabled={sendingBlocked}
-            aria-busy={sendPending}
-            onClick={onSend}
-            label="发送"
-          >
-            <Send size={18} />
-          </AhIconButton>
-        )}
       </div>
       {stopError ? (
         <div className="workspace-query-error" role="alert">
