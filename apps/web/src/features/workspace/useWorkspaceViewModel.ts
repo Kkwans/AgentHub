@@ -128,18 +128,15 @@ export function useWorkspaceViewModel() {
   const sessionToggleRef = useRef<HTMLButtonElement>(null);
   const drawerStateRef = useRef({ session: false, inspector: false });
 
-  const toggleWorkspacePanel = useCallback(
-    (side: 'left' | 'right') => {
-      setWorkspaceLayout((current) => {
-        const nextCollapsed = side === 'left' ? !current.leftCollapsed : !current.rightCollapsed;
-        writeWorkspacePanel(side, { collapsed: nextCollapsed });
-        return side === 'left'
-          ? { ...current, leftCollapsed: nextCollapsed }
-          : { ...current, rightCollapsed: nextCollapsed };
-      });
-    },
-    [],
-  );
+  const toggleWorkspacePanel = useCallback((side: 'left' | 'right') => {
+    setWorkspaceLayout((current) => {
+      const nextCollapsed = side === 'left' ? !current.leftCollapsed : !current.rightCollapsed;
+      writeWorkspacePanel(side, { collapsed: nextCollapsed });
+      return side === 'left'
+        ? { ...current, leftCollapsed: nextCollapsed }
+        : { ...current, rightCollapsed: nextCollapsed };
+    });
+  }, []);
 
   const setTab = (nextTab: InspectorTab) => {
     const next = new URLSearchParams(searchParams);
