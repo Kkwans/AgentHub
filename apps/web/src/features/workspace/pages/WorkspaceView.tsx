@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { AhTabs, Bot, ChevronRight, GitBranch, GitCompareArrows, Menu, X } from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
@@ -12,12 +13,140 @@ import workspaceStyles from '../workspace.module.css';
 
 import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
+type SavedInlineStyle = { priority: string; value: string };
+
+const workspaceDrawerWidths = { left: 360, right: 480 } as const;
+
+const responsiveHostProperties = [
+  'position',
+  'inset',
+  'inset-inline',
+  'inset-block',
+  'z-index',
+  'display',
+  'flex',
+  'width',
+  'min-width',
+  'max-width',
+  'height',
+  'visibility',
+  'pointer-events',
+  'box-shadow',
+] as const;
+
+const responsiveConversationProperties = [
+  'position',
+  'inset',
+  'display',
+  'flex',
+  'width',
+  'min-width',
+  'max-width',
+  'height',
+] as const;
+
+function useResponsiveDrawerHost(
+  hostRef: RefObject<HTMLDivElement | null>,
+  compact: boolean,
+  open: boolean,
+  side: 'left' | 'right',
+  width: number,
+) {
+  const savedStyles = useRef(new Map<string, SavedInlineStyle>());
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const remember = (property: string) => {
+      if (savedStyles.current.has(property)) return;
+      savedStyles.current.set(property, {
+        value: host.style.getPropertyValue(property),
+        priority: host.style.getPropertyPriority(property),
+      });
+    };
+    const set = (property: string, value: string) => {
+      remember(property);
+      host.style.setProperty(property, value);
+    };
+
+    if (!compact) {
+      for (const property of responsiveHostProperties) {
+        const original = savedStyles.current.get(property);
+        if (!original) continue;
+        if (original.value) host.style.setProperty(property, original.value, original.priority);
+        else host.style.removeProperty(property);
+      }
+      savedStyles.current.clear();
+      return;
+    }
+
+    set('position', 'absolute');
+    set('inset', side === 'left' ? '0 auto 0 0' : '0 0 0 auto');
+    set('z-index', '45');
+    set('display', open ? 'flex' : 'none');
+    set('flex', open ? '0 0 auto' : '0 0 0');
+    set('width', open ? `min(${width}px, calc(100% - 24px))` : '0px');
+    set('min-width', '0');
+    set('max-width', open ? `min(${width}px, calc(100% - 24px))` : '0px');
+    set('height', '100%');
+    set('visibility', open ? 'visible' : 'hidden');
+    set('pointer-events', open ? 'auto' : 'none');
+    set('box-shadow', open ? 'var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%))' : 'none');
+  }, [compact, hostRef, open, side, width]);
+}
+
+function useResponsiveConversationHost(
+  hostRef: RefObject<HTMLDivElement | null>,
+  compact: boolean,
+  mobile: boolean,
+) {
+  const savedStyles = useRef(new Map<string, SavedInlineStyle>());
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const remember = (property: string) => {
+      if (savedStyles.current.has(property)) return;
+      savedStyles.current.set(property, {
+        value: host.style.getPropertyValue(property),
+        priority: host.style.getPropertyPriority(property),
+      });
+    };
+    const set = (property: string, value: string) => {
+      remember(property);
+      host.style.setProperty(property, value);
+    };
+
+    if (compact) {
+      set('position', mobile ? 'absolute' : 'relative');
+      set('inset', mobile ? '0' : 'auto');
+      set('flex', mobile ? '0 0 auto' : '1 1 100%');
+      set('width', '100%');
+      set('min-width', '0');
+      set('max-width', '100%');
+      set('height', '100%');
+      return;
+    }
+
+    for (const property of responsiveConversationProperties) {
+      const value = savedStyles.current.get(property);
+      if (!value) continue;
+      if (value.value) host.style.setProperty(property, value.value, value.priority);
+      else host.style.removeProperty(property);
+    }
+    savedStyles.current.clear();
+  }, [compact, hostRef, mobile]);
+}
+
 export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const {
     id,
     session,
     sessionDrawerOpen,
     setSessionDrawerOpen,
+    inspectorActsAsDrawer,
+    isMobileViewport,
     inspectorDrawerOpen,
     closeMobileInspector,
     tab,
@@ -74,6 +203,25 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     stagedDiff,
     setStagedDiff,
   } = model;
+
+  const sessionPanelHostRef = useRef<HTMLDivElement>(null);
+  const conversationPanelHostRef = useRef<HTMLDivElement>(null);
+  const inspectorPanelHostRef = useRef<HTMLDivElement>(null);
+  useResponsiveDrawerHost(
+    sessionPanelHostRef,
+    inspectorActsAsDrawer,
+    sessionDrawerOpen,
+    'left',
+    workspaceDrawerWidths.left,
+  );
+  useResponsiveConversationHost(conversationPanelHostRef, inspectorActsAsDrawer, isMobileViewport);
+  useResponsiveDrawerHost(
+    inspectorPanelHostRef,
+    inspectorActsAsDrawer,
+    inspectorDrawerOpen,
+    'right',
+    workspaceDrawerWidths.right,
+  );
 
   if (!session.data) return null;
   const currentSession = session.data;
@@ -192,6 +340,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
       >
         <Panel
           id="sessions"
+          elementRef={sessionPanelHostRef}
           panelRef={sessionPanelRef}
           defaultSize={workspaceLayout.leftCollapsed ? '0px' : workspaceLayout.leftWidth}
           collapsedSize="0px"
@@ -222,6 +371,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <Separator className={`${workspaceStyles.separator} resize-handle`} />
         <Panel
           id="conversation"
+          elementRef={conversationPanelHostRef}
           minSize="520px"
           className={`${workspaceStyles.panel} ${workspaceStyles.conversationPanel} workspace-panel conversation-panel`}
         >
@@ -283,6 +433,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <Separator className={`${workspaceStyles.separator} resize-handle`} />
         <Panel
           id="inspector"
+          elementRef={inspectorPanelHostRef}
           panelRef={inspectorPanelRef}
           defaultSize={workspaceLayout.rightCollapsed ? '0px' : workspaceLayout.rightWidth}
           collapsedSize="0px"

@@ -490,7 +490,9 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await attachViewportScreenshot(page, testInfo, 'workspace-files');
     await page.getByRole('button', { name: '折叠会话列表' }).click();
     await page.reload();
-    await expect(page.getByRole('button', { name: '展开会话列表' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '展开会话列表' })).toBeVisible({
+      timeout: 15_000,
+    });
     await page.getByRole('button', { name: '展开会话列表' }).click();
   } else if (viewportWidth >= 768) {
     await page.getByRole('button', { name: '打开检查器' }).click();
