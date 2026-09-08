@@ -81,7 +81,7 @@
         "pnpm typecheck",
         "pnpm build",
         "pnpm qa:css-budget",
-        "pnpm exec vitest run --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000 (70 files: 66 passed, 4 skipped; 295 tests passed, 10 skipped)",
+        "pnpm exec vitest run --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000 (71 files: 67 passed, 4 skipped; 296 tests passed, 10 skipped)",
         "pnpm exec vitest run apps/web/src/features/workspace --maxWorkers=1 (9 files, 41 passed)",
         "pnpm exec vitest run packages/adapter-acp/src --maxWorkers=1 (2 files, 12 passed)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --grep 'Workspace 保持' --timeout=120000 (4/4 latest viewports passed)",
@@ -150,7 +150,7 @@
     "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v8 and 1.0.0 remains tagged and retained as the rollback point.",
     "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36, d12ab1d, c23770a and db68ed1 were pushed to main before the 2026.9.9-v8 image build.",
     "The v8 unauthenticated production smoke was run after the shared-primitives migration; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
-    "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 70 files (66 passed, 4 skipped), 305 tests (295 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
+    "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 71 files (67 passed, 4 skipped), 306 tests (296 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
     "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T203142Z-pre-shared-primitives/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
