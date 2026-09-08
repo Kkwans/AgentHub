@@ -16,7 +16,7 @@ import { SessionRail } from '../components/SessionRail';
 import { TerminalDock } from '../components/TerminalDock';
 import { WorkspaceInspector, type InspectorTab } from '../components/WorkspaceInspector';
 import workspaceStyles from '../workspace.module.css';
-import { ThreeColumnSplit, type CompactPanel } from '../../../pinharness/layout/ThreeColumnSplit';
+import { ThreeColumnSplit, type CompactPanel } from '@agenthub/ui';
 
 import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 

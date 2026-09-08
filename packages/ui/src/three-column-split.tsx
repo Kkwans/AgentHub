@@ -5,8 +5,12 @@
  * 共享组件，供 RunDetailPage 和 ProjectDetailPage 使用。
  */
 
-import { ChevronLeft, ChevronRight, GripVertical, cn } from '@agenthub/ui';
+import { CaretLeftIcon as ChevronLeft } from '@phosphor-icons/react/CaretLeft';
+import { CaretRightIcon as ChevronRight } from '@phosphor-icons/react/CaretRight';
+import { DotsSixVerticalIcon as GripVertical } from '@phosphor-icons/react/DotsSixVertical';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+import { cn } from './pinharness/ui/cn.js';
 
 function lsGet(key: string): string | null {
   if (typeof window === 'undefined') return null;
