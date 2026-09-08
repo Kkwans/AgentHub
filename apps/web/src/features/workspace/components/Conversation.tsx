@@ -319,7 +319,11 @@ export function Conversation({
         aria-live="polite"
         aria-relevant="additions text"
         onWheel={markUserScrollIntent}
-        onPointerDown={markUserScrollIntent}
+        onPointerDown={(event) => {
+          // Content clicks (for example expanding thought/tool details) must
+          // not be mistaken for a scrollbar drag and break follow mode.
+          if (event.target === event.currentTarget) markUserScrollIntent();
+        }}
         onTouchStart={markUserScrollIntent}
         onKeyDown={(event) => {
           if (
