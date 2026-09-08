@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "15baf3661ddba815ac42d27fdd92dbeee9bd6818",
+  "sourceCommit": "f25216374dd23b2f30f74ec0687b8847e383fd72",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -21,9 +21,9 @@
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.8-v1",
-    "imageId": "sha256:873fefed290c0b28b36ea66da9491b335c31de7539a447726cd59d68ca7c0b47",
-    "checkedAt": "2026-09-08T14:58:45Z",
+    "image": "agenthub:2026.9.9-v1",
+    "imageId": "sha256:6f58c66edb9d34edc3e0af9bf562774ef232dd735bade88af8cf11353c63e16a",
+    "checkedAt": "2026-09-08T17:18:27Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -32,19 +32,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.8-v1",
-    "imageId": "sha256:873fefed290c0b28b36ea66da9491b335c31de7539a447726cd59d68ca7c0b47",
+    "image": "agenthub:2026.9.9-v1",
+    "imageId": "sha256:6f58c66edb9d34edc3e0af9bf562774ef232dd735bade88af8cf11353c63e16a",
     "architecture": "arm64",
-    "revision": "15baf3661ddba815ac42d27fdd92dbeee9bd6818",
-    "created": "2026-09-08T14:51:52Z",
-    "deployedAt": "2026-09-08T14:58:45Z",
+    "revision": "f25216374dd23b2f30f74ec0687b8847e383fd72",
+    "created": "2026-09-08T17:11:06Z",
+    "deployedAt": "2026-09-08T17:18:07Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T145710Z-pre-v110/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T171703Z-pre-pinharness/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -55,7 +55,7 @@
       "ChatCommandBar",
       "cool-neutral tokens"
     ],
-    "adaptation": "AgentHub 保留 Phosphor、Mantine 封装、REST/WebSocket 领域契约，不复制 PinHarness 业务能力；源码快照不可直接运行，尚未伪称像素对照完成。"
+    "adaptation": "直接迁移 PinHarness 的 Tailwind token、ThreeColumnSplit、ChatConversationView 结构、ChatCommandBar 卡片语言和 UI primitives；仅适配 AgentHub 的 REST/WebSocket/Approval/Git/Terminal 领域数据，不复制 PinHarness 业务能力。"
   },
   "parameters": {
     "designVariance": 5,
@@ -77,6 +77,9 @@
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --grep 'Workspace 保持' --timeout=120000 (4/4 latest viewports passed)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --grep 'Workspace 保持' --project=mobile-390 --timeout=120000 (1/1 after touch-move intent fix)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --timeout=120000 (first matrix 42/44; Settings desktop-1440/1024 rerun 2/2 passed)",
+        "pnpm exec vitest run apps/web/src/app/shell/AppShell.test.tsx apps/web/src/features/workspace/pages/WorkspacePage.test.tsx apps/web/src/features/workspace/components/Conversation.test.tsx apps/web/src/features/agents/pages/AgentPages.test.tsx apps/web/src/features/promptos/pages/PromptLibraryPage.test.tsx (32 passed)",
+        "pnpm lint (pass)",
+        "pnpm build (pass; web Vite build 15.64s)",
         "pnpm release:version-truth 1.1.0 --allow-incomplete",
         "git diff --check"
       ]
@@ -103,7 +106,7 @@
         "knownWarnings": [
           "Origin-Agent-Cluster warning emitted by Chromium for the IP origin"
         ],
-        "evidence": "docs/qa/visual/v1.1.0/10-deployed-login-1440.json"
+        "evidence": "docs/qa/visual/v1.1.0/11-deployed-login-20260909.json"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -129,7 +132,9 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; 1.0.0 remains tagged and retained as the rollback point.",
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v1 and 1.0.0 remains tagged and retained as the rollback point.",
+    "PinHarness direct-migration commits ec74915, cda7393 and f252163 were pushed to main before the 2026.9.9-v1 image build.",
+    "The latest unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
     "Pre-deploy Compose/.env/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T145710Z-pre-v110/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]

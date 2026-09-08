@@ -1,0 +1,67 @@
+{
+  "capturedAt": "2026-09-08T17:20:56Z",
+  "target": "http://192.168.5.110:3210/overview",
+  "route": "/overview",
+  "authenticated": false,
+  "browser": "NAS-local Playwright Chromium (headless)",
+  "viewports": [
+    {
+      "name": "desktop-1440",
+      "width": 1440,
+      "height": 900,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "url": "/overview",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyWidth": 1440,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    },
+    {
+      "name": "desktop-1024",
+      "width": 1024,
+      "height": 768,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "url": "/overview",
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyWidth": 1024,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    },
+    {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "url": "/overview",
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "bodyWidth": 768,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    },
+    {
+      "name": "mobile-390",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "title": "AgentHub",
+      "url": "/overview",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "bodyWidth": 390,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "requestFailures": 0
+    }
+  ],
+  "bodySummary": "AgentHub 工程控制平面 / 安全登录 / 登录 AgentHub",
+  "scope": "PinHarness 直接迁移重部署后的未登录静态入口 smoke；不等同认证 Workspace、Agent/ACP、Terminal 或完整视觉验收。"
+}

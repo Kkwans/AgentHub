@@ -14,13 +14,20 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；候选镜像标签：`agenthub:2026.9.8-v1`；镜像为 Linux `arm64`，OCI `revision` 固定为 `15baf3661ddba815ac42d27fdd92dbeee9bd6818`；
-- 当前候选源码提交：`15baf3661ddba815ac42d27fdd92dbeee9bd6818`（构建时 `main` 与 `origin/main` 已同步）；镜像 ID 为 `sha256:873fefed290c0b28b36ea66da9491b335c31de7539a447726cd59d68ca7c0b47`；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移候选/生产镜像：`agenthub:2026.9.9-v1`（首次 1.1.0 候选 `2026.9.8-v1` 仍保留）；镜像为 Linux `arm64`，OCI `revision` 为 `f25216374dd23b2f30f74ec0687b8847e383fd72`；
+- 当前候选源码提交：`f25216374dd23b2f30f74ec0687b8847e383fd72`（已推送 `main`）；镜像 ID 为 `sha256:6f58c66edb9d34edc3e0af9bf562774ef232dd735bade88af8cf11353c63e16a`；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
 - 2026-09-08 22:58:45（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
 - 部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T145710Z-pre-v110/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+
+### PinHarness 直接迁移重部署追加（2026-09-09）
+
+- 当前生产镜像已替换为 `agenthub:2026.9.9-v1`，image ID `sha256:6f58c66edb9d34edc3e0af9bf562774ef232dd735bade88af8cf11353c63e16a`，OCI revision `f25216374dd23b2f30f74ec0687b8847e383fd72`，架构 `linux/arm64`；
+- 2026-09-09 01:18:07（Asia/Shanghai）只 recreate `agenthub` service；容器 `running/healthy`、exit `0`、OOM `false`，health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`；
+- 重新部署前快照与候选 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T171703Z-pre-pinharness/`；原 `agenthub:2026.9.8-v1` 与 `agenthub:2026.9.5-v2` 均保留；
+- NAS-local Playwright 未登录静态 smoke 在 1440/1024/768/390 四视口均 HTTP `200`、无横向溢出、console/page/request error 为 `0`；这仍不等同认证 Workspace/Agent/PTY 的完整视觉验收。
 
 ## 本轮真实部署 smoke
 
