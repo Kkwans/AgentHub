@@ -25,7 +25,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - `@agenthub/ui` typecheck/build、Workbench/layout/primitives Vitest：12/12；
 - Workspace Vitest：9 files，40/40；Terminal dock 新增高度恢复测试通过；
 - `pnpm lint`、`pnpm format:check`、`@agenthub/web typecheck`、`@agenthub/web build`、`git diff --check`；
-- 已推送提交：`35dfc5e`（共享 UI 基础）、`b0eee6f`（Workspace）、`fe3fd7a`（全局壳层）。
+- 已推送提交：`35dfc5e`（共享 UI 基础）、`b0eee6f`（Workspace）、`fe3fd7a`（全局壳层）、`444f817`（版本真值）。
 
 ## 尚未宣称完成的门禁
 

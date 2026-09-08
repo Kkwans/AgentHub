@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "implementation_pending_visual_acceptance",
   "complete": false,
-  "sourceCommit": "fe3fd7a",
+  "sourceCommit": "444f817",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
