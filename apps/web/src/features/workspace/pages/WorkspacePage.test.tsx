@@ -277,15 +277,30 @@ describe('WorkspacePage 数据分区可靠性', () => {
   });
 
   it('超过 500 项时只渲染窗口，并支持展开旧窗口后回到最新', async () => {
-    const longTimeline = Array.from({ length: 600 }, (_, index) => ({
-      id: `message-${index + 1}`,
-      runId: null,
-      role: 'ASSISTANT' as const,
-      kind: 'TEXT',
-      text: `长会话消息 ${index + 1}`,
-      sequence: index + 1,
-      createdAt: new Date((index + 1) * 1_000).toISOString(),
-    }));
+    const longTimeline = Array.from({ length: 600 }, (_, index) => {
+      const runId = `run-${index + 1}`;
+      const sequence = index * 2 + 1;
+      return [
+        {
+          id: `user-${index + 1}`,
+          runId,
+          role: 'USER' as const,
+          kind: 'TEXT' as const,
+          text: `执行第 ${index + 1} 轮`,
+          sequence,
+          createdAt: new Date(sequence * 1_000).toISOString(),
+        },
+        {
+          id: `message-${index + 1}`,
+          runId,
+          role: 'ASSISTANT' as const,
+          kind: 'TEXT' as const,
+          text: `长会话消息 ${index + 1}`,
+          sequence: sequence + 1,
+          createdAt: new Date((sequence + 1) * 1_000).toISOString(),
+        },
+      ];
+    }).flat();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path.startsWith(`/api/v1/sessions/${session.id}/messages`))

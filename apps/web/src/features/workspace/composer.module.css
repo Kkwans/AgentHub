@@ -629,7 +629,8 @@
 @media (max-width: 767px) {
   :global(.workspace) :global(.composer) {
     width: calc(100% - 20px);
-    margin-bottom: 10px;
+    margin-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     border-radius: 14px;
   }
 
@@ -671,6 +672,15 @@
   :global(.workspace) :global(.composer-session-facts) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  :global(.workspace) :global(.composer-context > span),
+  :global(.workspace) :global(.composer-context > button),
+  :global(.workspace) :global(.composer-session-config-trigger),
+  :global(.workspace) :global(.composer-choice select),
+  :global(.workspace) :global(.composer-config-choice select),
+  :global(.workspace) :global(.composer-input .send-button) {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -688,7 +698,7 @@
   }
 
   :global(.workspace) :global(.composer-input .send-button) {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
   }
 }

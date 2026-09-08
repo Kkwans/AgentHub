@@ -28,6 +28,7 @@
   min-height: 0;
   padding: 42px clamp(24px, 6vw, 84px) 52px;
   overflow: auto;
+  scroll-padding-block-end: 28px;
   background: var(--workspace-panel);
   scrollbar-color: var(--ah-border-strong) transparent;
 }
@@ -49,6 +50,12 @@
 :global(.workspace) :global(.conversation-timeline) {
   display: grid;
   gap: 28px;
+}
+
+:global(.workspace) :global(.conversation-turn) {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
 }
 
 :global(.workspace) :global(.message) {
@@ -428,7 +435,7 @@
 :global(.workspace) :global(.thought-event-row > summary) {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 18px;
-  min-height: 38px;
+  min-height: 44px;
   align-items: center;
   gap: 8px;
   padding: 4px 6px;
@@ -1028,7 +1035,7 @@
   right: 20px;
   bottom: 18px;
   display: inline-flex;
-  min-height: 32px;
+  min-height: 44px;
   align-items: center;
   gap: 5px;
   padding: 0 12px;

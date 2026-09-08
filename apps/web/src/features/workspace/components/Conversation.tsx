@@ -111,43 +111,46 @@ export function Conversation({
       setResolving(undefined);
     }
   };
-  const timeline = buildConversationTurns(
+  const turns = buildConversationTurns(
     buildConversationTimeline(messages.data ?? [], events.data ?? [], approvals.data ?? []),
-  ).flatMap((turn) => turn.entries);
+  );
+  const timeline = turns.flatMap((turn) => turn.entries);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followTimelineRef = useRef(true);
   const loadingPreviousRef = useRef(false);
   const [timelineWindowStart, setTimelineWindowStart] = useState(0);
   const [isFollowingTimeline, setIsFollowingTimeline] = useState(true);
+  const [viewportMeasured, setViewportMeasured] = useState(false);
   const latestTimelineId = timeline.at(-1)?.id;
-  const latestWindowStart = getConversationWindowStart(timeline.length);
-  const visibleTimeline = timeline.slice(
+  const latestWindowStart = getConversationWindowStart(turns.length);
+  const visibleTurns = turns.slice(
     timelineWindowStart,
     timelineWindowStart + CONVERSATION_WINDOW_SIZE,
   );
-  const displayTimeline = groupToolTimeline(visibleTimeline);
+  const displayTurns = visibleTurns.map((turn) => ({
+    ...turn,
+    entries: groupToolTimeline(turn.entries),
+  }));
   const agentHeaderIds = new Set<string>();
-  const seenAgentTurns = new Set<string>();
-  for (const item of visibleTimeline) {
-    if (item.kind !== 'message' || item.message.role !== 'ASSISTANT') continue;
-    const turnKey = item.turnId ?? item.id;
-    if (seenAgentTurns.has(turnKey)) continue;
-    seenAgentTurns.add(turnKey);
-    agentHeaderIds.add(item.id);
+  for (const turn of visibleTurns) {
+    const firstAssistant = turn.entries.find(
+      (item) => item.kind === 'message' && item.message.role === 'ASSISTANT',
+    );
+    if (firstAssistant?.kind === 'message') agentHeaderIds.add(firstAssistant.id);
   }
   const timelineVirtualizer = useVirtualizer({
-    count: displayTimeline.length,
+    count: displayTurns.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 86,
+    estimateSize: () => 160,
     overscan: 5,
-    getItemKey: (index) => displayTimeline[index]?.id ?? index,
+    getItemKey: (index) => displayTurns[index]?.id ?? index,
   });
   const virtualTimelineItems = timelineVirtualizer.getVirtualItems();
   // jsdom and an initially hidden drawer do not expose a scroll rect. Keep a
   // deterministic non-virtual fallback until the virtualizer receives a real
-  // viewport measurement; the next measurement switches to the overscanned
-  // window without dropping the first visible turn.
-  const shouldVirtualize = displayTimeline.length > 15 && virtualTimelineItems.length > 0;
+  // viewport measurement; this prevents a synthetic zero-height viewport from
+  // rendering only the first turn and hiding the newest response.
+  const shouldVirtualize = displayTurns.length > 15 && viewportMeasured;
   const activeThoughtId = activeRun
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
         ?.id
@@ -158,18 +161,62 @@ export function Conversation({
     setTimelineWindowStart(0);
   }, [session.id]);
   useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const updateViewport = () => setViewportMeasured(element.clientHeight > 0);
+    updateViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateViewport);
+      return () => window.removeEventListener('resize', updateViewport);
+    }
+    const observer = new ResizeObserver(updateViewport);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [session.id]);
+  useEffect(() => {
     setTimelineWindowStart((current) =>
       followTimelineRef.current ? latestWindowStart : Math.min(current, latestWindowStart),
     );
   }, [latestWindowStart]);
   useEffect(() => {
     if (!followTimelineRef.current) return;
-    const frame = requestAnimationFrame(() => {
+    let trailingFrame: number | undefined;
+    const scrollToLatest = () => {
       const element = scrollRef.current;
       if (element) element.scrollTop = element.scrollHeight;
+    };
+    const scheduleScroll = () => {
+      if (!followTimelineRef.current) return;
+      requestAnimationFrame(() => {
+        trailingFrame = requestAnimationFrame(scrollToLatest);
+      });
+    };
+    scheduleScroll();
+    const element = scrollRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') {
+      return () => {
+        if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
+      };
+    }
+    const observer = new ResizeObserver(scheduleScroll);
+    observer.observe(element);
+    const content = element.querySelector<HTMLElement>(
+      '.conversation-timeline, .conversation-virtual-list',
+    );
+    if (content) observer.observe(content);
+    return () => {
+      observer.disconnect();
+      if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
+    };
+  }, [displayTurns.length, latestTimelineId, viewportMeasured]);
+  const scheduleLatestScroll = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const element = scrollRef.current;
+        if (element && followTimelineRef.current) element.scrollTop = element.scrollHeight;
+      });
     });
-    return () => cancelAnimationFrame(frame);
-  }, [latestTimelineId]);
+  };
   const preserveScrollAnchor = (previousHeight: number, previousTop: number) => {
     requestAnimationFrame(() => {
       const current = scrollRef.current;
@@ -199,10 +246,7 @@ export function Conversation({
     followTimelineRef.current = true;
     setIsFollowingTimeline(true);
     setTimelineWindowStart(latestWindowStart);
-    requestAnimationFrame(() => {
-      const element = scrollRef.current;
-      if (element) element.scrollTop = element.scrollHeight;
-    });
+    scheduleLatestScroll();
   };
   const showEmpty =
     !messages.isLoading &&
@@ -309,8 +353,8 @@ export function Conversation({
             style={{ height: timelineVirtualizer.getTotalSize() }}
           >
             {virtualTimelineItems.map((virtualItem) => {
-              const item = displayTimeline[virtualItem.index];
-              if (!item) return null;
+              const turn = displayTurns[virtualItem.index];
+              if (!turn) return null;
               return (
                 <div
                   key={virtualItem.key}
@@ -319,15 +363,15 @@ export function Conversation({
                   className="conversation-virtual-item"
                   style={{ transform: `translateY(${virtualItem.start}px)` }}
                 >
-                  <ConversationTimelineItemView item={item} {...renderItemProps} />
+                  <ConversationTurnView turn={turn} {...renderItemProps} />
                 </div>
               );
             })}
           </div>
         ) : (
           <div className="conversation-timeline">
-            {displayTimeline.map((item) => (
-              <ConversationTimelineItemView key={item.id} item={item} {...renderItemProps} />
+            {displayTurns.map((turn) => (
+              <ConversationTurnView key={turn.id} turn={turn} {...renderItemProps} />
             ))}
           </div>
         )}
@@ -347,6 +391,35 @@ export function Conversation({
   );
 }
 
+type ConversationTurnViewModel = {
+  id: string;
+  entries: Array<ConversationTimelineItem | ConversationToolGroup>;
+};
+
+type ConversationTurnViewProps = {
+  turn: ConversationTurnViewModel;
+} & Omit<ConversationTimelineItemViewProps, 'item'>;
+
+function ConversationTurnView({ turn, ...itemProps }: ConversationTurnViewProps) {
+  return (
+    <div className="conversation-turn" data-turn-id={turn.id}>
+      {turn.entries.map((item) => (
+        <ConversationTimelineItemView key={item.id} item={item} {...itemProps} />
+      ))}
+    </div>
+  );
+}
+
+type ConversationTimelineItemViewProps = {
+  item: ConversationTimelineItem | ConversationToolGroup;
+  resolving: string | undefined;
+  resolveError: Error | undefined;
+  resolveVariables: { id: string; optionId: string } | undefined;
+  activeThoughtId: string | undefined;
+  agentHeaderIds: ReadonlySet<string>;
+  onResolve: (variables: { id: string; optionId: string }) => void;
+};
+
 function ConversationTimelineItemView({
   item,
   resolving,
@@ -355,15 +428,7 @@ function ConversationTimelineItemView({
   activeThoughtId,
   agentHeaderIds,
   onResolve,
-}: {
-  item: ConversationTimelineItem | ConversationToolGroup;
-  resolving: string | undefined;
-  resolveError: Error | undefined;
-  resolveVariables: { id: string; optionId: string } | undefined;
-  activeThoughtId: string | undefined;
-  agentHeaderIds: ReadonlySet<string>;
-  onResolve: (variables: { id: string; optionId: string }) => void;
-}) {
+}: ConversationTimelineItemViewProps) {
   if (item.kind === 'tool-group') {
     return <ToolExecutionGroupRow events={item.events} />;
   }
