@@ -1,4 +1,11 @@
-/* AgentHub v1 foundation tokens. Feature CSS must consume these semantic values. */
+/*
+ * AgentHub v1.1 foundation tokens.
+ *
+ * The palette deliberately follows PinHarness' cool-neutral workbench
+ * language: an off-white/blue-gray canvas, solid surfaces and a single
+ * restrained brand accent. Feature CSS must consume these semantic values;
+ * raw colors belong here, not in page modules.
+ */
 :root {
   color-scheme: light;
 
@@ -12,6 +19,7 @@
   --ah-space-8: 32px;
   --ah-space-10: 40px;
   --ah-space-12: 48px;
+  --ah-space-16: 64px;
 
   --ah-control-xs: 28px;
   --ah-control-sm: 32px;
@@ -29,6 +37,10 @@
   --ah-page-gutter-lg: 28px;
   --ah-page-gutter-md: 22px;
   --ah-page-gutter-sm: 16px;
+  --ah-page-reading-width: 1024px;
+  --ah-page-standard-width: 1440px;
+  --ah-page-wide-width: 1792px;
+  --ah-page-max-width: var(--ah-page-standard-width);
   --ah-panel-header-h: 48px;
 
   --ah-radius-control: 8px;
@@ -51,14 +63,17 @@
   --ah-font-line-page: 1.2;
 
   --ah-canvas: #f7f8fa;
-  --ah-canvas-alt: #f0f2f5;
+  --ah-canvas-alt: #f1f4f8;
   --ah-surface: #ffffff;
   --ah-surface-subtle: #f5f6f8;
+  --ah-surface-hover: #e8edf4;
   --ah-surface-tinted: #f4f1ff;
-  --ah-surface-elevated: #ffffff;
+  --ah-surface-glass: rgb(255 255 255 / 96%);
+  --ah-surface-elevated: rgb(255 255 255 / 98%);
   --ah-text-primary: #1b1d22;
   --ah-text-secondary: #5e626b;
   --ah-text-tertiary: #626d7b;
+  --ah-text-muted: var(--ah-text-secondary);
   --ah-text-disabled: #a5a9b1;
   --ah-border-subtle: #e5e7eb;
   --ah-border-default: #d9dce2;
@@ -84,11 +99,20 @@
   --ah-on-danger: #ffffff;
   --ah-overlay: rgb(25 29 38 / 45%);
 
+  --ah-motion-instant: 80ms;
   --ah-motion-fast: 120ms;
   --ah-motion-base: 180ms;
   --ah-motion-panel: 220ms;
+  --ah-motion-slow: 320ms;
+  --ah-motion-reduced: 1ms;
+  --ah-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ah-ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ah-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ah-ease-linear: linear;
   --ah-focus-width: 2px;
   --ah-focus-offset: 2px;
+  --ah-focus-ring: 0 0 0 3px rgb(98 70 245 / 18%);
+  --ah-focus-ring-inset: 0 0 0 2px rgb(98 70 245 / 22%);
   --ah-shadow-xs: 0 1px 2px rgb(17 22 38 / 3.5%);
   --ah-shadow-sm: 0 5px 18px -9px rgb(17 22 38 / 13%);
   --ah-shadow-md: 0 14px 38px -18px rgb(17 22 38 / 20%);
@@ -108,16 +132,23 @@
   --wb-rail-default: 256px;
   --wb-rail-min: 216px;
   --wb-rail-max: 336px;
-  --wb-conversation-min: 520px;
-  --wb-inspector-default: 440px;
-  --wb-inspector-min: 360px;
-  --wb-inspector-max: 760px;
+  --wb-conversation-min: 560px;
+  --wb-inspector-default: 380px;
+  --wb-inspector-min: 320px;
+  --wb-inspector-max: 560px;
+  --wb-panel-gap: 0px;
+  --wb-panel-header-h: 48px;
+  --wb-mobile-keyboard-inset: 0px;
   --wb-composer-default: 820px;
   --wb-composer-min: 620px;
   --wb-composer-max: 920px;
   --wb-terminal-default: 280px;
   --wb-terminal-min: 160px;
   --wb-terminal-max: 55vh;
+  --wb-z-base: 0;
+  --wb-z-sticky: 10;
+  --wb-z-drawer: 40;
+  --wb-z-popover: 60;
 }
 
 :root[data-agenthub-density='compact'] {
@@ -136,14 +167,17 @@
 :root[data-agenthub-theme='dark'] {
   color-scheme: dark;
   --ah-canvas: #0b0d13;
-  --ah-canvas-alt: #10131b;
+  --ah-canvas-alt: #10141d;
   --ah-surface: #141821;
   --ah-surface-subtle: #10141d;
+  --ah-surface-hover: #1d2430;
   --ah-surface-tinted: #19182a;
-  --ah-surface-elevated: #1a202d;
+  --ah-surface-glass: rgb(20 24 33 / 82%);
+  --ah-surface-elevated: rgb(26 32 45 / 96%);
   --ah-text-primary: #f4f5f7;
   --ah-text-secondary: #abb3c1;
   --ah-text-tertiary: #939dab;
+  --ah-text-muted: var(--ah-text-secondary);
   --ah-text-disabled: #5d6675;
   --ah-border-subtle: #242b38;
   --ah-border-default: #303949;
@@ -167,6 +201,8 @@
   --ah-on-accent: #141821;
   --ah-on-danger: #141821;
   --ah-overlay: rgb(2 4 10 / 72%);
+  --ah-focus-ring: 0 0 0 3px rgb(154 141 255 / 28%);
+  --ah-focus-ring-inset: 0 0 0 2px rgb(154 141 255 / 32%);
   --ah-shadow-xs: 0 1px 2px rgb(0 0 0 / 20%);
   --ah-shadow-sm: 0 8px 22px -12px rgb(0 0 0 / 50%);
   --ah-shadow-md: 0 16px 44px -22px rgb(0 0 0 / 62%);

@@ -5,7 +5,14 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { Workbench, WorkbenchPanel } from './workbench.js';
+import {
+  Workbench,
+  WorkbenchCommandBar,
+  WorkbenchDisclosure,
+  WorkbenchExecutionItem,
+  WorkbenchPanel,
+  WorkbenchStatus,
+} from './workbench.js';
 
 afterEach(cleanup);
 
@@ -50,5 +57,30 @@ describe('v1 workbench structural contract', () => {
     expect(container.firstElementChild).toHaveAttribute('data-rail-collapsed', 'true');
     expect(container.firstElementChild).toHaveAttribute('data-inspector-collapsed', 'true');
     expect(container.firstElementChild).toHaveAttribute('data-inspector-open', 'false');
+  });
+
+  it('renders status, disclosure and command primitives with accessible contracts', () => {
+    render(
+      <>
+        <WorkbenchStatus label="Agent 正在运行" tone="running" busy />
+        <WorkbenchDisclosure summary="执行详情" defaultOpen>
+          <code>pnpm test</code>
+        </WorkbenchDisclosure>
+        <WorkbenchExecutionItem title="检查工作树" meta="12ms" status={<span>完成</span>}>
+          输出
+        </WorkbenchExecutionItem>
+        <WorkbenchCommandBar status={<span>上下文 42%</span>} footer={<button>发送</button>}>
+          <textarea aria-label="消息" />
+        </WorkbenchCommandBar>
+      </>,
+    );
+
+    expect(screen.getByRole('status', { name: 'Agent 正在运行' })).toHaveAttribute(
+      'data-busy',
+      'true',
+    );
+    expect(screen.getByText('pnpm test')).toBeVisible();
+    expect(screen.getByText('检查工作树')).toBeVisible();
+    expect(screen.getByRole('group', { name: '命令栏' })).toHaveClass('ah-workbench-command-bar');
   });
 });

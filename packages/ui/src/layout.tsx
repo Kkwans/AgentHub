@@ -17,6 +17,43 @@ export function Toolbar({ children, label = '工具栏', className, ...props }: 
   );
 }
 
+export interface WorkbenchToolbarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
+  children?: ReactNode;
+  /** Leading controls such as the session title or search trigger. */
+  start?: ReactNode;
+  /** Trailing controls such as status, overflow and panel actions. */
+  end?: ReactNode;
+  label?: string;
+}
+
+/**
+ * A compact toolbar primitive for dense workbench surfaces.
+ *
+ * The wrapper owns alignment and overflow only. Feature code still owns the
+ * actual controls and their business actions.
+ */
+export function WorkbenchToolbar({
+  children,
+  start,
+  end,
+  label = '工作台工具栏',
+  className,
+  ...props
+}: WorkbenchToolbarProps) {
+  return (
+    <div
+      {...props}
+      role="toolbar"
+      aria-label={label}
+      className={cx('ah-workbench-toolbar', 'ah-toolbar', className)}
+    >
+      {start ? <div className="ah-workbench-toolbar-start">{start}</div> : null}
+      {children ? <div className="ah-workbench-toolbar-content">{children}</div> : null}
+      {end ? <div className="ah-workbench-toolbar-end">{end}</div> : null}
+    </div>
+  );
+}
+
 export interface LocalNavItem {
   href: string;
   label: string;
@@ -89,13 +126,48 @@ export function PanelHeader({
   );
 }
 
-export interface PageFrameProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode;
+export interface WorkbenchPanelHeaderProps {
+  title: ReactNode;
+  description?: ReactNode;
+  eyebrow?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
 }
 
-export function PageFrame({ children, className, ...props }: PageFrameProps) {
+/**
+ * Panel header with an optional eyebrow and description for workbench slots.
+ * It intentionally shares the same title/description geometry as PanelHeader
+ * while exposing a richer semantic shape for the three-column shell.
+ */
+export function WorkbenchPanelHeader({
+  title,
+  description,
+  eyebrow,
+  actions,
+  className,
+}: WorkbenchPanelHeaderProps) {
   return (
-    <div {...props} className={cx('ah-page-frame', className)}>
+    <div className={cx('ah-workbench-panel-header', className)} role="group">
+      <div className="ah-workbench-panel-header-copy">
+        {eyebrow ? <span className="ah-workbench-panel-eyebrow">{eyebrow}</span> : null}
+        <h2>{title}</h2>
+        {description ? <span>{description}</span> : null}
+      </div>
+      {actions ? <div className="ah-workbench-panel-header-actions">{actions}</div> : null}
+    </div>
+  );
+}
+
+export type PageFrameMode = 'standard' | 'wide' | 'narrow' | 'full';
+
+export interface PageFrameProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
+  mode?: PageFrameMode;
+}
+
+export function PageFrame({ children, mode = 'standard', className, ...props }: PageFrameProps) {
+  return (
+    <div {...props} className={cx('ah-page-frame', className)} data-page-width={mode}>
       {children}
     </div>
   );
@@ -236,9 +308,11 @@ export function SettingsLayout({
 // new consumers can use the architecture vocabulary from the design contract.
 export const AhPageHeader = ScreenHeader;
 export const AhToolbar = Toolbar;
+export const AhWorkbenchToolbar = WorkbenchToolbar;
 export const AhLocalNav = LocalNav;
 export const AhSettingRow = SettingRow;
 export const AhPanelHeader = PanelHeader;
+export const AhWorkbenchPanelHeader = WorkbenchPanelHeader;
 export const AhEntityList = EntityList;
 export const AhEntityRow = EntityRow;
 export const AhInspectorPanel = InspectorPanel;

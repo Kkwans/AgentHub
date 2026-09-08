@@ -15,6 +15,8 @@ import {
   AhToolbar,
   InspectorPanel,
   PageFrame,
+  WorkbenchPanelHeader,
+  WorkbenchToolbar,
   ScreenHeader,
   SettingsLayout,
 } from './layout.js';
@@ -76,5 +78,34 @@ describe('layout contracts', () => {
     expect(screen.getByRole('link', { name: /外观/ })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText('主题')).toBeInTheDocument();
     expect(screen.getByText('Changes')).toBeInTheDocument();
+  });
+
+  it('provides PinHarness-derived workbench toolbar and panel header slots', () => {
+    render(
+      <>
+        <WorkbenchToolbar
+          label="会话工具栏"
+          start={<span>当前会话</span>}
+          end={<button type="button">停止</button>}
+        >
+          <button type="button">过滤</button>
+        </WorkbenchToolbar>
+        <WorkbenchPanelHeader
+          eyebrow="运行上下文"
+          title="Agent 对话"
+          description="实时执行状态"
+          actions={<button type="button">收起</button>}
+        />
+        <PageFrame mode="wide">
+          <span>内容</span>
+        </PageFrame>
+      </>,
+    );
+
+    expect(screen.getByRole('toolbar', { name: '会话工具栏' })).toHaveClass('ah-workbench-toolbar');
+    expect(screen.getByRole('heading', { name: 'Agent 对话' }).parentElement).toHaveClass(
+      'ah-workbench-panel-header-copy',
+    );
+    expect(screen.getByText('内容').parentElement).toHaveAttribute('data-page-width', 'wide');
   });
 });

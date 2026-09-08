@@ -1,4 +1,5 @@
 import { Select, Switch, type SelectProps } from '@mantine/core';
+import { CircleNotchIcon } from '@phosphor-icons/react/CircleNotch';
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from 'react';
 
 import { AGENTHUB_CONTROL_HEIGHTS } from './theme.js';
@@ -6,15 +7,19 @@ import type { AGENTHUB_RADIUS } from './theme.js';
 
 export type AhControlSize = keyof typeof AGENTHUB_CONTROL_HEIGHTS;
 type AhRadius = keyof typeof AGENTHUB_RADIUS;
+export type AhButtonVariant = 'filled' | 'light' | 'subtle' | 'outline' | 'default';
 
 export type AhButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> & {
   children: ReactNode;
   size?: AhControlSize;
   radius?: AhRadius;
   color?: string;
-  variant?: 'filled' | 'light' | 'subtle' | 'outline' | 'default';
+  variant?: AhButtonVariant;
   loading?: boolean;
   leftSection?: ReactNode;
+  rightSection?: ReactNode;
+  /** Keep a primary action at the available inline size. */
+  fullWidth?: boolean;
 };
 
 export function AhButton({
@@ -25,6 +30,8 @@ export function AhButton({
   variant = 'filled',
   loading = false,
   leftSection,
+  rightSection,
+  fullWidth = false,
   className,
   disabled,
   ...props
@@ -32,33 +39,54 @@ export function AhButton({
   return (
     <button
       {...props}
-      className={['ah-button', className].filter(Boolean).join(' ')}
+      className={['ah-button', fullWidth && 'ah-button-full-width', className]
+        .filter(Boolean)
+        .join(' ')}
       data-size={size}
       data-radius={radius}
       data-color={color}
       data-variant={variant}
+      data-loading={loading || undefined}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
     >
-      {leftSection}
-      {children}
+      {loading ? (
+        <CircleNotchIcon className="ah-button-loader" aria-hidden size={15} weight="bold" />
+      ) : (
+        leftSection
+      )}
+      <span className="ah-button-label">{children}</span>
+      {rightSection}
     </button>
   );
+}
+
+export interface AhIconButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'size' | 'aria-label' | 'title'
+> {
+  label: string;
+  size?: AhControlSize;
+  children: ReactNode;
+  color?: string;
+  variant?: AhButtonVariant;
+  loading?: boolean;
+  pressed?: boolean;
 }
 
 export function AhIconButton({
   label,
   size = 'md',
   children,
+  color = 'aurora',
+  variant = 'subtle',
+  loading = false,
+  pressed,
   className,
+  disabled,
+  type = 'button',
   ...props
-}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'aria-label' | 'title'> & {
-  label: string;
-  size?: AhControlSize;
-  children: ReactNode;
-  color?: string;
-  variant?: 'filled' | 'light' | 'subtle' | 'outline' | 'default';
-}) {
+}: AhIconButtonProps) {
   return (
     <button
       {...props}
@@ -66,11 +94,19 @@ export function AhIconButton({
       aria-label={label}
       title={label}
       data-size={size}
-      data-color={props.color ?? 'aurora'}
-      data-variant={props.variant ?? 'subtle'}
-      type={props.type ?? 'button'}
+      data-color={color}
+      data-variant={variant}
+      data-loading={loading || undefined}
+      type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      aria-pressed={pressed}
     >
-      {children}
+      {loading ? (
+        <CircleNotchIcon className="ah-icon-button-loader" aria-hidden size={16} weight="bold" />
+      ) : (
+        children
+      )}
     </button>
   );
 }

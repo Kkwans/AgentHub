@@ -65,4 +65,22 @@ describe('UI primitives', () => {
 
     expect(screen.getByRole('button', { name: '打开设置' })).toHaveAttribute('title', '打开设置');
   });
+
+  it('exposes a stable loading state without changing the action name', () => {
+    render(
+      <MantineProvider env="test">
+        <AhButton loading fullWidth rightSection={<span aria-hidden>⌘</span>}>
+          发送
+        </AhButton>
+        <AhIconButton label="刷新" loading>
+          ↻
+        </AhIconButton>
+      </MantineProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: '发送' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '发送' })).toHaveAttribute('data-loading', 'true');
+    expect(screen.getByRole('button', { name: '发送' })).toHaveClass('ah-button-full-width');
+    expect(screen.getByRole('button', { name: '刷新' })).toBeDisabled();
+  });
 });
