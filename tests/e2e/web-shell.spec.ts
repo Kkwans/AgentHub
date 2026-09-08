@@ -623,7 +623,11 @@ test('Sessions 按时间组织并可恢复 Workspace', async ({ page }, testInfo
 test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板', async ({ page }, testInfo) => {
   await page.goto(`/prompts?projectId=${project.id}&tab=bindings`);
   await expect(page.getByRole('heading', { name: 'Prompt 库' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
+  if ((page.viewportSize()?.width ?? 1_000) < 768) {
+    await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
+  } else {
+    await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
+  }
   const tabs = page.getByRole('tablist', { name: 'Prompt 资产分区' });
   await expect(tabs.getByRole('tab')).toHaveText(['内容', '变量', 'Playground', '绑定']);
   await expect(tabs.getByRole('tab', { name: '绑定' })).toHaveAttribute('aria-selected', 'true');
