@@ -2,11 +2,20 @@
   "releaseVersion": "1.1.0",
   "status": "implementation_pending_visual_acceptance",
   "complete": false,
-  "sourceCommit": "5653772",
+  "sourceCommit": "befa67b0d355e210276f4790d90ccaffc42c80d1",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
+    "imageId": "sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03",
+    "createdAt": "2026-09-05T17:03:24+08:00",
+    "architecture": "arm64",
     "preserve": true
+  },
+  "productionReadOnly": {
+    "endpoint": "http://192.168.5.110:3210",
+    "version": "1.0.0",
+    "health": "healthy",
+    "deploymentChanged": false
   },
   "designReference": {
     "source": "/volume2/Project/PinHarness/web",
@@ -29,17 +38,22 @@
       "evidence": [
         "pnpm lint",
         "pnpm format:check",
-        "pnpm --filter @agenthub/web typecheck",
-        "pnpm --filter @agenthub/web build",
+        "pnpm typecheck",
+        "pnpm build",
         "pnpm qa:css-budget",
-        "pnpm test (70 files, 295 passed, 10 skipped)",
-        "pnpm test:e2e --timeout=120000 (44 mock fixture tests passed)",
+        "pnpm exec vitest run --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000 (70 files: 66 passed, 4 skipped; 295 tests passed, 10 skipped)",
+        "pnpm exec vitest run apps/web/src/features/workspace --maxWorkers=1 (9 files, 41 passed)",
+        "pnpm exec vitest run packages/adapter-acp/src --maxWorkers=1 (2 files, 12 passed)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --grep 'Workspace 保持' --timeout=120000 (4/4 latest viewports passed)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --timeout=120000 (first matrix 42/44; Settings desktop-1440/1024 rerun 2/2 passed)",
+        "pnpm release:version-truth 1.1.0 --allow-incomplete",
         "git diff --check"
       ]
     },
     "visual": {
       "status": "unverified",
-      "mockFixture": "44/44 tests passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; this is not production evidence",
+      "mockFixture": "Latest Workspace 4/4 passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; full route matrix first pass 42/44 with two Settings locator timeouts under NAS load, then 2/2 isolated rerun passed; fixture is not production evidence",
+      "independentReview": "P0=0, P1=0 on current source and mock matrix; real deployment visual gate remains unverified. P2 top safe-area/device validation remains unverified.",
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
         "console/page/request errors",
@@ -49,11 +63,16 @@
     },
     "runtime": {
       "status": "unverified",
+      "evidence": [
+        "pnpm qa:performance: UNVERIFIED (exit 2; requires a real NAS performance report)",
+        "production health/version/image read-only preflight captured; no service or data mutation"
+      ],
       "required": [
         "real Agent/ACP",
         "native PTY",
         "backup/restore",
-        "production read-only preflight"
+        "production read-only preflight",
+        "performance report"
       ]
     }
   },
