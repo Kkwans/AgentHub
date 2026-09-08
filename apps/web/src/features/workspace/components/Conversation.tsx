@@ -324,7 +324,7 @@ export function Conversation({
           // not be mistaken for a scrollbar drag and break follow mode.
           if (event.target === event.currentTarget) markUserScrollIntent();
         }}
-        onTouchStart={markUserScrollIntent}
+        onTouchMove={markUserScrollIntent}
         onKeyDown={(event) => {
           if (
             ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)
