@@ -79,7 +79,11 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const currentSession = session.data;
 
   return (
-    <div className={`${workspaceStyles.workspace} workspace workspace-shell`}>
+    <div
+      className={`${workspaceStyles.workspace} workspace workspace-shell`}
+      data-session-drawer-open={sessionDrawerOpen || undefined}
+      data-inspector-drawer-open={inspectorDrawerOpen || undefined}
+    >
       <div className={`${workspaceStyles.contextbar} workspace-contextbar`}>
         <button
           type="button"

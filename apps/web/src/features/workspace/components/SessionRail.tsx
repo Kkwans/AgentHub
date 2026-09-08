@@ -114,7 +114,10 @@ export function SessionRail({
     </Link>
   );
   return (
-    <div className={`${sessionRailStyles.owner} session-rail`}>
+    <div
+      className={`${sessionRailStyles.owner} session-rail`}
+      style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
+    >
       <div className="panel-title">
         <span>AgentHub</span>
         <small>{sessions.data?.length ?? 0} 个会话</small>

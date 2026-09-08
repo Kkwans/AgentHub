@@ -83,7 +83,10 @@ export function WorkspaceInspector({
     { id: 'run', label: 'Run' },
   ];
   return (
-    <div className={`${inspectorStyles.owner} inspector`}>
+    <div
+      className={`${inspectorStyles.owner} inspector`}
+      style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
+    >
       <AhTabs.Root value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
         <AhTabs.List className="inspector-tabs" aria-label="检查器视图">
           {tabs.map((item) => (
