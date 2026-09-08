@@ -32,7 +32,7 @@ RUN npm install --ignore-scripts --no-audit --no-fund \
 
 FROM ${AGENTHUB_BASE_IMAGE}
 
-ARG AGENTHUB_VERSION=1.0.0
+ARG AGENTHUB_VERSION=1.1.0
 ARG AGENTHUB_REVISION=unknown
 
 LABEL org.opencontainers.image.title="AgentHub" \

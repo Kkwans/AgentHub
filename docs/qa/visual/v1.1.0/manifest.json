@@ -1,0 +1,60 @@
+{
+  "releaseVersion": "1.1.0",
+  "status": "implementation_pending_visual_acceptance",
+  "complete": false,
+  "sourceCommit": "fe3fd7a",
+  "rollback": {
+    "version": "1.0.0",
+    "image": "agenthub:2026.9.5-v2",
+    "preserve": true
+  },
+  "designReference": {
+    "source": "/volume2/Project/PinHarness/web",
+    "patterns": [
+      "ThreeColumnSplit",
+      "ChatConversationView",
+      "ChatCommandBar",
+      "cool-neutral tokens"
+    ],
+    "adaptation": "AgentHub 保留 Phosphor、Mantine 封装、REST/WebSocket 领域契约，不复制 PinHarness 业务能力；源码快照不可直接运行，尚未伪称像素对照完成。"
+  },
+  "parameters": {
+    "designVariance": 5,
+    "motionIntensity": 6,
+    "visualDensity": 6
+  },
+  "gates": {
+    "code": {
+      "status": "pass",
+      "evidence": [
+        "pnpm lint",
+        "pnpm format:check",
+        "pnpm --filter @agenthub/web typecheck",
+        "pnpm --filter @agenthub/web build",
+        "git diff --check"
+      ]
+    },
+    "visual": {
+      "status": "unverified",
+      "required": [
+        "NAS Playwright 1440/1024/768/390 light/dark",
+        "console/page/request errors",
+        "overflow/geometry/focus/200% zoom",
+        "independent P0/P1/P2 review"
+      ]
+    },
+    "runtime": {
+      "status": "unverified",
+      "required": [
+        "real Agent/ACP",
+        "native PTY",
+        "backup/restore",
+        "production read-only preflight"
+      ]
+    }
+  },
+  "notes": [
+    "1.0.0 production remains the rollback point until all gates pass.",
+    "This manifest intentionally remains incomplete; build/health/static evidence does not substitute for visual or runtime acceptance."
+  ]
+}

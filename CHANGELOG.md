@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 - 2026-09-08
+
+- 以 PinHarness 的工作台密度、三栏结构和对话交互为参考，重建 `@agenthub/ui` tokens、Workbench primitives、状态/执行 disclosure、Command Bar 和 reduced-motion 约束；
+- Workspace 使用 `ConversationTurn` 视图模型合并消息、streaming delta、thought、tool、Approval 与最终回复，加入轮次级虚拟化、历史加载、自动跟随、未读回到最新和因果顺序测试；
+- Composer 支持 Session 草稿恢复、40–320px 拖拽高度、send/stop 状态变形；Terminal 改为 Workspace 内底部 dock，支持高度调整和 Session 偏好恢复；
+- AppShell、Home、Projects 与共享页面容器统一冷中性实体 surface、低对比边界、密度和 motion 规则；
+- 全部 workspace packages、shared health version、OCI 默认参数和 Release Truth 入口统一为 1.1.0；1.0.0 生产镜像 `agenthub:2026.9.5-v2` 保留为回滚点。
+
 ## 1.0.0 - 2026-09-02
 
 - 将 AgentHub 收口为面向 Project → Session → Work → Review 的生产级工作控制台，统一设计系统、AppShell、Workspace、PromptOS、Settings 与领域页面的视觉和交互契约；

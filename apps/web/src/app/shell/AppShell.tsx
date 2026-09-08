@@ -192,6 +192,7 @@ export function AppShell() {
     <div
       className={`${styles.frame}${sidebarCollapsed ? ` ${styles.sidebarCollapsed}` : ''}`}
       data-shell="app-shell"
+      data-agenthub-version="1.1.0"
       data-sidebar-state={sidebarCollapsed ? 'collapsed' : 'expanded'}
     >
       <a className={styles.skipLink} href="#main-content">

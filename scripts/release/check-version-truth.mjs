@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const allowIncomplete = process.argv.includes('--allow-incomplete');
 const versionArgument = process.argv.slice(2).find((value) => !value.startsWith('--'));
-const expected = versionArgument || process.env.AGENTHUB_EXPECTED_VERSION || '1.0.0';
-const appBadge = 'v' + expected.split('.').slice(0, 2).join('.');
+const expected = versionArgument || process.env.AGENTHUB_EXPECTED_VERSION || '1.1.0';
+const appVersionAttribute = 'data-agenthub-version="' + expected + '"';
 const errors = [];
 
 const packageJson = await readJson('package.json');
@@ -29,11 +29,11 @@ for (const record of records) {
 }
 
 await requireText('packages/shared/src/index.ts', "AGENTHUB_VERSION = '" + expected + "'");
-await requireText('apps/web/src/app/shell/AppShell.tsx', '>' + appBadge + '<');
+await requireText('apps/web/src/app/shell/AppShell.tsx', appVersionAttribute);
 await requireText('README.md', 'v' + expected);
-await requireText('README.md', 'agenthub:' + expected);
+await requireImageTag('README.md');
 await requireText('CHANGELOG.md', '## ' + expected);
-await requireText('deploy/compose/docker-compose.yml', 'agenthub:' + expected);
+await requireImageTag('deploy/compose/docker-compose.yml');
 await requireText('deploy/compose/.env.example', 'AGENTHUB_VERSION=' + expected);
 
 const releaseDoc = 'docs/RELEASE-v' + expected + '.md';
@@ -82,7 +82,7 @@ for (const residue of residues) {
 
 const result = {
   expected,
-  appBadge,
+  appVersionAttribute,
   packageCount: records.length,
   records,
   scannedFiles: scanFiles.length,
@@ -146,6 +146,15 @@ async function requireText(relative, expectedText) {
   const text = await tryRead(relative);
   if (text === null) errors.push('missing ' + relative);
   else if (!text.includes(expectedText)) errors.push(relative + ' missing ' + expectedText);
+}
+
+async function requireImageTag(relative) {
+  const text = await tryRead(relative);
+  const imageTagPattern =
+    /agenthub:(?:[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}-v[0-9]+(?:-rc[0-9]+)?|test-[0-9]{8}-[0-9]+)/;
+  if (text === null) errors.push('missing ' + relative);
+  else if (!imageTagPattern.test(text))
+    errors.push(relative + ' missing a policy-compliant image tag');
 }
 
 async function collectTextFiles(relativeRoot) {

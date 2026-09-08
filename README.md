@@ -1,10 +1,10 @@
 # AgentHub
 
-AgentHub 是一个面向普通开发者的 AI Coding Agent 工作控制台。v1.0 以“Project → Session → Work → Review”为主线，统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。Web Shell 使用统一的 AgentHub Design System，既有 Docker Agent 容器仍只允许显式、安全接管。
+AgentHub 是一个面向普通开发者的 AI Coding Agent 工作控制台。v1.1 以“Project → Session → Work → Review”为主线，统一管理 Project、Agent、Session、Run、Approval、Git、Terminal、PromptOS 与 Task，支持 Worktree Task Runner，并通过 outbound secure WebSocket 管理 Remote Node。Web Shell 使用统一的 AgentHub Design System，既有 Docker Agent 容器仍只允许显式、安全接管。
 
 ## 当前版本
 
-当前代码发布版本为 v1.0.0。代码、自动化、live smoke 与 NAS 发布证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md) 和 [`docs/RELEASE-v1.0.0.md`](docs/RELEASE-v1.0.0.md)。发布前后均以真实部署的 NAS 本地 Playwright 证据作为视觉验收依据。
+当前代码发布版本为 v1.1.0。代码、自动化、live smoke 与 NAS 发布证据见 [`docs/implementation/PROGRESS.md`](docs/implementation/PROGRESS.md) 和 [`docs/RELEASE-v1.1.0.md`](docs/RELEASE-v1.1.0.md)。发布前后均以真实部署的 NAS 本地 Playwright 证据作为视觉验收依据。
 
 ## 环境
 
@@ -12,9 +12,9 @@ AgentHub 是一个面向普通开发者的 AI Coding Agent 工作控制台。v1.
 - pnpm 11
 - Linux（当前目标为 NAS ARM64）
 - 默认开发监听：`127.0.0.1`
-- NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）；v1.0 RC 镜像目标为
-  `agenthub:1.0.0-nas.1`。实际运行镜像、revision、health 与回滚点以
-  [`docs/RELEASE-v1.0.0.md`](docs/RELEASE-v1.0.0.md) 的部署记录为准。
+- NAS Compose 入口：`http://192.168.5.110:3210`（管理员账号登录）；v1.1.0 候选镜像目标为
+  `agenthub:2026.9.8-v1`。实际运行镜像、revision、health 与回滚点以
+  [`docs/RELEASE-v1.1.0.md`](docs/RELEASE-v1.1.0.md) 的部署记录为准。
 
 ## 普通用户快速开始
 
