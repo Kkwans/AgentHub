@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "db68ed11429f1c88c3a0e34558044b3dbe0b83fe",
+  "sourceCommit": "d759bff62f55001aa23a7447a4992f102158963a",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -21,19 +21,19 @@
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v7",
-    "imageId": "sha256:47d594bd22e9d0634307f0d964472f33b5146df7f463f295cd75ba1a3152dff6",
-    "revision": "c23770ae2b91a01a146f51ee78be5efbd693222f",
+    "image": "agenthub:2026.9.9-v8",
+    "imageId": "sha256:263b904a2448a2cb44b2293f42baca6f08f06473c186dd19dcf1d6653c06a30a",
+    "revision": "db68ed11429f1c88c3a0e34558044b3dbe0b83fe",
     "preserve": true
   },
   "productionReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v8",
-    "imageId": "sha256:263b904a2448a2cb44b2293f42baca6f08f06473c186dd19dcf1d6653c06a30a",
-    "revision": "db68ed11429f1c88c3a0e34558044b3dbe0b83fe",
-    "checkedAt": "2026-09-08T20:32:53.126Z",
+    "image": "agenthub:2026.9.9-v9",
+    "imageId": "sha256:176dfc9c003ac875faf7ebb4d4e8ec08e1e28a2305d8f48c68b4f490f184b50e",
+    "revision": "d759bff62f55001aa23a7447a4992f102158963a",
+    "checkedAt": "2026-09-08T21:28:01.660Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -42,19 +42,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v8",
-    "imageId": "sha256:263b904a2448a2cb44b2293f42baca6f08f06473c186dd19dcf1d6653c06a30a",
+    "image": "agenthub:2026.9.9-v9",
+    "imageId": "sha256:176dfc9c003ac875faf7ebb4d4e8ec08e1e28a2305d8f48c68b4f490f184b50e",
     "architecture": "arm64",
-    "revision": "db68ed11429f1c88c3a0e34558044b3dbe0b83fe",
-    "created": "2026-09-08T20:25:53Z",
-    "deployedAt": "2026-09-08T20:31:59Z",
+    "revision": "d759bff62f55001aa23a7447a4992f102158963a",
+    "created": "2026-09-08T21:20:53Z",
+    "deployedAt": "2026-09-08T21:26:26Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T203142Z-pre-shared-primitives/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T212617Z-pre-shared-layout/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -95,6 +95,8 @@
         "pnpm --filter @agenthub/web build (pass; v5 candidate)",
         "pnpm exec vitest run packages/ui/src/provider.test.tsx apps/web/src/App.test.tsx --pool=forks --maxWorkers=1 (12 passed)",
         "pnpm exec vitest run packages/ui/src --pool=forks --maxWorkers=1 (7 files, 26 passed)",
+        "pnpm exec vitest run packages/ui/src/three-column-split.test.ts packages/ui/src/pinharness.test.tsx packages/ui/src/provider.test.tsx --pool=forks --maxWorkers=1 (3 files, 6 passed)",
+        "pnpm --filter @agenthub/ui typecheck && pnpm --filter @agenthub/web typecheck (pass after shared layout move)",
         "pnpm qa:css-budget (pass; PinHarness source snapshot provenance envelope plus strict feature budgets)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=mobile-390 --grep 'Home 深色主题' --workers=1 (2/2 passed; .dark/color-scheme/画布/overflow assertions)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=desktop-1024 --project=tablet-768 --project=mobile-390 --workers=1 --timeout=120000 (48/48 passed; current HEAD full four-viewport route/axe matrix)",
@@ -122,8 +124,10 @@
         "pageErrors": 0,
         "requestFailures": 0,
         "knownWarnings": [],
-        "evidence": "docs/qa/visual/v1.1.0/18-deployed-shared-primitives-20260909.json",
-        "capturedAt": "2026-09-08T20:32:53.126Z"
+        "evidence": "docs/qa/visual/v1.1.0/19-deployed-shared-layout-20260909.json",
+        "capturedAt": "2026-09-08T21:28:01.660Z",
+        "image": "agenthub:2026.9.9-v9",
+        "revision": "d759bff62f55001aa23a7447a4992f102158963a"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -149,11 +153,11 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v8 and 1.0.0 remains tagged and retained as the rollback point.",
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v9 and 1.0.0 remains tagged and retained as the rollback point.",
     "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36, d12ab1d, c23770a and db68ed1 were pushed to main before the 2026.9.9-v8 image build.",
-    "The v8 unauthenticated production smoke was run after the shared-primitives migration; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
+    "The v9 unauthenticated production smoke was run after the shared-layout migration; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
     "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 71 files (67 passed, 4 skipped), 306 tests (296 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
-    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T203142Z-pre-shared-primitives/.",
+    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T212617Z-pre-shared-layout/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }
