@@ -24,7 +24,7 @@ import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
 type SavedInlineStyle = { priority: string; value: string };
 
-const workspaceDrawerWidths = { left: 360, right: 480 } as const;
+const workspaceDrawerWidths = { left: 256, right: 380 } as const;
 
 const responsiveHostProperties = [
   'position',
