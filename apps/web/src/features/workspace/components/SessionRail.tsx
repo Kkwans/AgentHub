@@ -95,7 +95,7 @@ export function SessionRail({
   }, [query]);
   const sessionLink = (session: SessionRecord) => (
     <Link
-      className={session.id === currentId ? 'current' : ''}
+      className={`group/session flex min-h-14 min-w-0 items-center gap-2 rounded-[var(--radius)] border border-transparent px-2.5 py-2 text-[hsl(var(--foreground-muted))] transition-[background-color,border-color,color] duration-[var(--motion-fast)] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/45 ${session.id === currentId ? 'current bg-[hsl(var(--primary-soft))] text-[hsl(var(--foreground))]' : ''}`}
       to={`/workspace/${session.id}`}
       key={session.id}
       onClick={onSelect}
@@ -115,15 +115,15 @@ export function SessionRail({
   );
   return (
     <div
-      className={`${sessionRailStyles.owner} session-rail`}
+      className={`${sessionRailStyles.owner} session-rail flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
-      <div className="panel-title">
+      <div className="panel-title flex min-h-12 items-center justify-between gap-2 border-b border-[hsl(var(--border))]/70 px-4">
         <span>AgentHub</span>
         <small>{sessions.data?.length ?? 0} 个会话</small>
       </div>
       <div className="session-rail-toolbar">
-        <label className="session-rail-search">
+        <label className="session-rail-search flex min-w-0 flex-1 items-center gap-1.5 rounded-[var(--radius)] border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-muted))]/55 px-2.5">
           <Search size={14} aria-hidden="true" />
           <input
             aria-label="搜索会话"
@@ -133,7 +133,7 @@ export function SessionRail({
           />
         </label>
         <Link
-          className="session-rail-new"
+          className="session-rail-new inline-flex min-h-9 items-center gap-1 rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 text-[12px] font-semibold text-[hsl(var(--foreground-muted))] transition-colors hover:bg-[hsl(var(--surface-hover))]"
           to={projectId ? `/projects/${projectId}/sessions?new=1` : '/projects'}
           aria-label="新建会话"
           onClick={onSelect}
@@ -142,7 +142,7 @@ export function SessionRail({
           <span>新建</span>
         </Link>
       </div>
-      <div className="session-list">
+      <div className="session-list flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 pb-5 pt-1">
         {sessions.isLoading ? (
           <LoadingState label="正在读取会话" />
         ) : sessions.error ? (
@@ -158,7 +158,7 @@ export function SessionRail({
               <section className="session-group" key={group} aria-label={groupLabels[group]}>
                 <button
                   type="button"
-                  className="session-group-toggle"
+                  className="session-group-toggle grid min-h-8 grid-cols-[minmax(0,1fr)_auto_14px] items-center gap-1.5 rounded-md px-1 text-left text-[12px] font-semibold text-[hsl(var(--foreground-faint))] transition-colors hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/45"
                   aria-expanded={!collapsed}
                   aria-controls={groupId}
                   onClick={() => toggleGroup(group)}

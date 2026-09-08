@@ -84,11 +84,14 @@ export function WorkspaceInspector({
   ];
   return (
     <div
-      className={`${inspectorStyles.owner} inspector`}
+      className={`${inspectorStyles.owner} inspector flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
       <AhTabs.Root value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
-        <AhTabs.List className="inspector-tabs" aria-label="检查器视图">
+        <AhTabs.List
+          className="inspector-tabs flex min-h-12 items-center gap-5 overflow-x-auto border-b border-[hsl(var(--border))] px-4"
+          aria-label="检查器视图"
+        >
           {tabs.map((item) => (
             <AhTabs.Trigger key={item.id} value={item.id} aria-label={item.label}>
               {item.label}
@@ -96,7 +99,7 @@ export function WorkspaceInspector({
           ))}
         </AhTabs.List>
       </AhTabs.Root>
-      <div className="inspector-body">
+      <div className="inspector-body min-h-0 flex-1 overflow-auto bg-[hsl(var(--surface))]">
         {projects.isLoading ? (
           <LoadingState label="正在读取 Project" />
         ) : projects.error ? (

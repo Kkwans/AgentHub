@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { usePanelRef } from 'react-resizable-panels';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
@@ -124,81 +123,22 @@ export function useWorkspaceViewModel() {
     inspectorActsAsDrawer &&
     (auxiliaryPanel === 'inspector' || (mobileInspectorOpen && auxiliaryPanel !== 'sessions'));
   const [workspaceLayout, setWorkspaceLayout] = useState(readWorkspaceLayout);
-  const sessionPanelRef = usePanelRef();
-  const inspectorPanelRef = usePanelRef();
   const sessionCloseRef = useRef<HTMLButtonElement>(null);
   const inspectorCloseRef = useRef<HTMLButtonElement>(null);
   const sessionToggleRef = useRef<HTMLButtonElement>(null);
-  const inspectorToggleRef = useRef<HTMLButtonElement>(null);
-  const mobileSessionsRef = useRef<HTMLButtonElement>(null);
   const drawerStateRef = useRef({ session: false, inspector: false });
 
   const toggleWorkspacePanel = useCallback(
     (side: 'left' | 'right') => {
-      const panel = side === 'left' ? sessionPanelRef.current : inspectorPanelRef.current;
-      if (!panel) return;
-      const collapsed = panel.isCollapsed();
-      if (collapsed) {
-        panel.expand();
-        requestAnimationFrame(() => {
-          const leftPanel = sessionPanelRef.current;
-          const rightPanel = inspectorPanelRef.current;
-          panel.resize(
-            `${side === 'left' ? workspaceLayout.leftWidth : workspaceLayout.rightWidth}px`,
-          );
-          if (side === 'right' && leftPanel && !leftPanel.isCollapsed())
-            leftPanel.resize(`${workspaceLayout.leftWidth}px`);
-          if (side === 'left' && rightPanel && !rightPanel.isCollapsed())
-            rightPanel.resize(`${workspaceLayout.rightWidth}px`);
-        });
-      } else panel.collapse();
-      const nextCollapsed = !collapsed;
-      writeWorkspacePanel(side, { collapsed: nextCollapsed });
-      setWorkspaceLayout((current) =>
-        side === 'left'
+      setWorkspaceLayout((current) => {
+        const nextCollapsed = side === 'left' ? !current.leftCollapsed : !current.rightCollapsed;
+        writeWorkspacePanel(side, { collapsed: nextCollapsed });
+        return side === 'left'
           ? { ...current, leftCollapsed: nextCollapsed }
-          : { ...current, rightCollapsed: nextCollapsed },
-      );
+          : { ...current, rightCollapsed: nextCollapsed };
+      });
     },
-    [inspectorPanelRef, sessionPanelRef, workspaceLayout.leftWidth, workspaceLayout.rightWidth],
-  );
-
-  const handleWorkspaceLayoutChanged = useCallback(
-    (_layout: Record<string, number>, meta: { isUserInteraction: boolean }) => {
-      if (!meta.isUserInteraction) return;
-      const leftPanel = sessionPanelRef.current;
-      const rightPanel = inspectorPanelRef.current;
-      const leftSize = leftPanel?.getSize();
-      const rightSize = rightPanel?.getSize();
-      if (leftSize && leftPanel) {
-        writeWorkspacePanel('left', {
-          width: leftSize.inPixels,
-          collapsed: leftPanel.isCollapsed(),
-        });
-      }
-      if (rightSize && rightPanel) {
-        writeWorkspacePanel('right', {
-          width: rightSize.inPixels,
-          collapsed: rightPanel.isCollapsed(),
-        });
-      }
-      setWorkspaceLayout((current) => ({
-        ...current,
-        ...(leftSize
-          ? {
-              leftWidth: leftSize.inPixels,
-              leftCollapsed: leftPanel?.isCollapsed() ?? current.leftCollapsed,
-            }
-          : {}),
-        ...(rightSize
-          ? {
-              rightWidth: rightSize.inPixels,
-              rightCollapsed: rightPanel?.isCollapsed() ?? current.rightCollapsed,
-            }
-          : {}),
-      }));
-    },
-    [inspectorPanelRef, sessionPanelRef],
+    [],
   );
 
   const setTab = (nextTab: InspectorTab) => {
@@ -512,7 +452,7 @@ export function useWorkspaceViewModel() {
       const closeButton = openedSession ? sessionCloseRef.current : inspectorCloseRef.current;
       closeButton?.focus();
     } else if (closedSession || closedInspector) {
-      const opener = isMobileViewport ? mobileSessionsRef.current : sessionToggleRef.current;
+      const opener = sessionToggleRef.current;
       if (opener?.isConnected) opener.focus();
     }
     drawerStateRef.current = nextState;
@@ -521,7 +461,9 @@ export function useWorkspaceViewModel() {
 
     const closeButton = nextState.session ? sessionCloseRef.current : inspectorCloseRef.current;
     closeButton?.focus();
-    const drawer = closeButton?.closest<HTMLElement>('.session-rail-panel, .inspector-panel');
+    const drawer = closeButton?.closest<HTMLElement>(
+      '.session-rail-panel, .inspector-panel, .workbench-panel',
+    );
     const closeOnEscapeAndTrapFocus = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -574,15 +516,10 @@ export function useWorkspaceViewModel() {
     openInspectorDrawer,
     setAuxiliaryPanel: setAuxiliaryPanelFromTab,
     workspaceLayout,
-    sessionPanelRef,
-    inspectorPanelRef,
     sessionCloseRef,
     inspectorCloseRef,
     sessionToggleRef,
-    inspectorToggleRef,
-    mobileSessionsRef,
     toggleWorkspacePanel,
-    handleWorkspaceLayoutChanged,
     setSelectedFile,
     setSelectedChangePath,
     setDiffWhitespace,

@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   AhButton,
+  Bot,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -8,7 +9,7 @@ import {
   ShieldCheck,
   Wrench,
 } from '@agenthub/ui';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -137,13 +138,6 @@ export function Conversation({
     ...turn,
     entries: groupToolTimeline(turn.entries),
   }));
-  const agentHeaderIds = new Set<string>();
-  for (const turn of visibleTurns) {
-    const firstAssistant = turn.entries.find(
-      (item) => item.kind === 'message' && item.message.role === 'ASSISTANT',
-    );
-    if (firstAssistant?.kind === 'message') agentHeaderIds.add(firstAssistant.id);
-  }
   const timelineVirtualizer = useVirtualizer({
     count: displayTurns.length,
     getScrollElement: () => scrollRef.current,
@@ -300,12 +294,13 @@ export function Conversation({
     resolveError,
     resolveVariables,
     activeThoughtId,
-    agentHeaderIds,
     onResolve: resolveApproval,
   };
   return (
-    <div className={`${conversationStyles.owner} conversation`}>
-      <div className="panel-title conversation-title">
+    <section
+      className={`${conversationStyles.owner} conversation flex min-h-0 h-full flex-col overflow-hidden bg-[hsl(var(--background))]`}
+    >
+      <div className="panel-title conversation-title hidden">
         <div>
           <span>对话</span>
           <small>{activeRun ? 'Agent 正在处理当前指令' : '消息与执行记录'}</small>
@@ -314,7 +309,7 @@ export function Conversation({
       </div>
       <div
         ref={scrollRef}
-        className="conversation-scroll"
+        className="group/chatscroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--background))] px-0.5 py-2 sm:px-1 sm:py-3"
         role="log"
         aria-live="polite"
         aria-relevant="additions text"
@@ -410,7 +405,7 @@ export function Conversation({
         )}
         {shouldVirtualize ? (
           <div
-            className="conversation-virtual-list"
+            className="conversation-virtual-list relative min-h-px w-full"
             style={{ height: timelineVirtualizer.getTotalSize() }}
           >
             {virtualTimelineItems.map((virtualItem) => {
@@ -421,18 +416,22 @@ export function Conversation({
                   key={virtualItem.key}
                   ref={timelineVirtualizer.measureElement}
                   data-index={virtualItem.index}
-                  className="conversation-virtual-item"
+                  className="conversation-virtual-item absolute left-0 top-0 w-full will-change-transform"
                   style={{ transform: `translateY(${virtualItem.start}px)` }}
                 >
+                  {virtualItem.index > 0 && <ConversationTurnDivider />}
                   <ConversationTurnView turn={turn} {...renderItemProps} />
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="conversation-timeline">
-            {displayTurns.map((turn) => (
-              <ConversationTurnView key={turn.id} turn={turn} {...renderItemProps} />
+          <div className="conversation-timeline grid gap-1.5 px-0.5 py-2 sm:gap-3 sm:px-1 sm:py-3">
+            {displayTurns.map((turn, index) => (
+              <Fragment key={turn.id}>
+                {index > 0 && <ConversationTurnDivider />}
+                <ConversationTurnView turn={turn} {...renderItemProps} />
+              </Fragment>
             ))}
           </div>
         )}
@@ -448,6 +447,14 @@ export function Conversation({
           回到最新
         </button>
       )}
+    </section>
+  );
+}
+
+function ConversationTurnDivider() {
+  return (
+    <div className="mx-auto my-2 flex w-[85%] items-center gap-3 sm:my-3" aria-hidden="true">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[hsl(var(--border))]/50 to-transparent" />
     </div>
   );
 }
@@ -462,12 +469,38 @@ type ConversationTurnViewProps = {
 } & Omit<ConversationTimelineItemViewProps, 'item'>;
 
 function ConversationTurnView({ turn, ...itemProps }: ConversationTurnViewProps) {
+  const userEntries = turn.entries.filter(
+    (item) => item.kind === 'message' && item.message.role === 'USER',
+  );
+  const assistantEntries = turn.entries.filter(
+    (item) => !(item.kind === 'message' && item.message.role === 'USER'),
+  );
   return (
-    <div className="conversation-turn" data-turn-id={turn.id}>
-      {turn.entries.map((item) => (
+    <article
+      className="conversation-turn min-w-0 space-y-1.5 px-0.5 py-1 sm:space-y-2"
+      data-turn-id={turn.id}
+    >
+      {userEntries.map((item) => (
         <ConversationTimelineItemView key={item.id} item={item} {...itemProps} />
       ))}
-    </div>
+      {assistantEntries.length > 0 && (
+        <section className="relative mx-3 mb-1 min-w-0 py-2 pl-3 before:absolute before:bottom-1 before:left-0 before:top-1 before:w-px before:rounded-full before:bg-[hsl(var(--primary))]/25 before:content-[''] before:animate-[hci-stripe-grow_var(--anim-entry)_var(--ease-out-expo)_both] sm:mx-5 sm:pl-4">
+          <header className="mb-2 flex items-center gap-1.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--primary))]/[0.08]">
+              <Bot className="h-3.5 w-3.5 text-[hsl(var(--primary))]/80" />
+            </span>
+            <span className="text-[12px] font-medium text-[hsl(var(--foreground-muted))]">
+              Agent
+            </span>
+          </header>
+          <div className="min-w-0 space-y-1">
+            {assistantEntries.map((item) => (
+              <ConversationTimelineItemView key={item.id} item={item} {...itemProps} />
+            ))}
+          </div>
+        </section>
+      )}
+    </article>
   );
 }
 
@@ -477,7 +510,6 @@ type ConversationTimelineItemViewProps = {
   resolveError: Error | undefined;
   resolveVariables: { id: string; optionId: string } | undefined;
   activeThoughtId: string | undefined;
-  agentHeaderIds: ReadonlySet<string>;
   onResolve: (variables: { id: string; optionId: string }) => void;
 };
 
@@ -487,7 +519,6 @@ function ConversationTimelineItemView({
   resolveError,
   resolveVariables,
   activeThoughtId,
-  agentHeaderIds,
   onResolve,
 }: ConversationTimelineItemViewProps) {
   if (item.kind === 'tool-group') {
@@ -511,6 +542,7 @@ function ConversationTimelineItemView({
 
   const { message } = item;
   const presentation = presentAgentMessage(message.text);
+  const isUser = message.role === 'USER';
   const author =
     message.role === 'USER'
       ? '你'
@@ -519,35 +551,62 @@ function ConversationTimelineItemView({
         : message.role === 'SYSTEM'
           ? '系统'
           : '工具';
+  const timestamp = message.createdAt
+    ? new Date(message.createdAt).toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
   return (
-    <article
-      className={`message ${message.role.toLowerCase()}`}
-      data-streaming={item.streaming ? 'true' : undefined}
+    <div
+      className={isUser ? 'group/msg flex justify-end px-3 py-1.5 sm:px-4' : 'min-w-0 px-0.5 py-1'}
+      data-chat-entry
     >
-      <div className={`message-meta${agentHeaderIds.has(item.id) ? ' agent-header' : ''}`}>
-        <span className="message-author">{author}</span>
-        <code>#{message.sequence}</code>
-      </div>
-      {presentation.kind === 'TRANSPORT_ERROR' ? (
-        <div className="message-body message-body-error">
-          <strong>{presentation.title}</strong>
-          <p>{presentation.text}</p>
-          <details className="message-debug">
-            <summary>显示脱敏诊断</summary>
-            <pre>{presentation.debug}</pre>
-          </details>
-        </div>
-      ) : (
-        <div className="message-body message-markdown">
-          <RichMessage text={presentation.text} />
-          {item.streaming && (
-            <span aria-label="正在接收 Agent 回复" role="status">
-              ▍
-            </span>
-          )}
-        </div>
-      )}
-    </article>
+      {isUser && timestamp ? (
+        <span className="mr-2 self-center text-[10px] text-[hsl(var(--foreground-faint))] opacity-0 transition-opacity duration-150 group-hover/msg:opacity-100">
+          {timestamp}
+        </span>
+      ) : null}
+      <article
+        className={
+          isUser
+            ? 'message user message-user max-w-[88%] rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-[hsl(var(--primary))]/[0.08] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/30 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)] sm:max-w-[78%]'
+            : `message ${message.role.toLowerCase()} message-assistant min-w-0 text-[15px] leading-[1.72] tracking-[-0.008em] text-[hsl(var(--foreground))]`
+        }
+        data-streaming={item.streaming ? 'true' : undefined}
+      >
+        {!isUser && message.role !== 'ASSISTANT' ? (
+          <span className="mb-1 block text-[11px] font-medium text-[hsl(var(--foreground-faint))]">
+            {author}
+          </span>
+        ) : null}
+        {presentation.kind === 'TRANSPORT_ERROR' ? (
+          <div className="message-body message-body-error rounded-lg border border-[hsl(var(--destructive))]/25 bg-[hsl(var(--destructive-soft))] px-3 py-2.5 text-[hsl(var(--destructive))]">
+            <strong>{presentation.title}</strong>
+            <p className="mt-1.5 text-[hsl(var(--foreground-muted))]">{presentation.text}</p>
+            <details className="message-debug mt-2.5 text-[12px] text-[hsl(var(--foreground-muted))]">
+              <summary>显示脱敏诊断</summary>
+              <pre className="mt-2 max-h-44 overflow-auto rounded-md bg-[hsl(var(--destructive-soft))]/60 p-2 font-mono text-[11px] whitespace-pre-wrap">
+                {presentation.debug}
+              </pre>
+            </details>
+          </div>
+        ) : (
+          <div className="message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+            <RichMessage text={presentation.text} />
+            {item.streaming && (
+              <span
+                className="ml-1 inline-block w-0.5 text-[hsl(var(--primary))] animate-[streaming-type-caret-blink_820ms_steps(1,end)_infinite]"
+                aria-label="正在接收 Agent 回复"
+                role="status"
+              >
+                ▍
+              </span>
+            )}
+          </div>
+        )}
+      </article>
+    </div>
   );
 }
 
@@ -601,10 +660,10 @@ function ApprovalEventRow({
       : '系统未能将这个决定交给 Agent。请恢复 Session 后重新开始。';
   return (
     <article
-      className={`approval-card${deliveryUnconfirmed || deliveryAborted ? ' approval-card-attention' : ''}`}
+      className={`approval-card tool-entry-motion tool-entry-card mx-auto w-full max-w-3xl rounded-lg border px-3.5 py-3 ${deliveryUnconfirmed || deliveryAborted ? 'approval-card-attention border-[hsl(var(--destructive))]/30 bg-[hsl(var(--destructive-soft))]/45' : 'border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning-soft))]/45'}`}
       data-sequence={approvalItem.firstSeq}
     >
-      <div className="approval-heading">
+      <div className="approval-heading flex items-start gap-2.5">
         <span>
           {deliveryInProgress ? (
             <LoaderCircle className="spin" size={17} />
@@ -614,25 +673,27 @@ function ApprovalEventRow({
             <ShieldCheck size={17} />
           )}
         </span>
-        <div className="approval-heading-copy">
-          <small className="approval-kicker">
+        <div className="approval-heading-copy grid min-w-0 gap-0.5">
+          <small className="approval-kicker text-[11px] text-[hsl(var(--foreground-muted))]">
             {awaitingDecision ? 'Agent 请求' : deliveryInProgress ? '正在处理' : '投递结果'}
           </small>
-          <strong>{approval.title}</strong>
+          <strong className="text-[13px] text-[hsl(var(--foreground))]">{approval.title}</strong>
         </div>
       </div>
       {approval.description && (
-        <div className="approval-impact">
+        <div className="approval-impact mt-3 grid gap-1 border-t border-[hsl(var(--border))]/45 pt-2 text-[12px]">
           <span>影响</span>
           <p>{approval.description}</p>
         </div>
       )}
       {awaitingDecision && (
         <>
-          <span className="approval-options-label">可选操作</span>
+          <span className="approval-options-label mt-3 block text-[11px] font-medium text-[hsl(var(--foreground-muted))]">
+            可选操作
+          </span>
           {approval.optionsJson.some((option) => option.id) ? (
             <div
-              className="approval-actions"
+              className="approval-actions mt-2 flex flex-wrap gap-2"
               aria-label="合法操作选项"
               aria-busy={resolving === approval.id}
             >
@@ -665,14 +726,21 @@ function ApprovalEventRow({
               )}
             </div>
           ) : (
-            <div className="approval-no-options" role="alert">
+            <div
+              className="approval-no-options mt-2 rounded-md border border-[hsl(var(--destructive))]/25 bg-[hsl(var(--destructive-soft))] px-2.5 py-2 text-[12px]"
+              role="alert"
+            >
               Agent 没有提供可执行选项，请返回 Session 列表重新开始。
             </div>
           )}
         </>
       )}
       {deliveryInProgress && (
-        <div className="approval-delivery-status" role="status" aria-live="polite">
+        <div
+          className="approval-delivery-status mt-3 grid gap-1 rounded-md border border-[hsl(var(--border))]/45 bg-[hsl(var(--surface))]/65 px-2.5 py-2 text-[12px]"
+          role="status"
+          aria-live="polite"
+        >
           <strong>决定已保存</strong>
           <span>
             已选择“{selectedOption?.label ?? '已记录选项'}”，正在等待 Agent 确认接收，请勿重复操作。
@@ -680,14 +748,20 @@ function ApprovalEventRow({
         </div>
       )}
       {deliveryUnconfirmed && (
-        <div className="approval-delivery-status approval-delivery-status-danger" role="alert">
+        <div
+          className="approval-delivery-status approval-delivery-status-danger mt-3 grid gap-1 rounded-md border border-[hsl(var(--destructive))]/25 bg-[hsl(var(--destructive-soft))]/70 px-2.5 py-2 text-[12px]"
+          role="alert"
+        >
           <strong>无法确认 Agent 是否收到</strong>
           <span>{deliveryFailureCopy}</span>
           <Link to="/sessions">前往 Session 列表恢复或重新开始</Link>
         </div>
       )}
       {deliveryAborted && (
-        <div className="approval-delivery-status approval-delivery-status-danger" role="alert">
+        <div
+          className="approval-delivery-status approval-delivery-status-danger mt-3 grid gap-1 rounded-md border border-[hsl(var(--destructive))]/25 bg-[hsl(var(--destructive-soft))]/70 px-2.5 py-2 text-[12px]"
+          role="alert"
+        >
           <strong>决定没有发送给 Agent</strong>
           <span>{deliveryFailureCopy}</span>
           <Link to="/sessions">前往 Session 列表处理</Link>
@@ -710,7 +784,7 @@ function ApprovalEventRow({
           )}
         </div>
       )}
-      <details className="approval-debug">
+      <details className="approval-debug mt-3 border-t border-[hsl(var(--border))]/40 pt-2 text-[11px] text-[hsl(var(--foreground-muted))]">
         <summary>显示诊断信息</summary>
         <dl>
           <div>
@@ -758,9 +832,14 @@ function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
   const labels = [...new Set(events.map((event) => toolEventTitle(event)))];
   const details = labels.slice(0, 3).join('、');
   return (
-    <details className={`tool-event-row tool-execution-group tool-event-${status}`}>
-      <summary aria-label={`${title}，展开执行详情`}>
-        <span className="tool-event-icon" aria-hidden="true">
+    <details
+      className={`tool-event-row tool-entry-motion tool-entry-card tool-execution-group tool-event-${status}`}
+    >
+      <summary
+        className="tool-entry-trigger tool-entry-trigger--interactive"
+        aria-label={`${title}，展开执行详情`}
+      >
+        <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
           {status === 'running' ? (
             <LoaderCircle className="spin" size={14} />
           ) : status === 'failed' ? (
@@ -769,19 +848,23 @@ function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
             <CheckCircle2 size={14} />
           )}
         </span>
-        <span className="tool-event-copy">
+        <span className="tool-event-copy min-w-0 flex-1">
           <span>
             <strong>{title}</strong>
-            <small>
+            <small className="tool-entry-badge">
               {status === 'completed' ? '已完成' : status === 'failed' ? '部分失败' : '进行中'}
             </small>
           </span>
           {details && <code>{details}</code>}
         </span>
-        <ChevronRight className="tool-event-action" size={13} aria-hidden="true" />
+        <ChevronRight
+          className="tool-event-action tool-entry-chevron"
+          size={13}
+          aria-hidden="true"
+        />
       </summary>
-      <div className="tool-event-detail">
-        <ul className="tool-event-group-list">
+      <div className="tool-event-detail tool-entry-detail">
+        <ul className="tool-event-group-list tool-entry-detail-body space-y-1 border-t border-[hsl(var(--border))]/35 px-3 py-2">
           {events.map((event) => (
             <li key={event.id}>
               <strong>{toolEventTitle(event)}</strong>
@@ -803,9 +886,12 @@ function ToolEventRow({ event }: { event: EventRecord }) {
   const title = toolEventTitle(event);
   const detailValue = toolEventDetail(event);
   return (
-    <details className={`tool-event-row tool-event-${status}`}>
-      <summary aria-label={`${title}，${labelAgentEventType(event.type)}，展开详情`}>
-        <span className="tool-event-icon" aria-hidden="true">
+    <details className={`tool-event-row tool-entry-motion tool-entry-card tool-event-${status}`}>
+      <summary
+        className="tool-entry-trigger tool-entry-trigger--interactive"
+        aria-label={`${title}，${labelAgentEventType(event.type)}，展开详情`}
+      >
+        <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
           {status === 'running' ? (
             <LoaderCircle className="spin" size={14} />
           ) : status === 'failed' ? (
@@ -814,18 +900,22 @@ function ToolEventRow({ event }: { event: EventRecord }) {
             <CheckCircle2 size={14} />
           )}
         </span>
-        <span className="tool-event-copy">
+        <span className="tool-event-copy min-w-0 flex-1">
           <span>
             <strong>{title}</strong>
-            <small>
+            <small className="tool-entry-badge">
               {status === 'completed' ? '已完成' : status === 'failed' ? '失败' : '进行中'}
             </small>
           </span>
           {detailValue !== undefined && <code>{String(detailValue)}</code>}
         </span>
-        <ChevronRight className="tool-event-action" size={13} aria-hidden="true" />
+        <ChevronRight
+          className="tool-event-action tool-entry-chevron"
+          size={13}
+          aria-hidden="true"
+        />
       </summary>
-      <div className="tool-event-detail">
+      <div className="tool-event-detail tool-entry-detail border-t border-[hsl(var(--border))]/35 px-3 py-2">
         <Link to="?view=activity">
           <Wrench size={12} aria-hidden="true" /> 在工具检查器中查看
         </Link>
@@ -879,17 +969,28 @@ function ThoughtEventRow({
 }) {
   const duration = Math.max(0, Date.parse(thought.updatedAt) - Date.parse(thought.createdAt));
   return (
-    <details className={`thought-event-row${running ? ' running' : ''}`}>
-      <summary aria-label={running ? '正在思考，展开思考过程' : '展开思考过程'}>
-        <span className="thought-event-pulse" aria-hidden="true">
+    <details
+      className={`thought-event-row tool-entry-motion tool-entry-card${running ? ' running tool-entry-card--active' : ''}`}
+    >
+      <summary
+        className="tool-entry-trigger tool-entry-trigger--interactive"
+        aria-label={running ? '正在思考，展开思考过程' : '展开思考过程'}
+      >
+        <span className="thought-event-pulse tool-entry-icon" aria-hidden="true">
           <i />
           <i />
           <i />
         </span>
-        <strong>{running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`}</strong>
-        <ChevronRight className="thought-event-action" size={13} aria-hidden="true" />
+        <strong className="tool-entry-badge">
+          {running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`}
+        </strong>
+        <ChevronRight
+          className="thought-event-action tool-entry-chevron"
+          size={13}
+          aria-hidden="true"
+        />
       </summary>
-      <div className="thought-event-content message-markdown">
+      <div className="thought-event-content tool-entry-detail message-markdown border-t border-[hsl(var(--border))]/35 px-3 py-2">
         <RichMessage text={thought.text || 'Agent 未提供可展示的思考内容。'} />
       </div>
     </details>

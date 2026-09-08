@@ -7,7 +7,6 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { WorkbenchCommandBar } from '@agenthub/ui';
 
 import type {
   AgentRecord,
@@ -339,87 +338,93 @@ export function Composer({
     }
   };
   return (
-    <WorkbenchCommandBar className={`${composerStyles.owner} composer`} label="Composer 命令栏">
-      <ComposerToolbar
-        contextOpen={contextOpen}
-        contextStatus={contextStatus}
-        onToggleContext={() => setContextOpen((open) => !open)}
-        configuration={configuration}
-        configurationLoading={configurationLoading}
-        model={modelValue || agent?.defaultModel || ''}
-        mode={modeValue || agent?.defaultMode || ''}
-        reasoningEffort={reasoningEffortValue}
-        updatingModel={updatingModel}
-        updatingMode={updatingMode}
-        updatingReasoningEffort={updatingReasoningEffort}
-        onChangeConfiguration={(patch) => updateConfiguration.mutate(patch)}
-      />
-      {configurationError && (
-        <div className="composer-error" role="alert">
-          配置读取失败：{configurationError.message}
-        </div>
-      )}
-      {updateConfiguration.isError && (
-        <div className="composer-error" role="alert">
-          {updateConfiguration.error?.message}
-        </div>
-      )}
-      {contextOpen && (
-        <ContextPopover
-          project={project}
-          session={session}
-          promptContext={promptContext}
-          promptContextLoading={promptContextLoading}
-          promptContextError={promptContextError}
-          promptContextRetry={promptContextRetry}
-          variablesDraft={variablesDraft}
-          variablesError={variablesError}
+    <section
+      className={`${composerStyles.owner} composer-shell relative z-20 mx-auto mb-4 w-[min(760px,calc(100%-24px))] shrink-0 min-w-0 sm:mb-4 sm:w-[min(760px,calc(100%-24px))]`}
+      role="group"
+      aria-label="Composer 命令栏"
+    >
+      <div className="chat-command-card relative flex min-w-0 flex-col overflow-visible rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/98 shadow-[0_1px_3px_hsl(var(--foreground)/0.05),0_1px_2px_hsl(var(--foreground)/0.04)] backdrop-blur-sm transition-[border-color,box-shadow] duration-150 focus-within:border-[hsl(var(--primary))]/45 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.07),0_2px_6px_hsl(var(--foreground)/0.06)]">
+        <ComposerToolbar
+          contextOpen={contextOpen}
           contextStatus={contextStatus}
-          onVariablesDraftChange={setVariablesDraft}
-          onApplyVariables={applyVariables}
+          onToggleContext={() => setContextOpen((open) => !open)}
+          configuration={configuration}
+          configurationLoading={configurationLoading}
+          model={modelValue || agent?.defaultModel || ''}
+          mode={modeValue || agent?.defaultMode || ''}
+          reasoningEffort={reasoningEffortValue}
+          updatingModel={updatingModel}
+          updatingMode={updatingMode}
+          updatingReasoningEffort={updatingReasoningEffort}
+          onChangeConfiguration={(patch) => updateConfiguration.mutate(patch)}
         />
-      )}
-      <ComposerSurface
-        text={text}
-        inputRef={inputRef}
-        inputHeight={inputHeight}
-        onResizeStart={handleResizeStart}
-        onResizeMove={handleResizeMove}
-        onResizeEnd={handleResizeEnd}
-        activeRun={activeRun}
-        sendPending={send.isPending}
-        stopPending={stop.isPending}
-        sendingBlocked={
-          !text.trim() ||
-          send.isPending ||
-          updateConfiguration.isPending ||
-          (contextBlocked && !localSlashCommand) ||
-          Boolean(variablesError) ||
-          sessionLocked
-        }
-        inputDisabled={Boolean(activeRun) || sessionLocked}
-        placeholder={sessionLockMessage ?? '给 Agent 发送工程指令…'}
-        onTextChange={(value) => {
-          setText(value);
-          setCommandNotice(undefined);
-        }}
-        onKeyDown={handleInputKeyDown}
-        onSend={sendCurrentText}
-        onStop={() => stop.mutate(undefined)}
-        commandNotice={commandNotice}
-        lockHint={sessionLockMessage}
-        sendError={send.error?.message}
-        stopError={stop.error?.message}
-        onRetryStop={() => stop.mutate(undefined)}
-        commands={slashMenuOpen ? filteredSlashCommands : []}
-        activeCommandIndex={activeCommandIndex}
-        onSelectCommand={(command) => {
-          setText(`/${command.name} `);
-          setCommandNotice(undefined);
-          inputRef.current?.focus();
-        }}
-      />
-    </WorkbenchCommandBar>
+        {configurationError && (
+          <div className="composer-error" role="alert">
+            配置读取失败：{configurationError.message}
+          </div>
+        )}
+        {updateConfiguration.isError && (
+          <div className="composer-error" role="alert">
+            {updateConfiguration.error?.message}
+          </div>
+        )}
+        {contextOpen && (
+          <ContextPopover
+            project={project}
+            session={session}
+            promptContext={promptContext}
+            promptContextLoading={promptContextLoading}
+            promptContextError={promptContextError}
+            promptContextRetry={promptContextRetry}
+            variablesDraft={variablesDraft}
+            variablesError={variablesError}
+            contextStatus={contextStatus}
+            onVariablesDraftChange={setVariablesDraft}
+            onApplyVariables={applyVariables}
+          />
+        )}
+        <ComposerSurface
+          text={text}
+          inputRef={inputRef}
+          inputHeight={inputHeight}
+          onResizeStart={handleResizeStart}
+          onResizeMove={handleResizeMove}
+          onResizeEnd={handleResizeEnd}
+          activeRun={activeRun}
+          sendPending={send.isPending}
+          stopPending={stop.isPending}
+          sendingBlocked={
+            !text.trim() ||
+            send.isPending ||
+            updateConfiguration.isPending ||
+            (contextBlocked && !localSlashCommand) ||
+            Boolean(variablesError) ||
+            sessionLocked
+          }
+          inputDisabled={Boolean(activeRun) || sessionLocked}
+          placeholder={sessionLockMessage ?? '给 Agent 发送工程指令…'}
+          onTextChange={(value) => {
+            setText(value);
+            setCommandNotice(undefined);
+          }}
+          onKeyDown={handleInputKeyDown}
+          onSend={sendCurrentText}
+          onStop={() => stop.mutate(undefined)}
+          commandNotice={commandNotice}
+          lockHint={sessionLockMessage}
+          sendError={send.error?.message}
+          stopError={stop.error?.message}
+          onRetryStop={() => stop.mutate(undefined)}
+          commands={slashMenuOpen ? filteredSlashCommands : []}
+          activeCommandIndex={activeCommandIndex}
+          onSelectCommand={(command) => {
+            setText(`/${command.name} `);
+            setCommandNotice(undefined);
+            inputRef.current?.focus();
+          }}
+        />
+      </div>
+    </section>
   );
 }
 
