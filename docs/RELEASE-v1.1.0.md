@@ -39,6 +39,14 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 部署前快照保存在 `/volume2/Project/.agenthub/central/deployments/20260908T175143Z-pre-conversation-polish/`；`agenthub:2026.9.9-v1` 与 1.0.0 回滚镜像均保留；
 - 最新 NAS-local Playwright 未登录 smoke 四视口均 HTTP `200`、无横向溢出、console/page/request error 为 `0`，证据见 [`docs/qa/visual/v1.1.0/12-deployed-login-20260909-polish.json`](qa/visual/v1.1.0/12-deployed-login-20260909-polish.json)；仍不等同认证 Workspace/Agent/PTY 完整验收。
 
+### 移动端 tab 收敛追加（2026-09-09）
+
+- 移动端改为单一完整 Workspace tab bar，保留“会话 / 对话 / 文件 / 变更 / 活动 / Run”入口；移除重复的三 tab 兼容层，避免文件面板不可达；
+- 代码提交 `2c973fefe297c7d552ec598a332e1aeb6a485bd2` 已推送 `main`；移动端 390px、平板 768px 和中屏 1024px Workspace Playwright 均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v3`，image ID `sha256:5aff86d41329b48dcb2d88e9df4999cf8ac2df2974a052d2a7fa12ad344c2106`，OCI revision `2c973fefe297c7d552ec598a332e1aeb6a485bd2`；
+- 2026-09-09 02:14:28（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200`、容器 `running/healthy`，其他 14 个容器未变；即时回滚快照位于 `/volume2/Project/.agenthub/central/deployments/20260908T180958Z-pre-mobile-tabs/`；
+- 最新未登录四视口 smoke 见 [`docs/qa/visual/v1.1.0/13-deployed-login-20260909-mobile-tabs.json`](qa/visual/v1.1.0/13-deployed-login-20260909-mobile-tabs.json)，仍不等同认证 Workspace/Agent/PTY 完整验收。
+
 ## 本轮真实部署 smoke
 
 - NAS 本地 Playwright Chromium 已连接真实 `1.1.0` 地址，未登录首页在 1440、1024、768、390 四个视口均返回 HTTP 200、页面标题 `AgentHub`，横向溢出为 0，console error/page error/request failure 均为 0；记录见 [`docs/qa/visual/v1.1.0/10-deployed-login-1440.json`](qa/visual/v1.1.0/10-deployed-login-1440.json)。
