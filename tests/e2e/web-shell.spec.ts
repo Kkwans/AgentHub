@@ -352,6 +352,31 @@ test('全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ page 
   await expectNoHorizontalOverflow(page);
 });
 
+test('Home 深色主题同步 PinHarness 画布与文字层级', async ({ page }, testInfo) => {
+  const viewportWidth = page.viewportSize()?.width ?? 1_000;
+  await page.goto(viewportWidth < 768 ? '/settings/appearance' : '/home');
+  if (viewportWidth < 768) {
+    const themeSelect = page.getByRole('combobox', { name: '主题' });
+    await themeSelect.click();
+    await page.getByRole('option', { name: '深色' }).click();
+    await page.goto('/home');
+  } else {
+    await page.getByRole('button', { name: '深色主题' }).click();
+  }
+  await expect(page.getByRole('heading', { name: '继续工作' })).toBeVisible();
+
+  await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
+  await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+  await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
+  const bodyBackground = await page
+    .locator('body')
+    .evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(bodyBackground).not.toBe('rgb(255, 255, 255)');
+  await expect(page.getByRole('heading', { name: '继续工作' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'home-dark');
+});
+
 test('Home 以工作续接为主舞台', async ({ page }, testInfo) => {
   await page.goto('/home');
   await expect(page.getByRole('heading', { name: '继续工作' })).toBeVisible();
