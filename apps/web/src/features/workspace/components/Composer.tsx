@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { WorkbenchCommandBar } from '@agenthub/ui';
 
 import type {
   AgentRecord,
@@ -338,7 +339,7 @@ export function Composer({
     }
   };
   return (
-    <div className={`${composerStyles.owner} composer`}>
+    <WorkbenchCommandBar className={`${composerStyles.owner} composer`} label="Composer 命令栏">
       <ComposerToolbar
         contextOpen={contextOpen}
         contextStatus={contextStatus}
@@ -418,7 +419,7 @@ export function Composer({
           inputRef.current?.focus();
         }}
       />
-    </div>
+    </WorkbenchCommandBar>
   );
 }
 

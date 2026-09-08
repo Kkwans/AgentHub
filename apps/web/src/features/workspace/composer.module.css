@@ -19,6 +19,10 @@
   overflow: visible;
 }
 
+:global(.workspace) :global(.composer .ah-workbench-command-content) {
+  display: contents;
+}
+
 :global(.workspace) :global(.composer-context) {
   display: flex;
   min-width: 0;
