@@ -301,6 +301,7 @@ export function Conversation({
     <section
       className={`${conversationStyles.owner} conversation flex min-h-0 h-full flex-col overflow-hidden bg-[hsl(var(--background))]`}
     >
+      <span className="sr-only">消息与执行记录</span>
       <div
         ref={scrollRef}
         className="group/chatscroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--background))] px-0.5 py-2 sm:px-1 sm:py-3"

@@ -33,20 +33,38 @@ export type DiffWhitespace =
 export type WorkspaceAuxiliaryPanel = 'sessions' | 'inspector';
 
 function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia(query).matches
-      : false,
-  );
+  const readMatches = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    // Keep the width-driven workbench breakpoints deterministic across real
+    // browsers, jsdom and embedded WebViews. Native matchMedia can be a stub
+    // in tests or report a stale value while a host is resizing, so explicit
+    // max/min clauses are evaluated against the current viewport first.
+    const maxWidth = query.match(/max-width:\s*(\d+)px/);
+    const minWidth = query.match(/min-width:\s*(\d+)px/);
+    if (maxWidth || minWidth) {
+      const width = window.innerWidth;
+      return Boolean(
+        (!maxWidth || width <= Number(maxWidth[1])) && (!minWidth || width >= Number(minWidth[1])),
+      );
+    }
+    return typeof window.matchMedia === 'function' ? window.matchMedia(query).matches : false;
+  }, [query]);
+  const [matches, setMatches] = useState(readMatches);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    if (typeof window === 'undefined') return;
+    if (typeof window.matchMedia !== 'function') {
+      const update = () => setMatches(readMatches());
+      window.addEventListener('resize', update);
+      update();
+      return () => window.removeEventListener('resize', update);
+    }
     const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
+    const update = () => setMatches(readMatches());
     update();
     media.addEventListener?.('change', update);
     return () => media.removeEventListener?.('change', update);
-  }, [query]);
+  }, [query, readMatches]);
 
   return matches;
 }
