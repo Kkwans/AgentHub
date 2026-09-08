@@ -1,4 +1,4 @@
-import { AhButton, Plus } from '@agenthub/ui';
+import { AhButton, Card, Plus } from '@agenthub/ui';
 
 import { QueryMessage } from '../../shared/page-primitives';
 import promptSettingsStyles from '../promptSettings.module.css';
@@ -8,7 +8,6 @@ import { PromptAssetList } from './PromptAssetList';
 import { PromptDialogs } from './PromptDialogs';
 import { PromptEditor } from './PromptEditor';
 import { PromptLifecycleDrawer } from './PromptLifecycleDrawer';
-import { Card } from '../../../pinharness/ui/card';
 
 export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
   const { prompts, setNewOpen } = model;

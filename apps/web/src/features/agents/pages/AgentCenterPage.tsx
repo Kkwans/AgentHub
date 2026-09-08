@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Search,
   Server,
+  Card,
 } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -21,7 +22,6 @@ import { api } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';
 import { Screen, displayDate } from '../../shared/page-primitives';
 import styles from '../agentCenter.module.css';
-import { Card } from '../../../pinharness/ui/card';
 
 export function AgentCenterPage() {
   const agents = useQuery({

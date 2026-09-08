@@ -16,6 +16,11 @@ const limits = {
   // The reduced-motion root contract must override component transition
   // declarations; all feature CSS is expected to stay free of !important.
   importantCount: 4,
+  // The full PinHarness stylesheet is a deliberate source snapshot rather
+  // than an AgentHub-authored module. Keep a bounded, provenance-checked
+  // envelope for that file while applying the normal module budget below.
+  referenceStylesheetBytes: 128 * 1024,
+  referenceStylesheetImportantCount: 200,
 };
 
 const files = [];
@@ -31,13 +36,44 @@ for (const file of files.sort()) {
   const path = relative(root, file);
   const bytes = Buffer.byteLength(text, 'utf8');
   const importantCount = (text.match(/!important\b/g) ?? []).length;
+  const isReferenceStylesheet = path === 'apps/web/src/pinharness/pinharness.css';
   const isWorkspaceShell = path === 'apps/web/src/features/workspace/workspace.module.css';
   const isSingleComponent =
     /(?:sessionRail|terminal|Feedback|AccessGate|agentCenter|home|settings)\.module\.css$/.test(
       path,
     );
-  const record = { path, bytes, importantCount, isWorkspaceShell, isSingleComponent };
+  const record = {
+    path,
+    bytes,
+    importantCount,
+    isReferenceStylesheet,
+    isWorkspaceShell,
+    isSingleComponent,
+  };
   records.push(record);
+
+  if (isReferenceStylesheet) {
+    if (!text.includes('PinHarness source is copied into the AgentHub web bundle')) {
+      errors.push({ path, rule: 'reference-provenance' });
+    }
+    if (bytes > limits.referenceStylesheetBytes) {
+      errors.push({
+        path,
+        rule: 'reference-stylesheet-bytes',
+        actual: bytes,
+        maximum: limits.referenceStylesheetBytes,
+      });
+    }
+    if (importantCount > limits.referenceStylesheetImportantCount) {
+      errors.push({
+        path,
+        rule: 'reference-stylesheet-important-declaration',
+        actual: importantCount,
+        maximum: limits.referenceStylesheetImportantCount,
+      });
+    }
+    continue;
+  }
 
   if (isWorkspaceShell && bytes > limits.workspaceShellBytes) {
     errors.push({

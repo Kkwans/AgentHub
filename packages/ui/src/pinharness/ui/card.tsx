@@ -1,6 +1,7 @@
-import { cn } from './cn';
 import { type VariantProps, cva } from 'class-variance-authority';
 import * as React from 'react';
+
+import { cn } from './cn.js';
 
 const cardVariants = cva(
   'min-w-0 rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow,background-color] duration-[var(--motion-fast)] ease-[var(--ease-standard)]',
@@ -14,9 +15,7 @@ const cardVariants = cva(
           'border-[hsl(var(--primary))] bg-[hsl(var(--primary-soft))] shadow-[var(--shadow-sm)]',
       },
     },
-    defaultVariants: {
-      variant: 'default',
-    },
+    defaultVariants: { variant: 'default' },
   },
 );
 
@@ -82,7 +81,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
     <div
       ref={ref}
       className={cn(
-        'flex min-w-0 flex-wrap items-center gap-2 border-t border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))] p-3 sm:p-4 rounded-b-[var(--radius-xl)]',
+        'flex min-w-0 flex-wrap items-center gap-2 rounded-b-[var(--radius-xl)] border-t border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))] p-3 sm:p-4',
         className,
       )}
       {...props}

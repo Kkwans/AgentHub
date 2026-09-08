@@ -1,9 +1,8 @@
-import { AhErrorState, AhReveal } from '@agenthub/ui';
+import { AhErrorState, AhReveal, Skeleton, SkeletonText } from '@agenthub/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ProjectRecord, TaskRecord } from '../../lib/api';
 import layout from './layout.module.css';
-import { Skeleton, SkeletonText } from '../../pinharness/ui/skeleton';
 
 /** Shared page chrome used by domain-owned pages. */
 export function Screen({

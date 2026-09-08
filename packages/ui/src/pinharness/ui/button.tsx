@@ -1,7 +1,8 @@
-import { cn } from './cn';
-import { LoaderCircle as Loader2 } from '@agenthub/ui';
+import { CircleNotchIcon } from '@phosphor-icons/react/CircleNotch';
 import { type VariantProps, cva } from 'class-variance-authority';
 import * as React from 'react';
+
+import { cn } from './cn.js';
 
 const buttonVariants = cva(
   'mobile-touch-target inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] text-sm font-semibold transition-[background-color,color,border-color,opacity,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-standard)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[hsl(var(--primary))]/18 focus-visible:ring-offset-1 focus-visible:ring-offset-[hsl(var(--background))] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 data-[loading=true]:cursor-wait [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
@@ -18,29 +19,24 @@ const buttonVariants = cva(
           'bg-[hsl(var(--surface-muted))] text-[hsl(var(--foreground-muted))] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))]',
         ghost:
           'text-[hsl(var(--foreground-subtle))] hover:bg-[hsl(var(--surface-muted))] hover:text-[hsl(var(--foreground))]',
-        // Link：系统蓝，无下划线，hover 时变深
         link: 'text-[hsl(var(--primary))] underline-offset-4 hover:text-[hsl(var(--primary-hover))] hover:underline',
       },
       size: {
-        default: 'h-[34px] px-4 py-1.5 text-[13px]' /* 34px，苹果 HIG 标准高度 */,
-        sm: 'h-[30px] rounded-[var(--radius)] px-3.5 text-[12px]' /* 30px */,
-        lg: 'h-[40px] rounded-[var(--radius-lg)] px-6 text-[14px]' /* 40px */,
-        xs: 'h-[26px] rounded-[var(--radius-sm)] px-2.5 text-[12px]' /* 26px */,
+        default: 'h-[34px] px-4 py-1.5 text-[13px]',
+        sm: 'h-[30px] rounded-[var(--radius)] px-3.5 text-[12px]',
+        lg: 'h-[40px] rounded-[var(--radius-lg)] px-6 text-[14px]',
+        xs: 'h-[26px] rounded-[var(--radius-sm)] px-2.5 text-[12px]',
         icon: 'h-[34px] w-[34px]',
         'icon-sm': 'h-[30px] w-[30px]',
       },
     },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
-    },
+    defaultVariants: { variant: 'default', size: 'default' },
   },
 );
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  /** 加载状态：显示 spinner 并自动禁用按钮交互 */
   loading?: boolean;
 }
 
@@ -49,13 +45,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     { className, variant, size, asChild = false, loading = false, children, disabled, ...props },
     ref,
   ) => {
-    // AgentHub keeps the copied PinHarness primitive dependency-light. The
-    // workspace uses normal buttons; callers that need a link can wrap it in
-    // a router action rather than changing the interaction contract.
     const Comp = asChild ? 'span' : 'button';
     const isDisabled = disabled || loading;
-
-    // asChild 模式下需手动合并 disabled 属性
     const compoundedProps = asChild
       ? { 'aria-disabled': isDisabled, 'data-loading': loading }
       : { disabled: isDisabled };
@@ -71,7 +62,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           children
         ) : (
           <>
-            {loading && <Loader2 className="size-3.5 animate-spin" />}
+            {loading && <CircleNotchIcon className="size-3.5 animate-spin" />}
             {children}
           </>
         )}

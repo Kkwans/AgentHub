@@ -2,6 +2,7 @@ import {
   AhButton,
   AhEmptyState,
   AhStatusPill,
+  Card,
   AlertTriangle,
   ArrowRight,
   Bot,
@@ -24,7 +25,6 @@ import type {
 import { api } from '../../../lib/api';
 import { QueryMessage, displayDate } from '../../shared/page-primitives';
 import homeStyles from '../home.module.css';
-import { Card } from '../../../pinharness/ui/card';
 
 type HomeData = {
   dashboard: DashboardSnapshot;

@@ -61,6 +61,7 @@ export { XIcon as X } from '@phosphor-icons/react/X';
 
 export * from './components/index.js';
 export * from './layout.js';
+export * from './pinharness/index.js';
 export * from './provider.js';
 export * from './primitives.js';
 export * from './product.js';

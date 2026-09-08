@@ -5,10 +5,8 @@
  * 共享组件，供 RunDetailPage 和 ProjectDetailPage 使用。
  */
 
-import { ChevronLeft, ChevronRight, GripVertical } from '@agenthub/ui';
+import { ChevronLeft, ChevronRight, GripVertical, cn } from '@agenthub/ui';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-
-import { cn } from '../ui/cn';
 
 function lsGet(key: string): string | null {
   if (typeof window === 'undefined') return null;

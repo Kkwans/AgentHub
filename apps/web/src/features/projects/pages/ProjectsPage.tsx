@@ -10,6 +10,7 @@ import {
   AhReveal,
   AhSelect,
   AhStatusPill,
+  Card,
   AhSwitch,
   AhTextarea,
   AlertTriangle,
@@ -95,7 +96,6 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 import projectsStyles from '../projects.module.css';
-import { Card } from '../../../pinharness/ui/card';
 
 export function ProjectsPage() {
   const projects = useQuery({
