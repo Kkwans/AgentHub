@@ -15,7 +15,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 ## 版本、镜像与回滚
 
 - 软件版本：`1.1.0`；候选镜像标签：`agenthub:2026.9.8-v1`；OCI `revision` 必须为最终已推送 commit SHA；
-- 当前候选源码提交：`befa67b0d355e210276f4790d90ccaffc42c80d1`（`main` 与 `origin/main` 已同步）；
+- 当前候选源码提交：`fdad2c08a5d33b7b1187919c4625c6cfe8797371`（`main` 与 `origin/main` 已同步）；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 生产只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；本轮未替换服务；
 - 发布只替换 `agenthub` service，不执行 `docker compose down`，不触碰 Project、PGlite/Postgres、worktrees、token 或其他容器。
@@ -30,7 +30,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 全仓 Vitest（单 worker、hook/test timeout 120s）：70 files，66 passed / 4 skipped；305 tests 中 295 passed / 10 skipped；
 - Mock Playwright：最新 Workspace 四视口 `4/4` 通过（含初始跟随与 cwd 可见性）；完整 44 用例首轮 `42/44`，两个 Settings 桌面用例因 NAS 负载下定位超时，隔离复跑 `2/2` 通过。fixture 只拦截 REST，Vite `/ws` 仍报告 `ECONNREFUSED 127.0.0.1:3210`，不代表真实运行时；
 - 版本真值：`pnpm release:version-truth 1.1.0 --allow-incomplete` 通过，11 个 workspace package 与 AppShell 版本一致，residues 为空；
-- 已推送提交（按功能切片）：`35dfc5e`（共享 UI 基础）、`b0eee6f`（Workspace 对话）、`fe3fd7a`（全局壳层）、`444f817`（版本真值）、`a9c8037`（候选固化）、`fe2e49e`（响应式面板交互）、`dbb8b50`（Panel host 根因）、`5653772`（Workbench 样式与动效预算）、`427cf72`（验证证据）、`8c817a5`（动效与移动反馈）、`9eb3f88`（辅助栏交互）、`07705db`（轮次虚拟化）、`b188a8c`（触控目标）、`29def87`（文字密度）、`28bd4c9`（验收断言）、`17de41e`（抽屉宿主）、`1977333`（Command Bar）、`6cbc82b`（抽屉宽度）、`371203d`（移动面板测试）、`5ae223e`（初始跟随与上下文事实）、`0d0f257`（ACP 版本元数据）、`52de0c7`（忽略伪滚动）、`befa67b`（cwd 可见性断言）。
+- 已推送提交（按功能切片）：`35dfc5e`（共享 UI 基础）、`b0eee6f`（Workspace 对话）、`fe3fd7a`（全局壳层）、`444f817`（版本真值）、`a9c8037`（候选固化）、`fe2e49e`（响应式面板交互）、`dbb8b50`（Panel host 根因）、`5653772`（Workbench 样式与动效预算）、`427cf72`（验证证据）、`8c817a5`（动效与移动反馈）、`9eb3f88`（辅助栏交互）、`07705db`（轮次虚拟化）、`b188a8c`（触控目标）、`29def87`（文字密度）、`28bd4c9`（验收断言）、`17de41e`（抽屉宿主）、`1977333`（Command Bar）、`6cbc82b`（抽屉宽度）、`371203d`（移动面板测试）、`5ae223e`（初始跟随与上下文事实）、`0d0f257`（ACP 版本元数据）、`52de0c7`（忽略伪滚动）、`befa67b`（cwd 可见性断言）、`fdad2c0`（触摸位移意图）。
 
 ## 尚未宣称完成的门禁
 

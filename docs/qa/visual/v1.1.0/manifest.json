@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "implementation_pending_visual_acceptance",
   "complete": false,
-  "sourceCommit": "befa67b0d355e210276f4790d90ccaffc42c80d1",
+  "sourceCommit": "fdad2c08a5d33b7b1187919c4625c6cfe8797371",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -45,6 +45,7 @@
         "pnpm exec vitest run apps/web/src/features/workspace --maxWorkers=1 (9 files, 41 passed)",
         "pnpm exec vitest run packages/adapter-acp/src --maxWorkers=1 (2 files, 12 passed)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --grep 'Workspace 保持' --timeout=120000 (4/4 latest viewports passed)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --grep 'Workspace 保持' --project=mobile-390 --timeout=120000 (1/1 after touch-move intent fix)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --timeout=120000 (first matrix 42/44; Settings desktop-1440/1024 rerun 2/2 passed)",
         "pnpm release:version-truth 1.1.0 --allow-incomplete",
         "git diff --check"
@@ -53,7 +54,7 @@
     "visual": {
       "status": "unverified",
       "mockFixture": "Latest Workspace 4/4 passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; full route matrix first pass 42/44 with two Settings locator timeouts under NAS load, then 2/2 isolated rerun passed; fixture is not production evidence",
-      "independentReview": "P0=0, P1=0 on current source and mock matrix; real deployment visual gate remains unverified. P2 top safe-area/device validation remains unverified.",
+      "independentReview": "P0=0, P1=0 on current source and mock matrix; touch intent P2 fixed in fdad2c0. Real deployment visual gate remains unverified. Top safe-area/device validation remains unverified.",
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
         "console/page/request errors",
