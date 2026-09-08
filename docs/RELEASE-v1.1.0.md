@@ -29,6 +29,16 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 重新部署前快照与候选 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T171703Z-pre-pinharness/`；原 `agenthub:2026.9.8-v1` 与 `agenthub:2026.9.5-v2` 均保留；
 - NAS-local Playwright 未登录静态 smoke 在 1440/1024/768/390 四视口均 HTTP `200`、无横向溢出、console/page/request error 为 `0`；这仍不等同认证 Workspace/Agent/PTY 的完整视觉验收。
 
+### 对话层第二轮直接对齐追加（2026-09-09）
+
+- 按 PinHarness `ChatConversationView` / `ChatEntryRenderer` 的真实层级修正 Workspace：用户消息改为单层气泡，Agent 头部移除自造竖线，Thinking 使用 Brain/渐隐状态卡；
+- 修正 `ThreeColumnSplit`：`>=1180px` 进入三栏，Conversation 最小宽度 560px；768–1179px 继续使用共用辅助栏；移除会拦截辅助栏 tab 的废弃 scrim；
+- 代码提交 `a16f11ea073be99d8c1903ff17c15372eb24a9e4` 已推送 `main`；`pnpm lint`、`pnpm typecheck`、Workspace/全局聚焦 Vitest（35/35）、Web build 与 1024px Workspace Playwright 均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v2`，image ID `sha256:62a7bac83c14a12ea7d2a17c0cb26538f66eddd682fc1edeafb1ba77bc0d529f`，OCI revision `a16f11ea073be99d8c1903ff17c15372eb24a9e4`，架构 `linux/arm64`；
+- 2026-09-09 01:57:47（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200` 返回 `version: 1.1.0`，容器 `running/healthy`，其他 14 个容器 name/image identity 未变；
+- 部署前快照保存在 `/volume2/Project/.agenthub/central/deployments/20260908T175143Z-pre-conversation-polish/`；`agenthub:2026.9.9-v1` 与 1.0.0 回滚镜像均保留；
+- 最新 NAS-local Playwright 未登录 smoke 四视口均 HTTP `200`、无横向溢出、console/page/request error 为 `0`，证据见 [`docs/qa/visual/v1.1.0/12-deployed-login-20260909-polish.json`](qa/visual/v1.1.0/12-deployed-login-20260909-polish.json)；仍不等同认证 Workspace/Agent/PTY 完整验收。
+
 ## 本轮真实部署 smoke
 
 - NAS 本地 Playwright Chromium 已连接真实 `1.1.0` 地址，未登录首页在 1440、1024、768、390 四个视口均返回 HTTP 200、页面标题 `AgentHub`，横向溢出为 0，console error/page error/request failure 均为 0；记录见 [`docs/qa/visual/v1.1.0/10-deployed-login-1440.json`](qa/visual/v1.1.0/10-deployed-login-1440.json)。

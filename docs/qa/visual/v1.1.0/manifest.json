@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "f25216374dd23b2f30f74ec0687b8847e383fd72",
+  "sourceCommit": "a16f11ea073be99d8c1903ff17c15372eb24a9e4",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -17,13 +17,23 @@
     "health": "healthy",
     "deploymentChanged": false
   },
-  "productionReadOnly": {
+  "previousCandidateReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
     "image": "agenthub:2026.9.9-v1",
     "imageId": "sha256:6f58c66edb9d34edc3e0af9bf562774ef232dd735bade88af8cf11353c63e16a",
-    "checkedAt": "2026-09-08T17:18:27Z",
+    "revision": "f25216374dd23b2f30f74ec0687b8847e383fd72",
+    "preserve": true
+  },
+  "productionReadOnly": {
+    "endpoint": "http://192.168.5.110:3210",
+    "version": "1.1.0",
+    "health": "healthy",
+    "image": "agenthub:2026.9.9-v2",
+    "imageId": "sha256:62a7bac83c14a12ea7d2a17c0cb26538f66eddd682fc1edeafb1ba77bc0d529f",
+    "revision": "a16f11ea073be99d8c1903ff17c15372eb24a9e4",
+    "checkedAt": "2026-09-08T17:58:50.850Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -32,19 +42,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v1",
-    "imageId": "sha256:6f58c66edb9d34edc3e0af9bf562774ef232dd735bade88af8cf11353c63e16a",
+    "image": "agenthub:2026.9.9-v2",
+    "imageId": "sha256:62a7bac83c14a12ea7d2a17c0cb26538f66eddd682fc1edeafb1ba77bc0d529f",
     "architecture": "arm64",
-    "revision": "f25216374dd23b2f30f74ec0687b8847e383fd72",
-    "created": "2026-09-08T17:11:06Z",
-    "deployedAt": "2026-09-08T17:18:07Z",
+    "revision": "a16f11ea073be99d8c1903ff17c15372eb24a9e4",
+    "created": "2026-09-08T17:51:51Z",
+    "deployedAt": "2026-09-08T17:57:47Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T171703Z-pre-pinharness/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260908T175143Z-pre-conversation-polish/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -106,7 +116,8 @@
         "knownWarnings": [
           "Origin-Agent-Cluster warning emitted by Chromium for the IP origin"
         ],
-        "evidence": "docs/qa/visual/v1.1.0/11-deployed-login-20260909.json"
+        "evidence": "docs/qa/visual/v1.1.0/12-deployed-login-20260909-polish.json",
+        "capturedAt": "2026-09-08T17:58:50.850Z"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -132,10 +143,10 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v1 and 1.0.0 remains tagged and retained as the rollback point.",
-    "PinHarness direct-migration commits ec74915, cda7393 and f252163 were pushed to main before the 2026.9.9-v1 image build.",
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v2 and 1.0.0 remains tagged and retained as the rollback point.",
+    "PinHarness direct-migration commits ec74915, cda7393, f252163 and a16f11e were pushed to main before the 2026.9.9-v2 image build.",
     "The latest unauthenticated production smoke was run after the rebuild; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
-    "Pre-deploy Compose/.env/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T145710Z-pre-v110/.",
+    "Pre-deploy Compose/.env/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260908T175143Z-pre-conversation-polish/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }
