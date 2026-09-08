@@ -6,16 +6,17 @@
   position: relative;
   z-index: 5;
   display: grid;
-  width: min(880px, calc(100% - 16px));
+  width: min(760px, calc(100% - 24px));
   flex: none;
-  gap: 8px;
+  gap: 0;
   min-width: 0;
-  margin: 0 auto 20px;
-  padding: 8px 9px 8px;
+  margin: 0 auto 16px;
+  padding: 0;
   background: var(--ah-surface-elevated, var(--ah-surface));
   border: 1px solid var(--workspace-line-strong);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: var(--workspace-shadow);
+  overflow: visible;
 }
 
 :global(.workspace) :global(.composer-context) {
@@ -24,8 +25,11 @@
   align-items: center;
   gap: 2px;
   order: 2;
-  min-height: 34px;
-  padding: 0 3px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-top: 1px solid var(--ah-border-subtle);
+  background: color-mix(in srgb, var(--ah-surface-subtle) 64%, transparent);
+  border-radius: 0 0 15px 15px;
   overflow: visible;
   color: var(--workspace-muted);
   font-size: 12px;
@@ -279,11 +283,11 @@
   position: relative;
   display: flex;
   min-width: 0;
-  min-height: 82px;
+  min-height: 64px;
   align-items: flex-end;
   gap: 8px;
   order: 1;
-  padding: 4px;
+  padding: 10px 12px 8px;
   background: transparent;
   border: 0;
   border-radius: 12px;
@@ -298,9 +302,9 @@
 :global(.workspace) :global(.composer-input textarea) {
   flex: 1;
   min-width: 0;
-  min-height: 60px;
-  max-height: 200px;
-  padding: 9px 9px 7px;
+  min-height: 40px;
+  max-height: 320px;
+  padding: 5px 7px 5px;
   color: var(--ah-text-primary);
   background: transparent;
   border: 0;
@@ -309,6 +313,34 @@
   resize: none;
   font-size: 15px;
   line-height: 1.55;
+}
+
+:global(.workspace) :global(.composer-resize-handle) {
+  position: absolute;
+  top: -7px;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+:global(.workspace) :global(.composer-resize-handle span) {
+  width: 32px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ah-border-strong);
+  opacity: 0;
+  transition: opacity var(--ah-motion-fast, 120ms) ease;
+}
+
+:global(.workspace) :global(.composer-resize-handle:hover span),
+:global(.workspace) :global(.composer-resize-handle:focus-visible span) {
+  opacity: 0.8;
 }
 
 :global(.workspace) :global(.composer-input textarea::placeholder) {
@@ -590,7 +622,7 @@
 
 @media (max-width: 1023px) {
   :global(.workspace) :global(.composer) {
-    padding-inline: 14px;
+    width: min(760px, calc(100% - 20px));
   }
 }
 
@@ -598,8 +630,7 @@
   :global(.workspace) :global(.composer) {
     width: calc(100% - 20px);
     margin-bottom: 10px;
-    padding: 7px 8px 8px;
-    border-radius: 16px;
+    border-radius: 14px;
   }
 
   :global(.workspace) :global(.composer-context) {
@@ -617,13 +648,20 @@
   }
 
   :global(.workspace) :global(.composer-input) {
-    min-height: 70px;
+    min-height: 60px;
+    padding: 8px 9px 6px;
     border-radius: 12px;
   }
 
   :global(.workspace) :global(.composer-input textarea) {
-    min-height: 52px;
+    min-height: 40px;
     font-size: 14px;
+  }
+
+  :global(.workspace) :global(.composer-context) {
+    min-height: 40px;
+    padding-inline: 7px;
+    border-radius: 0 0 13px 13px;
   }
 
   :global(.workspace) :global(.composer-context-grid) {

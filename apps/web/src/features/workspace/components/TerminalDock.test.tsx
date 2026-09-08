@@ -106,4 +106,31 @@ describe('TerminalDock', () => {
     fireEvent.click(screen.getByRole('button', { name: /关闭/ }));
     await waitFor(() => expect(actions.closeTerminal).toHaveBeenCalledWith('terminal-1'));
   });
+
+  it('Terminal dock 高度支持键盘调整并按 Session 恢复', async () => {
+    const actions = terminalActions();
+    render(
+      <TerminalDock
+        capability={{ available: true }}
+        capabilityError={null}
+        projectId="project-1"
+        sessionId="session-terminal-resize"
+        projectRoot="/workspace"
+        cwd="/workspace/src"
+        {...actions}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /打开 Terminal/ }));
+    const resizeHandle = await screen.findByRole('separator', { name: '调整 Terminal 高度' });
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '280');
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowUp' });
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '304');
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+    fireEvent.click(screen.getByRole('button', { name: /打开 Terminal/ }));
+    expect(await screen.findByRole('separator', { name: '调整 Terminal 高度' })).toHaveAttribute(
+      'aria-valuenow',
+      '304',
+    );
+  });
 });

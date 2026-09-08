@@ -1,5 +1,5 @@
 import { AhButton, AhIconButton, CircleStop, Send } from '@agenthub/ui';
-import { type KeyboardEvent, type RefObject, useEffect } from 'react';
+import { type KeyboardEvent, type PointerEvent, type RefObject, useEffect } from 'react';
 
 import type { RunRecord } from '../../../lib/api';
 import { SlashCommandMenu, type ComposerCommand } from './SlashCommandMenu';
@@ -7,6 +7,10 @@ import { SlashCommandMenu, type ComposerCommand } from './SlashCommandMenu';
 export function ComposerSurface({
   text,
   inputRef,
+  inputHeight,
+  onResizeStart,
+  onResizeMove,
+  onResizeEnd,
   activeRun,
   sendPending,
   stopPending,
@@ -28,6 +32,10 @@ export function ComposerSurface({
 }: {
   text: string;
   inputRef: RefObject<HTMLTextAreaElement | null>;
+  inputHeight: number;
+  onResizeStart: (event: PointerEvent<HTMLDivElement>) => void;
+  onResizeMove: (event: PointerEvent<HTMLDivElement>) => void;
+  onResizeEnd: (event: PointerEvent<HTMLDivElement>) => void;
   activeRun: RunRecord | undefined;
   sendPending: boolean;
   stopPending: boolean;
@@ -56,6 +64,18 @@ export function ComposerSurface({
   return (
     <>
       <div className="composer-input">
+        <div
+          className="composer-resize-handle"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="调整输入框高度"
+          onPointerDown={onResizeStart}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeEnd}
+          onPointerCancel={onResizeEnd}
+        >
+          <span aria-hidden="true" />
+        </div>
         <textarea
           ref={inputRef}
           aria-label="给 Agent 发送工程指令"
@@ -67,6 +87,7 @@ export function ComposerSurface({
           placeholder={placeholder}
           rows={2}
           disabled={inputDisabled}
+          style={{ height: `${inputHeight}px` }}
         />
         {slashMenuOpen ? (
           <SlashCommandMenu

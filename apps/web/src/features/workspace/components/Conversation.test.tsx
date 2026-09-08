@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EventRecord, MessageRecord } from '../../../lib/api';
+import type { ApprovalRecord, EventRecord, MessageRecord } from '../../../lib/api';
 import {
   buildConversationTimeline,
+  buildConversationTurns,
   CONVERSATION_WINDOW_SIZE,
   CONVERSATION_WINDOW_STEP,
   groupToolTimeline,
   getConversationWindowStart,
+  mergeConversationText,
   summarizeToolExecution,
 } from './Conversation';
 
@@ -203,5 +205,198 @@ describe('buildConversationTimeline', () => {
       kind: 'tool-group',
       events: [events[0], events[1], events[2]],
     });
+  });
+
+  it('兼容 delta 与累计 text，并在事件流只有 delta 时生成临时 Agent 回复', () => {
+    const events = [
+      {
+        id: 'assistant-1',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 1,
+        type: 'assistant.message.delta',
+        payloadJson: { messageId: 'assistant-1', delta: '检查' },
+        createdAt: '2026-08-30T01:00:01.000Z',
+      },
+      {
+        id: 'assistant-2',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 2,
+        type: 'assistant.message.delta',
+        payloadJson: { messageId: 'assistant-1', text: '检查完成' },
+        createdAt: '2026-08-30T01:00:02.000Z',
+      },
+    ] satisfies EventRecord[];
+
+    const timeline = buildConversationTimeline([], events);
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]).toMatchObject({
+      kind: 'message',
+      streaming: true,
+      message: { role: 'ASSISTANT', text: '检查完成' },
+    });
+    expect(mergeConversationText('检查', '检查完成')).toBe('检查完成');
+    expect(mergeConversationText('检查完成', '成。')).toBe('检查完成。');
+  });
+
+  it('完整 Assistant 消息到达后抑制重复 delta，但保留事件中的思考与工具顺序', () => {
+    const messages = [
+      {
+        id: 'user-1',
+        runId: 'run-1',
+        role: 'USER',
+        kind: 'TEXT',
+        text: '请检查',
+        sequence: 1,
+        createdAt: '2026-08-30T01:00:00.000Z',
+      },
+      {
+        id: 'assistant-1',
+        runId: 'run-1',
+        role: 'ASSISTANT',
+        kind: 'TEXT',
+        text: '已完成',
+        sequence: 2,
+        createdAt: '2026-08-30T01:00:04.000Z',
+      },
+    ] satisfies MessageRecord[];
+    const events = [
+      {
+        id: 'thought-1',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 1,
+        type: 'agent.thought.delta',
+        payloadJson: { messageId: 'thought-1', delta: '先核验。' },
+        createdAt: '2026-08-30T01:00:01.000Z',
+      },
+      {
+        id: 'tool-1',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 2,
+        type: 'tool.call.started',
+        payloadJson: { toolCallId: 'call-1', name: 'read_file' },
+        createdAt: '2026-08-30T01:00:02.000Z',
+      },
+    ] satisfies EventRecord[];
+
+    const timeline = buildConversationTimeline(messages, events);
+    expect(timeline.map((item) => item.kind)).toEqual(['message', 'thought', 'tool', 'message']);
+    expect(timeline.filter((item) => item.kind === 'message')).toHaveLength(2);
+    expect(timeline.at(-1)).toMatchObject({ message: { id: 'assistant-1', text: '已完成' } });
+  });
+
+  it('按请求事件把 Approval 插回真实因果位置，旧记录回退 requestedAt', () => {
+    const messages = [
+      {
+        id: 'user-1',
+        runId: 'run-1',
+        role: 'USER',
+        kind: 'TEXT',
+        text: '请执行',
+        sequence: 1,
+        createdAt: '2026-08-30T01:00:00.000Z',
+      },
+      {
+        id: 'assistant-1',
+        runId: 'run-1',
+        role: 'ASSISTANT',
+        kind: 'TEXT',
+        text: '等待确认',
+        sequence: 2,
+        createdAt: '2026-08-30T01:00:04.000Z',
+      },
+    ] satisfies MessageRecord[];
+    const events = [
+      {
+        id: 'approval-event',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 3,
+        type: 'approval.requested',
+        payloadJson: { approvalId: 'provider-1', approvalRequestId: 'approval-1' },
+        createdAt: '2026-08-30T01:00:03.000Z',
+      },
+    ] satisfies EventRecord[];
+    const approval = {
+      id: 'approval-1',
+      sessionId: 'session-1',
+      runId: 'run-1',
+      title: '允许执行命令？',
+      description: null,
+      status: 'PENDING',
+      optionsJson: [{ id: 'allow', label: '允许' }],
+      selectedOptionId: null,
+      deliveryId: null,
+      deliveryState: null,
+      deliveryAttemptCount: null,
+      deliveryErrorCode: null,
+      deliveryErrorMessage: null,
+      requestedAt: '2026-08-30T01:00:03.000Z',
+      resolvedAt: null,
+    } as ApprovalRecord & { requestedAt: string; resolvedAt: null };
+
+    const timeline = buildConversationTimeline(messages, events, [approval]);
+    expect(timeline.map((item) => item.kind)).toEqual(['message', 'approval', 'message']);
+    expect(timeline[1]).toMatchObject({
+      kind: 'approval',
+      firstSeq: 3,
+      requestEvent: { id: 'approval-event' },
+    });
+  });
+
+  it('把交错的 Run 事件归属到各自轮次，并且每轮只标记一个 Agent 头', () => {
+    const timeline = buildConversationTimeline(
+      [
+        {
+          id: 'user-1',
+          runId: 'run-1',
+          role: 'USER',
+          kind: 'TEXT',
+          text: '第一轮',
+          sequence: 1,
+          createdAt: '2026-08-30T01:00:00.000Z',
+        },
+        {
+          id: 'user-2',
+          runId: 'run-2',
+          role: 'USER',
+          kind: 'TEXT',
+          text: '第二轮',
+          sequence: 2,
+          createdAt: '2026-08-30T01:00:05.000Z',
+        },
+      ],
+      [
+        {
+          id: 'assistant-1',
+          sessionId: 'session-1',
+          runId: 'run-1',
+          seq: 1,
+          type: 'assistant.message.delta',
+          payloadJson: { messageId: 'm-1', text: '第一轮回复' },
+          createdAt: '2026-08-30T01:00:01.000Z',
+        },
+        {
+          id: 'assistant-2',
+          sessionId: 'session-1',
+          runId: 'run-2',
+          seq: 2,
+          type: 'assistant.message.delta',
+          payloadJson: { messageId: 'm-2', text: '第二轮回复' },
+          createdAt: '2026-08-30T01:00:06.000Z',
+        },
+      ],
+    );
+
+    const turns = buildConversationTurns(timeline);
+    expect(turns).toHaveLength(2);
+    expect(
+      turns.map((turn) => turn.entries.filter((item) => item.kind === 'message').length),
+    ).toEqual([2, 2]);
+    expect(turns[0]?.entries.every((item) => item.turnId === turns[0]?.id)).toBe(true);
+    expect(turns[1]?.entries.every((item) => item.turnId === turns[1]?.id)).toBe(true);
   });
 });

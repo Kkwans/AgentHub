@@ -37,11 +37,14 @@
 }
 
 :global(.workspace) :global(.terminal-dock-shell) {
-  position: absolute;
+  position: relative;
   z-index: 12;
-  right: 0;
-  bottom: calc(100% - 1px);
-  left: 0;
+  display: grid;
+  grid-template-rows: 8px 42px minmax(0, 1fr);
+  width: 100%;
+  height: var(--terminal-dock-height, 280px);
+  min-height: 160px;
+  max-height: 55vh;
   min-width: 0;
   overflow: hidden;
   color: var(--ah-text-primary);
@@ -49,6 +52,31 @@
   border: 1px solid var(--ah-border-default);
   border-radius: 12px 12px 0 0;
   box-shadow: 0 -22px 60px -34px color-mix(in srgb, var(--ah-text-primary) 52%, transparent);
+}
+
+:global(.workspace) :global(.terminal-dock-resize-handle) {
+  position: relative;
+  z-index: 1;
+  min-height: 8px;
+  cursor: row-resize;
+  background: transparent;
+}
+
+:global(.workspace) :global(.terminal-dock-resize-handle)::after {
+  position: absolute;
+  top: 3px;
+  right: 35%;
+  left: 35%;
+  height: 2px;
+  content: '';
+  background: var(--ah-border-strong);
+  border-radius: 999px;
+  transition: background-color var(--ah-motion-fast) ease;
+}
+
+:global(.workspace) :global(.terminal-dock-resize-handle:hover)::after,
+:global(.workspace) :global(.terminal-dock-resize-handle:focus-visible)::after {
+  background: var(--ah-accent-primary);
 }
 
 :global(.workspace) :global(.terminal-dock-toolbar) {
@@ -106,14 +134,16 @@
 
 :global(.workspace) :global(.terminal-dock-body) {
   position: relative;
-  min-height: 272px;
+  min-height: 0;
+  overflow: hidden;
   padding: 9px 12px 12px;
   background: #171a21;
 }
 
 :global(.workspace) :global(.terminal-viewport) {
   width: 100%;
-  height: 250px;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: #171a21;
   border: 1px solid #343941;

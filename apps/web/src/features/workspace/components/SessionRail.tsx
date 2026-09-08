@@ -178,7 +178,7 @@ export function SessionRail({
                           setVisibleSessionCount((count) => count + SESSION_WINDOW_STEP)
                         }
                       >
-                        加载更早会话（还有 ${window.hiddenCount} 个）
+                        {`加载更早会话（还有 ${window.hiddenCount} 个）`}
                       </button>
                     ) : null}
                     <div id={groupId} className="session-group-items">

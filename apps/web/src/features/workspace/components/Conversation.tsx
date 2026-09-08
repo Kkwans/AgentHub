@@ -10,12 +10,12 @@ import {
 } from '@agenthub/ui';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from '../../../components/Feedback';
 import type {
   ApprovalRecord,
   EventRecord,
-  MessageRecord,
   RunRecord,
   SessionContinuationRecord,
   SessionRecord,
@@ -28,213 +28,33 @@ import {
 import type { MessageQueryState, QueryState } from '../workspace-types';
 import { RunStateBanner } from './RunStateBanner';
 import conversationStyles from '../conversation.module.css';
+import {
+  buildConversationTimeline,
+  buildConversationTurns,
+  CONVERSATION_WINDOW_SIZE,
+  CONVERSATION_WINDOW_STEP,
+  getConversationWindowStart,
+  groupToolTimeline,
+  summarizeToolExecution,
+} from './conversationModel';
+import type {
+  ConversationApprovalItem,
+  ConversationToolGroup,
+  ConversationTimelineItem,
+} from './conversationModel';
+
+export {
+  buildConversationTimeline,
+  CONVERSATION_WINDOW_SIZE,
+  CONVERSATION_WINDOW_STEP,
+  getConversationWindowStart,
+  groupToolTimeline,
+  buildConversationTurns,
+  mergeConversationText,
+  summarizeToolExecution,
+} from './conversationModel';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
-
-export const CONVERSATION_WINDOW_SIZE = 500;
-export const CONVERSATION_WINDOW_STEP = 250;
-
-export type ConversationTimelineItem =
-  | { kind: 'message'; id: string; createdAt: string; message: MessageRecord }
-  | { kind: 'tool'; id: string; createdAt: string; event: EventRecord }
-  | {
-      kind: 'thought';
-      id: string;
-      createdAt: string;
-      updatedAt: string;
-      runId: string | null;
-      firstSeq: number;
-      text: string;
-    };
-
-export type ConversationToolGroup = {
-  kind: 'tool-group';
-  id: string;
-  createdAt: string;
-  firstSeq: number;
-  events: EventRecord[];
-};
-
-export function buildConversationTimeline(
-  messages: MessageRecord[],
-  events: EventRecord[],
-): ConversationTimelineItem[] {
-  const toolItems = new Map<string, ConversationTimelineItem & { kind: 'tool' }>();
-  const thoughtItems = new Map<string, ConversationTimelineItem & { kind: 'thought' }>();
-  for (const event of events) {
-    if (event.payloadJson.ignored === true) continue;
-    if (event.type === 'agent.thought.delta') {
-      const messageId =
-        typeof event.payloadJson.messageId === 'string' ? event.payloadJson.messageId : undefined;
-      const timelineId = `thought:${event.runId ?? event.sessionId}:${messageId ?? 'default'}`;
-      const previous = thoughtItems.get(timelineId);
-      const text = typeof event.payloadJson.text === 'string' ? event.payloadJson.text : '';
-      thoughtItems.set(
-        timelineId,
-        previous
-          ? { ...previous, updatedAt: event.createdAt, text: `${previous.text}${text}` }
-          : {
-              kind: 'thought',
-              id: timelineId,
-              createdAt: event.createdAt,
-              updatedAt: event.createdAt,
-              runId: event.runId,
-              firstSeq: event.seq,
-              text,
-            },
-      );
-      continue;
-    }
-    if (!event.type.startsWith('tool.') && event.type !== 'agent.plan.updated') {
-      continue;
-    }
-    const toolCallId =
-      event.type.startsWith('tool.') && typeof event.payloadJson.toolCallId === 'string'
-        ? event.payloadJson.toolCallId
-        : undefined;
-    const timelineId = toolCallId ? `tool:${toolCallId}` : `event:${event.id}`;
-    const previous = toolItems.get(timelineId);
-    if (!previous) {
-      toolItems.set(timelineId, {
-        kind: 'tool',
-        id: timelineId,
-        createdAt: event.createdAt,
-        event,
-      });
-      continue;
-    }
-    toolItems.set(timelineId, {
-      ...previous,
-      event: {
-        ...event,
-        id: previous.event.id,
-        seq: Math.min(previous.event.seq, event.seq),
-        createdAt: previous.createdAt,
-        payloadJson: { ...previous.event.payloadJson, ...event.payloadJson },
-      },
-    });
-  }
-  const items: ConversationTimelineItem[] = [
-    ...messages.map((message) => ({
-      kind: 'message' as const,
-      id: message.id,
-      createdAt: message.createdAt,
-      message,
-    })),
-    ...toolItems.values(),
-    ...thoughtItems.values(),
-  ];
-  return items.sort((left, right) => {
-    const leftTime = Date.parse(left.createdAt);
-    const rightTime = Date.parse(right.createdAt);
-    const byTime =
-      (Number.isNaN(leftTime) ? 0 : leftTime) - (Number.isNaN(rightTime) ? 0 : rightTime);
-    if (byTime !== 0) return byTime;
-    const leftOrder =
-      left.kind === 'message'
-        ? left.message.sequence
-        : left.kind === 'thought'
-          ? left.firstSeq
-          : left.event.seq;
-    const rightOrder =
-      right.kind === 'message'
-        ? right.message.sequence
-        : right.kind === 'thought'
-          ? right.firstSeq
-          : right.event.seq;
-    return leftOrder - rightOrder;
-  });
-}
-
-/**
- * Keep adjacent tool calls readable in the primary conversation. A message
- * or thought between calls deliberately starts a new execution group.
- */
-export function groupToolTimeline(
-  items: ConversationTimelineItem[],
-): Array<ConversationTimelineItem | ConversationToolGroup> {
-  const grouped: Array<ConversationTimelineItem | ConversationToolGroup> = [];
-  for (const item of items) {
-    if (item.kind !== 'tool') {
-      grouped.push(item);
-      continue;
-    }
-    const previous = grouped.at(-1);
-    if (previous?.kind === 'tool') {
-      grouped[grouped.length - 1] = {
-        kind: 'tool-group',
-        id: previous.id,
-        createdAt: previous.createdAt,
-        firstSeq: previous.event.seq,
-        events: [previous.event, item.event],
-      };
-    } else if (previous?.kind === 'tool-group') {
-      grouped[grouped.length - 1] = {
-        ...previous,
-        events: [...previous.events, item.event],
-      };
-    } else {
-      grouped.push(item);
-    }
-  }
-  return grouped;
-}
-
-export type ToolExecutionSummary = {
-  operations: number;
-  files: number;
-  commands: number;
-  searches: number;
-};
-
-export function summarizeToolExecution(events: EventRecord[]): ToolExecutionSummary {
-  const files = new Set<string>();
-  let commands = 0;
-  let searches = 0;
-  for (const event of events) {
-    const payload = event.payloadJson;
-    for (const path of readToolPaths(payload)) files.add(path);
-    const toolName = String(payload.tool ?? payload.name ?? '').toLocaleLowerCase();
-    if (typeof payload.command === 'string' || ['exec_command', 'run_tests'].includes(toolName)) {
-      commands += 1;
-    }
-    if (typeof payload.query === 'string' || ['search', 'search_query'].includes(toolName)) {
-      searches += 1;
-    }
-  }
-  return { operations: events.length, files: files.size, commands, searches };
-}
-
-export function getConversationWindowStart(itemCount: number): number {
-  return Math.max(0, itemCount - CONVERSATION_WINDOW_SIZE);
-}
-
-function formatToolExecutionSummary(summary: ToolExecutionSummary): string {
-  return [
-    `执行了 ${summary.operations} 个操作`,
-    summary.files ? `${summary.files} 文件` : undefined,
-    summary.commands ? `${summary.commands} 命令` : undefined,
-    summary.searches ? `${summary.searches} 搜索` : undefined,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
-
-function readToolPaths(payload: Record<string, unknown>): string[] {
-  const paths = new Set<string>();
-  if (typeof payload.path === 'string' && payload.path) paths.add(payload.path);
-  if (Array.isArray(payload.paths)) {
-    for (const value of payload.paths) if (typeof value === 'string' && value) paths.add(value);
-  }
-  if (Array.isArray(payload.locations)) {
-    for (const value of payload.locations) {
-      if (value && typeof value === 'object' && 'path' in value && typeof value.path === 'string') {
-        paths.add(value.path);
-      }
-    }
-  }
-  return [...paths];
-}
 
 export function Conversation({
   session,
@@ -291,7 +111,9 @@ export function Conversation({
       setResolving(undefined);
     }
   };
-  const timeline = buildConversationTimeline(messages.data ?? [], events.data ?? []);
+  const timeline = buildConversationTurns(
+    buildConversationTimeline(messages.data ?? [], events.data ?? [], approvals.data ?? []),
+  ).flatMap((turn) => turn.entries);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followTimelineRef = useRef(true);
   const loadingPreviousRef = useRef(false);
@@ -304,6 +126,28 @@ export function Conversation({
     timelineWindowStart + CONVERSATION_WINDOW_SIZE,
   );
   const displayTimeline = groupToolTimeline(visibleTimeline);
+  const agentHeaderIds = new Set<string>();
+  const seenAgentTurns = new Set<string>();
+  for (const item of visibleTimeline) {
+    if (item.kind !== 'message' || item.message.role !== 'ASSISTANT') continue;
+    const turnKey = item.turnId ?? item.id;
+    if (seenAgentTurns.has(turnKey)) continue;
+    seenAgentTurns.add(turnKey);
+    agentHeaderIds.add(item.id);
+  }
+  const timelineVirtualizer = useVirtualizer({
+    count: displayTimeline.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 86,
+    overscan: 5,
+    getItemKey: (index) => displayTimeline[index]?.id ?? index,
+  });
+  const virtualTimelineItems = timelineVirtualizer.getVirtualItems();
+  // jsdom and an initially hidden drawer do not expose a scroll rect. Keep a
+  // deterministic non-virtual fallback until the virtualizer receives a real
+  // viewport measurement; the next measurement switches to the overscanned
+  // window without dropping the first visible turn.
+  const shouldVirtualize = displayTimeline.length > 15 && virtualTimelineItems.length > 0;
   const activeThoughtId = activeRun
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
         ?.id
@@ -368,6 +212,14 @@ export function Conversation({
     !events.error &&
     !approvals.error &&
     timeline.length === 0;
+  const renderItemProps = {
+    resolving,
+    resolveError,
+    resolveVariables,
+    activeThoughtId,
+    agentHeaderIds,
+    onResolve: resolveApproval,
+  };
   return (
     <div className={`${conversationStyles.owner} conversation`}>
       <div className="panel-title conversation-title">
@@ -451,228 +303,34 @@ export function Conversation({
             description="Composer 会固定带上 Agent、Project、cwd、branch 与 PromptOS 上下文。"
           />
         )}
-        {displayTimeline.map((item) => {
-          if (item.kind === 'tool-group')
-            return <ToolExecutionGroupRow key={item.id} events={item.events} />;
-          if (item.kind === 'tool') return <ToolEventRow key={item.id} event={item.event} />;
-          if (item.kind === 'thought') {
-            return (
-              <ThoughtEventRow key={item.id} thought={item} running={item.id === activeThoughtId} />
-            );
-          }
-          const { message } = item;
-          const presentation = presentAgentMessage(message.text);
-          return (
-            <article className={`message ${message.role.toLowerCase()}`} key={message.id}>
-              <div className="message-meta">
-                <span className="message-author">
-                  {message.role === 'USER'
-                    ? '你'
-                    : message.role === 'ASSISTANT'
-                      ? 'Agent'
-                      : message.role}
-                </span>
-                <code>#{message.sequence}</code>
-              </div>
-              {presentation.kind === 'TRANSPORT_ERROR' ? (
-                <div className="message-body message-body-error">
-                  <strong>{presentation.title}</strong>
-                  <p>{presentation.text}</p>
-                  <details className="message-debug">
-                    <summary>显示脱敏诊断</summary>
-                    <pre>{presentation.debug}</pre>
-                  </details>
-                </div>
-              ) : (
-                <div className="message-body message-markdown">
-                  <RichMessage text={presentation.text} />
-                </div>
-              )}
-            </article>
-          );
-        })}
-        {(approvals.data ?? []).map((approval) => {
-          const awaitingDecision = approval.status === 'PENDING';
-          const deliveryInProgress = ['QUEUED', 'CLAIMED', 'DISPATCHING', 'RETRY_WAIT'].includes(
-            approval.deliveryState ?? '',
-          );
-          const deliveryUnconfirmed = approval.deliveryState === 'UNKNOWN';
-          const deliveryAborted = approval.deliveryState === 'DEAD';
-          const selectedOption = approval.optionsJson.find(
-            (option) => option.id === approval.selectedOptionId,
-          );
-          const deliveryStateLabel =
-            approval.deliveryState === 'UNKNOWN'
-              ? '状态无法确认'
-              : approval.deliveryState === 'DEAD'
-                ? '未发送给 Agent'
-                : approval.deliveryState === 'DELIVERED'
-                  ? 'Agent 已接收'
-                  : approval.deliveryState
-                    ? '正在处理'
-                    : '尚未发送';
-          const deliveryFailureCopy =
-            approval.deliveryState === 'UNKNOWN'
-              ? 'Agent 没有在限定时间内确认，系统不会自动重发，避免同一权限操作执行两次。'
-              : '系统未能将这个决定交给 Agent。请恢复 Session 后重新开始。';
-          return (
-            <article
-              className={`approval-card${deliveryUnconfirmed || deliveryAborted ? ' approval-card-attention' : ''}`}
-              key={approval.id}
-            >
-              <div className="approval-heading">
-                <span>
-                  {deliveryInProgress ? (
-                    <LoaderCircle className="spin" size={17} />
-                  ) : deliveryUnconfirmed || deliveryAborted ? (
-                    <AlertTriangle size={17} />
-                  ) : (
-                    <ShieldCheck size={17} />
-                  )}
-                </span>
-                <div className="approval-heading-copy">
-                  <small className="approval-kicker">
-                    {awaitingDecision ? 'Agent 请求' : deliveryInProgress ? '正在处理' : '投递结果'}
-                  </small>
-                  <strong>{approval.title}</strong>
-                </div>
-              </div>
-              {approval.description && (
-                <div className="approval-impact">
-                  <span>影响</span>
-                  <p>{approval.description}</p>
-                </div>
-              )}
-              {awaitingDecision && (
-                <>
-                  <span className="approval-options-label">可选操作</span>
-                  {approval.optionsJson.some((option) => option.id) ? (
-                    <div
-                      className="approval-actions"
-                      aria-label="合法操作选项"
-                      aria-busy={resolving === approval.id}
-                    >
-                      {approval.optionsJson.map(
-                        (option) =>
-                          option.id && (
-                            <AhButton
-                              key={option.id}
-                              color={
-                                /reject|deny|refuse/i.test(
-                                  `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
-                                )
-                                  ? 'gray'
-                                  : 'orange'
-                              }
-                              size="xs"
-                              variant={
-                                /reject|deny|refuse/i.test(
-                                  `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
-                                )
-                                  ? 'light'
-                                  : 'filled'
-                              }
-                              onClick={() =>
-                                void resolveApproval({ id: approval.id, optionId: option.id! })
-                              }
-                              disabled={Boolean(resolving)}
-                            >
-                              {option.label ?? option.id}
-                            </AhButton>
-                          ),
-                      )}
-                    </div>
-                  ) : (
-                    <div className="approval-no-options" role="alert">
-                      Agent 没有提供可执行选项，请返回 Session 列表重新开始。
-                    </div>
-                  )}
-                </>
-              )}
-              {deliveryInProgress && (
-                <div className="approval-delivery-status" role="status" aria-live="polite">
-                  <strong>决定已保存</strong>
-                  <span>
-                    已选择“{selectedOption?.label ?? '已记录选项'}”，正在等待 Agent
-                    确认接收，请勿重复操作。
-                  </span>
-                </div>
-              )}
-              {deliveryUnconfirmed && (
+        {shouldVirtualize ? (
+          <div
+            className="conversation-virtual-list"
+            style={{ height: timelineVirtualizer.getTotalSize() }}
+          >
+            {virtualTimelineItems.map((virtualItem) => {
+              const item = displayTimeline[virtualItem.index];
+              if (!item) return null;
+              return (
                 <div
-                  className="approval-delivery-status approval-delivery-status-danger"
-                  role="alert"
+                  key={virtualItem.key}
+                  ref={timelineVirtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  className="conversation-virtual-item"
+                  style={{ transform: `translateY(${virtualItem.start}px)` }}
                 >
-                  <strong>无法确认 Agent 是否收到</strong>
-                  <span>{deliveryFailureCopy}</span>
-                  <Link to="/sessions">前往 Session 列表恢复或重新开始</Link>
+                  <ConversationTimelineItemView item={item} {...renderItemProps} />
                 </div>
-              )}
-              {deliveryAborted && (
-                <div
-                  className="approval-delivery-status approval-delivery-status-danger"
-                  role="alert"
-                >
-                  <strong>决定没有发送给 Agent</strong>
-                  <span>{deliveryFailureCopy}</span>
-                  <Link to="/sessions">前往 Session 列表处理</Link>
-                </div>
-              )}
-              {resolveVariables?.id === approval.id && resolveError && (
-                <div className="workspace-query-error" role="alert">
-                  <span>{resolveError.message}</span>
-                  {((resolveError as Error & { code?: string }).code ?? '') !==
-                    'APPROVAL_DECISION_CONFLICT' && (
-                    <AhButton
-                      color="red"
-                      size="xs"
-                      variant="light"
-                      disabled={Boolean(resolving)}
-                      onClick={() => {
-                        if (resolveVariables) void resolveApproval(resolveVariables);
-                      }}
-                    >
-                      重试此选项
-                    </AhButton>
-                  )}
-                </div>
-              )}
-              <details className="approval-debug">
-                <summary>显示诊断信息</summary>
-                <dl>
-                  <div>
-                    <dt>Approval</dt>
-                    <dd>
-                      <code>{approval.id}</code>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>状态</dt>
-                    <dd>{labelApprovalStatus(approval.status)}</dd>
-                  </div>
-                  <div>
-                    <dt>投递</dt>
-                    <dd>{deliveryStateLabel}</dd>
-                  </div>
-                  {approval.deliveryErrorCode && (
-                    <div>
-                      <dt>错误码</dt>
-                      <dd>
-                        <code>{approval.deliveryErrorCode}</code>
-                      </dd>
-                    </div>
-                  )}
-                  {approval.deliveryErrorMessage && (
-                    <div>
-                      <dt>原始信息</dt>
-                      <dd>{approval.deliveryErrorMessage}</dd>
-                    </div>
-                  )}
-                </dl>
-              </details>
-            </article>
-          );
-        })}
+              );
+            })}
+          </div>
+        ) : (
+          <div className="conversation-timeline">
+            {displayTimeline.map((item) => (
+              <ConversationTimelineItemView key={item.id} item={item} {...renderItemProps} />
+            ))}
+          </div>
+        )}
       </div>
       {!isFollowingTimeline && (
         <button
@@ -686,6 +344,280 @@ export function Conversation({
         </button>
       )}
     </div>
+  );
+}
+
+function ConversationTimelineItemView({
+  item,
+  resolving,
+  resolveError,
+  resolveVariables,
+  activeThoughtId,
+  agentHeaderIds,
+  onResolve,
+}: {
+  item: ConversationTimelineItem | ConversationToolGroup;
+  resolving: string | undefined;
+  resolveError: Error | undefined;
+  resolveVariables: { id: string; optionId: string } | undefined;
+  activeThoughtId: string | undefined;
+  agentHeaderIds: ReadonlySet<string>;
+  onResolve: (variables: { id: string; optionId: string }) => void;
+}) {
+  if (item.kind === 'tool-group') {
+    return <ToolExecutionGroupRow events={item.events} />;
+  }
+  if (item.kind === 'tool') return <ToolEventRow event={item.event} />;
+  if (item.kind === 'approval') {
+    return (
+      <ApprovalEventRow
+        approvalItem={item}
+        resolving={resolving}
+        resolveError={resolveError}
+        resolveVariables={resolveVariables}
+        onResolve={onResolve}
+      />
+    );
+  }
+  if (item.kind === 'thought') {
+    return <ThoughtEventRow thought={item} running={item.id === activeThoughtId} />;
+  }
+
+  const { message } = item;
+  const presentation = presentAgentMessage(message.text);
+  const author =
+    message.role === 'USER'
+      ? '你'
+      : message.role === 'ASSISTANT'
+        ? 'Agent'
+        : message.role === 'SYSTEM'
+          ? '系统'
+          : '工具';
+  return (
+    <article
+      className={`message ${message.role.toLowerCase()}`}
+      data-streaming={item.streaming ? 'true' : undefined}
+    >
+      <div className={`message-meta${agentHeaderIds.has(item.id) ? ' agent-header' : ''}`}>
+        <span className="message-author">{author}</span>
+        <code>#{message.sequence}</code>
+      </div>
+      {presentation.kind === 'TRANSPORT_ERROR' ? (
+        <div className="message-body message-body-error">
+          <strong>{presentation.title}</strong>
+          <p>{presentation.text}</p>
+          <details className="message-debug">
+            <summary>显示脱敏诊断</summary>
+            <pre>{presentation.debug}</pre>
+          </details>
+        </div>
+      ) : (
+        <div className="message-body message-markdown">
+          <RichMessage text={presentation.text} />
+          {item.streaming && (
+            <span aria-label="正在接收 Agent 回复" role="status">
+              ▍
+            </span>
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function formatToolExecutionSummary(summary: ReturnType<typeof summarizeToolExecution>): string {
+  return [
+    `执行了 ${summary.operations} 个操作`,
+    summary.files ? `${summary.files} 文件` : undefined,
+    summary.commands ? `${summary.commands} 命令` : undefined,
+    summary.searches ? `${summary.searches} 搜索` : undefined,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function ApprovalEventRow({
+  approvalItem,
+  resolving,
+  resolveError,
+  resolveVariables,
+  onResolve,
+}: {
+  approvalItem: ConversationApprovalItem;
+  resolving: string | undefined;
+  resolveError: Error | undefined;
+  resolveVariables: { id: string; optionId: string } | undefined;
+  onResolve: (variables: { id: string; optionId: string }) => void;
+}) {
+  const { approval } = approvalItem;
+  const awaitingDecision = approval.status === 'PENDING';
+  const deliveryInProgress = ['QUEUED', 'CLAIMED', 'DISPATCHING', 'RETRY_WAIT'].includes(
+    approval.deliveryState ?? '',
+  );
+  const deliveryUnconfirmed = approval.deliveryState === 'UNKNOWN';
+  const deliveryAborted = approval.deliveryState === 'DEAD';
+  const selectedOption = approval.optionsJson.find(
+    (option) => option.id === approval.selectedOptionId,
+  );
+  const deliveryStateLabel =
+    approval.deliveryState === 'UNKNOWN'
+      ? '状态无法确认'
+      : approval.deliveryState === 'DEAD'
+        ? '未发送给 Agent'
+        : approval.deliveryState === 'DELIVERED'
+          ? 'Agent 已接收'
+          : approval.deliveryState
+            ? '正在处理'
+            : '尚未发送';
+  const deliveryFailureCopy =
+    approval.deliveryState === 'UNKNOWN'
+      ? 'Agent 没有在限定时间内确认，系统不会自动重发，避免同一权限操作执行两次。'
+      : '系统未能将这个决定交给 Agent。请恢复 Session 后重新开始。';
+  return (
+    <article
+      className={`approval-card${deliveryUnconfirmed || deliveryAborted ? ' approval-card-attention' : ''}`}
+      data-sequence={approvalItem.firstSeq}
+    >
+      <div className="approval-heading">
+        <span>
+          {deliveryInProgress ? (
+            <LoaderCircle className="spin" size={17} />
+          ) : deliveryUnconfirmed || deliveryAborted ? (
+            <AlertTriangle size={17} />
+          ) : (
+            <ShieldCheck size={17} />
+          )}
+        </span>
+        <div className="approval-heading-copy">
+          <small className="approval-kicker">
+            {awaitingDecision ? 'Agent 请求' : deliveryInProgress ? '正在处理' : '投递结果'}
+          </small>
+          <strong>{approval.title}</strong>
+        </div>
+      </div>
+      {approval.description && (
+        <div className="approval-impact">
+          <span>影响</span>
+          <p>{approval.description}</p>
+        </div>
+      )}
+      {awaitingDecision && (
+        <>
+          <span className="approval-options-label">可选操作</span>
+          {approval.optionsJson.some((option) => option.id) ? (
+            <div
+              className="approval-actions"
+              aria-label="合法操作选项"
+              aria-busy={resolving === approval.id}
+            >
+              {approval.optionsJson.map(
+                (option) =>
+                  option.id && (
+                    <AhButton
+                      key={option.id}
+                      color={
+                        /reject|deny|refuse/i.test(
+                          `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
+                        )
+                          ? 'gray'
+                          : 'orange'
+                      }
+                      size="xs"
+                      variant={
+                        /reject|deny|refuse/i.test(
+                          `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
+                        )
+                          ? 'light'
+                          : 'filled'
+                      }
+                      onClick={() => onResolve({ id: approval.id, optionId: option.id! })}
+                      disabled={Boolean(resolving)}
+                    >
+                      {option.label ?? option.id}
+                    </AhButton>
+                  ),
+              )}
+            </div>
+          ) : (
+            <div className="approval-no-options" role="alert">
+              Agent 没有提供可执行选项，请返回 Session 列表重新开始。
+            </div>
+          )}
+        </>
+      )}
+      {deliveryInProgress && (
+        <div className="approval-delivery-status" role="status" aria-live="polite">
+          <strong>决定已保存</strong>
+          <span>
+            已选择“{selectedOption?.label ?? '已记录选项'}”，正在等待 Agent 确认接收，请勿重复操作。
+          </span>
+        </div>
+      )}
+      {deliveryUnconfirmed && (
+        <div className="approval-delivery-status approval-delivery-status-danger" role="alert">
+          <strong>无法确认 Agent 是否收到</strong>
+          <span>{deliveryFailureCopy}</span>
+          <Link to="/sessions">前往 Session 列表恢复或重新开始</Link>
+        </div>
+      )}
+      {deliveryAborted && (
+        <div className="approval-delivery-status approval-delivery-status-danger" role="alert">
+          <strong>决定没有发送给 Agent</strong>
+          <span>{deliveryFailureCopy}</span>
+          <Link to="/sessions">前往 Session 列表处理</Link>
+        </div>
+      )}
+      {resolveVariables?.id === approval.id && resolveError && (
+        <div className="workspace-query-error" role="alert">
+          <span>{resolveError.message}</span>
+          {((resolveError as Error & { code?: string }).code ?? '') !==
+            'APPROVAL_DECISION_CONFLICT' && (
+            <AhButton
+              color="red"
+              size="xs"
+              variant="light"
+              disabled={Boolean(resolving)}
+              onClick={() => onResolve(resolveVariables)}
+            >
+              重试此选项
+            </AhButton>
+          )}
+        </div>
+      )}
+      <details className="approval-debug">
+        <summary>显示诊断信息</summary>
+        <dl>
+          <div>
+            <dt>Approval</dt>
+            <dd>
+              <code>{approval.id}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>状态</dt>
+            <dd>{labelApprovalStatus(approval.status)}</dd>
+          </div>
+          <div>
+            <dt>投递</dt>
+            <dd>{deliveryStateLabel}</dd>
+          </div>
+          {approval.deliveryErrorCode && (
+            <div>
+              <dt>错误码</dt>
+              <dd>
+                <code>{approval.deliveryErrorCode}</code>
+              </dd>
+            </div>
+          )}
+          {approval.deliveryErrorMessage && (
+            <div>
+              <dt>原始信息</dt>
+              <dd>{approval.deliveryErrorMessage}</dd>
+            </div>
+          )}
+        </dl>
+      </details>
+    </article>
   );
 }
 

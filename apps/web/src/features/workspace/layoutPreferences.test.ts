@@ -21,11 +21,11 @@ function memoryStorage(initial: Record<string, string> = {}) {
 }
 
 describe('Workspace layout preferences', () => {
-  it('uses v1 defaults and clamps stale widths', () => {
+  it('uses v2 defaults and clamps stale widths', () => {
     expect(readWorkspaceLayout(memoryStorage())).toEqual({
       leftWidth: 256,
       leftCollapsed: false,
-      rightWidth: 440,
+      rightWidth: 380,
       rightCollapsed: false,
     });
     expect(
@@ -39,26 +39,24 @@ describe('Workspace layout preferences', () => {
     ).toEqual({
       leftWidth: 336,
       leftCollapsed: true,
-      rightWidth: 360,
+      rightWidth: 320,
       rightCollapsed: false,
     });
   });
 
   it('保留旧 key 的宽度和折叠偏好，并在窄屏无显式偏好时折叠 Rail', () => {
-    expect(
-      readWorkspaceLayout(
-        memoryStorage({
-          [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth]: '380',
-          [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth]: '720',
-        }),
-        1024,
-      ),
-    ).toEqual({
+    const storage = memoryStorage({
+      [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth]: '380',
+      [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth]: '720',
+    });
+    expect(readWorkspaceLayout(storage, 1024)).toEqual({
       leftWidth: 336,
       leftCollapsed: true,
-      rightWidth: 720,
+      rightWidth: 560,
       rightCollapsed: false,
     });
+    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth)).toBe('336');
+    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth)).toBe('560');
     expect(
       readWorkspaceLayout(
         memoryStorage({

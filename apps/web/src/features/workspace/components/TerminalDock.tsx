@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
@@ -38,6 +45,7 @@ export type TerminalDockProps = {
   capability: TerminalCapability | undefined;
   capabilityError: Error | null;
   projectId: string | undefined;
+  sessionId?: string;
   projectRoot: string | undefined;
   cwd: string;
   openTerminal: (input: TerminalOpenInput) => Promise<TerminalRecord>;
@@ -53,6 +61,7 @@ export function TerminalDock({
   capability,
   capabilityError,
   projectId,
+  sessionId,
   projectRoot,
   cwd,
   openTerminal,
@@ -61,10 +70,29 @@ export function TerminalDock({
   closeTerminal,
   subscribe,
 }: TerminalDockProps) {
-  const [expanded, setExpanded] = useState(false);
+  const preferenceKey = `agenthub.workspace.terminal.${sessionId ?? projectId ?? 'global'}`;
+  const [expanded, setExpanded] = useState(() => readTerminalPreference(preferenceKey).expanded);
+  const [height, setHeight] = useState(() => readTerminalPreference(preferenceKey).height);
+  const resizeStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const preferenceKeyRef = useRef(preferenceKey);
   const [state, setState] = useState<TerminalState>('closed');
   const [error, setError] = useState<string>();
   const viewportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (preferenceKeyRef.current === preferenceKey) return;
+    preferenceKeyRef.current = preferenceKey;
+    const preference = readTerminalPreference(preferenceKey);
+    setExpanded(preference.expanded);
+    setHeight(preference.height);
+  }, [preferenceKey]);
+
+  const persistPreference = (next: { expanded?: boolean; height?: number }) => {
+    writeTerminalPreference(preferenceKey, {
+      expanded: next.expanded ?? expanded,
+      height: next.height ?? height,
+    });
+  };
 
   useEffect(() => {
     if (!expanded || !capability?.available || !projectId || !viewportRef.current) return;
@@ -197,7 +225,41 @@ export function TerminalDock({
     subscribe,
   ]);
 
-  const close = () => setExpanded(false);
+  const close = () => {
+    setExpanded(false);
+    persistPreference({ expanded: false });
+  };
+  const handleResizeStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    resizeStateRef.current = { startY: event.clientY, startHeight: height };
+  };
+  const handleResizeMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const resizeState = resizeStateRef.current;
+    if (!resizeState) return;
+    const maxHeight = Math.max(220, Math.floor(window.innerHeight * 0.55));
+    const nextHeight = Math.min(
+      maxHeight,
+      Math.max(160, resizeState.startHeight + resizeState.startY - event.clientY),
+    );
+    setHeight(nextHeight);
+    persistPreference({ height: nextHeight });
+  };
+  const handleResizeEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    resizeStateRef.current = null;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
+  };
+  const handleResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    const delta = event.key === 'ArrowUp' ? 24 : -24;
+    const nextHeight = Math.min(660, Math.max(160, height + delta));
+    setHeight(nextHeight);
+    persistPreference({ height: nextHeight });
+  };
   const canOpen = Boolean(capability?.available && projectId);
   const capabilityLoading = !capability && !capabilityError;
   const unavailableReason = capabilityLoading
@@ -212,7 +274,10 @@ export function TerminalDock({
         type="button"
         className={`${terminalStyles.owner} terminal-launcher`}
         disabled={!canOpen}
-        onClick={() => setExpanded(true)}
+        onClick={() => {
+          setExpanded(true);
+          persistPreference({ expanded: true });
+        }}
         title={canOpen ? '打开 Terminal' : unavailableReason}
         aria-label={canOpen ? '打开 Terminal' : `打开 Terminal，不可用：${unavailableReason}`}
       >
@@ -226,7 +291,23 @@ export function TerminalDock({
     <section
       className={`${terminalStyles.owner} terminal-dock-shell expanded`}
       aria-label="Terminal"
+      style={{ '--terminal-dock-height': `${height}px` } as CSSProperties}
     >
+      <div
+        className="terminal-dock-resize-handle"
+        role="separator"
+        aria-label="调整 Terminal 高度"
+        aria-orientation="horizontal"
+        aria-valuemin={160}
+        aria-valuemax={660}
+        aria-valuenow={height}
+        tabIndex={0}
+        onKeyDown={handleResizeKeyDown}
+        onPointerDown={handleResizeStart}
+        onPointerMove={handleResizeMove}
+        onPointerUp={handleResizeEnd}
+        onPointerCancel={handleResizeEnd}
+      />
       <div className="terminal-dock-toolbar">
         <div className="terminal-dock-heading">
           <SquareTerminal size={16} aria-hidden="true" />
@@ -259,6 +340,35 @@ function relativeWorkspacePath(root: string | undefined, cwd: string): string | 
   if (cwd === normalizedRoot) return undefined;
   if (!cwd.startsWith(`${normalizedRoot}/`)) return undefined;
   return cwd.slice(normalizedRoot.length + 1);
+}
+
+function readTerminalPreference(key: string): { expanded: boolean; height: number } {
+  const fallback = { expanded: false, height: 280 };
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return fallback;
+    const value = JSON.parse(raw) as { expanded?: unknown; height?: unknown };
+    const height =
+      typeof value.height === 'number' && Number.isFinite(value.height)
+        ? Math.min(660, Math.max(160, Math.round(value.height)))
+        : fallback.height;
+    return { expanded: value.expanded === true, height };
+  } catch {
+    return fallback;
+  }
+}
+
+function writeTerminalPreference(
+  key: string,
+  preference: { expanded: boolean; height: number },
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(preference));
+  } catch {
+    // Persistence is best-effort; terminal controls must still work.
+  }
 }
 
 function formatExit(exitCode: unknown, signal: unknown): string {

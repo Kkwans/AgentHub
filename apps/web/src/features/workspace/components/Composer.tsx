@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 
 import type {
   AgentRecord,
@@ -94,6 +102,8 @@ export function Composer({
 }) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [inputHeight, setInputHeight] = useState(56);
+  const resizeStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
   const [variablesDraft, setVariablesDraft] = useState(() =>
     JSON.stringify(promptVariables, null, 2),
@@ -101,6 +111,50 @@ export function Composer({
   const [variablesError, setVariablesError] = useState<string>();
   const [commandNotice, setCommandNotice] = useState<string>();
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
+
+  const draftKey = `agenthub.workspace.composer.${session.id}`;
+  useEffect(() => {
+    try {
+      const draft = window.sessionStorage.getItem(draftKey);
+      setText(draft ?? '');
+    } catch {
+      setText('');
+    }
+    setInputHeight(56);
+  }, [draftKey]);
+
+  useEffect(() => {
+    try {
+      if (text) window.sessionStorage.setItem(draftKey, text);
+      else window.sessionStorage.removeItem(draftKey);
+    } catch {
+      // Draft persistence is best-effort and must never block sending.
+    }
+  }, [draftKey, text]);
+
+  const handleResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!event.isPrimary || event.button !== 0) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      resizeStateRef.current = { startY: event.clientY, startHeight: inputHeight };
+    },
+    [inputHeight],
+  );
+
+  const handleResizeMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const resizeState = resizeStateRef.current;
+    if (!resizeState) return;
+    const nextHeight = resizeState.startHeight + resizeState.startY - event.clientY;
+    setInputHeight(Math.min(320, Math.max(40, nextHeight)));
+  }, []);
+
+  const handleResizeEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    resizeStateRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
   const send = useWorkspaceAction<void, unknown>(async () => {
     const result = await onSend({ text, promptVariables });
     setText('');
@@ -327,6 +381,10 @@ export function Composer({
       <ComposerSurface
         text={text}
         inputRef={inputRef}
+        inputHeight={inputHeight}
+        onResizeStart={handleResizeStart}
+        onResizeMove={handleResizeMove}
+        onResizeEnd={handleResizeEnd}
         activeRun={activeRun}
         sendPending={send.isPending}
         stopPending={stop.isPending}

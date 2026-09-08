@@ -123,20 +123,6 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           </span>
           <code title={currentSession.cwd}>{currentSession.cwd}</code>
         </div>
-        <div className="workspace-context-terminal">
-          <TerminalDock
-            capability={capability.data?.terminal}
-            capabilityError={capability.error}
-            projectId={project?.id}
-            projectRoot={project?.realRootPath}
-            cwd={currentSession.cwd}
-            openTerminal={openTerminal}
-            sendInput={sendTerminalInput}
-            resizeTerminal={resizeTerminal}
-            closeTerminal={closeTerminal}
-            subscribe={subscribeTerminal}
-          />
-        </div>
         <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
           <button
             type="button"
@@ -273,6 +259,21 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               onStop={(runId) => stopRun.mutateAsync(runId)}
               onUpdateConfiguration={(patch) => updateConfiguration.mutateAsync(patch)}
             />
+            <div className="workspace-terminal-slot">
+              <TerminalDock
+                capability={capability.data?.terminal}
+                capabilityError={capability.error}
+                projectId={project?.id}
+                sessionId={currentSession.id}
+                projectRoot={project?.realRootPath}
+                cwd={currentSession.cwd}
+                openTerminal={openTerminal}
+                sendInput={sendTerminalInput}
+                resizeTerminal={resizeTerminal}
+                closeTerminal={closeTerminal}
+                subscribe={subscribeTerminal}
+              />
+            </div>
           </div>
         </Panel>
         <Separator className={`${workspaceStyles.separator} resize-handle`} />

@@ -111,7 +111,9 @@ export function useWorkspaceViewModel() {
     'tools',
     'run',
   ].includes(viewParam ?? '');
-  const inspectorActsAsDrawer = useMediaQuery('(max-width: 899px)');
+  // Keep the conversation readable on medium screens: supporting panels become
+  // drawers below the PinHarness-derived 1180px workbench breakpoint.
+  const inspectorActsAsDrawer = useMediaQuery('(max-width: 1179px)');
   const inspectorDrawerOpen = inspectorActsAsDrawer && mobileInspectorOpen;
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
   const [stagedDiff, setStagedDiff] = useState(false);

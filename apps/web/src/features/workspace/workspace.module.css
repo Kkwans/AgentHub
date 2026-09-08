@@ -189,23 +189,28 @@
   white-space: nowrap;
 }
 
-:global(.workspace-context-terminal) {
+:global(.workspace-terminal-slot) {
   position: relative;
   z-index: 12;
   display: flex;
-  flex: 0 0 auto;
-  min-height: 50px;
+  min-height: 32px;
   align-items: center;
+  justify-content: flex-end;
+  padding: 0 12px 10px;
 }
 
-:global(.workspace-context-terminal .terminal-dock-shell) {
-  position: fixed;
-  top: 51px;
-  right: 12px;
-  bottom: auto;
-  left: auto;
-  width: min(720px, calc(100vw - 24px));
-  border-radius: 0 0 12px 12px;
+:global(.workspace-terminal-slot .terminal-dock-shell.expanded) {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+:global(.workspace-terminal-slot:has(.terminal-dock-shell.expanded)) {
+  align-items: stretch;
+  padding: 0 12px 10px;
+}
+
+:global(.workspace-terminal-slot:has(.terminal-dock-shell.expanded) .terminal-dock-shell) {
+  border-radius: 12px 12px 0 0;
 }
 
 .workspace :global(.workspace-session-toggle) {
@@ -526,13 +531,13 @@
   }
 }
 
-@media (min-width: 900px) and (max-width: 1179px) {
+@media (min-width: 768px) and (max-width: 1179px) {
   .workspace :global(.workspace-session-toggle) {
     display: inline-flex;
   }
 
   .workspace :global(.workspace-inspector-toggle) {
-    display: none;
+    display: inline-flex;
   }
 
   .workspace :global(.workspace-layout-actions) {
@@ -555,11 +560,18 @@
   }
 
   .workspace :global(.inspector-panel) {
-    display: flex;
-    position: relative;
-    inset: auto;
+    display: none;
+  }
+
+  .workspace :global(.inspector-panel.mobile-open) {
+    position: absolute;
+    z-index: 45;
+    inset-block: 0;
+    inset-inline-end: 0;
+    display: block;
+    width: min(480px, calc(100% - 24px));
     height: 100%;
-    box-shadow: none;
+    box-shadow: var(--ah-shadow-lg, 0 28px 76px -28px rgb(17 22 38 / 34%));
   }
 
   .workspace :global(.conversation-panel) {
@@ -573,7 +585,7 @@
   }
 }
 
-@media (max-width: 899px) {
+@media (max-width: 767px) {
   .workspace :global(.workspace-drawer-close) {
     position: absolute;
     z-index: 2;
@@ -688,5 +700,12 @@
 
   .workspace :global(.spin) {
     animation: none;
+  }
+
+  .workspace :global(.message[data-streaming='true'] .message-body),
+  .workspace :global(.message[data-streaming='true'] .message-body > span[role='status']) {
+    animation: none;
+    filter: none;
+    opacity: 1;
   }
 }

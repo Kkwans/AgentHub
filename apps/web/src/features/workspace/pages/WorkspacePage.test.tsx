@@ -144,7 +144,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({
-        matches: query === '(max-width: 899px)',
+        matches: query === '(max-width: 1179px)',
         media: query,
         onchange: null,
         addEventListener: vi.fn(),
@@ -756,7 +756,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
       'matchMedia',
       (query: string) =>
         ({
-          matches: query.includes('max-width: 899px'),
+          matches: query.includes('max-width: 1179px'),
           media: query,
           onchange: null,
           addEventListener: () => undefined,
