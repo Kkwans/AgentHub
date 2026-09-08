@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import { AccessGate } from './components/AccessGate';
 import { AppShell } from './app/shell/AppShell';
 import { HomePage } from './features/home/pages/HomePage';
-import layout from './features/shared/layout.module.css';
 import type { SessionRecord } from './lib/api';
 
 const ProjectsPage = lazy(() =>
@@ -98,12 +97,22 @@ function DeferredPage({ children, title }: { children: ReactNode; title?: string
 
 function RouteLoading({ title }: { title: string }) {
   return (
-    <div className={layout.stack} aria-busy="true" aria-label={`正在加载${title}`}>
-      <header className={layout.pageHeader}>
+    <div
+      className="page-content page-shell route-stage min-h-full"
+      aria-busy="true"
+      aria-label={`正在加载${title}`}
+    >
+      <header className="workspace-header navigation-page-header -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6">
         <div>
-          <span className={layout.eyebrow}>正在加载</span>
-          <h2>{title}</h2>
-          <p>正在准备页面内容。</p>
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--primary))]">
+            正在加载
+          </span>
+          <h1 className="m-0 text-[clamp(22px,2.6vw,30px)] font-semibold tracking-[-0.03em] text-[hsl(var(--foreground))]">
+            {title}
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-[hsl(var(--foreground-muted))]">
+            正在准备页面内容。
+          </p>
         </div>
       </header>
       <AhLoadingState label={`正在加载${title}`} rows={1} />

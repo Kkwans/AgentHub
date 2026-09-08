@@ -35,6 +35,7 @@ export { ListChecksIcon as ListChecks } from '@phosphor-icons/react/ListChecks';
 export { ListBulletsIcon as ListTodo } from '@phosphor-icons/react/ListBullets';
 export { GaugeIcon as LayoutDashboard } from '@phosphor-icons/react/Gauge';
 export { ListIcon as Menu } from '@phosphor-icons/react/List';
+export { DotsSixVerticalIcon as GripVertical } from '@phosphor-icons/react/DotsSixVertical';
 export { ChatCircleIcon as MessageSquare } from '@phosphor-icons/react/ChatCircle';
 export { NetworkIcon as Network } from '@phosphor-icons/react/Network';
 export { PlusIcon as Plus } from '@phosphor-icons/react/Plus';

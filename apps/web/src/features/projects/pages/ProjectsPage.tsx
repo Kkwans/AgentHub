@@ -10,7 +10,6 @@ import {
   AhReveal,
   AhSelect,
   AhStatusPill,
-  AhSurface,
   AhSwitch,
   AhTextarea,
   AlertTriangle,
@@ -96,6 +95,7 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 import projectsStyles from '../projects.module.css';
+import { Card } from '../../../pinharness/ui/card';
 
 export function ProjectsPage() {
   const projects = useQuery({
@@ -295,7 +295,7 @@ export function ProjectsPage() {
         </Link>
       }
     >
-      <div className={projectsStyles.projectsPage}>
+      <div className={`${projectsStyles.projectsPage} projects-dashboard-page workspace-page`}>
         <QueryMessage
           loading={projects.isLoading}
           error={projects.error}
@@ -304,8 +304,11 @@ export function ProjectsPage() {
         />
         {!projects.isLoading && !projects.error ? (
           <>
-            <div className={projectsStyles.projectsToolbar} aria-label="项目筛选">
-              <div className={projectsStyles.toolbarSearch}>
+            <div
+              className={`${projectsStyles.projectsToolbar} page-toolbar projects-dashboard-toolbar`}
+              aria-label="项目筛选"
+            >
+              <div className={`${projectsStyles.toolbarSearch} toolbar-search`}>
                 <AhInput
                   label=""
                   aria-label="搜索项目"
@@ -380,10 +383,14 @@ export function ProjectsPage() {
                 </div>
               ) : null}
               <span className={projectsStyles.toolbarSpacer} />
-              <div className={projectsStyles.segmented} role="group" aria-label="项目视图">
+              <div
+                className={`${projectsStyles.segmented} segmented-control`}
+                role="group"
+                aria-label="项目视图"
+              >
                 <button
                   type="button"
-                  className={`${projectsStyles.segmentedButton} ${view === 'grid' ? projectsStyles.segmentedButtonActive : ''}`}
+                  className={`${projectsStyles.segmentedButton} segmented-item ${view === 'grid' ? `${projectsStyles.segmentedButtonActive} bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] shadow-[var(--shadow-sm)]` : ''}`}
                   aria-pressed={view === 'grid'}
                   onClick={() => setView('grid')}
                 >
@@ -391,7 +398,7 @@ export function ProjectsPage() {
                 </button>
                 <button
                   type="button"
-                  className={`${projectsStyles.segmentedButton} ${view === 'list' ? projectsStyles.segmentedButtonActive : ''}`}
+                  className={`${projectsStyles.segmentedButton} segmented-item ${view === 'list' ? `${projectsStyles.segmentedButtonActive} bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] shadow-[var(--shadow-sm)]` : ''}`}
                   aria-pressed={view === 'list'}
                   onClick={() => setView('list')}
                 >
@@ -402,7 +409,10 @@ export function ProjectsPage() {
             </div>
             {filtered.length ? (
               view === 'list' ? (
-                <section className={projectsStyles.projectList} aria-label="项目列表">
+                <section
+                  className={`${projectsStyles.projectList} premium-panel`}
+                  aria-label="项目列表"
+                >
                   <div className={projectsStyles.projectListHeader} aria-hidden="true">
                     <span>项目</span>
                     <span>分支</span>
@@ -424,10 +434,14 @@ export function ProjectsPage() {
                   )}
                 </section>
               ) : (
-                <div className={projectsStyles.projectCardGrid}>{projectCards}</div>
+                <div className={`${projectsStyles.projectCardGrid} resource-card-grid`}>
+                  {projectCards}
+                </div>
               )
             ) : (
-              <AhSurface className={projectsStyles.emptyPanel}>
+              <Card
+                className={`${projectsStyles.emptyPanel} premium-panel resource-card min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)]`}
+              >
                 <AhEmptyState
                   title={
                     query || status !== 'all' || language !== 'all' || kind !== 'all'
@@ -447,7 +461,7 @@ export function ProjectsPage() {
                     ) : undefined
                   }
                 />
-              </AhSurface>
+              </Card>
             )}
             {filtered.length && pageCount > 1 ? (
               <footer className={projectsStyles.listFooter}>

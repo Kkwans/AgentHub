@@ -117,8 +117,16 @@ export function AccessGate({ children }: PropsWithChildren) {
 
 function AccessLoading() {
   return (
-    <main className={styles.gate} aria-busy="true" aria-label="正在连接 AgentHub">
-      <section className={`${styles.card} ${styles.cardLoading}`} role="status" aria-live="polite">
+    <main
+      className={`${styles.gate} app-access-gate`}
+      aria-busy="true"
+      aria-label="正在连接 AgentHub"
+    >
+      <section
+        className={`${styles.card} app-access-card ${styles.cardLoading}`}
+        role="status"
+        aria-live="polite"
+      >
         <header className={styles.heading} aria-hidden>
           <AgentHubLogo className={styles.headingLogo} />
           <div className={styles.headingContent}>
@@ -174,8 +182,8 @@ function AccessPrompt({
   }
 
   return (
-    <main className={styles.gate}>
-      <section className={styles.card} aria-labelledby="access-title">
+    <main className={`${styles.gate} app-access-gate`}>
+      <section className={`${styles.card} app-access-card`} aria-labelledby="access-title">
         <header className={styles.heading}>
           <AgentHubLogo className={styles.headingLogo} />
           <div className={styles.headingContent}>

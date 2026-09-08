@@ -58,14 +58,16 @@ function SettingSection({
   tone?: 'warning';
 }) {
   return (
-    <section className={`${styles.section} ${tone === 'warning' ? styles.warningSection : ''}`}>
-      <header className={styles.sectionHeader}>
+    <section
+      className={`${styles.section} workspace-settings-panel premium-panel overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)] ${tone === 'warning' ? styles.warningSection : ''}`}
+    >
+      <header className={`${styles.sectionHeader} border-b border-[hsl(var(--border))] px-5 py-4`}>
         <div>
           <h2>{title}</h2>
           {description ? <p>{description}</p> : null}
         </div>
       </header>
-      <div className={styles.sectionBody}>{children}</div>
+      <div className={`${styles.sectionBody} px-5 pb-1`}>{children}</div>
     </section>
   );
 }
@@ -80,19 +82,28 @@ function SettingRow({
   children: ReactNode;
 }) {
   return (
-    <div className={styles.settingRow}>
-      <div className={styles.settingCopy}>
+    <div
+      className={`${styles.settingRow} flex min-h-[68px] items-center justify-between gap-6 border-b border-[hsl(var(--border))] py-3 last:border-b-0`}
+    >
+      <div className={`${styles.settingCopy} grid min-w-0 gap-1`}>
         <strong>{label}</strong>
         <p>{description}</p>
       </div>
-      <div className={styles.settingControl}>{children}</div>
+      <div
+        className={`${styles.settingControl} flex min-w-0 shrink-0 items-center justify-end gap-2`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
 function SettingLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <NavLink className={styles.inlineLink ?? ''} to={to}>
+    <NavLink
+      className={`${styles.inlineLink ?? ''} inline-flex items-center gap-1 text-[12px] font-semibold text-[hsl(var(--primary))] transition-colors hover:text-[hsl(var(--primary-hover))]`}
+      to={to}
+    >
       {children} <ArrowRight size={14} />
     </NavLink>
   );
@@ -325,42 +336,62 @@ export function SettingsPage() {
   );
 
   return (
-    <div className={styles.page}>
-      <header className={styles.pageHeader}>
+    <div className={`${styles.page} workspace-settings-page page-shell min-h-full`}>
+      <header
+        className={`${styles.pageHeader} workspace-header workspace-settings-header -mx-4 px-4 sm:-mx-6 sm:px-6`}
+      >
         <div>
-          <span className={styles.eyebrow}>SETTINGS</span>
-          <h1>设置</h1>
-          <p>管理 AgentHub 的外观、账号、安全与集成。运行环境和远程节点请前往 Infrastructure。</p>
+          <span
+            className={`${styles.eyebrow} mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--primary))]`}
+          >
+            SETTINGS
+          </span>
+          <h1 className="m-0 text-[clamp(24px,3vw,32px)] font-semibold tracking-[-0.035em] text-[hsl(var(--foreground))]">
+            设置
+          </h1>
+          <p className="mt-2 max-w-[42rem] text-sm leading-6 text-[hsl(var(--foreground-muted))]">
+            管理 AgentHub 的外观、账号、安全与集成。运行环境和远程节点请前往 Infrastructure。
+          </p>
         </div>
         <span className={styles.sectionHint}>
           <ActiveIcon size={15} /> {activeMeta.label}
         </span>
       </header>
 
-      <div className={styles.layout}>
-        <nav className={styles.navigation} aria-label="设置分区">
+      <div
+        className={`${styles.layout} grid min-w-0 items-start gap-6 lg:grid-cols-[148px_minmax(0,820px)] lg:justify-center`}
+      >
+        <nav
+          className={`${styles.navigation} sticky top-20 grid min-w-0 gap-1`}
+          aria-label="设置分区"
+        >
           <span className={styles.navigationLabel}>设置分区</span>
           {settingSections.map(({ id, label, description, icon: Icon }) => (
             <NavLink
               key={id}
               to={`/settings/${id}`}
               className={({ isActive }) =>
-                `${styles.navigationLink}${isActive ? ` ${styles.navigationLinkActive}` : ''}`
+                `${styles.navigationLink} sidebar-control group/item relative grid min-w-0 grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-2 rounded-[8px] px-2 py-2 text-[12px] transition-[background-color,color,border-color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 ${isActive ? `${styles.navigationLinkActive} bg-[hsl(var(--sidebar-item-active-bg))] font-semibold text-[hsl(var(--sidebar-item-active-fg))]` : 'font-medium text-[hsl(var(--foreground-subtle))] hover:bg-[hsl(var(--surface-hover))]/75 hover:text-[hsl(var(--foreground))]'}`
               }
             >
-              <span className={styles.navigationIcon}>
-                <Icon size={16} />
+              <span
+                className={`${styles.navigationIcon} flex h-7 w-7 items-center justify-center rounded-[8px] bg-[hsl(var(--surface-muted))] text-[hsl(var(--foreground-faint))]`}
+              >
+                <Icon className="sidebar-icon" size={16} />
               </span>
               <span>
                 <strong>{label}</strong>
                 <small>{description}</small>
               </span>
-              <ChevronRight className={styles.navigationArrow} size={14} />
+              <ChevronRight
+                className={`${styles.navigationArrow} text-[hsl(var(--foreground-faint))]`}
+                size={14}
+              />
             </NavLink>
           ))}
         </nav>
 
-        <main className={styles.content}>
+        <main className={`${styles.content} grid min-w-0 gap-4`}>
           {activeSection === 'appearance' ? (
             <>
               <SettingSection title="外观偏好" description="让工作台适应你的工作节奏。">

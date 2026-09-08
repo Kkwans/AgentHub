@@ -4,7 +4,6 @@ import {
   AhInput,
   AhSelect,
   AhStatusPill,
-  AhSurface,
   ArrowRight,
   Bot,
   Link2,
@@ -22,6 +21,7 @@ import { api } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';
 import { Screen, displayDate } from '../../shared/page-primitives';
 import styles from '../agentCenter.module.css';
+import { Card } from '../../../pinharness/ui/card';
 
 export function AgentCenterPage() {
   const agents = useQuery({
@@ -113,7 +113,9 @@ export function AgentCenterPage() {
           <small>已接入身份</small>
         </div>
       </div>
-      <AhSurface className={styles.surface}>
+      <Card
+        className={`${styles.surface} premium-panel resource-card min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)]`}
+      >
         <div className={styles.toolbar} aria-label="Agent 筛选">
           <AhInput
             label=""
@@ -209,7 +211,7 @@ export function AgentCenterPage() {
             打开 Infrastructure <Link2 size={13} />
           </Link>
         </div>
-      </AhSurface>
+      </Card>
     </Screen>
   );
 }

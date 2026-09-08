@@ -2,7 +2,6 @@ import {
   AhButton,
   AhEmptyState,
   AhStatusPill,
-  AhSurface,
   AlertTriangle,
   ArrowRight,
   Bot,
@@ -25,6 +24,7 @@ import type {
 import { api } from '../../../lib/api';
 import { QueryMessage, displayDate } from '../../shared/page-primitives';
 import homeStyles from '../home.module.css';
+import { Card } from '../../../pinharness/ui/card';
 
 type HomeData = {
   dashboard: DashboardSnapshot;
@@ -205,7 +205,9 @@ export function HomePage() {
     return () => window.clearTimeout(timer);
   }, [detailsReady, queryClient]);
   return (
-    <div className={homeStyles.homePage}>
+    <div
+      className={`${homeStyles.homePage} workspace-page mx-auto w-full max-w-[var(--page-wide-width)]`}
+    >
       <QueryMessage
         loading={loading}
         error={error}
@@ -291,7 +293,10 @@ export function HomePage() {
                     tone: 'metricPurple',
                   },
                 ].map(({ label, value, hint, Icon, tone }) => (
-                  <div className={homeStyles.metricCard} key={label}>
+                  <Card
+                    key={label}
+                    className="flex min-w-0 min-h-[82px] items-center gap-3 rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-3.5 shadow-[var(--shadow-sm)]"
+                  >
                     <span className={`${homeStyles.metricIcon} ${homeStyles[tone]}`}>
                       <Icon size={16} />
                     </span>
@@ -300,7 +305,7 @@ export function HomePage() {
                       <strong>{value}</strong>
                       <span>{hint}</span>
                     </span>
-                  </div>
+                  </Card>
                 ))}
               </section>
 
@@ -400,7 +405,7 @@ export function HomePage() {
                 </section>
 
                 <aside className={homeStyles.sideColumn}>
-                  <AhSurface className={homeStyles.panel}>
+                  <Card className="premium-panel min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-4 shadow-[var(--shadow-sm)]">
                     <div className={homeStyles.panelTitle}>
                       <div>
                         <h3>需要处理</h3>
@@ -452,8 +457,8 @@ export function HomePage() {
                         />
                       )}
                     </div>
-                  </AhSurface>
-                  <AhSurface className={homeStyles.panel}>
+                  </Card>
+                  <Card className="premium-panel min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-4 shadow-[var(--shadow-sm)]">
                     <div className={homeStyles.panelTitle}>
                       <div>
                         <h3>最近工作</h3>
@@ -504,7 +509,7 @@ export function HomePage() {
                         />
                       )}
                     </div>
-                  </AhSurface>
+                  </Card>
                 </aside>
               </section>
             </>

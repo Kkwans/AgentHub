@@ -1,8 +1,9 @@
-import { AhErrorState, AhLoadingState, AhReveal } from '@agenthub/ui';
+import { AhErrorState, AhReveal } from '@agenthub/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ProjectRecord, TaskRecord } from '../../lib/api';
 import layout from './layout.module.css';
+import { Skeleton, SkeletonText } from '../../pinharness/ui/skeleton';
 
 /** Shared page chrome used by domain-owned pages. */
 export function Screen({
@@ -19,15 +20,29 @@ export function Screen({
   children: ReactNode;
 }) {
   return (
-    <div className={layout.stack}>
+    <div className="page-content page-shell min-h-full">
       <AhReveal>
-        <header className={layout.pageHeader}>
-          <div>
-            <span className={layout.eyebrow}>{eyebrow}</span>
-            <h2>{title}</h2>
-            {description ? <p>{description}</p> : null}
+        <header className="workspace-header navigation-page-header -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6">
+          <div className="page-header-row flex flex-wrap items-end justify-between gap-4 py-4 sm:py-5">
+            <div className="page-title-group flex min-w-0 items-start gap-3.5">
+              <div className="min-w-0">
+                <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--primary))]">
+                  {eyebrow}
+                </span>
+                <h1 className="page-title m-0 text-[clamp(22px,2.6vw,30px)] font-semibold leading-tight tracking-[-0.03em] text-[hsl(var(--foreground))]">
+                  {title}
+                </h1>
+                {description ? (
+                  <p className="page-subtitle mt-2 max-w-[42rem] text-sm leading-5 text-[hsl(var(--foreground-muted))]">
+                    {description}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            {actions ? (
+              <div className="page-header-actions flex flex-wrap items-center gap-2">{actions}</div>
+            ) : null}
           </div>
-          {actions ? <div className={layout.actions}>{actions}</div> : null}
         </header>
       </AhReveal>
       {children}
@@ -46,7 +61,21 @@ export function QueryMessage({
   retry?: () => void;
   label: string;
 }) {
-  if (loading) return <AhLoadingState label={label} />;
+  if (loading)
+    return (
+      <div
+        className="flex min-w-0 flex-col gap-3 rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-4 shadow-[var(--shadow-sm)]"
+        role="status"
+        aria-busy="true"
+        aria-label={label}
+      >
+        <div className="flex items-center gap-2 text-[12px] font-medium text-[hsl(var(--foreground-muted))]">
+          <Skeleton className="h-2 w-2 rounded-full" />
+          {label}
+        </div>
+        <SkeletonText lines={3} />
+      </div>
+    );
   if (error) return <AhErrorState description={error.message} {...(retry ? { retry } : {})} />;
   return null;
 }
