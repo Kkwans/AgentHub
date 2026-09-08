@@ -295,16 +295,24 @@ export function HomePage() {
                 ].map(({ label, value, hint, Icon, tone }) => (
                   <Card
                     key={label}
-                    className="flex min-w-0 min-h-[82px] items-center gap-3 rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-3.5 shadow-[var(--shadow-sm)]"
+                    className="group min-w-0 rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-4 shadow-none transition-[border-color,background-color] duration-[var(--motion-fast)] hover:border-[hsl(var(--primary))]/25 hover:bg-[hsl(var(--surface-muted))]/35"
                   >
-                    <span className={`${homeStyles.metricIcon} ${homeStyles[tone]}`}>
-                      <Icon size={16} />
-                    </span>
-                    <span className={homeStyles.metricCopy}>
-                      <small>{label}</small>
-                      <strong>{value}</strong>
-                      <span>{hint}</span>
-                    </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <span className={`${homeStyles.metricIcon} ${homeStyles[tone]}`}>
+                        <Icon size={16} />
+                      </span>
+                      <strong className="tabular-nums text-2xl font-semibold tracking-[-0.035em] text-[hsl(var(--foreground))]">
+                        {value}
+                      </strong>
+                    </div>
+                    <div className="mt-4 grid gap-0.5">
+                      <span className="text-[12px] font-medium text-[hsl(var(--foreground-muted))]">
+                        {label}
+                      </span>
+                      <span className="truncate text-[11px] text-[hsl(var(--foreground-faint))]">
+                        {hint}
+                      </span>
+                    </div>
                   </Card>
                 ))}
               </section>

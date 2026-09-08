@@ -1,49 +1,50 @@
 .homePage {
   display: grid;
-  gap: 20px;
+  gap: 28px;
   min-width: 0;
   color: var(--ah-text-primary);
 }
 
 .continueStrip {
   display: flex;
-  min-height: 116px;
+  min-height: auto;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 22px 24px;
-  background: color-mix(in srgb, var(--ah-accent-soft) 48%, var(--ah-surface));
-  border: 1px solid color-mix(in srgb, var(--ah-accent-primary) 15%, var(--ah-border-subtle));
-  border-radius: 14px;
-  box-shadow: var(--ah-shadow-sm);
+  gap: 28px;
+  padding: 4px 0 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .continueEmpty {
-  min-height: 196px;
-  background: var(--ah-surface);
+  min-height: 140px;
 }
 
 .eyebrow {
   display: block;
   margin-bottom: 6px;
-  color: var(--ah-accent-primary);
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.14em;
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .continueStrip h1 {
   margin: 0;
-  font-size: clamp(23px, 2.5vw, 30px);
+  font-size: clamp(22px, 2.5vw, 28px);
+  font-weight: 650;
   line-height: 1.22;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
 }
 
 .continueStrip p {
   max-width: 660px;
   margin: 7px 0 0;
   color: var(--ah-text-secondary);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.5;
 }
 
@@ -534,7 +535,7 @@
   .continueStrip {
     display: grid;
     gap: 14px;
-    padding: 18px;
+    padding: 4px 0 0;
   }
 
   .continueStrip p {
