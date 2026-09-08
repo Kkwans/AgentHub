@@ -70,6 +70,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 将直接迁移的 PinHarness Button、Card、Badge、Input、Textarea、Skeleton 与 `cn` 收归 `@agenthub/ui`，页面不再从 `apps/web/src/pinharness/ui` 私有入口引用；保留现有 AgentHub 领域契约；
 - `qa:css-budget` 增加唯一 PinHarness source snapshot 的 provenance/独立上限，feature CSS 仍按原有严格预算检查；
 - 代码提交 `db68ed11429f1c88c3a0e34558044b3dbe0b83fe` 已推送 `main`；共享包 7 files/26 tests、全量 Vitest 71 files/296 passed、全仓 lint/typecheck/build、Web mock Workspace/页面门禁均通过；
+- Home 深色主题 Playwright 在 desktop-1440/mobile-390 2/2 通过，覆盖 `.dark`、`color-scheme`、画布非白和横向溢出；
 - 当前生产镜像为 `agenthub:2026.9.9-v8`，image ID `sha256:263b904a2448a2cb44b2293f42baca6f08f06473c186dd19dcf1d6653c06a30a`，OCI revision `db68ed11429f1c88c3a0e34558044b3dbe0b83fe`，架构 `linux/arm64`；
 - 2026-09-09 04:31:59（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200` 返回 `version: 1.1.0`，容器 `running/healthy`，其他容器 identity 未变；
 - 部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260908T203142Z-pre-shared-primitives/`；v7、v6/v5/v4/v3/v2 与 1.0.0 回滚镜像均保留；
