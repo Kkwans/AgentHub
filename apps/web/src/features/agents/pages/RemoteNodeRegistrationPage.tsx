@@ -123,6 +123,7 @@ export function RemoteNodeRegistrationPage() {
     <Screen
       eyebrow="Remote Nodes"
       title="授权 Remote Node"
+      icon={Network}
       description="只授权 Agent 实际需要访问的目录。注册码为一次性凭据，生成后只展示一次。"
       actions={
         <AhButton variant="default" onClick={() => navigate('/agents/nodes')}>

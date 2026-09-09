@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import {
   AhSelect,
   AhSwitch,
-  AhPageHeader,
   ArrowRight,
   AhButton,
   CheckCircle2,
@@ -12,6 +11,7 @@ import {
   FormTextField,
   KeyRound,
   Link2,
+  NavigationPageHeader,
   Plus,
   ShieldAlert,
   SquareTerminal,
@@ -337,17 +337,21 @@ export function SettingsPage() {
   );
 
   return (
-    <div className={`${styles.page} workspace-settings-page page-shell min-h-full`}>
-      <AhPageHeader
-        eyebrow="SETTINGS"
+    <div className={`${styles.page} workspace-settings-page min-h-full`}>
+      <NavigationPageHeader
+        icon={ActiveIcon}
         title="设置"
         description="管理 AgentHub 的外观、账号、安全与集成。运行环境和远程节点请前往 Infrastructure。"
+        badge={
+          <span className="rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--foreground-faint))]">
+            SETTINGS
+          </span>
+        }
         actions={
           <span className={styles.sectionHint}>
             <ActiveIcon size={15} /> {activeMeta.label}
           </span>
         }
-        className="mb-1 border-b border-[hsl(var(--border))]/70 pb-5"
       />
 
       <div

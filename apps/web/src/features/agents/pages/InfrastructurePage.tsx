@@ -138,6 +138,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
     <Screen
       eyebrow="Agent Infrastructure"
       title={title}
+      icon={kind === 'runtimes' ? Server : kind === 'nodes' ? Network : Bot}
       description={description}
       actions={
         kind === 'runtimes' ? (

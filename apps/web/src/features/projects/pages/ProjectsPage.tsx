@@ -288,6 +288,7 @@ export function ProjectsPage() {
     <Screen
       eyebrow="Projects"
       title="项目"
+      icon={FolderKanban}
       description="管理你的代码项目，在隔离的工作区中与 Agent 一起开发。"
       actions={
         <Link to="/projects/new">

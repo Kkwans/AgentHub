@@ -126,6 +126,7 @@ export function RemoteNodeDetailPage() {
     <Screen
       eyebrow="Remote Node"
       title={node.data.id ? 'Node 详情' : 'Remote Node'}
+      icon={Network}
       description="身份、授权 roots、inventory 与连接状态。原始指纹只在诊断上下文内展示。"
       actions={
         <AhButton variant="default" onClick={() => setConfirmOpen(true)} loading={revoke.isPending}>

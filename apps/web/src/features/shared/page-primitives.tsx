@@ -31,7 +31,7 @@ export function Screen({
   children: ReactNode;
 }) {
   return (
-    <div className="page-content page-shell min-h-full">
+    <div className="min-h-full">
       <AhReveal>
         <NavigationPageHeader
           icon={Icon}
@@ -45,7 +45,7 @@ export function Screen({
           {...(actions ? { actions } : {})}
         />
       </AhReveal>
-      {children}
+      <div className="page-content page-shell min-h-full">{children}</div>
     </div>
   );
 }
