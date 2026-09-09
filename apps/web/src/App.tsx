@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
-import { AhLoadingState } from '@agenthub/ui';
+import { AhLoadingState, AhPageHeader } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
 
 import { AccessGate } from './components/AccessGate';
@@ -102,19 +102,12 @@ function RouteLoading({ title }: { title: string }) {
       aria-busy="true"
       aria-label={`正在加载${title}`}
     >
-      <header className="workspace-header navigation-page-header -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6">
-        <div>
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--primary))]">
-            正在加载
-          </span>
-          <h1 className="m-0 text-[clamp(22px,2.6vw,30px)] font-semibold tracking-[-0.03em] text-[hsl(var(--foreground))]">
-            {title}
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-[hsl(var(--foreground-muted))]">
-            正在准备页面内容。
-          </p>
-        </div>
-      </header>
+      <AhPageHeader
+        eyebrow="正在加载"
+        title={title}
+        description="正在准备页面内容。"
+        className="mb-5 border-b border-[hsl(var(--border))]/70 pb-5"
+      />
       <AhLoadingState label={`正在加载${title}`} rows={1} />
     </div>
   );

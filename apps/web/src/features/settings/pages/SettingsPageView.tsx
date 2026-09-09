@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import {
   AhSelect,
   AhSwitch,
+  AhPageHeader,
   ArrowRight,
   AhButton,
   CheckCircle2,
@@ -337,26 +338,17 @@ export function SettingsPage() {
 
   return (
     <div className={`${styles.page} workspace-settings-page page-shell min-h-full`}>
-      <header
-        className={`${styles.pageHeader} workspace-header workspace-settings-header -mx-4 px-4 sm:-mx-6 sm:px-6`}
-      >
-        <div>
-          <span
-            className={`${styles.eyebrow} mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--primary))]`}
-          >
-            SETTINGS
+      <AhPageHeader
+        eyebrow="SETTINGS"
+        title="设置"
+        description="管理 AgentHub 的外观、账号、安全与集成。运行环境和远程节点请前往 Infrastructure。"
+        actions={
+          <span className={styles.sectionHint}>
+            <ActiveIcon size={15} /> {activeMeta.label}
           </span>
-          <h1 className="m-0 text-[clamp(24px,3vw,32px)] font-semibold tracking-[-0.035em] text-[hsl(var(--foreground))]">
-            设置
-          </h1>
-          <p className="mt-2 max-w-[42rem] text-sm leading-6 text-[hsl(var(--foreground-muted))]">
-            管理 AgentHub 的外观、账号、安全与集成。运行环境和远程节点请前往 Infrastructure。
-          </p>
-        </div>
-        <span className={styles.sectionHint}>
-          <ActiveIcon size={15} /> {activeMeta.label}
-        </span>
-      </header>
+        }
+        className="mb-1 border-b border-[hsl(var(--border))]/70 pb-5"
+      />
 
       <div
         className={`${styles.layout} grid min-w-0 items-start gap-6 lg:grid-cols-[148px_minmax(0,820px)] lg:justify-center`}
