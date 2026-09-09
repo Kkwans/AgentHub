@@ -35,8 +35,15 @@ const buttonVariants = cva(
   },
 );
 
+export type ButtonVariant = NonNullable<VariantProps<typeof buttonVariants>['variant']>;
+export type ButtonSize = NonNullable<VariantProps<typeof buttonVariants>['size']>;
+
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+  extends
+    Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'color'>,
+    Omit<VariantProps<typeof buttonVariants>, 'variant' | 'size'> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   asChild?: boolean;
   loading?: boolean;
 }
@@ -50,7 +57,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const isDisabled = disabled || loading;
     const compoundedProps = asChild
       ? { 'aria-disabled': isDisabled, 'data-loading': loading }
-      : { disabled: isDisabled };
+      : { disabled: isDisabled, 'data-loading': loading };
 
     return (
       <Comp

@@ -1,7 +1,12 @@
 import { Select, Switch, type SelectProps } from '@mantine/core';
-import { CircleNotchIcon } from '@phosphor-icons/react/CircleNotch';
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from 'react';
 
+import {
+  Button as PinButton,
+  type ButtonSize as PinButtonSize,
+  type ButtonVariant as PinButtonVariant,
+} from './pinharness/ui/button.js';
+import { cn } from './pinharness/ui/cn.js';
 import { AGENTHUB_CONTROL_HEIGHTS } from './theme.js';
 import type { AGENTHUB_RADIUS } from './theme.js';
 
@@ -36,28 +41,24 @@ export function AhButton({
   disabled,
   ...props
 }: AhButtonProps) {
+  const mappedVariant = mapLegacyButtonVariant(variant, color);
+  const mappedSize = mapLegacyButtonSize(size);
   return (
-    <button
+    <PinButton
       {...props}
-      className={['ah-button', fullWidth && 'ah-button-full-width', className]
-        .filter(Boolean)
-        .join(' ')}
-      data-size={size}
-      data-radius={radius}
-      data-color={color}
-      data-variant={variant}
-      data-loading={loading || undefined}
-      disabled={disabled || loading}
+      className={cn(fullWidth && 'w-full', className)}
+      size={mappedSize}
+      variant={mappedVariant}
+      loading={loading}
+      disabled={disabled}
       aria-busy={loading || undefined}
+      data-radius={radius}
+      data-legacy-color={color}
     >
-      {loading ? (
-        <CircleNotchIcon className="ah-button-loader" aria-hidden size={15} weight="bold" />
-      ) : (
-        leftSection
-      )}
-      <span className="ah-button-label">{children}</span>
+      {leftSection}
+      {children}
       {rightSection}
-    </button>
+    </PinButton>
   );
 }
 
@@ -88,27 +89,45 @@ export function AhIconButton({
   ...props
 }: AhIconButtonProps) {
   return (
-    <button
+    <PinButton
       {...props}
-      className={['ah-icon-button', className].filter(Boolean).join(' ')}
+      className={className}
+      size={mapLegacyIconButtonSize(size)}
+      variant={mapLegacyButtonVariant(variant, color)}
       aria-label={label}
       title={label}
-      data-size={size}
-      data-color={color}
-      data-variant={variant}
-      data-loading={loading || undefined}
       type={type}
-      disabled={disabled || loading}
+      loading={loading}
+      disabled={disabled}
       aria-busy={loading || undefined}
       aria-pressed={pressed}
     >
-      {loading ? (
-        <CircleNotchIcon className="ah-icon-button-loader" aria-hidden size={16} weight="bold" />
-      ) : (
-        children
-      )}
-    </button>
+      {children}
+    </PinButton>
   );
+}
+
+function mapLegacyButtonVariant(variant: AhButtonVariant, color: string): PinButtonVariant {
+  if (color === 'red') return 'destructive';
+  if (variant === 'filled') return 'default';
+  if (variant === 'light') return 'secondary';
+  if (variant === 'subtle') return 'ghost';
+  if (variant === 'outline' || variant === 'default') return 'outline';
+  return 'default';
+}
+
+function mapLegacyButtonSize(size: AhControlSize): PinButtonSize {
+  if (size === 'xs') return 'xs';
+  if (size === 'sm') return 'sm';
+  if (size === 'lg') return 'lg';
+  return 'default';
+}
+
+function mapLegacyIconButtonSize(size: AhControlSize): PinButtonSize {
+  if (size === 'xs') return 'icon-sm';
+  if (size === 'sm') return 'icon-sm';
+  if (size === 'lg') return 'icon';
+  return 'icon';
 }
 
 export function AhSelect({ label, description, size = 'md', ...props }: SelectProps) {

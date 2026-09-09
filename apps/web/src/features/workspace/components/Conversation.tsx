@@ -984,9 +984,7 @@ function ThoughtEventRow({
             <Brain className="h-3 w-3 text-[hsl(var(--primary))]" />
           )}
         </span>
-          <strong className="tool-entry-badge text-[hsl(var(--primary))]">
-          {label}
-        </strong>
+        <strong className="tool-entry-badge text-[hsl(var(--primary))]">{label}</strong>
         <ChevronRight
           className="thought-event-action tool-entry-chevron"
           size={13}

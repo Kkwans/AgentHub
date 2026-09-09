@@ -80,7 +80,8 @@ describe('UI primitives', () => {
 
     expect(screen.getByRole('button', { name: '发送' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '发送' })).toHaveAttribute('data-loading', 'true');
-    expect(screen.getByRole('button', { name: '发送' })).toHaveClass('ah-button-full-width');
+    expect(screen.getByRole('button', { name: '发送' })).toHaveClass('w-full');
+    expect(screen.getByRole('button', { name: '发送' })).not.toHaveClass('ah-button');
     expect(screen.getByRole('button', { name: '刷新' })).toBeDisabled();
   });
 });
