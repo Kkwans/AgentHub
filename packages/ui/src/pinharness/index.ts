@@ -7,3 +7,4 @@ export * from './ui/skeleton.js';
 export * from './ui/tabs.js';
 export * from './ui/select.js';
 export * from './ui/textarea.js';
+export * from './mobile-drawer.js';

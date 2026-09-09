@@ -1,6 +1,5 @@
 import {
   AhButton,
-  AhDrawer,
   AhStatusPill,
   Bell,
   Bot,
@@ -11,6 +10,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   Menu,
+  MobileDrawerPanel,
   Moon,
   Network,
   Search,
@@ -404,18 +404,11 @@ export function AppShell() {
         </div>
       </div>
 
-      <AhDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title="AgentHub"
-        position="left"
-        showHeader={false}
-        bodyClassName="ah-drawer-body-flush"
-      >
+      <MobileDrawerPanel open={drawerOpen} onClose={() => setDrawerOpen(false)} ariaLabel="导航">
         <Brand />
         <Navigation onNavigate={() => setDrawerOpen(false)} />
         <ProfileSurface />
-      </AhDrawer>
+      </MobileDrawerPanel>
 
       {commandOpen ? (
         <Suspense fallback={null}>
