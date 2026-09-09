@@ -72,12 +72,12 @@ export function ComposerToolbar({
             {contextStatus.label}
           </small>
         </Button>
-        <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-muted))] sm:inline-flex">
+        <span className="composer-permission hidden items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-muted))] sm:inline-flex">
           <ShieldCheck aria-hidden size={15} />
           <strong className="font-medium">按需审批</strong>
         </span>
         <span
-          className={`hidden items-center gap-1.5 whitespace-nowrap px-2 text-[11px] text-[hsl(var(--foreground-faint))] sm:inline-flex ${activeRun ? 'text-[hsl(var(--warning))]' : ''}`}
+          className={`composer-run-state hidden items-center gap-1.5 whitespace-nowrap px-2 text-[11px] text-[hsl(var(--foreground-faint))] sm:inline-flex ${activeRun ? 'text-[hsl(var(--warning))]' : ''}`}
           data-running={activeRun || undefined}
         >
           <span

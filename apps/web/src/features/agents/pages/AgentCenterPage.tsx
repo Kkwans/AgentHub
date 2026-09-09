@@ -19,7 +19,7 @@ import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { AgentCandidateRecord, AgentRecord, ExecutionTargetRecord } from '../../../lib/api';
 import { api } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';
-import { Screen, displayDate } from '../../shared/page-primitives';
+import { NavigationPageHeader, displayDate } from '../../shared/page-primitives';
 
 type AgentFilter = 'all' | 'ready' | 'attention';
 
@@ -287,111 +287,114 @@ export function AgentCenterPage() {
   ).length;
 
   return (
-    <Screen
-      eyebrow="AGENTS"
-      title="Agent 中心"
-      description="发现和管理可用于 Project Work 的 Agent 身份。运行环境与远程节点诊断在 Infrastructure 中单独展示。"
-      actions={
-        <Link to="/agents/agents/discover">
-          <AhButton leftSection={<RefreshCw size={16} />}>发现 Agent</AhButton>
-        </Link>
-      }
-    >
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[hsl(var(--foreground-muted))]">
-        <span>
-          <strong className="font-semibold text-[hsl(var(--foreground))]">
-            {agents.isLoading ? '—' : (agents.data?.length ?? 0)}
-          </strong>{' '}
-          个 Agent
-        </span>
-        <span>
-          <strong className="font-semibold text-[hsl(var(--success-fg))]">
-            {agents.isLoading ? '—' : readyCount}
-          </strong>{' '}
-          已就绪
-        </span>
-        <span>
-          <strong className="font-semibold text-[hsl(var(--warning-fg))]">
-            {candidates.isLoading ? '—' : attentionCount}
-          </strong>{' '}
-          个发现结果待处理
-        </span>
-        <Link
-          className={`${layout.link} ml-auto inline-flex items-center gap-1`}
-          to="/agents/runtime"
-        >
-          打开 Infrastructure <Link2 size={13} aria-hidden />
-        </Link>
-      </div>
-
-      <AgentFilterBar
-        query={query}
-        filter={filter}
-        onQueryChange={setQuery}
-        onFilterChange={setFilter}
-        onRefresh={() => {
-          void agents.refetch();
-          void candidates.refetch();
-          void targets.refetch();
-        }}
-        refreshing={agents.isFetching || candidates.isFetching || targets.isFetching}
+    <div className="workspace-page flex h-full min-h-0 flex-col overflow-hidden">
+      <NavigationPageHeader
+        icon={Bot}
+        title="Agent 中心"
+        description="发现和管理可用于 Project Work 的 Agent 身份。运行环境与远程节点诊断在 Infrastructure 中单独展示。"
+        actions={
+          <Link to="/agents/agents/discover">
+            <AhButton leftSection={<RefreshCw size={16} />}>发现 Agent</AhButton>
+          </Link>
+        }
       />
+      <div className="page-content flex-1 overflow-y-auto">
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[hsl(var(--foreground-muted))]">
+          <span>
+            <strong className="font-semibold text-[hsl(var(--foreground))]">
+              {agents.isLoading ? '—' : (agents.data?.length ?? 0)}
+            </strong>{' '}
+            个 Agent
+          </span>
+          <span>
+            <strong className="font-semibold text-[hsl(var(--success-fg))]">
+              {agents.isLoading ? '—' : readyCount}
+            </strong>{' '}
+            已就绪
+          </span>
+          <span>
+            <strong className="font-semibold text-[hsl(var(--warning-fg))]">
+              {candidates.isLoading ? '—' : attentionCount}
+            </strong>{' '}
+            个发现结果待处理
+          </span>
+          <Link
+            className={`${layout.link} ml-auto inline-flex items-center gap-1`}
+            to="/agents/runtime"
+          >
+            打开 Infrastructure <Link2 size={13} aria-hidden />
+          </Link>
+        </div>
 
-      <div className="mt-4">
-        {agents.isLoading ? <LoadingState label="正在加载 Agent" /> : null}
-        {agents.error ? (
-          <ErrorState error={agents.error} retry={() => void agents.refetch()} />
-        ) : null}
-        {!agents.isLoading && !agents.error && filteredAgents.length ? (
-          <div className="responsive-card-grid resource-card-grid">
-            {filteredAgents.map((agent) => {
-              const target = targetById.get(agent.targetId);
-              return (
-                <AgentResourceCard key={agent.id} agent={agent} {...(target ? { target } : {})} />
-              );
-            })}
-          </div>
-        ) : null}
-        {!agents.isLoading && !agents.error && !filteredAgents.length ? (
-          <AhEmptyState
-            title={query || filter !== 'all' ? '没有匹配的 Agent' : '还没有接入 Agent'}
-            description={
-              query || filter !== 'all'
-                ? '尝试其他关键词或切换状态筛选。'
-                : '从发现流程接入可用 Agent；原始运行时细节会在 Infrastructure 中展开。'
-            }
-            action={
-              query || filter !== 'all' ? (
-                <AhButton
-                  variant="outline"
-                  onClick={() => {
-                    setQuery('');
-                    setFilter('all');
-                  }}
-                >
-                  清除筛选
-                </AhButton>
-              ) : (
-                <Link to="/agents/agents/discover">
-                  <AhButton>开始发现</AhButton>
-                </Link>
-              )
-            }
-            icon={<Bot size={22} aria-hidden />}
-          />
-        ) : null}
-      </div>
+        <AgentFilterBar
+          query={query}
+          filter={filter}
+          onQueryChange={setQuery}
+          onFilterChange={setFilter}
+          onRefresh={() => {
+            void agents.refetch();
+            void candidates.refetch();
+            void targets.refetch();
+          }}
+          refreshing={agents.isFetching || candidates.isFetching || targets.isFetching}
+        />
 
-      <div className="mt-4 flex items-center gap-2 border-t border-[hsl(var(--border))]/60 pt-3 text-xs text-[hsl(var(--foreground-faint))]">
-        <Server size={14} aria-hidden />
-        <span>Runtime 与 Remote Node 诊断已独立</span>
-        <Link
-          className={`${layout.link} ml-auto inline-flex items-center gap-1`}
-          to="/agents/diagnostics"
-        >
-          查看状态 <ArrowRight size={13} aria-hidden />
-        </Link>
+        <div className="mt-4">
+          {agents.isLoading ? <LoadingState label="正在加载 Agent" /> : null}
+          {agents.error ? (
+            <ErrorState error={agents.error} retry={() => void agents.refetch()} />
+          ) : null}
+          {!agents.isLoading && !agents.error && filteredAgents.length ? (
+            <div className="responsive-card-grid resource-card-grid">
+              {filteredAgents.map((agent) => {
+                const target = targetById.get(agent.targetId);
+                return (
+                  <AgentResourceCard key={agent.id} agent={agent} {...(target ? { target } : {})} />
+                );
+              })}
+            </div>
+          ) : null}
+          {!agents.isLoading && !agents.error && !filteredAgents.length ? (
+            <AhEmptyState
+              title={query || filter !== 'all' ? '没有匹配的 Agent' : '还没有接入 Agent'}
+              description={
+                query || filter !== 'all'
+                  ? '尝试其他关键词或切换状态筛选。'
+                  : '从发现流程接入可用 Agent；原始运行时细节会在 Infrastructure 中展开。'
+              }
+              action={
+                query || filter !== 'all' ? (
+                  <AhButton
+                    variant="outline"
+                    onClick={() => {
+                      setQuery('');
+                      setFilter('all');
+                    }}
+                  >
+                    清除筛选
+                  </AhButton>
+                ) : (
+                  <Link to="/agents/agents/discover">
+                    <AhButton>开始发现</AhButton>
+                  </Link>
+                )
+              }
+              icon={<Bot size={22} aria-hidden />}
+            />
+          ) : null}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 border-t border-[hsl(var(--border))]/60 pt-3 text-xs text-[hsl(var(--foreground-faint))]">
+          <Server size={14} aria-hidden />
+          <span>Runtime 与 Remote Node 诊断已独立</span>
+          <Link
+            className={`${layout.link} ml-auto inline-flex items-center gap-1`}
+            to="/agents/diagnostics"
+          >
+            查看状态 <ArrowRight size={13} aria-hidden />
+          </Link>
+        </div>
       </div>
-    </Screen>
+    </div>
   );
 }
