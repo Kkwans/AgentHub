@@ -12,15 +12,23 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - Composer 草稿按 Session 保存，输入区支持 40–320px 调整；Terminal 进入 Workspace 底部 dock，尺寸和打开状态按 Session 保存；
 - AppShell、Home、Projects、共享容器统一冷中性画布、实体 surface、8/12/14px 圆角、短阴影和有限 transform/opacity 动效。
 
+### 第十八轮：共享组件直接切到 PinHarness（2026-09-09）
+
+- `AhSelect`、共享 `Combobox`、`AhSurface`、`AhStatusPill`、`AhDialog` 与页面 Loading/Error/Empty 状态不再渲染 Mantine/旧 CSS；实际 DOM 改用 PinHarness Radix Select、Card、Badge、FormDialog、Skeleton 和同一套 Tailwind token，保留旧页面的 `data/onChange/label/description` 调用契约；
+- 删除旧的 `ah-combobox`、`ah-select-native`、状态徽标和 Feedback 状态 CSS，避免一套页面同时维护两套视觉系统；
+- 代码切片已推送 `main`：`4d7eeee`（Select）、`704c471`（Surface/Badge）、`b5cff2d`（共享选择控件）、`990ef50`（表单弹层）、`47dcbd2`（空态/错误态/加载态）、`e80551b`（页面反馈统一）；
+- 共享包与 Web typecheck/build、全仓 lint/format、聚焦 Vitest（15 files/63 passed；反馈迁移 12 files/58 passed）均通过；Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算问题，不以视觉 smoke 代替性能验收；
+- 当前生产部署为 `agenthub:2026.9.9-v22`；未登录真实入口四视口 smoke 证据见 [`docs/qa/visual/v1.1.0/29-deployed-feedback-ui-20260909.json`](qa/visual/v1.1.0/29-deployed-feedback-ui-20260909.json)，认证后的 Workspace/Agent/Terminal 与独立视觉复核仍未验证。
+
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v20`，镜像为 Linux `arm64`，OCI `revision` 为 `d5f0f7fb7c4c4881f35000b6149c97360ea92c9a`；
-- 当前生产源码提交：`d5f0f7fb7c4c4881f35000b6149c97360ea92c9a`（已推送 `main`）；镜像 ID 为 `sha256:155a7c7316b090007165b5526d5199de964f3b8946a42f23b48502a468bea33c`；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v22`，镜像为 Linux `arm64`，OCI `revision` 为 `e80551b5572a6ba89601eb7334c42f9db0b4e7b5`；
+- 当前生产源码提交：`e80551b5572a6ba89601eb7334c42f9db0b4e7b5`（已推送 `main`）；镜像 ID 为 `sha256:02bec97418cf241eff787c6a6ea6ef46017b23a86d40b428ec97bec02d314051`；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
-- 2026-09-09 11:57:38（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- 2026-09-09 13:00:01（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T035051Z-pre-pinharness-fields/`；v19 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T031036Z-pre-shared-button-bridge/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T130700Z-pre-feedback-ui/`；v20 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T035051Z-pre-pinharness-fields/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
