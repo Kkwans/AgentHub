@@ -18,7 +18,7 @@ describe('UI primitives', () => {
     expect(screen.getByRole('button', { name: '保存项目' })).toBeDisabled();
   });
 
-  it('uses a searchable combobox for product entity selection', () => {
+  it('uses the PinHarness combobox for product entity selection', () => {
     const onChange = vi.fn();
     render(
       <MantineProvider env="test">
@@ -26,16 +26,22 @@ describe('UI primitives', () => {
           label="Project"
           value="agenthub"
           onChange={onChange}
-          data={[{ value: 'agenthub', label: 'AgentHub' }]}
+          data={[
+            { value: 'agenthub', label: 'AgentHub' },
+            { value: 'claude', label: 'Claude' },
+          ]}
         />
       </MantineProvider>,
     );
 
-    expect(screen.getByRole('combobox', { name: 'Project' })).toBeInTheDocument();
+    const trigger = screen.getByRole('combobox', { name: 'Project' });
+    expect(trigger).toBeInTheDocument();
     expect(document.querySelector('select')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole('combobox', { name: 'Project' }), {
-      target: { value: 'Agent' },
-    });
+    fireEvent.click(trigger);
+    expect(screen.getByRole('option', { name: 'AgentHub' })).toBeInTheDocument();
+    const option = screen.getByRole('option', { name: 'Claude' });
+    fireEvent.click(option);
+    expect(onChange).toHaveBeenCalledWith('claude');
   });
 
   it('keeps product choice fields non-native while preserving option descriptions', () => {
