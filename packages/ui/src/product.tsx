@@ -1,12 +1,15 @@
-import { Alert, Anchor, Divider, Group, Stack, Text, Drawer } from '@mantine/core';
+import { Alert, Anchor, Divider, Group, Stack, Text } from '@mantine/core';
 import { motion, useReducedMotion } from 'motion/react';
 import { CheckCircleIcon } from '@phosphor-icons/react/CheckCircle';
 import { InfoIcon } from '@phosphor-icons/react/Info';
 import { WarningCircleIcon } from '@phosphor-icons/react/WarningCircle';
 import { CircleNotchIcon } from '@phosphor-icons/react/CircleNotch';
+import { XIcon } from '@phosphor-icons/react/X';
 import {
   forwardRef,
   useId,
+  useEffect,
+  useRef,
   type InputHTMLAttributes,
   type TextareaHTMLAttributes,
   type ReactNode,
@@ -492,17 +495,100 @@ export function AhDrawer({
   position?: 'left' | 'right' | 'top' | 'bottom';
   size?: number | string;
 }) {
+  const drawerRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const drawer = drawerRef.current;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusInitial = () => {
+      const initial = drawer?.querySelector<HTMLElement>(focusableSelector) ?? drawer;
+      initial?.focus();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !drawer) return;
+      const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(focusableSelector));
+      if (!focusable.length) {
+        event.preventDefault();
+        drawer.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const frame = requestAnimationFrame(focusInitial);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, [open]);
+
+  if (!open) return null;
+  const drawerSize = resolveDrawerSize(size, position);
   return (
-    <Drawer
-      opened={open}
-      onClose={onClose}
-      title={title}
-      position={position}
-      {...(size === undefined ? {} : { size })}
+    <div
+      className="ah-drawer-backdrop"
+      data-position={position}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCloseRef.current();
+      }}
     >
-      {children}
-    </Drawer>
+      <aside
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        className={`ah-drawer ah-drawer-${position}`}
+        style={drawerSize}
+      >
+        <header className="ah-drawer-header">
+          <h2>{title}</h2>
+          <PinButton
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="关闭"
+            onClick={() => onCloseRef.current()}
+          >
+            <XIcon size={16} aria-hidden />
+          </PinButton>
+        </header>
+        <div className="ah-drawer-body">{children}</div>
+      </aside>
+    </div>
   );
+}
+
+function resolveDrawerSize(size: number | string | undefined, position: string) {
+  const horizontal = position === 'left' || position === 'right';
+  if (typeof size === 'number')
+    return horizontal ? { width: `${size}px` } : { height: `${size}px` };
+  if (size) return horizontal ? { width: size } : { height: size };
+  return horizontal ? { width: 'min(88vw, 380px)' } : { height: 'min(76vh, 560px)' };
 }
 
 export function AhReveal({ children, delay = 0 }: { children: ReactNode; delay?: number }) {

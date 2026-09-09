@@ -2,13 +2,14 @@
 
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AhEmptyState,
   AhErrorState,
   AhDialog,
+  AhDrawer,
   AhInput,
   AhProjectContext,
   AhStatusPill,
@@ -67,6 +68,22 @@ describe('product components', () => {
     expect(screen.getByRole('textbox', { name: '搜索' })).toBeTruthy();
     expect(screen.getByRole('dialog', { name: '测试弹层' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '关闭' })).toBeTruthy();
+  });
+
+  it('renders the PinHarness drawer with focus-safe close semantics', () => {
+    const onClose = vi.fn();
+    render(
+      <AgentHubProvider>
+        <button type="button">打开抽屉</button>
+        <AhDrawer open title="版本与标签" position="right" onClose={onClose}>
+          <button type="button">抽屉内容</button>
+        </AhDrawer>
+      </AgentHubProvider>,
+    );
+
+    expect(screen.getByRole('dialog', { name: '版本与标签' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('provides an accessible autosizing textarea primitive', () => {
