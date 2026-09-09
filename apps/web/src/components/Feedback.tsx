@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, AhStatusPill, Inbox, RefreshCw } from '@agenthub/ui';
+import {
+  AhEmptyState,
+  AhErrorState,
+  AhLoadingState,
+  AhStatusPill,
+  AlertTriangle,
+  Inbox,
+} from '@agenthub/ui';
 import { ApiError } from '../lib/api';
 import styles from './Feedback.module.css';
 
@@ -77,39 +84,18 @@ export function PageIntro({
 }
 
 export function LoadingState({ label = '正在加载真实状态' }: { label?: string }) {
-  return (
-    <div className={styles.loading} role="status" aria-live="polite">
-      <div className={styles.loadingCopy}>
-        <strong>{label}…</strong>
-        <span>正在读取最新状态</span>
-      </div>
-      <div className={styles.loadingLines} aria-hidden>
-        <span />
-        <span />
-        <span />
-      </div>
-    </div>
-  );
+  return <AhLoadingState label={`${label}…`} description="正在读取最新状态" rows={3} />;
 }
 
 export function ErrorState({ error, retry }: { error: Error; retry?: () => void }) {
   const authorizationError = error instanceof ApiError && error.code === 'AUTH_REQUIRED';
   const message = error instanceof ApiError ? error.message : '服务暂时不可用，请检查连接后重试。';
   return (
-    <div className={styles.error} role="alert">
-      <span className={styles.errorIcon} aria-hidden>
-        <AlertTriangle size={18} />
-      </span>
-      <div className={styles.errorCopy}>
-        <strong>{authorizationError ? '登录已失效' : '暂时无法加载'}</strong>
-        <span>{message}</span>
-      </div>
-      {retry ? (
-        <button type="button" className={styles.errorAction} onClick={retry}>
-          <RefreshCw aria-hidden size={15} /> 重新加载
-        </button>
-      ) : null}
-    </div>
+    <AhErrorState
+      title={authorizationError ? '登录已失效' : '暂时无法加载'}
+      description={message}
+      {...(retry ? { retry, retryLabel: '重新加载' } : {})}
+    />
   );
 }
 
@@ -149,12 +135,13 @@ export function EmptyState({
   compact?: boolean;
 }) {
   return (
-    <div className={`${styles.empty} ${compact ? styles.compact : ''}`}>
-      <span className={styles.emptyIcon}>{icon ?? <Inbox size={22} />}</span>
-      <h3>{title}</h3>
-      <p>{description}</p>
-      {action}
-    </div>
+    <AhEmptyState
+      title={title}
+      description={description}
+      {...(action ? { action } : {})}
+      icon={icon ?? <Inbox size={22} />}
+      compact={compact}
+    />
   );
 }
 

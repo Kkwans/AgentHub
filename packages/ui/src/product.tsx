@@ -149,10 +149,12 @@ export function AhErrorState({
   title = '加载失败',
   description,
   retry,
+  retryLabel = '重试',
 }: {
   title?: string;
   description?: string;
   retry?: () => void;
+  retryLabel?: string;
 }) {
   return (
     <div
@@ -168,7 +170,7 @@ export function AhErrorState({
       </div>
       {retry ? (
         <PinButton size="xs" variant="destructive" onClick={retry}>
-          重试
+          {retryLabel}
         </PinButton>
       ) : null}
     </div>
@@ -177,17 +179,22 @@ export function AhErrorState({
 
 export function AhLoadingState({
   label = '正在加载',
+  description,
   rows = 3,
 }: {
   label?: string;
+  description?: string;
   rows?: number;
 }) {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label={label}>
+    <div className="space-y-4" role="status" aria-live="polite" aria-busy="true" aria-label={label}>
       <div className="flex items-center gap-2 text-sm text-[hsl(var(--foreground-muted))]">
         <CircleNotchIcon className="size-4 animate-spin text-[hsl(var(--primary))]" aria-hidden />
         <span>{label}</span>
       </div>
+      {description ? (
+        <p className="m-0 text-xs leading-5 text-[hsl(var(--foreground-muted))]">{description}</p>
+      ) : null}
       <div className="space-y-3">
         {Array.from({ length: rows }, (_, index) => (
           <PinSkeleton key={index} className={index === 0 ? 'h-11 w-full' : 'h-8 w-full'} />
