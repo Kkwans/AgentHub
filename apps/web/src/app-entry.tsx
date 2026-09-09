@@ -6,7 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import { App } from './App';
 import '@agenthub/ui/styles.css';
-import './pinharness/pinharness.css';
+import '@agenthub/ui/pinharness.css';
 
 export function mountApp(root: HTMLElement) {
   const queryClient = new QueryClient({

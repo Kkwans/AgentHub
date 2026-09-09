@@ -33,6 +33,15 @@ describe('feature boundaries', () => {
     expect(terminal).toContain("from '@xterm/xterm'");
   });
 
+  it('keeps the PinHarness source snapshot behind the shared UI package entry', () => {
+    const appEntry = source('../app-entry.tsx');
+    expect(appEntry).toContain("import '@agenthub/ui/pinharness.css'");
+    expect(existsSync(new URL('../../../../packages/ui/src/pinharness.css', import.meta.url))).toBe(
+      true,
+    );
+    expect(existsSync(new URL('../pinharness/pinharness.css', import.meta.url))).toBe(false);
+  });
+
   it('keeps PromptOS ordinary-user labels in the feature section', () => {
     const promptos = [
       './promptos/components/PromptDialogs.tsx',

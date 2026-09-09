@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
+    "./pinharness.css": "./src/pinharness.css",
     "./styles.css": "./src/styles.css",
     "./tokens.css": "./src/tokens.css"
   },

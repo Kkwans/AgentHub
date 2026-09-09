@@ -3,17 +3,17 @@
 /* PinHarness source is copied into the AgentHub web bundle on purpose. Keep
  * Tailwind's scanner pointed at the migrated primitives and feature tree so
  * the class-level layout contract is emitted instead of re-created in CSS. */
-@source "../pinharness";
-@source "../features/shared";
-@source "../features/workspace";
-@source "../features/home";
-@source "../features/projects";
-@source "../features/agents";
-@source "../features/promptos";
-@source "../features/settings";
-@source "../app";
-@source "../components";
-@source "../../../../packages/ui/src";
+@source "./pinharness";
+@source "../../apps/web/src/features/shared";
+@source "../../apps/web/src/features/workspace";
+@source "../../apps/web/src/features/home";
+@source "../../apps/web/src/features/projects";
+@source "../../apps/web/src/features/agents";
+@source "../../apps/web/src/features/promptos";
+@source "../../apps/web/src/features/settings";
+@source "../../apps/web/src/app";
+@source "../../apps/web/src/components";
+@source "./";
 
 /* Tailwind v4 默认 dark: 前缀基于 prefers-color-scheme 媒体查询。
  * 本项目通过 JS 给 <html> 切换 .dark class 来控制主题（见 stores/themeStore.ts），

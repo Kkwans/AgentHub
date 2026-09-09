@@ -36,7 +36,7 @@ for (const file of files.sort()) {
   const path = relative(root, file);
   const bytes = Buffer.byteLength(text, 'utf8');
   const importantCount = (text.match(/!important\b/g) ?? []).length;
-  const isReferenceStylesheet = path === 'apps/web/src/pinharness/pinharness.css';
+  const isReferenceStylesheet = path === 'packages/ui/src/pinharness.css';
   const isWorkspaceShell = path === 'apps/web/src/features/workspace/workspace.module.css';
   const isSingleComponent =
     /(?:sessionRail|terminal|Feedback|AccessGate|agentCenter|home|settings)\.module\.css$/.test(
