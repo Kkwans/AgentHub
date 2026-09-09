@@ -1,4 +1,5 @@
 import { CircleNotchIcon } from '@phosphor-icons/react/CircleNotch';
+import { Slot } from '@radix-ui/react-slot';
 import { type VariantProps, cva } from 'class-variance-authority';
 import * as React from 'react';
 
@@ -45,7 +46,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     { className, variant, size, asChild = false, loading = false, children, disabled, ...props },
     ref,
   ) => {
-    const Comp = asChild ? 'span' : 'button';
+    const Comp = asChild ? Slot : 'button';
     const isDisabled = disabled || loading;
     const compoundedProps = asChild
       ? { 'aria-disabled': isDisabled, 'data-loading': loading }

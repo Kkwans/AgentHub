@@ -29,4 +29,17 @@ describe('PinHarness primitives exposed by @agenthub/ui', () => {
     expect(screen.getByText('已完成').closest('.ui-badge')).toBeInTheDocument();
     expect(screen.getByLabelText('工作摘要')).toHaveClass('rounded-[var(--radius-xl)]');
   });
+
+  it('preserves PinHarness Slot semantics for link-like actions', () => {
+    render(
+      <Button asChild variant="outline">
+        <a href="/workspace/demo">打开 Workspace</a>
+      </Button>,
+    );
+
+    const link = screen.getByRole('link', { name: '打开 Workspace' });
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAttribute('href', '/workspace/demo');
+    expect(link).toHaveAttribute('aria-disabled', 'false');
+  });
 });
