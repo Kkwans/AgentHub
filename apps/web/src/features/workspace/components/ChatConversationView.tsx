@@ -122,9 +122,18 @@ export function ChatConversationView({
   const [viewportMeasured, setViewportMeasured] = useState(false);
   const latestTimelineId = timeline.at(-1)?.id;
   const latestWindowStart = getConversationWindowStart(turns.length);
+  // The first data render must already show the newest window. Waiting for the
+  // effect below would mount up to 500 historical turns first, which is both
+  // visually wrong and slow enough to starve the state update under load. The
+  // pending flag is cleared by the first user scroll, so an intentional move
+  // to history still starts at index 0 without fighting this derived value.
+  const effectiveTimelineWindowStart =
+    followTimelineRef.current && initialFollowPendingRef.current && timelineWindowStart === 0
+      ? latestWindowStart
+      : timelineWindowStart;
   const visibleTurns = turns.slice(
-    timelineWindowStart,
-    timelineWindowStart + CONVERSATION_WINDOW_SIZE,
+    effectiveTimelineWindowStart,
+    effectiveTimelineWindowStart + CONVERSATION_WINDOW_SIZE,
   );
   const displayTurns = visibleTurns.map((turn) => ({
     ...turn,
@@ -259,7 +268,7 @@ export function ChatConversationView({
     const canFetchPrevious = Boolean(
       hasPreviousMessages && onLoadPreviousMessages && !isLoadingPreviousMessages,
     );
-    const canRevealOlderWindow = timelineWindowStart > 0;
+    const canRevealOlderWindow = effectiveTimelineWindowStart > 0;
     if ((!canFetchPrevious && !canRevealOlderWindow) || loadingPreviousRef.current) return;
     const element = scrollRef.current;
     const previousHeight = element?.scrollHeight ?? 0;
@@ -267,7 +276,12 @@ export function ChatConversationView({
     loadingPreviousRef.current = true;
     try {
       if (canRevealOlderWindow)
-        setTimelineWindowStart((current) => Math.max(0, current - CONVERSATION_WINDOW_STEP));
+        setTimelineWindowStart((current) =>
+          Math.max(
+            0,
+            (current === 0 ? effectiveTimelineWindowStart : current) - CONVERSATION_WINDOW_STEP,
+          ),
+        );
       if (canFetchPrevious) await onLoadPreviousMessages?.();
     } finally {
       preserveScrollAnchor(previousHeight, previousTop);

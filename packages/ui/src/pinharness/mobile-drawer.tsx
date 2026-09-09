@@ -40,7 +40,8 @@ function useMobileDrawerBehavior(open: boolean, onClose: () => void) {
   const requestClose = useCallback(() => {
     const marker = historyMarkerRef.current;
     if (marker && window.history.state?.mobileDrawer === marker) {
-      const { mobileDrawer: _mobileDrawer, ...restState } = window.history.state;
+      const restState = { ...window.history.state };
+      delete restState.mobileDrawer;
       window.history.replaceState(restState, '');
       historyMarkerRef.current = null;
     }
@@ -50,7 +51,8 @@ function useMobileDrawerBehavior(open: boolean, onClose: () => void) {
   const closeForAction = useCallback(() => {
     const marker = historyMarkerRef.current;
     if (marker && window.history.state?.mobileDrawer === marker) {
-      const { mobileDrawer: _mobileDrawer, ...restState } = window.history.state;
+      const restState = { ...window.history.state };
+      delete restState.mobileDrawer;
       window.history.replaceState(restState, '');
       historyMarkerRef.current = null;
     }
