@@ -5,7 +5,7 @@ import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AhButton, AhChoiceSelect, AhIconButton, AhSelect } from './primitives.js';
+import { AhButton, AhChoiceSelect, AhIconButton, AhSelect, AhSwitch } from './primitives.js';
 
 describe('UI primitives', () => {
   it('renders a loading button without losing its accessible name', () => {
@@ -73,6 +73,21 @@ describe('UI primitives', () => {
     );
 
     expect(screen.getByRole('button', { name: '打开设置' })).toHaveAttribute('title', '打开设置');
+  });
+
+  it('uses a PinHarness-style switch without a Mantine control wrapper', () => {
+    const onChange = vi.fn();
+    render(
+      <MantineProvider env="test">
+        <AhSwitch aria-label="减少动效" checked onChange={onChange} />
+      </MantineProvider>,
+    );
+
+    const control = screen.getByRole('switch', { name: '减少动效' });
+    expect(control).toHaveClass('ah-switch');
+    expect(control).toBeChecked();
+    fireEvent.click(control);
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it('exposes a stable loading state without changing the action name', () => {

@@ -1,9 +1,8 @@
-import { Switch } from '@mantine/core';
 import {
   useId,
   useState,
   type ButtonHTMLAttributes,
-  type ComponentProps,
+  type InputHTMLAttributes,
   type ReactNode,
 } from 'react';
 
@@ -291,13 +290,46 @@ export function AhSelect({
   );
 }
 
+export type AhSwitchProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
+  label?: ReactNode;
+  description?: ReactNode;
+  size?: AhControlSize;
+};
+
 export function AhSwitch({
   label,
   description,
-  size = 'md',
+  size: _size = 'md',
+  className,
+  id,
+  checked,
+  defaultChecked,
   ...props
-}: ComponentProps<typeof Switch>) {
-  return <Switch label={label} description={description} color="aurora" size={size} {...props} />;
+}: AhSwitchProps) {
+  const generatedId = useId();
+  const controlId = id ?? `agenthub-switch-${generatedId.replaceAll(':', '')}`;
+  const control = (
+    <input
+      {...props}
+      id={controlId}
+      type="checkbox"
+      role="switch"
+      checked={checked}
+      defaultChecked={defaultChecked}
+      aria-checked={checked}
+      className={cn('ah-switch', className)}
+    />
+  );
+  if (!label && !description) return control;
+  return (
+    <div className="ah-switch-field">
+      <label className="ah-field-label" htmlFor={controlId}>
+        {label}
+      </label>
+      {control}
+      {description ? <p className="ah-field-description">{description}</p> : null}
+    </div>
+  );
 }
 
 export interface AhChoiceOption {
