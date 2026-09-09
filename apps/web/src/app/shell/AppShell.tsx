@@ -409,6 +409,8 @@ export function AppShell() {
         onClose={() => setDrawerOpen(false)}
         title="AgentHub"
         position="left"
+        showHeader={false}
+        bodyClassName="ah-drawer-body-flush"
       >
         <Brand />
         <Navigation onNavigate={() => setDrawerOpen(false)} />

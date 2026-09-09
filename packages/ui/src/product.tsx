@@ -9,9 +9,11 @@ import {
   useId,
   useEffect,
   useRef,
+  useState,
   type InputHTMLAttributes,
   type TextareaHTMLAttributes,
   type ReactNode,
+  type TouchEvent,
 } from 'react';
 
 import { Button as PinButton } from './pinharness/ui/button.js';
@@ -459,6 +461,8 @@ export function AhDrawer({
   children,
   position = 'left',
   size,
+  showHeader = true,
+  bodyClassName,
 }: {
   open: boolean;
   title: string;
@@ -466,17 +470,47 @@ export function AhDrawer({
   children: ReactNode;
   position?: 'left' | 'right' | 'top' | 'bottom';
   size?: number | string;
+  /** Hide the generic title row when the drawer content owns its mobile identity. */
+  showHeader?: boolean;
+  /** Optional class for source-layout content such as a flush mobile navigation. */
+  bodyClassName?: string;
 }) {
   const drawerRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const touchStartXRef = useRef<number | null>(null);
+  const historyMarkerRef = useRef<string | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const clearHistoryMarker = () => {
+    const marker = historyMarkerRef.current;
+    if (!marker || window.history.state?.agentHubDrawer !== marker) return;
+    const nextState = { ...(window.history.state ?? {}) } as Record<string, unknown>;
+    delete nextState.agentHubDrawer;
+    window.history.replaceState(nextState, '');
+    historyMarkerRef.current = null;
+  };
+
+  const requestClose = () => {
+    clearHistoryMarker();
+    onCloseRef.current();
+  };
 
   useEffect(() => {
     if (!open) return undefined;
     const drawer = drawerRef.current;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
+    const previousPosition = document.body.style.position;
+    const previousWidth = document.body.style.width;
+    const previousTop = document.body.style.top;
+    const scrollY = window.scrollY;
     document.body.style.overflow = 'hidden';
+    if (position === 'left') {
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+    }
 
     const focusableSelector =
       'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -487,7 +521,7 @@ export function AhDrawer({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onCloseRef.current();
+        requestClose();
         return;
       }
       if (event.key !== 'Tab' || !drawer) return;
@@ -509,14 +543,51 @@ export function AhDrawer({
       }
     };
     const frame = requestAnimationFrame(focusInitial);
+    const historyMarker = `ah-drawer-${Date.now()}`;
+    historyMarkerRef.current = historyMarker;
+    window.history.pushState(
+      { ...(window.history.state ?? {}), agentHubDrawer: historyMarker },
+      '',
+    );
+    const handlePopState = () => onCloseRef.current();
     document.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('popstate', handlePopState);
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('popstate', handlePopState);
       document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousPosition;
+      document.body.style.width = previousWidth;
+      document.body.style.top = previousTop;
+      if (position === 'left') window.scrollTo(0, scrollY);
+      clearHistoryMarker();
       previouslyFocused?.focus();
+      setDragOffset(0);
     };
-  }, [open]);
+  }, [open, position]);
+
+  const onTouchStart = (event: TouchEvent<HTMLElement>) => {
+    if (position !== 'left' && position !== 'right') return;
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+  const onTouchMove = (event: TouchEvent<HTMLElement>) => {
+    if (position !== 'left' && position !== 'right') return;
+    const startX = touchStartXRef.current;
+    const currentX = event.touches[0]?.clientX;
+    if (startX == null || currentX == null) return;
+    const delta = position === 'left' ? startX - currentX : currentX - startX;
+    setDragOffset(Math.max(0, delta));
+  };
+  const onTouchEnd = () => {
+    if (dragOffset > 72) requestClose();
+    else setDragOffset(0);
+    touchStartXRef.current = null;
+  };
+  const onTouchCancel = () => {
+    touchStartXRef.current = null;
+    setDragOffset(0);
+  };
 
   if (!open) return null;
   const drawerSize = resolveDrawerSize(size, position);
@@ -535,21 +606,40 @@ export function AhDrawer({
         aria-label={title}
         tabIndex={-1}
         className={`ah-drawer ah-drawer-${position}`}
-        style={drawerSize}
+        style={{
+          ...drawerSize,
+          ...(dragOffset > 0
+            ? {
+                transform:
+                  position === 'right'
+                    ? `translateX(${dragOffset}px)`
+                    : `translateX(-${dragOffset}px)`,
+                transition: 'none',
+              }
+            : {}),
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
       >
-        <header className="ah-drawer-header">
-          <h2>{title}</h2>
-          <PinButton
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label="关闭"
-            onClick={() => onCloseRef.current()}
-          >
-            <XIcon size={16} aria-hidden />
-          </PinButton>
-        </header>
-        <div className="ah-drawer-body">{children}</div>
+        {showHeader ? (
+          <header className="ah-drawer-header">
+            <h2>{title}</h2>
+            <PinButton
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label="关闭"
+              onClick={requestClose}
+            >
+              <XIcon size={16} aria-hidden />
+            </PinButton>
+          </header>
+        ) : null}
+        <div className={`ah-drawer-body${bodyClassName ? ` ${bodyClassName}` : ''}`}>
+          {children}
+        </div>
       </aside>
     </div>
   );

@@ -817,6 +817,19 @@ html {
   display: none;
 }
 
+/* Source-style mobile navigation owns its own spacing and identity block. */
+.ah-drawer-body-flush {
+  padding: 0;
+}
+
+@media (max-width: 767px) {
+  .ah-drawer-left,
+  .ah-drawer-right {
+    max-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 .workspace-header {
   position: relative;
   z-index: 10;
@@ -3671,99 +3684,6 @@ a:focus-visible {
     stroke 300ms ease,
     opacity 300ms ease,
     stroke-width 200ms ease;
-}
-
-/* ── AgentHub 业务适配桥：保持 PinHarness DOM 语义在旧域 CSS 后仍可见 ──
- * PinHarness 的 ChatConversationView 通过 utility class 表达轮次和工具流。
- * AgentHub 仍加载少量域级 CSS（Markdown、Approval、Terminal），这里只对同名
- * 结构做最后的 token 对齐，不重新建立第二套组件。 */
-.workspace.workspace-page .message.user .message-body {
-  padding: 0.625rem 0.875rem;
-  color: hsl(var(--foreground));
-  background: hsl(var(--primary-soft));
-  border: 1px solid hsl(var(--primary) / 0.16);
-  border-radius: 1rem 1rem 0.3rem 1rem;
-  box-shadow: var(--shadow-sm);
-}
-
-/* PinHarness 的气泡只有一层 surface：外层负责定位，内层负责视觉。 */
-.workspace.workspace-page .message.user {
-  display: block;
-  width: fit-content;
-  max-width: min(620px, 76%);
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-
-.workspace.workspace-page .session-list a.current {
-  color: hsl(var(--foreground));
-  background: hsl(var(--primary-soft));
-  border-color: hsl(var(--primary) / 0.14);
-}
-
-.workspace.workspace-page .tool-entry-card {
-  margin-block: 0.2rem;
-  border-color: transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  box-shadow: none;
-}
-
-.workspace.workspace-page .tool-entry-card:hover,
-.workspace.workspace-page .tool-entry-card[open],
-.workspace.workspace-page .tool-entry-card--expanded {
-  border-color: hsl(var(--border) / 0.5);
-  background: hsl(var(--surface-muted) / 0.24);
-}
-
-.workspace.workspace-page .tool-entry-trigger {
-  display: flex;
-  width: 100%;
-  min-height: 2.25rem;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.375rem 0.625rem;
-  border-radius: var(--radius-sm);
-  background: transparent;
-}
-
-.workspace.workspace-page .tool-entry-trigger:hover,
-.workspace.workspace-page .tool-entry-trigger:focus-visible,
-.workspace.workspace-page .tool-entry-trigger--expanded {
-  background: hsl(var(--surface-muted) / 0.34);
-}
-
-.workspace.workspace-page .chat-command-card .composer-input {
-  min-height: 4rem;
-  padding: 0.625rem 0.75rem 0.5rem;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.workspace.workspace-page .chat-command-card .composer-input textarea {
-  min-height: 2.5rem;
-  max-height: 20rem;
-  padding: 0.3rem 0.45rem;
-  color: hsl(var(--foreground));
-  background: transparent;
-  border: 0;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-}
-
-@media (max-width: 767px) {
-  .workspace.workspace-page .chat-command-card .composer-input {
-    min-height: 3.75rem;
-    padding-inline: 0.5625rem;
-  }
-
-  .workspace.workspace-page .chat-command-card .composer-input textarea {
-    font-size: 1rem;
-  }
 }
 
 /* AccessGate module CSS is code-split after this sheet; repeat the small
