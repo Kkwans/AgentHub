@@ -12,6 +12,8 @@ import {
   Network,
   Search,
   Settings,
+  Moon,
+  Sun,
   useAgentHubTheme,
   type IconProps,
 } from '@agenthub/ui';
@@ -214,13 +216,53 @@ function ProfileSurface({ collapsed = false }: { collapsed?: boolean }) {
   );
 }
 
+/**
+ * PinHarness source theme affordance, kept in the persistent sidebar footer.
+ * Two explicit targets preserve the keyboard/automation contract while the
+ * visual treatment stays the source's quiet icon-button language.
+ */
+function ThemeControls({
+  preference,
+  setPreference,
+  collapsed,
+}: {
+  preference: 'light' | 'dark' | 'system';
+  setPreference: (preference: 'light' | 'dark' | 'system') => void;
+  collapsed: boolean;
+}) {
+  const buttonClass = `grid place-items-center rounded-[8px] text-[hsl(var(--foreground-subtle))] transition-[background-color,border-color,color,transform] duration-[var(--motion-fast)] hover:-translate-y-px hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 ${collapsed ? 'h-8 w-8' : 'h-7 w-7'}`;
+  return (
+    <div className={`flex items-center ${collapsed ? 'flex-col gap-1' : 'gap-0.5'}`}>
+      <button
+        type="button"
+        className={`${buttonClass} ${preference === 'light' ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
+        onClick={() => setPreference('light')}
+        aria-label="浅色主题"
+        title="浅色主题"
+      >
+        <Sun aria-hidden size={16} weight="regular" />
+      </button>
+      <button
+        type="button"
+        className={`${buttonClass} ${preference === 'dark' ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
+        onClick={() => setPreference('dark')}
+        aria-label="深色主题"
+        title="深色主题"
+      >
+        <Moon aria-hidden size={16} weight="regular" />
+      </button>
+    </div>
+  );
+}
+
 export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [connection, setConnection] = useState<'连接中' | '已连接' | '已断开'>('已断开');
   const location = useLocation();
   const navigate = useNavigate();
-  const { sidebarCollapsed, sidebarPreference, setSidebarCollapsed } = useAgentHubTheme();
+  const { preference, setPreference, sidebarCollapsed, sidebarPreference, setSidebarCollapsed } =
+    useAgentHubTheme();
   const [viewportWidth, setViewportWidth] = useState(
     typeof window === 'undefined' ? AUTO_COLLAPSE_BREAKPOINT : window.innerWidth,
   );
@@ -348,7 +390,16 @@ export function AppShell() {
             <div
               className={`border-t border-[hsl(var(--sidebar-border))]/60 p-2.5 ${collapsed ? 'px-2' : 'px-3 2xl:px-4'}`}
             >
-              <ProfileSurface collapsed={collapsed} />
+              <div className={`flex items-center ${collapsed ? 'flex-col gap-1.5' : 'gap-2'}`}>
+                <div className="min-w-0 flex-1">
+                  <ProfileSurface collapsed={collapsed} />
+                </div>
+                <ThemeControls
+                  preference={preference}
+                  setPreference={setPreference}
+                  collapsed={collapsed}
+                />
+              </div>
             </div>
           </aside>
         )}
