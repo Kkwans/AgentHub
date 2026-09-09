@@ -3680,7 +3680,7 @@ a:focus-visible {
 .workspace.workspace-page .message.user .message-body {
   padding: 0.625rem 0.875rem;
   color: hsl(var(--foreground));
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.055));
+  background: hsl(var(--primary-soft));
   border: 1px solid hsl(var(--primary) / 0.16);
   border-radius: 1rem 1rem 0.3rem 1rem;
   box-shadow: var(--shadow-sm);

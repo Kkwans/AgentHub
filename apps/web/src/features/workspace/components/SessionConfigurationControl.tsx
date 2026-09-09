@@ -1,4 +1,4 @@
-import { ChevronDown, Select } from '@agenthub/ui';
+import { Button, ChevronDown, Select } from '@agenthub/ui';
 import { useState } from 'react';
 
 import { labelReasoningEffort, labelSessionMode } from '../../../presentation/domain-labels';
@@ -45,8 +45,10 @@ export function SessionConfigurationControl({
 
   return (
     <div className="composer-session-config">
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="ghost"
         className={`composer-session-config-trigger${open ? ' active' : ''}`}
         aria-expanded={open}
         aria-label={loading ? 'Session 配置读取中' : 'Session 配置'}
@@ -55,7 +57,7 @@ export function SessionConfigurationControl({
         <span>配置</span>
         <strong>{loading ? '读取中…' : summary}</strong>
         <ChevronDown size={11} aria-hidden="true" />
-      </button>
+      </Button>
       {open && (
         <div className="composer-session-config-popover" role="dialog" aria-label="Session 配置">
           <div className="composer-session-config-heading">

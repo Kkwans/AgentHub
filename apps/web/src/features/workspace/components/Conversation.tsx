@@ -592,7 +592,7 @@ function ConversationTimelineItemView({
           </div>
         ) : (
           <div
-            className={`message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${isUser ? 'rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-gradient-to-br from-[hsl(var(--primary))]/[0.09] to-[hsl(var(--primary))]/[0.05] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/28 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)]' : ''}`}
+            className={`message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${isUser ? 'rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary-soft))] px-3.5 py-2.5 shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/35 hover:shadow-[var(--shadow-md)]' : ''}`}
           >
             <RichMessage text={presentation.text} />
             {item.streaming && (
@@ -964,14 +964,14 @@ function ThoughtEventRow({
   const label = running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`;
   return (
     <details
-      className={`thought-event-row tool-entry-motion my-1 overflow-hidden rounded-lg border border-violet-200/60 bg-gradient-to-r from-violet-500/[0.04] to-indigo-500/[0.02] dark:border-violet-500/20 dark:from-violet-500/[0.08] dark:to-indigo-500/[0.04]${running ? ' running tool-entry-card--active' : ''}`}
+      className={`thought-event-row tool-entry-motion my-1 overflow-hidden rounded-lg${running ? ' running tool-entry-card--active' : ''}`}
     >
       <summary
         className="tool-entry-trigger tool-entry-trigger--interactive rounded-lg px-2.5 py-1.5"
         aria-label={running ? '正在思考，展开思考过程' : '展开思考过程'}
       >
         <span
-          className="thought-event-pulse tool-entry-icon flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-800/50 dark:to-indigo-800/40"
+          className="thought-event-pulse tool-entry-icon flex h-5 w-5 items-center justify-center rounded-md"
           aria-hidden="true"
         >
           {running ? (
@@ -981,10 +981,10 @@ function ThoughtEventRow({
               <i />
             </>
           ) : (
-            <Brain className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+            <Brain className="h-3 w-3 text-[hsl(var(--primary))]" />
           )}
         </span>
-        <strong className="tool-entry-badge text-violet-600/90 dark:text-violet-300/90">
+          <strong className="tool-entry-badge text-[hsl(var(--primary))]">
           {label}
         </strong>
         <ChevronRight

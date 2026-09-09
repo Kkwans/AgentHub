@@ -1,3 +1,4 @@
+import { Button } from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import {
   resolveWorkspaceRunState,
@@ -36,9 +37,9 @@ export function RunStateBanner({
       </div>
       {state === 'CLOSED' && onContinue ? (
         <div className="run-state-action">
-          <button type="button" onClick={onContinue} disabled={continuePending}>
+          <Button type="button" size="sm" onClick={onContinue} loading={Boolean(continuePending)}>
             {continuePending ? '正在准备' : '基于此上下文继续'}
-          </button>
+          </Button>
           {continueError && <small role="alert">{continueError.message}</small>}
         </div>
       ) : null}

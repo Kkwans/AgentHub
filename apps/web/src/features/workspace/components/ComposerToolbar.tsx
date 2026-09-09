@@ -1,4 +1,4 @@
-import { CircleStop, LoaderCircle, Plus, Send, ShieldCheck } from '@agenthub/ui';
+import { Button, CircleStop, LoaderCircle, Plus, Send, ShieldCheck } from '@agenthub/ui';
 
 import type { SessionConfigurationRecord } from '../../../lib/api';
 import { SessionConfigurationControl } from './SessionConfigurationControl';
@@ -54,8 +54,10 @@ export function ComposerToolbar({
   return (
     <div className="composer-context" aria-label="发送配置">
       <div className="composer-context-tools">
-        <button
+        <Button
           type="button"
+          size="sm"
+          variant="ghost"
           className={`composer-context-action${contextOpen ? ' active' : ''}`}
           onClick={onToggleContext}
           aria-expanded={contextOpen}
@@ -64,7 +66,7 @@ export function ComposerToolbar({
           <Plus size={15} />
           <span>上下文</span>
           <small>{contextStatus.label}</small>
-        </button>
+        </Button>
         <span className="composer-permission">
           <ShieldCheck size={15} />
           <strong>按需审批</strong>
@@ -91,8 +93,10 @@ export function ComposerToolbar({
           <span>发送</span>
         </div>
         <div className="composer-send-slot">
-          <button
+          <Button
             type="button"
+            size="icon"
+            variant="ghost"
             className={`composer-send-button composer-send-button-stop${activeRun ? ' is-visible' : ''}`}
             onClick={onStop}
             disabled={!activeRun || stopPending}
@@ -101,9 +105,11 @@ export function ComposerToolbar({
             tabIndex={activeRun ? 0 : -1}
           >
             {stopPending ? <LoaderCircle size={16} /> : <CircleStop size={17} />}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="icon"
+            variant="ghost"
             className={`composer-send-button composer-send-button-send${!activeRun ? ' is-visible' : ''}`}
             onClick={onSend}
             disabled={activeRun || sendingBlocked || sendPending}
@@ -113,7 +119,7 @@ export function ComposerToolbar({
             tabIndex={activeRun ? -1 : 0}
           >
             {sendPending ? <LoaderCircle size={16} /> : <Send size={17} />}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
