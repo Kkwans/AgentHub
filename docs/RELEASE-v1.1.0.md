@@ -14,13 +14,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v11`，镜像为 Linux `arm64`，OCI `revision` 为 `7468e3865c9f96be1423a42e236cbd512e9820a4`；
-- 当前生产源码提交：`7468e3865c9f96be1423a42e236cbd512e9820a4`（已推送 `main`）；镜像 ID 为 `sha256:84f8783b3e7ffb87c49643d2706919e460bdd818fdee63e33e30a14228c4944d`；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v12`，镜像为 Linux `arm64`，OCI `revision` 为 `393a4d623921b6cbdd22142169d3188b4dc49d00`；
+- 当前生产源码提交：`393a4d623921b6cbdd22142169d3188b4dc49d00`（已推送 `main`）；镜像 ID 为 `sha256:2b0c6c230105324204c101f5c89516b034d8b9cb929e0d6ec41fded23c00674f`；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
-- 2026-09-09 09:08:40（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- 2026-09-09 09:24:39（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T010825Z-pre-workspace-layout-contract/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T012428Z-pre-slot-button/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
@@ -105,6 +105,15 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 2026-09-09 09:08:40（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`，容器 `running/healthy`、exit `0`、OOM `false`；v10、v9 及 1.0.0 回滚镜像均保留；
 - 部署前快照、v10/v11 inspect、容器清单和有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T010825Z-pre-workspace-layout-contract/`；未执行 `docker compose down`，未触碰数据卷和其他 Compose service；
 - NAS-local Playwright 未登录真实入口 smoke 证据见 [`docs/qa/visual/v1.1.0/21-deployed-workspace-layout-contract-20260909.json`](qa/visual/v1.1.0/21-deployed-workspace-layout-contract-20260909.json)：1440/1024/768/390 四视口均 HTTP `200`、标题 `AgentHub`、无横向溢出，console/page/request error 均为 `0`；认证 Workspace、Agent/PTY 与独立视觉复核仍未验证。
+
+### PinHarness Slot 组件语义第十一轮直接迁移追加（2026-09-09）
+
+- 为避免“看起来像组件但实际是 `<span>`”的私有替代，将 PinHarness Button 的 `asChild` 实现恢复为原始 `@radix-ui/react-slot`，链接/路由触发器继续保持真实元素语义和同一视觉 token；
+- 代码提交 `393a4d623921b6cbdd22142169d3188b4dc49d00` 已推送 `main`；PinHarness primitives 回归测试（1 file，2 passed）、UI/Web lint/typecheck/build、Prettier 与 diff check 均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v12`，image ID `sha256:2b0c6c230105324204c101f5c89516b034d8b9cb929e0d6ec41fded23c00674f`，OCI revision `393a4d623921b6cbdd22142169d3188b4dc49d00`，架构 `linux/arm64`；
+- 2026-09-09 09:24:39（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`，容器 `running/healthy`、exit `0`、OOM `false`；v11、v10 及 1.0.0 回滚镜像均保留；
+- 部署前快照、v11/v12 inspect、容器清单和有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T012428Z-pre-slot-button/`；未执行 `docker compose down`，未触碰数据卷和其他 Compose service；
+- NAS-local Playwright 未登录真实入口 smoke 证据见 [`docs/qa/visual/v1.1.0/22-deployed-slot-button-20260909.json`](qa/visual/v1.1.0/22-deployed-slot-button-20260909.json)：1440/1024/768/390 四视口均 HTTP `200`、标题 `AgentHub`、无横向溢出，console/page/request error 均为 `0`；认证 Workspace、Agent/PTY 与独立视觉复核仍未验证。
 
 ### 深色主题桥接第六轮直接部署追加（2026-09-09）
 
