@@ -1,17 +1,14 @@
 import {
   Alert,
   Anchor,
-  Button,
   Divider,
   Group,
   Loader,
   Modal,
   Paper,
-  Select,
   Skeleton,
   Stack,
   Text,
-  TextInput,
   ThemeIcon,
   Drawer,
   type PaperProps,
@@ -20,8 +17,19 @@ import { motion, useReducedMotion } from 'motion/react';
 import { CheckCircleIcon } from '@phosphor-icons/react/CheckCircle';
 import { InfoIcon } from '@phosphor-icons/react/Info';
 import { WarningCircleIcon } from '@phosphor-icons/react/WarningCircle';
-import { type ComponentProps, type TextareaHTMLAttributes, type ReactNode } from 'react';
+import {
+  forwardRef,
+  useId,
+  type InputHTMLAttributes,
+  type TextareaHTMLAttributes,
+  type ReactNode,
+} from 'react';
 
+import { Button as PinButton } from './pinharness/ui/button.js';
+import { cn } from './pinharness/ui/cn.js';
+import { Input as PinInput } from './pinharness/ui/input.js';
+import { Select as PinSelect } from './pinharness/ui/select.js';
+import { Textarea as PinTextarea } from './pinharness/ui/textarea.js';
 import { useAgentHubTheme } from './provider.js';
 
 const statusLabels: Record<string, string> = {
@@ -146,9 +154,9 @@ export function AhErrorState({
       <Group justify="space-between" align="center" gap="md">
         <Text size="sm">{description ?? '请检查连接后重试。'}</Text>
         {retry ? (
-          <Button size="xs" variant="light" color="red" onClick={retry}>
+          <PinButton size="xs" variant="destructive" onClick={retry}>
             重试
-          </Button>
+          </PinButton>
         ) : null}
       </Group>
     </Alert>
@@ -286,63 +294,133 @@ export function AhSurface({
 export function AhThemeSelect() {
   const { preference, setPreference } = useAgentHubTheme();
   return (
-    <Select
-      aria-label="主题"
-      label="主题"
-      value={preference}
-      onChange={(value) => {
-        if (value === 'light' || value === 'dark' || value === 'system') setPreference(value);
-      }}
-      data={[
-        { value: 'light', label: '浅色' },
-        { value: 'dark', label: '深色' },
-        { value: 'system', label: '跟随系统' },
-      ]}
-      allowDeselect={false}
-      radius="sm"
-      size="md"
-    />
+    <label className="ah-field">
+      <span className="ah-field-label">主题</span>
+      <PinSelect
+        ariaLabel="主题"
+        value={preference}
+        onValueChange={(value) => {
+          if (value === 'light' || value === 'dark' || value === 'system') setPreference(value);
+        }}
+        options={[
+          { value: 'light', label: '浅色' },
+          { value: 'dark', label: '深色' },
+          { value: 'system', label: '跟随系统' },
+        ]}
+      />
+    </label>
   );
 }
 
-export function AhInput({
-  label,
-  ...props
-}: ComponentProps<typeof TextInput> & { label?: string }) {
-  return <TextInput {...props} label={label} radius="sm" size="md" />;
-}
+export type AhInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
+  label?: ReactNode;
+  description?: ReactNode;
+  error?: ReactNode;
+  leftSection?: ReactNode;
+  rightSection?: ReactNode;
+};
+
+export const AhInput = forwardRef<HTMLInputElement, AhInputProps>(
+  (
+    { label, description, error, leftSection, rightSection, id, className, required, ...props },
+    ref,
+  ) => {
+    const generatedId = useId();
+    const controlId = id ?? `agenthub-input-${generatedId}`;
+    const control = (
+      <div className="ah-control-with-adornment">
+        {leftSection ? (
+          <span className="ah-input-adornment ah-input-adornment-left" aria-hidden="true">
+            {leftSection}
+          </span>
+        ) : null}
+        <PinInput
+          {...props}
+          ref={ref}
+          id={controlId}
+          required={required}
+          aria-invalid={error ? true : props['aria-invalid']}
+          className={cn(leftSection && 'pl-9', rightSection && 'pr-9', className)}
+        />
+        {rightSection ? (
+          <span className="ah-input-adornment ah-input-adornment-right" aria-hidden="true">
+            {rightSection}
+          </span>
+        ) : null}
+      </div>
+    );
+    if (!label && !description && !error) return control;
+    return (
+      <div className="ah-field" data-invalid={error ? 'true' : undefined}>
+        {label ? (
+          <label className="ah-field-label" htmlFor={controlId}>
+            {label}
+            {required ? (
+              <span className="ah-required" aria-hidden="true">
+                {' '}
+                *
+              </span>
+            ) : null}
+          </label>
+        ) : null}
+        {control}
+        {description ? <p className="ah-field-description">{description}</p> : null}
+        {error ? (
+          <p className="ah-field-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  },
+);
+AhInput.displayName = 'AhInput';
 
 export type AhTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  label?: string;
-  description?: string;
+  label?: ReactNode;
+  description?: ReactNode;
   minRows?: number;
   autosize?: boolean;
 };
 
-export function AhTextarea({
-  label,
-  description,
-  minRows = 4,
-  autosize: _autosize,
-  ...props
-}: AhTextareaProps) {
-  return (
-    <label className="ah-textarea-field">
-      {label ? (
-        <span className="ah-textarea-label">
-          {label}
-          {props.required ? <span aria-hidden="true"> *</span> : null}
-        </span>
-      ) : null}
-      <textarea
+export const AhTextarea = forwardRef<HTMLTextAreaElement, AhTextareaProps>(
+  (
+    { label, description, minRows = 4, autosize: _autosize, className, required, ...props },
+    ref,
+  ) => {
+    const generatedId = useId();
+    const controlId = props.id ?? `agenthub-textarea-${generatedId}`;
+    const control = (
+      <PinTextarea
         {...props}
+        ref={ref}
+        id={controlId}
         rows={minRows}
-        className={`ah-textarea${props.className ? ` ${props.className}` : ''}`}
+        required={required}
+        aria-label={typeof label === 'string' ? label : props['aria-label']}
+        className={cn('ah-field-textarea', className)}
       />
-      {description ? <span className="ah-textarea-description">{description}</span> : null}
-    </label>
-  );
-}
+    );
+    return (
+      <div className="ah-field">
+        {label ? (
+          <label className="ah-field-label" htmlFor={controlId}>
+            {label}
+            {required ? (
+              <span className="ah-required" aria-hidden="true">
+                {' '}
+                *
+              </span>
+            ) : null}
+          </label>
+        ) : null}
+        {control}
+        {description ? <p className="ah-field-description">{description}</p> : null}
+      </div>
+    );
+  },
+);
+AhTextarea.displayName = 'AhTextarea';
 
 export function AhDialog({
   open,

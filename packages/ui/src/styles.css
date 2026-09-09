@@ -878,6 +878,30 @@ textarea:focus-visible {
   gap: 7px;
 }
 
+.ah-control-with-adornment {
+  position: relative;
+  min-width: 0;
+}
+
+.ah-input-adornment {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ah-text-tertiary);
+  pointer-events: none;
+}
+
+.ah-input-adornment-left {
+  left: 11px;
+}
+
+.ah-input-adornment-right {
+  right: 11px;
+}
+
 .ah-field-label {
   color: var(--ah-text-primary);
   font-size: 13px;
