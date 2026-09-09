@@ -28,15 +28,22 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 当前生产镜像为 `agenthub:2026.9.9-v23`，image ID `sha256:625d027337d503ecf1002374b1941d969a38b2264e9102378c4a7b87e9500757`，OCI revision `f51329c375239dbd4effc41ff461a42beb09e5f4`；部署前快照与 v22 回滚材料位于 `/volume2/Project/.agenthub/central/deployments/20260909T132222Z-pre-select-search-drawer/`；
 - 未登录真实入口四视口 smoke 证据见 [`docs/qa/visual/v1.1.0/30-deployed-select-search-drawer-20260909.json`](qa/visual/v1.1.0/30-deployed-select-search-drawer-20260909.json)；认证 Workspace、真实 Agent/PTY、性能与独立视觉复核仍未验证。
 
+### 第二十轮：Switch 直接复用（2026-09-09）
+
+- Settings 的“减少动效”改用 PinHarness token 驱动的原生 `role=switch`，保留 `checked/onChange/aria-label` 契约，焦点环、禁用态和 reduced-motion 与其他共享控件一致；
+- 代码提交 `fee7720` 已推送 `main`；UI/Web typecheck/build、全仓 lint/format、14 files/73 passed 聚焦测试均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v24`，image ID `sha256:ccf2fc1c4b3d1d48356ac1635e49749c10f572e89a32815e3fe279879cb686b9`，OCI revision `fee7720e7139ec412ddb66eeb0098667eb0c3e08`；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260909T133658Z-pre-switch/`；
+- 未登录真实入口四视口 smoke 证据见 [`docs/qa/visual/v1.1.0/31-deployed-switch-20260909.json`](qa/visual/v1.1.0/31-deployed-switch-20260909.json)；认证 Workspace、真实 Agent/PTY、性能与独立视觉复核仍未验证。
+
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v23`，镜像为 Linux `arm64`，OCI `revision` 为 `f51329c375239dbd4effc41ff461a42beb09e5f4`；
-- 当前生产源码提交：`f51329c375239dbd4effc41ff461a42beb09e5f4`（已推送 `main`）；镜像 ID 为 `sha256:625d027337d503ecf1002374b1941d969a38b2264e9102378c4a7b87e9500757`；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v24`，镜像为 Linux `arm64`，OCI `revision` 为 `fee7720e7139ec412ddb66eeb0098667eb0c3e08`；
+- 当前生产源码提交：`fee7720e7139ec412ddb66eeb0098667eb0c3e08`（已推送 `main`）；镜像 ID 为 `sha256:ccf2fc1c4b3d1d48356ac1635e49749c10f572e89a32815e3fe279879cb686b9`；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
-- 2026-09-09 13:22:45（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- 2026-09-09 13:37:26（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T132222Z-pre-select-search-drawer/`；v22 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T130700Z-pre-feedback-ui/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T133658Z-pre-switch/`；v23 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T132222Z-pre-select-search-drawer/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
