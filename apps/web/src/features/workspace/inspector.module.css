@@ -932,8 +932,10 @@
   font-size: 12px;
 }
 
-:global(.workspace) :global(.git-whitespace-select select),
+:global(.workspace) :global(.git-whitespace-select .git-diff-select),
 :global(.workspace) :global(.git-diff-editor-toolbar button) {
+  width: max-content;
+  min-width: 92px;
   min-height: 28px;
   padding: 3px 8px;
   color: var(--ah-text-secondary);
@@ -943,7 +945,7 @@
   font-size: 12px;
 }
 
-:global(.workspace) :global(.git-whitespace-select select:focus-visible),
+:global(.workspace) :global(.git-whitespace-select .git-diff-select:focus-visible),
 :global(.workspace) :global(.git-diff-editor-toolbar button:focus-visible) {
   outline: 2px solid var(--ah-accent-primary);
   outline-offset: 1px;

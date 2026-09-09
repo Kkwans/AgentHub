@@ -1,12 +1,12 @@
 import {
-  AhButton,
+  Button,
   ChevronDown,
   ChevronRight,
   FolderGit2,
   GitBranch,
   GitCompareArrows,
-  AhIconButton,
   RefreshCw,
+  Select,
 } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
@@ -145,15 +145,16 @@ export function GitChangesTree({
               </button>
             </div>
           </details>
-          <AhIconButton
+          <Button
             type="button"
-            size="xs"
-            variant="subtle"
-            label="刷新 Git 数据"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="刷新 Git 数据"
+            title="刷新 Git 数据"
             onClick={refetchCurrentView}
           >
             <RefreshCw size={15} />
-          </AhIconButton>
+          </Button>
         </div>
       </div>
 
@@ -243,14 +244,15 @@ export function GitChangesTree({
                       }}
                     />
                   </label>
-                  <AhButton
+                  <Button
                     type="submit"
                     size="sm"
                     disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
+                    loading={commitPending}
                   >
                     <GitCompareArrows size={16} />
                     {commitPending ? '正在提交…' : `提交所选文件 (${selectedPaths.length})`}
-                  </AhButton>
+                  </Button>
                   <small>只提交勾选文件，不会混入其他已暂存变更。</small>
                   {commitError && (
                     <div className="workspace-query-error" role="alert">
@@ -283,24 +285,26 @@ export function GitChangesTree({
                   </label>
                   <label className="git-whitespace-select">
                     <span>空白</span>
-                    <select
-                      aria-label="Diff 空白处理"
+                    <Select
+                      ariaLabel="Diff 空白处理"
                       value={whitespace}
-                      onChange={(event) =>
+                      onValueChange={(value) =>
                         onWhitespaceChange(
-                          event.target.value as
+                          value as
                             | 'default'
                             | 'ignore-all-space'
                             | 'ignore-space-change'
                             | 'ignore-blank-lines',
                         )
                       }
-                    >
-                      <option value="default">保留</option>
-                      <option value="ignore-all-space">忽略全部</option>
-                      <option value="ignore-space-change">忽略变化</option>
-                      <option value="ignore-blank-lines">忽略空行</option>
-                    </select>
+                      options={[
+                        { value: 'default', label: '保留' },
+                        { value: 'ignore-all-space', label: '忽略全部' },
+                        { value: 'ignore-space-change', label: '忽略变化' },
+                        { value: 'ignore-blank-lines', label: '忽略空行' },
+                      ]}
+                      className="git-diff-select"
+                    />
                   </label>
                 </div>
                 {diff.isLoading ? (
