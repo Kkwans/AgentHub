@@ -100,14 +100,17 @@
         "pnpm --filter @agenthub/ui typecheck && pnpm --filter @agenthub/web typecheck (pass after shared layout move)",
         "pnpm qa:css-budget (pass; PinHarness source snapshot provenance envelope plus strict feature budgets)",
         "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=mobile-390 --grep 'Home 深色主题' --workers=1 (2/2 passed; .dark/color-scheme/画布/overflow assertions)",
-        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=desktop-1024 --project=tablet-768 --project=mobile-390 --workers=1 --timeout=120000 (48/48 passed; current HEAD full four-viewport route/axe matrix)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=desktop-1024 --project=tablet-768 --project=mobile-390 --workers=1 --timeout=120000 (48/48 passed at 0b0249e before test-only readiness hardening; runtime UI source unchanged)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --grep='Agent Center|Workspace 保持|Projects 使用|Project Context|Work 保持|Sessions 按|Prompt Library|Settings 使用' --workers=1 --timeout=120000 (8/8 passed after shared-layout test hardening)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --project=desktop-1024 --project=tablet-768 --project=mobile-390 --grep='Agent Center|Projects 使用|Sessions 按' --workers=1 --timeout=120000 (12/12 passed after ready-boundary hardening)",
+        "pnpm exec playwright test tests/e2e/web-shell.spec.ts --project=desktop-1440 --grep='Agent Center|Workspace 保持|Projects 使用|Project Context|Work 保持|Sessions 按|Prompt Library|Settings 使用' --workers=1 --timeout=120000 (8/8 passed with fixture WebSocket isolation)",
         "pnpm release:version-truth 1.1.0 --allow-incomplete",
         "git diff --check"
       ]
     },
     "visual": {
       "status": "unverified",
-      "mockFixture": "Latest Workspace 4/4 passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; full route matrix first pass 42/44 with two Settings locator timeouts under NAS load, then 2/2 isolated rerun passed; fixture is not production evidence",
+      "mockFixture": "Latest Workspace 4/4 passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; post-hardening semantic subsets pass with ready-boundary waits and fixture WebSocket isolation; fixture is not production evidence",
       "independentReview": "P0=0, P1=0 on current source and mock matrix; touch intent P2 fixed in fdad2c0. Real deployment visual gate remains unverified. Top safe-area/device validation remains unverified.",
       "realDeploymentSmoke": {
         "status": "pass",
