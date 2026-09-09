@@ -20,7 +20,7 @@ import {
   type IconProps,
 } from '@agenthub/ui';
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { realtime } from '../../lib/realtime';
 import { AgentHubLogo } from '../../components/AgentHubLogo';
@@ -65,13 +65,23 @@ const secondaryNavigation: NavigationItem[] = [
   },
 ];
 
-function Brand({ collapsed = false }: { collapsed?: boolean }) {
+function Brand({
+  collapsed = false,
+  onToggle,
+  toggleDisabled = false,
+}: {
+  collapsed?: boolean;
+  onToggle?: () => void;
+  toggleDisabled?: boolean;
+}) {
   return (
     <div
-      className={`flex items-center ${collapsed ? 'justify-center px-2 pt-3 pb-1' : 'justify-between px-3 pt-3 pb-1 2xl:px-4 2xl:pt-4'}`}
+      className={`flex items-center ${collapsed ? 'flex-col gap-1.5 px-2 pt-3 pb-1' : 'justify-between px-3 pt-3 pb-1 2xl:px-4 2xl:pt-4'}`}
     >
-      <div
+      <Link
+        to="/home"
         className={`group flex items-center overflow-hidden ${collapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)] justify-center' : 'min-w-0 gap-2.5'}`}
+        aria-label="AgentHub 首页"
       >
         <AgentHubLogo
           className="h-7 w-7 shrink-0 rounded-[9px] border border-black/[0.04] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[var(--shadow-sm)] transition-opacity duration-[var(--motion-fast)] group-hover:opacity-90 2xl:h-8 2xl:w-8"
@@ -82,7 +92,23 @@ function Brand({ collapsed = false }: { collapsed?: boolean }) {
             AgentHub
           </span>
         )}
-      </div>
+      </Link>
+      {onToggle ? (
+        <button
+          type="button"
+          className={`group/toggle flex shrink-0 items-center justify-center rounded-[10px] text-[hsl(var(--foreground-faint))] transition-[background-color,color] duration-[var(--motion-fast)] hover:bg-[hsl(var(--surface-hover))]/75 hover:text-[hsl(var(--foreground))] active:bg-[hsl(var(--surface-hover))] disabled:cursor-not-allowed disabled:opacity-50 ${collapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)]' : 'h-7 w-7'}`}
+          onClick={onToggle}
+          disabled={toggleDisabled}
+          aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+          title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+        >
+          {collapsed ? (
+            <ChevronRight aria-hidden size={16} />
+          ) : (
+            <ChevronLeft aria-hidden size={16} />
+          )}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -252,7 +278,28 @@ export function AppShell() {
           className={`app-sidebar relative hidden h-full shrink-0 flex-col border-r border-[hsl(var(--sidebar-border))]/80 transition-[width,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:flex ${sidebarCollapsed ? 'w-[var(--sidebar-collapsed-width)]' : 'w-[var(--sidebar-width)]'}`}
         >
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[hsl(var(--surface))]/70" />
-          <Brand collapsed={sidebarCollapsed} />
+          <Brand
+            collapsed={sidebarCollapsed}
+            onToggle={() => {
+              if (sidebarPreference === 'remember') setSidebarCollapsed(!sidebarCollapsed);
+            }}
+            toggleDisabled={sidebarPreference !== 'remember'}
+          />
+          <button
+            type="button"
+            className={`mx-2 mt-1 flex min-h-9 items-center gap-2 rounded-[var(--radius)] border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))]/60 px-2.5 text-left text-[12px] text-[hsl(var(--foreground-faint))] shadow-[var(--shadow-sm)] transition-[background-color,border-color,color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/50 ${sidebarCollapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)] justify-center px-0' : ''}`}
+            onClick={openCommand}
+            aria-label="搜索与跳转"
+            title="搜索与跳转"
+          >
+            <Search aria-hidden size={15} />
+            {!sidebarCollapsed ? <span className="min-w-0 flex-1 truncate">搜索与跳转</span> : null}
+            {!sidebarCollapsed ? (
+              <kbd className="rounded-[5px] bg-[hsl(var(--surface-muted))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--foreground-faint))]">
+                ⌘ K
+              </kbd>
+            ) : null}
+          </button>
           <Navigation collapsed={sidebarCollapsed} />
           <div
             className={`mt-1.5 border-t border-[hsl(var(--sidebar-border))]/60 py-2.5 ${sidebarCollapsed ? 'flex flex-col items-center px-2' : 'px-3 2xl:px-4'}`}
@@ -281,28 +328,6 @@ export function AppShell() {
               )}
             </div>
           </div>
-          <button
-            type="button"
-            className={`group/toggle mx-2 mb-1 flex min-h-[var(--sidebar-item-height)] items-center gap-2 rounded-[8px] px-2.5 text-left text-[12px] font-semibold text-[hsl(var(--foreground-subtle))] transition-[background-color,color] duration-[var(--motion-fast)] hover:bg-[hsl(var(--surface-hover))]/75 hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 disabled:cursor-not-allowed disabled:opacity-50 ${sidebarCollapsed ? 'justify-center px-0' : ''}`}
-            onClick={() => {
-              if (sidebarPreference === 'remember') setSidebarCollapsed(!sidebarCollapsed);
-            }}
-            disabled={sidebarPreference !== 'remember'}
-            aria-label={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
-            title={`${sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'} (Ctrl/⌘ B)`}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight aria-hidden size={17} />
-            ) : (
-              <ChevronLeft aria-hidden size={17} />
-            )}
-            {!sidebarCollapsed && <span>{sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}</span>}
-            {!sidebarCollapsed && (
-              <kbd className="ml-auto rounded-[5px] bg-[hsl(var(--surface-hover))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--foreground-faint))]">
-                ⌘ B
-              </kbd>
-            )}
-          </button>
           <div
             className={`border-t border-[hsl(var(--sidebar-border))]/60 p-2.5 ${sidebarCollapsed ? 'px-2' : 'px-3 2xl:px-4'}`}
           >
@@ -311,10 +336,10 @@ export function AppShell() {
         </aside>
         <div className="flex h-full min-w-0 flex-1 flex-col">
           <header
-            className="flex h-14 shrink-0 items-center gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--background))] px-4 sm:px-6"
+            className="flex h-14 shrink-0 items-center gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--background))] px-4 md:hidden"
             data-shell-topbar="true"
           >
-            <div className="flex items-center gap-2 md:hidden">
+            <div className="flex items-center gap-2">
               <AhButton
                 className="grid h-9 w-9 place-items-center border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-0 text-[hsl(var(--foreground-subtle))]"
                 variant="default"
@@ -328,9 +353,9 @@ export function AppShell() {
             </div>
             <button
               type="button"
-              className="flex h-9 min-h-9 w-full max-w-[440px] items-center gap-2.5 rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 text-left text-[13px] text-[hsl(var(--foreground-faint))] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow,color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:text-[hsl(var(--foreground-subtle))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60"
+              className="flex h-9 min-h-9 min-w-0 flex-1 items-center gap-2.5 rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 text-left text-[13px] text-[hsl(var(--foreground-faint))] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow,color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:text-[hsl(var(--foreground-subtle))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60"
               onClick={openCommand}
-              aria-label="搜索与跳转"
+              aria-label="搜索"
             >
               <Search aria-hidden size={16} />
               <span>搜索项目 / Agent / Prompt...</span>
@@ -338,7 +363,7 @@ export function AppShell() {
                 ⌘ K
               </kbd>
             </button>
-            <div className="ml-auto hidden items-center gap-1.5 md:flex">
+            <div className="ml-auto hidden items-center gap-1.5">
               <button
                 type="button"
                 className={`grid h-9 w-9 place-items-center rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] text-[hsl(var(--foreground-subtle))] transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] hover:-translate-y-px hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 ${preference === 'light' ? 'border-[hsl(var(--primary))]/25 bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
@@ -369,7 +394,7 @@ export function AppShell() {
           </header>
           <main
             id="main-content"
-            className="ambient-canvas app-main min-h-0 flex-1 overflow-y-auto px-4 pb-14 pt-4 outline-none sm:px-6 sm:pb-12 sm:pt-6"
+            className="ambient-canvas app-main min-h-0 flex-1 overflow-y-auto outline-none"
             tabIndex={-1}
           >
             <div key={location.pathname} className="route-stage h-full min-h-0">
