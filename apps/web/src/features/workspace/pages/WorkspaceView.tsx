@@ -32,7 +32,6 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     closeSessionDrawer,
     openInspectorDrawer,
     mobileInspectorOpen,
-    isMobileViewport,
     inspectorActsAsDrawer,
     inspectorDrawerOpen,
     closeMobileInspector,
@@ -192,7 +191,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           </div>
         )}
       </div>
-      {inspectorActsAsDrawer && !isMobileViewport && !compactAuxiliaryOpen && (
+      {inspectorActsAsDrawer && (
         <PinTabs value="conversation">
           <TabsList
             className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
@@ -358,7 +357,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           compactPanel={compactPanel}
           onCompactPanelChange={handleCompactPanelChange}
           compactPanelOrder={['middle', 'left', 'right']}
-          compactTabsVisible={isMobileViewport}
+          compactTabsVisible={false}
           leftRatioKey="agenthub.workspace.layout-v3.left.ratio"
           rightRatioKey="agenthub.workspace.layout-v3.right.ratio"
           leftRatioDefault={leftRatioDefault}
