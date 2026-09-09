@@ -1,4 +1,4 @@
-import { ChevronDown, Plus, Search } from '@agenthub/ui';
+import { ChevronDown, Plus, Search, WorkbenchPanelHeader } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
@@ -118,10 +118,11 @@ export function SessionRail({
       className={`${sessionRailStyles.owner} session-rail flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
-      <div className="panel-title flex min-h-12 items-center justify-between gap-2 border-b border-[hsl(var(--border))]/70 px-4">
-        <span>AgentHub</span>
-        <small>{sessions.data?.length ?? 0} 个会话</small>
-      </div>
+      <WorkbenchPanelHeader
+        title="AgentHub"
+        description={`${sessions.data?.length ?? 0} 个会话`}
+        className="panel-title"
+      />
       <div className="session-rail-toolbar">
         <label className="session-rail-search flex min-w-0 flex-1 items-center gap-1.5 rounded-[var(--radius)] border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-muted))]/55 px-2.5">
           <Search size={14} aria-hidden="true" />
