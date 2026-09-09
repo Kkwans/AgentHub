@@ -1,19 +1,9 @@
-import {
-  Alert,
-  Anchor,
-  Divider,
-  Group,
-  Loader,
-  Skeleton,
-  Stack,
-  Text,
-  ThemeIcon,
-  Drawer,
-} from '@mantine/core';
+import { Alert, Anchor, Divider, Group, Stack, Text, Drawer } from '@mantine/core';
 import { motion, useReducedMotion } from 'motion/react';
 import { CheckCircleIcon } from '@phosphor-icons/react/CheckCircle';
 import { InfoIcon } from '@phosphor-icons/react/Info';
 import { WarningCircleIcon } from '@phosphor-icons/react/WarningCircle';
+import { CircleNotchIcon } from '@phosphor-icons/react/CircleNotch';
 import {
   forwardRef,
   useId,
@@ -28,6 +18,7 @@ import { Card as PinCard, type CardProps as PinCardProps } from './pinharness/ui
 import { cn } from './pinharness/ui/cn.js';
 import { Input as PinInput } from './pinharness/ui/input.js';
 import { Select as PinSelect } from './pinharness/ui/select.js';
+import { Skeleton as PinSkeleton } from './pinharness/ui/skeleton.js';
 import { Textarea as PinTextarea } from './pinharness/ui/textarea.js';
 import { FormDialog } from './components/index.js';
 import { useAgentHubTheme } from './provider.js';
@@ -121,24 +112,36 @@ export function AhEmptyState({
   compact?: boolean;
 }) {
   return (
-    <Stack align="center" gap={compact ? 6 : 'sm'} py={compact ? 'lg' : 48} px="md" ta="center">
-      <ThemeIcon size={compact ? 34 : 42} radius="xl" variant="light" color="aurora">
+    <div
+      className={cn(
+        'flex flex-col items-center px-4 text-center',
+        compact ? 'gap-1.5 py-6' : 'gap-3 py-12',
+      )}
+    >
+      <span
+        className={cn(
+          'grid place-items-center rounded-full border border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]',
+          compact ? 'size-9' : 'size-11',
+        )}
+        aria-hidden="true"
+      >
         {icon ?? <InfoIcon size={compact ? 17 : 20} />}
-      </ThemeIcon>
-      <Text fw={650} size={compact ? 'sm' : 'md'}>
+      </span>
+      <h3
+        className={cn(
+          'm-0 text-[length:var(--text-base)] font-semibold leading-tight',
+          compact && 'text-sm',
+        )}
+      >
         {title}
-      </Text>
+      </h3>
       {description ? (
-        <Text c="dimmed" size="sm" maw={480}>
+        <p className="m-0 max-w-[480px] text-sm leading-relaxed text-[hsl(var(--foreground-muted))]">
           {description}
-        </Text>
+        </p>
       ) : null}
-      {action ? (
-        <Group justify="center" mt={4}>
-          {action}
-        </Group>
-      ) : null}
-    </Stack>
+      {action ? <div className="mt-1 flex items-center justify-center gap-2">{action}</div> : null}
+    </div>
   );
 }
 
@@ -152,22 +155,23 @@ export function AhErrorState({
   retry?: () => void;
 }) {
   return (
-    <Alert
-      color="red"
-      variant="light"
-      icon={<WarningCircleIcon size={19} />}
-      title={title}
-      maw={720}
+    <div
+      role="alert"
+      className="flex max-w-[720px] items-start gap-3 rounded-[var(--radius-lg)] border border-[hsl(var(--destructive))]/20 bg-[hsl(var(--destructive-soft))] p-3 text-[hsl(var(--destructive-fg))]"
     >
-      <Group justify="space-between" align="center" gap="md">
-        <Text size="sm">{description ?? '请检查连接后重试。'}</Text>
-        {retry ? (
-          <PinButton size="xs" variant="destructive" onClick={retry}>
-            重试
-          </PinButton>
-        ) : null}
-      </Group>
-    </Alert>
+      <WarningCircleIcon className="mt-0.5 size-5 shrink-0" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <strong className="block text-sm font-semibold leading-5">{title}</strong>
+        <p className="m-0 mt-1 text-sm leading-5 text-[hsl(var(--foreground-muted))]">
+          {description ?? '请检查连接后重试。'}
+        </p>
+      </div>
+      {retry ? (
+        <PinButton size="xs" variant="destructive" onClick={retry}>
+          重试
+        </PinButton>
+      ) : null}
+    </div>
   );
 }
 
@@ -179,17 +183,17 @@ export function AhLoadingState({
   rows?: number;
 }) {
   return (
-    <Stack gap="md" aria-busy="true" aria-label={label}>
-      <Group gap="sm">
-        <Loader size="sm" color="aurora" />
-        <Text c="dimmed" size="sm">
-          {label}
-        </Text>
-      </Group>
-      {Array.from({ length: rows }, (_, index) => (
-        <Skeleton key={index} height={index === 0 ? 42 : 32} radius="md" />
-      ))}
-    </Stack>
+    <div className="space-y-4" aria-busy="true" aria-label={label}>
+      <div className="flex items-center gap-2 text-sm text-[hsl(var(--foreground-muted))]">
+        <CircleNotchIcon className="size-4 animate-spin text-[hsl(var(--primary))]" aria-hidden />
+        <span>{label}</span>
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: rows }, (_, index) => (
+          <PinSkeleton key={index} className={index === 0 ? 'h-11 w-full' : 'h-8 w-full'} />
+        ))}
+      </div>
+    </div>
   );
 }
 
