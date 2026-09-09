@@ -32,8 +32,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     closeSessionDrawer,
     openInspectorDrawer,
     mobileInspectorOpen,
-    inspectorActsAsDrawer,
     isMobileViewport,
+    inspectorActsAsDrawer,
     inspectorDrawerOpen,
     closeMobileInspector,
     tab,
@@ -88,11 +88,6 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   } = model;
 
   const compactAuxiliaryOpen = sessionDrawerOpen || inspectorDrawerOpen;
-  const legacyMobilePanel = sessionDrawerOpen
-    ? 'sessions'
-    : inspectorDrawerOpen
-      ? tab
-      : 'conversation';
   const compactPanel: CompactPanel = sessionDrawerOpen
     ? 'left'
     : inspectorDrawerOpen || mobileInspectorOpen
@@ -197,8 +192,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           </div>
         )}
       </div>
-      {inspectorActsAsDrawer && (
-        <PinTabs value={legacyMobilePanel}>
+      {inspectorActsAsDrawer && !isMobileViewport && !compactAuxiliaryOpen && (
+        <PinTabs value="conversation">
           <TabsList
             className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
             aria-label="Workspace 视图"
@@ -360,11 +355,10 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           leftLabel="会话"
           rightLabel="检查器"
           middleLabel="对话"
-          layoutMode={isMobileViewport ? 'single' : inspectorActsAsDrawer ? 'medium' : 'auto'}
           compactPanel={compactPanel}
           onCompactPanelChange={handleCompactPanelChange}
           compactPanelOrder={['middle', 'left', 'right']}
-          compactTabsVisible={!isMobileViewport}
+          compactTabsVisible={isMobileViewport}
           leftRatioKey="agenthub.workspace.layout-v3.left.ratio"
           rightRatioKey="agenthub.workspace.layout-v3.right.ratio"
           leftRatioDefault={leftRatioDefault}

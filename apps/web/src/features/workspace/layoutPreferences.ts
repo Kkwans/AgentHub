@@ -22,8 +22,8 @@ export const HISTORIC_WORKSPACE_LAYOUT_STORAGE_KEYS = {
 } as const;
 
 export const WORKSPACE_PANEL_LIMITS = {
-  left: { defaultSize: 256, min: 216, max: 336 },
-  right: { defaultSize: 380, min: 320, max: 560 },
+  left: { defaultSize: 256, min: 216, max: 380 },
+  right: { defaultSize: 380, min: 320, max: 520 },
 } as const;
 
 /** Backwards-compatible feature name for the shared persisted layout contract. */
@@ -92,10 +92,10 @@ export function readWorkspaceLayout(
   ]);
   const defaultLeftCollapsed =
     viewportWidth !== undefined
-      ? viewportWidth < 1_180
+      ? viewportWidth < 1_440
       : typeof window !== 'undefined' &&
         storage === window.localStorage &&
-        window.innerWidth < 1_180;
+        window.innerWidth < 1_440;
   const layout = {
     leftWidth: readWidth(
       storage,

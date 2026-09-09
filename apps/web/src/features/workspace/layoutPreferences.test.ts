@@ -37,7 +37,7 @@ describe('Workspace layout preferences', () => {
         }),
       ),
     ).toEqual({
-      leftWidth: 336,
+      leftWidth: 380,
       leftCollapsed: true,
       rightWidth: 320,
       rightCollapsed: false,
@@ -50,13 +50,13 @@ describe('Workspace layout preferences', () => {
       [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth]: '720',
     });
     expect(readWorkspaceLayout(storage, 1024)).toEqual({
-      leftWidth: 336,
+      leftWidth: 380,
       leftCollapsed: true,
-      rightWidth: 560,
+      rightWidth: 520,
       rightCollapsed: false,
     });
-    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth)).toBe('336');
-    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth)).toBe('560');
+    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth)).toBe('380');
+    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth)).toBe('520');
     expect(
       readWorkspaceLayout(
         memoryStorage({
@@ -65,6 +65,8 @@ describe('Workspace layout preferences', () => {
         1024,
       ).leftCollapsed,
     ).toBe(false);
+    expect(readWorkspaceLayout(memoryStorage(), 1_439).leftCollapsed).toBe(true);
+    expect(readWorkspaceLayout(memoryStorage(), 1_440).leftCollapsed).toBe(false);
   });
 
   it('stores width and collapsed state independently', () => {
