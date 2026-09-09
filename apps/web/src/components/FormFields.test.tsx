@@ -62,7 +62,7 @@ describe('shared form fields', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Agent')).toHaveValue('Codex');
+    expect(screen.getByRole('combobox', { name: 'Agent' })).toHaveTextContent('Codex');
     expect(document.querySelector('select')).not.toBeInTheDocument();
   });
 });

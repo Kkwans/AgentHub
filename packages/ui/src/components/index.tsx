@@ -1,8 +1,7 @@
 import * as React from 'react';
-import { CheckIcon } from '@phosphor-icons/react/Check';
-import { CaretDownIcon } from '@phosphor-icons/react/CaretDown';
-import { MagnifyingGlassIcon } from '@phosphor-icons/react/MagnifyingGlass';
 import { XIcon } from '@phosphor-icons/react/X';
+
+import { Select as PinSelect } from '../pinharness/ui/select.js';
 
 export type FormDialogSize = 'small' | 'medium' | 'large';
 
@@ -357,7 +356,8 @@ export function SelectField({
     >
       <Combobox
         id={selectId}
-        {...((value ?? defaultValue) ? { value: value ?? defaultValue } : {})}
+        {...(value === undefined ? {} : { value })}
+        {...(defaultValue === undefined ? {} : { defaultValue })}
         placeholder={placeholder}
         options={options}
         {...(disabled === undefined ? {} : { disabled })}
@@ -374,6 +374,7 @@ export interface ComboboxOption extends SelectOption {
 export interface ComboboxProps {
   id?: string;
   value?: string;
+  defaultValue?: string;
   placeholder?: string;
   options: ComboboxOption[];
   onValueChange: (value: string) => void;
@@ -384,115 +385,31 @@ export interface ComboboxProps {
 export function Combobox({
   id,
   value,
+  defaultValue,
   placeholder = '搜索并选择',
   options,
   onValueChange,
   disabled = false,
-  noResultsLabel = '没有匹配项',
+  noResultsLabel: _noResultsLabel = '没有匹配项',
 }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState('');
-  const [activeIndex, setActiveIndex] = React.useState(0);
-  const listboxId = id ? `${id}-listbox` : undefined;
-  const selected = options.find((option) => option.value === value);
-  const filtered = React.useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    if (!normalized) return options;
-    return options.filter((option) =>
-      [option.label, option.value, option.meta]
-        .filter(Boolean)
-        .join(' ')
-        .toLocaleLowerCase()
-        .includes(normalized),
-    );
-  }, [options, query]);
-
-  React.useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
-
-  const choose = (option: ComboboxOption) => {
-    if (option.disabled) return;
-    onValueChange(option.value);
-    setQuery('');
-    setOpen(false);
-  };
-
+  const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue);
+  const isControlled = value !== undefined;
+  const selectedValue = isControlled ? value : uncontrolledValue;
   return (
-    <div className="ah-combobox">
-      <div className="ah-combobox-control">
-        <MagnifyingGlassIcon aria-hidden size={16} />
-        <input
-          id={id}
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listboxId}
-          aria-autocomplete="list"
-          value={open ? query : (selected?.label ?? '')}
-          placeholder={placeholder}
-          disabled={disabled}
-          onFocus={() => setOpen(true)}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setOpen(true);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              setOpen(true);
-              setActiveIndex((index) => Math.min(index + 1, Math.max(filtered.length - 1, 0)));
-            } else if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              setActiveIndex((index) => Math.max(index - 1, 0));
-            } else if (event.key === 'Enter') {
-              event.preventDefault();
-              const option = filtered[activeIndex];
-              if (option) choose(option);
-            } else if (event.key === 'Escape') {
-              setQuery('');
-              setOpen(false);
-            }
-          }}
-        />
-        <button
-          type="button"
-          className="ah-combobox-toggle"
-          aria-label={open ? '收起选项' : '展开选项'}
-          disabled={disabled}
-          onClick={() => setOpen((current) => !current)}
-        >
-          <CaretDownIcon aria-hidden size={16} />
-        </button>
-      </div>
-      {open ? (
-        <div id={listboxId} role="listbox" className="ah-combobox-options">
-          {filtered.length ? (
-            filtered.map((option, index) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={option.value === value}
-                className={
-                  index === activeIndex ? 'ah-combobox-option active' : 'ah-combobox-option'
-                }
-                key={option.value}
-                disabled={option.disabled}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => choose(option)}
-              >
-                <span>
-                  <strong>{option.label}</strong>
-                  {option.meta ? <small>{option.meta}</small> : null}
-                </span>
-                {option.value === value ? <CheckIcon aria-hidden size={16} /> : null}
-              </button>
-            ))
-          ) : (
-            <div className="ah-combobox-empty">{noResultsLabel}</div>
-          )}
-        </div>
-      ) : null}
-    </div>
+    <PinSelect
+      {...(id === undefined ? {} : { id })}
+      {...(selectedValue === undefined ? {} : { value: selectedValue })}
+      {...(placeholder === undefined ? {} : { placeholder })}
+      options={options.map(({ meta, ...option }) => ({
+        ...option,
+        ...(meta && !option.description ? { description: meta } : {}),
+      }))}
+      {...(disabled === undefined ? {} : { disabled })}
+      onValueChange={(nextValue) => {
+        if (!isControlled) setUncontrolledValue(nextValue);
+        onValueChange(nextValue);
+      }}
+    />
   );
 }
 
