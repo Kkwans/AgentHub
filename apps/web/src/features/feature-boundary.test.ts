@@ -24,7 +24,7 @@ describe('feature boundaries', () => {
     const model = source('./workspace/useWorkspaceViewModel.ts');
     const sections = source('./workspace/components/WorkspaceInspector.tsx');
     const terminal = source('./workspace/components/TerminalDock.tsx');
-    expect(view).toContain("from '../components/Conversation'");
+    expect(view).toContain("from '../components/ChatConversationView'");
     expect(view).toContain("from '../components/TerminalDock'");
     expect(route).not.toContain('function Conversation(');
     expect(route).not.toContain('function Composer(');
@@ -129,7 +129,7 @@ describe('feature boundaries', () => {
 
   it('keeps internal object ids out of ordinary workspace and dashboard copy', () => {
     const home = source('./home/pages/HomePage.tsx');
-    const workspace = source('./workspace/components/Conversation.tsx');
+    const workspace = source('./workspace/components/ChatConversationView.tsx');
     expect(home).not.toContain('approval.sessionId.slice(0, 8)');
     expect(home).not.toContain('run.id.slice(0, 8)');
     expect(workspace).not.toContain('activeRun.id.slice(0, 8)');

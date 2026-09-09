@@ -8,3 +8,6 @@ export * from './ui/tabs.js';
 export * from './ui/select.js';
 export * from './ui/textarea.js';
 export * from './mobile-drawer.js';
+export { NavigationPageHeader } from './page-header.js';
+export type { NavigationPageHeaderProps, PageHeaderProps } from './page-header.js';
+export * from './resource-state.js';

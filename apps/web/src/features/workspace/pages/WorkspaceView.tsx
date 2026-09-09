@@ -14,8 +14,8 @@ import {
 } from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '../../../components/Feedback';
-import { ChatCommandBar } from '../components/Composer';
-import { ChatConversationView } from '../components/Conversation';
+import { ChatCommandBar } from '../components/ChatCommandBar';
+import { ChatConversationView } from '../components/ChatConversationView';
 import { SessionRail } from '../components/SessionRail';
 import { TerminalDock } from '../components/TerminalDock';
 import { WorkspaceInspector, type InspectorTab } from '../components/WorkspaceInspector';

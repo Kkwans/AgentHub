@@ -38,8 +38,8 @@ describe('presentation architecture boundaries', () => {
   it('keeps Workspace route data ownership separate from display panels', () => {
     const route = read('./workspace/pages/WorkspacePage.tsx');
     const view = read('./workspace/pages/WorkspaceView.tsx');
-    expect(view).toContain("from '../components/Conversation'");
-    expect(view).toContain("from '../components/Composer'");
+    expect(view).toContain("from '../components/ChatConversationView'");
+    expect(view).toContain("from '../components/ChatCommandBar'");
     expect(route).toContain('fetchSessionEventPages');
     for (const panel of [
       'Conversation',
@@ -54,9 +54,9 @@ describe('presentation architecture boundaries', () => {
     ]) {
       const path =
         panel === 'Conversation'
-          ? './workspace/components/Conversation.tsx'
+          ? './workspace/components/ChatConversationView.tsx'
           : panel === 'Composer'
-            ? './workspace/components/Composer.tsx'
+            ? './workspace/components/ChatCommandBar.tsx'
             : panel === 'FileInspector'
               ? './workspace/components/FileInspector.tsx'
               : `./workspace/components/${panel}.tsx`;

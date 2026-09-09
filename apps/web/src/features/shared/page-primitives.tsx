@@ -1,10 +1,10 @@
 import {
   AhErrorState,
-  AhPageHeader,
   AhReveal,
+  LayoutDashboard,
+  NavigationPageHeader,
   Skeleton,
   SkeletonText,
-  cn,
   type IconProps,
 } from '@agenthub/ui';
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
@@ -12,92 +12,40 @@ import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import type { ProjectRecord, TaskRecord } from '../../lib/api';
 import layout from './layout.module.css';
 
+export { NavigationPageHeader } from '@agenthub/ui';
+
 /** Shared page chrome used by domain-owned pages. */
 export function Screen({
   eyebrow,
   title,
   description,
   actions,
+  icon: Icon = LayoutDashboard,
   children,
 }: {
   eyebrow: string;
   title: string;
   description?: string;
   actions?: ReactNode;
+  icon?: ComponentType<IconProps>;
   children: ReactNode;
 }) {
   return (
     <div className="page-content page-shell min-h-full">
       <AhReveal>
-        <AhPageHeader
-          eyebrow={eyebrow}
+        <NavigationPageHeader
+          icon={Icon}
           title={title}
-          {...(description ? { description } : {})}
+          description={description ?? ''}
+          badge={
+            <span className="rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--foreground-faint))]">
+              {eyebrow}
+            </span>
+          }
           {...(actions ? { actions } : {})}
-          className="mb-5 border-b border-[hsl(var(--border))]/70 pb-5"
         />
       </AhReveal>
       {children}
-    </div>
-  );
-}
-
-/**
- * PinHarness source component: NavigationPageHeader.
- *
- * This keeps the source header geometry intact (icon block, title group and
- * action rail). Domain pages only provide their icon and copy; they do not
- * recreate another page-heading layout.
- */
-export function NavigationPageHeader({
-  icon: Icon,
-  title,
-  description,
-  badge,
-  actions,
-  leading,
-  className,
-  containerClassName,
-}: {
-  icon: ComponentType<IconProps>;
-  title: ReactNode;
-  description: ReactNode;
-  badge?: ReactNode;
-  actions?: ReactNode;
-  leading?: ReactNode;
-  className?: string;
-  containerClassName?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        'navigation-page-header projects-dashboard-header workspace-header shrink-0 px-4 sm:px-6 lg:px-8',
-        containerClassName,
-      )}
-    >
-      <header
-        className={cn(
-          'page-heading page-header-row flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between',
-          className,
-        )}
-      >
-        <div className="page-title-group flex min-w-0 items-start gap-3.5">
-          {leading}
-          <div className="page-heading-icon h-10 w-10">
-            <Icon className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="page-title">{title}</h1>
-              {badge}
-            </div>
-            <p className="page-subtitle">{description}</p>
-          </div>
-        </div>
-        {actions ? (
-          <div className="page-header-actions w-full shrink-0 sm:w-auto">{actions}</div>
-        ) : null}
-      </header>
     </div>
   );
 }
