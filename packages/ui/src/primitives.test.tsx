@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest';
-import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -9,11 +8,7 @@ import { AhButton, AhChoiceSelect, AhIconButton, AhSelect, AhSwitch } from './pr
 
 describe('UI primitives', () => {
   it('renders a loading button without losing its accessible name', () => {
-    render(
-      <MantineProvider env="test">
-        <AhButton loading>保存项目</AhButton>
-      </MantineProvider>,
-    );
+    render(<AhButton loading>保存项目</AhButton>);
 
     expect(screen.getByRole('button', { name: '保存项目' })).toBeDisabled();
   });
@@ -21,17 +16,15 @@ describe('UI primitives', () => {
   it('uses the PinHarness combobox for product entity selection', () => {
     const onChange = vi.fn();
     render(
-      <MantineProvider env="test">
-        <AhSelect
-          label="Project"
-          value="agenthub"
-          onChange={onChange}
-          data={[
-            { value: 'agenthub', label: 'AgentHub' },
-            { value: 'claude', label: 'Claude' },
-          ]}
-        />
-      </MantineProvider>,
+      <AhSelect
+        label="Project"
+        value="agenthub"
+        onChange={onChange}
+        data={[
+          { value: 'agenthub', label: 'AgentHub' },
+          { value: 'claude', label: 'Claude' },
+        ]}
+      />,
     );
 
     const trigger = screen.getByRole('combobox', { name: 'Project' });
@@ -49,14 +42,12 @@ describe('UI primitives', () => {
 
   it('keeps product choice fields non-native while preserving option descriptions', () => {
     render(
-      <MantineProvider env="test">
-        <AhChoiceSelect
-          label="运行模式"
-          value="plan"
-          options={[{ value: 'plan', label: '计划', description: '先确认计划再执行' }]}
-          onValueChange={vi.fn()}
-        />
-      </MantineProvider>,
+      <AhChoiceSelect
+        label="运行模式"
+        value="plan"
+        options={[{ value: 'plan', label: '计划', description: '先确认计划再执行' }]}
+        onValueChange={vi.fn()}
+      />,
     );
 
     expect(screen.getByRole('combobox', { name: '运行模式' })).toBeInTheDocument();
@@ -65,11 +56,9 @@ describe('UI primitives', () => {
 
   it('keeps icon-only actions named and discoverable', () => {
     render(
-      <MantineProvider env="test">
-        <AhIconButton label="打开设置" size="sm">
-          ⚙
-        </AhIconButton>
-      </MantineProvider>,
+      <AhIconButton label="打开设置" size="sm">
+        ⚙
+      </AhIconButton>,
     );
 
     expect(screen.getByRole('button', { name: '打开设置' })).toHaveAttribute('title', '打开设置');
@@ -77,11 +66,7 @@ describe('UI primitives', () => {
 
   it('uses a PinHarness-style switch without a Mantine control wrapper', () => {
     const onChange = vi.fn();
-    render(
-      <MantineProvider env="test">
-        <AhSwitch aria-label="减少动效" checked onChange={onChange} />
-      </MantineProvider>,
-    );
+    render(<AhSwitch aria-label="减少动效" checked onChange={onChange} />);
 
     const control = screen.getByRole('switch', { name: '减少动效' });
     expect(control).toHaveClass('ah-switch');
@@ -92,14 +77,14 @@ describe('UI primitives', () => {
 
   it('exposes a stable loading state without changing the action name', () => {
     render(
-      <MantineProvider env="test">
+      <>
         <AhButton loading fullWidth rightSection={<span aria-hidden>⌘</span>}>
           发送
         </AhButton>
         <AhIconButton label="刷新" loading>
           ↻
         </AhIconButton>
-      </MantineProvider>,
+      </>,
     );
 
     expect(screen.getByRole('button', { name: '发送' })).toBeDisabled();

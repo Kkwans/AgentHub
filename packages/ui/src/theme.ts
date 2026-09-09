@@ -1,5 +1,3 @@
-import { createTheme, type MantineColorsTuple, type MantineThemeOverride } from '@mantine/core';
-
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type ResolvedThemeMode = Exclude<ThemePreference, 'system'>;
 
@@ -29,7 +27,7 @@ export const AGENTHUB_RADIUS = {
   overlay: '14px',
 } as const;
 
-const auroraLight: MantineColorsTuple = [
+const auroraLight = [
   '#f0edff',
   '#e9e4ff',
   '#cfc5ff',
@@ -42,7 +40,7 @@ const auroraLight: MantineColorsTuple = [
   '#3d27bd',
 ];
 
-const auroraDark: MantineColorsTuple = [
+const auroraDark = [
   '#292246',
   '#332a56',
   '#51458c',
@@ -62,22 +60,43 @@ export function resolveThemeMode(
   return preference === 'system' ? (systemDark ? 'dark' : 'light') : preference;
 }
 
-export function createAgentHubTheme(mode: ResolvedThemeMode): MantineThemeOverride {
-  return createTheme({
+/**
+ * Stable theme description kept for consumers that used the old Mantine bridge.
+ * The runtime no longer mounts Mantine; tokens.css/pinharness.css own the actual
+ * CSS variables. Keeping this serialisable shape avoids forcing feature code to
+ * know which component library provides the primitives.
+ */
+export interface AgentHubTheme {
+  primaryColor: 'aurora';
+  primaryShade: number;
+  colors: { aurora: readonly string[] };
+  defaultRadius: string;
+  focusRing: 'auto';
+  respectReducedMotion: true;
+  fontFamily: string;
+  fontFamilyMonospace: string;
+  headings: { fontFamily: string; fontWeight: string };
+  fontSizes: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', string>;
+  lineHeights: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', string>;
+  spacing: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', string>;
+  radius: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl', string>;
+  shadows: Record<'xs' | 'sm' | 'md' | 'lg', string>;
+}
+
+export function createAgentHubTheme(mode: ResolvedThemeMode): AgentHubTheme {
+  const fontFamily =
+    'Geist Variable, "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", system-ui, sans-serif';
+  const fontFamilyMonospace = '"JetBrains Mono", "SFMono-Regular", Consolas, monospace';
+  return {
     primaryColor: 'aurora',
     primaryShade: mode === 'dark' ? 5 : 6,
     colors: { aurora: mode === 'dark' ? auroraDark : auroraLight },
     defaultRadius: 'sm',
     focusRing: 'auto',
     respectReducedMotion: true,
-    fontFamily:
-      'Geist Variable, "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", system-ui, sans-serif',
-    fontFamilyMonospace: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
-    headings: {
-      fontFamily:
-        'Geist Variable, "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", system-ui, sans-serif',
-      fontWeight: '680',
-    },
+    fontFamily,
+    fontFamilyMonospace,
+    headings: { fontFamily, fontWeight: '680' },
     fontSizes: {
       xs: '0.75rem',
       sm: '0.78125rem',
@@ -112,5 +131,5 @@ export function createAgentHubTheme(mode: ResolvedThemeMode): MantineThemeOverri
       md: '0 14px 38px -18px rgba(17,22,38,.2)',
       lg: '0 28px 76px -28px rgba(17,22,38,.22)',
     },
-  });
+  };
 }

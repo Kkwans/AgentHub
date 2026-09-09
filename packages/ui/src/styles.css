@@ -1,4 +1,3 @@
-@import '@mantine/core/styles.css';
 @import './tokens.css';
 @import './workbench.css';
 
@@ -156,6 +155,149 @@ a {
   gap: 6px;
   overflow-x: auto;
   border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+/* Project context / metric / feedback surfaces are direct PinHarness markup.
+ * These primitives deliberately own their geometry here so no feature needs
+ * to re-introduce a provider-specific component tree. */
+.ah-project-context {
+  display: grid;
+  min-width: 0;
+  gap: var(--ah-space-4);
+}
+
+.ah-project-context-bar {
+  display: flex;
+  min-width: 0;
+  min-height: 72px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ah-space-4);
+}
+
+.ah-project-context-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--ah-space-1);
+}
+
+.ah-project-context-eyebrow {
+  color: var(--ah-accent-primary);
+  font-size: var(--ah-font-size-meta);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ah-project-context-copy h2 {
+  margin: 0;
+  color: var(--ah-text-primary);
+  font-size: 24px;
+  font-weight: 680;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.ah-project-context-copy code {
+  min-width: 0;
+  max-width: min(760px, 80vw);
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-family: var(--ah-font-mono);
+  font-size: var(--ah-font-size-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-project-context-tabs {
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: stretch;
+  gap: var(--ah-space-1);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.ah-project-context-tabs a {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: var(--ah-space-1);
+  padding: 0 var(--ah-space-3);
+  color: var(--ah-text-secondary);
+  border-bottom: 2px solid transparent;
+  border-radius: var(--ah-radius-control) var(--ah-radius-control) 0 0;
+  font-size: var(--ah-font-size-body);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    color var(--ah-motion-fast) ease,
+    background-color var(--ah-motion-fast) ease,
+    border-color var(--ah-motion-fast) ease;
+  white-space: nowrap;
+}
+
+.ah-project-context-tabs a:hover,
+.ah-project-context-tabs a:focus-visible {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+}
+
+.ah-project-context-tabs a[aria-current='page'] {
+  color: var(--ah-accent-primary);
+  border-bottom-color: var(--ah-accent-primary);
+}
+
+.ah-project-context-tabs small {
+  color: var(--ah-text-tertiary);
+  font-size: var(--ah-font-size-meta);
+}
+
+.ah-metric {
+  display: grid;
+  min-width: 0;
+  gap: var(--ah-space-1);
+}
+
+.ah-metric-label,
+.ah-metric-hint {
+  color: var(--ah-text-tertiary);
+  font-size: var(--ah-font-size-meta);
+  line-height: var(--ah-font-line-meta);
+}
+
+.ah-metric-value {
+  color: var(--ah-text-primary);
+  font-size: 24px;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ah-toast-notice {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--ah-space-2);
+  padding: var(--ah-space-3);
+  color: var(--ah-success);
+  background: var(--ah-success-soft);
+  border: 1px solid color-mix(in srgb, var(--ah-success) 20%, var(--ah-border-subtle));
+  border-radius: var(--ah-radius-surface);
+}
+
+.ah-toast-notice-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--ah-text-primary);
+  font-size: var(--ah-font-size-body);
+  line-height: var(--ah-font-line-body);
+}
+
+.ah-toast-notice > .ah-button {
+  margin: -4px -4px 0 0;
 }
 
 .ah-toolbar {

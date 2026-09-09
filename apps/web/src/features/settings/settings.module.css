@@ -225,11 +225,11 @@
   gap: 8px;
 }
 
-.settingControl :global(.mantine-Select-root) {
+.settingControl :global(.ah-field) {
   width: 160px;
 }
 
-.settingControl :global(.mantine-Switch-root) {
+.settingControl :global(.ah-switch) {
   padding: 4px 0;
 }
 
@@ -501,7 +501,7 @@
     justify-content: flex-start;
   }
 
-  .settingControl :global(.mantine-Select-root) {
+  .settingControl :global(.ah-field) {
     width: min(100%, 220px);
   }
 

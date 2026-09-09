@@ -118,8 +118,6 @@
   --ah-shadow-md: 0 14px 38px -18px rgb(17 22 38 / 20%);
   --ah-shadow-lg: 0 28px 76px -28px rgb(17 22 38 / 22%);
   --ah-shadow-accent: 0 12px 34px -12px rgb(98 70 245 / 30%);
-  --mantine-color-dimmed: var(--ah-text-secondary);
-
   /* Workbench owns only --wb-* names and never overrides global --ah-* semantics. */
   --wb-canvas: var(--ah-canvas);
   --wb-panel: var(--ah-surface);

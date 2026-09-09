@@ -1,4 +1,3 @@
-import { Alert, Anchor, Divider, Group, Stack, Text } from '@mantine/core';
 import { motion, useReducedMotion } from 'motion/react';
 import { CheckCircleIcon } from '@phosphor-icons/react/CheckCircle';
 import { InfoIcon } from '@phosphor-icons/react/Info';
@@ -215,45 +214,24 @@ export function AhProjectContext({
   tabs: Array<{ to: string; label: string; count?: number }>;
 }) {
   return (
-    <Stack gap={0}>
-      <Group justify="space-between" align="flex-start" gap="md" wrap="wrap">
-        <Stack gap={3}>
-          <Text size="xs" fw={700} c="aurora.7" tt="uppercase" lts="0.08em">
-            当前项目
-          </Text>
-          <Text size="xl" fw={700}>
-            {project.name}
-          </Text>
-          <Text size="sm" c="dimmed" ff="monospace" truncate="end" maw={760}>
-            {project.rootPath}
-          </Text>
-        </Stack>
+    <section className="ah-project-context">
+      <div className="ah-project-context-bar">
+        <div className="ah-project-context-copy">
+          <span className="ah-project-context-eyebrow">当前项目</span>
+          <h2>{project.name}</h2>
+          <code title={project.rootPath}>{project.rootPath}</code>
+        </div>
         {project.status ? <AhStatusPill status={project.status} /> : null}
-      </Group>
-      <nav
-        aria-label="项目上下文"
-        style={{ display: 'flex', gap: 4, overflowX: 'auto', marginTop: 24 }}
-      >
+      </div>
+      <nav aria-label="项目上下文" className="ah-project-context-tabs">
         {tabs.map((tab) => (
-          <Anchor
-            key={tab.to}
-            href={tab.to}
-            style={{
-              whiteSpace: 'nowrap',
-              padding: '9px 12px',
-              borderRadius: 8,
-              color: 'var(--ah-text-secondary)',
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            {tab.label}
-            {typeof tab.count === 'number' ? ` ${tab.count}` : ''}
-          </Anchor>
+          <a key={tab.to} href={tab.to}>
+            <span>{tab.label}</span>
+            {typeof tab.count === 'number' ? <small>{tab.count}</small> : null}
+          </a>
         ))}
       </nav>
-      <Divider mt={6} />
-    </Stack>
+    </section>
   );
 }
 
@@ -275,19 +253,13 @@ export function AhMetric({
     warning: 'var(--ah-warning)',
   };
   return (
-    <Stack gap={3}>
-      <Text size="xs" c="dimmed" fw={650}>
-        {label}
-      </Text>
-      <Text size="xl" fw={750} style={{ color: colors[tone] }}>
+    <div className="ah-metric" data-tone={tone}>
+      <span className="ah-metric-label">{label}</span>
+      <strong className="ah-metric-value" style={{ color: colors[tone] }}>
         {value}
-      </Text>
-      {hint ? (
-        <Text size="xs" c="dimmed">
-          {hint}
-        </Text>
-      ) : null}
-    </Stack>
+      </strong>
+      {hint ? <span className="ah-metric-hint">{hint}</span> : null}
+    </div>
   );
 }
 
@@ -612,13 +584,20 @@ export function AhToastNotice({
   onClose?: () => void;
 }) {
   return (
-    <Alert
-      icon={<CheckCircleIcon size={18} />}
-      color="green"
-      variant="light"
-      {...(onClose ? { withCloseButton: true, onClose } : {})}
-    >
-      {children}
-    </Alert>
+    <div className="ah-toast-notice" role="status">
+      <CheckCircleIcon size={18} aria-hidden />
+      <div className="ah-toast-notice-copy">{children}</div>
+      {onClose ? (
+        <PinButton
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label="关闭提示"
+          onClick={onClose}
+        >
+          <XIcon size={15} aria-hidden />
+        </PinButton>
+      ) : null}
+    </div>
   );
 }

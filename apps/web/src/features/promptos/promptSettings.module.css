@@ -504,7 +504,7 @@
   background: var(--ah-surface-subtle);
   border: 1px solid var(--ah-border-subtle);
   border-radius: 12px;
-  font: 12px/1.65 var(--mantine-font-family-monospace);
+  font: 12px/1.65 var(--ah-font-mono);
   white-space: pre;
 }
 

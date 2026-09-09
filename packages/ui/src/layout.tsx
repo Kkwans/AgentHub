@@ -179,15 +179,17 @@ export function ScreenHeader({
   eyebrow,
   actions,
   compact = false,
+  className,
 }: {
   title: string;
   description?: string;
   eyebrow?: string;
   actions?: ReactNode;
   compact?: boolean;
+  className?: string;
 }) {
   return (
-    <header className={cx('ah-screen-header', compact && 'ah-screen-header-compact')}>
+    <header className={cx('ah-screen-header', compact && 'ah-screen-header-compact', className)}>
       <div className="ah-screen-header-copy">
         {eyebrow ? <span className="ah-screen-eyebrow">{eyebrow}</span> : null}
         <h1>{title}</h1>

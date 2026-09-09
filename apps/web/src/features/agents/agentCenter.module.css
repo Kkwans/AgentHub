@@ -43,11 +43,11 @@
   border-bottom: 1px solid var(--ah-border-subtle);
 }
 
-.toolbar :global(.mantine-TextInput-root) {
+.toolbar :global(.ah-control-with-adornment) {
   flex: 1 1 auto;
 }
 
-.toolbar :global(.mantine-Select-root) {
+.toolbar :global(.ah-field) {
   width: 150px;
   flex: 0 0 auto;
 }
@@ -223,7 +223,7 @@
     padding: 10px;
   }
 
-  .toolbar :global(.mantine-Select-root) {
+  .toolbar :global(.ah-field) {
     width: 100%;
   }
 

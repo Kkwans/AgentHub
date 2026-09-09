@@ -1,20 +1,13 @@
-import { MantineProvider, type MantineColorScheme, type MantineProviderProps } from '@mantine/core';
 import {
   createContext,
   useContext,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from 'react';
 
-import {
-  AGENTHUB_THEME_STORAGE_KEY,
-  createAgentHubTheme,
-  resolveThemeMode,
-  type ThemePreference,
-} from './theme.js';
+import { AGENTHUB_THEME_STORAGE_KEY, resolveThemeMode, type ThemePreference } from './theme.js';
 
 export type SidebarPreference = 'remember' | 'expanded' | 'collapsed';
 export type DensityPreference = 'comfortable' | 'compact';
@@ -24,7 +17,7 @@ export const AGENTHUB_SIDEBAR_COLLAPSED_STORAGE_KEY = 'agenthub.sidebar.collapse
 export const AGENTHUB_DENSITY_STORAGE_KEY = 'agenthub.ui.density';
 export const AGENTHUB_REDUCED_MOTION_STORAGE_KEY = 'agenthub.ui.reduced-motion';
 
-export interface AgentHubProviderProps extends Omit<MantineProviderProps, 'theme' | 'children'> {
+export interface AgentHubProviderProps {
   children: ReactNode;
   initialPreference?: ThemePreference;
 }
@@ -66,11 +59,7 @@ function systemPrefersDark(): boolean {
   );
 }
 
-export function AgentHubProvider({
-  children,
-  initialPreference = 'light',
-  ...props
-}: AgentHubProviderProps) {
+export function AgentHubProvider({ children, initialPreference = 'light' }: AgentHubProviderProps) {
   const [preference, setPreference] = useState<ThemePreference>(() =>
     readPreference(initialPreference),
   );
@@ -112,41 +101,24 @@ export function AgentHubProvider({
     if (sidebarPreference === 'collapsed') setSidebarCollapsedState(true);
   }, [sidebarPreference]);
 
-  // Expose the setter without coupling feature code to Mantine's provider API.
-  // Settings will consume this context in the next foundation slice.
-  const theme = useMemo(() => createAgentHubTheme(mode), [mode]);
-  const colorScheme: MantineColorScheme = mode;
-
   return (
-    <MantineProvider
-      {...props}
-      theme={theme}
-      cssVariablesResolver={() => ({
-        variables: {},
-        light: { '--mantine-color-dimmed': 'var(--ah-text-secondary)' },
-        dark: { '--mantine-color-dimmed': 'var(--ah-text-secondary)' },
-      })}
-      forceColorScheme={colorScheme}
-      defaultColorScheme={colorScheme}
+    <AgentHubThemeContext.Provider
+      value={{
+        density,
+        mode,
+        preference,
+        reducedMotion,
+        setDensity,
+        setPreference,
+        setReducedMotion,
+        setSidebarCollapsed: setSidebarCollapsedState,
+        setSidebarPreference,
+        sidebarCollapsed,
+        sidebarPreference,
+      }}
     >
-      <AgentHubThemeContext.Provider
-        value={{
-          density,
-          mode,
-          preference,
-          reducedMotion,
-          setDensity,
-          setPreference,
-          setReducedMotion,
-          setSidebarCollapsed: setSidebarCollapsedState,
-          setSidebarPreference,
-          sidebarCollapsed,
-          sidebarPreference,
-        }}
-      >
-        {children}
-      </AgentHubThemeContext.Provider>
-    </MantineProvider>
+      {children}
+    </AgentHubThemeContext.Provider>
   );
 }
 

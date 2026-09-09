@@ -1,4 +1,4 @@
-import { AhErrorState, AhReveal, Skeleton, SkeletonText } from '@agenthub/ui';
+import { AhErrorState, AhPageHeader, AhReveal, Skeleton, SkeletonText } from '@agenthub/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ProjectRecord, TaskRecord } from '../../lib/api';
@@ -21,28 +21,13 @@ export function Screen({
   return (
     <div className="page-content page-shell min-h-full">
       <AhReveal>
-        <header className="workspace-header navigation-page-header -mx-4 mb-5 px-4 sm:-mx-6 sm:px-6">
-          <div className="page-header-row flex flex-wrap items-end justify-between gap-4 py-4 sm:py-5">
-            <div className="page-title-group flex min-w-0 items-start gap-3.5">
-              <div className="min-w-0">
-                <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--primary))]">
-                  {eyebrow}
-                </span>
-                <h1 className="page-title m-0 text-[clamp(22px,2.6vw,30px)] font-semibold leading-tight tracking-[-0.03em] text-[hsl(var(--foreground))]">
-                  {title}
-                </h1>
-                {description ? (
-                  <p className="page-subtitle mt-2 max-w-[42rem] text-sm leading-5 text-[hsl(var(--foreground-muted))]">
-                    {description}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            {actions ? (
-              <div className="page-header-actions flex flex-wrap items-center gap-2">{actions}</div>
-            ) : null}
-          </div>
-        </header>
+        <AhPageHeader
+          eyebrow={eyebrow}
+          title={title}
+          {...(description ? { description } : {})}
+          {...(actions ? { actions } : {})}
+          className="mb-5 border-b border-[hsl(var(--border))]/70 pb-5"
+        />
       </AhReveal>
       {children}
     </div>
