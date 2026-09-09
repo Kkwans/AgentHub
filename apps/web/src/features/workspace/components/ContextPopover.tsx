@@ -1,4 +1,4 @@
-import { AhButton, GitBranch } from '@agenthub/ui';
+import { Button, GitBranch } from '@agenthub/ui';
 
 import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { ProjectRecord, ResolvedPromptContextRecord, SessionRecord } from '../../../lib/api';
@@ -47,9 +47,9 @@ export function ContextPopover({
       ) : promptContextError ? (
         <div className="prompt-context-error">
           <ErrorState error={promptContextError} />
-          <AhButton color="red" size="xs" variant="light" onClick={() => promptContextRetry()}>
+          <Button size="xs" variant="destructive" onClick={() => promptContextRetry()}>
             重新解析
-          </AhButton>
+          </Button>
         </div>
       ) : (
         <>
@@ -107,9 +107,9 @@ export function ContextPopover({
                   rows={4}
                   aria-label="变量 JSON"
                 />
-                <AhButton color="gray" size="xs" variant="light" onClick={onApplyVariables}>
+                <Button size="xs" variant="outline" onClick={onApplyVariables}>
                   应用并重新解析
-                </AhButton>
+                </Button>
                 {variablesError ? (
                   <small className="context-variable-error" role="alert">
                     {variablesError}

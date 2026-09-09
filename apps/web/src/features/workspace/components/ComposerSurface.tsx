@@ -1,4 +1,4 @@
-import { AhButton } from '@agenthub/ui';
+import { Button } from '@agenthub/ui';
 import { type KeyboardEvent, type PointerEvent, type RefObject, useEffect } from 'react';
 
 import type { RunRecord } from '../../../lib/api';
@@ -96,15 +96,9 @@ export function ComposerSurface({
       {stopError ? (
         <div className="workspace-query-error" role="alert">
           <span>停止 Run 失败：{stopError}</span>
-          <AhButton
-            color="red"
-            size="xs"
-            variant="light"
-            disabled={stopPending}
-            onClick={onRetryStop}
-          >
+          <Button size="xs" variant="destructive" disabled={stopPending} onClick={onRetryStop}>
             重试停止
-          </AhButton>
+          </Button>
         </div>
       ) : null}
       {sendError ? (

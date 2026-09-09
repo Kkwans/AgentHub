@@ -1,8 +1,8 @@
 import {
   AlertTriangle,
-  AhButton,
   Brain,
   Bot,
+  Button,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -701,28 +701,21 @@ function ApprovalEventRow({
               {approval.optionsJson.map(
                 (option) =>
                   option.id && (
-                    <AhButton
+                    <Button
                       key={option.id}
-                      color={
-                        /reject|deny|refuse/i.test(
-                          `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
-                        )
-                          ? 'gray'
-                          : 'orange'
-                      }
                       size="xs"
                       variant={
                         /reject|deny|refuse/i.test(
                           `${option.kind ?? ''} ${option.id} ${option.label ?? ''}`,
                         )
-                          ? 'light'
-                          : 'filled'
+                          ? 'outline'
+                          : 'default'
                       }
                       onClick={() => onResolve({ id: approval.id, optionId: option.id! })}
                       disabled={Boolean(resolving)}
                     >
                       {option.label ?? option.id}
-                    </AhButton>
+                    </Button>
                   ),
               )}
             </div>
@@ -773,15 +766,14 @@ function ApprovalEventRow({
           <span>{resolveError.message}</span>
           {((resolveError as Error & { code?: string }).code ?? '') !==
             'APPROVAL_DECISION_CONFLICT' && (
-            <AhButton
-              color="red"
+            <Button
               size="xs"
-              variant="light"
+              variant="destructive"
               disabled={Boolean(resolving)}
               onClick={() => onResolve(resolveVariables)}
             >
               重试此选项
-            </AhButton>
+            </Button>
           )}
         </div>
       )}
