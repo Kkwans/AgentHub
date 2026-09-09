@@ -323,6 +323,32 @@ const SHELL_READY_TIMEOUT = 30_000;
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/**', fulfillFixture);
+  await page.addInitScript(() => {
+    class FixtureWebSocket extends EventTarget {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+
+      readonly readyState = FixtureWebSocket.CLOSED;
+      readonly url: string;
+
+      constructor(url: string | URL) {
+        super();
+        this.url = String(url);
+      }
+
+      send(): void {}
+
+      close(): void {}
+    }
+
+    Object.defineProperty(window, 'WebSocket', {
+      configurable: true,
+      writable: true,
+      value: FixtureWebSocket,
+    });
+  });
 });
 
 test('全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ page }) => {

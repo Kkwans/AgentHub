@@ -6,6 +6,10 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 2 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
+  // Loading the fixture shell includes the lazy route and its data skeleton;
+  // keep assertions semantic while allowing the NAS worker to cross that
+  // readiness boundary under load.
+  expect: { timeout: 30_000 },
   use: {
     baseURL: process.env.AGENTHUB_E2E_BASE_URL ?? 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
