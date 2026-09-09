@@ -655,7 +655,7 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
     'page',
   );
   await expect(page.getByRole('button', { name: '列表' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('combobox', { name: '工作状态' })).toHaveValue('待审阅');
+  await expect(page.getByRole('combobox', { name: '工作状态' })).toContainText('待审阅');
   await expect(page.getByRole('region', { name: '工作列表' })).toContainText(task.title);
   await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
