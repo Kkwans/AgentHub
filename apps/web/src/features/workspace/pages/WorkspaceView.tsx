@@ -14,8 +14,8 @@ import {
 } from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '../../../components/Feedback';
-import { Composer } from '../components/Composer';
-import { Conversation } from '../components/Conversation';
+import { ChatCommandBar } from '../components/Composer';
+import { ChatConversationView } from '../components/Conversation';
 import { SessionRail } from '../components/SessionRail';
 import { TerminalDock } from '../components/TerminalDock';
 import { WorkspaceInspector, type InspectorTab } from '../components/WorkspaceInspector';
@@ -253,7 +253,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           middle={
             <section className="workspace-panel workbench-panel conversation-panel h-full min-h-0 min-w-0 overflow-hidden">
               <div className="relative grid h-full min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[hsl(var(--surface))]">
-                <Conversation
+                <ChatConversationView
                   session={currentSession}
                   messages={messages}
                   events={events}
@@ -271,7 +271,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                   isLoadingPreviousMessages={messages.isFetchingPrevious}
                   onLoadPreviousMessages={messages.fetchPrevious}
                 />
-                <Composer
+                <ChatCommandBar
                   session={currentSession}
                   agent={agent}
                   events={events}

@@ -58,7 +58,8 @@ function useWorkspaceAction<TInput, TResult>(action: (input: TInput) => Promise<
   };
 }
 
-export function Composer({
+/** PinHarness source component name; AgentHub keeps Composer as a compatibility export. */
+export function ChatCommandBar({
   session,
   agent,
   project,
@@ -435,6 +436,8 @@ export function Composer({
     </section>
   );
 }
+
+export const Composer = ChatCommandBar;
 
 function readAgentCommands(events: EventRecord[] | undefined): ComposerCommand[] {
   const latest = [...(events ?? [])]

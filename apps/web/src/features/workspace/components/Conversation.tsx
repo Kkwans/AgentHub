@@ -57,7 +57,8 @@ export {
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
-export function Conversation({
+/** PinHarness source component: ChatConversationView owns scroll, rounds and composer adjacency. */
+export function ChatConversationView({
   session,
   messages,
   events,
@@ -127,6 +128,8 @@ export function Conversation({
   const loadingPreviousRef = useRef(false);
   const [timelineWindowStart, setTimelineWindowStart] = useState(0);
   const [isFollowingTimeline, setIsFollowingTimeline] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const previousTimelineLengthRef = useRef(timeline.length);
   const [viewportMeasured, setViewportMeasured] = useState(false);
   const latestTimelineId = timeline.at(-1)?.id;
   const latestWindowStart = getConversationWindowStart(turns.length);
@@ -177,9 +180,18 @@ export function Conversation({
     followTimelineRef.current = true;
     clearUserScrollIntent();
     setIsFollowingTimeline(true);
+    setUnreadCount(0);
     setTimelineWindowStart(0);
   }, [clearUserScrollIntent, session.id]);
   useEffect(() => clearUserScrollIntent, [clearUserScrollIntent]);
+  useEffect(() => {
+    const previousLength = previousTimelineLengthRef.current;
+    if (!isFollowingTimeline && timeline.length > previousLength) {
+      setUnreadCount((count) => count + timeline.length - previousLength);
+    }
+    if (isFollowingTimeline) setUnreadCount(0);
+    previousTimelineLengthRef.current = timeline.length;
+  }, [isFollowingTimeline, timeline.length]);
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
@@ -278,6 +290,7 @@ export function Conversation({
     clearUserScrollIntent();
     followTimelineRef.current = true;
     setIsFollowingTimeline(true);
+    setUnreadCount(0);
     setTimelineWindowStart(latestWindowStart);
     scheduleLatestScroll();
   };
@@ -416,7 +429,7 @@ export function Conversation({
                     className="conversation-virtual-item absolute left-0 top-0 w-full will-change-transform"
                     style={{ transform: `translateY(${virtualItem.start}px)` }}
                   >
-                    {virtualItem.index > 0 && <ConversationTurnDivider />}
+                    {virtualItem.index > 0 && <RoundDivider />}
                     <RoundBlock turn={turn} {...renderItemProps} />
                   </div>
                 );
@@ -426,7 +439,7 @@ export function Conversation({
             <div className="conversation-timeline grid gap-1.5 px-0.5 py-2 sm:gap-3 sm:px-1 sm:py-3">
               {displayTurns.map((turn, index) => (
                 <Fragment key={turn.id}>
-                  {index > 0 && <ConversationTurnDivider />}
+                  {index > 0 && <RoundDivider />}
                   <RoundBlock turn={turn} {...renderItemProps} />
                 </Fragment>
               ))}
@@ -443,18 +456,26 @@ export function Conversation({
         >
           <ChevronDown size={14} aria-hidden="true" />
           回到最新
+          {unreadCount > 0 && (
+            <span className="rounded-full bg-[hsl(var(--primary))] px-1.5 py-0.5 text-[9px] text-[hsl(var(--primary-foreground))]">
+              {unreadCount}
+            </span>
+          )}
         </button>
       )}
     </section>
   );
 }
 
-function ConversationTurnDivider() {
+/** Compatibility export for existing AgentHub route/tests while callers migrate to source name. */
+export const Conversation = ChatConversationView;
+
+/** PinHarness source divider: a quiet gradient line between completed rounds. */
+function RoundDivider() {
   return (
-    <div
-      className="mx-auto my-2 h-px w-[85%] bg-[hsl(var(--border))]/45 sm:my-3"
-      aria-hidden="true"
-    />
+    <div className="mx-auto my-2 flex w-[85%] items-center gap-3 sm:my-3" aria-hidden="true">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[hsl(var(--border))]/50 to-transparent" />
+    </div>
   );
 }
 
