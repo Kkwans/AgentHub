@@ -1,12 +1,16 @@
 import {
-  AhTabs,
   Bot,
   ChevronRight,
   GitBranch,
   GitCompareArrows,
   Menu,
+  Tabs as PinTabs,
+  TabsList,
+  TabsTrigger,
+  ThreeColumnSplit,
   WorkbenchDisclosure,
   X,
+  type CompactPanel,
 } from '@agenthub/ui';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '../../../components/Feedback';
@@ -16,7 +20,6 @@ import { SessionRail } from '../components/SessionRail';
 import { TerminalDock } from '../components/TerminalDock';
 import { WorkspaceInspector, type InspectorTab } from '../components/WorkspaceInspector';
 import workspaceStyles from '../workspace.module.css';
-import { ThreeColumnSplit, type CompactPanel } from '@agenthub/ui';
 
 import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
@@ -195,17 +198,17 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         )}
       </div>
       {inspectorActsAsDrawer && (
-        <AhTabs.Root value={legacyMobilePanel}>
-          <AhTabs.List
+        <PinTabs value={legacyMobilePanel}>
+          <TabsList
             className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
             aria-label="Workspace 视图"
           >
-            <AhTabs.Trigger value="sessions" aria-label="会话" onClick={openSessionDrawer}>
+            <TabsTrigger value="sessions" aria-label="会话" onClick={openSessionDrawer}>
               会话
-            </AhTabs.Trigger>
-            <AhTabs.Trigger value="conversation" aria-label="对话" onClick={closeMobileInspector}>
+            </TabsTrigger>
+            <TabsTrigger value="conversation" aria-label="对话" onClick={closeMobileInspector}>
               对话
-            </AhTabs.Trigger>
+            </TabsTrigger>
             {(
               [
                 ['files', '文件'],
@@ -214,17 +217,17 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                 ['run', '运行'],
               ] as Array<[InspectorTab, string]>
             ).map(([item, label]) => (
-              <AhTabs.Trigger
+              <TabsTrigger
                 key={item}
                 value={item}
                 aria-label={label}
                 onClick={() => openInspectorDrawer(item)}
               >
                 {label}
-              </AhTabs.Trigger>
+              </TabsTrigger>
             ))}
-          </AhTabs.List>
-        </AhTabs.Root>
+          </TabsList>
+        </PinTabs>
       )}
       <div
         id="workspace-panels"

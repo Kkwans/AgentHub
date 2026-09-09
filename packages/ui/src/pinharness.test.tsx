@@ -5,7 +5,18 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { Badge, Button, Card, Input, Skeleton, Textarea } from './pinharness/index.js';
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Textarea,
+} from './pinharness/index.js';
 
 afterEach(cleanup);
 
@@ -41,5 +52,24 @@ describe('PinHarness primitives exposed by @agenthub/ui', () => {
     expect(link.tagName).toBe('A');
     expect(link).toHaveAttribute('href', '/workspace/demo');
     expect(link).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('keeps Radix tab focus/state semantics from the source kit', () => {
+    render(
+      <Tabs defaultValue="conversation">
+        <TabsList aria-label="工作区视图">
+          <TabsTrigger value="conversation">对话</TabsTrigger>
+          <TabsTrigger value="files">文件</TabsTrigger>
+        </TabsList>
+        <TabsContent value="conversation">对话内容</TabsContent>
+        <TabsContent value="files">文件内容</TabsContent>
+      </Tabs>,
+    );
+
+    const conversation = screen.getByRole('tab', { name: '对话' });
+    expect(conversation).toHaveAttribute('data-state', 'active');
+    expect(conversation).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: '对话' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: '文件' })).toHaveAttribute('data-state', 'inactive');
   });
 });

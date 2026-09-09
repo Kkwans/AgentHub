@@ -1,4 +1,4 @@
-import { AhTabs } from '@agenthub/ui';
+import { Tabs, TabsList, TabsTrigger } from '@agenthub/ui';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
@@ -87,18 +87,18 @@ export function WorkspaceInspector({
       className={`${inspectorStyles.owner} inspector flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
-      <AhTabs.Root value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
-        <AhTabs.List
+      <Tabs value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
+        <TabsList
           className="inspector-tabs flex min-h-12 items-center gap-5 overflow-x-auto border-b border-[hsl(var(--border))] px-4"
           aria-label="检查器视图"
         >
           {tabs.map((item) => (
-            <AhTabs.Trigger key={item.id} value={item.id} aria-label={item.label}>
+            <TabsTrigger key={item.id} value={item.id} aria-label={item.label}>
               {item.label}
-            </AhTabs.Trigger>
+            </TabsTrigger>
           ))}
-        </AhTabs.List>
-      </AhTabs.Root>
+        </TabsList>
+      </Tabs>
       <div className="inspector-body min-h-0 flex-1 overflow-auto bg-[hsl(var(--surface))]">
         {projects.isLoading ? (
           <LoadingState label="正在读取 Project" />

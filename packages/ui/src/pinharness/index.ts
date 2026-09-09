@@ -4,4 +4,5 @@ export * from './ui/card.js';
 export * from './ui/cn.js';
 export * from './ui/input.js';
 export * from './ui/skeleton.js';
+export * from './ui/tabs.js';
 export * from './ui/textarea.js';
