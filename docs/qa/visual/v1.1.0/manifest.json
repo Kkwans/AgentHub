@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "036cd71e810d3bb09aae0101a785ef341e574bc4",
+  "sourceCommit": "7468e3865c9f96be1423a42e236cbd512e9820a4",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -21,19 +21,19 @@
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v9",
-    "imageId": "sha256:176dfc9c003ac875faf7ebb4d4e8ec08e1e28a2305d8f48c68b4f490f184b50e",
-    "revision": "d759bff62f55001aa23a7447a4992f102158963a",
+    "image": "agenthub:2026.9.9-v10",
+    "imageId": "sha256:c60c0a21759b7d54a053a5ce519a86b0633a347e308491d680d43620f9e3720e",
+    "revision": "036cd71e810d3bb09aae0101a785ef341e574bc4",
     "preserve": true
   },
   "productionReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v10",
-    "imageId": "sha256:c60c0a21759b7d54a053a5ce519a86b0633a347e308491d680d43620f9e3720e",
-    "revision": "036cd71e810d3bb09aae0101a785ef341e574bc4",
-    "checkedAt": "2026-09-09T00:43:26.655Z",
+    "image": "agenthub:2026.9.9-v11",
+    "imageId": "sha256:84f8783b3e7ffb87c49643d2706919e460bdd818fdee63e33e30a14228c4944d",
+    "revision": "7468e3865c9f96be1423a42e236cbd512e9820a4",
+    "checkedAt": "2026-09-09T01:09:59.490Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -42,19 +42,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/DockerProject/agenthub/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v10",
-    "imageId": "sha256:c60c0a21759b7d54a053a5ce519a86b0633a347e308491d680d43620f9e3720e",
+    "image": "agenthub:2026.9.9-v11",
+    "imageId": "sha256:84f8783b3e7ffb87c49643d2706919e460bdd818fdee63e33e30a14228c4944d",
     "architecture": "arm64",
-    "revision": "036cd71e810d3bb09aae0101a785ef341e574bc4",
-    "created": "2026-09-09T00:37:07Z",
-    "deployedAt": "2026-09-09T00:42:12Z",
+    "revision": "7468e3865c9f96be1423a42e236cbd512e9820a4",
+    "created": "2026-09-09T01:01:36Z",
+    "deployedAt": "2026-09-09T01:08:40Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260909T004200Z-pre-shared-pinharness-css/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260909T010825Z-pre-workspace-layout-contract/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -98,6 +98,7 @@
         "pnpm exec vitest run packages/ui/src/three-column-split.test.ts packages/ui/src/pinharness.test.tsx packages/ui/src/provider.test.tsx --pool=forks --maxWorkers=1 (3 files, 6 passed)",
         "pnpm exec vitest run packages/ui/src --pool=forks --maxWorkers=1 (8 files, 28 passed; after shared layout move)",
         "pnpm exec vitest run apps/web/src/features/feature-boundary.test.ts packages/ui/src/pinharness.test.tsx --pool=forks --maxWorkers=1 (2 files, 14 passed; shared PinHarness stylesheet entry)",
+        "pnpm exec vitest run packages/ui/src/workbench.test.tsx apps/web/src/features/workspace/layoutPreferences.test.ts --pool=forks --maxWorkers=1 (2 files, 6 passed; shared WorkspaceLayoutV2 contract)",
         "pnpm --filter @agenthub/ui build && pnpm --filter @agenthub/web build (pass after moving PinHarness stylesheet into @agenthub/ui)",
         "pnpm --filter @agenthub/ui typecheck && pnpm --filter @agenthub/web typecheck (pass after shared layout move)",
         "pnpm qa:css-budget (pass; PinHarness source snapshot provenance envelope plus strict feature budgets)",
@@ -130,10 +131,10 @@
         "pageErrors": 0,
         "requestFailures": 0,
         "knownWarnings": [],
-        "evidence": "docs/qa/visual/v1.1.0/20-deployed-shared-pinharness-css-20260909.json",
-        "capturedAt": "2026-09-09T00:43:26.655Z",
-        "image": "agenthub:2026.9.9-v10",
-        "revision": "036cd71e810d3bb09aae0101a785ef341e574bc4"
+        "evidence": "docs/qa/visual/v1.1.0/21-deployed-workspace-layout-contract-20260909.json",
+        "capturedAt": "2026-09-09T01:09:59.490Z",
+        "image": "agenthub:2026.9.9-v11",
+        "revision": "7468e3865c9f96be1423a42e236cbd512e9820a4"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -159,11 +160,11 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v10 and 1.0.0 remains tagged and retained as the rollback point.",
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v11 and 1.0.0 remains tagged and retained as the rollback point.",
     "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36, d12ab1d, c23770a and db68ed1 were pushed to main before the 2026.9.9-v8 image build.",
-    "The v10 unauthenticated production smoke was run after moving the PinHarness source snapshot behind @agenthub/ui; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
+    "The v11 unauthenticated production smoke was run after sharing the WorkspaceLayoutV2 contract; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
     "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 71 files (67 passed, 4 skipped), 306 tests (296 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
-    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260909T004200Z-pre-shared-pinharness-css/.",
+    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260909T010825Z-pre-workspace-layout-contract/.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }
