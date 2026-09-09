@@ -4,7 +4,6 @@ import {
   Divider,
   Group,
   Loader,
-  Modal,
   Skeleton,
   Stack,
   Text,
@@ -30,6 +29,7 @@ import { cn } from './pinharness/ui/cn.js';
 import { Input as PinInput } from './pinharness/ui/input.js';
 import { Select as PinSelect } from './pinharness/ui/select.js';
 import { Textarea as PinTextarea } from './pinharness/ui/textarea.js';
+import { FormDialog } from './components/index.js';
 import { useAgentHubTheme } from './provider.js';
 
 const statusLabels: Record<string, string> = {
@@ -438,28 +438,32 @@ export function AhDialog({
   fullScreen?: boolean;
 }) {
   return (
-    <Modal
-      opened={open}
-      onClose={onClose}
+    <FormDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
       title={title}
-      size={size}
+      size={resolveFormDialogSize(size)}
       fullScreen={fullScreen}
-      centered
-      closeButtonProps={{ 'aria-label': '关闭' }}
+      {...(description ? { description } : {})}
+      {...(actions ? { footer: actions } : {})}
     >
-      {description ? (
-        <Text c="dimmed" size="sm" mb="md">
-          {description}
-        </Text>
-      ) : null}
       {children}
-      {actions ? (
-        <Group justify="flex-end" mt="xl">
-          {actions}
-        </Group>
-      ) : null}
-    </Modal>
+    </FormDialog>
   );
+}
+
+function resolveFormDialogSize(size: number | string | undefined): 'small' | 'medium' | 'large' {
+  if (typeof size === 'number') {
+    if (size <= 480) return 'small';
+    if (size >= 760) return 'large';
+    return 'medium';
+  }
+  if (size === 'small' || size === 'medium' || size === 'large') return size;
+  if (size === 'xs' || size === 'sm') return 'small';
+  if (size === 'lg' || size === 'xl') return 'large';
+  return 'medium';
 }
 
 export function AhDrawer({
