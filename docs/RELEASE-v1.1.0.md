@@ -43,15 +43,23 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 当前生产镜像为 `agenthub:2026.9.9-v26`，image ID `sha256:93c297abe3af9b065082f08cb750327b5ee8ea6cbb2daf8237b331d2c96fa6cb`，OCI revision `ccfa0364ec7c24389f4e6a850229f3f466eca957`，架构 `linux/arm64`；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260909T064325Z-pre-conversation-visual`；
 - 未登录真实入口四视口 smoke 证据见 [`docs/qa/visual/v1.1.0/32-deployed-conversation-visual-20260909.json`](qa/visual/v1.1.0/32-deployed-conversation-visual-20260909.json)：HTTP 200、无横向溢出、console/page/request errors 均为 0；认证 Workspace、真实 Agent/PTY、性能与独立视觉复核仍未验证。
 
+### 第二十二轮：清理废弃 Shell CSS 并固化 v28 候选（2026-09-09）
+
+- 删除 AppShell 中已经不再被运行时代码引用的旧侧栏 CSS 模块，保留 Command Palette 的实际样式；页面壳层继续由 PinHarness token、Tailwind utilities 和共享 `@agenthub/ui` primitives 驱动，避免废弃选择器重新覆盖三栏工作台；
+- 同步将 Prompt Library、Settings 和全局 RouteLoading 的页面标题切换为共享 `AhPageHeader`，消除旧 `workspace-header` 卡片在普通页面中的残留层级；
+- 代码提交 `138e957`（共享页面标题）与 `7b594f2`（Shell CSS 清理）已推送 `main`；UI/Web typecheck/build、Shell/App/Provider 聚焦 Vitest（3 files/18 passed）、四视口页面语义 Playwright（20/20 passed）、全仓 lint/format 与 `git diff --check` 均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v28`，image ID `sha256:bc024753a89d60ef06dd247ed2dbcd451b1593a5d96a9b827b20503382fa9562`，OCI revision `7b594f27379a97d7f6559981820485d6c76d909b`，架构 `linux/arm64`；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260909T071838Z-pre-shell-css-cleanup`；
+- v28 部署后 NAS-local Playwright 未登录真实入口四视口 smoke 证据见 [`docs/qa/visual/v1.1.0/33-deployed-shell-css-cleanup-20260909.json`](qa/visual/v1.1.0/33-deployed-shell-css-cleanup-20260909.json)：HTTP 200、无横向溢出、console/page/request errors 均为 0；认证 Workspace、真实 Agent/PTY、性能、备份恢复与独立视觉复核仍未验证。
+
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v26`，镜像为 Linux `arm64`，OCI `revision` 为 `ccfa0364ec7c24389f4e6a850229f3f466eca957`；
-- 当前生产源码提交：`ccfa0364ec7c24389f4e6a850229f3f466eca957`（已推送 `main`）；镜像 ID 为 `sha256:93c297abe3af9b065082f08cb750327b5ee8ea6cbb2daf8237b331d2c96fa6cb`；随后推送的 `7370ef6` 仅更新 E2E 断言，不改变 v26 运行时代码；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v28`，镜像为 Linux `arm64`，OCI `revision` 为 `7b594f27379a97d7f6559981820485d6c76d909b`；
+- 当前生产源码提交：`7b594f27379a97d7f6559981820485d6c76d909b`（已推送 `main`）；镜像 ID 为 `sha256:bc024753a89d60ef06dd247ed2dbcd451b1593a5d96a9b827b20503382fa9562`；`138e957` 与 `7b594f2` 均包含在当前候选源码中；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
 - 2026-09-09 14:43:34（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T064325Z-pre-conversation-visual`；v25 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T060205Z-pre-mantine-removal`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T071838Z-pre-shell-css-cleanup`；v27 前候选材料保留在同一快照中；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
