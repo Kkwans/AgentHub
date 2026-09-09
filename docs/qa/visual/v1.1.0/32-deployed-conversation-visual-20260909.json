@@ -1,0 +1,101 @@
+{
+  "capturedAt": "2026-09-09T06:45:43.878Z",
+  "target": "http://192.168.5.110:3210",
+  "route": "/overview",
+  "authenticated": false,
+  "image": "agenthub:2026.9.9-v26",
+  "imageId": "sha256:93c297abe3af9b065082f08cb750327b5ee8ea6cbb2daf8237b331d2c96fa6cb",
+  "revision": "ccfa0364ec7c24389f4e6a850229f3f466eca957",
+  "browser": "NAS-local Playwright Chromium (headless)",
+  "container": {
+    "id": "b499ebb00c09f09bfed21e03b389b99162c4b574b40d200998e275f9cb721ea9",
+    "startedAt": "2026-09-09T06:43:34.824062916Z",
+    "status": "running",
+    "health": "healthy",
+    "exitCode": 0,
+    "oomKilled": false
+  },
+  "health": {
+    "httpStatus": 200,
+    "version": "1.1.0",
+    "database": "pglite",
+    "web": true
+  },
+  "viewports": [
+    {
+      "name": "desktop-1440",
+      "width": 1440,
+      "height": 900,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyWidth": 1440,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    },
+    {
+      "name": "desktop-1024",
+      "width": 1024,
+      "height": 768,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyWidth": 1024,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    },
+    {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "bodyWidth": 768,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    },
+    {
+      "name": "mobile-390",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "bodyWidth": 390,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    }
+  ],
+  "stableOtherContainers": "unchanged",
+  "scope": "v26 对话流 PinHarness 动效与气泡视觉迁移后的未登录真实入口 smoke；不等同认证 Workspace、Agent、Terminal、PTY 或完整视觉验收。",
+  "rollback": {
+    "image": "agenthub:2026.9.9-v25",
+    "imageId": "sha256:aebf0c3598763a09aeccdd996d22ca69bb4aa66abf60c7854b6f8639ba6b70a2",
+    "backup": "/volume2/Project/.agenthub/central/deployments/20260909T064325Z-pre-conversation-visual"
+  },
+  "releaseRollback": {
+    "image": "agenthub:2026.9.5-v2",
+    "imageId": "sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03"
+  }
+}

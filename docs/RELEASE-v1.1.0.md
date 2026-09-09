@@ -35,15 +35,23 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 当前生产镜像为 `agenthub:2026.9.9-v24`，image ID `sha256:ccf2fc1c4b3d1d48356ac1635e49749c10f572e89a32815e3fe279879cb686b9`，OCI revision `fee7720e7139ec412ddb66eeb0098667eb0c3e08`；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260909T133658Z-pre-switch/`；
 - 未登录真实入口四视口 smoke 证据见 [`docs/qa/visual/v1.1.0/31-deployed-switch-20260909.json`](qa/visual/v1.1.0/31-deployed-switch-20260909.json)；认证 Workspace、真实 Agent/PTY、性能与独立视觉复核仍未验证。
 
+### 第二十一轮：移除 Mantine 运行时并对齐对话动效（2026-09-09）
+
+- `@agenthub/ui` 不再挂载 Mantine Provider、theme 或全局 CSS；保留原有导出名和调用参数，但 `ProjectContext`、Metric、Toast、Select、Card、Badge、Dialog、Feedback、Switch、Input/Textarea 全部由已复制的 PinHarness primitives 与语义 token 渲染，页面不再受到第二套组件 CSS 影响；
+- Workspace Conversation 直接采用 PinHarness 的顶部渐隐、用户气泡渐变、居中“回到最新”与 reduced-motion 过渡；消息归并、Approval 插入、REST/WebSocket/Terminal 契约不变；
+- 代码提交 `a4c3e40`（移除 Mantine/统一页面基元）、`7370ef6`（Radix Select E2E 断言）与 `ccfa036`（对话视觉）均已推送 `main`；UI/Web typecheck/build、6 files/30 passed UI 聚焦测试、Workspace 9 files/41 passed、Work 四视口 4/4、Workspace desktop 1/1、全仓 lint/format/diff 均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v26`，image ID `sha256:93c297abe3af9b065082f08cb750327b5ee8ea6cbb2daf8237b331d2c96fa6cb`，OCI revision `ccfa0364ec7c24389f4e6a850229f3f466eca957`，架构 `linux/arm64`；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260909T064325Z-pre-conversation-visual`；
+- 未登录真实入口四视口 smoke 证据见 [`docs/qa/visual/v1.1.0/32-deployed-conversation-visual-20260909.json`](qa/visual/v1.1.0/32-deployed-conversation-visual-20260909.json)：HTTP 200、无横向溢出、console/page/request errors 均为 0；认证 Workspace、真实 Agent/PTY、性能与独立视觉复核仍未验证。
+
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v24`，镜像为 Linux `arm64`，OCI `revision` 为 `fee7720e7139ec412ddb66eeb0098667eb0c3e08`；
-- 当前生产源码提交：`fee7720e7139ec412ddb66eeb0098667eb0c3e08`（已推送 `main`）；镜像 ID 为 `sha256:ccf2fc1c4b3d1d48356ac1635e49749c10f572e89a32815e3fe279879cb686b9`；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v26`，镜像为 Linux `arm64`，OCI `revision` 为 `ccfa0364ec7c24389f4e6a850229f3f466eca957`；
+- 当前生产源码提交：`ccfa0364ec7c24389f4e6a850229f3f466eca957`（已推送 `main`）；镜像 ID 为 `sha256:93c297abe3af9b065082f08cb750327b5ee8ea6cbb2daf8237b331d2c96fa6cb`；随后推送的 `7370ef6` 仅更新 E2E 断言，不改变 v26 运行时代码；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
-- 2026-09-09 13:37:26（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- 2026-09-09 14:43:34（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T133658Z-pre-switch/`；v23 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T132222Z-pre-select-search-drawer/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T064325Z-pre-conversation-visual`；v25 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T060205Z-pre-mantine-removal`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
