@@ -13,6 +13,20 @@ export type WorkbenchExecutionState =
   'queued' | 'running' | 'success' | 'waiting' | 'error' | 'idle';
 
 /**
+ * Persisted Workspace layout contract shared by the shell and feature layer.
+ *
+ * The values are intentionally plain view preferences: migration, clamping
+ * and storage ownership remain in the web feature so the UI package never
+ * reaches into localStorage or a domain API.
+ */
+export interface WorkspaceLayoutV2 {
+  leftWidth: number;
+  leftCollapsed: boolean;
+  rightWidth: number;
+  rightCollapsed: boolean;
+}
+
+/**
  * Motion values are intentionally limited to opacity and transform so the
  * workbench never animates layout or causes a neighboring panel to reflow.
  * CSS owns the timing and reduced-motion fallback in styles.css.

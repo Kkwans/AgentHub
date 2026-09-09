@@ -1,3 +1,5 @@
+import type { WorkspaceLayoutV2 } from '@agenthub/ui';
+
 export const WORKSPACE_LAYOUT_STORAGE_KEYS = {
   leftWidth: 'agenthub.workspace.layout-v2.left.width',
   leftCollapsed: 'agenthub.workspace.layout-v2.left.collapsed',
@@ -24,12 +26,8 @@ export const WORKSPACE_PANEL_LIMITS = {
   right: { defaultSize: 380, min: 320, max: 560 },
 } as const;
 
-export interface WorkspaceLayoutPreference {
-  leftWidth: number;
-  leftCollapsed: boolean;
-  rightWidth: number;
-  rightCollapsed: boolean;
-}
+/** Backwards-compatible feature name for the shared persisted layout contract. */
+export type WorkspaceLayoutPreference = WorkspaceLayoutV2;
 
 type LayoutStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
