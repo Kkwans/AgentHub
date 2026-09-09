@@ -5,13 +5,11 @@ import {
   Group,
   Loader,
   Modal,
-  Paper,
   Skeleton,
   Stack,
   Text,
   ThemeIcon,
   Drawer,
-  type PaperProps,
 } from '@mantine/core';
 import { motion, useReducedMotion } from 'motion/react';
 import { CheckCircleIcon } from '@phosphor-icons/react/CheckCircle';
@@ -26,6 +24,8 @@ import {
 } from 'react';
 
 import { Button as PinButton } from './pinharness/ui/button.js';
+import { Badge as PinBadge, type BadgeProps as PinBadgeProps } from './pinharness/ui/badge.js';
+import { Card as PinCard, type CardProps as PinCardProps } from './pinharness/ui/card.js';
 import { cn } from './pinharness/ui/cn.js';
 import { Input as PinInput } from './pinharness/ui/input.js';
 import { Select as PinSelect } from './pinharness/ui/select.js';
@@ -83,10 +83,18 @@ export function AhStatusPill({ status, label }: { status: string; label?: string
 
 function BadgeLike({ color, children }: { color: string; children: ReactNode }) {
   return (
-    <span className="ah-status-pill" data-tone={color}>
+    <PinBadge {...toneToBadgeProps(color)} data-tone={color}>
       {children}
-    </span>
+    </PinBadge>
   );
+}
+
+function toneToBadgeProps(color: string): Pick<PinBadgeProps, 'variant'> {
+  if (color === 'green') return { variant: 'success' };
+  if (color === 'red') return { variant: 'destructive' };
+  if (color === 'yellow') return { variant: 'warning' };
+  if (color === 'aurora') return { variant: 'default' };
+  return { variant: 'secondary' };
 }
 
 export function AhStatusDot({ status, label }: { status: string; label?: string }) {
@@ -269,25 +277,13 @@ export function AhMetric({
   );
 }
 
-export function AhSurface({
-  children,
-  withBorder = true,
-  ...props
-}: PaperProps & { children: ReactNode; withBorder?: boolean }) {
+export type AhSurfaceProps = PinCardProps & { children: ReactNode; withBorder?: boolean };
+
+export function AhSurface({ children, withBorder = true, className, ...props }: AhSurfaceProps) {
   return (
-    <Paper
-      {...props}
-      withBorder={withBorder}
-      radius="md"
-      shadow="none"
-      style={{
-        background: 'var(--ah-surface)',
-        borderColor: 'var(--ah-border-default)',
-        ...props.style,
-      }}
-    >
+    <PinCard {...props} className={cn(!withBorder && 'border-transparent', className)}>
       {children}
-    </Paper>
+    </PinCard>
   );
 }
 
