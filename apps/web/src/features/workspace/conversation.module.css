@@ -2,6 +2,15 @@
   color: inherit;
 }
 
+:global(.workspace) :global(.conversation-top-fade) {
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--background)) 0%,
+    hsl(var(--background) / 0.72) 42%,
+    transparent 100%
+  );
+}
+
 :global(.workspace) :global(.conversation-title) {
   display: none;
 }
@@ -249,10 +258,19 @@
 }
 
 :global(.workspace) :global(.message.user .message-body) {
-  padding: 13px 17px;
-  background: color-mix(in srgb, var(--ah-text-primary) 5%, var(--ah-surface));
-  border: 0;
-  border-radius: 17px 17px 5px 17px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.09), hsl(var(--primary) / 0.05));
+  border: 1px solid hsl(var(--primary) / 0.18);
+  border-radius: 1rem 1rem 0.3rem 1rem;
+  box-shadow: 0 1px 4px hsl(var(--foreground) / 0.06);
+  transition:
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+
+:global(.workspace) :global(.message.user .message-body:hover) {
+  border-color: hsl(var(--primary) / 0.28);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.1);
 }
 
 :global(.workspace) :global(.message.user .message-markdown) {
@@ -1032,8 +1050,8 @@
 :global(.workspace) :global(.conversation-jump-latest) {
   position: absolute;
   z-index: 2;
-  right: 20px;
-  bottom: 18px;
+  bottom: 12px;
+  left: 50%;
   display: inline-flex;
   min-height: 44px;
   align-items: center;
@@ -1047,6 +1065,7 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
+  transform: translateX(-50%);
   transition:
     background-color var(--ah-motion-fast, 120ms) ease,
     border-color var(--ah-motion-fast, 120ms) ease,
@@ -1057,7 +1076,18 @@
 :global(.workspace) :global(.conversation-jump-latest:focus-visible) {
   background: var(--ah-accent-soft);
   border-color: var(--ah-accent-primary);
-  transform: translateY(-1px);
+  transform: translateX(-50%) translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.workspace) :global(.conversation-top-fade) {
+    transition: none;
+  }
+
+  :global(.workspace) :global(.message.user .message-body),
+  :global(.workspace) :global(.conversation-jump-latest) {
+    transition: none;
+  }
 }
 @keyframes workspace-thought-pulse {
   0%,

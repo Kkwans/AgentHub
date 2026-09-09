@@ -302,134 +302,137 @@ export function Conversation({
       className={`${conversationStyles.owner} conversation flex min-h-0 h-full flex-col overflow-hidden bg-[hsl(var(--background))]`}
     >
       <span className="sr-only">消息与执行记录</span>
-      <div
-        ref={scrollRef}
-        className="group/chatscroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[hsl(var(--background))] px-0.5 py-2 sm:px-1 sm:py-3"
-        role="log"
-        aria-live="polite"
-        aria-relevant="additions text"
-        onWheel={markUserScrollIntent}
-        onPointerDown={(event) => {
-          // Content clicks (for example expanding thought/tool details) must
-          // not be mistaken for a scrollbar drag and break follow mode.
-          if (event.target === event.currentTarget) markUserScrollIntent();
-        }}
-        onTouchMove={markUserScrollIntent}
-        onKeyDown={(event) => {
-          if (
-            ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)
-          ) {
-            markUserScrollIntent();
-          }
-        }}
-        onScroll={(event) => {
-          const element = event.currentTarget;
-          const nextFollowing =
-            element.scrollHeight - element.scrollTop - element.clientHeight < 120;
-          const userInitiated = userScrollIntentRef.current;
-          if (userInitiated) clearUserScrollIntent();
-          if (!userInitiated && followTimelineRef.current) {
-            if (!nextFollowing) scheduleLatestScroll();
-            return;
-          }
-          if (!userInitiated && initialFollowPendingRef.current && !nextFollowing) return;
-          if (initialFollowPendingRef.current) initialFollowPendingRef.current = false;
-          followTimelineRef.current = nextFollowing;
-          setIsFollowingTimeline((current) =>
-            current === nextFollowing ? current : nextFollowing,
-          );
-          if (element.scrollTop < 80) void loadPreviousMessages();
-        }}
-      >
-        {(hasPreviousMessages || isLoadingPreviousMessages || timelineWindowStart > 0) && (
-          <div className="conversation-history-control">
-            <button
-              type="button"
-              onClick={() => void loadPreviousMessages()}
-              disabled={Boolean(isLoadingPreviousMessages)}
-              aria-label="加载更早消息"
-            >
-              {isLoadingPreviousMessages
-                ? '正在加载更早消息…'
-                : timelineWindowStart > 0
-                  ? '查看更早消息'
-                  : '加载更早消息'}
-            </button>
-          </div>
-        )}
-        <RunStateBanner
-          sessionStatus={session.status}
-          activeRunStatus={activeRun?.status}
-          latestRunStatus={latestRunStatus}
-          continuePending={continuePending}
-          continueError={continueError}
-          onContinue={onContinue}
-        />
-        {continuation && (
-          <details className="workspace-handoff">
-            <summary>
-              Session 交接包
-              <span>{continuation.strategy === 'MODEL' ? '模型摘要' : '确定性摘要'}</span>
-            </summary>
-            <p>{continuation.summaryText}</p>
-            <small>
-              {continuation.consumedAt
-                ? '交接内容已在首次 Run 中注入。'
-                : '首次成功发送 Run 时注入一次，失败重试不会丢失。'}
-            </small>
-          </details>
-        )}
-        {approvals.isLoading && <LoadingState label="正在读取 Approval" />}
-        {approvals.error && (
-          <ErrorState error={approvals.error} retry={() => approvals.refetch()} />
-        )}
-        {approvalFeedback && (
-          <div className="workspace-query-status" role="status" aria-live="polite">
-            {approvalFeedback}
-          </div>
-        )}
-        {messages.isLoading && <LoadingState label="正在读取消息" />}
-        {messages.error && <ErrorState error={messages.error} retry={() => messages.refetch()} />}
-        {events.isLoading && <LoadingState label="正在读取工具事件" />}
-        {events.error && <ErrorState error={events.error} retry={() => events.refetch()} />}
-        {showEmpty && (
-          <EmptyState
-            title="等待第一条指令"
-            description="Composer 会固定带上 Agent、Project、cwd、branch 与 PromptOS 上下文。"
+      <div className="relative min-h-0 flex-1">
+        <div className="conversation-top-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-5" />
+        <div
+          ref={scrollRef}
+          className="group/chatscroll relative h-full overflow-y-auto overscroll-contain bg-[hsl(var(--background))] px-0.5 py-2 sm:px-1 sm:py-3"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+          onWheel={markUserScrollIntent}
+          onPointerDown={(event) => {
+            // Content clicks (for example expanding thought/tool details) must
+            // not be mistaken for a scrollbar drag and break follow mode.
+            if (event.target === event.currentTarget) markUserScrollIntent();
+          }}
+          onTouchMove={markUserScrollIntent}
+          onKeyDown={(event) => {
+            if (
+              ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)
+            ) {
+              markUserScrollIntent();
+            }
+          }}
+          onScroll={(event) => {
+            const element = event.currentTarget;
+            const nextFollowing =
+              element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+            const userInitiated = userScrollIntentRef.current;
+            if (userInitiated) clearUserScrollIntent();
+            if (!userInitiated && followTimelineRef.current) {
+              if (!nextFollowing) scheduleLatestScroll();
+              return;
+            }
+            if (!userInitiated && initialFollowPendingRef.current && !nextFollowing) return;
+            if (initialFollowPendingRef.current) initialFollowPendingRef.current = false;
+            followTimelineRef.current = nextFollowing;
+            setIsFollowingTimeline((current) =>
+              current === nextFollowing ? current : nextFollowing,
+            );
+            if (element.scrollTop < 80) void loadPreviousMessages();
+          }}
+        >
+          {(hasPreviousMessages || isLoadingPreviousMessages || timelineWindowStart > 0) && (
+            <div className="conversation-history-control">
+              <button
+                type="button"
+                onClick={() => void loadPreviousMessages()}
+                disabled={Boolean(isLoadingPreviousMessages)}
+                aria-label="加载更早消息"
+              >
+                {isLoadingPreviousMessages
+                  ? '正在加载更早消息…'
+                  : timelineWindowStart > 0
+                    ? '查看更早消息'
+                    : '加载更早消息'}
+              </button>
+            </div>
+          )}
+          <RunStateBanner
+            sessionStatus={session.status}
+            activeRunStatus={activeRun?.status}
+            latestRunStatus={latestRunStatus}
+            continuePending={continuePending}
+            continueError={continueError}
+            onContinue={onContinue}
           />
-        )}
-        {shouldVirtualize ? (
-          <div
-            className="conversation-virtual-list relative min-h-px w-full"
-            style={{ height: timelineVirtualizer.getTotalSize() }}
-          >
-            {virtualTimelineItems.map((virtualItem) => {
-              const turn = displayTurns[virtualItem.index];
-              if (!turn) return null;
-              return (
-                <div
-                  key={virtualItem.key}
-                  ref={timelineVirtualizer.measureElement}
-                  data-index={virtualItem.index}
-                  className="conversation-virtual-item absolute left-0 top-0 w-full will-change-transform"
-                  style={{ transform: `translateY(${virtualItem.start}px)` }}
-                >
-                  {virtualItem.index > 0 && <ConversationTurnDivider />}
+          {continuation && (
+            <details className="workspace-handoff">
+              <summary>
+                Session 交接包
+                <span>{continuation.strategy === 'MODEL' ? '模型摘要' : '确定性摘要'}</span>
+              </summary>
+              <p>{continuation.summaryText}</p>
+              <small>
+                {continuation.consumedAt
+                  ? '交接内容已在首次 Run 中注入。'
+                  : '首次成功发送 Run 时注入一次，失败重试不会丢失。'}
+              </small>
+            </details>
+          )}
+          {approvals.isLoading && <LoadingState label="正在读取 Approval" />}
+          {approvals.error && (
+            <ErrorState error={approvals.error} retry={() => approvals.refetch()} />
+          )}
+          {approvalFeedback && (
+            <div className="workspace-query-status" role="status" aria-live="polite">
+              {approvalFeedback}
+            </div>
+          )}
+          {messages.isLoading && <LoadingState label="正在读取消息" />}
+          {messages.error && <ErrorState error={messages.error} retry={() => messages.refetch()} />}
+          {events.isLoading && <LoadingState label="正在读取工具事件" />}
+          {events.error && <ErrorState error={events.error} retry={() => events.refetch()} />}
+          {showEmpty && (
+            <EmptyState
+              title="等待第一条指令"
+              description="Composer 会固定带上 Agent、Project、cwd、branch 与 PromptOS 上下文。"
+            />
+          )}
+          {shouldVirtualize ? (
+            <div
+              className="conversation-virtual-list relative min-h-px w-full"
+              style={{ height: timelineVirtualizer.getTotalSize() }}
+            >
+              {virtualTimelineItems.map((virtualItem) => {
+                const turn = displayTurns[virtualItem.index];
+                if (!turn) return null;
+                return (
+                  <div
+                    key={virtualItem.key}
+                    ref={timelineVirtualizer.measureElement}
+                    data-index={virtualItem.index}
+                    className="conversation-virtual-item absolute left-0 top-0 w-full will-change-transform"
+                    style={{ transform: `translateY(${virtualItem.start}px)` }}
+                  >
+                    {virtualItem.index > 0 && <ConversationTurnDivider />}
+                    <ConversationTurnView turn={turn} {...renderItemProps} />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="conversation-timeline grid gap-1.5 px-0.5 py-2 sm:gap-3 sm:px-1 sm:py-3">
+              {displayTurns.map((turn, index) => (
+                <Fragment key={turn.id}>
+                  {index > 0 && <ConversationTurnDivider />}
                   <ConversationTurnView turn={turn} {...renderItemProps} />
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="conversation-timeline grid gap-1.5 px-0.5 py-2 sm:gap-3 sm:px-1 sm:py-3">
-            {displayTurns.map((turn, index) => (
-              <Fragment key={turn.id}>
-                {index > 0 && <ConversationTurnDivider />}
-                <ConversationTurnView turn={turn} {...renderItemProps} />
-              </Fragment>
-            ))}
-          </div>
-        )}
+                </Fragment>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       {!isFollowingTimeline && (
         <button
@@ -592,7 +595,7 @@ function ConversationTimelineItemView({
           </div>
         ) : (
           <div
-            className={`message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${isUser ? 'rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary-soft))] px-3.5 py-2.5 shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/35 hover:shadow-[var(--shadow-md)]' : ''}`}
+            className={`message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${isUser ? 'rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-gradient-to-br from-[hsl(var(--primary))]/[0.09] to-[hsl(var(--primary))]/[0.05] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/28 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)]' : ''}`}
           >
             <RichMessage text={presentation.text} />
             {item.streaming && (
