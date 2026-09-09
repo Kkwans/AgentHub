@@ -211,8 +211,8 @@ export function AhSelect({
   id,
   className,
   mt,
-  searchable: _searchable,
-  clearable: _clearable,
+  searchable = true,
+  clearable = true,
   allowDeselect: _allowDeselect,
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedBy,
@@ -243,6 +243,8 @@ export function AhSelect({
       {...(placeholder === undefined ? {} : { placeholder })}
       {...(disabled === undefined ? {} : { disabled })}
       className={cn('ah-select-trigger', className)}
+      searchable={searchable}
+      clearable={clearable}
       {...(resolvedAriaLabel === undefined ? {} : { ariaLabel: resolvedAriaLabel })}
       {...(describedBy === undefined ? {} : { ariaDescribedBy: describedBy })}
       ariaInvalid={ariaInvalid ?? Boolean(error)}

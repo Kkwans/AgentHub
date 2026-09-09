@@ -38,7 +38,10 @@ describe('UI primitives', () => {
     expect(trigger).toBeInTheDocument();
     expect(document.querySelector('select')).not.toBeInTheDocument();
     fireEvent.click(trigger);
-    expect(screen.getByRole('option', { name: 'AgentHub' })).toBeInTheDocument();
+    const searchbox = screen.getByRole('searchbox', { name: '搜索选项' });
+    fireEvent.change(searchbox, { target: { value: 'clau' } });
+    expect(screen.queryByRole('option', { name: 'AgentHub' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Claude' })).toBeInTheDocument();
     const option = screen.getByRole('option', { name: 'Claude' });
     fireEvent.click(option);
     expect(onChange).toHaveBeenCalledWith('claude');

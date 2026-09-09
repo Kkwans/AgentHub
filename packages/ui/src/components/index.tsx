@@ -396,7 +396,7 @@ export function Combobox({
   options,
   onValueChange,
   disabled = false,
-  noResultsLabel: _noResultsLabel = '没有匹配项',
+  noResultsLabel = '没有匹配项',
 }: ComboboxProps) {
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue);
   const isControlled = value !== undefined;
@@ -411,6 +411,9 @@ export function Combobox({
         ...(meta && !option.description ? { description: meta } : {}),
       }))}
       {...(disabled === undefined ? {} : { disabled })}
+      searchable
+      clearable={false}
+      noResultsLabel={noResultsLabel}
       onValueChange={(nextValue) => {
         if (!isControlled) setUncontrolledValue(nextValue);
         onValueChange(nextValue);
