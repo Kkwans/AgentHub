@@ -42,6 +42,8 @@ export { NetworkIcon as Network } from '@phosphor-icons/react/Network';
 export { PlusIcon as Plus } from '@phosphor-icons/react/Plus';
 export { PencilSimpleIcon as Pencil } from '@phosphor-icons/react/PencilSimple';
 export { ArchiveIcon as Archive } from '@phosphor-icons/react/Archive';
+export { AtIcon as AtSign } from '@phosphor-icons/react/At';
+export { ArrowUpIcon as ArrowUp } from '@phosphor-icons/react/ArrowUp';
 export { PlayIcon as Play } from '@phosphor-icons/react/Play';
 export { ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react/ArrowsClockwise';
 export { ArrowCounterClockwiseIcon as RotateCcw } from '@phosphor-icons/react/ArrowCounterClockwise';
@@ -52,6 +54,7 @@ export { ShareNetworkIcon as ShareNetwork } from '@phosphor-icons/react/ShareNet
 export { GearSixIcon as Settings } from '@phosphor-icons/react/GearSix';
 export { ShieldWarningIcon as ShieldAlert } from '@phosphor-icons/react/ShieldWarning';
 export { ShieldCheckIcon as ShieldCheck } from '@phosphor-icons/react/ShieldCheck';
+export { SquareIcon as Square } from '@phosphor-icons/react/Square';
 export { SunIcon as Sun } from '@phosphor-icons/react/Sun';
 export { MoonIcon as Moon } from '@phosphor-icons/react/Moon';
 export { TerminalWindowIcon as SquareTerminal } from '@phosphor-icons/react/TerminalWindow';

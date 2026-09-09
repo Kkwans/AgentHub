@@ -1,4 +1,4 @@
-import { Button, CircleStop, LoaderCircle, Plus, Send, ShieldCheck } from '@agenthub/ui';
+import { AtSign, ArrowUp, Button, LoaderCircle, ShieldCheck, Square } from '@agenthub/ui';
 
 import type { SessionConfigurationRecord } from '../../../lib/api';
 import { SessionConfigurationControl } from './SessionConfigurationControl';
@@ -61,12 +61,12 @@ export function ComposerToolbar({
           type="button"
           size="sm"
           variant="ghost"
-          className={`min-h-8 min-w-0 gap-1.5 rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-subtle))] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] ${contextOpen ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
+          className={`h-11 min-w-0 gap-1.5 rounded-lg px-2 text-xs text-[hsl(var(--foreground-subtle))] transition-colors sm:h-auto sm:rounded-[var(--radius)] sm:px-2 sm:py-1.5 hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] ${contextOpen ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
           onClick={onToggleContext}
           aria-expanded={contextOpen}
           aria-label={`PromptOS ${contextStatus.label}`}
         >
-          <Plus aria-hidden size={15} />
+          <AtSign aria-hidden size={16} />
           <span className="hidden sm:inline">上下文</span>
           <small className="max-w-24 truncate text-[11px] text-[hsl(var(--foreground-faint))]">
             {contextStatus.label}
@@ -100,13 +100,21 @@ export function ComposerToolbar({
           onChange={onChangeConfiguration}
         />
         <div
-          className="hidden items-center gap-1.5 text-[10px] text-[hsl(var(--foreground-faint))] md:flex"
-          aria-label="快捷键提示"
+          className="hidden items-center gap-2 text-[9.5px] text-[hsl(var(--foreground-faint))] md:flex"
+          aria-label="Return 发送，Shift Return 换行"
         >
-          <kbd className="rounded-[5px] border border-[hsl(var(--border))]/80 bg-[hsl(var(--surface))] px-1.5 py-0.5 font-mono text-[10px] text-[hsl(var(--foreground-subtle))] shadow-[0_1px_0_hsl(var(--border))]">
-            ⌘↵
-          </kbd>
-          <span>发送</span>
+          <span className="inline-flex items-center gap-1">
+            <kbd className="inline-flex min-w-5 items-center justify-center rounded-[5px] border border-[hsl(var(--border))]/80 bg-[hsl(var(--surface))] px-1 py-0.5 font-sans text-[10px] leading-none text-[hsl(var(--foreground-subtle))] shadow-[0_1px_0_hsl(var(--border))]">
+              ↩
+            </kbd>
+            <span>发送</span>
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <kbd className="inline-flex items-center justify-center rounded-[5px] border border-[hsl(var(--border))]/80 bg-[hsl(var(--surface))] px-1 py-0.5 font-sans text-[10px] leading-none text-[hsl(var(--foreground-subtle))] shadow-[0_1px_0_hsl(var(--border))]">
+              ⇧ ↩
+            </kbd>
+            <span>换行</span>
+          </span>
         </div>
         <div className="relative flex size-9 items-center justify-center sm:size-8">
           <Button
@@ -123,7 +131,7 @@ export function ComposerToolbar({
             {stopPending ? (
               <LoaderCircle size={16} aria-hidden />
             ) : (
-              <CircleStop size={17} aria-hidden />
+              <Square size={15} weight="fill" aria-hidden />
             )}
           </Button>
           <Button
@@ -138,7 +146,11 @@ export function ComposerToolbar({
             aria-hidden={activeRun}
             tabIndex={activeRun ? -1 : 0}
           >
-            {sendPending ? <LoaderCircle size={16} aria-hidden /> : <Send size={17} aria-hidden />}
+            {sendPending ? (
+              <LoaderCircle size={16} aria-hidden />
+            ) : (
+              <ArrowUp size={17} aria-hidden />
+            )}
           </Button>
         </div>
       </div>

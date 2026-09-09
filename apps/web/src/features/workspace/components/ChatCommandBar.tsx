@@ -356,7 +356,7 @@ export function ChatCommandBar({
   };
   return (
     <section
-      className="composer-shell relative z-20 mx-auto mb-4 w-[min(760px,calc(100%-24px))] shrink-0 min-w-0 sm:mb-4 sm:w-[min(760px,calc(100%-24px))]"
+      className="composer-shell relative z-20 w-full shrink-0 min-w-0"
       role="group"
       aria-label="Composer 命令栏"
     >

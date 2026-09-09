@@ -1,7 +1,5 @@
 import {
-  AhButton,
   AhStatusPill,
-  Bell,
   Bot,
   Braces,
   ChevronLeft,
@@ -11,11 +9,9 @@ import {
   LayoutDashboard,
   Menu,
   MobileDrawerPanel,
-  Moon,
   Network,
   Search,
   Settings,
-  Sun,
   useAgentHubTheme,
   type IconProps,
 } from '@agenthub/ui';
@@ -224,8 +220,7 @@ export function AppShell() {
   const [connection, setConnection] = useState<'连接中' | '已连接' | '已断开'>('已断开');
   const location = useLocation();
   const navigate = useNavigate();
-  const { preference, setPreference, sidebarCollapsed, sidebarPreference, setSidebarCollapsed } =
-    useAgentHubTheme();
+  const { sidebarCollapsed, sidebarPreference, setSidebarCollapsed } = useAgentHubTheme();
   const [viewportWidth, setViewportWidth] = useState(
     typeof window === 'undefined' ? AUTO_COLLAPSE_BREAKPOINT : window.innerWidth,
   );
@@ -394,60 +389,6 @@ export function AppShell() {
               </button>
             </header>
           )}
-          <header className="hidden" data-shell-topbar="true">
-            <div className="flex items-center gap-2">
-              <AhButton
-                className="grid h-9 w-9 place-items-center border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-0 text-[hsl(var(--foreground-subtle))]"
-                variant="default"
-                color="gray"
-                onClick={() => setDrawerOpen(true)}
-                aria-label="打开导航"
-                type="button"
-              >
-                <Menu size={19} />
-              </AhButton>
-            </div>
-            <button
-              type="button"
-              className="flex h-9 min-h-9 min-w-0 flex-1 items-center gap-2.5 rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 text-left text-[13px] text-[hsl(var(--foreground-faint))] shadow-[var(--shadow-sm)] transition-[border-color,box-shadow,color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:text-[hsl(var(--foreground-subtle))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60"
-              onClick={openCommand}
-              aria-label="搜索"
-            >
-              <Search aria-hidden size={16} />
-              <span>搜索项目 / Agent / Prompt...</span>
-              <kbd className="ml-auto rounded-[5px] bg-[hsl(var(--surface-muted))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--foreground-faint))]">
-                ⌘ K
-              </kbd>
-            </button>
-            <div className="ml-auto hidden items-center gap-1.5">
-              <button
-                type="button"
-                className={`grid h-9 w-9 place-items-center rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] text-[hsl(var(--foreground-subtle))] transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] hover:-translate-y-px hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 ${preference === 'light' ? 'border-[hsl(var(--primary))]/25 bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
-                onClick={() => setPreference('light')}
-                aria-label="浅色主题"
-                title="浅色主题"
-              >
-                <Sun aria-hidden size={18} weight="regular" />
-              </button>
-              <button
-                type="button"
-                className={`grid h-9 w-9 place-items-center rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] text-[hsl(var(--foreground-subtle))] transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] hover:-translate-y-px hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 ${preference === 'dark' ? 'border-[hsl(var(--primary))]/25 bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
-                onClick={() => setPreference('dark')}
-                aria-label="深色主题"
-                title="深色主题"
-              >
-                <Moon aria-hidden size={18} weight="regular" />
-              </button>
-              <button
-                type="button"
-                className="grid h-9 w-9 place-items-center rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] text-[hsl(var(--foreground-subtle))] transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] hover:-translate-y-px hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60"
-                aria-label="通知"
-                title="通知"
-              >
-                <Bell aria-hidden size={18} />
-              </button>
-            </div>
-          </header>
           <main
             id="main-content"
             className="ambient-canvas app-main min-h-0 flex-1 overflow-y-auto outline-none"
