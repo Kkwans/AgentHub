@@ -85,7 +85,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 2026-09-09 05:26:26（Asia/Shanghai）仅 recreate `agenthub` service；health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`，容器 `running/healthy`、exit `0`、OOM `false`；其它容器 name/image identity 未变；
 - 部署前快照、v8/v9 image inspect、容器清单和有效 Compose 配置保存在 `/volume2/Project/.agenthub/central/deployments/20260908T212617Z-pre-shared-layout/`；`agenthub:2026.9.9-v8` 与 1.0.0 回滚镜像均保留；
 - NAS-local Playwright 未登录真实入口 smoke 证据见 [`docs/qa/visual/v1.1.0/19-deployed-shared-layout-20260909.json`](qa/visual/v1.1.0/19-deployed-shared-layout-20260909.json)：1440/1024/768/390 四视口均 HTTP `200`、标题 `AgentHub`、无横向溢出，console/page/request error 均为 `0`；认证 Workspace、Agent/PTY 与完整视觉验收仍未验证；
-- 布局迁移后的本地 fixture 全矩阵运行在完成前两档视口后因 Chromium 子进程无响应中断；此前当前 HEAD 的 48/48 是迁移前的证据，不能冒充迁移后全量结果；布局相关 Workspace/Home/Prompt 四视口子集 12/12 通过。
+- 布局迁移后的本地 fixture 全矩阵在 NAS Chromium 资源抖动下多次中断/出现加载竞态；此前 `db68ed1` 的 48/48 是迁移前证据，不能冒充迁移后全量结果；迁移后布局相关 Workspace/Home/Prompt 四视口子集 12/12 通过，页面语义子集在 ready/WS 隔离后通过。
 
 ### 深色主题桥接第六轮直接部署追加（2026-09-09）
 
