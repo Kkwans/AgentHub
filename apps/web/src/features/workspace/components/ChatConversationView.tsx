@@ -32,6 +32,12 @@ import {
 import type { ConversationToolGroup, ConversationTimelineItem } from './conversationModel';
 import { ChatEntryRenderer, type ChatEntryRendererProps } from './ChatEntryRenderer';
 
+// Before a real viewport height is available (for example while a drawer is
+// opening), keep the source's progressive rendering intent instead of mounting
+// the entire 500-turn window. Once measured, the normal 500-turn window is
+// handed to @tanstack/react-virtual below.
+const UNMEASURED_WINDOW_SIZE = 40;
+
 export {
   buildConversationTimeline,
   CONVERSATION_WINDOW_SIZE,
@@ -113,6 +119,10 @@ export function ChatConversationView({
   // intent authoritative until the first non-zero viewport has been aligned.
   const initialFollowPendingRef = useRef(true);
   const userScrollIntentRef = useRef(false);
+  // Record an actual wheel/touch/key navigation separately from the transient
+  // debounce guard so synthetic layout scroll events cannot hide the newest
+  // window during the first data render.
+  const userNavigatedTimelineRef = useRef(false);
   const userScrollIntentTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const loadingPreviousRef = useRef(false);
   const [timelineWindowStart, setTimelineWindowStart] = useState(0);
@@ -125,16 +135,21 @@ export function ChatConversationView({
   // The first data render must already show the newest window. Waiting for the
   // effect below would mount up to 500 historical turns first, which is both
   // visually wrong and slow enough to starve the state update under load. The
-  // pending flag is cleared by the first user scroll, so an intentional move
-  // to history still starts at index 0 without fighting this derived value.
+  // A user navigation clears this derived shortcut, so an intentional move to
+  // history still starts at index 0 without fighting the latest-window default.
   const effectiveTimelineWindowStart =
-    followTimelineRef.current && initialFollowPendingRef.current && timelineWindowStart === 0
+    followTimelineRef.current && !userNavigatedTimelineRef.current && timelineWindowStart === 0
       ? latestWindowStart
       : timelineWindowStart;
-  const visibleTurns = turns.slice(
-    effectiveTimelineWindowStart,
-    effectiveTimelineWindowStart + CONVERSATION_WINDOW_SIZE,
-  );
+  const unmeasuredTimeline = !viewportMeasured && turns.length > CONVERSATION_WINDOW_SIZE;
+  const renderWindowSize = unmeasuredTimeline ? UNMEASURED_WINDOW_SIZE : CONVERSATION_WINDOW_SIZE;
+  const renderWindowStart =
+    unmeasuredTimeline &&
+    followTimelineRef.current &&
+    effectiveTimelineWindowStart >= latestWindowStart
+      ? Math.max(latestWindowStart, turns.length - renderWindowSize)
+      : effectiveTimelineWindowStart;
+  const visibleTurns = turns.slice(renderWindowStart, renderWindowStart + renderWindowSize);
   const displayTurns = visibleTurns.map((turn) => ({
     ...turn,
     entries: groupToolTimeline(turn.entries),
@@ -164,6 +179,7 @@ export function ChatConversationView({
     }
   }, []);
   const markUserScrollIntent = useCallback(() => {
+    userNavigatedTimelineRef.current = true;
     userScrollIntentRef.current = true;
     if (userScrollIntentTimerRef.current !== undefined) {
       clearTimeout(userScrollIntentTimerRef.current);
@@ -176,6 +192,7 @@ export function ChatConversationView({
   useEffect(() => {
     initialFollowPendingRef.current = true;
     followTimelineRef.current = true;
+    userNavigatedTimelineRef.current = false;
     clearUserScrollIntent();
     setIsFollowingTimeline(true);
     setUnreadCount(0);
@@ -268,7 +285,9 @@ export function ChatConversationView({
     const canFetchPrevious = Boolean(
       hasPreviousMessages && onLoadPreviousMessages && !isLoadingPreviousMessages,
     );
-    const canRevealOlderWindow = effectiveTimelineWindowStart > 0;
+    const canRevealOlderWindow =
+      effectiveTimelineWindowStart > 0 ||
+      (userNavigatedTimelineRef.current && latestWindowStart > 0);
     if ((!canFetchPrevious && !canRevealOlderWindow) || loadingPreviousRef.current) return;
     const element = scrollRef.current;
     const previousHeight = element?.scrollHeight ?? 0;
