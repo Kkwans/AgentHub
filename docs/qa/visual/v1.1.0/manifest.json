@@ -2,7 +2,7 @@
   "releaseVersion": "1.1.0",
   "status": "deployed_pending_real_acceptance",
   "complete": false,
-  "sourceCommit": "f2c7b665ef9bae03c633ce66583e7c408485dd75",
+  "sourceCommit": "b5e2770a5c1ba6ef725b97462769ef92b0511661",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -145,8 +145,8 @@
         "pageErrors": 0,
         "requestFailures": 0,
         "knownWarnings": [],
-        "evidence": "docs/qa/visual/v1.1.0/25-deployed-direct-button-20260909.json",
-        "capturedAt": "2026-09-09T02:31:37.320Z",
+        "evidence": "docs/qa/visual/v1.1.0/27-deployed-shared-button-bridge-20260909.json",
+        "capturedAt": "2026-09-09T03:16:45.419Z",
         "image": "agenthub:2026.9.9-v19",
         "revision": "b5e2770a5c1ba6ef725b97462769ef92b0511661"
       },
