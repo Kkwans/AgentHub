@@ -14,13 +14,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v18`，镜像为 Linux `arm64`，OCI `revision` 为 `92b9bcec94061c3140500bae4c6bc7877f3d097f`；
-- 当前生产源码提交：`92b9bcec94061c3140500bae4c6bc7877f3d097f`（已推送 `main`）；镜像 ID 为 `sha256:9a060418567bf8a62945bf047582d36a403fb6d965f4549c52ca80da50c3e081`；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v19`，镜像为 Linux `arm64`，OCI `revision` 为 `b5e2770a5c1ba6ef725b97462769ef92b0511661`；
+- 当前生产源码提交：`b5e2770a5c1ba6ef725b97462769ef92b0511661`（已推送 `main`）；镜像 ID 为 `sha256:8f232ff72f446b3e29cd07f765fa632261d5a1324bd24c4d701aedae06ea8f9b`；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
-- 2026-09-09 10:58:19（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- 2026-09-09 11:15:28（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T025331Z-pre-composer-controls/`；v17 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T023918Z-pre-git-terminal-controls/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T031036Z-pre-shared-button-bridge/`；v18 前候选材料保存在 `/volume2/Project/.agenthub/central/deployments/20260909T025331Z-pre-composer-controls/`；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
@@ -141,6 +141,14 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 当前生产镜像为 `agenthub:2026.9.9-v18`，image ID `sha256:9a060418567bf8a62945bf047582d36a403fb6d965f4549c52ca80da50c3e081`，OCI revision `92b9bcec94061c3140500bae4c6bc7877f3d097f`，架构 `linux/arm64`；2026-09-09 10:58:19（Asia/Shanghai）仅 recreate `agenthub` service，容器 `running/healthy`、exit `0`、OOM `false`，health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`；
 - v18 部署前快照、v17/v18 inspect、Compose 配置和容器清单保存在 `/volume2/Project/.agenthub/central/deployments/20260909T025331Z-pre-composer-controls/`；AgentHub 之外的容器 name/ID/image identity 未变；
 - NAS-local Playwright 未登录真实入口 smoke 证据见 [`docs/qa/visual/v1.1.0/26-deployed-composer-controls-20260909.json`](qa/visual/v1.1.0/26-deployed-composer-controls-20260909.json)：1440/1024/768/390 四视口均 HTTP `200`、标题 `AgentHub`、无横向溢出，console/page/request error 均为 `0`；认证 Workspace、Agent/PTY、性能、备份恢复和独立视觉复核仍未验证。
+
+### 全站共享 Button 桥接第十六轮直接迁移追加（2026-09-09）
+
+- `@agenthub/ui` 的旧 `AhButton/AhIconButton` 兼容入口现在直接渲染 PinHarness `Button`，统一变体、尺寸、loading、图标、全宽和 focus token；Home、Projects、Agents、Prompt Library、Settings 等仍使用旧 API 的页面不再落入旧 `.ah-button` 外观，业务调用与路由契约保持不变；
+- 代码提交 `b5e2770a5c1ba6ef725b97462769ef92b0511661` 已推送 `main`；UI primitives/App 聚焦测试 4 files/20 passed，Workspace 9 files/41 passed，UI/Web typecheck/build、全仓 lint/format 与 `git diff --check` 均通过；
+- 当前生产镜像为 `agenthub:2026.9.9-v19`，image ID `sha256:8f232ff72f446b3e29cd07f765fa632261d5a1324bd24c4d701aedae06ea8f9b`，OCI revision `b5e2770a5c1ba6ef725b97462769ef92b0511661`，架构 `linux/arm64`；2026-09-09 11:15:28（Asia/Shanghai）仅 recreate `agenthub` service，容器 `running/healthy`、exit `0`、OOM `false`，health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`；
+- v19 部署前快照、v18/v19 inspect、Compose 配置和容器清单保存在 `/volume2/Project/.agenthub/central/deployments/20260909T031036Z-pre-shared-button-bridge/`；AgentHub 之外的容器 name/ID/image identity 未变；
+- NAS-local Playwright 未登录真实入口 smoke 证据见 [`docs/qa/visual/v1.1.0/27-deployed-shared-button-bridge-20260909.json`](qa/visual/v1.1.0/27-deployed-shared-button-bridge-20260909.json)：1440/1024/768/390 四视口均 HTTP `200`、标题 `AgentHub`、无横向溢出，console/page/request error 均为 `0`；认证 Workspace、Agent/PTY、性能、备份恢复和独立视觉复核仍未验证。
 
 ### PinHarness Button 第十四轮直接迁移追加（2026-09-09）
 

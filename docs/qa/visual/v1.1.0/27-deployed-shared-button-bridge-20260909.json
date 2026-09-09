@@ -1,0 +1,92 @@
+{
+  "capturedAt": "2026-09-09T03:16:45.419Z",
+  "target": "http://192.168.5.110:3210",
+  "route": "/overview",
+  "authenticated": false,
+  "image": "agenthub:2026.9.9-v19",
+  "imageId": "sha256:8f232ff72f446b3e29cd07f765fa632261d5a1324bd24c4d701aedae06ea8f9b",
+  "revision": "b5e2770a5c1ba6ef725b97462769ef92b0511661",
+  "browser": "NAS-local Playwright Chromium (headless)",
+  "container": {
+    "id": "6a7daf6396422e64ed2e1d9d79a7c7b3379306672cb0a636de62d3639080d447",
+    "startedAt": "2026-09-09T03:15:28.368781913Z",
+    "status": "running",
+    "health": "healthy",
+    "exitCode": 0,
+    "oomKilled": false
+  },
+  "health": {
+    "httpStatus": 200,
+    "version": "1.1.0",
+    "database": "pglite",
+    "web": true
+  },
+  "viewports": [
+    {
+      "name": "desktop-1440",
+      "width": 1440,
+      "height": 900,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyWidth": 1440,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    },
+    {
+      "name": "desktop-1024",
+      "width": 1024,
+      "height": 768,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyWidth": 1024,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    },
+    {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "bodyWidth": 768,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    },
+    {
+      "name": "mobile-390",
+      "width": 390,
+      "height": 844,
+      "httpStatus": 200,
+      "finalUrl": "http://192.168.5.110:3210/overview",
+      "title": "AgentHub",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "bodyWidth": 390,
+      "horizontalOverflow": false,
+      "mainVisible": true,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "requestFailures": []
+    }
+  ],
+  "stableOtherContainers": "unchanged",
+  "scope": "v19 全站旧 AhButton/AhIconButton API 由共享 PinHarness Button 直接渲染后的未登录真实入口 smoke；不等同认证 Workspace、Agent、Terminal、PTY 或完整视觉验收。"
+}

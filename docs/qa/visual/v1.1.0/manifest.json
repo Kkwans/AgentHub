@@ -21,19 +21,19 @@
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v17",
-    "imageId": "sha256:cf9cdf1fef171c037dbdd8b463c1e482adadfa1f48447d79de68ca9aa4c664a3",
-    "revision": "01ba518923512f46c5603200756800002dfb829e",
+    "image": "agenthub:2026.9.9-v18",
+    "imageId": "sha256:9a060418567bf8a62945bf047582d36a403fb6d965f4549c52ca80da50c3e081",
+    "revision": "92b9bcec94061c3140500bae4c6bc7877f3d097f",
     "preserve": true
   },
   "productionReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v18",
-    "imageId": "sha256:9a060418567bf8a62945bf047582d36a403fb6d965f4549c52ca80da50c3e081",
-    "revision": "92b9bcec94061c3140500bae4c6bc7877f3d097f",
-    "checkedAt": "2026-09-09T02:59:38.216Z",
+    "image": "agenthub:2026.9.9-v19",
+    "imageId": "sha256:8f232ff72f446b3e29cd07f765fa632261d5a1324bd24c4d701aedae06ea8f9b",
+    "revision": "b5e2770a5c1ba6ef725b97462769ef92b0511661",
+    "checkedAt": "2026-09-09T03:16:45.419Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -42,19 +42,19 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/Project/AgentHub/deploy/compose/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v18",
-    "imageId": "sha256:9a060418567bf8a62945bf047582d36a403fb6d965f4549c52ca80da50c3e081",
+    "image": "agenthub:2026.9.9-v19",
+    "imageId": "sha256:8f232ff72f446b3e29cd07f765fa632261d5a1324bd24c4d701aedae06ea8f9b",
     "architecture": "arm64",
-    "revision": "92b9bcec94061c3140500bae4c6bc7877f3d097f",
-    "created": "2026-09-09T02:53:31Z",
-    "deployedAt": "2026-09-09T02:58:19Z",
+    "revision": "b5e2770a5c1ba6ef725b97462769ef92b0511661",
+    "created": "2026-09-09T03:10:36Z",
+    "deployedAt": "2026-09-09T03:15:28Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260909T025331Z-pre-composer-controls/",
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260909T031036Z-pre-shared-button-bridge/",
     "rollbackImage": "agenthub:2026.9.5-v2"
   },
   "designReference": {
@@ -106,6 +106,11 @@
         "pnpm exec vitest run apps/web/src/features/workspace --pool=forks --maxWorkers=1 (9 files, 41 passed; after Composer/RunState/Session configuration Button reuse)",
         "pnpm exec eslint apps/web/src/features/workspace/components/RunStateBanner.tsx apps/web/src/features/workspace/components/ComposerToolbar.tsx apps/web/src/features/workspace/components/SessionConfigurationControl.tsx && pnpm --filter @agenthub/web typecheck && pnpm --filter @agenthub/web build (pass after Composer control migration)",
         "docker image inspect agenthub:2026.9.9-v18 (arm64, version 1.1.0, full revision 92b9bcec94061c3140500bae4c6bc7877f3d097f)",
+        "pnpm exec vitest run packages/ui/src/primitives.test.tsx packages/ui/src/pinharness.test.tsx packages/ui/src/provider.test.tsx apps/web/src/App.test.tsx --pool=forks --maxWorkers=1 (4 files, 20 passed; legacy AhButton bridge now renders PinHarness Button)",
+        "pnpm exec vitest run apps/web/src/features/workspace --pool=forks --maxWorkers=1 (9 files, 41 passed; shared Button bridge regression)",
+        "pnpm --filter @agenthub/ui build && pnpm --filter @agenthub/ui typecheck && pnpm --filter @agenthub/web typecheck && pnpm --filter @agenthub/web build (pass after shared Button bridge)",
+        "pnpm lint && pnpm format:check && git diff --check (pass after shared Button bridge)",
+        "docker image inspect agenthub:2026.9.9-v19 (arm64, version 1.1.0, full revision b5e2770a5c1ba6ef725b97462769ef92b0511661)",
         "pnpm exec eslint apps/web/src/features/workspace/components/Conversation.tsx apps/web/src/features/workspace/components/ComposerSurface.tsx apps/web/src/features/workspace/components/ContextPopover.tsx && pnpm exec prettier --check apps/web/src/features/workspace/components/Conversation.tsx apps/web/src/features/workspace/components/ComposerSurface.tsx apps/web/src/features/workspace/components/ContextPopover.tsx && git diff --check (pass)",
         "docker image inspect agenthub:2026.9.9-v16 (arm64, version 1.1.0, full revision f2c7b665ef9bae03c633ce66583e7c408485dd75)",
         "pnpm --filter @agenthub/ui build && pnpm --filter @agenthub/web build (pass after moving PinHarness stylesheet into @agenthub/ui)",
@@ -142,8 +147,8 @@
         "knownWarnings": [],
         "evidence": "docs/qa/visual/v1.1.0/25-deployed-direct-button-20260909.json",
         "capturedAt": "2026-09-09T02:31:37.320Z",
-        "image": "agenthub:2026.9.9-v18",
-        "revision": "92b9bcec94061c3140500bae4c6bc7877f3d097f"
+        "image": "agenthub:2026.9.9-v19",
+        "revision": "b5e2770a5c1ba6ef725b97462769ef92b0511661"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
@@ -169,12 +174,12 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v18 and 1.0.0 remains tagged and retained as the rollback point.",
+    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v19 and 1.0.0 remains tagged and retained as the rollback point.",
     "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36, d12ab1d, c23770a and db68ed1 were pushed to main before the 2026.9.9-v8 image build.",
-    "The v18 unauthenticated production smoke was run after directly reusing the shared PinHarness Button in Workspace conversation, Git/Terminal, Composer and run-state actions, and removing the user-bubble gradient; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
+    "The v19 unauthenticated production smoke was run after making the legacy AhButton/AhIconButton API render the shared PinHarness Button across the application, in addition to the direct Workspace control migrations and user-bubble gradient removal; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
     "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 71 files (67 passed, 4 skipped), 306 tests (296 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
-    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260909T025331Z-pre-composer-controls/; the prior v16 snapshot remains under /volume2/Project/.agenthub/central/deployments/20260909T022338Z-pre-direct-button-v16/.",
-    "v15 was superseded by v16 carrying the full pushed commit SHA, then v17 and v18 were built from subsequent pushed commits with full OCI revisions; all candidate images remain locally retained.",
+    "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260909T031036Z-pre-shared-button-bridge/; the prior v18 snapshot remains under /volume2/Project/.agenthub/central/deployments/20260909T025331Z-pre-composer-controls/.",
+    "v15 was superseded by v16 carrying the full pushed commit SHA, then v17, v18 and v19 were built from subsequent pushed commits with full OCI revisions; all candidate images remain locally retained.",
     "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
   ]
 }
