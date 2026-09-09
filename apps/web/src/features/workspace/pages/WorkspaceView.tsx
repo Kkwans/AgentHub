@@ -269,25 +269,27 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                   hasPreviousMessages={messages.hasPrevious}
                   isLoadingPreviousMessages={messages.isFetchingPrevious}
                   onLoadPreviousMessages={messages.fetchPrevious}
-                />
-                <ChatCommandBar
-                  session={currentSession}
-                  agent={agent}
-                  events={events}
-                  project={project}
-                  activeRun={activeRun}
-                  promptContext={promptContext.data}
-                  promptContextLoading={promptContext.isLoading}
-                  promptContextError={promptContext.error}
-                  promptContextRetry={() => promptContext.refetch()}
-                  promptVariables={promptVariables}
-                  setPromptVariables={setPromptVariables}
-                  configuration={configuration.data}
-                  configurationLoading={configuration.isLoading}
-                  configurationError={configuration.error}
-                  onSend={(input) => sendRun.mutateAsync(input)}
-                  onStop={(runId) => stopRun.mutateAsync(runId)}
-                  onUpdateConfiguration={(patch) => updateConfiguration.mutateAsync(patch)}
+                  composer={
+                    <ChatCommandBar
+                      session={currentSession}
+                      agent={agent}
+                      events={events}
+                      project={project}
+                      activeRun={activeRun}
+                      promptContext={promptContext.data}
+                      promptContextLoading={promptContext.isLoading}
+                      promptContextError={promptContext.error}
+                      promptContextRetry={() => promptContext.refetch()}
+                      promptVariables={promptVariables}
+                      setPromptVariables={setPromptVariables}
+                      configuration={configuration.data}
+                      configurationLoading={configuration.isLoading}
+                      configurationError={configuration.error}
+                      onSend={(input) => sendRun.mutateAsync(input)}
+                      onStop={(runId) => stopRun.mutateAsync(runId)}
+                      onUpdateConfiguration={(patch) => updateConfiguration.mutateAsync(patch)}
+                    />
+                  }
                 />
                 <div className="workspace-terminal-slot">
                   <TerminalDock

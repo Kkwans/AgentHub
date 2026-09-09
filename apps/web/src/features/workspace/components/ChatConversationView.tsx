@@ -8,7 +8,7 @@
  */
 
 import { Bot, ChevronDown } from '@agenthub/ui';
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
@@ -59,6 +59,7 @@ export function ChatConversationView({
   hasPreviousMessages,
   isLoadingPreviousMessages,
   onLoadPreviousMessages,
+  composer,
 }: {
   session: SessionRecord;
   messages: MessageQueryState;
@@ -74,6 +75,8 @@ export function ChatConversationView({
   hasPreviousMessages?: boolean;
   isLoadingPreviousMessages?: boolean;
   onLoadPreviousMessages?: () => Promise<unknown>;
+  /** PinHarness keeps the CommandBar adjacent to the conversation in this source shell. */
+  composer?: ReactNode;
 }) {
   const [approvalFeedback, setApprovalFeedback] = useState<string>();
   const [resolving, setResolving] = useState<string>();
@@ -449,6 +452,11 @@ export function ChatConversationView({
           )}
         </button>
       )}
+      {composer ? (
+        <div className="chat-composer-dock relative shrink-0 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom),var(--mobile-keyboard-inset,0px))] pt-1 before:pointer-events-none before:absolute before:inset-x-0 before:-top-3 before:h-3 before:bg-gradient-to-t before:from-[hsl(var(--background))]/85 before:to-transparent sm:px-4 sm:pb-3 sm:pt-2 sm:before:-top-5 sm:before:h-5">
+          {composer}
+        </div>
+      ) : null}
     </section>
   );
 }
