@@ -130,8 +130,11 @@ export function useWorkspaceViewModel() {
     'run',
   ].includes(viewParam ?? '');
   // Keep the conversation readable on medium screens: supporting panels become
-  // drawers below the PinHarness-derived 1180px workbench breakpoint.
-  const inspectorActsAsDrawer = useMediaQuery('(max-width: 1179px)');
+  // drawers below the PinHarness-derived 1440px workbench breakpoint.
+  // Match PinHarness ThreeColumnSplit: the measured wide shell starts at
+  // 1440px, so the auxiliary inspector remains a switchable side panel below
+  // that boundary instead of being forced into a third column prematurely.
+  const inspectorActsAsDrawer = useMediaQuery('(max-width: 1439px)');
   const isMobileViewport = useMediaQuery('(max-width: 767px)');
   const [promptVariables, setPromptVariables] = useState<Record<string, unknown>>({});
   const [stagedDiff, setStagedDiff] = useState(false);

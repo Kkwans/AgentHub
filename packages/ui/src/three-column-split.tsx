@@ -30,12 +30,11 @@ function lsSet(key: string, value: string): void {
 }
 
 const SINGLE_PANEL_BREAKPOINT = 768;
-// PinHarness keeps the three-column workbench once the viewport can hold the
-// 256px rail, 560px conversation and a compact inspector. Below this point the
-// conversation remains the primary surface and the auxiliary panels become a
-// switchable drawer.
-const WIDE_LAYOUT_BREAKPOINT = 1180;
-const MIN_MIDDLE_WIDTH = 560;
+// Keep the source component's measured breakpoints. The middle column needs
+// 640px before the rail and inspector can remain side-by-side; below 1440px
+// PinHarness intentionally switches to the conversation-first medium shell.
+const WIDE_LAYOUT_BREAKPOINT = 1440;
+const MIN_MIDDLE_WIDTH = 640;
 const MAX_LEFT_WIDTH = 380;
 const MAX_RIGHT_WIDTH = 520;
 

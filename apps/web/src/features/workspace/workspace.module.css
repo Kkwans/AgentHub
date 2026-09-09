@@ -595,7 +595,7 @@
   }
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 1440px) {
   .contextbar {
     flex-basis: 50px;
     min-height: 50px;
@@ -620,7 +620,7 @@
   }
 }
 
-@media (max-width: 1179px) {
+@media (max-width: 1439px) {
   .workspace :global(.workspace-support-toggle) {
     display: inline-flex;
   }
