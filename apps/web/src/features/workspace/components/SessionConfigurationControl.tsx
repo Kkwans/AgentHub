@@ -1,4 +1,4 @@
-import { Button, ChevronDown, Select } from '@agenthub/ui';
+import { Button, ChevronDown, Select, cn } from '@agenthub/ui';
 import { useState } from 'react';
 
 import { labelReasoningEffort, labelSessionMode } from '../../../presentation/domain-labels';
@@ -44,25 +44,34 @@ export function SessionConfigurationControl({
     .join(' · ');
 
   return (
-    <div className="composer-session-config">
+    <div className="relative min-w-0 max-w-[min(300px,42vw)]">
       <Button
         type="button"
         size="sm"
         variant="ghost"
-        className={`composer-session-config-trigger${open ? ' active' : ''}`}
+        className={cn(
+          'min-h-8 max-w-full gap-1.5 rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-subtle))] transition-[background-color,color] duration-[var(--motion-fast)] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))]',
+          open && 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]',
+        )}
         aria-expanded={open}
         aria-label={loading ? 'Session 配置读取中' : 'Session 配置'}
         onClick={() => setOpen((value) => !value)}
       >
         <span>配置</span>
-        <strong>{loading ? '读取中…' : summary}</strong>
+        <strong className="min-w-0 max-w-48 truncate font-medium">
+          {loading ? '读取中…' : summary}
+        </strong>
         <ChevronDown size={11} aria-hidden="true" />
       </Button>
       {open && (
-        <div className="composer-session-config-popover" role="dialog" aria-label="Session 配置">
-          <div className="composer-session-config-heading">
-            <strong>Session 配置</strong>
-            <span>仅影响后续 Run</span>
+        <div
+          className="absolute bottom-[calc(100%+0.5rem)] right-0 z-30 grid w-[min(320px,calc(100vw-32px))] gap-2.5 rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-elevated))] p-3 text-[hsl(var(--foreground))] shadow-[var(--shadow-lg)] animate-[hci-fade-in_140ms_ease-out_both] motion-reduce:animate-none"
+          role="dialog"
+          aria-label="Session 配置"
+        >
+          <div className="flex items-baseline justify-between gap-2 border-b border-[hsl(var(--border))]/60 pb-1.5">
+            <strong className="text-xs">Session 配置</strong>
+            <span className="text-[11px] text-[hsl(var(--foreground-faint))]">仅影响后续 Run</span>
           </div>
           {configuration?.supported && modelOptions.length ? (
             <CompactChoiceSelect
@@ -73,9 +82,11 @@ export function SessionConfigurationControl({
               onValueChange={(value) => onChange({ model: value })}
             />
           ) : (
-            <div className="composer-session-config-fallback">
+            <div className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-2 text-xs text-[hsl(var(--foreground-muted))]">
               <span>模型</span>
-              <strong>{model || 'Agent 默认'}</strong>
+              <strong className="truncate font-medium text-[hsl(var(--foreground))]">
+                {model || 'Agent 默认'}
+              </strong>
             </div>
           )}
           {configuration?.supported && modeOptions.length ? (
@@ -90,9 +101,11 @@ export function SessionConfigurationControl({
               onValueChange={(value) => onChange({ mode: value })}
             />
           ) : (
-            <div className="composer-session-config-fallback">
+            <div className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-2 text-xs text-[hsl(var(--foreground-muted))]">
               <span>运行模式</span>
-              <strong>{mode ? labelSessionMode(mode) : 'Agent 默认'}</strong>
+              <strong className="truncate font-medium text-[hsl(var(--foreground))]">
+                {mode ? labelSessionMode(mode) : 'Agent 默认'}
+              </strong>
             </div>
           )}
           {configuration?.supported && reasoningEffortOptions.length ? (
@@ -127,14 +140,14 @@ function CompactChoiceSelect({
   onValueChange: (value: string) => void;
 }) {
   return (
-    <label className="composer-config-choice">
+    <label className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-2 text-xs text-[hsl(var(--foreground-muted))]">
       <span>{label}</span>
       <Select
         value={value}
         options={options}
         disabled={disabled}
         ariaLabel={label}
-        className="composer-config-choice-select"
+        className="input-base min-h-8 min-w-0 w-full truncate px-2 py-1 text-xs"
         onValueChange={onValueChange}
       />
     </label>

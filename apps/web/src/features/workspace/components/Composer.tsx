@@ -22,7 +22,6 @@ import { ComposerSurface } from './ComposerSurface';
 import { ComposerToolbar, type ComposerContextStatus } from './ComposerToolbar';
 import { ContextPopover } from './ContextPopover';
 import type { ComposerCommand } from './SlashCommandMenu';
-import composerStyles from '../composer.module.css';
 
 function useWorkspaceAction<TInput, TResult>(action: (input: TInput) => Promise<TResult>) {
   const [isPending, setIsPending] = useState(false);
@@ -102,7 +101,7 @@ export function Composer({
 }) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [inputHeight, setInputHeight] = useState(56);
+  const [inputHeight, setInputHeight] = useState(40);
   const resizeStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
   const [variablesDraft, setVariablesDraft] = useState(() =>
@@ -120,7 +119,7 @@ export function Composer({
     } catch {
       setText('');
     }
-    setInputHeight(56);
+    setInputHeight(40);
   }, [draftKey]);
 
   useEffect(() => {
@@ -157,6 +156,7 @@ export function Composer({
   }, []);
   const send = useWorkspaceAction<void, unknown>(async () => {
     const result = await onSend({ text, promptVariables });
+    if (result === false) return result;
     setText('');
     setCommandNotice(undefined);
     return result;
@@ -346,7 +346,7 @@ export function Composer({
   };
   return (
     <section
-      className={`${composerStyles.owner} composer-shell relative z-20 mx-auto mb-4 w-[min(760px,calc(100%-24px))] shrink-0 min-w-0 sm:mb-4 sm:w-[min(760px,calc(100%-24px))]`}
+      className="composer-shell relative z-20 mx-auto mb-4 w-[min(760px,calc(100%-24px))] shrink-0 min-w-0 sm:mb-4 sm:w-[min(760px,calc(100%-24px))]"
       role="group"
       aria-label="Composer 命令栏"
     >
@@ -416,12 +416,18 @@ export function Composer({
           onStop={() => stop.mutate(undefined)}
         />
         {configurationError && (
-          <div className="composer-error" role="alert">
+          <div
+            className="border-t border-[hsl(var(--destructive))]/15 px-3 py-2 text-xs text-[hsl(var(--destructive))]"
+            role="alert"
+          >
             配置读取失败：{configurationError.message}
           </div>
         )}
         {updateConfiguration.isError && (
-          <div className="composer-error" role="alert">
+          <div
+            className="border-t border-[hsl(var(--destructive))]/15 px-3 py-2 text-xs text-[hsl(var(--destructive))]"
+            role="alert"
+          >
             {updateConfiguration.error?.message}
           </div>
         )}

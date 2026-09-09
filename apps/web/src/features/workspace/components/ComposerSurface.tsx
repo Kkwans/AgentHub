@@ -55,9 +55,9 @@ export function ComposerSurface({
 
   return (
     <>
-      <div className="composer-input relative flex min-w-0 min-h-16 items-end gap-2 bg-transparent px-3 pb-2 pt-2">
+      <div className="relative flex min-w-0 min-h-16 items-end gap-2 bg-transparent px-3 pb-2 pt-3 sm:px-4">
         <div
-          className="composer-resize-handle group/resize absolute inset-x-0 top-0 z-20 -translate-y-1/2 flex h-3 touch-none cursor-ns-resize select-none items-center justify-center"
+          className="group/resize absolute inset-x-0 top-0 z-20 -translate-y-1/2 flex h-3 touch-none cursor-ns-resize select-none items-center justify-center"
           role="separator"
           aria-orientation="horizontal"
           aria-label="调整输入框高度"
@@ -82,7 +82,7 @@ export function ComposerSurface({
           placeholder={placeholder}
           rows={2}
           disabled={inputDisabled}
-          className="w-full resize-none overflow-y-auto border-0 bg-transparent px-3 pb-1.5 pt-2.5 text-[15px] leading-relaxed text-[hsl(var(--foreground))] placeholder-[hsl(var(--foreground-faint))] outline-none focus:outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="w-full resize-none overflow-y-auto border-0 bg-transparent px-1 pb-1.5 pt-1 text-[15px] leading-relaxed text-[hsl(var(--foreground))] placeholder-[hsl(var(--foreground-faint))] outline-none focus:outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           style={{ height: `${inputHeight}px`, boxShadow: 'none' }}
         />
         {slashMenuOpen ? (
@@ -94,7 +94,10 @@ export function ComposerSurface({
         ) : null}
       </div>
       {stopError ? (
-        <div className="workspace-query-error" role="alert">
+        <div
+          className="flex items-center gap-2 border-t border-[hsl(var(--destructive))]/15 px-3 py-2 text-xs text-[hsl(var(--destructive))]"
+          role="alert"
+        >
           <span>停止 Run 失败：{stopError}</span>
           <Button size="xs" variant="destructive" disabled={stopPending} onClick={onRetryStop}>
             重试停止
@@ -102,17 +105,23 @@ export function ComposerSurface({
         </div>
       ) : null}
       {sendError ? (
-        <span className="composer-error" role="alert">
+        <span
+          className="border-t border-[hsl(var(--destructive))]/15 px-3 py-2 text-xs text-[hsl(var(--destructive))]"
+          role="alert"
+        >
           {sendError}
         </span>
       ) : null}
       {commandNotice ? (
-        <span className="composer-hint composer-command-notice" role="status">
+        <span
+          className="border-t border-[hsl(var(--border))]/50 px-3 py-2 text-xs text-[hsl(var(--foreground-muted))]"
+          role="status"
+        >
           {commandNotice}
         </span>
       ) : null}
       {lockHint ? (
-        <span className="composer-hint composer-lock-hint" role="status">
+        <span className="sr-only" role="status">
           {lockHint}
         </span>
       ) : null}
