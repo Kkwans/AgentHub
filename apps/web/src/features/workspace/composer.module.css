@@ -29,7 +29,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  order: 2;
+  order: initial;
   min-height: 40px;
   padding: 0 10px;
   border-top: 1px solid var(--ah-border-subtle);
@@ -489,7 +489,7 @@
   min-height: 64px;
   align-items: flex-end;
   gap: 8px;
-  order: 1;
+  order: initial;
   padding: 10px 12px 8px;
   background: transparent;
   border: 0;

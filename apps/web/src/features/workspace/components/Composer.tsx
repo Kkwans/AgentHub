@@ -351,36 +351,6 @@ export function Composer({
       aria-label="Composer 命令栏"
     >
       <div className="chat-command-card relative flex min-w-0 flex-col overflow-visible rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/98 shadow-[0_1px_3px_hsl(var(--foreground)/0.05),0_1px_2px_hsl(var(--foreground)/0.04)] backdrop-blur-sm transition-[border-color,box-shadow] duration-150 focus-within:border-[hsl(var(--primary))]/45 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.07),0_2px_6px_hsl(var(--foreground)/0.06)]">
-        <ComposerToolbar
-          contextOpen={contextOpen}
-          contextStatus={contextStatus}
-          onToggleContext={() => setContextOpen((open) => !open)}
-          configuration={configuration}
-          configurationLoading={configurationLoading}
-          model={modelValue || agent?.defaultModel || ''}
-          mode={modeValue || agent?.defaultMode || ''}
-          reasoningEffort={reasoningEffortValue}
-          updatingModel={updatingModel}
-          updatingMode={updatingMode}
-          updatingReasoningEffort={updatingReasoningEffort}
-          onChangeConfiguration={(patch) => updateConfiguration.mutate(patch)}
-          activeRun={Boolean(activeRun)}
-          sendPending={send.isPending}
-          stopPending={stop.isPending}
-          sendingBlocked={sendingBlocked}
-          onSend={sendCurrentText}
-          onStop={() => stop.mutate(undefined)}
-        />
-        {configurationError && (
-          <div className="composer-error" role="alert">
-            配置读取失败：{configurationError.message}
-          </div>
-        )}
-        {updateConfiguration.isError && (
-          <div className="composer-error" role="alert">
-            {updateConfiguration.error?.message}
-          </div>
-        )}
         {contextOpen && (
           <ContextPopover
             project={project}
@@ -425,6 +395,36 @@ export function Composer({
             inputRef.current?.focus();
           }}
         />
+        <ComposerToolbar
+          contextOpen={contextOpen}
+          contextStatus={contextStatus}
+          onToggleContext={() => setContextOpen((open) => !open)}
+          configuration={configuration}
+          configurationLoading={configurationLoading}
+          model={modelValue || agent?.defaultModel || ''}
+          mode={modeValue || agent?.defaultMode || ''}
+          reasoningEffort={reasoningEffortValue}
+          updatingModel={updatingModel}
+          updatingMode={updatingMode}
+          updatingReasoningEffort={updatingReasoningEffort}
+          onChangeConfiguration={(patch) => updateConfiguration.mutate(patch)}
+          activeRun={Boolean(activeRun)}
+          sendPending={send.isPending}
+          stopPending={stop.isPending}
+          sendingBlocked={sendingBlocked}
+          onSend={sendCurrentText}
+          onStop={() => stop.mutate(undefined)}
+        />
+        {configurationError && (
+          <div className="composer-error" role="alert">
+            配置读取失败：{configurationError.message}
+          </div>
+        )}
+        {updateConfiguration.isError && (
+          <div className="composer-error" role="alert">
+            {updateConfiguration.error?.message}
+          </div>
+        )}
       </div>
     </section>
   );
