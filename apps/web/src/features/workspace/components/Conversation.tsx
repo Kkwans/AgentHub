@@ -417,7 +417,7 @@ export function Conversation({
                     style={{ transform: `translateY(${virtualItem.start}px)` }}
                   >
                     {virtualItem.index > 0 && <ConversationTurnDivider />}
-                    <ConversationTurnView turn={turn} {...renderItemProps} />
+                    <RoundBlock turn={turn} {...renderItemProps} />
                   </div>
                 );
               })}
@@ -427,7 +427,7 @@ export function Conversation({
               {displayTurns.map((turn, index) => (
                 <Fragment key={turn.id}>
                   {index > 0 && <ConversationTurnDivider />}
-                  <ConversationTurnView turn={turn} {...renderItemProps} />
+                  <RoundBlock turn={turn} {...renderItemProps} />
                 </Fragment>
               ))}
             </div>
@@ -465,9 +465,10 @@ type ConversationTurnViewModel = {
 
 type ConversationTurnViewProps = {
   turn: ConversationTurnViewModel;
-} & Omit<ConversationTimelineItemViewProps, 'item'>;
+} & Omit<ChatEntryRendererProps, 'item'>;
 
-function ConversationTurnView({ turn, ...itemProps }: ConversationTurnViewProps) {
+/** PinHarness source name: RoundBlock groups one user turn and its ordered Agent entries. */
+function RoundBlock({ turn, ...itemProps }: ConversationTurnViewProps) {
   const userEntries = turn.entries.filter(
     (item) => item.kind === 'message' && item.message.role === 'USER',
   );
@@ -480,7 +481,7 @@ function ConversationTurnView({ turn, ...itemProps }: ConversationTurnViewProps)
       data-turn-id={turn.id}
     >
       {userEntries.map((item) => (
-        <ConversationTimelineItemView key={item.id} item={item} {...itemProps} />
+        <ChatEntryRenderer key={item.id} item={item} {...itemProps} />
       ))}
       {assistantEntries.length > 0 && (
         <section className="mx-4 mb-1 min-w-0 py-2 sm:mx-5">
@@ -494,7 +495,7 @@ function ConversationTurnView({ turn, ...itemProps }: ConversationTurnViewProps)
           </header>
           <div className="min-w-0 space-y-1">
             {assistantEntries.map((item) => (
-              <ConversationTimelineItemView key={item.id} item={item} {...itemProps} />
+              <ChatEntryRenderer key={item.id} item={item} {...itemProps} />
             ))}
           </div>
         </section>
@@ -503,7 +504,8 @@ function ConversationTurnView({ turn, ...itemProps }: ConversationTurnViewProps)
   );
 }
 
-type ConversationTimelineItemViewProps = {
+/** PinHarness source name: route every display entry without reordering protocol events. */
+export type ChatEntryRendererProps = {
   item: ConversationTimelineItem | ConversationToolGroup;
   resolving: string | undefined;
   resolveError: Error | undefined;
@@ -512,14 +514,14 @@ type ConversationTimelineItemViewProps = {
   onResolve: (variables: { id: string; optionId: string }) => void;
 };
 
-function ConversationTimelineItemView({
+export function ChatEntryRenderer({
   item,
   resolving,
   resolveError,
   resolveVariables,
   activeThoughtId,
   onResolve,
-}: ConversationTimelineItemViewProps) {
+}: ChatEntryRendererProps) {
   if (item.kind === 'tool-group') {
     return <ToolExecutionGroupRow events={item.events} />;
   }
