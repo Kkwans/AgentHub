@@ -21,6 +21,7 @@ export interface FormDialogProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: FormDialogSize;
+  fullScreen?: boolean;
   labelledBy?: string;
   describedBy?: string;
   onOpenAutoFocus?: (event: {
@@ -43,6 +44,7 @@ export function FormDialog({
   children,
   footer,
   size = 'medium',
+  fullScreen = false,
   labelledBy,
   describedBy,
   onOpenAutoFocus: _onOpenAutoFocus,
@@ -102,9 +104,13 @@ export function FormDialog({
   const titleId = labelledBy ?? `ah-dialog-title-${generatedTitleId.replaceAll(':', '')}`;
   const descriptionId = describedBy ?? (description ? `${titleId}-description` : undefined);
   return (
-    <div className="ah-dialog-backdrop" role="presentation">
+    <div
+      className="ah-dialog-backdrop"
+      data-fullscreen={fullScreen || undefined}
+      role="presentation"
+    >
       <section
-        className={`ah-dialog ah-dialog-${size}`}
+        className={`ah-dialog ah-dialog-${size}${fullScreen ? ' ah-dialog-fullscreen' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

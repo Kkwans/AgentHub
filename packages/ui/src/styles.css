@@ -669,6 +669,10 @@ textarea:focus-visible {
   background: rgb(15 23 42 / 42%);
 }
 
+.ah-dialog-backdrop[data-fullscreen='true'] {
+  padding: 0;
+}
+
 .ah-dialog {
   width: min(100% - 32px, 640px);
   padding: 20px;
@@ -680,6 +684,14 @@ textarea:focus-visible {
   outline: 0;
   overflow: auto;
   overscroll-behavior: contain;
+}
+
+.ah-dialog-fullscreen {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
 }
 
 .ah-dialog {
