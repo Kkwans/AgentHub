@@ -1,4 +1,4 @@
-import { ChevronDown } from '@agenthub/ui';
+import { ChevronDown, Select } from '@agenthub/ui';
 import { useState } from 'react';
 
 import { labelReasoningEffort, labelSessionMode } from '../../../presentation/domain-labels';
@@ -127,22 +127,14 @@ function CompactChoiceSelect({
   return (
     <label className="composer-config-choice">
       <span>{label}</span>
-      <div>
-        <select
-          aria-label={label}
-          title={label}
-          value={value}
-          disabled={disabled}
-          onChange={(event) => onValueChange(event.target.value)}
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown size={11} aria-hidden="true" />
-      </div>
+      <Select
+        value={value}
+        options={options}
+        disabled={disabled}
+        ariaLabel={label}
+        className="composer-config-choice-select"
+        onValueChange={onValueChange}
+      />
     </label>
   );
 }

@@ -349,15 +349,12 @@
   font-size: 12px;
 }
 
-:global(.workspace) :global(.composer-config-choice > div) {
+:global(.workspace) :global(.composer-config-choice-select) {
   position: relative;
   min-width: 0;
-}
-
-:global(.workspace) :global(.composer-config-choice select) {
   width: 100%;
-  min-width: 0;
   height: 30px;
+  min-height: 30px;
   padding: 0 24px 0 8px;
   overflow: hidden;
   color: var(--ah-text-primary);
@@ -367,11 +364,10 @@
   border: 1px solid var(--ah-border-subtle);
   border-radius: 7px;
   outline: 0;
-  appearance: none;
   font-size: 12px;
 }
 
-:global(.workspace) :global(.composer-config-choice select:focus-visible) {
+:global(.workspace) :global(.composer-config-choice-select:focus-visible) {
   border-color: var(--ah-accent-primary);
   box-shadow: 0 0 0 2px var(--ah-accent-soft);
 }
@@ -902,7 +898,7 @@
   :global(.workspace) :global(.composer-context-action),
   :global(.workspace) :global(.composer-session-config-trigger),
   :global(.workspace) :global(.composer-choice select),
-  :global(.workspace) :global(.composer-config-choice select),
+  :global(.workspace) :global(.composer-config-choice-select),
   :global(.workspace) :global(.composer-input .send-button) {
     min-height: 44px;
   }

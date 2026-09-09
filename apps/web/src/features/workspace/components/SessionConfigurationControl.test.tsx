@@ -51,13 +51,12 @@ describe('SessionConfigurationControl', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Session 配置' }));
     expect(screen.getByRole('dialog', { name: 'Session 配置' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: '模型' })).toHaveValue('gpt-5');
-    expect(screen.getByRole('combobox', { name: '运行模式' })).toHaveValue('agent');
-    expect(screen.getByRole('combobox', { name: '推理强度' })).toHaveValue('high');
+    expect(screen.getByRole('combobox', { name: '模型' })).toHaveTextContent('GPT-5');
+    expect(screen.getByRole('combobox', { name: '运行模式' })).toHaveTextContent('工作区执行');
+    expect(screen.getByRole('combobox', { name: '推理强度' })).toHaveTextContent('高');
 
-    fireEvent.change(screen.getByRole('combobox', { name: '模型' }), {
-      target: { value: 'claude' },
-    });
+    fireEvent.click(screen.getByRole('combobox', { name: '模型' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Claude' }));
     expect(onChange).toHaveBeenCalledWith({ model: 'claude' });
   });
 
