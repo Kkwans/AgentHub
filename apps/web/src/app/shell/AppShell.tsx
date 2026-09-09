@@ -29,6 +29,11 @@ const CommandPalette = lazy(() =>
   import('./CommandPalette').then((module) => ({ default: module.CommandPalette })),
 );
 
+// PinHarness source breakpoints: render a single mobile surface below 768px
+// and keep the desktop rail compact until the workbench has 1320px of room.
+const MOBILE_NAV_BREAKPOINT = 768;
+const AUTO_COLLAPSE_BREAKPOINT = 1320;
+
 type NavigationItem = {
   to: string;
   label: string;
@@ -221,6 +226,21 @@ export function AppShell() {
   const navigate = useNavigate();
   const { preference, setPreference, sidebarCollapsed, sidebarPreference, setSidebarCollapsed } =
     useAgentHubTheme();
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === 'undefined' ? AUTO_COLLAPSE_BREAKPOINT : window.innerWidth,
+  );
+
+  useEffect(() => {
+    const syncWidth = () => setViewportWidth(window.innerWidth);
+    syncWidth();
+    window.addEventListener('resize', syncWidth);
+    return () => window.removeEventListener('resize', syncWidth);
+  }, []);
+
+  const mobile = viewportWidth > 0 && viewportWidth < MOBILE_NAV_BREAKPOINT;
+  const forceCollapsed =
+    viewportWidth >= MOBILE_NAV_BREAKPOINT && viewportWidth < AUTO_COLLAPSE_BREAKPOINT;
+  const collapsed = mobile ? false : sidebarCollapsed || forceCollapsed;
 
   useEffect(() => realtime.onState(setConnection), []);
   useEffect(() => setDrawerOpen(false), [location.pathname]);
@@ -265,7 +285,7 @@ export function AppShell() {
       data-shell="app-shell"
       data-agenthub-version="1.1.0"
       data-design-system="pinharness"
-      data-sidebar-state={sidebarCollapsed ? 'collapsed' : 'expanded'}
+      data-sidebar-state={collapsed ? 'collapsed' : 'expanded'}
     >
       <a
         className="fixed left-3 top-3 z-[3000] -translate-y-24 rounded-[var(--radius)] bg-[hsl(var(--foreground))] px-3 py-2 text-xs font-semibold text-[hsl(var(--surface))] shadow-[var(--shadow-lg)] transition-transform focus-visible:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]"
@@ -274,71 +294,107 @@ export function AppShell() {
         跳到主要内容
       </a>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside
-          className={`app-sidebar relative hidden h-full shrink-0 flex-col border-r border-[hsl(var(--sidebar-border))]/80 transition-[width,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:flex ${sidebarCollapsed ? 'w-[var(--sidebar-collapsed-width)]' : 'w-[var(--sidebar-width)]'}`}
-        >
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[hsl(var(--surface))]/70" />
-          <Brand
-            collapsed={sidebarCollapsed}
-            onToggle={() => {
-              if (sidebarPreference === 'remember') setSidebarCollapsed(!sidebarCollapsed);
-            }}
-            toggleDisabled={sidebarPreference !== 'remember'}
-          />
-          <button
-            type="button"
-            className={`mx-2 mt-1 flex min-h-9 items-center gap-2 rounded-[var(--radius)] border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))]/60 px-2.5 text-left text-[12px] text-[hsl(var(--foreground-faint))] shadow-[var(--shadow-sm)] transition-[background-color,border-color,color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/50 ${sidebarCollapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)] justify-center px-0' : ''}`}
-            onClick={openCommand}
-            aria-label="搜索与跳转"
-            title="搜索与跳转"
+        {!mobile && (
+          <aside
+            className={`app-sidebar relative h-full shrink-0 flex-col border-r border-[hsl(var(--sidebar-border))]/80 transition-[width,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] flex ${collapsed ? 'w-[var(--sidebar-collapsed-width)]' : 'w-[var(--sidebar-width)]'}`}
           >
-            <Search aria-hidden size={15} />
-            {!sidebarCollapsed ? <span className="min-w-0 flex-1 truncate">搜索与跳转</span> : null}
-            {!sidebarCollapsed ? (
-              <kbd className="rounded-[5px] bg-[hsl(var(--surface-muted))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--foreground-faint))]">
-                ⌘ K
-              </kbd>
-            ) : null}
-          </button>
-          <Navigation collapsed={sidebarCollapsed} />
-          <div
-            className={`mt-1.5 border-t border-[hsl(var(--sidebar-border))]/60 py-2.5 ${sidebarCollapsed ? 'flex flex-col items-center px-2' : 'px-3 2xl:px-4'}`}
-          >
-            <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
-              <div
-                className="inline-flex items-center"
-                role="status"
-                aria-label={`实时连接${connection}`}
-              >
-                <AhStatusPill
-                  status={
-                    connection === '已连接'
-                      ? 'ONLINE'
-                      : connection === '连接中'
-                        ? 'PENDING'
-                        : 'OFFLINE'
-                  }
-                  label={connection}
-                />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[hsl(var(--surface))]/70" />
+            <Brand
+              collapsed={collapsed}
+              onToggle={() => {
+                if (!forceCollapsed && sidebarPreference === 'remember')
+                  setSidebarCollapsed(!sidebarCollapsed);
+              }}
+              toggleDisabled={forceCollapsed || sidebarPreference !== 'remember'}
+            />
+            <button
+              type="button"
+              className={`mx-2 mt-1 flex min-h-9 items-center gap-2 rounded-[var(--radius)] border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))]/60 px-2.5 text-left text-[12px] text-[hsl(var(--foreground-faint))] shadow-[var(--shadow-sm)] transition-[background-color,border-color,color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/50 ${collapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)] justify-center px-0' : ''}`}
+              onClick={openCommand}
+              aria-label="搜索与跳转"
+              title="搜索与跳转"
+            >
+              <Search aria-hidden size={15} />
+              {!collapsed ? <span className="min-w-0 flex-1 truncate">搜索与跳转</span> : null}
+              {!collapsed ? (
+                <kbd className="rounded-[5px] bg-[hsl(var(--surface-muted))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--foreground-faint))]">
+                  ⌘ K
+                </kbd>
+              ) : null}
+            </button>
+            <Navigation collapsed={collapsed} />
+            <div
+              className={`mt-1.5 border-t border-[hsl(var(--sidebar-border))]/60 py-2.5 ${collapsed ? 'flex flex-col items-center px-2' : 'px-3 2xl:px-4'}`}
+            >
+              <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2'}`}>
+                <div
+                  className="inline-flex items-center"
+                  role="status"
+                  aria-label={`实时连接${connection}`}
+                >
+                  <AhStatusPill
+                    status={
+                      connection === '已连接'
+                        ? 'ONLINE'
+                        : connection === '连接中'
+                          ? 'PENDING'
+                          : 'OFFLINE'
+                    }
+                    label={connection}
+                  />
+                </div>
+                {!collapsed && (
+                  <span className="ml-auto text-[11px] text-[hsl(var(--foreground-faint))]">
+                    实时连接
+                  </span>
+                )}
               </div>
-              {!sidebarCollapsed && (
-                <span className="ml-auto text-[11px] text-[hsl(var(--foreground-faint))]">
-                  实时连接
-                </span>
-              )}
             </div>
-          </div>
-          <div
-            className={`border-t border-[hsl(var(--sidebar-border))]/60 p-2.5 ${sidebarCollapsed ? 'px-2' : 'px-3 2xl:px-4'}`}
-          >
-            <ProfileSurface collapsed={sidebarCollapsed} />
-          </div>
-        </aside>
+            <div
+              className={`border-t border-[hsl(var(--sidebar-border))]/60 p-2.5 ${collapsed ? 'px-2' : 'px-3 2xl:px-4'}`}
+            >
+              <ProfileSurface collapsed={collapsed} />
+            </div>
+          </aside>
+        )}
         <div className="flex h-full min-w-0 flex-1 flex-col">
-          <header
-            className="flex h-14 shrink-0 items-center gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--background))] px-4 md:hidden"
-            data-shell-topbar="true"
-          >
+          {mobile && (
+            <header
+              className="mobile-app-bar relative z-30 flex shrink-0 items-center justify-between px-4 md:hidden"
+              data-shell-topbar="true"
+            >
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="mobile-touch-target flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[hsl(var(--foreground))] transition-colors active:bg-[hsl(var(--surface))]"
+                aria-label="打开导航"
+              >
+                <Menu aria-hidden size={20} />
+              </button>
+              <div className="pointer-events-none absolute inset-x-14 flex items-center justify-center">
+                <p className="truncate text-[16px] font-semibold text-[hsl(var(--foreground))]">
+                  AgentHub
+                </p>
+                {connection !== '已连接' && (
+                  <span
+                    role="status"
+                    aria-label={connection}
+                    title={connection}
+                    className="ml-1.5 h-2 w-2 shrink-0 rounded-full bg-[hsl(var(--warning))]"
+                  />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={openCommand}
+                className="mobile-touch-target flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[hsl(var(--foreground-muted))] transition-colors active:bg-[hsl(var(--surface))]"
+                aria-label="搜索与跳转"
+              >
+                <Search aria-hidden size={18} />
+              </button>
+            </header>
+          )}
+          <header className="hidden" data-shell-topbar="true">
             <div className="flex items-center gap-2">
               <AhButton
                 className="grid h-9 w-9 place-items-center border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-0 text-[hsl(var(--foreground-subtle))]"

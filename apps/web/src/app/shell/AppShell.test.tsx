@@ -25,6 +25,10 @@ afterEach(() => {
 });
 
 function renderShell(initialEntries: string[] = ['/projects/p-1/overview']) {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: 1440,
+  });
   render(
     <AgentHubProvider initialPreference="light">
       <MemoryRouter initialEntries={initialEntries}>
