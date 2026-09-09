@@ -29,7 +29,6 @@ import {
 } from '../../../presentation/domain-labels';
 import type { MessageQueryState, QueryState } from '../workspace-types';
 import { RunStateBanner } from './RunStateBanner';
-import conversationStyles from '../conversation.module.css';
 import {
   buildConversationTimeline,
   buildConversationTurns,
@@ -299,14 +298,15 @@ export function Conversation({
   };
   return (
     <section
-      className={`${conversationStyles.owner} conversation flex min-h-0 h-full flex-col overflow-hidden bg-[hsl(var(--background))]`}
+      className="conversation flex h-full min-h-0 flex-col overflow-hidden bg-[hsl(var(--background))]"
+      aria-label="Agent 对话"
     >
       <span className="sr-only">消息与执行记录</span>
-      <div className="relative min-h-0 flex-1">
-        <div className="conversation-top-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-5" />
+      <div className="group/chatscroll relative min-h-0 flex-1">
+        <div className="conversation-top-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[hsl(var(--background))] to-transparent" />
         <div
           ref={scrollRef}
-          className="group/chatscroll relative h-full overflow-y-auto overscroll-contain bg-[hsl(var(--background))] px-0.5 py-2 sm:px-1 sm:py-3"
+          className="h-full overflow-y-auto overscroll-contain px-0.5 py-2 sm:px-1 sm:py-3"
           role="log"
           aria-live="polite"
           aria-relevant="additions text"
@@ -451,9 +451,10 @@ export function Conversation({
 
 function ConversationTurnDivider() {
   return (
-    <div className="mx-auto my-2 flex w-[85%] items-center gap-3 sm:my-3" aria-hidden="true">
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[hsl(var(--border))]/50 to-transparent" />
-    </div>
+    <div
+      className="mx-auto my-2 h-px w-[85%] bg-[hsl(var(--border))]/45 sm:my-3"
+      aria-hidden="true"
+    />
   );
 }
 
@@ -559,7 +560,7 @@ function ConversationTimelineItemView({
     <div
       className={
         isUser
-          ? 'group/msg flex justify-end px-3 py-1.5 animate-[hci-entry_var(--anim-entry-fast)_var(--ease-out-expo)_both] sm:px-4'
+          ? 'group/msg flex justify-end px-3 py-1.5 animate-[hci-entry_200ms_ease-out_both] sm:px-4'
           : 'min-w-0 px-0.5 py-1'
       }
       data-chat-entry
@@ -573,7 +574,7 @@ function ConversationTimelineItemView({
         className={
           isUser
             ? 'message user message-user min-w-0 max-w-[88%] sm:max-w-[78%]'
-            : `message ${message.role.toLowerCase()} message-assistant min-w-0 text-[15px] leading-[1.72] tracking-[-0.008em] text-[hsl(var(--foreground))]`
+            : `message ${message.role.toLowerCase()} message-assistant min-w-0 text-[13px] leading-relaxed text-[hsl(var(--foreground))]`
         }
         data-streaming={item.streaming ? 'true' : undefined}
       >
@@ -595,7 +596,7 @@ function ConversationTimelineItemView({
           </div>
         ) : (
           <div
-            className={`message-body message-markdown min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${isUser ? 'rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-gradient-to-br from-[hsl(var(--primary))]/[0.09] to-[hsl(var(--primary))]/[0.05] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/28 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)]' : ''}`}
+            className={`message-body message-markdown min-w-0 break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:m-0 [&_p+p]:mt-3 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--border-strong))] [&_blockquote]:pl-3 [&_pre]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-[hsl(var(--border))] [&_pre]:bg-[hsl(var(--surface-muted))] [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-[12px] [&_pre]:leading-relaxed [&_code]:font-mono [&_code]:text-[0.88em] [&_a]:text-[hsl(var(--primary))] [&_a]:underline-offset-2 hover:[&_a]:underline ${isUser ? 'max-w-full rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-gradient-to-br from-[hsl(var(--primary))]/[0.09] to-[hsl(var(--primary))]/[0.05] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/28 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)]' : ''}`}
           >
             <RichMessage text={presentation.text} />
             {item.streaming && (
@@ -829,7 +830,7 @@ function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
   const details = labels.slice(0, 3).join('、');
   return (
     <details
-      className={`tool-event-row tool-entry-motion tool-entry-card tool-execution-group tool-event-${status}`}
+      className={`tool-event-row tool-entry-motion tool-entry-card tool-execution-group tool-event-${status} mx-auto w-full max-w-3xl`}
     >
       <summary
         className="tool-entry-trigger tool-entry-trigger--interactive"
@@ -882,7 +883,9 @@ function ToolEventRow({ event }: { event: EventRecord }) {
   const title = toolEventTitle(event);
   const detailValue = toolEventDetail(event);
   return (
-    <details className={`tool-event-row tool-entry-motion tool-entry-card tool-event-${status}`}>
+    <details
+      className={`tool-event-row tool-entry-motion tool-entry-card tool-event-${status} mx-auto w-full max-w-3xl`}
+    >
       <summary
         className="tool-entry-trigger tool-entry-trigger--interactive"
         aria-label={`${title}，${labelAgentEventType(event.type)}，展开详情`}
@@ -967,7 +970,7 @@ function ThoughtEventRow({
   const label = running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`;
   return (
     <details
-      className={`thought-event-row tool-entry-motion my-1 overflow-hidden rounded-lg${running ? ' running tool-entry-card--active' : ''}`}
+      className={`thought-event-row tool-entry-motion tool-entry-card mx-auto my-1 w-full max-w-3xl overflow-hidden rounded-lg${running ? ' running tool-entry-card--active' : ''}`}
     >
       <summary
         className="tool-entry-trigger tool-entry-trigger--interactive rounded-lg px-2.5 py-1.5"
@@ -994,7 +997,7 @@ function ThoughtEventRow({
           aria-hidden="true"
         />
       </summary>
-      <div className="thought-event-content tool-entry-detail message-markdown border-t border-violet-200/50 bg-[hsl(var(--surface))]/60 px-3 py-2 dark:border-violet-500/15">
+      <div className="thought-event-content tool-entry-detail message-markdown break-words border-t border-violet-200/50 bg-[hsl(var(--surface))]/60 px-3 py-2 text-[11.5px] leading-relaxed text-[hsl(var(--foreground-subtle))] dark:border-violet-500/15 [&_p]:m-0 [&_p+p]:mt-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-[hsl(var(--surface-muted))] [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[11px]">
         <RichMessage text={thought.text || 'Agent 未提供可展示的思考内容。'} />
       </div>
     </details>
