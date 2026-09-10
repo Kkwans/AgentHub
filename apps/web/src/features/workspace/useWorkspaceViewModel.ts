@@ -324,7 +324,10 @@ export function useWorkspaceViewModel() {
   const files = useQuery({
     queryKey: ['files', project?.id],
     queryFn: () => api.get<FileEntry[]>(`/projects/${project?.id ?? ''}/files?depth=4`),
-    enabled: Boolean(project?.id),
+    // PinHarness loads expensive diagnostics on demand. Do not request an
+    // entire repository tree while the conversation or Git view is active;
+    // large repositories can legitimately answer FILE_TREE_TOO_LARGE (413).
+    enabled: Boolean(project?.id && tab === 'files'),
   });
   const fileContent = useQuery({
     queryKey: ['file', project?.id, selectedFile],
