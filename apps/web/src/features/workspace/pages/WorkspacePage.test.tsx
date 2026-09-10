@@ -797,7 +797,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
     await screen.findByRole('tab', { name: '对话' });
     expect(screen.queryByRole('button', { name: '关闭检查器' })).not.toBeInTheDocument();
     const mobileTabs = screen.getByRole('tablist', { name: 'Workspace 视图' });
-    fireEvent.click(within(mobileTabs).getByRole('tab', { name: 'Git' }));
+    const gitTab = within(mobileTabs).getByRole('tab', { name: 'Git' });
+    fireEvent.click(gitTab);
+    await waitFor(() => expect(gitTab).toHaveAttribute('aria-selected', 'true'));
     const closeButton = await screen.findByRole('button', { name: '关闭检查器' });
     expect(screen.getAllByRole('button', { name: '关闭检查器' })).toHaveLength(1);
     fireEvent.click(closeButton);

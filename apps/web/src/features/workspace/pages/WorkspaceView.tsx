@@ -92,6 +92,15 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     : inspectorDrawerOpen || mobileInspectorOpen
       ? 'right'
       : 'middle';
+  // The source mobile command bar is controlled by the same panel state as the
+  // drawer. Keep the outer tab strip controlled as well; a fixed
+  // `conversation` value made Git/Files/Activity appear unselected after a
+  // click even though the inspector had opened correctly.
+  const mobileViewValue = sessionDrawerOpen
+    ? 'sessions'
+    : inspectorDrawerOpen || mobileInspectorOpen
+      ? tab
+      : 'conversation';
   // PinHarness 的三栏实现用比例保存宽度；把现有 v1/v2 的像素偏好先映射到
   // 1440px 工作台基准，保持 Rail/Inspector 的用户习惯而不清空 localStorage。
   const leftRatioDefault = Math.min(0.45, Math.max(0.12, workspaceLayout.leftWidth / 1440));
@@ -192,7 +201,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         )}
       </div>
       {inspectorActsAsDrawer && (
-        <PinTabs value="conversation">
+        <PinTabs value={mobileViewValue}>
           <TabsList
             className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
             aria-label="Workspace 视图"
