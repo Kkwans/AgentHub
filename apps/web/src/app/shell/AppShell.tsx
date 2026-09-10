@@ -146,7 +146,7 @@ function Navigation({
           <NavLink
             key={to}
             to={to}
-            end={to === '/home' || to === '/projects'}
+            end
             className={({ isActive }) => sidebarItemClass(isActive, collapsed)}
             onClick={onNavigate}
             aria-label={label}

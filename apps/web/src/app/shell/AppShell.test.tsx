@@ -117,6 +117,16 @@ describe('AppShell', () => {
     renderShell();
     expect(screen.getByRole('status', { name: '实时连接已连接' })).toBeInTheDocument();
   });
+
+  it('在 Infrastructure 子路由只高亮精确的一级入口', () => {
+    renderShell(['/agents/runtime']);
+
+    expect(screen.getByRole('link', { name: '运行环境' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Agent 中心' })).not.toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
 });
 
 describe('CommandPalette fuzzy matching', () => {
