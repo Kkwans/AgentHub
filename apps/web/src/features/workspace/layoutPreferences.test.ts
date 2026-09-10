@@ -69,6 +69,19 @@ describe('Workspace layout preferences', () => {
     expect(readWorkspaceLayout(memoryStorage(), 1_440).leftCollapsed).toBe(false);
   });
 
+  it('读取旧版 1/0 折叠编码并迁移为布尔字符串', () => {
+    const storage = memoryStorage({
+      [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftCollapsed]: '1',
+      [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed]: '0',
+    });
+    expect(readWorkspaceLayout(storage)).toMatchObject({
+      leftCollapsed: true,
+      rightCollapsed: false,
+    });
+    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.leftCollapsed)).toBe('true');
+    expect(storage.values.get(WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed)).toBe('false');
+  });
+
   it('stores width and collapsed state independently', () => {
     const storage = memoryStorage();
     writeWorkspacePanel('left', { width: 318, collapsed: true }, storage);
