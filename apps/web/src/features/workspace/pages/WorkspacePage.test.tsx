@@ -615,6 +615,10 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(composer).toHaveAttribute('placeholder', '会话已关闭，无法继续发送指令。');
     expect(composer).toBeDisabled();
     expect(screen.getByText('会话已关闭，无法继续发送指令。')).toBeInTheDocument();
+    const composerRunState = document.querySelector('.composer-run-state');
+    expect(composerRunState).toHaveAttribute('data-session-status', 'CLOSED');
+    expect(composerRunState).toHaveTextContent('已关闭');
+    expect(composerRunState).not.toHaveTextContent('就绪');
   });
 
   it('PromptOS 服务失败时阻止静默跳过绑定，重新解析成功后恢复发送', async () => {

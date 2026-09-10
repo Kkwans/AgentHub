@@ -419,6 +419,7 @@ export function ChatCommandBar({
           updatingReasoningEffort={updatingReasoningEffort}
           onChangeConfiguration={(patch) => updateConfiguration.mutate(patch)}
           activeRun={Boolean(activeRun)}
+          sessionStatus={session.status}
           sendPending={send.isPending}
           stopPending={stop.isPending}
           sendingBlocked={sendingBlocked}

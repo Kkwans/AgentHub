@@ -22,6 +22,7 @@ export function ComposerToolbar({
   updatingReasoningEffort,
   onChangeConfiguration,
   activeRun,
+  sessionStatus,
   sendPending,
   stopPending,
   sendingBlocked,
@@ -45,12 +46,26 @@ export function ComposerToolbar({
     reasoningEffort?: string;
   }) => void;
   activeRun: boolean;
+  sessionStatus: string;
   sendPending: boolean;
   stopPending: boolean;
   sendingBlocked: boolean;
   onSend: () => void;
   onStop: () => void;
 }) {
+  const sessionLocked = sessionStatus !== 'READY';
+  const lockedStateLabel = resolveLockedSessionState(sessionStatus);
+  const runStateLabel = activeRun ? '运行中' : lockedStateLabel;
+  const runStateTone = activeRun
+    ? 'text-[hsl(var(--warning))]'
+    : sessionLocked
+      ? 'text-[hsl(var(--foreground-faint))]'
+      : 'text-[hsl(var(--foreground-faint))]';
+  const runStateDot = activeRun
+    ? 'bg-[hsl(var(--warning))] shadow-[0_0_0_3px_hsl(var(--warning-soft))]'
+    : sessionLocked
+      ? 'bg-[hsl(var(--foreground-faint))]'
+      : 'bg-[hsl(var(--success))]';
   return (
     <div
       className="flex min-h-11 items-center justify-between gap-2 border-t border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/35 px-2 py-1 sm:px-3 sm:py-1.5"
@@ -77,14 +92,13 @@ export function ComposerToolbar({
           <strong className="font-medium">按需审批</strong>
         </span>
         <span
-          className={`composer-run-state hidden items-center gap-1.5 whitespace-nowrap px-2 text-[11px] text-[hsl(var(--foreground-faint))] sm:inline-flex ${activeRun ? 'text-[hsl(var(--warning))]' : ''}`}
+          className={`composer-run-state hidden items-center gap-1.5 whitespace-nowrap px-2 text-[11px] sm:inline-flex ${runStateTone}`}
           data-running={activeRun || undefined}
+          data-session-locked={sessionLocked || undefined}
+          data-session-status={sessionStatus}
         >
-          <span
-            className={`size-1.5 rounded-full ${activeRun ? 'bg-[hsl(var(--warning))] shadow-[0_0_0_3px_hsl(var(--warning-soft))]' : 'bg-[hsl(var(--success))]'}`}
-            aria-hidden="true"
-          />
-          {activeRun ? '运行中' : '就绪'}
+          <span className={`size-1.5 rounded-full ${runStateDot}`} aria-hidden="true" />
+          {runStateLabel}
         </span>
       </div>
       <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
@@ -156,4 +170,24 @@ export function ComposerToolbar({
       </div>
     </div>
   );
+}
+
+export function resolveLockedSessionState(status: string): string {
+  switch (status) {
+    case 'CREATED':
+    case 'STARTING':
+      return '准备中';
+    case 'RUNNING':
+      return '运行中';
+    case 'WAITING_APPROVAL':
+      return '等待审批';
+    case 'DISCONNECTED':
+      return '已断开';
+    case 'FAILED':
+      return '已失败';
+    case 'CLOSED':
+      return '已关闭';
+    default:
+      return '不可发送';
+  }
 }
