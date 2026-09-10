@@ -40,7 +40,7 @@ import { ChatEntryRenderer, type ChatEntryRendererProps } from './ChatEntryRende
 // measurable viewport. Keep it intentionally small so the newest response is
 // available immediately; a measured viewport switches to the normal virtual
 // window below without changing the visible conversation order.
-const UNMEASURED_WINDOW_SIZE = 8;
+const UNMEASURED_WINDOW_SIZE = 4;
 
 export {
   buildConversationTimeline,
