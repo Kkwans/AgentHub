@@ -29,16 +29,17 @@ body {
   box-sizing: border-box;
 }
 
-button,
-input,
-textarea {
-  color: inherit;
-  font: inherit;
-}
+@layer base {
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 .ah-page-frame {
@@ -777,27 +778,29 @@ a {
   min-width: 0;
 }
 
-button {
-  border: 0;
-}
+@layer base {
+  button {
+    border: 0;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-code,
-.mono {
-  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
-}
+  code,
+  .mono {
+    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  }
 
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
-  outline: var(--ah-focus-width) solid var(--ah-accent-primary);
-  outline-offset: var(--ah-focus-offset);
-  box-shadow: var(--ah-focus-ring);
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: var(--ah-focus-width) solid var(--ah-accent-primary);
+    outline-offset: var(--ah-focus-offset);
+    box-shadow: var(--ah-focus-ring);
+  }
 }
 
 .ah-dialog-backdrop {
