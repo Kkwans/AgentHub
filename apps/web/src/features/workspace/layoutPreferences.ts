@@ -54,7 +54,7 @@ function firstStoredValue(storage: LayoutStorage, keys: readonly string[]): stri
 function readCollapsed(storage: LayoutStorage, keys: readonly string[], fallback = false): boolean {
   const value = keys.map((key) => storage.getItem(key)).find((item) => item !== null);
   if (value === null || value === undefined) return fallback;
-  // v0.9 and the early Workspace shell used `1`/`0`; v1.1 writes the more
+  // Older Workspace shells used `1`/`0`; the current key writes the more
   // explicit boolean string. Accept both encodings during the one-way key
   // migration so a user's collapsed-panel preference is never lost.
   return value === 'true' || value === '1';
