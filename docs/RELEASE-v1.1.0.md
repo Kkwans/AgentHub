@@ -4,6 +4,14 @@
 
 v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三栏工作台、实体 surface、紧凑工具栏和因果对话语言，同时保留 AgentHub 的 REST `/api/v1`、WebSocket `/ws`、数据库、认证、Approval、Git、Terminal 与 PromptOS 契约。
 
+## 当前候选覆盖（2026-09-10）
+
+- 当前生产候选为 `agenthub:2026.9.10-v4`，image ID `sha256:2605b4557c991541849e4b96e2c061765ee9cd0d0b56a56093b6a226de00285f`，OCI version `1.1.0`，revision `88f6a6c4a93fd5e3f05ad550f4d10b2a865ae07e`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
+- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v3`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
+- 使用授权账号完成真实认证后的 Workspace 四视口检查（1440/1024/768/390，light/dark）：登录 HTTP 200，Composer、三栏/单面板布局和 3 个对话轮次可见，横向溢出、console error、page error、request failure 均为 0；移动端 Git tab、检查器抽屉、会话抽屉和 Esc 返回路径已在真实部署验证。
+- Home、Projects、Agent Center、Prompt Library、Settings 在 1440/390 真实认证截图矩阵中均返回 HTTP 200、主体正确、无横向溢出和页面错误。该证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
+- 全仓静态门禁与 Workspace 聚焦 Vitest 27/27 已通过；`tests/core-workflow.test.ts` 仍受既有 20 秒测试超时限制，单独运行实际耗时约 130 秒，故未将全量 Vitest 标记为通过。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
+
 ## 主要改动
 
 - `@agenthub/ui` 原位升级 tokens、Workbench、Command Bar、执行 disclosure、状态指示和 reduced-motion 规则；WorkBench 样式拆为共享入口下的独立 stylesheet，保持 `@agenthub/ui/styles.css` 导入兼容；
