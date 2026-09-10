@@ -6,11 +6,12 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 当前候选覆盖（2026-09-10）
 
-- 当前生产候选为 `agenthub:2026.9.10-v17`，image ID `sha256:682840b040fdd079c0483f1ee723fec8cc57080626e7e520d031a381b5a0932e`，OCI version `1.1.0`，revision `c4db828654ec7f932151812521b77e6206c7517c`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
-- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v16`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
-- v17 延续授权账号真实登录页、Agent Center 和 Runtime 交互证据：登录/退出、密码显隐、Agent 搜索与状态筛选通过；Runtime 默认 16 个可用环境、57 个停止项折叠，展开/收起可用且不暴露 digest，1440/390 横向溢出、console/page/request errors 均为 0。
-- v17 延续 v7 的认证 Workspace 与核心路由证据：壳层显示真实登录用户名 `Kkwans`。Home→Projects 真实生产切换预热请求在 Home 完整帧后约 15ms 启动，5 次样本约 99–321ms、无错误；上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
-- 全仓静态门禁与 Vitest 已通过：68 个文件通过、4 个跳过，304 个测试通过、10 个跳过；Workspace/Git 聚焦测试 19/19。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
+- 当前生产候选为 `agenthub:2026.9.10-v19`，image ID `sha256:0e20cdd2aa37f739930692535ec3131cb6d45ca4f2c9b25efab00c554dabd9ec`，OCI version `1.1.0`，revision `6b3bc89d1365438db2ba3a5bd2297766f1e8d40e`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
+- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v18`（image ID `sha256:c31188e5d7620f884664435b3c6f20284d283af9b357c426a72c5cea592b6cc1`），长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
+- v19 延续授权账号真实登录页、Agent Center 和 Runtime 交互证据：登录/退出、密码显隐、Agent 搜索与状态筛选通过；Runtime 默认 16 个可用环境、57 个停止项折叠，展开/收起可用且不暴露 digest，1440/390 横向溢出、console/page/request errors 均为 0。
+- v19 新增认证后的核心路由矩阵：7 路由 × 1440/1024/768/390 × light/dark 共 56 页全部 HTTP 200、无 console/page/request error、无横向溢出；CLOSED/FAILED Workspace 各 1 个会话 × 4 视口 × 2 主题共 16 页同样通过，Composer 对 CLOSED 显示灰色 `已关闭` 状态；Home 内容 gutter 和 1024/768 medium 共享侧栏均已按 PinHarness 结构复核。
+- Home→Projects 真实生产切换预热请求在 Home 完整帧后约 15ms 启动，5 次样本约 99–321ms、无错误；上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
+- 全仓静态门禁与 Vitest：`pnpm exec vitest run --maxWorkers=1` 在本次候选前完成 `307 passed / 10 skipped / 1 failed`，唯一失败为高负载组合下长会话窗口异步渲染超时；auth-service 与 WorkspacePage 单文件/聚焦复跑通过。默认 fork 并发另曾触发 auth token 与长会话测试超时。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
 
 ## 主要改动
 
@@ -50,6 +51,28 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - Home 在首个完整内容帧后立即预热 Projects 页面 chunk 与 `tasks` 查询，移除固定 400ms 延迟；预热只通过 `setTimeout(0)` 排队，不阻塞 Home 首屏绘制。
 - 代码提交 `c4db828` 已推送 `main`；Home/App 聚焦 Vitest、目标 ESLint/Prettier、typecheck、`git diff --check` 与生产 build 通过；v17 镜像通过 arm64、OCI metadata 与 native `node-pty` 检查后部署，部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T063500Z-pre-home-prefetch/`。
 - NAS-local Chromium 真实认证 Home→Projects 测量：预热资源在 Home 完整标题后约 15ms 发起，5 次切换样本 `243.47/219.08/99.98/142.14/321.40ms`，console/page/request errors 为 0；最大值仍超过 250ms，性能门禁继续保持 `UNVERIFIED/FAILED`。
+
+### 第二十八轮：PinHarness 样式级联与 Workspace 状态校正（2026-09-10）
+
+- 将旧的全局 `button`/`a`/输入框 reset 收进 `@layer base`，移除未分层规则对 PinHarness Tailwind utilities 的覆盖；真实登录主按钮 computed style 恢复为白字、蓝底、细边框，认证页与 Workspace 主操作共享同一套 Button primitive。
+- AppShell 一级 `NavLink` 全部启用精确 `end` 匹配，`/agents/runtime` 不再同时高亮 `Agent 中心`；Composer 根据 Session 状态显示 `已关闭`、`已断开`、`已失败`、`等待审批` 等真实状态，锁定会话不再伪装绿色 `就绪`。
+- 代码提交 `21f9a19`（共享 reset 级联）、`7f96f79`（导航精确高亮）、`8f02fee`（Composer 锁定状态）已推送 `main`；对应 UI/App/Shell/Workspace 聚焦测试、全仓 lint、format、typecheck、生产 build 与 `git diff --check` 均通过。
+- v18 镜像通过 arm64、OCI metadata 与 native `node-pty` 检查后部署；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T064500Z-pre-ui-foundation-fix/`；失败时即时回滚到保留的 v17，不动数据卷和其他容器。
+- NAS-local Chromium 真实认证证据：登录按钮 computed color `rgb(255,255,255)`；核心路由矩阵 56/56，CLOSED/FAILED Workspace 状态矩阵 16/16，均无横向溢出或页面/请求错误；截图分别位于 `/tmp/agenthub-v18-auth-matrix/` 与 `/tmp/agenthub-v18-workspace-matrix/`。
+- 全量 Vitest 默认 fork 并发曾出现 2 项超时；独立复跑 Workspace 长会话与 auth-service 均通过，serial gate `pnpm exec vitest run --maxWorkers=1` 的最终结果以本候选记录为准。性能预算、活动 Agent/ACP streaming、Approval、native PTY、200% zoom、安全区、备份恢复和独立视觉复核仍未宣称通过。
+
+### 第二十九轮：首页内容 gutter 与状态层级（2026-09-10）
+
+- Home 外层直接接入 PinHarness `page-content`/`page-shell`，统一桌面、平板和移动端的水平 gutter；首页标题、指标、Project 列表与辅助栏现在共享同一内容基线，移动端保留 16px 安全边距。
+- RunStateBanner 将状态标题与说明改为明确的块级层级和 4px 文本间距，CLOSED/FAILED 等异常状态不再与说明连成一行；已有 continue、Approval 和 Composer 行为不变。
+- 代码提交 `a7726ad`（Home gutter）与 `6eeb098`（状态说明间距）已推送 `main`；App/Home/Workspace 聚焦测试、lint、format、typecheck、生产 build 与 `git diff --check` 通过。
+- v19 真实截图 `/tmp/agenthub-v19-layout/home-1440.png`、`home-390.png` 与 CLOSED Workspace 已核对：Home 标题左边距分别为 25.9px/16px，状态标题与说明分行；无横向溢出或页面/请求错误。
+
+### 第三十轮：中等宽度共享侧栏对齐（2026-09-10）
+
+- 对照 PinHarness `ThreeColumnSplit`，768–1439px 无显式折叠偏好时默认显示一个共享辅助栏，左侧 Session Rail 与右侧 Inspector 通过同一组 tabs 切换；用户已有 v1/v2/v3 localStorage 折叠值仍优先，移动端 `<768px` 继续单面板 tabs。
+- 代码提交 `6b3bc89` 已推送 `main`；layout preference、Workspace 辅助栏焦点与本切片聚焦门禁通过；v19 镜像已构建并部署，部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T071800Z-pre-medium-sidebar/`。
+- v19 NAS-local Chromium 认证复核：1024px 辅助栏 287px + Conversation 725px，768px 辅助栏 240px + Conversation 516px，390px 回到单一 Conversation tabs；5 个布局样本无横向溢出、console/page/request errors 均为 0，截图位于 `/tmp/agenthub-v19-layout/`。
 
 ### 第十八轮：共享组件直接切到 PinHarness（2026-09-09）
 
@@ -92,13 +115,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v17`，镜像为 Linux `arm64`，OCI `revision` 为 `c4db828654ec7f932151812521b77e6206c7517c`；
-- 当前生产运行时源码提交：`c4db828654ec7f932151812521b77e6206c7517c`（已推送 `main`）；镜像 ID 为 `sha256:682840b040fdd079c0483f1ee723fec8cc57080626e7e520d031a381b5a0932e`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`8f4aaf4`、`4c700dd` 与 `c4db828` 均包含在当前候选源码中；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v19`，镜像为 Linux `arm64`，OCI `revision` 为 `6b3bc89d1365438db2ba3a5bd2297766f1e8d40e`；
+- 当前生产运行时源码提交：`6b3bc89d1365438db2ba3a5bd2297766f1e8d40e`（已推送 `main`）；镜像 ID 为 `sha256:0e20cdd2aa37f739930692535ec3131cb6d45ca4f2c9b25efab00c554dabd9ec`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`4c700dd`、`c4db828`、`21f9a19`、`7f96f79`、`8f02fee`、`a7726ad` 与 `6eeb098` 均包含在当前候选源码中；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
-- v17 部署前只读预检确认 v16 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
-- 2026-09-10 14:12（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- v19 部署前只读预检确认 v18 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
+- 2026-09-10（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- v16/v15/v14/v13/v12/v11/v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v17 镜像已直接由 Compose 使用。
+- v18/v17/v16/v15/v14/v13/v12/v11/v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v19 镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
@@ -267,6 +290,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 - NAS 本地 Playwright Chromium 已连接真实 `1.1.0` 地址，未登录首页在 1440、1024、768、390 四个视口均返回 HTTP 200、页面标题 `AgentHub`，横向溢出为 0，console error/page error/request failure 均为 0；记录见 [`docs/qa/visual/v1.1.0/10-deployed-login-1440.json`](qa/visual/v1.1.0/10-deployed-login-1440.json)。
 - 该 smoke 只证明真实静态登录入口可达，不等同于认证后的 Workspace、Agent/ACP、Terminal 或完整视觉验收；Chromium 记录了一个 IP origin 的 `Origin-Agent-Cluster` warning，未产生页面或请求错误。
+- v18/v19 认证后的 NAS-local Chromium 矩阵补充覆盖：核心路由 56/56、CLOSED/FAILED Workspace 16/16、v19 Home/medium/mobile 布局 5/5，均无横向溢出、console/page/request errors；这仍不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom/safe-area、备份恢复、性能预算或完整动效验收。
 
 ## 代码级验证
 
@@ -275,7 +299,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - `@agenthub/ui` typecheck/build；UI primitives/layout/workbench Vitest：6 files，25/25；
 - Workspace Vitest：9 files，41/41；UI primitives/layout/workbench Vitest：6 files，25/25；ACP adapter：2 files，12/12；Terminal dock、长会话窗口与辅助栏焦点恢复均覆盖；
 - `pnpm lint`、`pnpm format:check`、`pnpm typecheck`、`pnpm build`、`pnpm qa:css-budget`、`git diff --check`；Workspace CSS 16366 bytes，小于 16384 bytes 门限；
-- 全仓 Vitest（单 worker、hook/test timeout 120s，2026-09-10 Asia/Shanghai 重跑）：72 files，68 passed / 4 skipped；314 tests 中 304 passed / 10 skipped；长会话窗口用例等待上限已固定为 30s，避免 NAS 高负载下的偶发测试超时；
+- 全仓 Vitest serial gate（`pnpm exec vitest run --maxWorkers=1`，2026-09-10 Asia/Shanghai）：73 files，68 passed / 1 failed / 4 skipped；318 tests 中 307 passed / 1 failed / 10 skipped。失败仅为全仓高负载组合下长会话窗口异步渲染等待，WorkspacePage 单文件完整复跑为 17/17；auth-service 在 `--maxWorkers=1` 下 5/5，通过结果不伪装为全量绿灯；
 - 迁移后页面语义门禁：desktop-1440 高风险 Workspace/Agent/Projects/Context/Work/Sessions/Prompt/Settings 8/8 通过；四视口 Agent/Projects/Sessions 12/12 通过；fixture 注入断线 WebSocket stub，避免本地 preview 代理重连噪声干扰结果；
 - Mock Playwright：最新 Workspace 四视口 `4/4` 通过（含初始跟随与 cwd 可见性）；页面语义用例已补齐异步 ready 等待，fixture 同时隔离断线 WebSocket，不把本地 preview 的重连噪声计入页面结果；fixture 仍不代表真实运行时；
 - 版本真值：`pnpm release:version-truth 1.1.0 --allow-incomplete` 通过，11 个 workspace package 与 AppShell 版本一致，residues 为空；
