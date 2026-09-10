@@ -471,24 +471,24 @@ export const ChatConversationView = memo(function ChatConversationView({
               ))}
             </div>
           )}
+          {!isFollowingTimeline && (
+            <button
+              type="button"
+              className="conversation-jump-latest"
+              aria-label="回到最新"
+              onClick={jumpToLatest}
+            >
+              <ChevronDown size={14} aria-hidden="true" />
+              回到最新
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-[hsl(var(--primary))] px-1.5 py-0.5 text-[9px] text-[hsl(var(--primary-foreground))]">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
-      {!isFollowingTimeline && (
-        <button
-          type="button"
-          className="conversation-jump-latest"
-          aria-label="回到最新"
-          onClick={jumpToLatest}
-        >
-          <ChevronDown size={14} aria-hidden="true" />
-          回到最新
-          {unreadCount > 0 && (
-            <span className="rounded-full bg-[hsl(var(--primary))] px-1.5 py-0.5 text-[9px] text-[hsl(var(--primary-foreground))]">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      )}
       {composer ? (
         <div className="chat-composer-dock relative shrink-0 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom),var(--mobile-keyboard-inset,0px))] pt-1 before:pointer-events-none before:absolute before:inset-x-0 before:-top-3 before:h-3 before:bg-gradient-to-t before:from-[hsl(var(--background))]/85 before:to-transparent sm:px-4 sm:pb-3 sm:pt-2 sm:before:-top-5 sm:before:h-5">
           {composer}
