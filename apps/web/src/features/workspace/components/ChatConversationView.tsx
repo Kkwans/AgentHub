@@ -8,7 +8,7 @@
  */
 
 import { Bot, ChevronDown } from '@agenthub/ui';
-import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
@@ -54,7 +54,7 @@ export {
 } from './conversationModel';
 
 /** PinHarness source component: ChatConversationView owns scroll, rounds and composer adjacency. */
-export function ChatConversationView({
+export const ChatConversationView = memo(function ChatConversationView({
   session,
   messages,
   events,
@@ -496,7 +496,9 @@ export function ChatConversationView({
       ) : null}
     </section>
   );
-}
+});
+
+ChatConversationView.displayName = 'ChatConversationView';
 
 /** Compatibility export for existing AgentHub route/tests while callers migrate to source name. */
 export const Conversation = ChatConversationView;
@@ -529,7 +531,7 @@ function RoundBlock({ turn, ...itemProps }: ConversationTurnViewProps) {
   );
   return (
     <article
-      className="conversation-turn min-w-0 px-0.5 py-1 animate-[hci-entry_var(--anim-entry-fast)_var(--ease-out-expo)_both]"
+      className="conversation-turn min-w-0 px-0.5 py-1 animate-[hci-entry_var(--anim-entry-fast)_var(--ease-out-expo)_both] motion-reduce:animate-none"
       data-turn-id={turn.id}
     >
       {userEntries.map((item) => (
