@@ -44,14 +44,14 @@ describe('Workspace layout preferences', () => {
     });
   });
 
-  it('保留旧 key 的宽度和折叠偏好，并在窄屏无显式偏好时折叠 Rail', () => {
+  it('保留旧 key 的宽度和折叠偏好，并让 medium 首次使用显示共享 Rail', () => {
     const storage = memoryStorage({
       [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.leftWidth]: '380',
       [LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightWidth]: '720',
     });
     expect(readWorkspaceLayout(storage, 1024)).toEqual({
       leftWidth: 380,
-      leftCollapsed: true,
+      leftCollapsed: false,
       rightWidth: 520,
       rightCollapsed: false,
     });
@@ -65,7 +65,7 @@ describe('Workspace layout preferences', () => {
         1024,
       ).leftCollapsed,
     ).toBe(false);
-    expect(readWorkspaceLayout(memoryStorage(), 1_439).leftCollapsed).toBe(true);
+    expect(readWorkspaceLayout(memoryStorage(), 1_439).leftCollapsed).toBe(false);
     expect(readWorkspaceLayout(memoryStorage(), 1_440).leftCollapsed).toBe(false);
   });
 

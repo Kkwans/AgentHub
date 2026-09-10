@@ -33,6 +33,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     openInspectorDrawer,
     mobileInspectorOpen,
     inspectorActsAsDrawer,
+    isMobileViewport,
     inspectorDrawerOpen,
     closeMobileInspector,
     tab,
@@ -86,12 +87,16 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     setStagedDiff,
   } = model;
 
-  const compactAuxiliaryOpen = sessionDrawerOpen || inspectorDrawerOpen;
+  const mediumAuxiliaryOpen =
+    inspectorActsAsDrawer && !isMobileViewport && !workspaceLayout.leftCollapsed;
+  const compactAuxiliaryOpen = sessionDrawerOpen || inspectorDrawerOpen || mediumAuxiliaryOpen;
   const compactPanel: CompactPanel = sessionDrawerOpen
     ? 'left'
     : inspectorDrawerOpen || mobileInspectorOpen
       ? 'right'
-      : 'middle';
+      : mediumAuxiliaryOpen
+        ? 'left'
+        : 'middle';
   // The source mobile command bar is controlled by the same panel state as the
   // drawer. Keep the outer tab strip controlled as well; a fixed
   // `conversation` value made Git/Files/Activity appear unselected after a
@@ -130,8 +135,19 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           aria-label={compactAuxiliaryOpen ? '关闭辅助栏' : '打开辅助栏'}
           aria-expanded={compactAuxiliaryOpen}
           onClick={() => {
-            if (compactAuxiliaryOpen) closeMobileInspector();
-            else openSessionDrawer();
+            if (compactAuxiliaryOpen) {
+              if (inspectorActsAsDrawer && !isMobileViewport) {
+                if (!workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
+                closeMobileInspector();
+              } else {
+                closeMobileInspector();
+              }
+            } else if (inspectorActsAsDrawer && !isMobileViewport) {
+              if (workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
+              openSessionDrawer();
+            } else {
+              openSessionDrawer();
+            }
           }}
         >
           <Menu size={17} />

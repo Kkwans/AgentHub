@@ -159,14 +159,22 @@ describe('WorkspacePage 数据分区可靠性', () => {
     );
     renderWorkspace(fetchMock);
 
-    const supportToggle = await screen.findByRole('button', { name: '打开辅助栏' });
+    const supportToggle = await screen.findByRole('button', { name: '关闭辅助栏' });
     fireEvent.click(supportToggle);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '打开辅助栏' })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '打开辅助栏' }));
     const sessionClose = await screen.findByRole('button', { name: '关闭会话列表' });
     await waitFor(() => expect(document.activeElement).toBe(sessionClose));
     fireEvent.click(sessionClose);
     await waitFor(() => expect(document.activeElement).toBe(supportToggle));
 
     fireEvent.click(supportToggle);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '打开辅助栏' })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '打开辅助栏' }));
     const auxiliaryTabs = await screen.findByRole('tablist', { name: '辅助栏视图' });
     fireEvent.click(within(auxiliaryTabs).getByRole('tab', { name: '检查器' }));
     const inspectorClose = await screen.findByRole('button', { name: '关闭检查器' });
@@ -175,6 +183,10 @@ describe('WorkspacePage 数据分区可靠性', () => {
     await waitFor(() => expect(document.activeElement).toBe(supportToggle));
 
     fireEvent.click(supportToggle);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '打开辅助栏' })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '打开辅助栏' }));
     const sessionCloseAgain = await screen.findByRole('button', { name: '关闭会话列表' });
     fireEvent.keyDown(sessionCloseAgain, { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(supportToggle));

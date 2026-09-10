@@ -60,7 +60,7 @@ export function readWorkspaceLayout(
   storage: LayoutStorage | undefined = typeof window === 'undefined'
     ? undefined
     : window.localStorage,
-  viewportWidth?: number,
+  _viewportWidth?: number,
 ): WorkspaceLayoutPreference {
   if (!storage) {
     return {
@@ -90,12 +90,11 @@ export function readWorkspaceLayout(
     LEGACY_WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed,
     HISTORIC_WORKSPACE_LAYOUT_STORAGE_KEYS.rightCollapsed,
   ]);
-  const defaultLeftCollapsed =
-    viewportWidth !== undefined
-      ? viewportWidth < 1_440
-      : typeof window !== 'undefined' &&
-        storage === window.localStorage &&
-        window.innerWidth < 1_440;
+  // PinHarness keeps the medium layout as a two-column workbench with one
+  // shared auxiliary panel visible by default. Explicit values from any
+  // previous layout version still win below, so this only changes first-use
+  // behavior and never clears a user's persisted collapse choice.
+  const defaultLeftCollapsed = false;
   const layout = {
     leftWidth: readWidth(
       storage,
