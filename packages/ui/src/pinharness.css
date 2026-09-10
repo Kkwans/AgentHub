@@ -2691,6 +2691,55 @@ html {
   animation: streaming-type-caret-blink 820ms steps(1, end) infinite;
 }
 
+/* Completed assistant replies inherit PinHarness's quiet action rail. The
+ * controls stay out of the reading flow until hover/focus, while the row is
+ * always discoverable to keyboard and touch users. */
+.message-actions {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0.58;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.message-actions:hover,
+.message-actions:focus-within {
+  opacity: 1;
+}
+
+.message-actions button {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.5rem;
+  color: hsl(var(--foreground-faint));
+  font-size: var(--text-xs);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.message-actions button:hover,
+.message-actions button:focus-visible {
+  color: hsl(var(--foreground));
+  background: hsl(var(--surface-muted));
+  border-color: hsl(var(--border));
+}
+
+.message-actions button:active {
+  transform: scale(0.96);
+}
+
+.message-actions button[data-copied='true'] {
+  color: hsl(var(--success));
+}
+
 @keyframes tool-entry-arrive {
   from {
     opacity: 0;

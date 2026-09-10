@@ -13,12 +13,13 @@ import {
   Button,
   CheckCircle2,
   ChevronRight,
+  Copy,
   LoaderCircle,
   ListChecks,
   ShieldCheck,
   Wrench,
 } from '@agenthub/ui';
-import { lazy, memo, Suspense } from 'react';
+import { lazy, memo, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import type { EventRecord } from '../../../lib/api';
@@ -146,7 +147,57 @@ function ChatEntryRendererView({
             )}
           </div>
         )}
+        {!isUser && !item.streaming && presentation.kind === 'TEXT' && presentation.text.trim() ? (
+          <ChatEntryActions text={presentation.text} />
+        ) : null}
       </article>
+    </div>
+  );
+}
+
+/**
+ * PinHarness source interaction: completed Agent entries expose a quiet,
+ * hover/focus-revealed action row. AgentHub only carries over the copy action;
+ * feedback/fullscreen actions would require a new backend contract and are
+ * intentionally not invented here.
+ */
+function ChatEntryActions({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const fallback = document.createElement('textarea');
+        fallback.value = text;
+        fallback.setAttribute('readonly', 'true');
+        fallback.style.position = 'fixed';
+        fallback.style.opacity = '0';
+        document.body.appendChild(fallback);
+        fallback.select();
+        document.execCommand('copy');
+        fallback.remove();
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1_400);
+    } catch {
+      // Clipboard access is optional (for example in an insecure embedded WebView).
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="message-actions" role="toolbar" aria-label="Agent 回复快捷操作">
+      <button
+        type="button"
+        onClick={() => void copy()}
+        aria-label={copied ? '已复制回复' : '复制回复'}
+        data-copied={copied || undefined}
+      >
+        <Copy size={13} aria-hidden="true" />
+        <span aria-live="polite">{copied ? '已复制' : '复制'}</span>
+      </button>
     </div>
   );
 }

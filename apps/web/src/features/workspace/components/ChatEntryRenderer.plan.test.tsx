@@ -5,13 +5,48 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { EventRecord } from '../../../lib/api';
+import type { EventRecord, MessageRecord } from '../../../lib/api';
+import type { ConversationMessageItem } from './conversationModel';
 import type { ConversationPlanItem, ConversationToolItem } from './conversationModel';
 import { ChatEntryRenderer } from './ChatEntryRenderer';
 
 afterEach(cleanup);
 
 describe('ChatEntryRenderer plan entry', () => {
+  it('exposes the copied reply action rail after an assistant response settles', () => {
+    const message: MessageRecord = {
+      id: 'assistant-message-1',
+      runId: 'run-1',
+      role: 'ASSISTANT',
+      kind: 'TEXT',
+      text: '已完成检查。',
+      sequence: 8,
+      createdAt: '2026-09-10T08:00:02.000Z',
+    };
+    const item: ConversationMessageItem = {
+      kind: 'message',
+      id: message.id,
+      createdAt: message.createdAt,
+      message,
+    };
+
+    render(
+      <MemoryRouter>
+        <ChatEntryRenderer
+          item={item}
+          resolving={undefined}
+          resolveError={undefined}
+          resolveVariables={undefined}
+          activeThoughtId={undefined}
+          onResolve={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('toolbar', { name: 'Agent 回复快捷操作' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '复制回复' })).toBeInTheDocument();
+  });
+
   it('uses the PinHarness-style expandable plan card for ACP plan updates', () => {
     const event: EventRecord = {
       id: 'plan-render-1',
