@@ -1338,7 +1338,6 @@ textarea:focus-visible {
 }
 
 .ah-select-trigger {
-  width: 100%;
   justify-content: space-between;
 }
 

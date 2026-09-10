@@ -218,7 +218,7 @@ function AgentFilterBar({
           <AhSelect
             id="agent-status-filter"
             aria-label="Agent 状态"
-            className="min-h-9 w-full text-xs max-md:min-h-11 max-md:text-sm sm:w-auto"
+            className="min-h-9 w-full text-xs max-md:min-h-11 max-md:text-sm sm:w-[170px]"
             value={filter}
             searchable={false}
             clearable={false}
