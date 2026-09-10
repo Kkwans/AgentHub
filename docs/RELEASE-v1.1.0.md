@@ -6,12 +6,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 当前候选覆盖（2026-09-10）
 
-- 当前生产候选为 `agenthub:2026.9.10-v19`，image ID `sha256:0e20cdd2aa37f739930692535ec3131cb6d45ca4f2c9b25efab00c554dabd9ec`，OCI version `1.1.0`，revision `6b3bc89d1365438db2ba3a5bd2297766f1e8d40e`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
-- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v18`（image ID `sha256:c31188e5d7620f884664435b3c6f20284d283af9b357c426a72c5cea592b6cc1`），长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
-- v19 延续授权账号真实登录页、Agent Center 和 Runtime 交互证据：登录/退出、密码显隐、Agent 搜索与状态筛选通过；Runtime 默认 16 个可用环境、57 个停止项折叠，展开/收起可用且不暴露 digest，1440/390 横向溢出、console/page/request errors 均为 0。
-- v19 新增认证后的核心路由矩阵：7 路由 × 1440/1024/768/390 × light/dark 共 56 页全部 HTTP 200、无 console/page/request error、无横向溢出；CLOSED/FAILED Workspace 各 1 个会话 × 4 视口 × 2 主题共 16 页同样通过，Composer 对 CLOSED 显示灰色 `已关闭` 状态；Home 内容 gutter 和 1024/768 medium 共享侧栏均已按 PinHarness 结构复核。
+- 当前生产候选为 `agenthub:2026.9.10-v20`，image ID `sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f`，OCI version `1.1.0`，revision `ef2f3c6daba6b107322f15471b1ea1c13d3887ae`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
+- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v19`（image ID `sha256:0e20cdd2aa37f739930692535ec3131cb6d45ca4f2c9b25efab00c554dabd9ec`），长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
+- v20 使用授权账号完成真实 UI 登录，登录入口截图和认证后首页均无 console/page error；登录按钮 computed style 为白字、蓝底、1px 实线边框。
+- v20 认证后的核心路由矩阵：7 路由 × 1440/1024/768/390 × light/dark 共 56 页全部 HTTP 200、无 console/page/request error、无横向溢出；CLOSED Workspace 8 页同样通过，Composer 显示 `已关闭`，Workspace 三栏/中屏共享侧栏/移动 tabs 几何符合目标。
+- v20 真实截图与报告位于 `/tmp/agenthub-v20-auth-matrix/`、`/tmp/agenthub-v20-workspace-matrix-r2/`；本候选仍不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或完整动效验收。
 - Home→Projects 真实生产切换预热请求在 Home 完整帧后约 15ms 启动，5 次样本约 99–321ms、无错误；上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
-- 全仓静态门禁与 Vitest：`pnpm exec vitest run --maxWorkers=1` 在本次候选前完成 `307 passed / 10 skipped / 1 failed`，唯一失败为高负载组合下长会话窗口异步渲染超时；auth-service 与 WorkspacePage 单文件/聚焦复跑通过。默认 fork 并发另曾触发 auth token 与长会话测试超时。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
+- 全仓静态门禁与 Vitest：此前 serial 组合结果为 `307 passed / 10 skipped / 1 failed`，唯一失败为高负载组合下长会话窗口异步渲染超时；本次 `ef2f3c6` 的 READY 状态聚焦测试与 WorkspacePage 关闭态测试通过。默认 fork 并发另曾触发 auth token 与长会话测试超时。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
 
 ## 主要改动
 
@@ -74,6 +75,14 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 代码提交 `6b3bc89` 已推送 `main`；layout preference、Workspace 辅助栏焦点与本切片聚焦门禁通过；v19 镜像已构建并部署，部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T071800Z-pre-medium-sidebar/`。
 - v19 NAS-local Chromium 认证复核：1024px 辅助栏 287px + Conversation 725px，768px 辅助栏 240px + Conversation 516px，390px 回到单一 Conversation tabs；5 个布局样本无横向溢出、console/page/request errors 均为 0，截图位于 `/tmp/agenthub-v19-layout/`。
 
+### 第三十一轮：READY 状态映射与整体候选部署（2026-09-10）
+
+- 修正 Composer 状态映射遗漏 `READY` 的回归：可发送的 READY Session 恢复显示 `就绪`，CLOSED/FAILED/WAITING_APPROVAL 等锁定状态继续显示各自真实状态；新增 `ComposerToolbar` 映射测试，REST/WebSocket/Approval 契约不变。
+- 代码提交 `ef2f3c6` 已推送 `main`；Composer/Workspace 聚焦测试通过，随后以该 commit 构建 `agenthub:2026.9.10-v20`。本轮部署只执行一次整体候选替换，不再为后续单个 commit 重复构建或部署。
+- v20 构建通过 arm64、OCI metadata 与 dist/native node-pty 检查；部署前 v19 回滚快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T074730Z-pre-ready-state-fix/`。当前 v20 image ID 为 `sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f`。
+- v20 容器 `running/healthy`，health HTTP `200` 返回 `version: 1.1.0`、`database: pglite`、`web: true`；认证后的核心路由矩阵 56/56、CLOSED Workspace 8/8 均无 console/page/request error 或横向溢出。截图与报告分别位于 `/tmp/agenthub-v20-auth-matrix/` 与 `/tmp/agenthub-v20-workspace-matrix-r2/`。
+- 真实登录使用授权账号完成，未输出或持久化密码；Workspace 只读复核允许语义上的 `POST /api/v1/prompt-context/resolve`，未产生其它写请求。活动 Agent/ACP streaming、Approval、native PTY、焦点/键盘、reduced-motion、200% zoom、安全区、性能预算、备份恢复和独立视觉复验仍未验证。
+
 ### 第十八轮：共享组件直接切到 PinHarness（2026-09-09）
 
 - `AhSelect`、共享 `Combobox`、`AhSurface`、`AhStatusPill`、`AhDialog` 与页面 Loading/Error/Empty 状态不再渲染 Mantine/旧 CSS；实际 DOM 改用 PinHarness Radix Select、Card、Badge、FormDialog、Skeleton 和同一套 Tailwind token，保留旧页面的 `data/onChange/label/description` 调用契约；
@@ -115,13 +124,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v19`，镜像为 Linux `arm64`，OCI `revision` 为 `6b3bc89d1365438db2ba3a5bd2297766f1e8d40e`；
-- 当前生产运行时源码提交：`6b3bc89d1365438db2ba3a5bd2297766f1e8d40e`（已推送 `main`）；镜像 ID 为 `sha256:0e20cdd2aa37f739930692535ec3131cb6d45ca4f2c9b25efab00c554dabd9ec`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`4c700dd`、`c4db828`、`21f9a19`、`7f96f79`、`8f02fee`、`a7726ad` 与 `6eeb098` 均包含在当前候选源码中；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v20`，镜像为 Linux `arm64`，OCI `revision` 为 `ef2f3c6daba6b107322f15471b1ea1c13d3887ae`；
+- 当前生产运行时源码提交：`ef2f3c6daba6b107322f15471b1ea1c13d3887ae`（已推送 `main`）；镜像 ID 为 `sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`4c700dd`、`c4db828`、`21f9a19`、`7f96f79`、`8f02fee`、`a7726ad`、`6eeb098`、`6b3bc89` 与 `ef2f3c6` 均包含在当前候选源码中；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
-- v19 部署前只读预检确认 v18 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
+- v20 部署前只读预检确认 v19 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
 - 2026-09-10（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- v18/v17/v16/v15/v14/v13/v12/v11/v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v19 镜像已直接由 Compose 使用。
+- v19/v18/v17/v16/v15/v14/v13/v12/v11/v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v20 镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
@@ -290,7 +299,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 - NAS 本地 Playwright Chromium 已连接真实 `1.1.0` 地址，未登录首页在 1440、1024、768、390 四个视口均返回 HTTP 200、页面标题 `AgentHub`，横向溢出为 0，console error/page error/request failure 均为 0；记录见 [`docs/qa/visual/v1.1.0/10-deployed-login-1440.json`](qa/visual/v1.1.0/10-deployed-login-1440.json)。
 - 该 smoke 只证明真实静态登录入口可达，不等同于认证后的 Workspace、Agent/ACP、Terminal 或完整视觉验收；Chromium 记录了一个 IP origin 的 `Origin-Agent-Cluster` warning，未产生页面或请求错误。
-- v18/v19 认证后的 NAS-local Chromium 矩阵补充覆盖：核心路由 56/56、CLOSED/FAILED Workspace 16/16、v19 Home/medium/mobile 布局 5/5，均无横向溢出、console/page/request errors；这仍不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom/safe-area、备份恢复、性能预算或完整动效验收。
+- v20 认证后的 NAS-local Chromium 矩阵补充覆盖：核心路由 56/56、CLOSED Workspace 8/8、v20 Home/medium/mobile 与三栏 Workspace 布局均无横向溢出、console/page/request errors；这仍不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom/safe-area、备份恢复、性能预算或完整动效验收。
 
 ## 代码级验证
 
