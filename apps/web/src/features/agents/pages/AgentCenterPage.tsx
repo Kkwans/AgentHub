@@ -1,6 +1,8 @@
 import {
   AhButton,
   AhEmptyState,
+  AhInput,
+  AhSelect,
   ArrowRight,
   Badge,
   Bot,
@@ -189,18 +191,14 @@ function AgentFilterBar({
     >
       <div className="resource-filter-main flex min-h-12 flex-wrap items-center gap-2 px-3 py-2.5">
         <div className="resource-filter-search relative w-full min-w-0 sm:w-96">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[hsl(var(--foreground-faint))]"
-            size={15}
-          />
-          <input
+          <AhInput
             aria-label="搜索 Agent"
-            className="input-base w-full min-h-9 py-2 pl-8 pr-8 text-xs max-md:min-h-11 max-md:text-sm"
+            className="w-full min-h-9 py-2 pr-8 text-xs max-md:min-h-11 max-md:text-sm"
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.currentTarget.value)}
             placeholder="搜索名称、类型或版本"
+            leftSection={<Search aria-hidden size={15} />}
           />
           {query ? (
             <button
@@ -217,17 +215,22 @@ function AgentFilterBar({
           <label className="sr-only" htmlFor="agent-status-filter">
             Agent 状态
           </label>
-          <select
+          <AhSelect
             id="agent-status-filter"
             aria-label="Agent 状态"
-            className="input-base min-h-9 w-full px-3 py-2 text-xs max-md:min-h-11 max-md:text-sm sm:w-auto"
+            className="min-h-9 w-full text-xs max-md:min-h-11 max-md:text-sm sm:w-auto"
             value={filter}
-            onChange={(event) => onFilterChange(event.currentTarget.value as AgentFilter)}
-          >
-            <option value="all">全部状态</option>
-            <option value="ready">已就绪</option>
-            <option value="attention">需要处理</option>
-          </select>
+            searchable={false}
+            clearable={false}
+            options={[
+              { value: 'all', label: '全部状态' },
+              { value: 'ready', label: '已就绪' },
+              { value: 'attention', label: '需要处理' },
+            ]}
+            onChange={(value) => {
+              if (value) onFilterChange(value as AgentFilter);
+            }}
+          />
           <button
             type="button"
             className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 text-xs font-semibold text-[hsl(var(--foreground-subtle))] shadow-[var(--shadow-sm)] transition-[background-color,border-color,color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-muted))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/30 max-md:min-h-11"

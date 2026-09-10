@@ -17,4 +17,11 @@ describe('Agent feature page contracts', () => {
     expect(pages).not.toContain('candidate.candidateId.slice');
     expect(pages).not.toContain('下一阶段启用');
   });
+
+  it('uses the shared PinHarness field primitives for Agent filtering', () => {
+    const page = read('AgentCenterPage.tsx');
+    expect(page).toContain('AhInput');
+    expect(page).toContain('AhSelect');
+    expect(page).not.toContain('<select');
+  });
 });
