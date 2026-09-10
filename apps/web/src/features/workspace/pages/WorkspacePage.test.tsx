@@ -606,6 +606,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(
       await screen.findByRole('region', { name: '当前运行状态：Session 已关闭' }),
     ).toBeInTheDocument();
+    const stateBanner = screen.getByRole('region', { name: '当前运行状态：Session 已关闭' });
+    expect(stateBanner.querySelector('strong')).toHaveClass('block');
+    expect(stateBanner.querySelector('span:not(.run-state-marker)')).toHaveClass('mt-1');
     expect(
       screen.getByRole('link', { name: /可靠性回归/ }).querySelector('.session-state-dot'),
     ).toHaveClass('session-state-closed');

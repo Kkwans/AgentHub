@@ -31,9 +31,11 @@ export function RunStateBanner({
       aria-live="polite"
     >
       <span className="run-state-marker" aria-hidden="true" />
-      <div>
-        <strong>{copy.title}</strong>
-        <span>{copy.description}</span>
+      <div className="min-w-0 flex-1">
+        <strong className="block text-sm font-semibold leading-5">{copy.title}</strong>
+        <span className="mt-1 block text-xs leading-5 text-[hsl(var(--foreground-muted))]">
+          {copy.description}
+        </span>
       </div>
       {state === 'CLOSED' && onContinue ? (
         <div className="run-state-action">
