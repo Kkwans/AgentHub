@@ -8,7 +8,8 @@ afterEach(() => window.localStorage.clear());
 
 describe('PinHarness ThreeColumnSplit shared layout contract', () => {
   it('keeps the explicit wide, medium and single breakpoints', () => {
-    expect(resolveThreeColumnLayoutMode(1_440)).toBe('wide');
+    expect(resolveThreeColumnLayoutMode(1_180)).toBe('wide');
+    expect(resolveThreeColumnLayoutMode(1_179)).toBe('medium');
     expect(resolveThreeColumnLayoutMode(1_024)).toBe('medium');
     expect(resolveThreeColumnLayoutMode(767)).toBe('single');
     expect(resolveThreeColumnLayoutMode(0)).toBeNull();

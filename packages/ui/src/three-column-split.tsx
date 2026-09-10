@@ -30,11 +30,13 @@ function lsSet(key: string, value: string): void {
 }
 
 const SINGLE_PANEL_BREAKPOINT = 768;
-// Keep the source component's measured breakpoints. The middle column needs
-// 640px before the rail and inspector can remain side-by-side; below 1440px
-// PinHarness intentionally switches to the conversation-first medium shell.
-const WIDE_LAYOUT_BREAKPOINT = 1440;
-const MIN_MIDDLE_WIDTH = 640;
+// AgentHub's locked Workspace contract keeps all three surfaces available once
+// the host has enough room for the 256px rail, 380px inspector and a readable
+// conversation. The source snapshot used 1440px/640px, but that leaves the
+// 1180-1439px range in the two-column fallback and hides the Inspector too
+// early on developer laptops.
+const WIDE_LAYOUT_BREAKPOINT = 1180;
+const MIN_MIDDLE_WIDTH = 560;
 const MAX_LEFT_WIDTH = 380;
 const MAX_RIGHT_WIDTH = 520;
 
