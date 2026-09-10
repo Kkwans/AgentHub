@@ -4,6 +4,7 @@ import {
   GitBranch,
   GitCompareArrows,
   Menu,
+  ScanSearch,
   Tabs as PinTabs,
   TabsList,
   TabsTrigger,
@@ -12,6 +13,7 @@ import {
   X,
   type CompactPanel,
 } from '@agenthub/ui';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '../../../components/Feedback';
 import { ChatCommandBar } from '../components/ChatCommandBar';
@@ -24,6 +26,7 @@ import workspaceStyles from '../workspace.module.css';
 import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
 export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
+  const [immersive, setImmersive] = useState(false);
   const {
     id,
     session,
@@ -111,6 +114,11 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const leftRatioDefault = Math.min(0.45, Math.max(0.12, workspaceLayout.leftWidth / 1440));
   const rightRatioDefault = Math.min(0.5, Math.max(0.18, workspaceLayout.rightWidth / 1440));
 
+  useEffect(() => {
+    document.body.classList.toggle('mobile-chat-immersive', immersive);
+    return () => document.body.classList.remove('mobile-chat-immersive');
+  }, [immersive]);
+
   const handleCompactPanelChange = (panel: CompactPanel) => {
     if (panel === 'left') openSessionDrawer();
     else if (panel === 'right') openInspectorDrawer(tab);
@@ -124,6 +132,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     <div
       className={`${workspaceStyles.workspace} workspace workspace-page workspace-shell relative isolate flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]`}
       data-design-system="pinharness"
+      data-mobile-immersive={immersive || undefined}
       data-session-drawer-open={sessionDrawerOpen || undefined}
       data-inspector-drawer-open={inspectorDrawerOpen || undefined}
     >
@@ -188,6 +197,16 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
             <code title={currentSession.cwd}>{currentSession.cwd}</code>
           </div>
         </WorkbenchDisclosure>
+        <button
+          type="button"
+          className="workspace-immersive-toggle"
+          aria-label={immersive ? '退出沉浸对话' : '进入沉浸对话'}
+          aria-pressed={immersive}
+          title={immersive ? '退出沉浸对话' : '进入沉浸对话'}
+          onClick={() => setImmersive((value) => !value)}
+        >
+          <ScanSearch size={16} aria-hidden="true" />
+        </button>
         <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
           <button
             type="button"
