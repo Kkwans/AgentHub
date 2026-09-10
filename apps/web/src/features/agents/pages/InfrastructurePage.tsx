@@ -101,6 +101,7 @@ import {
 export function runtimeImageLabel(runtime: Pick<RuntimeCandidateRecord, 'image' | 'kind'>): string {
   if (!runtime.image) return runtime.kind === 'LOCAL_HOST' ? 'Local Host' : 'Docker';
   const withoutDigest = runtime.image.split('@', 1)[0] ?? runtime.image;
+  if (/^sha256:[0-9a-f]{32,}$/i.test(withoutDigest.trim())) return 'Docker 容器';
   return withoutDigest.split('/').at(-1) || withoutDigest;
 }
 

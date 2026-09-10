@@ -11,6 +11,12 @@ describe('Infrastructure runtime presentation', () => {
       }),
     ).toBe('node:24-alpine');
     expect(runtimeImageLabel({ kind: 'LOCAL_HOST' })).toBe('Local Host');
+    expect(
+      runtimeImageLabel({
+        kind: 'DOCKER_CONTAINER',
+        image: 'sha256:abcdef0123456789abcdef0123456789',
+      }),
+    ).toBe('Docker 容器');
   });
 
   it('does not expose unnamed container digests as display names', () => {
