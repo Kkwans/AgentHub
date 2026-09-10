@@ -1,4 +1,12 @@
-import { type FormEvent, type PropsWithChildren, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  type FormEvent,
+  type PropsWithChildren,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { AhButton, AlertTriangle, ShieldCheck } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -15,6 +23,13 @@ export type AuthStatus = {
   authenticated: boolean;
   user: { id: string; username: string; role: 'ADMIN' } | null;
 };
+
+const AuthUserContext = createContext<AuthStatus['user']>(null);
+
+/** Read the authenticated administrator already resolved by AccessGate. */
+export function useAuthUser(): AuthStatus['user'] {
+  return useContext(AuthUserContext);
+}
 
 export function AccessGate({ children }: PropsWithChildren) {
   const client = useQueryClient();
@@ -83,7 +98,11 @@ export function AccessGate({ children }: PropsWithChildren) {
     auth.data?.mode === 'local_trusted' ||
     (auth.data?.mode === 'token' && auth.data.authenticated && !authorizationRequired)
   ) {
-    return children;
+    return (
+      <AuthUserContext.Provider value={auth.data?.user ?? null}>
+        {children}
+      </AuthUserContext.Provider>
+    );
   }
 
   if (auth.data?.mode !== 'token') {

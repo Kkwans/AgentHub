@@ -22,6 +22,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 
 import { realtime } from '../../lib/realtime';
 import { AgentHubLogo } from '../../components/AgentHubLogo';
+import { useAuthUser } from '../../components/AccessGate';
 
 const CommandPalette = lazy(() =>
   import('./CommandPalette').then((module) => ({ default: module.CommandPalette })),
@@ -187,21 +188,31 @@ function Navigation({
   );
 }
 
-function ProfileSurface({ collapsed = false }: { collapsed?: boolean }) {
+function ProfileSurface({
+  collapsed = false,
+  username,
+}: {
+  collapsed?: boolean;
+  username?: string | undefined;
+}) {
+  const displayName = username?.trim() || 'Kwan';
+  const initial = displayName.slice(0, 1).toUpperCase() || 'K';
   return (
     <button
       type="button"
       className={`group/profile flex min-h-[52px] w-full items-center gap-2 rounded-[var(--radius-lg)] border border-[hsl(var(--sidebar-border))]/70 bg-[hsl(var(--sidebar-bg))]/50 px-2.5 py-2.5 text-left shadow-[var(--shadow-sm)] transition-[border-color,box-shadow,background-color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))]/60 hover:shadow-[var(--shadow-md)] ${collapsed ? 'justify-center px-1.5' : ''}`}
-      aria-label="Kwan，管理员账户"
+      aria-label={`${displayName}，管理员账户`}
     >
       <span className="avatar-glow relative shrink-0">
         <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[hsl(var(--primary-hover))]/50 bg-[hsl(var(--primary))] text-[10px] font-semibold text-[hsl(var(--primary-foreground))] shadow-[var(--shadow-sm)]">
-          K
+          {initial}
         </span>
       </span>
       {!collapsed && (
         <span className="grid min-w-0 flex-1">
-          <strong className="truncate text-[13px] text-[hsl(var(--foreground))]">Kwan</strong>
+          <strong className="truncate text-[13px] text-[hsl(var(--foreground))]">
+            {displayName}
+          </strong>
           <small className="text-[11px] text-[hsl(var(--foreground-faint))]">Admin</small>
         </span>
       )}
@@ -261,6 +272,7 @@ export function AppShell() {
   const [connection, setConnection] = useState<'连接中' | '已连接' | '已断开'>('已断开');
   const location = useLocation();
   const navigate = useNavigate();
+  const authUser = useAuthUser();
   const { preference, setPreference, sidebarCollapsed, sidebarPreference, setSidebarCollapsed } =
     useAgentHubTheme();
   const [viewportWidth, setViewportWidth] = useState(
@@ -392,7 +404,7 @@ export function AppShell() {
             >
               <div className={`flex items-center ${collapsed ? 'flex-col gap-1.5' : 'gap-2'}`}>
                 <div className="min-w-0 flex-1">
-                  <ProfileSurface collapsed={collapsed} />
+                  <ProfileSurface collapsed={collapsed} username={authUser?.username} />
                 </div>
                 <ThemeControls
                   preference={preference}
@@ -455,7 +467,7 @@ export function AppShell() {
       <MobileDrawerPanel open={drawerOpen} onClose={() => setDrawerOpen(false)} ariaLabel="导航">
         <Brand />
         <Navigation onNavigate={() => setDrawerOpen(false)} />
-        <ProfileSurface />
+        <ProfileSurface username={authUser?.username} />
       </MobileDrawerPanel>
 
       {commandOpen ? (
