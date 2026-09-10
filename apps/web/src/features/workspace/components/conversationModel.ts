@@ -43,6 +43,16 @@ export type ConversationToolItem = {
   turnId?: string;
 };
 
+export type ConversationPlanItem = {
+  kind: 'plan';
+  id: string;
+  createdAt: string;
+  firstSeq: number;
+  event: EventRecord;
+  updatedAt?: string;
+  turnId?: string;
+};
+
 export type ConversationApprovalItem = {
   kind: 'approval';
   id: string;
@@ -58,6 +68,7 @@ export type ConversationTimelineItem =
   | ConversationMessageItem
   | ConversationThoughtItem
   | ConversationToolItem
+  | ConversationPlanItem
   | ConversationApprovalItem;
 
 /** Stable name for consumers that render entries without the timeline helpers. */
@@ -164,10 +175,12 @@ function itemKindOrder(kind: ConversationTimelineItem['kind']): number {
       return 0;
     case 'thought':
       return 1;
-    case 'tool':
+    case 'plan':
       return 2;
-    case 'approval':
+    case 'tool':
       return 3;
+    case 'approval':
+      return 4;
   }
 }
 
@@ -180,6 +193,8 @@ function firstSequence(item: ConversationTimelineItem): number {
     case 'thought':
       return item.firstSeq;
     case 'tool':
+      return item.firstSeq;
+    case 'plan':
       return item.firstSeq;
     case 'approval':
       return item.firstSeq;
@@ -339,6 +354,7 @@ export function buildConversationTimeline(
   const thoughtActive = new Map<string, string>();
   const thoughtSegments = new Map<string, number>();
   const toolItems = new Map<string, ConversationToolItem>();
+  const planItems = new Map<string, ConversationPlanItem>();
   const approvalRequestEvents = orderedEvents.filter(
     (event) => event.type === 'approval.requested' || event.type === 'approval.resolved',
   );
@@ -446,7 +462,31 @@ export function buildConversationTimeline(
       }
     }
 
-    if (!event.type.startsWith('tool.') && event.type !== 'agent.plan.updated') continue;
+    if (event.type === 'agent.plan.updated') {
+      const planId = readString(payload.planId) ?? 'default';
+      const identity = `${event.runId ?? event.sessionId}:${planId}`;
+      const previous = planItems.get(identity);
+      planItems.set(
+        identity,
+        previous
+          ? {
+              ...previous,
+              updatedAt: event.createdAt,
+              event,
+            }
+          : {
+              kind: 'plan',
+              id: `plan:${identity}`,
+              createdAt: event.createdAt,
+              firstSeq: event.seq,
+              updatedAt: event.createdAt,
+              event,
+            },
+      );
+      continue;
+    }
+
+    if (!event.type.startsWith('tool.')) continue;
     const id = toolIdentity(event);
     const previous = toolItems.get(id);
     toolItems.set(
@@ -480,7 +520,7 @@ export function buildConversationTimeline(
     );
     if (!duplicate) timeline.push(item);
   }
-  timeline.push(...thoughtItems.values(), ...toolItems.values());
+  timeline.push(...thoughtItems.values(), ...planItems.values(), ...toolItems.values());
 
   for (const approval of approvals) {
     const approvalWithTimeline = approval as ApprovalRecordWithTimeline;
@@ -511,14 +551,7 @@ export function buildConversationTurns(timeline: ConversationTimelineItem[]): Co
   let defaultTurn: ConversationTurn | undefined;
 
   const createTurn = (id: string, item: ConversationTimelineItem): ConversationTurn => {
-    const runId =
-      item.kind === 'message'
-        ? item.message.runId
-        : item.kind === 'thought' || item.kind === 'tool'
-          ? item.kind === 'thought'
-            ? item.runId
-            : item.event.runId
-          : item.approval.runId;
+    const runId = itemRunId(item);
     const turn: ConversationTurn = {
       id,
       runId: runId ?? null,
@@ -542,14 +575,7 @@ export function buildConversationTurns(timeline: ConversationTimelineItem[]): Co
       continue;
     }
 
-    const runId =
-      item.kind === 'message'
-        ? item.message.runId
-        : item.kind === 'thought'
-          ? item.runId
-          : item.kind === 'tool'
-            ? item.event.runId
-            : item.approval.runId;
+    const runId = itemRunId(item);
     const turn = (runId ? turnByRun.get(runId) : undefined) ?? currentTurn;
     const target = turn ?? defaultTurn ?? (defaultTurn = createTurn('turn:default', item));
     target.entries.push({ ...item, turnId: target.id });
@@ -559,6 +585,20 @@ export function buildConversationTurns(timeline: ConversationTimelineItem[]): Co
     }
   }
   return turns;
+}
+
+function itemRunId(item: ConversationTimelineItem): string | null | undefined {
+  switch (item.kind) {
+    case 'message':
+      return item.message.runId;
+    case 'thought':
+      return item.runId;
+    case 'tool':
+    case 'plan':
+      return item.event.runId;
+    case 'approval':
+      return item.approval.runId;
+  }
 }
 
 /** Keep adjacent tool calls readable without moving them across causal entries. */

@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   ChevronRight,
   LoaderCircle,
+  ListChecks,
   ShieldCheck,
   Wrench,
 } from '@agenthub/ui';
@@ -27,6 +28,7 @@ import {
 } from '../../../presentation/domain-labels';
 import type {
   ConversationApprovalItem,
+  ConversationPlanItem,
   ConversationToolGroup,
   ConversationTimelineItem,
 } from './conversationModel';
@@ -55,6 +57,7 @@ function ChatEntryRendererView({
   if (item.kind === 'tool-group') {
     return <ToolExecutionGroupRow events={item.events} />;
   }
+  if (item.kind === 'plan') return <PlanEventRow plan={item} />;
   if (item.kind === 'tool') return <ToolEventRow event={item.event} />;
   if (item.kind === 'approval') {
     return (
@@ -212,6 +215,9 @@ function sameTimelineItem(
   if (previous.kind === 'tool' && next.kind === 'tool') {
     return sameEvent(previous.event, next.event);
   }
+  if (previous.kind === 'plan' && next.kind === 'plan') {
+    return previous.firstSeq === next.firstSeq && sameEvent(previous.event, next.event);
+  }
   if (previous.kind === 'approval' && next.kind === 'approval') {
     return (
       previous.firstSeq === next.firstSeq &&
@@ -283,6 +289,12 @@ function sameToolPayload(
     'kind',
     'locations',
     'paths',
+    'entries',
+    'update',
+    'removed',
+    'planId',
+    'content',
+    'uri',
   ] as const;
   return keys.every((key) => JSON.stringify(previous[key]) === JSON.stringify(next[key]));
 }
@@ -299,6 +311,139 @@ function formatToolExecutionSummary(summary: ReturnType<typeof summarizeToolExec
   ]
     .filter(Boolean)
     .join(' · ');
+}
+
+type PlanEntryView = {
+  content: string;
+  status: string;
+  priority?: string;
+};
+
+type PlanPresentation = {
+  entries: PlanEntryView[];
+  markdown?: string;
+  file?: string;
+  removed: boolean;
+};
+
+function PlanEventRow({ plan }: { plan: ConversationPlanItem }) {
+  const presentation = readPlanPresentation(plan.event.payloadJson);
+  const completed = presentation.entries.filter((entry) => entry.status === 'completed').length;
+  const title = presentation.removed
+    ? '执行计划已移除'
+    : presentation.entries.length
+      ? `执行计划 · ${completed}/${presentation.entries.length} 完成`
+      : presentation.markdown
+        ? '执行计划说明'
+        : presentation.file
+          ? '执行计划文件'
+          : '执行计划已更新';
+  return (
+    <details className="plan-event-row tool-entry-motion tool-entry-card mx-auto w-full max-w-3xl">
+      <summary className="tool-entry-trigger tool-entry-trigger--interactive">
+        <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
+          <ListChecks size={14} />
+        </span>
+        <span className="tool-event-copy min-w-0 flex-1">
+          <span>
+            <strong>{title}</strong>
+            <small className="tool-entry-badge">Agent 计划</small>
+          </span>
+          {plan.updatedAt && plan.updatedAt !== plan.createdAt ? (
+            <code>{new Date(plan.updatedAt).toLocaleTimeString('zh-CN')}</code>
+          ) : null}
+        </span>
+        <ChevronRight
+          className="tool-event-action tool-entry-chevron"
+          size={13}
+          aria-hidden="true"
+        />
+      </summary>
+      <div className="plan-event-detail tool-entry-detail border-t border-[hsl(var(--border))]/35 px-3 py-2">
+        {presentation.entries.length ? (
+          <ol className="plan-event-list grid gap-1.5">
+            {presentation.entries.map((entry, index) => (
+              <li
+                key={`${entry.content}-${index}`}
+                className="flex min-w-0 items-start gap-2 text-xs"
+              >
+                <PlanStatusIcon status={entry.status} />
+                <span
+                  className={`min-w-0 flex-1 leading-relaxed ${entry.status === 'completed' ? 'text-[hsl(var(--foreground-subtle))] line-through' : 'text-[hsl(var(--foreground))]'}`}
+                >
+                  {entry.content}
+                </span>
+                <small className="shrink-0 text-[11px] text-[hsl(var(--foreground-faint))]">
+                  {labelPlanStatus(entry.status)}
+                </small>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {presentation.markdown ? <RichMessage text={presentation.markdown} /> : null}
+        {presentation.file ? (
+          <code className="mt-1 block truncate">{presentation.file}</code>
+        ) : null}
+        {presentation.removed ? (
+          <span className="text-xs text-[hsl(var(--foreground-muted))]">
+            Agent 已清理这份计划。
+          </span>
+        ) : null}
+        {!presentation.entries.length &&
+        !presentation.markdown &&
+        !presentation.file &&
+        !presentation.removed ? (
+          <span className="text-xs text-[hsl(var(--foreground-muted))]">
+            暂无可展开的计划内容。
+          </span>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+function readPlanPresentation(payload: Record<string, unknown>): PlanPresentation {
+  const update = isRecord(payload.update) ? payload.update : payload;
+  const rawEntries = Array.isArray(update.entries) ? update.entries : [];
+  const entries = rawEntries.flatMap((entry): PlanEntryView[] => {
+    if (!isRecord(entry) || typeof entry.content !== 'string') return [];
+    return [
+      {
+        content: entry.content,
+        status: typeof entry.status === 'string' ? entry.status.toLowerCase() : 'pending',
+        ...(typeof entry.priority === 'string' ? { priority: entry.priority } : {}),
+      },
+    ];
+  });
+  return {
+    entries,
+    ...(typeof update.content === 'string' ? { markdown: update.content } : {}),
+    ...(typeof update.uri === 'string' ? { file: update.uri } : {}),
+    removed: payload.removed === true,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function labelPlanStatus(status: string): string {
+  if (status === 'completed' || status === 'done') return '已完成';
+  if (status === 'in_progress' || status === 'running') return '进行中';
+  if (status === 'cancelled' || status === 'canceled') return '已取消';
+  return '待处理';
+}
+
+function PlanStatusIcon({ status }: { status: string }) {
+  if (status === 'completed' || status === 'done') {
+    return <CheckCircle2 className="mt-0.5 shrink-0 text-[hsl(var(--success))]" size={13} />;
+  }
+  if (status === 'in_progress' || status === 'running') {
+    return <LoaderCircle className="mt-0.5 shrink-0 text-[hsl(var(--primary))]" size={13} />;
+  }
+  return (
+    <span className="mt-1 size-2 shrink-0 rounded-full border border-[hsl(var(--foreground-faint))]" />
+  );
 }
 
 function ApprovalEventRow({

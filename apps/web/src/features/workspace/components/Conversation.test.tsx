@@ -207,6 +207,51 @@ describe('buildConversationTimeline', () => {
     });
   });
 
+  it('将 ACP 计划更新保留为可展开的独立时间线条目并合并同一份计划', () => {
+    const events = [
+      {
+        id: 'plan-1',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 1,
+        type: 'agent.plan.updated',
+        payloadJson: {
+          entries: [
+            { content: '读取项目结构', priority: 'high', status: 'pending' },
+            { content: '运行测试', priority: 'medium', status: 'pending' },
+          ],
+        },
+        createdAt: '2026-08-30T01:00:01.000Z',
+      },
+      {
+        id: 'plan-2',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 2,
+        type: 'agent.plan.updated',
+        payloadJson: {
+          entries: [
+            { content: '读取项目结构', priority: 'high', status: 'completed' },
+            { content: '运行测试', priority: 'medium', status: 'in_progress' },
+          ],
+        },
+        createdAt: '2026-08-30T01:00:02.000Z',
+      },
+    ] satisfies EventRecord[];
+
+    const timeline = buildConversationTimeline([], events);
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]).toMatchObject({
+      kind: 'plan',
+      firstSeq: 1,
+      event: { id: 'plan-2' },
+    });
+    expect(timeline[0]?.kind === 'plan' && timeline[0].event.payloadJson.entries).toEqual([
+      { content: '读取项目结构', priority: 'high', status: 'completed' },
+      { content: '运行测试', priority: 'medium', status: 'in_progress' },
+    ]);
+  });
+
   it('兼容 delta 与累计 text，并在事件流只有 delta 时生成临时 Agent 回复', () => {
     const events = [
       {
