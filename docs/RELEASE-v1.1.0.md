@@ -6,10 +6,10 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 当前候选覆盖（2026-09-10）
 
-- 当前生产候选为 `agenthub:2026.9.10-v16`，image ID `sha256:aec6abc6995fde2f25e3a652054de1b4d3801dbc7716b04abf0d50ae65705171`，OCI version `1.1.0`，revision `4c700dd7c09cac41ce2b91a423839958ba51d027`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
-- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v15`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
-- v16 延续授权账号真实登录页、Agent Center 和 Runtime 交互证据：登录/退出、密码显隐、Agent 搜索与状态筛选通过；Runtime 默认 16 个可用环境、57 个停止项折叠，展开/收起可用且不暴露 digest，1440/390 横向溢出、console/page/request errors 均为 0。
-- v16 延续 v7 的认证 Workspace 与核心路由证据：壳层显示真实登录用户名 `Kkwans`。上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
+- 当前生产候选为 `agenthub:2026.9.10-v17`，image ID `sha256:682840b040fdd079c0483f1ee723fec8cc57080626e7e520d031a381b5a0932e`，OCI version `1.1.0`，revision `c4db828654ec7f932151812521b77e6206c7517c`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
+- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v16`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
+- v17 延续授权账号真实登录页、Agent Center 和 Runtime 交互证据：登录/退出、密码显隐、Agent 搜索与状态筛选通过；Runtime 默认 16 个可用环境、57 个停止项折叠，展开/收起可用且不暴露 digest，1440/390 横向溢出、console/page/request errors 均为 0。
+- v17 延续 v7 的认证 Workspace 与核心路由证据：壳层显示真实登录用户名 `Kkwans`。Home→Projects 真实生产切换预热请求在 Home 完整帧后约 15ms 启动，5 次样本约 99–321ms、无错误；上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
 - 全仓静态门禁与 Vitest 已通过：68 个文件通过、4 个跳过，304 个测试通过、10 个跳过；Workspace/Git 聚焦测试 19/19。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
 
 ## 主要改动
@@ -44,6 +44,12 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - `buildGitChangeTree` 改为复用模块级 `Intl.Collator`，避免每次排序创建 `localeCompare` 配置；200 项变更树本地 22 次采样 p95 从约 155ms 降至 2.59ms，Git 目录分组、路径 containment 与渲染结构不变。
 - 代码提交 `4c700dd` 已推送 `main`；Git changes 2/2、typecheck、lint、Prettier、`git diff --check` 与生产 build 通过；v16 镜像已部署，部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T061000Z-pre-git-tree-perf/`。
 - 专用 `v1-performance.spec.ts` 两次真实复跑仍分别出现 NAS I/O 下 app fixture 启动超时，以及 routeVisible p95 `581.7ms > 250ms`；性能门禁保持 `UNVERIFIED/FAILED`，不以本地函数采样替代真实浏览器全链路结论。
+
+### 第二十七轮：Home 路由预热时序（2026-09-10）
+
+- Home 在首个完整内容帧后立即预热 Projects 页面 chunk 与 `tasks` 查询，移除固定 400ms 延迟；预热只通过 `setTimeout(0)` 排队，不阻塞 Home 首屏绘制。
+- 代码提交 `c4db828` 已推送 `main`；Home/App 聚焦 Vitest、目标 ESLint/Prettier、typecheck、`git diff --check` 与生产 build 通过；v17 镜像通过 arm64、OCI metadata 与 native `node-pty` 检查后部署，部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T063500Z-pre-home-prefetch/`。
+- NAS-local Chromium 真实认证 Home→Projects 测量：预热资源在 Home 完整标题后约 15ms 发起，5 次切换样本 `243.47/219.08/99.98/142.14/321.40ms`，console/page/request errors 为 0；最大值仍超过 250ms，性能门禁继续保持 `UNVERIFIED/FAILED`。
 
 ### 第十八轮：共享组件直接切到 PinHarness（2026-09-09）
 
@@ -86,13 +92,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v16`，镜像为 Linux `arm64`，OCI `revision` 为 `4c700dd7c09cac41ce2b91a423839958ba51d027`；
-- 当前生产运行时源码提交：`4c700dd7c09cac41ce2b91a423839958ba51d027`（已推送 `main`）；镜像 ID 为 `sha256:aec6abc6995fde2f25e3a652054de1b4d3801dbc7716b04abf0d50ae65705171`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`8f4aaf4` 与 `4c700dd` 均包含在当前候选源码中；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v17`，镜像为 Linux `arm64`，OCI `revision` 为 `c4db828654ec7f932151812521b77e6206c7517c`；
+- 当前生产运行时源码提交：`c4db828654ec7f932151812521b77e6206c7517c`（已推送 `main`）；镜像 ID 为 `sha256:682840b040fdd079c0483f1ee723fec8cc57080626e7e520d031a381b5a0932e`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`8f4aaf4`、`4c700dd` 与 `c4db828` 均包含在当前候选源码中；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
-- v16 部署前只读预检确认 v15 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
-- 2026-09-10 14:07（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- v17 部署前只读预检确认 v16 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
+- 2026-09-10 14:12（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- v15/v14/v13/v12/v11/v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v16 镜像已直接由 Compose 使用。
+- v16/v15/v14/v13/v12/v11/v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v17 镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
