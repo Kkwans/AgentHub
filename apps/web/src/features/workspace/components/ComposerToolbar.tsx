@@ -1,6 +1,15 @@
-import { AtSign, ArrowUp, Button, LoaderCircle, ShieldCheck, Square } from '@agenthub/ui';
+import {
+  AtSign,
+  ArrowUp,
+  Button,
+  ListChecks,
+  LoaderCircle,
+  ShieldCheck,
+  Square,
+} from '@agenthub/ui';
 
 import type { SessionConfigurationRecord } from '../../../lib/api';
+import type { ComposerPlanSummary } from './ChatCommandBar';
 import { SessionConfigurationControl } from './SessionConfigurationControl';
 
 export type ComposerContextStatus = {
@@ -11,6 +20,7 @@ export type ComposerContextStatus = {
 export function ComposerToolbar({
   contextOpen,
   contextStatus,
+  planSummary,
   onToggleContext,
   configuration,
   configurationLoading,
@@ -31,6 +41,7 @@ export function ComposerToolbar({
 }: {
   contextOpen: boolean;
   contextStatus: ComposerContextStatus;
+  planSummary?: ComposerPlanSummary;
   onToggleContext: () => void;
   configuration: SessionConfigurationRecord | undefined;
   configurationLoading: boolean;
@@ -87,6 +98,18 @@ export function ComposerToolbar({
             {contextStatus.label}
           </small>
         </Button>
+        {planSummary ? (
+          <span
+            className="composer-plan-status inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] border border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/45 px-2 text-[11px] text-[hsl(var(--foreground-muted))]"
+            data-complete={planSummary.completed === planSummary.total || undefined}
+            aria-label={`执行计划 ${planSummary.completed}/${planSummary.total} 完成`}
+          >
+            <ListChecks size={14} aria-hidden="true" />
+            <span className="tabular-nums">
+              {planSummary.completed}/{planSummary.total}
+            </span>
+          </span>
+        ) : null}
         <span className="composer-permission hidden items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-muted))] sm:inline-flex">
           <ShieldCheck aria-hidden size={15} />
           <strong className="font-medium">按需审批</strong>

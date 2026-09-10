@@ -205,6 +205,7 @@ export function ChatCommandBar({
   const updatingReasoningEffort =
     updateConfiguration.isPending && updateConfiguration.variables?.reasoningEffort !== undefined;
   const agentCommands = useMemo(() => readAgentCommands(events.data), [events.data]);
+  const planSummary = useMemo(() => readPlanSummary(events.data), [events.data]);
   const slashCommands = useMemo(() => {
     const builtins: ComposerCommand[] = [
       {
@@ -416,6 +417,7 @@ export function ChatCommandBar({
         <ComposerToolbar
           contextOpen={contextOpen}
           contextStatus={contextStatus}
+          planSummary={planSummary}
           onToggleContext={() => setContextOpen((open) => !open)}
           configuration={configuration}
           configurationLoading={configurationLoading}
@@ -476,6 +478,46 @@ function readAgentCommands(events: EventRecord[] | undefined): ComposerCommand[]
       },
     ];
   });
+}
+
+export type ComposerPlanSummary = {
+  completed: number;
+  total: number;
+};
+
+/**
+ * Reduce the latest plan snapshots into the compact progress fact used by the
+ * PinHarness CommandBar. The detailed plan remains an inline timeline entry;
+ * this helper only reads already-normalized AgentHub event payloads.
+ */
+export function readPlanSummary(
+  events: EventRecord[] | undefined,
+): ComposerPlanSummary | undefined {
+  const entries = new Map<string, string>();
+  for (const event of [...(events ?? [])].sort((left, right) => left.seq - right.seq)) {
+    if (event.type !== 'agent.plan.updated') continue;
+    const update = isRecord(event.payloadJson.update)
+      ? event.payloadJson.update
+      : event.payloadJson;
+    if (!Array.isArray(update.entries)) continue;
+    for (const rawEntry of update.entries) {
+      if (!isRecord(rawEntry) || typeof rawEntry.content !== 'string') continue;
+      entries.set(
+        rawEntry.content,
+        typeof rawEntry.status === 'string' ? rawEntry.status.toLowerCase() : 'pending',
+      );
+    }
+  }
+  if (entries.size === 0) return undefined;
+  return {
+    completed: [...entries.values()].filter((status) => status === 'completed' || status === 'done')
+      .length,
+    total: entries.size,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 const AGENT_COMMAND_DESCRIPTIONS: Record<string, string> = {
