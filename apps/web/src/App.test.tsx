@@ -157,7 +157,9 @@ describe('AgentHub App', () => {
   it('renders Home as the new default and exposes the product IA', async () => {
     stubApi();
     renderApp(['/']);
-    expect(await screen.findByRole('heading', { name: '继续工作' })).toBeInTheDocument();
+    const homeHeading = await screen.findByRole('heading', { name: '继续工作' });
+    expect(homeHeading).toBeInTheDocument();
+    expect(homeHeading.closest('.page-content')).toHaveClass('page-shell');
     expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '首页' })).toHaveAttribute('href', '/home');
     expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute('href', '/projects');

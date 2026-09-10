@@ -206,9 +206,7 @@ export function HomePage() {
     return () => window.clearTimeout(timer);
   }, [detailsReady, queryClient]);
   return (
-    <div
-      className={`${homeStyles.homePage} workspace-page mx-auto w-full max-w-[var(--page-wide-width)]`}
-    >
+    <div className={`${homeStyles.homePage} page-content page-shell workspace-page`}>
       <QueryMessage
         loading={loading}
         error={error}
