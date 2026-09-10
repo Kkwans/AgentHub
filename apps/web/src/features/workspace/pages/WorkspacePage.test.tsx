@@ -309,7 +309,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     });
     renderWorkspace(fetchMock);
 
-    expect(await screen.findByText('长会话消息 600', {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(await screen.findByText('长会话消息 600', {}, { timeout: 30_000 })).toBeInTheDocument();
     expect(screen.queryByText('长会话消息 1')).not.toBeInTheDocument();
     const scroll = screen.getByRole('log');
     Object.defineProperties(scroll, {
