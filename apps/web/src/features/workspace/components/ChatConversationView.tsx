@@ -36,10 +36,11 @@ import { ChatEntryRenderer, type ChatEntryRendererProps } from './ChatEntryRende
 // opening), keep the source's progressive rendering intent instead of mounting
 // the entire 500-turn window. Once measured, the normal 500-turn window is
 // handed to @tanstack/react-virtual below.
-// Keep this bootstrap window just above the 15-item virtualization threshold:
-// it is only used while a drawer/hidden panel has no measurable viewport, so
-// mounting fewer rounds keeps the first newest response responsive under load.
-const UNMEASURED_WINDOW_SIZE = 20;
+// This bootstrap window is only used while a drawer/hidden panel has no
+// measurable viewport. Keep it intentionally small so the newest response is
+// available immediately; a measured viewport switches to the normal virtual
+// window below without changing the visible conversation order.
+const UNMEASURED_WINDOW_SIZE = 8;
 
 export {
   buildConversationTimeline,
