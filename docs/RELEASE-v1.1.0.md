@@ -6,7 +6,15 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 当前候选覆盖（2026-09-10）
 
-- 当前生产候选为 `agenthub:2026.9.10-v20`，image ID `sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f`，OCI version `1.1.0`，revision `ef2f3c6daba6b107322f15471b1ea1c13d3887ae`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
+### 第三十二轮：一次性最终候选部署与认证视觉矩阵（2026-09-10）
+
+- 源码最终候选为已推送 `2c0c2624df9f77ecff9e762f0a06ffae9b417ead`；本轮在所有源代码改动完成后只构建最终发布 tag `agenthub:2026.9.10-v21`，没有按 commit 重复构建或部署。
+- 常规镜像首次 PTY 预检发现 ARM64 `node-pty` native binding 缺失，未部署；使用仓库现有 `Dockerfile.nas-native` 对同一最终 tag 做必要重建，`node-pty-spawn=ok` 后才继续部署。最终 image ID 为 `sha256:49342cd8b244ee439cbbea6f8bfc2c453e11e9c32b977af306442616e65fd1f3`，架构 `linux/arm64`，OCI revision 与源码一致。
+- 2026-09-10 10:28（Asia/Shanghai）仅 `agenthub` service 执行 `docker compose ... up -d --no-build agenthub`；当前容器 `running/healthy`，`/api/v1/health` HTTP 200，返回 `version: 1.1.0`、`database: pglite`、`web: true`。数据卷、挂载和其他容器 identity 对比无变化；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T102824Z-pre-v21/`，即时回滚为 v20，长期回滚为 1.0.0 v2。
+- 使用管理员账号完成一次临时 API token 登录后，NAS-local headless Chromium 认证矩阵覆盖 11 路由 × 2 主题 × 7 视口（1920/1600/1440/1280/1024/768/390），共 154 张截图；console/page/request error、横向溢出、未命名按钮和隐藏焦点均为 0。证据摘要见 [`docs/qa/visual/v1.1.0/34-deployed-v21-authenticated-baseline-20260910.json`](qa/visual/v1.1.0/34-deployed-v21-authenticated-baseline-20260910.json)，临时 token 已撤销并清理。
+- reduced-motion、键盘焦点和移动沉浸开关在 1440/390 通过；当前真实 Workspace 会话为 CLOSED，草稿恢复、send/stop、活动 Agent/ACP streaming、Approval 往返、原生 PTY 全链路、200% zoom、性能预算、备份恢复和独立视觉复核仍未验证，因此 manifest 保持 `complete: false`。
+
+- 上一生产候选（本轮部署前）为 `agenthub:2026.9.10-v20`，image ID `sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f`，OCI version `1.1.0`，revision `ef2f3c6daba6b107322f15471b1ea1c13d3887ae`，架构 `linux/arm64`；其健康状态已在部署前确认。
 - 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v19`（image ID `sha256:0e20cdd2aa37f739930692535ec3131cb6d45ca4f2c9b25efab00c554dabd9ec`），长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
 - v20 使用授权账号完成真实 UI 登录，登录入口截图和认证后首页均无 console/page error；登录按钮 computed style 为白字、蓝底、1px 实线边框。
 - v20 认证后的核心路由矩阵：7 路由 × 1440/1024/768/390 × light/dark 共 56 页全部 HTTP 200、无 console/page/request error、无横向溢出；CLOSED Workspace 8 页同样通过，Composer 显示 `已关闭`，Workspace 三栏/中屏共享侧栏/移动 tabs 几何符合目标。
@@ -124,8 +132,8 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v20`，镜像为 Linux `arm64`，OCI `revision` 为 `ef2f3c6daba6b107322f15471b1ea1c13d3887ae`；
-- 当前生产运行时源码提交：`ef2f3c6daba6b107322f15471b1ea1c13d3887ae`（已推送 `main`）；镜像 ID 为 `sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`4c700dd`、`c4db828`、`21f9a19`、`7f96f79`、`8f02fee`、`a7726ad`、`6eeb098`、`6b3bc89` 与 `ef2f3c6` 均包含在当前候选源码中；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v21`，镜像为 Linux `arm64`，OCI `revision` 为 `2c0c2624df9f77ecff9e762f0a06ffae9b417ead`；
+- 当前生产运行时源码提交：`2c0c2624df9f77ecff9e762f0a06ffae9b417ead`（已推送 `main`）；镜像 ID 为 `sha256:49342cd8b244ee439cbbea6f8bfc2c453e11e9c32b977af306442616e65fd1f3`；此前 v20 及 1.0.0 回滚点均保留；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
 - v20 部署前只读预检确认 v19 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
 - 2026-09-10（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；

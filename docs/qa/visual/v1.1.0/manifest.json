@@ -1,8 +1,8 @@
 {
   "releaseVersion": "1.1.0",
-  "status": "deployed_pending_real_acceptance",
+  "status": "deployed_pending_specialized_runtime",
   "complete": false,
-  "sourceCommit": "7b594f27379a97d7f6559981820485d6c76d909b",
+  "sourceCommit": "2c0c2624df9f77ecff9e762f0a06ffae9b417ead",
   "rollback": {
     "version": "1.0.0",
     "image": "agenthub:2026.9.5-v2",
@@ -13,27 +13,30 @@
   },
   "preDeploymentReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
-    "version": "1.0.0",
+    "version": "1.1.0",
+    "image": "agenthub:2026.9.10-v20",
+    "imageId": "sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f",
+    "revision": "ef2f3c6daba6b107322f15471b1ea1c13d3887ae",
     "health": "healthy",
-    "deploymentChanged": false
+    "deploymentChanged": true
   },
   "previousCandidateReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v27",
-    "imageId": "sha256:fd4c86ac3c745b25ada506eb4f21d658b1490aad25b1a263023c81fb4b336006",
-    "revision": "138e9572043f8bf23b0ab658f649afad21faf890",
+    "image": "agenthub:2026.9.10-v20",
+    "imageId": "sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f",
+    "revision": "ef2f3c6daba6b107322f15471b1ea1c13d3887ae",
     "preserve": true
   },
   "productionReadOnly": {
     "endpoint": "http://192.168.5.110:3210",
     "version": "1.1.0",
     "health": "healthy",
-    "image": "agenthub:2026.9.9-v28",
-    "imageId": "sha256:bc024753a89d60ef06dd247ed2dbcd451b1593a5d96a9b827b20503382fa9562",
-    "revision": "7b594f27379a97d7f6559981820485d6c76d909b",
-    "checkedAt": "2026-09-09T07:19:52.720Z",
+    "image": "agenthub:2026.9.10-v21",
+    "imageId": "sha256:49342cd8b244ee439cbbea6f8bfc2c453e11e9c32b977af306442616e65fd1f3",
+    "revision": "2c0c2624df9f77ecff9e762f0a06ffae9b417ead",
+    "checkedAt": "2026-09-10T10:28:56Z",
     "deploymentChanged": true
   },
   "deployment": {
@@ -42,20 +45,20 @@
     "composeProject": "agenthub",
     "composeFile": "/volume2/Project/AgentHub/deploy/compose/docker-compose.yml",
     "endpoint": "http://192.168.5.110:3210",
-    "image": "agenthub:2026.9.9-v28",
-    "imageId": "sha256:bc024753a89d60ef06dd247ed2dbcd451b1593a5d96a9b827b20503382fa9562",
+    "image": "agenthub:2026.9.10-v21",
+    "imageId": "sha256:49342cd8b244ee439cbbea6f8bfc2c453e11e9c32b977af306442616e65fd1f3",
     "architecture": "arm64",
-    "revision": "7b594f27379a97d7f6559981820485d6c76d909b",
-    "created": "2026-09-09T07:14:02Z",
-    "deployedAt": "2026-09-09T07:18:51Z",
+    "revision": "2c0c2624df9f77ecff9e762f0a06ffae9b417ead",
+    "created": "2026-09-10T10:27:50Z",
+    "deployedAt": "2026-09-10T10:28:33Z",
     "healthHttpStatus": 200,
     "healthVersion": "1.1.0",
     "containerHealth": "healthy",
     "composeConfig": "pass",
     "dataVolumesChanged": false,
     "otherServicesChanged": false,
-    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260909T071838Z-pre-shell-css-cleanup",
-    "rollbackImage": "agenthub:2026.9.9-v27"
+    "rollbackBackup": "/volume2/Project/.agenthub/central/deployments/20260910T102824Z-pre-v21",
+    "rollbackImage": "agenthub:2026.9.10-v20"
   },
   "designReference": {
     "source": "/volume2/Project/PinHarness/web",
@@ -148,39 +151,57 @@
         "docker image inspect agenthub:2026.9.9-v27 (arm64, version 1.1.0, full revision 138e9572043f8bf23b0ab658f649afad21faf890)",
         "docker image inspect agenthub:2026.9.9-v28 (arm64, version 1.1.0, full revision 7b594f27379a97d7f6559981820485d6c76d909b)",
         "pnpm release:version-truth 1.1.0 --allow-incomplete",
-        "git diff --check"
+        "git diff --check",
+        "corepack pnpm lint (pass; final candidate)",
+        "corepack pnpm format:check (pass; final candidate)",
+        "corepack pnpm typecheck (pass; final candidate)",
+        "corepack pnpm qa:css-budget (pass; final candidate)",
+        "corepack pnpm exec vitest run packages/ui/src --pool=forks --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 (8 files, 32 passed)",
+        "corepack pnpm exec vitest run apps/web/src/features/workspace --pool=forks --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 (12 files, 52 passed)",
+        "corepack pnpm test -- --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 (72 files passed, 4 skipped; 318 passed, 10 skipped)",
+        "corepack pnpm build (pass; final candidate)",
+        "docker image inspect agenthub:2026.9.10-v21 (arm64, 1.1.0, full revision 2c0c2624df9f77ecff9e762f0a06ffae9b417ead)",
+        "docker run --rm --name agenthub-v21-pty-check ... (node-pty-spawn=ok)",
+        "docker compose --env-file deploy/compose/.env.example -f deploy/compose/docker-compose.yml config --quiet (pass)",
+        "docker compose ... up -d --no-build agenthub (single-service replacement; no down)",
+        "curl http://192.168.5.110:3210/api/v1/health (HTTP 200; version 1.1.0; pglite; web=true)",
+        "corepack pnpm qa:geometry /tmp/agenthub-v21-real-visual/audit.json /tmp/agenthub-v21-real-visual/geometry.json (154 page snapshots passed)",
+        "corepack pnpm test:visual:real (authenticated baseline; 154 snapshots; console/page/request/overflow/unnamed/focus all zero)",
+        "NAS Chromium reduced-motion/focus/immersive interaction check (1440/390 pass; no writes)"
       ]
     },
     "visual": {
-      "status": "unverified",
+      "status": "pass_with_unverified_scope",
       "mockFixture": "Latest Workspace 4/4 passed across desktop-1440, desktop-1024, tablet-768 and mobile-390; post-hardening semantic subsets pass with ready-boundary waits and fixture WebSocket isolation; fixture is not production evidence",
-      "independentReview": "P0=0, P1=0 on current source and mock matrix; touch intent P2 fixed in fdad2c0. Real deployment visual gate remains unverified. Top safe-area/device validation remains unverified.",
+      "independentReview": "UNVERIFIED: no separate review agent was run for this final candidate; source and screenshot evidence are recorded without self-scoring as acceptance.",
       "realDeploymentSmoke": {
         "status": "pass",
-        "route": "/overview",
-        "authenticated": false,
-        "viewports": [
-          "desktop-1440",
-          "desktop-1024",
-          "tablet-768",
-          "mobile-390"
-        ],
+        "scope": "authenticated baseline routes",
+        "authenticated": true,
+        "routes": 11,
+        "snapshots": 154,
+        "viewports": ["1920x1080", "1600x1000", "1440x900", "1280x800", "1024x768", "768x1024", "390x844"],
+        "themes": ["light", "dark"],
         "httpStatus": 200,
         "overflow": false,
         "consoleErrors": 0,
         "pageErrors": 0,
         "requestFailures": 0,
-        "knownWarnings": [],
-        "evidence": "docs/qa/visual/v1.1.0/33-deployed-shell-css-cleanup-20260909.json",
-        "capturedAt": "2026-09-09T07:19:52.720Z",
-        "image": "agenthub:2026.9.9-v28",
-        "revision": "7b594f27379a97d7f6559981820485d6c76d909b"
+        "unnamedButtons": 0,
+        "hiddenFocus": 0,
+        "blockedWrites": 0,
+        "evidence": "docs/qa/visual/v1.1.0/34-deployed-v21-authenticated-baseline-20260910.json",
+        "capturedAt": "2026-09-10T10:31:05.439Z",
+        "image": "agenthub:2026.9.10-v21",
+        "imageId": "sha256:49342cd8b244ee439cbbea6f8bfc2c453e11e9c32b977af306442616e65fd1f3",
+        "revision": "2c0c2624df9f77ecff9e762f0a06ffae9b417ead"
       },
       "required": [
         "NAS Playwright 1440/1024/768/390 light/dark",
         "console/page/request errors",
         "overflow/geometry/focus/200% zoom",
-        "independent P0/P1/P2 review"
+        "independent P0/P1/P2 review",
+        "real Agent/ACP streaming and native PTY"
       ]
     },
     "runtime": {
@@ -200,12 +221,15 @@
     }
   },
   "notes": [
-    "1.1.0 was deployed after explicit user authorization as a single-service, reversible candidate; the PinHarness direct-migration rebuild is now running as 2026.9.9-v28 and 1.0.0 remains tagged and retained as the rollback point.",
+    "1.1.0 final source candidate 2c0c2624 was deployed after explicit user authorization as a single-service, reversible candidate; it is running as 2026.9.10-v21 and 1.0.0 remains tagged and retained as the rollback point.",
+    "The first regular Dockerfile build was rejected before deployment because node-pty lacked an ARM64 native binding; the same v21 tag was rebuilt with the existing Dockerfile.nas-native overlay, passed node-pty-spawn=ok, and only the corrected image was deployed.",
+    "Authenticated NAS-local Chromium baseline captured 154 route/theme/viewport snapshots after deployment; console/page/request errors, horizontal overflow, unnamed buttons and hidden focus were all zero. Evidence summary: docs/qa/visual/v1.1.0/34-deployed-v21-authenticated-baseline-20260910.json.",
+    "Reduced-motion and keyboard-focus checks passed at 1440x900 and 390x844; mobile immersive toggle passed. The inspected production session was already CLOSED, so draft restoration and send/stop were not exercised.",
     "PinHarness direct-migration commits ec74915, cda7393, f252163, a16f11e, 2c973fe, 26afa55, 50eeb36, d12ab1d, c23770a and db68ed1 were pushed to main before the 2026.9.9-v8 image build.",
     "The v28 unauthenticated production smoke was run after directly removing the Mantine runtime, aligning conversation visuals with PinHarness, and cleaning the obsolete AppShell sidebar stylesheet; authenticated Workspace/Agent/PTY and independent visual review remain unverified.",
     "Full Vitest was rerun on 2026-09-09 with --maxWorkers=1 --hookTimeout=120000 --testTimeout=120000: 71 files (67 passed, 4 skipped), 306 tests (296 passed, 10 skipped); the earlier default 30s run timed out only in auth-service.test.ts, which passes in isolation.",
     "Pre-deploy Compose/inspect evidence and post-deploy snapshots are retained under /volume2/Project/.agenthub/central/deployments/20260909T035051Z-pre-pinharness-fields/; the prior v19 snapshot remains under /volume2/Project/.agenthub/central/deployments/20260909T031036Z-pre-shared-button-bridge/.",
     "v15 was superseded by v16 carrying the full pushed commit SHA, then v17, v18, v19 and v20 were built from subsequent pushed commits with full OCI revisions; all candidate images remain locally retained.",
-    "This manifest intentionally remains incomplete; build/health/static evidence and the unauthenticated login smoke do not substitute for authenticated four-viewport Workspace, runtime, performance, backup/restore, or independent visual acceptance."
+    "This manifest intentionally remains incomplete; real Agent/ACP streaming and Approval, native PTY open/input/resize/close, browser 200% zoom, performance budget, backup/restore and independent visual review remain unverified."
   ]
 }

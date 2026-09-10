@@ -1,0 +1,71 @@
+{
+  "capturedAt": "2026-09-10T10:31:05.439Z",
+  "target": "http://192.168.5.110:3210",
+  "source": "production-read-only",
+  "scope": "authenticated baseline routes",
+  "authenticated": true,
+  "image": "agenthub:2026.9.10-v21",
+  "imageId": "sha256:49342cd8b244ee439cbbea6f8bfc2c453e11e9c32b977af306442616e65fd1f3",
+  "revision": "2c0c2624df9f77ecff9e762f0a06ffae9b417ead",
+  "browser": "NAS-local Playwright Chromium (headless)",
+  "routes": [
+    "/home",
+    "/projects",
+    "/agents/agents",
+    "/agents/runtime",
+    "/agents/nodes",
+    "/prompts",
+    "/settings/appearance",
+    "/projects/6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0/overview",
+    "/projects/6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0/work",
+    "/projects/6d1ca2e6-f1a2-4250-a1ae-1e4e962272a0/sessions",
+    "/workspace/9cb58d54-ee2d-4f61-b0d2-6df579cc4a92"
+  ],
+  "themes": ["light", "dark"],
+  "viewports": [
+    "1920x1080",
+    "1600x1000",
+    "1440x900",
+    "1280x800",
+    "1024x768",
+    "768x1024",
+    "390x844"
+  ],
+  "snapshotCount": 154,
+  "findings": {
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "requestFailures": 0,
+    "horizontalOverflow": 0,
+    "unnamedButtons": 0,
+    "hiddenFocus": 0,
+    "blockedWrites": 0
+  },
+  "health": {
+    "httpStatus": 200,
+    "version": "1.1.0",
+    "database": "pglite",
+    "web": true,
+    "container": "running/healthy"
+  },
+  "interactionChecks": {
+    "reducedMotion": "pass",
+    "keyboardFocusVisible": "pass",
+    "mobileImmersiveToggle": "pass",
+    "draftRestore": "not_exercised_closed_session"
+  },
+  "geometryAudit": "/tmp/agenthub-v21-real-visual/geometry.json",
+  "rollback": {
+    "image": "agenthub:2026.9.10-v20",
+    "imageId": "sha256:c4717104dae9b7e96e80362c9828c172c9d09e10fb131cd9655a17ad767eb60f",
+    "backup": "/volume2/Project/.agenthub/central/deployments/20260910T102824Z-pre-v21"
+  },
+  "unverified": [
+    "real Agent/ACP streaming and Approval round-trip",
+    "native PTY open/input/resize/close",
+    "browser 200% zoom",
+    "performance budget",
+    "backup/restore",
+    "independent visual review"
+  ]
+}
