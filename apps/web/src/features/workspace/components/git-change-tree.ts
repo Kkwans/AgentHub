@@ -2,6 +2,8 @@ import type { GitStatusRecord } from '../workspace-types';
 
 type GitChangeEntry = GitStatusRecord['entries'][number];
 
+const pathCollator = new Intl.Collator('zh-CN', { numeric: true });
+
 export type GitChangeTreeNode =
   | {
       kind: 'directory';
@@ -72,7 +74,7 @@ export function buildGitChangeTree(entries: GitChangeEntry[]): GitChangeTreeNode
   const sortNodes = (nodes: GitChangeTreeNode[]) => {
     nodes.sort((left, right) => {
       if (left.kind !== right.kind) return left.kind === 'directory' ? -1 : 1;
-      return left.name.localeCompare(right.name, 'zh-CN', { numeric: true });
+      return pathCollator.compare(left.name, right.name);
     });
     for (const node of nodes) if (node.kind === 'directory') sortNodes(node.children);
   };
