@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AhButton, AlertTriangle, ShieldCheck } from '@agenthub/ui';
+import { AhButton, AlertTriangle, Input, ShieldCheck } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError, authApi, authSession } from '../lib/auth-api';
@@ -236,10 +236,9 @@ function AccessPrompt({
         {!unavailable ? (
           <form className={styles.form} onSubmit={submit}>
             <label htmlFor="username">用户名</label>
-            <input
+            <Input
               id="username"
               name="username"
-              className="ah-access-input"
               autoFocus
               autoComplete="username"
               spellCheck={false}

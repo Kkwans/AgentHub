@@ -1,48 +1,27 @@
 .gate {
   position: relative;
   display: grid;
-  min-height: 100vh;
+  min-height: 100dvh;
   place-items: center;
-  padding: 32px 20px;
+  padding: 2rem 1.25rem;
   overflow: hidden;
-  color: var(--ah-text-primary);
-  background:
-    radial-gradient(
-      circle at 18% 8%,
-      color-mix(in srgb, var(--ah-info) 16%, transparent),
-      transparent 32%
-    ),
-    radial-gradient(
-      circle at 88% 90%,
-      color-mix(in srgb, var(--ah-success) 12%, transparent),
-      transparent 28%
-    ),
-    var(--ah-canvas);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
 }
 
 .gate::before {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  content: '';
-  opacity: 0.34;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--ah-info) 8%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--ah-info) 8%, transparent) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(to bottom, black, transparent 74%);
+  display: none;
 }
 
 .card {
   position: relative;
   z-index: 1;
-  width: min(430px, 100%);
-  padding: 30px;
-  background: color-mix(in srgb, var(--ah-surface) 96%, transparent);
-  border: 1px solid var(--ah-border-default);
-  border-radius: 16px;
-  box-shadow: var(--ah-shadow-float, 0 24px 70px rgb(15 23 42 / 14%));
-  backdrop-filter: blur(16px);
+  width: min(27rem, 100%);
+  padding: 2rem;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
 }
 
 .heading {
@@ -55,7 +34,7 @@
 .headingLogo {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
 }
 .headingContent {
   min-width: 0;
@@ -72,22 +51,22 @@
   gap: 2px;
 }
 .product strong {
-  color: var(--ah-text-primary);
+  color: hsl(var(--foreground));
   font-size: 16px;
   letter-spacing: -0.02em;
 }
 .product small {
-  color: var(--ah-text-tertiary);
+  color: hsl(var(--foreground-faint));
   font-size: 10px;
 }
 .product > span {
   padding: 4px 7px;
-  color: var(--ah-accent-primary);
+  color: hsl(var(--primary));
   font-size: 9px;
   font-weight: 700;
   white-space: nowrap;
-  background: var(--ah-accent-soft);
-  border-radius: 6px;
+  background: hsl(var(--primary-soft));
+  border-radius: var(--radius-sm);
 }
 .copy {
   max-width: 32rem;
@@ -95,14 +74,14 @@
 }
 .copy h1 {
   margin: 0 0 8px;
-  color: var(--ah-text-primary);
+  color: hsl(var(--foreground));
   font-size: 25px;
   line-height: 1.2;
   letter-spacing: -0.035em;
 }
 .copy p {
   margin: 0;
-  color: var(--ah-text-secondary);
+  color: hsl(var(--foreground-muted));
   font-size: 12px;
   line-height: 1.7;
 }
@@ -113,7 +92,7 @@
 }
 .form label {
   margin-top: 5px;
-  color: var(--ah-text-secondary);
+  color: hsl(var(--foreground-muted));
   font-size: 11px;
   font-weight: 700;
 }
@@ -123,7 +102,7 @@
 }
 .fieldHelp {
   margin-top: -2px;
-  color: var(--ah-text-tertiary);
+  color: hsl(var(--foreground-faint));
   font-size: 11px;
   line-height: 1.5;
 }
@@ -134,20 +113,20 @@
   gap: 9px;
   margin: -7px 0 15px;
   padding: 11px 12px;
-  color: var(--ah-danger);
+  color: hsl(var(--destructive-fg));
   font-size: 11px;
   line-height: 1.5;
-  background: var(--ah-danger-soft);
-  border: 1px solid color-mix(in srgb, var(--ah-danger) 24%, transparent);
-  border-radius: 8px;
+  background: hsl(var(--destructive-soft));
+  border: 1px solid hsl(var(--destructive) / 0.24);
+  border-radius: var(--radius);
 }
 .card footer {
   margin-top: 20px;
   padding-top: 16px;
-  color: var(--ah-text-tertiary);
+  color: hsl(var(--foreground-faint));
   font-size: 11px;
   text-align: center;
-  border-top: 1px solid var(--ah-border-subtle);
+  border-top: 1px solid hsl(var(--border));
 }
 .cardLoading {
   min-height: 230px;
@@ -163,19 +142,14 @@
   width: 66%;
   height: 9px;
   overflow: hidden;
-  background: var(--ah-border-subtle);
+  background: hsl(var(--surface-muted));
   border-radius: 6px;
 }
 .loadingLine::after {
   position: absolute;
   inset: 0;
   content: '';
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--ah-surface) 88%, transparent),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, hsl(var(--surface) / 0.88), transparent);
   transform: translateX(-100%);
   animation: shimmer 1.35s ease-in-out infinite;
 }

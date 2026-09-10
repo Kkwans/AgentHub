@@ -1247,9 +1247,7 @@ textarea:focus-visible {
 }
 
 .ah-field-input,
-.ah-field-textarea,
-.ah-access-input,
-.ah-password-input {
+.ah-field-textarea {
   width: 100%;
   min-height: 38px;
   padding: 0 11px;
@@ -1272,63 +1270,20 @@ textarea:focus-visible {
 }
 
 .ah-field-input::placeholder,
-.ah-field-textarea::placeholder,
-.ah-access-input::placeholder,
-.ah-password-input::placeholder {
+.ah-field-textarea::placeholder {
   color: var(--ah-text-tertiary);
 }
 
 .ah-field-input:focus,
-.ah-field-textarea:focus,
-.ah-access-input:focus,
-.ah-password-input:focus {
+.ah-field-textarea:focus {
   border-color: var(--ah-accent-primary);
   box-shadow: 0 0 0 3px var(--ah-accent-soft);
 }
 
 .ah-field-input:disabled,
-.ah-field-textarea:disabled,
-.ah-access-input:disabled,
-.ah-password-input:disabled {
+.ah-field-textarea:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-}
-
-.ah-password-field {
-  position: relative;
-  display: block;
-  width: 100%;
-}
-
-.ah-password-input {
-  padding-right: 42px;
-}
-
-.ah-password-toggle {
-  position: absolute;
-  top: 50%;
-  right: 5px;
-  display: inline-grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  padding: 0;
-  color: var(--ah-text-tertiary);
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  transform: translateY(-50%);
-}
-
-.ah-password-toggle:hover {
-  color: var(--ah-text-primary);
-  background: var(--ah-surface-subtle);
-}
-
-.ah-password-toggle:focus-visible {
-  outline: 2px solid var(--ah-accent-primary);
-  outline-offset: 1px;
 }
 
 .ah-field[data-invalid='true'] .ah-select-trigger,
