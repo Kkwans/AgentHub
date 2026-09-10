@@ -851,4 +851,34 @@ describe('WorkspacePage 数据分区可靠性', () => {
       expect(screen.queryByRole('button', { name: '关闭检查器' })).not.toBeInTheDocument(),
     );
   });
+
+  it('移动端可切换沉浸对话并在退出时清理 body 状态', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) =>
+        ({
+          matches: query.includes('max-width: 1179px'),
+          media: query,
+          onchange: null,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+          addListener: () => undefined,
+          removeListener: () => undefined,
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+    renderWorkspace(
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        baseFetch(String(input), init?.method),
+      ),
+    );
+
+    const enter = await screen.findByRole('button', { name: '进入沉浸对话' });
+    fireEvent.click(enter);
+    await waitFor(() => expect(document.body).toHaveClass('mobile-chat-immersive'));
+    const exit = screen.getByRole('button', { name: '退出沉浸对话' });
+    expect(exit).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(exit);
+    await waitFor(() => expect(document.body).not.toHaveClass('mobile-chat-immersive'));
+  });
 });
