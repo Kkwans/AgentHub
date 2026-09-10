@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Wrench,
 } from '@agenthub/ui';
-import { lazy, Suspense } from 'react';
+import { lazy, memo, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 
 import type { EventRecord } from '../../../lib/api';
@@ -44,7 +44,7 @@ export type ChatEntryRendererProps = {
   onResolve: (variables: { id: string; optionId: string }) => void;
 };
 
-export function ChatEntryRenderer({
+function ChatEntryRendererView({
   item,
   resolving,
   resolveError,
@@ -92,7 +92,7 @@ export function ChatEntryRenderer({
     <div
       className={
         isUser
-          ? 'group/msg flex justify-end px-3 py-1.5 animate-[hci-entry_200ms_ease-out_both] sm:px-4'
+          ? 'group/msg flex justify-end px-3 py-1.5 animate-[hci-entry_200ms_ease-out_both] motion-reduce:animate-none sm:px-4'
           : 'min-w-0 px-0.5 py-1'
       }
       data-chat-entry
@@ -133,7 +133,7 @@ export function ChatEntryRenderer({
             <RichMessage text={presentation.text} />
             {item.streaming && (
               <span
-                className="ml-1 inline-block w-0.5 text-[hsl(var(--primary))] animate-[streaming-type-caret-blink_820ms_steps(1,end)_infinite]"
+                className="streaming-type-caret ml-1 inline-block w-0.5 text-[hsl(var(--primary))] animate-[streaming-type-caret-blink_820ms_steps(1,end)_infinite] motion-reduce:animate-none"
                 aria-label="正在接收 Agent 回复"
                 role="status"
               >
@@ -146,6 +146,149 @@ export function ChatEntryRenderer({
     </div>
   );
 }
+
+/**
+ * PinHarness keeps completed entry subtrees stable while a streaming delta
+ * updates the active entry. AgentHub's timeline adapter creates fresh wrapper
+ * objects on each query refresh, so compare the visual fields instead of only
+ * relying on reference equality.
+ */
+export function areChatEntryRendererPropsEqual(
+  previous: ChatEntryRendererProps,
+  next: ChatEntryRendererProps,
+): boolean {
+  if (previous.resolving !== next.resolving) return false;
+  if (previous.activeThoughtId !== next.activeThoughtId) return false;
+  if (previous.onResolve !== next.onResolve) return false;
+  if (!sameError(previous.resolveError, next.resolveError)) return false;
+  if (!sameResolveVariables(previous.resolveVariables, next.resolveVariables)) return false;
+  return sameTimelineItem(previous.item, next.item);
+}
+
+function sameError(previous: Error | undefined, next: Error | undefined): boolean {
+  if (previous === next) return true;
+  if (!previous || !next) return false;
+  return previous.message === next.message && readErrorCode(previous) === readErrorCode(next);
+}
+
+function readErrorCode(error: Error): string | undefined {
+  const code = (error as Error & { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
+
+function sameResolveVariables(
+  previous: ChatEntryRendererProps['resolveVariables'],
+  next: ChatEntryRendererProps['resolveVariables'],
+): boolean {
+  return previous?.id === next?.id && previous?.optionId === next?.optionId;
+}
+
+function sameTimelineItem(
+  previous: ChatEntryRendererProps['item'],
+  next: ChatEntryRendererProps['item'],
+): boolean {
+  if (previous === next) return true;
+  if (previous.kind !== next.kind || previous.id !== next.id) return false;
+  if (previous.kind === 'message' && next.kind === 'message') {
+    return (
+      previous.streaming === next.streaming &&
+      previous.createdAt === next.createdAt &&
+      previous.message.id === next.message.id &&
+      previous.message.role === next.message.role &&
+      previous.message.text === next.message.text &&
+      previous.message.sequence === next.message.sequence &&
+      previous.message.createdAt === next.message.createdAt
+    );
+  }
+  if (previous.kind === 'thought' && next.kind === 'thought') {
+    return (
+      previous.streaming === next.streaming &&
+      previous.createdAt === next.createdAt &&
+      previous.updatedAt === next.updatedAt &&
+      previous.runId === next.runId &&
+      previous.text === next.text
+    );
+  }
+  if (previous.kind === 'tool' && next.kind === 'tool') {
+    return sameEvent(previous.event, next.event);
+  }
+  if (previous.kind === 'approval' && next.kind === 'approval') {
+    return (
+      previous.firstSeq === next.firstSeq &&
+      (previous.approval === next.approval || sameApproval(previous.approval, next.approval))
+    );
+  }
+  if (previous.kind === 'tool-group' && next.kind === 'tool-group') {
+    return (
+      previous.events.length === next.events.length &&
+      previous.events.every((event, index) => {
+        const nextEvent = next.events[index];
+        return nextEvent ? sameEvent(event, nextEvent) : false;
+      })
+    );
+  }
+  return false;
+}
+
+function sameApproval(
+  previous: ConversationApprovalItem['approval'],
+  next: ConversationApprovalItem['approval'],
+): boolean {
+  return (
+    previous.id === next.id &&
+    previous.status === next.status &&
+    previous.selectedOptionId === next.selectedOptionId &&
+    previous.deliveryState === next.deliveryState &&
+    previous.deliveryErrorCode === next.deliveryErrorCode &&
+    previous.deliveryErrorMessage === next.deliveryErrorMessage &&
+    previous.optionsJson.length === next.optionsJson.length &&
+    previous.optionsJson.every((option, index) => {
+      const nextOption = next.optionsJson[index];
+      return (
+        nextOption?.id === option.id &&
+        nextOption?.label === option.label &&
+        nextOption?.kind === option.kind
+      );
+    })
+  );
+}
+
+function sameEvent(previous: EventRecord, next: EventRecord): boolean {
+  return (
+    previous === next ||
+    (previous.id === next.id &&
+      previous.sessionId === next.sessionId &&
+      previous.runId === next.runId &&
+      previous.seq === next.seq &&
+      previous.type === next.type &&
+      previous.createdAt === next.createdAt &&
+      sameToolPayload(previous.payloadJson, next.payloadJson))
+  );
+}
+
+/** Compare only fields rendered by the collapsed/expanded tool rows. */
+function sameToolPayload(
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+): boolean {
+  const keys = [
+    'status',
+    'tool',
+    'name',
+    'title',
+    'command',
+    'path',
+    'query',
+    'url',
+    'kind',
+    'locations',
+    'paths',
+  ] as const;
+  return keys.every((key) => JSON.stringify(previous[key]) === JSON.stringify(next[key]));
+}
+
+export const ChatEntryRenderer = memo(ChatEntryRendererView, areChatEntryRendererPropsEqual);
+ChatEntryRenderer.displayName = 'ChatEntryRenderer';
 
 function formatToolExecutionSummary(summary: ReturnType<typeof summarizeToolExecution>): string {
   return [
