@@ -836,7 +836,7 @@ html {
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  animation: hci-fade-up var(--motion-base) var(--ease-out-expo) both;
+  animation: ah-fade-up var(--motion-base) var(--ease-out-expo) both;
 }
 
 .run-state-marker {
@@ -976,7 +976,7 @@ html {
   border-radius: 999px;
   box-shadow: var(--shadow-md);
   transform: translateX(-50%);
-  animation: hci-fade-up var(--motion-fast) var(--ease-out-expo) both;
+  animation: ah-fade-up-centered var(--motion-fast) var(--ease-out-expo) both;
   backdrop-filter: blur(8px);
   transition:
     color var(--motion-fast) var(--ease-standard),
@@ -1080,7 +1080,7 @@ html {
   background: hsl(var(--success-soft) / 0.55);
   border: 1px solid hsl(var(--success) / 0.22);
   border-radius: var(--radius);
-  animation: hci-fade-up var(--motion-fast) var(--ease-out-expo) both;
+  animation: ah-fade-up var(--motion-fast) var(--ease-out-expo) both;
 }
 
 .workspace-query-error {
@@ -1238,13 +1238,34 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .run-state-banner,
   .run-state-running .run-state-marker,
-  .conversation-query-status,
   .workspace-query-status,
   .conversation-jump-latest,
   .workspace-handoff,
   .conversation-history-control button {
     animation: none;
     transition: none;
+  }
+}
+
+@keyframes ah-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ah-fade-up-centered {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }
 
