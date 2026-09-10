@@ -334,24 +334,32 @@ export function ChatCommandBar({
       }
       return;
     }
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && !event.shiftKey) {
+    if (slashMenuOpen && filteredSlashCommands.length) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveCommandIndex((index) => (index + 1) % filteredSlashCommands.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveCommandIndex(
+          (index) => (index - 1 + filteredSlashCommands.length) % filteredSlashCommands.length,
+        );
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        const command = filteredSlashCommands[activeCommandIndex];
+        if (command) setText(`/${command.name} `);
+        return;
+      }
+    }
+    // PinHarness sends on Return and keeps Shift+Return for an explicit line
+    // break. Ctrl/Cmd+Return naturally follows the same path for desktop
+    // muscle memory, while IME composition is left untouched.
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       sendCurrentText();
-      return;
-    }
-    if (!slashMenuOpen || !filteredSlashCommands.length) return;
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setActiveCommandIndex((index) => (index + 1) % filteredSlashCommands.length);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setActiveCommandIndex(
-        (index) => (index - 1 + filteredSlashCommands.length) % filteredSlashCommands.length,
-      );
-    } else if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      const command = filteredSlashCommands[activeCommandIndex];
-      if (command) setText(`/${command.name} `);
     }
   };
   return (
