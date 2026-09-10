@@ -174,6 +174,8 @@ export function ComposerToolbar({
 
 export function resolveLockedSessionState(status: string): string {
   switch (status) {
+    case 'READY':
+      return '就绪';
     case 'CREATED':
     case 'STARTING':
       return '准备中';
