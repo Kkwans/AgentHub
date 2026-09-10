@@ -105,6 +105,15 @@ export function GitChangesTree({
     history: '提交历史',
     branches: '分支',
   };
+  const selectView = (nextView: GitView) => {
+    setView(nextView);
+    // History and branches are intentionally disabled until the user asks for
+    // them. Trigger the query at that interaction boundary so archived or
+    // detached projects do not emit failing requests on the initial changes
+    // view, while the menu remains fully functional.
+    if (nextView === 'history') void commits.refetch();
+    if (nextView === 'branches') void branches.refetch();
+  };
 
   return (
     <div className="git-inspector">
@@ -134,13 +143,13 @@ export function GitChangesTree({
           <details className="git-more-menu">
             <summary>更多 Git</summary>
             <div role="menu" aria-label="更多 Git 视图">
-              <button type="button" role="menuitem" onClick={() => setView('changes')}>
+              <button type="button" role="menuitem" onClick={() => selectView('changes')}>
                 变更
               </button>
-              <button type="button" role="menuitem" onClick={() => setView('history')}>
+              <button type="button" role="menuitem" onClick={() => selectView('history')}>
                 提交历史
               </button>
-              <button type="button" role="menuitem" onClick={() => setView('branches')}>
+              <button type="button" role="menuitem" onClick={() => selectView('branches')}>
                 分支
               </button>
             </div>

@@ -350,20 +350,25 @@ export function useWorkspaceViewModel() {
       api.get<GitDiffRecord>(
         `/projects/${project?.id ?? ''}/git/diff?staged=${String(stagedDiff)}${selectedChangePath ? `&path=${encodeURIComponent(selectedChangePath)}` : ''}&whitespace=${encodeURIComponent(diffWhitespace)}`,
       ),
-    enabled: Boolean(project?.id && tab === 'changes'),
+    // Diff is an expensive/fragile diagnostic for archived or detached
+    // projects. GitChangesTree requests it only after the user selects a
+    // concrete path, so the initial changes view stays useful and quiet.
+    enabled: Boolean(project?.id && tab === 'changes' && selectedChangePath),
     retry: false,
   });
   const gitCommits = useQuery({
     queryKey: ['git-commits', project?.id],
     queryFn: () =>
       api.get<GitCommitRecord[]>(`/projects/${project?.id ?? ''}/git/commits?limit=30`),
-    enabled: Boolean(project?.id && tab === 'changes'),
+    // History is loaded by the explicit “提交历史” menu action.
+    enabled: false,
     retry: false,
   });
   const gitBranches = useQuery({
     queryKey: ['git-branches', project?.id],
     queryFn: () => api.get<GitBranchRecord[]>(`/projects/${project?.id ?? ''}/git/branches`),
-    enabled: Boolean(project?.id && tab === 'changes'),
+    // Branches are loaded by the explicit “分支” menu action.
+    enabled: false,
     retry: false,
   });
   const resolveApproval = useMutation({

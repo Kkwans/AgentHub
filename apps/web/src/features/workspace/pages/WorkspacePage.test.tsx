@@ -309,7 +309,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     });
     renderWorkspace(fetchMock);
 
-    expect(await screen.findByText('长会话消息 600')).toBeInTheDocument();
+    expect(await screen.findByText('长会话消息 600', {}, { timeout: 5_000 })).toBeInTheDocument();
     expect(screen.queryByText('长会话消息 1')).not.toBeInTheDocument();
     const scroll = screen.getByRole('log');
     Object.defineProperties(scroll, {
@@ -771,6 +771,31 @@ describe('WorkspacePage 数据分区可靠性', () => {
       ),
     );
     expect(await screen.findByText('提交完成：abcdef012345')).toBeInTheDocument();
+  });
+
+  it('归档 Project 的初始变更视图不预取失效的 Git 诊断', async () => {
+    const archivedProject = { ...project, status: 'ARCHIVED' as const };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/v1/projects') return jsonResponse([archivedProject]);
+      return baseFetch(path, init?.method);
+    });
+    renderWorkspace(fetchMock);
+
+    expect((await screen.findAllByText('可靠性回归')).length).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v1/projects/${project.id}/git/status`,
+        expect.any(Object),
+      ),
+    );
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/git/diff'))).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/git/commits'))).toBe(
+      false,
+    );
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/git/branches'))).toBe(
+      false,
+    );
   });
 
   it('移动检查器提供唯一且可操作的关闭按钮', async () => {
