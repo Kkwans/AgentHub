@@ -192,16 +192,17 @@ export function HomePage() {
   }, [error, loading]);
   useEffect(() => {
     if (!detailsReady) return;
-    // Wait until the hero and first summary frame have painted before warming
-    // the primary Project route. This keeps route navigation fast without
-    // competing with the Home LCP resource burst.
+    // Warm the primary Project route in the first task after Home's complete
+    // frame. A fixed delay lets the first click pay the lazy chunk cost on
+    // slower ARM hosts; scheduling after paint keeps the Home LCP path clear
+    // while making the normal Home → Projects transition cache-hot.
     const timer = window.setTimeout(() => {
       void import('../../projects/pages/ProjectsPage');
       void queryClient.prefetchQuery({
         queryKey: ['tasks'],
         queryFn: () => api.get<TaskRecord[]>('/tasks'),
       });
-    }, 400);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [detailsReady, queryClient]);
   return (
