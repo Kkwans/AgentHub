@@ -104,6 +104,11 @@ export function runtimeImageLabel(runtime: Pick<RuntimeCandidateRecord, 'image' 
   return withoutDigest.split('/').at(-1) || withoutDigest;
 }
 
+/** Docker can return a digest as displayName when a container has no name. */
+export function runtimeDisplayName(displayName: string): string {
+  return /^sha256:[0-9a-f]{32,}$/i.test(displayName.trim()) ? '未命名 Docker 容器' : displayName;
+}
+
 export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'diagnostics' }) {
   const client = useQueryClient();
   const [showStoppedRuntimes, setShowStoppedRuntimes] = useState(false);
@@ -205,7 +210,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               >
                 <Server size={19} />
                 <div className={layout.rowMain}>
-                  <span className={layout.rowTitle}>{runtime.displayName}</span>
+                  <span className={layout.rowTitle}>{runtimeDisplayName(runtime.displayName)}</span>
                   <span className={layout.rowMeta}>
                     {runtimeImageLabel(runtime)} · {runtime.statusText ?? '状态待确认'}
                   </span>
