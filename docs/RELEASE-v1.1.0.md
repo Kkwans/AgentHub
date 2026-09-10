@@ -9,7 +9,7 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 当前生产候选为 `agenthub:2026.9.10-v7`，image ID `sha256:de0db00a491d652457ad4a720b3af93c1063959264cc1b0fb39ea7a9b5ee954d`，OCI version `1.1.0`，revision `125158073a1a0246ddc1084d7efedff0df3e09e3`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
 - 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v6`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
 - 使用授权账号完成真实认证后的 v7 Workspace 矩阵覆盖普通与复杂历史 Session、1440/1024/768/390、light/dark 共 16 个页面：Composer 可见，横向溢出、console error、page error、request failure 与非预期 HTTP 错误均为 0；移动端 Git tab 与检查器关闭按钮真实交互通过，归档 Project 初始 Git diff/history/branches 409 不再发生；壳层显示真实登录用户名 `Kkwans`。
-- 本次 v7 在 v6 基础上修正认证用户身份展示；此前 Home、Projects、Agent Center、Prompt Library、Settings 的认证截图矩阵仍有效。上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
+- 本次 v7 在 v6 基础上修正认证用户身份展示；核心路由 Home、Projects、Agent Center、Runtime、Remote Nodes、Prompt Library、Settings 在 1440/390、light/dark 共 28 页真实矩阵中均返回 200、无溢出和页面错误。上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
 - 全仓静态门禁与 Vitest 已通过：68 个文件通过、4 个跳过，304 个测试通过、10 个跳过；Workspace/Git 聚焦测试 19/19。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
 
 ## 主要改动
