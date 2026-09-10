@@ -6,11 +6,11 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 当前候选覆盖（2026-09-10）
 
-- 当前生产候选为 `agenthub:2026.9.10-v5`，image ID `sha256:1e722c680f85b52ec71e0a1cf3feea8b9e389d1bc9783abd73ff133680c7fa75`，OCI version `1.1.0`，revision `5690263735922e0e2ea2a6fe300786d05717653a`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
-- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v4`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
-- 使用授权账号完成真实认证后的 Workspace 四视口检查（1440/1024/768/390，light/dark）：登录 HTTP 200，Composer、三栏/单面板布局和 3 个对话轮次可见，横向溢出、console error、page error、request failure 均为 0；移动端 Git tab、检查器抽屉、会话抽屉和 Esc 返回路径已在真实部署验证。
-- Home、Projects、Agent Center、Prompt Library、Settings 在 1440/390 真实认证截图矩阵中均返回 HTTP 200、主体正确、无横向溢出和页面错误。该证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
-- 全仓静态门禁与 Vitest 已通过：68 个文件通过、4 个跳过，303 个测试通过、10 个跳过；Workspace 聚焦测试 27/27。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
+- 当前生产候选为 `agenthub:2026.9.10-v6`，image ID `sha256:5262f26f656140da99ac8473b31bfc8db9d52889a777598b85cf193d29f96581`，OCI version `1.1.0`，revision `9ddcca2bd8cc83750a1636dc0c1dde19fb285127`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
+- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v5`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
+- 使用授权账号完成真实认证后的 v6 Workspace 矩阵覆盖普通与复杂历史 Session、1440/1024/768/390、light/dark 共 16 个页面：Composer 可见，横向溢出、console error、page error、request failure 与非预期 HTTP 错误均为 0；移动端 Git tab 与检查器关闭按钮真实交互通过，归档 Project 初始 Git diff/history/branches 409 不再发生。
+- 本次 v6 只改变 Workspace 长会话首屏窗口与 Git 诊断按需加载；此前 Home、Projects、Agent Center、Prompt Library、Settings 的认证截图矩阵仍有效。上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
+- 全仓静态门禁与 Vitest 已通过：68 个文件通过、4 个跳过，304 个测试通过、10 个跳过；Workspace/Git 聚焦测试 19/19。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
 
 ## 主要改动
 
@@ -61,13 +61,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.9-v28`，镜像为 Linux `arm64`，OCI `revision` 为 `7b594f27379a97d7f6559981820485d6c76d909b`；
-- 当前生产源码提交：`7b594f27379a97d7f6559981820485d6c76d909b`（已推送 `main`）；镜像 ID 为 `sha256:bc024753a89d60ef06dd247ed2dbcd451b1593a5d96a9b827b20503382fa9562`；`138e957` 与 `7b594f2` 均包含在当前候选源码中；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v6`，镜像为 Linux `arm64`，OCI `revision` 为 `9ddcca2bd8cc83750a1636dc0c1dde19fb285127`；
+- 当前生产源码提交：`9ddcca2bd8cc83750a1636dc0c1dde19fb285127`（已推送 `main`）；镜像 ID 为 `sha256:5262f26f656140da99ac8473b31bfc8db9d52889a777598b85cf193d29f96581`；`e77d5c1`、`2eb3bc7` 与 `9ddcca2` 均包含在当前候选源码中；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
-- 部署前只读预检：`http://192.168.5.110:3210` 返回 health `200`、版本 `1.0.0`、状态 `healthy`；预部署 Compose、`.env`、容器 inspect 和容器清单已备份；
-- 2026-09-09 14:43:34（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- v6 部署前只读预检确认 v5 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
+- 2026-09-10 11:26（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- 最新部署证据与回滚配置保存在 `/volume2/Project/.agenthub/central/deployments/20260909T071838Z-pre-shell-css-cleanup`；v27 前候选材料保留在同一快照中；未推送外部 registry，NAS 本地镜像已直接由 Compose 使用。
+- v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v6 镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
@@ -244,14 +244,19 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - `@agenthub/ui` typecheck/build；UI primitives/layout/workbench Vitest：6 files，25/25；
 - Workspace Vitest：9 files，41/41；UI primitives/layout/workbench Vitest：6 files，25/25；ACP adapter：2 files，12/12；Terminal dock、长会话窗口与辅助栏焦点恢复均覆盖；
 - `pnpm lint`、`pnpm format:check`、`pnpm typecheck`、`pnpm build`、`pnpm qa:css-budget`、`git diff --check`；Workspace CSS 16366 bytes，小于 16384 bytes 门限；
-- 全仓 Vitest（单 worker、hook/test timeout 120s，2026-09-09 04:35–04:43 Asia/Shanghai 重跑）：71 files，67 passed / 4 skipped；306 tests 中 296 passed / 10 skipped；默认 30s 全量运行曾仅在 `auth-service.test.ts` 超时，同测试隔离运行 5/5 通过；
+- 全仓 Vitest（单 worker、hook/test timeout 120s，2026-09-10 Asia/Shanghai 重跑）：72 files，68 passed / 4 skipped；314 tests 中 304 passed / 10 skipped；长会话窗口用例等待上限已固定为 30s，避免 NAS 高负载下的偶发测试超时；
 - 迁移后页面语义门禁：desktop-1440 高风险 Workspace/Agent/Projects/Context/Work/Sessions/Prompt/Settings 8/8 通过；四视口 Agent/Projects/Sessions 12/12 通过；fixture 注入断线 WebSocket stub，避免本地 preview 代理重连噪声干扰结果；
 - Mock Playwright：最新 Workspace 四视口 `4/4` 通过（含初始跟随与 cwd 可见性）；页面语义用例已补齐异步 ready 等待，fixture 同时隔离断线 WebSocket，不把本地 preview 的重连噪声计入页面结果；fixture 仍不代表真实运行时；
 - 版本真值：`pnpm release:version-truth 1.1.0 --allow-incomplete` 通过，11 个 workspace package 与 AppShell 版本一致，residues 为空；
-- 已推送提交（按功能切片）：`35dfc5e`（共享 UI 基础）、`b0eee6f`（Workspace 对话）、`fe3fd7a`（全局壳层）、`444f817`（版本真值）、`a9c8037`（候选固化）、`fe2e49e`（响应式面板交互）、`dbb8b50`（Panel host 根因）、`5653772`（Workbench 样式与动效预算）、`427cf72`（验证证据）、`8c817a5`（动效与移动反馈）、`9eb3f88`（辅助栏交互）、`07705db`（轮次虚拟化）、`b188a8c`（触控目标）、`29def87`（文字密度）、`28bd4c9`（验收断言）、`17de41e`（抽屉宿主）、`1977333`（Command Bar）、`6cbc82b`（抽屉宽度）、`371203d`（移动面板测试）、`5ae223e`（初始跟随与上下文事实）、`0d0f257`（ACP 版本元数据）、`52de0c7`（忽略伪滚动）、`befa67b`（cwd 可见性断言）、`fdad2c0`（触摸位移意图）。
+- 已推送提交（按功能切片）：`35dfc5e`（共享 UI 基础）、`b0eee6f`（Workspace 对话）、`fe3fd7a`（全局壳层）、`444f817`（版本真值）、`a9c8037`（候选固化）、`fe2e49e`（响应式面板交互）、`dbb8b50`（Panel host 根因）、`5653772`（Workbench 样式与动效预算）、`427cf72`（验证证据）、`8c817a5`（动效与移动反馈）、`9eb3f88`（辅助栏交互）、`07705db`（轮次虚拟化）、`b188a8c`（触控目标）、`29def87`（文字密度）、`28bd4c9`（验收断言）、`17de41e`（抽屉宿主）、`1977333`（Command Bar）、`6cbc82b`（抽屉宽度）、`371203d`（移动面板测试）、`5ae223e`（初始跟随与上下文事实）、`0d0f257`（ACP 版本元数据）、`52de0c7`（忽略伪滚动）、`befa67b`（cwd 可见性断言）、`fdad2c0`（触摸位移意图）、`e77d5c1`（未测量窗口）、`2eb3bc7`（Git 按需诊断）、`9ddcca2`（长会话测试稳定性）。
+
+## v6 认证真实部署证据
+
+- NAS-local Chromium 使用授权账号登录成功，v6 真实 Workspace 矩阵为普通/复杂历史 Session × 1440/1024/768/390 × light/dark，共 16 个页面；每页 `scrollWidth === clientWidth`，Composer 可见，console/page/request failure 与非预期 HTTP 错误均为 0。
+- 复杂历史 Session 的归档 Project 初始只请求可用的 Git status；`/git/diff`、`/git/commits`、`/git/branches` 不再在首屏发送，移动端 Git tab 与检查器关闭按钮交互通过。截图保存在 `/tmp/agenthub-v6-auth/matrix/`，未保存认证 cookie 或密码。
 
 ## 尚未宣称完成的门禁
 
-发布候选仍需完成真实 NAS Playwright 的认证后 Workspace 四视口（1440/1024/768/390，light/dark）、console/page/request error、几何/横向溢出、真实 Agent/ACP、native PTY、备份恢复、性能和独立视觉复核。当前无 `AGENTHUB_BROWSER_TOKEN_FILE`，上述认证流程、性能报告和运行时能力仍为 `UNVERIFIED`；独立复核已在当前源码/mock 上确认 P0=0、P1=0，但不能替代真实部署视觉验收；Mock fixture 和未登录 smoke 都不能替代这些证据。对应证据应写入 `docs/qa/visual/v1.1.0/manifest.json`，在 `complete: true` 前不得把本版本称为完整验收通过。
+发布候选仍需完成真实 Agent/ACP streaming、Approval、native PTY、200% zoom/safe-area、备份恢复、性能预算和独立视觉复核。认证后的静态 Workspace 矩阵已完成，但不能替代这些运行时与独立审查证据；Mock fixture、未登录 smoke 和本地截图也不能把发布 manifest 变为 `complete: true`。对应证据仍应写入 `docs/qa/visual/v1.1.0/manifest.json`，在 `complete: true` 前不得把本版本称为完整验收通过。
 
 - 本次生产替换是用户明确要求下的可回滚候选部署，不改变 `complete: false` 的验收结论；若后续门禁失败，使用上述备份恢复 1.0.0 Compose/`.env` 并只重建 `agenthub` service。
