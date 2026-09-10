@@ -6,10 +6,10 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 当前候选覆盖（2026-09-10）
 
-- 当前生产候选为 `agenthub:2026.9.10-v11`，image ID `sha256:cba613c5619749511a8d0db9a5af45b84811418237f98ec9332622accc4c9568`，OCI version `1.1.0`，revision `f80a1c8f1595362d6d6a50a90b2aafdd9973cbfe`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
-- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v10`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
-- v11 使用授权账号完成真实登录页回归（1440/390）：实际登录到 `/home`、退出后返回登录页、密码显隐切换均通过；用户名和密码控件均渲染 PinHarness `input-base`，旧 `.ah-password-input` 数量为 0，横向溢出、console/page/request errors 均为 0。桌面 Agent Center v10 的筛选器同样保持同一行（状态控件 170px、刷新按钮 72px）。
-- v11 延续 v7 的认证 Workspace 与核心路由证据：壳层显示真实登录用户名 `Kkwans`，上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
+- 当前生产候选为 `agenthub:2026.9.10-v16`，image ID `sha256:aec6abc6995fde2f25e3a652054de1b4d3801dbc7716b04abf0d50ae65705171`，OCI version `1.1.0`，revision `4c700dd7c09cac41ce2b91a423839958ba51d027`，架构 `linux/arm64`；`/api/v1/health` 返回 `status: ok`、`version: 1.1.0`、`database: pglite`、`web: true`。
+- 本次只替换 `agenthub` service，未执行 `docker compose down`，未修改数据卷或其它容器；即时回滚为 `agenthub:2026.9.10-v15`，长期 1.0.0 回滚点仍为 `agenthub:2026.9.5-v2`。
+- v16 延续授权账号真实登录页、Agent Center 和 Runtime 交互证据：登录/退出、密码显隐、Agent 搜索与状态筛选通过；Runtime 默认 16 个可用环境、57 个停止项折叠，展开/收起可用且不暴露 digest，1440/390 横向溢出、console/page/request errors 均为 0。
+- v16 延续 v7 的认证 Workspace 与核心路由证据：壳层显示真实登录用户名 `Kkwans`。上述证据不覆盖活动 Agent/ACP streaming、Approval、native PTY、200% zoom、备份恢复、性能预算或独立视觉复核。
 - 全仓静态门禁与 Vitest 已通过：68 个文件通过、4 个跳过，304 个测试通过、10 个跳过；Workspace/Git 聚焦测试 19/19。Vite 仍报告 Monaco/editor 大 chunk 警告，属于既有性能预算项。发布 manifest 继续保持 `complete: false`，本候选不宣称完整验收通过。
 
 ## 主要改动
@@ -32,6 +32,18 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 - 认证页用户名和设置页密码字段统一使用共享 PinHarness `Input`，密码显隐按钮使用同一套 surface、focus ring 与 reduced-motion token；删除认证页专用 `.ah-access-input` / `.ah-password-*` 运行时依赖，认证 REST、Cookie、退出和密码修改契约不变。
 - 代码提交 `f80a1c8` 已推送 `main`；App、UI primitive、PasswordField 聚焦 Vitest（3 files/23 passed）、目标 ESLint、Prettier、typecheck、`git diff --check` 与生产 build 通过。
 - v11 镜像通过 arm64、OCI metadata 与 native `node-pty` 检查后部署；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T050800Z-pre-auth-inputs/`。真实认证截图位于 `/tmp/agenthub-v11-auth-login-1440.png`、`/tmp/agenthub-v11-auth-login-390.png`；本轮仅记录登录/退出和控件契约，不宣称完整视觉验收。
+
+### 第二十五轮：Runtime 列表渐进披露（2026-09-10）
+
+- Runtime 主列表默认只呈现可用环境；已停止容器收敛为可展开计数，镜像 digest 与无名称容器的 `sha256:` 标识统一隐藏在主视觉层，避免基础设施页退化为原始 Docker 日志墙；启动、停止、接入和重新扫描契约保持不变。
+- 代码提交 `bf48283`（停止项折叠）与 `8f4aaf4`（digest 脱敏）已推送 `main`；Infrastructure/Agent 页面聚焦测试、纯函数测试、typecheck、lint、Prettier、`git diff --check` 与生产 build 通过。
+- v15 镜像通过 arm64、OCI metadata 与 native `node-pty` 检查后部署；部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T052900Z-pre-runtime-digest/`。真实 Runtime 截图位于 `/tmp/agenthub-v15-runtime-1440.png`、`/tmp/agenthub-v15-runtime-390.png`；折叠/展开真实交互前后均无 digest。
+
+### 第二十六轮：Git 变更树排序性能（2026-09-10）
+
+- `buildGitChangeTree` 改为复用模块级 `Intl.Collator`，避免每次排序创建 `localeCompare` 配置；200 项变更树本地 22 次采样 p95 从约 155ms 降至 2.59ms，Git 目录分组、路径 containment 与渲染结构不变。
+- 代码提交 `4c700dd` 已推送 `main`；Git changes 2/2、typecheck、lint、Prettier、`git diff --check` 与生产 build 通过；v16 镜像已部署，部署前快照位于 `/volume2/Project/.agenthub/central/deployments/20260910T061000Z-pre-git-tree-perf/`。
+- 专用 `v1-performance.spec.ts` 两次真实复跑仍分别出现 NAS I/O 下 app fixture 启动超时，以及 routeVisible p95 `581.7ms > 250ms`；性能门禁保持 `UNVERIFIED/FAILED`，不以本地函数采样替代真实浏览器全链路结论。
 
 ### 第十八轮：共享组件直接切到 PinHarness（2026-09-09）
 
@@ -74,13 +86,13 @@ v1.1.0 是 Workspace 优先的前端重构版本。它沿用 PinHarness 的三�
 
 ## 版本、镜像与回滚
 
-- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v11`，镜像为 Linux `arm64`，OCI `revision` 为 `f80a1c8f1595362d6d6a50a90b2aafdd9973cbfe`；
-- 当前生产运行时源码提交：`f80a1c8f1595362d6d6a50a90b2aafdd9973cbfe`（已推送 `main`）；镜像 ID 为 `sha256:cba613c5619749511a8d0db9a5af45b84811418237f98ec9332622accc4c9568`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe` 与 `f80a1c8` 均包含在当前候选源码中；
+- 软件版本：`1.1.0`；当前 PinHarness 直接迁移生产候选：`agenthub:2026.9.10-v16`，镜像为 Linux `arm64`，OCI `revision` 为 `4c700dd7c09cac41ce2b91a423839958ba51d027`；
+- 当前生产运行时源码提交：`4c700dd7c09cac41ce2b91a423839958ba51d027`（已推送 `main`）；镜像 ID 为 `sha256:aec6abc6995fde2f25e3a652054de1b4d3801dbc7716b04abf0d50ae65705171`；`e77d5c1`、`2eb3bc7`、`9ddcca2`、`1251580`、`4fd8dfe`、`f80a1c8`、`bf48283`、`8f4aaf4` 与 `4c700dd` 均包含在当前候选源码中；
 - 当前生产 1.0.0 回滚点：`agenthub:2026.9.5-v2`，image ID 为 `sha256:cf44afd240c555bb0e629af61dad2bcb3b343c7f87de69babc9323292ad2cc03`（arm64，创建于 `2026-09-05T17:03:24+08:00`）；其 Compose 配置、数据卷和其他 Agent 容器不得覆盖或删除；
-- v11 部署前只读预检确认 v10 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
-- 2026-09-10 13:04（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
+- v16 部署前只读预检确认 v15 容器 `running/healthy`、health `200`、版本 `1.1.0`；长期回滚点 `agenthub:2026.9.5-v2` 与其 image ID 已单独核对并保留；
+- 2026-09-10 14:07（Asia/Shanghai）已按用户明确授权替换生产 `agenthub` service。部署后 health `200` 返回版本 `1.1.0`，容器为 `running/healthy`，无 OOM/异常退出；Compose config 通过；
 - 本轮只执行 `docker compose ... up -d --no-build agenthub`，未执行 `docker compose down`，未触碰 Project、PGlite/Postgres、worktrees、token 或其他容器；挂载对比保持不变，其他容器的 name/image identity 未变；
-- v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v11 镜像已直接由 Compose 使用。
+- v15/v14/v13/v12/v11/v10/v9/v8/v7/v6/v5 镜像、Compose 配置与长期回滚点均保留在 NAS；未推送外部 registry，NAS 本地 v16 镜像已直接由 Compose 使用。
 
 ### PinHarness 直接迁移重部署追加（2026-09-09）
 
