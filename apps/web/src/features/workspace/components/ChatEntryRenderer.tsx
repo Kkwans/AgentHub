@@ -340,7 +340,10 @@ function PlanEventRow({ plan }: { plan: ConversationPlanItem }) {
           : '执行计划已更新';
   return (
     <details className="plan-event-row tool-entry-motion tool-entry-card mx-auto w-full max-w-3xl">
-      <summary className="tool-entry-trigger tool-entry-trigger--interactive">
+      <summary
+        className="tool-entry-trigger tool-entry-trigger--interactive"
+        aria-label={`${title}，展开执行计划详情`}
+      >
         <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
           <ListChecks size={14} />
         </span>
