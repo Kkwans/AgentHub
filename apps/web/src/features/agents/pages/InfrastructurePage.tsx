@@ -97,8 +97,16 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 
+/** Keep provider/container digests in Diagnostics instead of the primary list row. */
+export function runtimeImageLabel(runtime: Pick<RuntimeCandidateRecord, 'image' | 'kind'>): string {
+  if (!runtime.image) return runtime.kind === 'LOCAL_HOST' ? 'Local Host' : 'Docker';
+  const withoutDigest = runtime.image.split('@', 1)[0] ?? runtime.image;
+  return withoutDigest.split('/').at(-1) || withoutDigest;
+}
+
 export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'diagnostics' }) {
   const client = useQueryClient();
+  const [showStoppedRuntimes, setShowStoppedRuntimes] = useState(false);
   const runtimes = useQuery({
     queryKey: ['discovery-runtimes'],
     queryFn: () => api.get<RuntimeCandidateRecord[]>('/discovery/runtimes'),
@@ -134,6 +142,11 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
       : kind === 'nodes'
         ? '管理已授权的 Remote Node，注册码只展示一次，撤销需要明确确认。'
         : '先给出面向用户的结论，再按需展开原始诊断信息。';
+  const runtimeRows = runtimes.data ?? [];
+  const stoppedRuntimeCount = runtimeRows.filter((runtime) => runtime.state === 'STOPPED').length;
+  const visibleRuntimeRows = showStoppedRuntimes
+    ? runtimeRows
+    : runtimeRows.filter((runtime) => runtime.state !== 'STOPPED');
   return (
     <Screen
       eyebrow="Agent Infrastructure"
@@ -159,6 +172,25 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
     >
       {kind === 'runtimes' ? (
         <AhSurface>
+          <div className={layout.surfaceHeader}>
+            <div>
+              <h3>执行环境</h3>
+              <p>
+                {runtimes.isLoading
+                  ? '正在读取运行环境…'
+                  : `${visibleRuntimeRows.length} 个可用环境${stoppedRuntimeCount ? ` · ${stoppedRuntimeCount} 个已停止` : ''}`}
+              </p>
+            </div>
+            {stoppedRuntimeCount > 0 ? (
+              <AhButton
+                variant="subtle"
+                size="xs"
+                onClick={() => setShowStoppedRuntimes((visible) => !visible)}
+              >
+                {showStoppedRuntimes ? '隐藏已停止' : `显示已停止（${stoppedRuntimeCount}）`}
+              </AhButton>
+            ) : null}
+          </div>
           <div className={layout.surfaceBody}>
             <QueryMessage
               loading={runtimes.isLoading}
@@ -166,7 +198,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               retry={() => void runtimes.refetch()}
               label="正在扫描运行环境"
             />
-            {(runtimes.data ?? []).map((runtime) => (
+            {visibleRuntimeRows.map((runtime) => (
               <div
                 className={`${layout.row} ${layout.infrastructureRow}`}
                 key={runtime.candidateId}
@@ -175,7 +207,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
                 <div className={layout.rowMain}>
                   <span className={layout.rowTitle}>{runtime.displayName}</span>
                   <span className={layout.rowMeta}>
-                    {runtime.image ?? 'Local Host'} · {runtime.statusText ?? '状态待确认'}
+                    {runtimeImageLabel(runtime)} · {runtime.statusText ?? '状态待确认'}
                   </span>
                 </div>
                 <AhStatusPill status={runtime.state} />
@@ -209,10 +241,16 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
                 ) : null}
               </div>
             ))}
-            {!runtimes.isLoading && !runtimes.error && !runtimes.data?.length ? (
+            {!runtimes.isLoading && !runtimes.error && !visibleRuntimeRows.length ? (
               <AhEmptyState
-                title="暂时没有可管理的 Runtime"
-                description="重新扫描后会显示本机或支持的 Docker 环境。"
+                title={
+                  stoppedRuntimeCount ? '当前没有运行中的 Runtime' : '暂时没有可管理的 Runtime'
+                }
+                description={
+                  stoppedRuntimeCount
+                    ? '已停止的环境已收起，可点击上方按钮查看并按需启动。'
+                    : '重新扫描后会显示本机或支持的 Docker 环境。'
+                }
               />
             ) : null}
           </div>
