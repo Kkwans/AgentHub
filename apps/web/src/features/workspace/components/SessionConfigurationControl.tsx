@@ -143,8 +143,8 @@ function CompactChoiceSelect({
     <label
       className={cn(
         'grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-2 text-xs text-[hsl(var(--foreground-muted))]',
-        label === '运行模式' && 'composer-select-mode max-md:hidden',
-        label === '推理强度' && 'composer-select-reasoning max-md:hidden',
+        label === '运行模式' && 'composer-select-mode',
+        label === '推理强度' && 'composer-select-reasoning',
         label === '模型' && 'composer-select-model',
       )}
     >
