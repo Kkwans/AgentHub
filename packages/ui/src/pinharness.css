@@ -3255,20 +3255,16 @@ html {
 
 /* ── 节点状态动画 ──────────────────────────────────── */
 
-/* 子代理运行态仅让边框与光晕缓慢呼吸，避免 animate-pulse 导致整卡内容明暗跳变。 */
+/* 子代理运行态仅让卡片轻微浮动并改变透明度，避免 animate-pulse 导致整卡明暗跳变。 */
 @keyframes subagent-card-breathe {
   0%,
   100% {
-    border-left-color: hsl(var(--success) / 0.62);
-    box-shadow:
-      0 0 0 0 hsl(var(--success) / 0),
-      0 1px 2px rgba(20, 35, 60, 0.025);
+    opacity: 0.94;
+    transform: translateY(0);
   }
   50% {
-    border-left-color: hsl(var(--success) / 0.9);
-    box-shadow:
-      0 0 0 3px hsl(var(--success) / 0.055),
-      0 4px 14px hsl(var(--success) / 0.07);
+    opacity: 1;
+    transform: translateY(-1px);
   }
 }
 
@@ -3276,11 +3272,11 @@ html {
   0%,
   100% {
     opacity: 0.72;
-    filter: drop-shadow(0 0 0 hsl(var(--success) / 0));
+    transform: scale(0.98);
   }
   50% {
     opacity: 1;
-    filter: drop-shadow(0 0 3px hsl(var(--success) / 0.22));
+    transform: scale(1.03);
   }
 }
 
@@ -3289,12 +3285,10 @@ html {
   100% {
     opacity: 0.72;
     transform: scale(0.9);
-    box-shadow: 0 0 0 0 hsl(var(--warning) / 0);
   }
   50% {
     opacity: 1;
     transform: scale(1.05);
-    box-shadow: 0 0 0 3px hsl(var(--warning) / 0.1);
   }
 }
 
@@ -3313,12 +3307,12 @@ html {
 @keyframes pulse-border-light {
   0%,
   100% {
-    border-color: hsl(var(--primary) / 0.4);
-    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.1);
+    opacity: 0.94;
+    transform: scale(1);
   }
   50% {
-    border-color: hsl(var(--primary) / 0.75);
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.06);
+    opacity: 1;
+    transform: scale(1.005);
   }
 }
 .node-running {
@@ -3465,16 +3459,16 @@ html {
   }
 }
 
-/* ── Settings 必填项闪烁 ─────────────────────────── */
+/* ── Settings 必填项提示 ─────────────────────────── */
 @keyframes setting-flash {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0);
-    border-color: rgba(255, 149, 0, 0);
+    opacity: 0.8;
+    transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 4px rgba(255, 149, 0, 0.25);
-    border-color: rgba(255, 149, 0, 0.6);
+    opacity: 1;
+    transform: scale(1.01);
   }
 }
 .setting-flash {
@@ -3513,10 +3507,12 @@ html {
 /* ── 优化骨架屏 shimmer ───────────────────────────── */
 @keyframes skeleton-wave {
   0% {
-    background-position: -400px 0;
+    opacity: 0.72;
+    transform: translateX(-2px);
   }
   100% {
-    background-position: 400px 0;
+    opacity: 1;
+    transform: translateX(2px);
   }
 }
 .skeleton-shimmer {
@@ -3536,12 +3532,10 @@ html {
   100% {
     opacity: 1;
     transform: scale(1);
-    box-shadow: 0 0 0 0 currentColor;
   }
   50% {
     opacity: 0.85;
     transform: scale(1.08);
-    box-shadow: 0 0 0 3px transparent;
   }
 }
 
@@ -3591,12 +3585,10 @@ html {
   from {
     opacity: 0;
     transform: translate3d(0, 7px, 0);
-    filter: saturate(0.92);
   }
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
-    filter: saturate(1);
   }
 }
 

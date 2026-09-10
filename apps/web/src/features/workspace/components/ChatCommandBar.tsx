@@ -348,7 +348,7 @@ export function ChatCommandBar({
         );
         return;
       }
-      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+      if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
         event.preventDefault();
         const command = filteredSlashCommands[activeCommandIndex];
         if (command) setText(`/${command.name} `);
@@ -358,7 +358,7 @@ export function ChatCommandBar({
     // PinHarness sends on Return and keeps Shift+Return for an explicit line
     // break. Ctrl/Cmd+Return naturally follows the same path for desktop
     // muscle memory, while IME composition is left untouched.
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       sendCurrentText();
     }
@@ -417,7 +417,7 @@ export function ChatCommandBar({
         <ComposerToolbar
           contextOpen={contextOpen}
           contextStatus={contextStatus}
-          planSummary={planSummary}
+          {...(planSummary ? { planSummary } : {})}
           onToggleContext={() => setContextOpen((open) => !open)}
           configuration={configuration}
           configurationLoading={configurationLoading}
