@@ -209,7 +209,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         </div>
         {agents.error && (
           <div className="workspace-query-error-inline" role="alert">
-            Agent 信息加载失败：{agents.error.message}
+            <span>Agent 信息加载失败：{agents.error.message}</span>
             <button type="button" onClick={() => agents.refetch()}>
               重试
             </button>
