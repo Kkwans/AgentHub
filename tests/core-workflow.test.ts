@@ -173,7 +173,10 @@ describe('AgentHub 核心工程闭环', () => {
     expect(dashboard.recentResults).toEqual([
       expect.objectContaining({ id: started.run.id, gitOutcome: 'CHANGED' }),
     ]);
-  }, 20_000);
+    // PGlite/WASM cold start on the NAS can exceed the workspace-wide default
+    // while the deterministic workflow itself remains bounded by the waits
+    // above. Keep this integration budget aligned with the real E2E budget.
+  }, 120_000);
 });
 
 class FixtureGitProbe implements GitHeadProbe {
