@@ -2844,6 +2844,16 @@ html {
   color: hsl(var(--success));
 }
 
+.tool-event-row.tool-event-subagent .tool-entry-icon {
+  color: hsl(var(--purple));
+  background: hsl(var(--purple-soft));
+  border-radius: var(--radius-sm);
+}
+
+.tool-event-row.tool-event-subagent .tool-entry-badge {
+  color: hsl(var(--purple));
+}
+
 .tool-event-detail > a,
 .tool-entry-detail > a {
   display: inline-flex;

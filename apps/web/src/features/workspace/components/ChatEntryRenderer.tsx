@@ -9,6 +9,7 @@
 import {
   AlertTriangle,
   Brain,
+  Bot,
   Button,
   CheckCircle2,
   ChevronRight,
@@ -644,6 +645,7 @@ function ApprovalEventRow({
 function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
   const summary = summarizeToolExecution(events);
   const title = formatToolExecutionSummary(summary);
+  const includesSubagent = events.some(isSubagentEvent);
   const status = events.some((event) => event.type.endsWith('.failed'))
     ? 'failed'
     : events.some((event) => !event.type.endsWith('.completed'))
@@ -660,7 +662,9 @@ function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
         aria-label={`${title}，展开执行详情`}
       >
         <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
-          {status === 'running' ? (
+          {includesSubagent ? (
+            <Bot size={14} />
+          ) : status === 'running' ? (
             <LoaderCircle className="spin" size={14} />
           ) : status === 'failed' ? (
             <AlertTriangle size={14} />
@@ -672,7 +676,13 @@ function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
           <span>
             <strong>{title}</strong>
             <small className="tool-entry-badge">
-              {status === 'completed' ? '已完成' : status === 'failed' ? '部分失败' : '进行中'}
+              {includesSubagent
+                ? '子 Agent'
+                : status === 'completed'
+                  ? '已完成'
+                  : status === 'failed'
+                    ? '部分失败'
+                    : '进行中'}
             </small>
           </span>
           {details && <code>{details}</code>}
@@ -705,9 +715,10 @@ function ToolEventRow({ event }: { event: EventRecord }) {
   const status = toolEventStatusValue(event);
   const title = toolEventTitle(event);
   const detailValue = toolEventDetail(event);
+  const isSubagent = isSubagentEvent(event);
   return (
     <details
-      className={`tool-event-row tool-entry-motion tool-entry-card tool-event-${status} mx-auto w-full max-w-3xl`}
+      className={`tool-event-row tool-entry-motion tool-entry-card tool-event-${status}${isSubagent ? ' tool-event-subagent' : ''} mx-auto w-full max-w-3xl`}
     >
       <summary
         className="tool-entry-trigger tool-entry-trigger--interactive"
@@ -715,7 +726,11 @@ function ToolEventRow({ event }: { event: EventRecord }) {
       >
         <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
           {status === 'running' ? (
-            <LoaderCircle className="spin" size={14} />
+            isSubagent ? (
+              <Bot size={14} />
+            ) : (
+              <LoaderCircle className="spin" size={14} />
+            )
           ) : status === 'failed' ? (
             <AlertTriangle size={14} />
           ) : (
@@ -726,7 +741,13 @@ function ToolEventRow({ event }: { event: EventRecord }) {
           <span>
             <strong>{title}</strong>
             <small className="tool-entry-badge">
-              {status === 'completed' ? '已完成' : status === 'failed' ? '失败' : '进行中'}
+              {isSubagent
+                ? '子 Agent'
+                : status === 'completed'
+                  ? '已完成'
+                  : status === 'failed'
+                    ? '失败'
+                    : '进行中'}
             </small>
           </span>
           {detailValue !== undefined && <code>{String(detailValue)}</code>}
@@ -763,12 +784,28 @@ function toolEventTitle(event: EventRecord): string {
   const rawTool = event.payloadJson.tool ?? event.payloadJson.name;
   return String(
     event.payloadJson.title ??
-      (rawTool === undefined
-        ? event.type === 'agent.plan.updated'
-          ? '更新执行计划'
-          : '调用工具'
-        : labelToolName(String(rawTool))),
+      (isSubagentEvent(event)
+        ? '子 Agent 执行'
+        : rawTool === undefined
+          ? event.type === 'agent.plan.updated'
+            ? '更新执行计划'
+            : '调用工具'
+          : labelToolName(String(rawTool))),
   );
+}
+
+/**
+ * ACP currently normalizes sub-agent work as an ordinary tool call. Keep the
+ * visual distinction when an adapter provides the explicit semantic marker,
+ * without inventing a new WebSocket/REST event type.
+ */
+function isSubagentEvent(event: EventRecord): boolean {
+  const payload = event.payloadJson;
+  if (payload.subagent === true || payload.subAgent === true) return true;
+  const kind = String(payload.kind ?? '').toLocaleLowerCase();
+  if (kind === 'subagent' || kind === 'sub-agent' || kind.includes('subagent')) return true;
+  const tool = String(payload.tool ?? payload.name ?? '').toLocaleLowerCase();
+  return tool.includes('subagent') || tool.includes('spawn_agent') || tool.includes('delegate');
 }
 
 function toolEventDetail(event: EventRecord): string | undefined {
