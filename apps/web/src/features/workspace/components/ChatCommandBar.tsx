@@ -13,6 +13,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type CompositionEvent,
+  type FocusEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
@@ -111,7 +113,10 @@ export function ChatCommandBar({
 }) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composingRef = useRef(false);
   const [inputHeight, setInputHeight] = useState(40);
+  const [focused, setFocused] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const resizeStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
   const [variablesDraft, setVariablesDraft] = useState(() =>
@@ -140,6 +145,10 @@ export function ChatCommandBar({
       // Draft persistence is best-effort and must never block sending.
     }
   }, [draftKey, text]);
+
+  useEffect(() => {
+    setVariablesDraft(JSON.stringify(promptVariables, null, 2));
+  }, [promptVariables]);
 
   const handleResizeStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -178,7 +187,6 @@ export function ChatCommandBar({
   const updateConfiguration = useWorkspaceAction(
     async (patch: { model?: string; mode?: string; reasoningEffort?: string }) => {
       const result = await onUpdateConfiguration(patch);
-      setText('');
       setCommandNotice(undefined);
       return result;
     },
@@ -192,6 +200,9 @@ export function ChatCommandBar({
           ? 'Agent 连接已中断，请先恢复会话。'
           : '会话正在准备中，请稍候。'
       : undefined;
+  const composerPlaceholder = activeRun
+    ? 'Agent 正在运行，可先写下一条指令，停止当前 Run 后发送…'
+    : (sessionLockMessage ?? '给 Agent 发送工程指令…');
   const modelOptions = configuration?.options?.models ?? [];
   const modeOptions = configuration?.options?.modes ?? [];
   const reasoningEffortOptions = configuration?.options?.reasoningEfforts ?? [];
@@ -325,6 +336,11 @@ export function ChatCommandBar({
   };
   const sendCurrentText = () => {
     if (!text.trim()) return;
+    if (send.isPending) return;
+    if (activeRun) {
+      setCommandNotice('当前 Run 正在运行，请先停止后再发送。');
+      return;
+    }
     if (!executeLocalSlashCommand()) send.mutate(undefined);
   };
   const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -332,6 +348,7 @@ export function ChatCommandBar({
       if (contextOpen) {
         event.preventDefault();
         setContextOpen(false);
+        requestAnimationFrame(() => inputRef.current?.focus());
       }
       return;
     }
@@ -348,7 +365,12 @@ export function ChatCommandBar({
         );
         return;
       }
-      if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+      if (
+        event.key === 'Enter' &&
+        !event.shiftKey &&
+        !composingRef.current &&
+        !event.nativeEvent.isComposing
+      ) {
         event.preventDefault();
         const command = filteredSlashCommands[activeCommandIndex];
         if (command) setText(`/${command.name} `);
@@ -358,10 +380,19 @@ export function ChatCommandBar({
     // PinHarness sends on Return and keeps Shift+Return for an explicit line
     // break. Ctrl/Cmd+Return naturally follows the same path for desktop
     // muscle memory, while IME composition is left untouched.
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !composingRef.current &&
+      !event.nativeEvent.isComposing
+    ) {
       event.preventDefault();
       sendCurrentText();
     }
+  };
+  const handleCardClick = () => {
+    if (focused || sessionLocked || send.isPending) return;
+    inputRef.current?.focus();
   };
   return (
     <section
@@ -369,7 +400,18 @@ export function ChatCommandBar({
       role="group"
       aria-label="Composer 命令栏"
     >
-      <div className="chat-command-card relative flex min-w-0 flex-col overflow-visible rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/98 shadow-[0_1px_3px_hsl(var(--foreground)/0.05),0_1px_2px_hsl(var(--foreground)/0.04)] backdrop-blur-sm transition-[border-color,box-shadow] duration-150 focus-within:border-[hsl(var(--primary))]/45 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.07),0_2px_6px_hsl(var(--foreground)/0.06)]">
+      <div
+        ref={cardRef}
+        // The whole PinHarness card is a text-entry target. Keep clicks on
+        // the empty surface ergonomic without stealing toolbar focus.
+        // biome-ignore lint/a11y/useKeyWithClickEvents: card click focuses its textarea
+        onClick={handleCardClick}
+        className={`chat-command-card relative flex min-w-0 cursor-text flex-col overflow-visible rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/98 shadow-[0_1px_3px_hsl(var(--foreground)/0.05),0_1px_2px_hsl(var(--foreground)/0.04)] backdrop-blur-sm transition-[border-color,box-shadow] duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:border-[hsl(var(--border-strong))] focus-within:border-[hsl(var(--primary))]/45 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.07),0_2px_6px_hsl(var(--foreground)/0.06)] motion-reduce:transition-none ${send.isPending ? 'pointer-events-none' : ''}`}
+        data-focused={focused || undefined}
+        data-running={Boolean(activeRun) || undefined}
+        data-sending={send.isPending || undefined}
+        aria-busy={send.isPending}
+      >
         {contextOpen && (
           <ContextPopover
             project={project}
@@ -394,13 +436,33 @@ export function ChatCommandBar({
           onResizeEnd={handleResizeEnd}
           activeRun={activeRun}
           stopPending={stop.isPending}
-          inputDisabled={Boolean(activeRun) || sessionLocked}
-          placeholder={sessionLockMessage ?? '给 Agent 发送工程指令…'}
+          inputDisabled={sessionLocked}
+          readOnly={send.isPending}
+          focused={focused}
+          placeholder={composerPlaceholder}
           onTextChange={(value) => {
             setText(value);
             setCommandNotice(undefined);
           }}
           onKeyDown={handleInputKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={(event: FocusEvent<HTMLTextAreaElement>) => {
+            // Preserve the focused card state when moving from the textarea
+            // to a PromptOS/configuration control inside the same surface.
+            if (cardRef.current?.contains(event.relatedTarget as Node | null)) return;
+            setFocused(false);
+          }}
+          onCompositionStart={() => {
+            composingRef.current = true;
+          }}
+          onCompositionEnd={(event: CompositionEvent<HTMLTextAreaElement>) => {
+            composingRef.current = false;
+            // 让浏览器先提交 IME 文本，再允许下一次 Enter 触发发送。
+            const value = event.currentTarget.value;
+            requestAnimationFrame(() => {
+              setText(value);
+            });
+          }}
           commandNotice={commandNotice}
           lockHint={sessionLockMessage}
           sendError={send.error?.message}

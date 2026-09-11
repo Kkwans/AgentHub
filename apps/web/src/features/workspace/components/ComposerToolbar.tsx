@@ -1,12 +1,5 @@
-import {
-  AtSign,
-  ArrowUp,
-  Button,
-  ListChecks,
-  LoaderCircle,
-  ShieldCheck,
-  Square,
-} from '@agenthub/ui';
+import { Button } from '@agenthub/ui';
+import { AtSign, ArrowUp, ListChecks, Loader2, ShieldCheck, Square } from 'lucide-react';
 
 import type { SessionConfigurationRecord } from '../../../lib/api';
 import type { ComposerPlanSummary } from './ChatCommandBar';
@@ -77,22 +70,28 @@ export function ComposerToolbar({
     : sessionLocked
       ? 'bg-[hsl(var(--foreground-faint))]'
       : 'bg-[hsl(var(--success))]';
+  const planProgress = planSummary
+    ? Math.min(1, Math.max(0, planSummary.completed / Math.max(planSummary.total, 1)))
+    : 0;
   return (
     <div
-      className="flex min-h-11 items-center justify-between gap-2 border-t border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/35 px-2 py-1 sm:px-3 sm:py-1.5"
+      className="composer-toolbar flex min-h-11 items-center justify-between gap-2 border-t border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/35 px-2 py-1 sm:px-3 sm:py-1.5"
       aria-label="发送配置"
+      data-running={activeRun || undefined}
+      data-locked={sessionLocked || undefined}
     >
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+      <div className="composer-toolbar-start flex min-w-0 items-center gap-1 overflow-hidden">
         <Button
           type="button"
           size="sm"
           variant="ghost"
-          className={`h-11 min-w-0 gap-1.5 rounded-lg px-2 text-xs text-[hsl(var(--foreground-subtle))] transition-colors sm:h-auto sm:rounded-[var(--radius)] sm:px-2 sm:py-1.5 hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] ${contextOpen ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
+          className={`composer-context-control h-11 min-w-0 gap-1.5 rounded-lg px-2 text-xs text-[hsl(var(--foreground-subtle))] transition-[background-color,color,transform] duration-[var(--motion-fast)] active:scale-[0.97] sm:h-auto sm:rounded-[var(--radius)] sm:px-2 sm:py-1.5 hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] ${contextOpen ? 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]' : ''}`}
           onClick={onToggleContext}
           aria-expanded={contextOpen}
           aria-label={`PromptOS ${contextStatus.label}`}
+          data-open={contextOpen || undefined}
         >
-          <AtSign aria-hidden size={16} />
+          <AtSign aria-hidden size={15} strokeWidth={1.8} />
           <span className="hidden sm:inline">上下文</span>
           <small className="max-w-24 truncate text-[11px] text-[hsl(var(--foreground-faint))]">
             {contextStatus.label}
@@ -100,18 +99,30 @@ export function ComposerToolbar({
         </Button>
         {planSummary ? (
           <span
-            className="composer-plan-status inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] border border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/45 px-2 text-[11px] text-[hsl(var(--foreground-muted))]"
+            className="composer-plan-status inline-flex min-h-8 min-w-20 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] border border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/45 px-2 text-[11px] text-[hsl(var(--foreground-muted))]"
             data-complete={planSummary.completed === planSummary.total || undefined}
             aria-label={`执行计划 ${planSummary.completed}/${planSummary.total} 完成`}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={planSummary.total}
+            aria-valuenow={planSummary.completed}
           >
-            <ListChecks size={14} aria-hidden="true" />
-            <span className="tabular-nums">
-              {planSummary.completed}/{planSummary.total}
+            <ListChecks size={14} aria-hidden="true" strokeWidth={1.8} />
+            <span className="min-w-0 flex-1">
+              <span className="block tabular-nums">
+                {planSummary.completed}/{planSummary.total}
+              </span>
+              <span className="composer-plan-track" aria-hidden="true">
+                <span
+                  className="composer-plan-track-fill"
+                  style={{ transform: `scaleX(${planProgress})` }}
+                />
+              </span>
             </span>
           </span>
         ) : null}
         <span className="composer-permission hidden items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-muted))] sm:inline-flex">
-          <ShieldCheck aria-hidden size={15} />
+          <ShieldCheck aria-hidden size={15} strokeWidth={1.8} />
           <strong className="font-medium">按需审批</strong>
         </span>
         <span
@@ -124,7 +135,7 @@ export function ComposerToolbar({
           {runStateLabel}
         </span>
       </div>
-      <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+      <div className="composer-toolbar-end flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
         <SessionConfigurationControl
           configuration={configuration}
           loading={configurationLoading}
@@ -166,9 +177,9 @@ export function ComposerToolbar({
             tabIndex={activeRun ? 0 : -1}
           >
             {stopPending ? (
-              <LoaderCircle size={16} aria-hidden />
+              <Loader2 size={16} aria-hidden className="animate-spin" />
             ) : (
-              <Square size={15} weight="fill" aria-hidden />
+              <Square size={15} fill="currentColor" aria-hidden />
             )}
           </Button>
           <Button
@@ -184,7 +195,7 @@ export function ComposerToolbar({
             tabIndex={activeRun ? -1 : 0}
           >
             {sendPending ? (
-              <LoaderCircle size={16} aria-hidden />
+              <Loader2 size={16} aria-hidden className="animate-spin" />
             ) : (
               <ArrowUp size={17} aria-hidden />
             )}

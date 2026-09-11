@@ -13,7 +13,8 @@ export const StreamingDots = memo(function StreamingDots({
     return (
       <span
         className={
-          className ?? 'inline-flex items-center gap-[2px] animate-in fade-in-0 duration-300'
+          className ??
+          'inline-flex items-center gap-[2px] animate-[hci-fade-in_300ms_ease-out_both] motion-reduce:animate-none'
         }
       >
         {[0, 150, 300].map((delay) => (
@@ -30,7 +31,7 @@ export const StreamingDots = memo(function StreamingDots({
     <span
       className={
         className ??
-        'inline-flex h-[18px] items-end gap-[3px] py-0.5 animate-in fade-in-0 duration-300'
+        'inline-flex h-[18px] items-end gap-[3px] py-0.5 animate-[hci-fade-in_300ms_ease-out_both] motion-reduce:animate-none'
       }
     >
       {[0, 200, 400].map((delay, index) => (

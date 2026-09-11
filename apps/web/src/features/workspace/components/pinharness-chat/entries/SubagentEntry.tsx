@@ -257,7 +257,7 @@ export function SubagentEntry({ entry }: { entry: DisplayEntry }) {
 function SubagentSegmentAnim({ idx, children }: { idx: number; children: React.ReactNode }) {
   return (
     <div
-      className="animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
+      className="animate-[hci-entry_200ms_var(--ease-out-expo)_both] motion-reduce:animate-none"
       style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' as const }}
     >
       {children}

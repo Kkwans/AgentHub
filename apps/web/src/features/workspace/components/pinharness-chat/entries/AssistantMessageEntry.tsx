@@ -22,7 +22,7 @@ export const AssistantMessageEntry = memo(function AssistantMessageEntry({
   if (!content && !streaming) return null;
 
   return (
-    <div className="min-w-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-200 text-[13px] leading-relaxed text-[hsl(var(--foreground))]">
+    <div className="min-w-0 animate-[hci-entry_200ms_var(--ease-out-expo)_both] motion-reduce:animate-none text-[13px] leading-relaxed text-[hsl(var(--foreground))]">
       {content && (
         <div
           className={streaming ? 'streaming-active-block motion-reduce:animate-none' : undefined}

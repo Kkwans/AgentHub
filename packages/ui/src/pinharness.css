@@ -2754,6 +2754,150 @@ html {
   border-color: hsl(var(--success) / 0.2);
 }
 
+/* PinHarness CommandBar motion primitives. The card remains a single surface;
+ * focus, running and progress state only animate transform/opacity or token
+ * transitions so the conversation column never reflows sideways. */
+.chat-command-card {
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.chat-command-card[data-focused] {
+  border-color: hsl(var(--primary) / 0.42);
+}
+
+.composer-input-surface {
+  min-height: 4.25rem;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-fast) var(--ease-standard);
+}
+
+.composer-input-surface textarea {
+  min-height: 2.5rem;
+  color: hsl(var(--foreground));
+  caret-color: hsl(var(--primary));
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: contain;
+}
+
+.composer-input-surface[data-read-only='true'] {
+  opacity: 0.78;
+}
+
+.composer-input-surface textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.composer-input-surface textarea::selection {
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary) / 0.32);
+}
+
+.composer-toolbar {
+  position: relative;
+  z-index: 1;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.chat-command-card[data-running='true'] .composer-toolbar {
+  background: hsl(var(--warning-soft) / 0.24);
+}
+
+.chat-command-card[data-sending='true'] .composer-toolbar {
+  opacity: 0.86;
+}
+
+.composer-context-control[data-open='true'] svg {
+  transform: rotate(-8deg) scale(1.04);
+}
+
+.composer-context-control svg {
+  transition: transform var(--motion-fast) var(--ease-spring);
+}
+
+.composer-plan-status {
+  position: relative;
+  overflow: hidden;
+}
+
+.composer-plan-track {
+  display: block;
+  height: 2px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: hsl(var(--border) / 0.78);
+}
+
+.composer-plan-track-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0.68;
+  transition: transform var(--motion-base) var(--ease-spring);
+}
+
+.composer-run-state[data-running='true'] > span:first-child {
+  animation: composer-run-pulse 1.6s ease-in-out infinite;
+}
+
+.composer-feedback {
+  animation: hci-entry var(--motion-fast) var(--ease-out-expo) both;
+}
+
+@keyframes composer-run-pulse {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@media (max-width: 639px) {
+  .composer-input-surface {
+    min-height: 4rem;
+    padding-inline: 0.75rem;
+  }
+
+  .composer-toolbar-start {
+    max-width: 58%;
+  }
+
+  .composer-toolbar-end {
+    gap: 0.125rem;
+  }
+
+  .composer-plan-status {
+    min-width: 3.5rem;
+    padding-inline: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-command-card,
+  .composer-input-surface,
+  .composer-toolbar,
+  .composer-context-control svg,
+  .composer-plan-track-fill,
+  .composer-feedback {
+    transition: none;
+    animation: none;
+  }
+}
+
 @keyframes tool-entry-arrive {
   from {
     opacity: 0;
