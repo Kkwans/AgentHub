@@ -912,11 +912,14 @@ function normalizeToolInput(
 ): Record<string, unknown> | undefined {
   if (!input) return undefined;
   const theme = resolveToolTheme(toolName);
-  if (theme === 'read' && typeof input.path === 'string' && input.target_file === undefined) {
-    return { ...input, target_file: input.path };
+  const location = readToolLocation(input.locations);
+  if (theme === 'read' && input.target_file === undefined) {
+    const target = typeof input.path === 'string' ? input.path : location;
+    if (target) return { ...input, target_file: target };
   }
-  if (theme === 'edit' && typeof input.path === 'string' && input.file_path === undefined) {
-    return { ...input, file_path: input.path };
+  if (theme === 'edit' && input.file_path === undefined) {
+    const target = typeof input.path === 'string' ? input.path : location;
+    if (target) return { ...input, file_path: target };
   }
   return input;
 }
