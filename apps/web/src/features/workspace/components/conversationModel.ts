@@ -362,10 +362,30 @@ export function buildConversationTimeline(
   for (const event of orderedEvents) {
     const payload = event.payloadJson;
     if (event.type === 'assistant.message.delta' || event.type === 'assistant.message.completed') {
+      const completionWithoutMessageId =
+        event.type === 'assistant.message.completed' && !readString(payload.messageId);
       if (event.runId) {
         const runPrefix = `${event.runId}:`;
         for (const identity of thoughtActive.keys()) {
           if (identity.startsWith(runPrefix)) thoughtActive.delete(identity);
+        }
+        // Some ACP adapters emit one completion snapshot for the whole Run
+        // without carrying the messageId used by individual delta segments.
+        // Settle every active assistant segment in that case; otherwise each
+        // segment keeps rendering PinHarness's streaming caret forever.
+        if (completionWithoutMessageId) {
+          for (const [id, item] of assistantItems) {
+            if (item.message.runId !== event.runId || !item.streaming) continue;
+            const settled = { ...item };
+            delete settled.streaming;
+            assistantItems.set(id, settled);
+          }
+          // The completion payload is a cumulative snapshot. Once delta
+          // segments already exist, adding it as a new item would duplicate
+          // the whole answer after those settled segments.
+          if ([...assistantItems.values()].some((item) => item.message.runId === event.runId)) {
+            continue;
+          }
         }
       }
       const text = readEventText(payload);

@@ -285,6 +285,47 @@ describe('buildConversationTimeline', () => {
     expect(mergeConversationText('检查完成', '成。')).toBe('检查完成。');
   });
 
+  it('completion 没有 messageId 时收束同一 Run 的所有 delta 段，停止永久 streaming caret', () => {
+    const events = [
+      {
+        id: 'assistant-segment-1',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 1,
+        type: 'assistant.message.delta',
+        payloadJson: { messageId: 'message-1', text: '第一段。' },
+        createdAt: '2026-08-30T01:00:01.000Z',
+      },
+      {
+        id: 'assistant-segment-2',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 2,
+        type: 'assistant.message.delta',
+        payloadJson: { messageId: 'message-2', text: '第二段。' },
+        createdAt: '2026-08-30T01:00:02.000Z',
+      },
+      {
+        id: 'assistant-completed',
+        sessionId: 'session-1',
+        runId: 'run-1',
+        seq: 3,
+        type: 'assistant.message.completed',
+        payloadJson: { text: '第一段。第二段。' },
+        createdAt: '2026-08-30T01:00:03.000Z',
+      },
+    ] satisfies EventRecord[];
+
+    const timeline = buildConversationTimeline([], events);
+    expect(timeline).toHaveLength(2);
+    expect(
+      timeline
+        .filter((item) => item.kind === 'message')
+        .map((item) => (item.kind === 'message' ? item.message.text : '')),
+    ).toEqual(['第一段。', '第二段。']);
+    expect(timeline.every((item) => item.kind !== 'message' || !item.streaming)).toBe(true);
+  });
+
   it('完整 Assistant 消息到达后抑制重复 delta，但保留事件中的思考与工具顺序', () => {
     const messages = [
       {
