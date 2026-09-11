@@ -249,10 +249,14 @@ export const ToolUseEntry = memo(
     const [showDetail, setShowDetail] = useToolDetailState(e.toolCallId ?? e.id);
     const isActive = isToolActive(status);
     const isFailed = status === 'failed';
-    const themeKey = resolveToolTheme(toolName);
+    // AgentHub's normalized ACP events keep the human title and semantic kind
+    // in separate safe fields. Resolve the source theme from both so titles
+    // such as “List files in …” still receive the read-file treatment.
+    const themeName = `${toolName} ${e.toolKind ?? ''}`;
+    const themeKey = resolveToolTheme(themeName);
     const theme = TOOL_THEMES[themeKey];
     const badgeTheme = isFailed ? 'text-[hsl(var(--destructive))]' : theme.badgeText;
-    const summary = extractSummary(toolName, e.rawInput);
+    const summary = extractSummary(themeName, e.rawInput);
     const resultSummary = getResultSummary(e.rawOutput);
     const sleepDurationMs = toolSleepDuration(themeKey, toolCommand(e.rawInput));
     useRunningTimer(isActive && sleepDurationMs != null);

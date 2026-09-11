@@ -105,6 +105,7 @@ export function resolveToolTheme(name: string): ToolThemeKey {
     n.includes('terminal') ||
     n.includes('bash') ||
     n === 'shell' ||
+    n.includes('execute') ||
     n.includes('run_terminal') ||
     n.includes('终端') ||
     n.includes('运行命令')

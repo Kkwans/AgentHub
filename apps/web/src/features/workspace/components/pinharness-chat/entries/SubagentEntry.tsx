@@ -814,7 +814,7 @@ function SubagentToolRow({ entry }: { entry: ConversationEntry }) {
       : rawOutputText;
 
   // 工具类型主题（彩色图标 + 徽章）
-  const themeKey = resolveToolTheme(name);
+  const themeKey = resolveToolTheme(`${name} ${entry.toolKind ?? ''}`);
   const theme = TOOL_THEMES[themeKey];
   const ToolIcon = theme.Icon;
 

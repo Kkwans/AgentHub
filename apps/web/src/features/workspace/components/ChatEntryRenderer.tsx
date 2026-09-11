@@ -882,7 +882,10 @@ function toPinHarnessConversationEntry(
   const status = eventStatus(event);
   const parsedTimestamp = Date.parse(event.createdAt);
   const toolName = toolEventTitle(event);
-  const rawInput = normalizeToolInput(toolName, pickSafeToolInput(payload));
+  const rawInput = normalizeToolInput(
+    `${toolName} ${typeof payload.kind === 'string' ? payload.kind : ''}`,
+    pickSafeToolInput(payload),
+  );
   const rawOutput = readToolOutput(payload);
   return {
     id: `tool-entry:${event.id}`,
