@@ -48,6 +48,8 @@ export type ChatEntryRendererProps = {
   resolveError: Error | undefined;
   resolveVariables: { id: string; optionId: string } | undefined;
   activeThoughtId: string | undefined;
+  /** RoundBlock renders one aggregate action rail; standalone entries keep the default. */
+  showActions?: boolean;
   onResolve: (variables: { id: string; optionId: string }) => void;
   onOpenFile?: ((path: string) => void) | undefined;
   onOpenDiff?: ((path: string) => void) | undefined;
@@ -59,6 +61,7 @@ function ChatEntryRendererView({
   resolveError,
   resolveVariables,
   activeThoughtId,
+  showActions = true,
   onResolve,
   onOpenFile,
   onOpenDiff,
@@ -151,7 +154,11 @@ function ChatEntryRendererView({
             <RichMessage text={presentation.text} />
           </div>
         )}
-        {!isUser && !item.streaming && presentation.kind === 'TEXT' && presentation.text.trim() ? (
+        {!isUser &&
+        showActions &&
+        !item.streaming &&
+        presentation.kind === 'TEXT' &&
+        presentation.text.trim() ? (
           <ChatEntryActions text={presentation.text} />
         ) : null}
       </article>
@@ -165,7 +172,7 @@ function ChatEntryRendererView({
  * feedback/fullscreen actions would require a new backend contract and are
  * intentionally not invented here.
  */
-function ChatEntryActions({ text }: { text: string }) {
+export function ChatEntryActions({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -218,6 +225,7 @@ export function areChatEntryRendererPropsEqual(
 ): boolean {
   if (previous.resolving !== next.resolving) return false;
   if (previous.activeThoughtId !== next.activeThoughtId) return false;
+  if (previous.showActions !== next.showActions) return false;
   if (previous.onResolve !== next.onResolve) return false;
   if (previous.onOpenFile !== next.onOpenFile) return false;
   if (previous.onOpenDiff !== next.onOpenDiff) return false;

@@ -29,7 +29,11 @@ import {
   getConversationWindowStart,
 } from './conversationModel';
 import type { ConversationToolGroup, ConversationTimelineItem } from './conversationModel';
-import { ChatEntryRenderer, type ChatEntryRendererProps } from './ChatEntryRenderer';
+import {
+  ChatEntryActions,
+  ChatEntryRenderer,
+  type ChatEntryRendererProps,
+} from './ChatEntryRenderer';
 
 // Before a real viewport height is available (for example while a drawer is
 // opening), keep the source's progressive rendering intent instead of mounting
@@ -535,6 +539,20 @@ function RoundBlock({ turn, ...itemProps }: ConversationTurnViewProps) {
   const assistantEntries = turn.entries.filter(
     (item) => !(item.kind === 'message' && item.message.role === 'USER'),
   );
+  const assistantCopyText = assistantEntries
+    .filter(
+      (item) =>
+        item.kind === 'message' &&
+        item.message.role === 'ASSISTANT' &&
+        !item.streaming &&
+        Boolean(item.message.text?.trim()),
+    )
+    .map((item) => (item.kind === 'message' ? item.message.text?.trim() : ''))
+    .filter((text): text is string => Boolean(text))
+    .join('\n\n');
+  const assistantStreaming = assistantEntries.some(
+    (item) => item.kind === 'message' && item.message.role === 'ASSISTANT' && item.streaming,
+  );
   return (
     <article
       className="conversation-turn min-w-0 px-0.5 py-1 animate-[hci-entry_var(--anim-entry-fast)_var(--ease-out-expo)_both] motion-reduce:animate-none"
@@ -555,8 +573,11 @@ function RoundBlock({ turn, ...itemProps }: ConversationTurnViewProps) {
           </header>
           <div className="min-w-0 space-y-1">
             {assistantEntries.map((item) => (
-              <ChatEntryRenderer key={item.id} item={item} {...itemProps} />
+              <ChatEntryRenderer key={item.id} item={item} {...itemProps} showActions={false} />
             ))}
+            {assistantCopyText && !assistantStreaming ? (
+              <ChatEntryActions text={assistantCopyText} />
+            ) : null}
           </div>
         </section>
       )}
