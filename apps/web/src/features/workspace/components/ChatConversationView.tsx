@@ -27,7 +27,6 @@ import {
   CONVERSATION_WINDOW_SIZE,
   CONVERSATION_WINDOW_STEP,
   getConversationWindowStart,
-  groupToolTimeline,
 } from './conversationModel';
 import type { ConversationToolGroup, ConversationTimelineItem } from './conversationModel';
 import { ChatEntryRenderer, type ChatEntryRendererProps } from './ChatEntryRenderer';
@@ -66,6 +65,8 @@ export const ChatConversationView = memo(function ChatConversationView({
   continueError,
   onContinue,
   onResolveApproval,
+  onOpenFile,
+  onOpenDiff,
   hasPreviousMessages,
   isLoadingPreviousMessages,
   onLoadPreviousMessages,
@@ -82,6 +83,8 @@ export const ChatConversationView = memo(function ChatConversationView({
   continueError: Error | null;
   onContinue: () => void;
   onResolveApproval: (id: string, optionId: string) => Promise<ApprovalRecord>;
+  onOpenFile?: ((path: string) => void) | undefined;
+  onOpenDiff?: ((path: string) => void) | undefined;
   hasPreviousMessages?: boolean;
   isLoadingPreviousMessages?: boolean;
   onLoadPreviousMessages?: () => Promise<unknown>;
@@ -154,10 +157,11 @@ export const ChatConversationView = memo(function ChatConversationView({
       ? Math.max(latestWindowStart, turns.length - renderWindowSize)
       : effectiveTimelineWindowStart;
   const visibleTurns = turns.slice(renderWindowStart, renderWindowStart + renderWindowSize);
-  const displayTurns = visibleTurns.map((turn) => ({
-    ...turn,
-    entries: groupToolTimeline(turn.entries),
-  }));
+  // PinHarness renders each ordered tool entry independently so the source
+  // card header, status and expandable detail remain visible in the causal
+  // stream. Keep groupToolTimeline exported for older consumers/tests, but do
+  // not collapse the live Session view into a generic summary row.
+  const displayTurns = visibleTurns.map((turn) => ({ ...turn }));
   const timelineVirtualizer = useVirtualizer({
     count: displayTurns.length,
     getScrollElement: () => scrollRef.current,
@@ -334,6 +338,8 @@ export const ChatConversationView = memo(function ChatConversationView({
     resolveVariables,
     activeThoughtId,
     onResolve: resolveApproval,
+    onOpenFile,
+    onOpenDiff,
   };
   return (
     <section

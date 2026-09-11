@@ -8,8 +8,6 @@
 
 import {
   AlertTriangle,
-  Brain,
-  Bot,
   Button,
   CheckCircle2,
   ChevronRight,
@@ -23,18 +21,23 @@ import { lazy, memo, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import type { EventRecord } from '../../../lib/api';
-import {
-  labelAgentEventType,
-  labelApprovalStatus,
-  presentAgentMessage,
-} from '../../../presentation/domain-labels';
+import { labelApprovalStatus, presentAgentMessage } from '../../../presentation/domain-labels';
 import type {
   ConversationApprovalItem,
   ConversationPlanItem,
   ConversationToolGroup,
   ConversationTimelineItem,
 } from './conversationModel';
-import { summarizeToolExecution } from './conversationModel';
+import { SubagentEntry } from './pinharness-chat/entries/SubagentEntry';
+import { AssistantMessageEntry } from './pinharness-chat/entries/AssistantMessageEntry';
+import { ThinkingEntry } from './pinharness-chat/entries/ThinkingEntry';
+import { ToolUseEntry } from './pinharness-chat/entries/ToolUseEntry';
+import type {
+  PinHarnessConversationEntry,
+  PinHarnessDisplayEntry,
+  PinHarnessToolStatus,
+} from './pinharness-chat/types';
+import { resolveToolTheme } from './pinharness-chat/toolThemes';
 
 const MarkdownMessage = lazy(() => import('./MarkdownMessage'));
 
@@ -46,6 +49,8 @@ export type ChatEntryRendererProps = {
   resolveVariables: { id: string; optionId: string } | undefined;
   activeThoughtId: string | undefined;
   onResolve: (variables: { id: string; optionId: string }) => void;
+  onOpenFile?: ((path: string) => void) | undefined;
+  onOpenDiff?: ((path: string) => void) | undefined;
 };
 
 function ChatEntryRendererView({
@@ -55,12 +60,18 @@ function ChatEntryRendererView({
   resolveVariables,
   activeThoughtId,
   onResolve,
+  onOpenFile,
+  onOpenDiff,
 }: ChatEntryRendererProps) {
   if (item.kind === 'tool-group') {
-    return <ToolExecutionGroupRow events={item.events} />;
+    return (
+      <ToolExecutionGroupRow events={item.events} onOpenFile={onOpenFile} onOpenDiff={onOpenDiff} />
+    );
   }
   if (item.kind === 'plan') return <PlanEventRow plan={item} />;
-  if (item.kind === 'tool') return <ToolEventRow event={item.event} />;
+  if (item.kind === 'tool') {
+    return <ToolEventRow event={item.event} onOpenFile={onOpenFile} onOpenDiff={onOpenDiff} />;
+  }
   if (item.kind === 'approval') {
     return (
       <ApprovalEventRow
@@ -73,7 +84,7 @@ function ChatEntryRendererView({
     );
   }
   if (item.kind === 'thought') {
-    return <ThoughtEventRow thought={item} running={item.id === activeThoughtId} />;
+    return <ThinkingEntry entry={toPinHarnessThoughtEntry(item, item.id === activeThoughtId)} />;
   }
 
   const { message } = item;
@@ -131,20 +142,13 @@ function ChatEntryRendererView({
               </pre>
             </details>
           </div>
+        ) : message.role === 'ASSISTANT' ? (
+          <AssistantMessageEntry entry={toPinHarnessMessageEntry(item, presentation.text)} />
         ) : (
           <div
-            className={`message-body message-markdown min-w-0 break-words ${item.streaming ? 'streaming-active-block motion-reduce:animate-none' : ''} [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:m-0 [&_p+p]:mt-3 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--border-strong))] [&_blockquote]:pl-3 [&_pre]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-[hsl(var(--border))] [&_pre]:bg-[hsl(var(--surface-muted))] [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-[12px] [&_pre]:leading-relaxed [&_code]:font-mono [&_code]:text-[0.88em] [&_a]:text-[hsl(var(--primary))] [&_a]:underline-offset-2 hover:[&_a]:underline ${isUser ? 'max-w-full rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-gradient-to-br from-[hsl(var(--primary))]/[0.09] to-[hsl(var(--primary))]/[0.05] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/28 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)]' : ''}`}
+            className={`message-body message-markdown min-w-0 break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:m-0 [&_p+p]:mt-3 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--border-strong))] [&_blockquote]:pl-3 [&_pre]:my-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-[hsl(var(--border))] [&_pre]:bg-[hsl(var(--surface-muted))] [&_pre]:p-3 [&_pre]:font-mono [&_pre]:text-[12px] [&_pre]:leading-relaxed [&_code]:font-mono [&_code]:text-[0.88em] [&_a]:text-[hsl(var(--primary))] [&_a]:underline-offset-2 hover:[&_a]:underline ${isUser ? 'max-w-full rounded-2xl rounded-tr-md border border-[hsl(var(--primary))]/18 bg-gradient-to-br from-[hsl(var(--primary))]/[0.09] to-[hsl(var(--primary))]/[0.05] px-3.5 py-2.5 shadow-[0_1px_4px_hsl(var(--foreground)/0.06)] transition-[border-color,box-shadow] duration-150 hover:border-[hsl(var(--primary))]/28 hover:shadow-[0_2px_8px_hsl(var(--primary)/0.1)]' : ''}`}
           >
             <RichMessage text={presentation.text} />
-            {item.streaming && (
-              <span
-                className="streaming-type-caret ml-1 inline-block w-0.5 text-[hsl(var(--primary))] animate-[streaming-type-caret-blink_820ms_steps(1,end)_infinite] motion-reduce:animate-none"
-                aria-label="正在接收 Agent 回复"
-                role="status"
-              >
-                ▍
-              </span>
-            )}
           </div>
         )}
         {!isUser && !item.streaming && presentation.kind === 'TEXT' && presentation.text.trim() ? (
@@ -215,6 +219,8 @@ export function areChatEntryRendererPropsEqual(
   if (previous.resolving !== next.resolving) return false;
   if (previous.activeThoughtId !== next.activeThoughtId) return false;
   if (previous.onResolve !== next.onResolve) return false;
+  if (previous.onOpenFile !== next.onOpenFile) return false;
+  if (previous.onOpenDiff !== next.onOpenDiff) return false;
   if (!sameError(previous.resolveError, next.resolveError)) return false;
   if (!sameResolveVariables(previous.resolveVariables, next.resolveVariables)) return false;
   return sameTimelineItem(previous.item, next.item);
@@ -353,17 +359,6 @@ function sameToolPayload(
 
 export const ChatEntryRenderer = memo(ChatEntryRendererView, areChatEntryRendererPropsEqual);
 ChatEntryRenderer.displayName = 'ChatEntryRenderer';
-
-function formatToolExecutionSummary(summary: ReturnType<typeof summarizeToolExecution>): string {
-  return [
-    `执行了 ${summary.operations} 个操作`,
-    summary.files ? `${summary.files} 文件` : undefined,
-    summary.commands ? `${summary.commands} 命令` : undefined,
-    summary.searches ? `${summary.searches} 搜索` : undefined,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
 
 type PlanEntryView = {
   content: string;
@@ -693,142 +688,56 @@ function ApprovalEventRow({
   );
 }
 
-function ToolExecutionGroupRow({ events }: { events: EventRecord[] }) {
-  const summary = summarizeToolExecution(events);
-  const title = formatToolExecutionSummary(summary);
-  const includesSubagent = events.some(isSubagentEvent);
-  const status = events.some((event) => event.type.endsWith('.failed'))
-    ? 'failed'
-    : events.some((event) => !event.type.endsWith('.completed'))
-      ? 'running'
-      : 'completed';
-  const labels = [...new Set(events.map((event) => toolEventTitle(event)))];
-  const details = labels.slice(0, 3).join('、');
+function ToolExecutionGroupRow({
+  events,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  events: EventRecord[];
+  onOpenFile: ((path: string) => void) | undefined;
+  onOpenDiff: ((path: string) => void) | undefined;
+}) {
   return (
-    <details
-      className={`tool-event-row tool-entry-motion tool-entry-card tool-execution-group tool-event-${status} mx-auto w-full max-w-3xl`}
-    >
-      <summary
-        className="tool-entry-trigger tool-entry-trigger--interactive"
-        aria-label={`${title}，展开执行详情`}
-      >
-        <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
-          {includesSubagent ? (
-            <Bot size={14} />
-          ) : status === 'running' ? (
-            <LoaderCircle className="spin" size={14} />
-          ) : status === 'failed' ? (
-            <AlertTriangle size={14} />
-          ) : (
-            <CheckCircle2 size={14} />
-          )}
-        </span>
-        <span className="tool-event-copy min-w-0 flex-1">
-          <span>
-            <strong>{title}</strong>
-            <small className="tool-entry-badge">
-              {includesSubagent
-                ? '子 Agent'
-                : status === 'completed'
-                  ? '已完成'
-                  : status === 'failed'
-                    ? '部分失败'
-                    : '进行中'}
-            </small>
-          </span>
-          {details && <code>{details}</code>}
-        </span>
-        <ChevronRight
-          className="tool-event-action tool-entry-chevron"
-          size={13}
-          aria-hidden="true"
+    <div className="tool-execution-group mx-auto grid w-full max-w-3xl gap-1.5">
+      {events.map((event) => (
+        <ToolEventRow
+          key={event.id}
+          event={event}
+          onOpenFile={onOpenFile}
+          onOpenDiff={onOpenDiff}
         />
-      </summary>
-      <div className="tool-event-detail tool-entry-detail">
-        <ul className="tool-event-group-list tool-entry-detail-body space-y-1 border-t border-[hsl(var(--border))]/35 px-3 py-2">
-          {events.map((event) => (
-            <li key={event.id}>
-              <strong>{toolEventTitle(event)}</strong>
-              <span>{toolEventStatus(event)}</span>
-              {toolEventDetail(event) && <code>{toolEventDetail(event)}</code>}
-            </li>
-          ))}
-        </ul>
-        <Link to="?view=activity">
-          <Wrench size={12} aria-hidden="true" /> 在工具检查器中查看完整记录
-        </Link>
-      </div>
-    </details>
+      ))}
+    </div>
   );
 }
 
-function ToolEventRow({ event }: { event: EventRecord }) {
-  const status = toolEventStatusValue(event);
-  const title = toolEventTitle(event);
-  const detailValue = toolEventDetail(event);
-  const isSubagent = isSubagentEvent(event);
+function ToolEventRow({
+  event,
+  onOpenFile,
+  onOpenDiff,
+}: {
+  event: EventRecord;
+  onOpenFile: ((path: string) => void) | undefined;
+  onOpenDiff: ((path: string) => void) | undefined;
+}) {
+  const displayEntry = toPinHarnessToolEntry(event);
   return (
-    <details
-      className={`tool-event-row tool-entry-motion tool-entry-card tool-event-${status}${isSubagent ? ' tool-event-subagent' : ''} mx-auto w-full max-w-3xl`}
-    >
-      <summary
-        className="tool-entry-trigger tool-entry-trigger--interactive"
-        aria-label={`${title}，${labelAgentEventType(event.type)}，展开详情`}
-      >
-        <span className="tool-event-icon tool-entry-icon" aria-hidden="true">
-          {status === 'running' ? (
-            isSubagent ? (
-              <Bot size={14} />
-            ) : (
-              <LoaderCircle className="spin" size={14} />
-            )
-          ) : status === 'failed' ? (
-            <AlertTriangle size={14} />
-          ) : (
-            <CheckCircle2 size={14} />
-          )}
-        </span>
-        <span className="tool-event-copy min-w-0 flex-1">
-          <span>
-            <strong>{title}</strong>
-            <small className="tool-entry-badge">
-              {isSubagent
-                ? '子 Agent'
-                : status === 'completed'
-                  ? '已完成'
-                  : status === 'failed'
-                    ? '失败'
-                    : '进行中'}
-            </small>
-          </span>
-          {detailValue !== undefined && <code>{String(detailValue)}</code>}
-        </span>
-        <ChevronRight
-          className="tool-event-action tool-entry-chevron"
-          size={13}
-          aria-hidden="true"
-        />
-      </summary>
-      <div className="tool-event-detail tool-entry-detail border-t border-[hsl(var(--border))]/35 px-3 py-2">
-        <Link to="?view=activity">
-          <Wrench size={12} aria-hidden="true" /> 在工具检查器中查看
+    <div className="tool-event-row mx-auto w-full max-w-3xl" data-event-id={event.id}>
+      {displayEntry.type === 'subagent' ? (
+        <SubagentEntry entry={displayEntry} />
+      ) : (
+        <ToolUseEntry entry={displayEntry} onOpenFile={onOpenFile} onOpenDiff={onOpenDiff} />
+      )}
+      {!hasToolPayloadDetails(event) && (
+        <Link
+          to="?view=activity"
+          className="tool-event-inspector-link inline-flex items-center gap-1 px-1 py-0.5 text-[10px] text-[hsl(var(--foreground-faint))] transition-colors hover:text-[hsl(var(--primary))]"
+        >
+          <Wrench size={11} aria-hidden="true" /> 在工具检查器中查看
         </Link>
-      </div>
-    </details>
+      )}
+    </div>
   );
-}
-
-function toolEventStatusValue(event: EventRecord): 'failed' | 'completed' | 'running' {
-  return event.type.endsWith('.failed')
-    ? 'failed'
-    : event.type.endsWith('.completed')
-      ? 'completed'
-      : 'running';
-}
-
-function toolEventStatus(event: EventRecord): string {
-  const status = toolEventStatusValue(event);
-  return status === 'completed' ? '已完成' : status === 'failed' ? '失败' : '进行中';
 }
 
 function toolEventTitle(event: EventRecord): string {
@@ -859,62 +768,6 @@ function isSubagentEvent(event: EventRecord): boolean {
   return tool.includes('subagent') || tool.includes('spawn_agent') || tool.includes('delegate');
 }
 
-function toolEventDetail(event: EventRecord): string | undefined {
-  const value =
-    event.payloadJson.command ??
-    event.payloadJson.path ??
-    event.payloadJson.query ??
-    event.payloadJson.url ??
-    readToolLocation(event.payloadJson.locations) ??
-    event.payloadJson.kind;
-  return value === undefined ? undefined : String(value);
-}
-
-function ThoughtEventRow({
-  thought,
-  running,
-}: {
-  thought: ConversationTimelineItem & { kind: 'thought' };
-  running: boolean;
-}) {
-  const duration = Math.max(0, Date.parse(thought.updatedAt) - Date.parse(thought.createdAt));
-  const label = running ? '正在思考' : `思考了 ${formatThoughtDuration(duration)}`;
-  return (
-    <details
-      className={`thought-event-row tool-entry-motion tool-entry-card mx-auto my-1 w-full max-w-3xl overflow-hidden rounded-lg${running ? ' running tool-entry-card--active' : ''}`}
-    >
-      <summary
-        className="tool-entry-trigger tool-entry-trigger--interactive rounded-lg px-2.5 py-1.5"
-        aria-label={running ? '正在思考，展开思考过程' : '展开思考过程'}
-      >
-        <span
-          className="thought-event-pulse tool-entry-icon flex h-5 w-5 items-center justify-center rounded-md"
-          aria-hidden="true"
-        >
-          {running ? (
-            <>
-              <i />
-              <i />
-              <i />
-            </>
-          ) : (
-            <Brain className="h-3 w-3 text-[hsl(var(--primary))]" />
-          )}
-        </span>
-        <strong className="tool-entry-badge text-[hsl(var(--primary))]">{label}</strong>
-        <ChevronRight
-          className="thought-event-action tool-entry-chevron"
-          size={13}
-          aria-hidden="true"
-        />
-      </summary>
-      <div className="thought-event-content tool-entry-detail message-markdown break-words border-t border-violet-200/50 bg-[hsl(var(--surface))]/60 px-3 py-2 text-[11.5px] leading-relaxed text-[hsl(var(--foreground-subtle))] dark:border-violet-500/15 [&_p]:m-0 [&_p+p]:mt-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-[hsl(var(--surface-muted))] [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[11px]">
-        <RichMessage text={thought.text || 'Agent 未提供可展示的思考内容。'} />
-      </div>
-    </details>
-  );
-}
-
 const TOOL_LABELS: Record<string, string> = {
   read_file: '读取文件',
   write_file: '写入文件',
@@ -938,13 +791,246 @@ function readToolLocation(value: unknown): string | undefined {
   return typeof first.path === 'string' ? first.path : undefined;
 }
 
-function formatThoughtDuration(milliseconds: number): string {
-  const seconds = Math.max(0, Math.round(milliseconds / 1_000));
-  if (seconds < 1) return '不到 1 秒';
-  if (seconds < 60) return `${seconds} 秒`;
-  const minutes = Math.floor(seconds / 60);
-  const remainder = seconds % 60;
-  return remainder ? `${minutes} 分 ${remainder} 秒` : `${minutes} 分钟`;
+function hasToolPayloadDetails(event: EventRecord): boolean {
+  const payload = event.payloadJson;
+  if (['output', 'rawOutput', 'result'].some((key) => payload[key] !== undefined)) return true;
+  return SAFE_TOOL_INPUT_KEYS.some((key) => {
+    const value = payload[key];
+    return value !== undefined && !['title', 'name', 'kind', 'status'].includes(key);
+  });
+}
+
+function eventStatus(event: EventRecord): PinHarnessToolStatus {
+  const status = typeof event.payloadJson.status === 'string' ? event.payloadJson.status : '';
+  if (status === 'failed' || event.type.endsWith('.failed')) return 'failed';
+  if (status === 'completed' || event.type.endsWith('.completed')) return 'completed';
+  if (status === 'pending') return 'pending';
+  return 'running';
+}
+
+const SAFE_TOOL_INPUT_KEYS = [
+  'path',
+  'paths',
+  'locations',
+  'command',
+  'cmd',
+  'script',
+  'query',
+  'pattern',
+  'search_term',
+  'url',
+  'urls',
+  'target_file',
+  'file_path',
+  'target_directory',
+  'glob_pattern',
+  'offset',
+  'old_string',
+  'new_string',
+  'edits',
+  'contents',
+  'description',
+  'prompt',
+  'task',
+  'subagent_type',
+  'subagentType',
+  'model',
+  'managedProfile',
+  'managedTools',
+] as const;
+
+function pickSafeToolInput(payload: Record<string, unknown>): Record<string, unknown> | undefined {
+  const source = isRecord(payload.input)
+    ? payload.input
+    : isRecord(payload.arguments)
+      ? payload.arguments
+      : payload;
+  const picked: Record<string, unknown> = {};
+  for (const key of SAFE_TOOL_INPUT_KEYS) {
+    const value = source[key];
+    if (value !== undefined) picked[key] = value;
+  }
+  if (Object.keys(picked).length > 0) return picked;
+  const location = readToolLocation(payload.locations);
+  if (location) return { path: location };
+  // Keep every tool call expandable, matching PinHarness's source affordance,
+  // while using only the already-normalized public event name as a fallback.
+  const fallbackName = payload.title ?? payload.name ?? payload.tool;
+  return typeof fallbackName === 'string' ? { tool: fallbackName } : { tool: 'tool' };
+}
+
+function readToolOutput(payload: Record<string, unknown>): string | undefined {
+  for (const key of ['output', 'rawOutput', 'result'] as const) {
+    const value = payload[key];
+    if (typeof value === 'string') return value;
+    if (isRecord(value) || Array.isArray(value)) {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+function toPinHarnessConversationEntry(
+  event: EventRecord,
+  overrides: Partial<PinHarnessConversationEntry> = {},
+): PinHarnessConversationEntry {
+  const payload = event.payloadJson;
+  const status = eventStatus(event);
+  const parsedTimestamp = Date.parse(event.createdAt);
+  const toolName = toolEventTitle(event);
+  const rawInput = normalizeToolInput(toolName, pickSafeToolInput(payload));
+  const rawOutput = readToolOutput(payload);
+  return {
+    id: `tool-entry:${event.id}`,
+    entryType: 'tool_use',
+    content: typeof payload.description === 'string' ? payload.description : '',
+    messageId: event.runId ?? event.sessionId,
+    timestamp: Number.isFinite(parsedTimestamp) ? parsedTimestamp : Date.now(),
+    streaming: status === 'running' || status === 'pending',
+    toolCallId: typeof payload.toolCallId === 'string' ? payload.toolCallId : `event-${event.id}`,
+    toolTitle: toolName,
+    ...(typeof payload.kind === 'string' ? { toolKind: payload.kind } : {}),
+    toolStatus: status,
+    ...(rawInput ? { rawInput } : {}),
+    ...(rawOutput ? { rawOutput } : {}),
+    ...(typeof payload.subagentId === 'string' ? { subagentId: payload.subagentId } : {}),
+    ...(typeof payload.parentToolCallId === 'string'
+      ? { parentToolCallId: payload.parentToolCallId }
+      : {}),
+    ...(typeof payload.durationMs === 'number' ? { toolDurationMs: payload.durationMs } : {}),
+    ...overrides,
+  };
+}
+
+function normalizeToolInput(
+  toolName: string,
+  input: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!input) return undefined;
+  const theme = resolveToolTheme(toolName);
+  if (theme === 'read' && typeof input.path === 'string' && input.target_file === undefined) {
+    return { ...input, target_file: input.path };
+  }
+  if (theme === 'edit' && typeof input.path === 'string' && input.file_path === undefined) {
+    return { ...input, file_path: input.path };
+  }
+  return input;
+}
+
+function readSubagentChildEntries(event: EventRecord): PinHarnessConversationEntry[] {
+  const payload = event.payloadJson;
+  const candidates = [payload.entries, payload.children, payload.childEntries, payload.trace];
+  const rawEntries = candidates.find(Array.isArray);
+  if (!Array.isArray(rawEntries)) return [];
+  return rawEntries.flatMap((value, index) => {
+    if (!isRecord(value)) return [];
+    const type = value.entryType ?? value.type;
+    const childEvent: EventRecord = {
+      id: `${event.id}:child:${index}`,
+      sessionId: event.sessionId,
+      runId: event.runId,
+      seq: event.seq + index,
+      type: typeof type === 'string' ? type : 'tool.call.completed',
+      payloadJson: value,
+      createdAt: typeof value.createdAt === 'string' ? value.createdAt : event.createdAt,
+    };
+    const entryType =
+      type === 'thinking' || type === 'assistant_message' || type === 'user_message'
+        ? type
+        : 'tool_use';
+    return [
+      toPinHarnessConversationEntry(childEvent, {
+        entryType,
+        content:
+          typeof value.content === 'string'
+            ? value.content
+            : typeof value.text === 'string'
+              ? value.text
+              : '',
+        ...(typeof value.streaming === 'boolean' ? { streaming: value.streaming } : {}),
+        ...(typeof value.lastChunkTime === 'number' ? { lastChunkTime: value.lastChunkTime } : {}),
+      }),
+    ];
+  });
+}
+
+function toPinHarnessToolEntry(event: EventRecord): PinHarnessDisplayEntry {
+  const rootEntry = toPinHarnessConversationEntry(event, {
+    toolTitle: isSubagentEvent(event) ? 'Agent' : toolEventTitle(event),
+  });
+  if (!isSubagentEvent(event)) {
+    return {
+      id: rootEntry.id,
+      type: 'tool_use',
+      entry: rootEntry,
+      streaming: rootEntry.streaming,
+    };
+  }
+  const payload = event.payloadJson;
+  const description =
+    (typeof payload.description === 'string' && payload.description.trim()) ||
+    (typeof payload.prompt === 'string' && payload.prompt.trim()) ||
+    '子 Agent 执行';
+  const childEntries = readSubagentChildEntries(event);
+  return {
+    id: `subagent-entry:${event.id}`,
+    type: 'subagent',
+    streaming: rootEntry.streaming,
+    subagent: {
+      rootEntry,
+      childEntries,
+      description,
+      status: rootEntry.toolStatus ?? 'running',
+    },
+  };
+}
+
+function toPinHarnessThoughtEntry(
+  thought: ConversationTimelineItem & { kind: 'thought' },
+  streaming: boolean,
+): PinHarnessDisplayEntry {
+  const startedAt = Date.parse(thought.createdAt);
+  const updatedAt = Date.parse(thought.updatedAt);
+  const timestamp = Number.isFinite(startedAt) ? startedAt : Date.now();
+  return {
+    id: thought.id,
+    type: 'thinking',
+    streaming,
+    entry: {
+      id: thought.id,
+      entryType: 'thinking',
+      content: thought.text,
+      messageId: thought.runId ?? thought.id,
+      timestamp,
+      streaming,
+      ...(Number.isFinite(updatedAt) ? { lastChunkTime: updatedAt } : {}),
+    },
+  };
+}
+
+function toPinHarnessMessageEntry(
+  item: ConversationTimelineItem & { kind: 'message' },
+  text: string,
+): PinHarnessDisplayEntry {
+  const parsedTimestamp = Date.parse(item.message.createdAt);
+  const timestamp = Number.isFinite(parsedTimestamp) ? parsedTimestamp : Date.now();
+  return {
+    id: item.id,
+    type: item.message.role === 'USER' ? 'user_message' : 'assistant_message',
+    ...(item.streaming ? { streaming: true } : {}),
+    entry: {
+      id: item.message.id,
+      entryType: item.message.role === 'USER' ? 'user_message' : 'assistant_message',
+      content: text,
+      messageId: item.message.id,
+      timestamp,
+      streaming: item.streaming ?? false,
+    },
+  };
 }
 
 function RichMessage({ text }: { text: string }) {

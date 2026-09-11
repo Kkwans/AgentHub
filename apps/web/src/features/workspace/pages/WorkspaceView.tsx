@@ -310,6 +310,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                   onResolveApproval={(approvalId, optionId) =>
                     resolveApproval.mutateAsync({ id: approvalId, optionId })
                   }
+                  onOpenFile={setSelectedFile}
+                  onOpenDiff={(path) => setSelectedChangePath(path, 'diff')}
                   hasPreviousMessages={messages.hasPrevious}
                   isLoadingPreviousMessages={messages.isFetchingPrevious}
                   onLoadPreviousMessages={messages.fetchPrevious}
