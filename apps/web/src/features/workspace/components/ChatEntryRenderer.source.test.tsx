@@ -65,6 +65,8 @@ describe('PinHarness chat source renderers', () => {
 
     const trigger = screen.getByRole('button', { name: '读取文件，工具调用完成，展开详情' });
     expect(trigger.closest('.tool-entry-card')).toHaveClass('tool-entry-card');
+    expect(trigger.closest('.tool-event-row')).toHaveClass('w-full');
+    expect(trigger.closest('.tool-event-row')).not.toHaveClass('max-w-3xl');
     fireEvent.click(trigger);
 
     await waitFor(() => expect(screen.getByText('文件内容')).toBeInTheDocument());

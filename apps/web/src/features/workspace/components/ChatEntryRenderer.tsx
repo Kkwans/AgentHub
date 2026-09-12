@@ -394,7 +394,7 @@ function PlanEventRow({ plan }: { plan: ConversationPlanItem }) {
           ? '执行计划文件'
           : '执行计划已更新';
   return (
-    <details className="plan-event-row tool-entry-motion tool-entry-card mx-auto w-full max-w-3xl">
+    <details className="plan-event-row tool-entry-motion tool-entry-card w-full">
       <summary
         className="tool-entry-trigger tool-entry-trigger--interactive"
         aria-label={`${title}，展开执行计划详情`}
@@ -543,7 +543,7 @@ function ApprovalEventRow({
       : '系统未能将这个决定交给 Agent。请恢复 Session 后重新开始。';
   return (
     <article
-      className={`approval-card tool-entry-motion tool-entry-card mx-auto w-full max-w-3xl rounded-lg border px-3.5 py-3 ${deliveryUnconfirmed || deliveryAborted ? 'approval-card-attention border-[hsl(var(--destructive))]/30 bg-[hsl(var(--destructive-soft))]/45' : 'border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning-soft))]/45'}`}
+      className={`approval-card tool-entry-motion tool-entry-card w-full rounded-lg border px-3.5 py-3 ${deliveryUnconfirmed || deliveryAborted ? 'approval-card-attention border-[hsl(var(--destructive))]/30 bg-[hsl(var(--destructive-soft))]/45' : 'border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning-soft))]/45'}`}
       data-sequence={approvalItem.firstSeq}
     >
       <div className="approval-heading flex items-start gap-2.5">
@@ -706,7 +706,7 @@ function ToolExecutionGroupRow({
   onOpenDiff: ((path: string) => void) | undefined;
 }) {
   return (
-    <div className="tool-execution-group mx-auto grid w-full max-w-3xl gap-1.5">
+    <div className="tool-execution-group grid w-full gap-1.5">
       {events.map((event) => (
         <ToolEventRow
           key={event.id}
@@ -730,7 +730,7 @@ function ToolEventRow({
 }) {
   const displayEntry = toPinHarnessToolEntry(event);
   return (
-    <div className="tool-event-row mx-auto w-full max-w-3xl" data-event-id={event.id}>
+    <div className="tool-event-row w-full" data-event-id={event.id}>
       {displayEntry.type === 'subagent' ? (
         <SubagentEntry entry={displayEntry} />
       ) : (
