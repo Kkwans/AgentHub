@@ -1,19 +1,2 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-
-export default function MarkdownMessage({ text }: { text: string }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        a: ({ children, ...props }) => (
-          <a {...props} target="_blank" rel="noreferrer">
-            {children}
-          </a>
-        ),
-      }}
-    >
-      {text}
-    </ReactMarkdown>
-  );
-}
+/** Compatibility entry: all Workspace markdown now uses the copied PinHarness surface. */
+export { MarkdownView as default } from './pinharness-chat/MarkdownView';
