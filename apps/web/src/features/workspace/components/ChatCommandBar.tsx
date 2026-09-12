@@ -391,7 +391,7 @@ export function ChatCommandBar({
     }
   };
   const handleCardClick = () => {
-    if (focused || sessionLocked || send.isPending) return;
+    if (focused || (sessionLocked && !activeRun) || send.isPending) return;
     inputRef.current?.focus();
   };
   return (
@@ -436,7 +436,9 @@ export function ChatCommandBar({
           onResizeEnd={handleResizeEnd}
           activeRun={activeRun}
           stopPending={stop.isPending}
-          inputDisabled={sessionLocked}
+          // PinHarness keeps the editor usable while the current Run is active;
+          // only a locked Session without an active Run should disable input.
+          inputDisabled={sessionLocked && !activeRun}
           readOnly={send.isPending}
           focused={focused}
           placeholder={composerPlaceholder}

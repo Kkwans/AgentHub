@@ -175,7 +175,10 @@ describe('ChatCommandBar PinHarness composer interactions', () => {
   });
 
   it('keeps the textarea editable while a Run is active and swaps send for stop in place', async () => {
-    const { onStop } = renderComposer({ activeRun: baseRun });
+    const { onStop } = renderComposer({
+      session: { ...session, status: 'RUNNING' },
+      activeRun: baseRun,
+    });
     const textarea = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
     expect(textarea).not.toBeDisabled();
     expect(textarea).toHaveAttribute(
