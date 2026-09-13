@@ -96,18 +96,20 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   margin-left: auto;
+  padding-left: 8px;
+  border-left: 1px solid var(--ah-border-subtle);
 }
 
 .workspace :global(.workspace-layout-actions button) {
   display: inline-flex;
+  width: 32px;
   min-width: 32px;
   height: 32px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 0 8px;
+  padding: 0;
   color: var(--ah-text-secondary);
   background: transparent;
   border: 1px solid transparent;
@@ -120,6 +122,12 @@
   color: var(--ah-text-primary);
   background: var(--ah-surface-subtle);
   border-color: transparent;
+}
+
+.workspace :global(.workspace-layout-actions button:focus-visible) {
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+  border-color: var(--ah-border-subtle);
 }
 
 .sessionStatus {
@@ -668,6 +676,39 @@
     flex: 1 1 100%;
     width: 100%;
     max-width: 100%;
+  }
+
+  /* ThreeColumnSplit 的拖拽手柄是唯一的栏间边界；相邻 workbench-panel
+     不再各自绘制 border，避免中间出现三条连续竖线。 */
+  .workspace :global(.workspace-panel.workbench-panel) {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .workspace :global(.three-column-split > [role='separator'][aria-orientation='vertical']) {
+    position: relative;
+    width: 12px;
+    min-width: 12px;
+    background: transparent;
+  }
+
+  .workspace :global(.three-column-split > [role='separator'][aria-orientation='vertical'] > span) {
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 1px !important;
+    background: var(--ah-border-subtle) !important;
+    opacity: 0.9;
+  }
+
+  .workspace
+    :global(.three-column-split > [role='separator'][aria-orientation='vertical']:hover > span),
+  .workspace
+    :global(
+      .three-column-split > [role='separator'][aria-orientation='vertical']:focus-visible > span
+    ) {
+    width: 2px !important;
+    background: var(--ah-accent-primary) !important;
+    opacity: 0.72;
   }
 }
 

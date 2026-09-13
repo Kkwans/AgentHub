@@ -2,7 +2,6 @@ import {
   Bot,
   ChevronRight,
   GitBranch,
-  GitCompareArrows,
   Menu,
   ScanSearch,
   Tabs as PinTabs,
@@ -15,6 +14,7 @@ import {
 } from '@agenthub/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PanelLeft, PanelRight } from 'lucide-react';
 import { StatusBadge } from '../../../components/Feedback';
 import { ChatCommandBar } from '../components/ChatCommandBar';
 import { ChatConversationView } from '../components/ChatConversationView';
@@ -186,8 +186,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           summary={
             <span className="workspace-context-disclosure-summary">
               <Bot size={14} aria-hidden="true" />
-              <span>上下文</span>
-              <small>{agent?.name ?? 'Agent 未知'}</small>
+              <span>Agent</span>
+              <small>{agent?.name ?? 'Agent 未绑定'}</small>
             </span>
           }
         >
@@ -214,20 +214,19 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
           <button
             type="button"
-            aria-label={workspaceLayout.leftCollapsed ? '展开会话列表' : '折叠会话列表'}
-            title={workspaceLayout.leftCollapsed ? '展开会话列表' : '折叠会话列表'}
+            aria-label={workspaceLayout.leftCollapsed ? '显示会话列表' : '隐藏会话列表'}
+            title={workspaceLayout.leftCollapsed ? '显示会话列表' : '隐藏会话列表'}
             onClick={() => toggleWorkspacePanel('left')}
           >
-            <Menu size={15} aria-hidden="true" />
+            <PanelLeft size={15} aria-hidden="true" />
           </button>
           <button
             type="button"
-            aria-label={workspaceLayout.rightCollapsed ? '展开检查器' : '折叠检查器'}
-            title={workspaceLayout.rightCollapsed ? '展开检查器' : '折叠检查器'}
+            aria-label={workspaceLayout.rightCollapsed ? '显示检查器' : '隐藏检查器'}
+            title={workspaceLayout.rightCollapsed ? '显示检查器' : '隐藏检查器'}
             onClick={() => toggleWorkspacePanel('right')}
           >
-            <GitCompareArrows size={15} aria-hidden="true" />
-            <span>变更</span>
+            <PanelRight size={15} aria-hidden="true" />
           </button>
         </div>
         {agents.error && (

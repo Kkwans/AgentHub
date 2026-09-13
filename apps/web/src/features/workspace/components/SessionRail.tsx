@@ -119,7 +119,7 @@ export function SessionRail({
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
       <WorkbenchPanelHeader
-        title="AgentHub"
+        title="会话列表"
         description={`${sessions.data?.length ?? 0} 个会话`}
         className="panel-title"
       />
