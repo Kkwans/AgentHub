@@ -355,6 +355,58 @@
   min-height: 0;
 }
 
+/* Keep every workbench scroll surface on the same quiet, reserved gutter.
+   Native Chromium scrollbars were consuming a visible slice of the rail and
+   conversation columns; their late appearance also changed the text width
+   while streaming. */
+.workspace :global(.session-list),
+.workspace :global(.conversation-scroll),
+.workspace :global(.inspector-body),
+.workspace :global(.file-tree) {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border-strong) / 0.72) transparent;
+}
+
+.workspace :global(.session-list)::-webkit-scrollbar,
+.workspace :global(.conversation-scroll)::-webkit-scrollbar,
+.workspace :global(.inspector-body)::-webkit-scrollbar,
+.workspace :global(.file-tree)::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.workspace :global(.session-list)::-webkit-scrollbar-track,
+.workspace :global(.conversation-scroll)::-webkit-scrollbar-track,
+.workspace :global(.inspector-body)::-webkit-scrollbar-track,
+.workspace :global(.file-tree)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace :global(.session-list)::-webkit-scrollbar-thumb,
+.workspace :global(.conversation-scroll)::-webkit-scrollbar-thumb,
+.workspace :global(.inspector-body)::-webkit-scrollbar-thumb,
+.workspace :global(.file-tree)::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong) / 0.72);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.workspace :global(.session-list)::-webkit-scrollbar-thumb:hover,
+.workspace :global(.conversation-scroll)::-webkit-scrollbar-thumb:hover,
+.workspace :global(.inspector-body)::-webkit-scrollbar-thumb:hover,
+.workspace :global(.file-tree)::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground-faint) / 0.72);
+  background-clip: padding-box;
+}
+
+.workspace :global(.conversation-scroll),
+.workspace :global(.conversation-scroll > .conversation-timeline),
+.workspace :global(.conversation-scroll > .conversation-virtual-list) {
+  overflow-anchor: none;
+}
+
 .panel {
   min-width: 0;
   min-height: 0;

@@ -458,7 +458,7 @@ export const ChatConversationView = memo(function ChatConversationView({
         <div className="conversation-top-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[hsl(var(--background))] to-transparent" />
         <div
           ref={scrollRef}
-          className="h-full overflow-y-auto overscroll-contain px-0.5 py-2 sm:px-1 sm:py-3"
+          className="conversation-scroll h-full overflow-y-auto overscroll-contain px-0.5 py-2 sm:px-1 sm:py-3"
           role="log"
           aria-live="polite"
           aria-relevant="additions text"
