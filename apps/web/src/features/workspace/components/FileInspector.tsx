@@ -1,5 +1,5 @@
 import { AgentHubThemeContext, ChevronDown, ChevronRight, FileCode2, Files } from '@agenthub/ui';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, type ReactNode } from 'react';
 import Editor from '@monaco-editor/react';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
@@ -40,22 +40,34 @@ export function FileInspector({
           <Files size={14} /> 文件树
         </div>
         {files.isLoading ? (
-          <LoadingState />
+          <InspectorState>
+            <LoadingState />
+          </InspectorState>
         ) : files.error ? (
-          <ErrorState error={files.error} retry={() => files.refetch()} />
+          <InspectorState>
+            <ErrorState error={files.error} retry={() => files.refetch()} />
+          </InspectorState>
         ) : (
           <FileNodes entries={files.data ?? []} selected={selected} onSelect={onSelect} />
         )}
       </div>
       <div className="editor-frame">
         {!selected ? (
-          <EmptyState title="选择文件" description="文件内容以只读方式显示。" />
+          <InspectorState>
+            <EmptyState title="选择文件" description="文件内容以只读方式显示。" />
+          </InspectorState>
         ) : content.isLoading ? (
-          <LoadingState />
+          <InspectorState>
+            <LoadingState />
+          </InspectorState>
         ) : content.error ? (
-          <ErrorState error={content.error} retry={() => content.refetch()} />
+          <InspectorState>
+            <ErrorState error={content.error} retry={() => content.refetch()} />
+          </InspectorState>
         ) : !monacoReady ? (
-          <LoadingState label="正在准备文件预览" />
+          <InspectorState>
+            <LoadingState label="正在准备文件预览" />
+          </InspectorState>
         ) : (
           <>
             <div className="file-preview-header">
@@ -86,6 +98,10 @@ export function FileInspector({
       </div>
     </div>
   );
+}
+
+function InspectorState({ children }: { children: ReactNode }) {
+  return <div className="file-inspector-state">{children}</div>;
 }
 
 function FileNodes({

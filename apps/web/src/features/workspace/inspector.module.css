@@ -217,10 +217,34 @@
 }
 
 :global(.workspace) :global(.file-tree) {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: auto;
   padding: 7px 10px 12px;
   border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+:global(.workspace) :global(.file-inspector-state) {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0 8px;
+  overflow: auto;
+}
+
+:global(.workspace) :global(.file-inspector-state > .ah-loading-state),
+:global(.workspace) :global(.file-inspector-state > [role='alert']) {
+  width: 100%;
+  max-width: none;
+}
+
+:global(.workspace) :global(.editor-frame > .file-inspector-state) {
+  flex: 1 1 auto;
+  padding: 20px 14px;
 }
 
 :global(.workspace) :global(.mini-heading) {
