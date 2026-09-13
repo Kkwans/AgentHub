@@ -1,5 +1,5 @@
 import { Button } from '@agenthub/ui';
-import { AtSign, ArrowUp, ListChecks, Loader2, ShieldCheck, Square } from 'lucide-react';
+import { AtSign, ArrowUp, ListChecks, Loader2, Square } from 'lucide-react';
 import type { RefObject } from 'react';
 
 import type { SessionConfigurationRecord } from '../../../lib/api';
@@ -79,7 +79,7 @@ export function ComposerToolbar({
   return (
     <div
       className="composer-toolbar flex min-h-11 items-center justify-between gap-2 border-t border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/15 px-2 py-1 sm:px-3 sm:py-2"
-      aria-label="发送配置"
+      aria-label="Run 工具栏"
       data-running={activeRun || undefined}
       data-locked={sessionLocked || undefined}
     >
@@ -96,7 +96,7 @@ export function ComposerToolbar({
             data-open={contextOpen || undefined}
           >
             <AtSign aria-hidden size={15} strokeWidth={1.8} />
-            <span className="hidden sm:inline">上下文</span>
+            <span className="hidden sm:inline">PromptOS</span>
             <small className="max-w-24 truncate text-[11px] text-[hsl(var(--foreground-faint))]">
               {contextStatus.label}
             </small>
@@ -127,10 +127,6 @@ export function ComposerToolbar({
           ) : null}
         </div>
         <div className="composer-toolbar-facts flex min-w-0 shrink items-center gap-1">
-          <span className="composer-toolbar-fact composer-permission hidden items-center gap-1.5 whitespace-nowrap rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-muted))] sm:inline-flex">
-            <ShieldCheck aria-hidden size={15} strokeWidth={1.8} />
-            <strong className="font-medium">按需审批</strong>
-          </span>
           <span
             className={`composer-toolbar-fact composer-run-state hidden items-center gap-1.5 whitespace-nowrap px-2 text-[11px] sm:inline-flex ${runStateTone}`}
             data-running={activeRun || undefined}
@@ -162,23 +158,6 @@ export function ComposerToolbar({
           onChange={onChangeConfiguration}
           className="composer-config-trigger"
         />
-        <div
-          className="hidden items-center gap-2 text-[9.5px] text-[hsl(var(--foreground-faint))] md:flex"
-          aria-label="Return 发送，Shift Return 换行"
-        >
-          <span className="inline-flex items-center gap-1">
-            <kbd className="inline-flex min-w-5 items-center justify-center rounded-[5px] border border-[hsl(var(--border))]/80 bg-[hsl(var(--surface))] px-1 py-0.5 font-sans text-[10px] leading-none text-[hsl(var(--foreground-subtle))] shadow-[0_1px_0_hsl(var(--border))]">
-              ↩
-            </kbd>
-            <span>发送</span>
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <kbd className="inline-flex items-center justify-center rounded-[5px] border border-[hsl(var(--border))]/80 bg-[hsl(var(--surface))] px-1 py-0.5 font-sans text-[10px] leading-none text-[hsl(var(--foreground-subtle))] shadow-[0_1px_0_hsl(var(--border))]">
-              ⇧ ↩
-            </kbd>
-            <span>换行</span>
-          </span>
-        </div>
         <div className="composer-send-control relative flex size-9 items-center justify-center sm:size-8">
           <Button
             type="button"
@@ -201,7 +180,7 @@ export function ComposerToolbar({
             type="button"
             size="icon"
             variant="ghost"
-            className={`absolute inset-0 size-9 rounded-full p-1.5 transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-90 sm:size-8 ${activeRun ? 'pointer-events-none scale-75 opacity-0' : 'scale-100 opacity-100'} ${!activeRun && !sendingBlocked && !sendPending ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[var(--shadow-sm)] hover:bg-[hsl(var(--primary-hover))]' : 'cursor-not-allowed text-[hsl(var(--foreground-faint))]'}`}
+            className={`absolute inset-0 size-9 rounded-full p-1.5 transition-[opacity,transform,background-color,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-90 sm:size-8 ${activeRun ? 'pointer-events-none scale-75 opacity-0' : 'scale-100 opacity-100'} ${!activeRun && !sendingBlocked && !sendPending ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[var(--shadow-sm)] hover:bg-[hsl(var(--primary-hover))]' : 'cursor-not-allowed border border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))] text-[hsl(var(--foreground-faint))]'}`}
             onClick={onSend}
             disabled={activeRun || sendingBlocked || sendPending}
             aria-label={sendPending ? '正在发送消息' : '发送'}

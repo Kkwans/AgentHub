@@ -1,4 +1,5 @@
 import { Button, ChevronDown, Select, cn } from '@agenthub/ui';
+import { Settings2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { labelReasoningEffort, labelSessionMode } from '../../../presentation/domain-labels';
@@ -37,14 +38,6 @@ export function SessionConfigurationControl({
   const modelOptions = configuration?.options?.models ?? [];
   const modeOptions = configuration?.options?.modes ?? [];
   const reasoningEffortOptions = configuration?.options?.reasoningEfforts ?? [];
-  const summary = [
-    model || '默认模型',
-    mode ? labelSessionMode(mode) : '默认模式',
-    reasoningEffort ? labelReasoningEffort(reasoningEffort) : undefined,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
   return (
     <div className="relative min-w-0 max-w-[min(300px,42vw)]">
       <Button
@@ -57,24 +50,24 @@ export function SessionConfigurationControl({
           open && 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]',
         )}
         aria-expanded={open}
-        aria-label={loading ? 'Session 配置读取中' : 'Session 配置'}
+        aria-label={loading ? '运行配置读取中' : '配置模型、访问策略和推理强度'}
         onClick={() => setOpen((value) => !value)}
       >
-        <span>配置</span>
-        <strong className="min-w-0 max-w-48 truncate font-medium">
-          {loading ? '读取中…' : summary}
-        </strong>
+        <Settings2 size={14} aria-hidden="true" />
+        <span className="font-medium">配置</span>
         <ChevronDown size={11} aria-hidden="true" />
       </Button>
       {open && (
         <div
           className="absolute bottom-[calc(100%+0.5rem)] right-0 z-30 grid w-[min(320px,calc(100vw-32px))] gap-2.5 rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--surface-elevated))] p-3 text-[hsl(var(--foreground))] shadow-[var(--shadow-lg)] animate-[hci-fade-in_140ms_ease-out_both] motion-reduce:animate-none"
           role="dialog"
-          aria-label="Session 配置"
+          aria-label="运行配置"
         >
           <div className="flex items-baseline justify-between gap-2 border-b border-[hsl(var(--border))]/60 pb-1.5">
-            <strong className="text-xs">Session 配置</strong>
-            <span className="text-[11px] text-[hsl(var(--foreground-faint))]">仅影响后续 Run</span>
+            <strong className="text-xs">运行配置</strong>
+            <span className="text-[11px] text-[hsl(var(--foreground-faint))]">
+              分别影响后续 Run
+            </span>
           </div>
           {configuration?.supported && modelOptions.length ? (
             <CompactChoiceSelect
@@ -94,7 +87,7 @@ export function SessionConfigurationControl({
           )}
           {configuration?.supported && modeOptions.length ? (
             <CompactChoiceSelect
-              label="运行模式"
+              label="访问策略"
               value={mode}
               options={modeOptions.map((option) => ({
                 value: option.id,
@@ -105,7 +98,7 @@ export function SessionConfigurationControl({
             />
           ) : (
             <div className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-2 text-xs text-[hsl(var(--foreground-muted))]">
-              <span>运行模式</span>
+              <span>访问策略</span>
               <strong className="truncate font-medium text-[hsl(var(--foreground))]">
                 {mode ? labelSessionMode(mode) : 'Agent 默认'}
               </strong>
@@ -146,7 +139,7 @@ function CompactChoiceSelect({
     <label
       className={cn(
         'grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-2 text-xs text-[hsl(var(--foreground-muted))]',
-        label === '运行模式' && 'composer-select-mode',
+        label === '访问策略' && 'composer-select-mode',
         label === '推理强度' && 'composer-select-reasoning',
         label === '模型' && 'composer-select-model',
       )}

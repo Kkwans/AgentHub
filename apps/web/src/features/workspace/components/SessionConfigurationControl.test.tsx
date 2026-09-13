@@ -29,7 +29,7 @@ const configuration = {
 } satisfies SessionConfigurationRecord;
 
 describe('SessionConfigurationControl', () => {
-  it('将模型、运行模式和推理强度收进一个可访问的配置面板', () => {
+  it('将模型、访问策略和推理强度分别呈现在配置面板', () => {
     const onChange = vi.fn();
     render(
       <SessionConfigurationControl
@@ -45,14 +45,14 @@ describe('SessionConfigurationControl', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Session 配置' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: '配置模型、访问策略和推理强度' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Session 配置' }));
-    expect(screen.getByRole('dialog', { name: 'Session 配置' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '配置模型、访问策略和推理强度' }));
+    expect(screen.getByRole('dialog', { name: '运行配置' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '模型' })).toHaveTextContent('GPT-5');
-    expect(screen.getByRole('combobox', { name: '运行模式' })).toHaveTextContent('工作区执行');
+    expect(screen.getByRole('combobox', { name: '访问策略' })).toHaveTextContent('工作区执行');
     expect(screen.getByRole('combobox', { name: '推理强度' })).toHaveTextContent('高');
 
     fireEvent.click(screen.getByRole('combobox', { name: '模型' }));
@@ -79,7 +79,7 @@ describe('SessionConfigurationControl', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Session 配置' }));
+    fireEvent.click(screen.getByRole('button', { name: '配置模型、访问策略和推理强度' }));
     expect(screen.getByText('agent-default')).toBeInTheDocument();
     expect(screen.getByText('只读')).toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
