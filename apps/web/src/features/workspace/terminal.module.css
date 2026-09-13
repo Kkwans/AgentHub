@@ -36,6 +36,17 @@
   cursor: not-allowed;
 }
 
+/* PinHarness keeps desktop command-bar actions compact; reserve the 44px
+   touch target only on narrow screens. A full-height Terminal button was what
+   previously inflated the entire Composer toolbar to a second visual row. */
+@media (min-width: 640px) {
+  :global(.workspace) :global(.terminal-launcher) {
+    min-height: 28px;
+    padding: 4px 7px;
+    border-radius: 8px;
+  }
+}
+
 :global(.workspace) :global(.terminal-dock-shell) {
   position: relative;
   z-index: 12;
