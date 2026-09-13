@@ -210,6 +210,17 @@
   grid-template-rows: minmax(150px, 38%) minmax(240px, 1fr);
 }
 
+:global(.workspace) :global(.file-inspector--tree-state) {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+:global(.workspace) :global(.file-inspector--tree-state > .file-inspector-state) {
+  flex: 1 1 auto;
+  padding: 20px 14px;
+}
+
 :global(.workspace) :global(.file-tree),
 :global(.workspace) :global(.git-summary),
 :global(.workspace) :global(.run-context) {

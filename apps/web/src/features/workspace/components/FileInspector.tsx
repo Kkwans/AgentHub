@@ -41,23 +41,31 @@ export function FileInspector({
       active = false;
     };
   }, []);
+
+  if (files.isLoading || files.error) {
+    return (
+      <div className="file-inspector file-inspector--tree-state">
+        <div className="mini-heading">
+          <Files size={14} /> 文件树
+        </div>
+        <InspectorState>
+          {files.isLoading ? (
+            <FileTreeLoadingState />
+          ) : (
+            <ErrorState error={files.error!} retry={() => files.refetch()} />
+          )}
+        </InspectorState>
+      </div>
+    );
+  }
+
   return (
     <div className="file-inspector">
       <div className="file-tree">
         <div className="mini-heading">
           <Files size={14} /> 文件树
         </div>
-        {files.isLoading ? (
-          <InspectorState>
-            <FileTreeLoadingState />
-          </InspectorState>
-        ) : files.error ? (
-          <InspectorState>
-            <ErrorState error={files.error} retry={() => files.refetch()} />
-          </InspectorState>
-        ) : (
-          <FileNodes entries={files.data ?? []} selected={selected} onSelect={onSelect} />
-        )}
+        <FileNodes entries={files.data ?? []} selected={selected} onSelect={onSelect} />
       </div>
       <div className="editor-frame">
         {!selected ? (
