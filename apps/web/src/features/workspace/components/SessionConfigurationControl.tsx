@@ -20,6 +20,7 @@ export function SessionConfigurationControl({
   updatingMode,
   updatingReasoningEffort,
   onChange,
+  className,
 }: {
   configuration: SessionConfigurationRecord | undefined;
   loading: boolean;
@@ -30,6 +31,7 @@ export function SessionConfigurationControl({
   updatingMode: boolean;
   updatingReasoningEffort: boolean;
   onChange: (patch: ConfigurationPatch) => void;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const modelOptions = configuration?.options?.models ?? [];
@@ -51,6 +53,7 @@ export function SessionConfigurationControl({
         variant="ghost"
         className={cn(
           'min-h-8 max-w-full gap-1.5 rounded-[var(--radius)] px-2 text-xs text-[hsl(var(--foreground-subtle))] transition-[background-color,color] duration-[var(--motion-fast)] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))]',
+          className,
           open && 'bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))]',
         )}
         aria-expanded={open}

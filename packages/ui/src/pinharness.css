@@ -2805,6 +2805,48 @@ html {
     border-color var(--motion-fast) var(--ease-standard);
 }
 
+.composer-toolbar-context-group,
+.composer-toolbar-facts {
+  min-height: 30px;
+}
+
+.composer-toolbar-context-group {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.composer-toolbar-facts {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.composer-toolbar-fact {
+  position: relative;
+  min-width: 0;
+}
+
+.composer-toolbar-fact + .composer-toolbar-fact {
+  margin-left: 2px;
+  border-left: 1px solid hsl(var(--border) / 0.58);
+}
+
+.composer-config-trigger {
+  background: hsl(var(--surface-muted) / 0.42);
+  border: 1px solid hsl(var(--border) / 0.62);
+  box-shadow: inset 0 1px 0 var(--card-inner-highlight);
+}
+
+.composer-config-trigger:hover,
+.composer-config-trigger[aria-expanded='true'] {
+  background: hsl(var(--surface-hover) / 0.72);
+  border-color: hsl(var(--border-strong) / 0.8);
+}
+
+.composer-send-control {
+  padding-left: 2px;
+  border-left: 1px solid hsl(var(--border) / 0.58);
+}
+
 .chat-command-card[data-running='true'] .composer-toolbar {
   background: hsl(var(--warning-soft) / 0.24);
 }
@@ -2874,6 +2916,16 @@ html {
 
   .composer-toolbar-start {
     max-width: 58%;
+  }
+
+  .composer-toolbar-context-group,
+  .composer-toolbar-facts {
+    min-height: 44px;
+  }
+
+  .composer-send-control {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .composer-toolbar-end {

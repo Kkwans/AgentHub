@@ -12,14 +12,21 @@
 }
 
 :global(.workspace) :global(.session-rail > .panel-title) {
-  min-height: 64px;
-  padding: 0 16px;
+  min-height: 56px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ah-border-subtle);
 }
 
-:global(.workspace) :global(.session-rail > .panel-title > span) {
-  font-size: 18px;
-  font-weight: 690;
-  letter-spacing: -0.035em;
+:global(.workspace) :global(.session-rail > .panel-title h2) {
+  font-size: 15px;
+  font-weight: 670;
+  letter-spacing: -0.025em;
+}
+
+:global(.workspace) :global(.session-rail > .panel-title .ah-workbench-panel-header-copy > span) {
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 :global(.workspace) :global(.session-rail-search) {
@@ -108,7 +115,7 @@
   flex: 1;
   min-height: 0;
   gap: 3px;
-  padding: 6px 10px 20px;
+  padding: 6px 12px 20px;
   overflow: auto;
   scrollbar-color: var(--ah-border-strong) transparent;
 }
