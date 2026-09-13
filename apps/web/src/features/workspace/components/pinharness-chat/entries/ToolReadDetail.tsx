@@ -64,15 +64,9 @@ export function ToolReadDetail({
   if (!result) {
     const filePath = inputPath(rawInput);
     return (
-      <div className="overflow-hidden bg-[hsl(var(--surface))]/45">
-        <div className="flex min-h-7 items-center gap-1.5 border-b border-[hsl(var(--border))]/30 bg-[hsl(var(--surface-muted))]/28 px-2 text-[10px] font-medium text-[hsl(var(--foreground-muted))]">
-          <span className="min-w-0 flex-1">文件内容</span>
-          {actions}
-        </div>
-        <div className="px-2.5 py-2 text-[11px] leading-relaxed text-[hsl(var(--foreground-muted))]">
-          <p>Agent 未返回可展开的文件内容。</p>
-          {filePath && <code className="mt-1 block truncate text-[10px]">{filePath}</code>}
-        </div>
+      <div className="tool-entry-no-output">
+        <span>Agent 未返回可展开的文件内容。</span>
+        {filePath ? <code title={filePath}>{filePath}</code> : null}
       </div>
     );
   }

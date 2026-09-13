@@ -90,6 +90,20 @@ describe('PinHarness chat source renderers', () => {
     expect(screen.getByText('Tests passed')).toBeInTheDocument();
   });
 
+  it('keeps completed commands without output as a compact neutral detail', async () => {
+    renderTool(
+      event({
+        tool: 'exec_command',
+        command: 'git status --short',
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '运行命令，工具调用完成，展开详情' }));
+    await waitFor(() => expect(screen.getByText('命令已完成，未返回输出。')).toBeInTheDocument());
+    expect(screen.queryByText('shell')).not.toBeInTheDocument();
+    expect(document.querySelector('.tool-entry-no-output')).toBeInTheDocument();
+  });
+
   it('renders source search groups and a rich SubAgent trace from normalized payloads', async () => {
     renderTool(
       event({

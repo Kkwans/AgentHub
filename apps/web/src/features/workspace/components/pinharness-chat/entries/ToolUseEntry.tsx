@@ -348,6 +348,7 @@ function ToolExpandedDetail({
   isFailed,
 }: ExpandedDetailProps) {
   if (!visible) return null;
+  const hasOutput = Boolean(rawOutput?.trim());
   const actions = isFailed ? undefined : (
     <ToolDetailToolbar toolName={toolName} rawOutput={rawOutput} isFailed={false} embedded />
   );
@@ -356,9 +357,9 @@ function ToolExpandedDetail({
       <div className={cn('tool-entry-detail-body', isFailed && 'tool-entry-detail-body--failed')}>
         <DeferredToolDetail>
           {isFailed && <ToolDetailToolbar toolName={toolName} rawOutput={rawOutput} isFailed />}
-          {isActive && !rawOutput ? (
+          {isActive && !hasOutput ? (
             <ToolOutputSkeleton themeKey={themeKey} />
-          ) : (
+          ) : hasOutput ? (
             <ToolDetailPanel
               themeKey={themeKey}
               theme={theme}
@@ -366,11 +367,41 @@ function ToolExpandedDetail({
               rawOutput={rawOutput}
               actions={actions}
             />
+          ) : (
+            <ToolNoOutputDetail themeKey={themeKey} rawInput={rawInput} />
           )}
         </DeferredToolDetail>
       </div>
     </div>
   );
+}
+
+function ToolNoOutputDetail({
+  themeKey,
+  rawInput,
+}: {
+  themeKey: ToolThemeKey;
+  rawInput?: Record<string, unknown> | null | undefined;
+}) {
+  const summary = toolCommand(rawInput) ?? toolInputPath(rawInput);
+  return (
+    <div className="tool-entry-no-output">
+      <span>
+        {themeKey === 'terminal' ? '命令已完成，未返回输出。' : 'Agent 未返回可展开内容。'}
+      </span>
+      {summary ? <code title={summary}>{truncate(summary, 120)}</code> : null}
+    </div>
+  );
+}
+
+function toolInputPath(rawInput?: Record<string, unknown> | null): string | null {
+  const path =
+    rawInput?.target_file ??
+    rawInput?.file_path ??
+    rawInput?.path ??
+    rawInput?.target_directory ??
+    rawInput?.glob_pattern;
+  return typeof path === 'string' && path.length > 0 ? path : null;
 }
 
 function ToolDetailPanel({ themeKey, theme, rawInput, rawOutput, actions }: PanelProps) {
