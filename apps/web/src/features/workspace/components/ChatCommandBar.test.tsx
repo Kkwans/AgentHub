@@ -131,6 +131,15 @@ afterEach(() => {
 });
 
 describe('ChatCommandBar PinHarness composer interactions', () => {
+  it('CLOSED Session 不渲染空的 Composer 工具栏', () => {
+    renderComposer({ session: { ...session, status: 'CLOSED' } });
+
+    expect(
+      screen.queryByRole('textbox', { name: '给 Agent 发送工程指令' }),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector('.composer-shell')).not.toBeInTheDocument();
+  });
+
   it('restores a session draft, sends with Return and clears only after success', async () => {
     window.sessionStorage.setItem('agenthub.workspace.composer.session-composer', '保留这段草稿');
     const { onSend } = renderComposer();

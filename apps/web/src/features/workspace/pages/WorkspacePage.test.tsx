@@ -629,16 +629,11 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(
       screen.getByRole('link', { name: /可靠性回归/ }).querySelector('.session-state-dot'),
     ).toHaveClass('session-state-closed');
-    const composer = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
-    expect(composer).toHaveAttribute('aria-label', '给 Agent 发送工程指令');
-    expect(composer).toHaveAttribute('name', 'message');
-    expect(composer).toHaveAttribute('placeholder', '会话已关闭，无法继续发送指令。');
-    expect(composer).toBeDisabled();
-    expect(screen.getByText('会话已关闭，无法继续发送指令。')).toBeInTheDocument();
-    const composerRunState = document.querySelector('.composer-run-state');
-    expect(composerRunState).toHaveAttribute('data-session-status', 'CLOSED');
-    expect(composerRunState).toHaveTextContent('已关闭');
-    expect(composerRunState).not.toHaveTextContent('就绪');
+    expect(
+      screen.queryByRole('textbox', { name: '给 Agent 发送工程指令' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('会话已关闭，无法继续发送指令。')).not.toBeInTheDocument();
+    expect(document.querySelector('.composer-shell')).not.toBeInTheDocument();
   });
 
   it('PromptOS 服务失败时阻止静默跳过绑定，重新解析成功后恢复发送', async () => {

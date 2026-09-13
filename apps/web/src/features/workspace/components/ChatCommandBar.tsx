@@ -398,6 +398,11 @@ export function ChatCommandBar({
     if (focused || (sessionLocked && !activeRun) || send.isPending) return;
     inputRef.current?.focus();
   };
+
+  // CLOSED Session 的状态和继续入口由对话顶部的 RunStateBanner 承载；
+  // 不再在底部保留一个无法操作的输入框、配置和 Terminal 工具栏。
+  if (session.status === 'CLOSED' && !activeRun) return null;
+
   return (
     <section
       className="composer-shell relative z-20 w-full shrink-0 min-w-0"
