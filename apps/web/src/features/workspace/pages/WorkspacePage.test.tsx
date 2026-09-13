@@ -327,9 +327,14 @@ describe('WorkspacePage 数据分区可靠性', () => {
     Object.defineProperties(scroll, {
       scrollHeight: { configurable: true, value: 5_000 },
       clientHeight: { configurable: true, value: 500 },
-      scrollTop: { configurable: true, writable: true, value: 0 },
+      scrollTop: { configurable: true, writable: true, value: 4_500 },
     });
-    fireEvent.wheel(scroll);
+    // User intent must take over immediately, before the browser emits the
+    // resulting scroll event. This is the race that previously let streaming
+    // rAF/smooth scrolling reclaim the viewport after an upward wheel.
+    fireEvent.wheel(scroll, { deltaY: -120 });
+    expect(screen.getByRole('button', { name: '回到最新' })).toBeInTheDocument();
+    scroll.scrollTop = 0;
     fireEvent.scroll(scroll);
 
     expect(await screen.findByText('长会话消息 1')).toBeInTheDocument();

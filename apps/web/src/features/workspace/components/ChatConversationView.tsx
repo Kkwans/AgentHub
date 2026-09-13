@@ -44,6 +44,40 @@ import {
 // available immediately; a measured viewport switches to the normal virtual
 // window below without changing the visible conversation order.
 const UNMEASURED_WINDOW_SIZE = 4;
+const STREAMING_LINE_HEIGHT_PX = 18;
+const STREAMING_SMOOTH_DISTANCE_PX = 600;
+
+function followStreamingBottom(
+  element: HTMLDivElement,
+  lastScrollHeightRef: { current: number },
+  followingRef: { current: boolean },
+  markProgrammaticScroll: () => void,
+): void {
+  const currentScrollHeight = element.scrollHeight;
+  if (currentScrollHeight - lastScrollHeightRef.current < STREAMING_LINE_HEIGHT_PX) return;
+
+  const distance = currentScrollHeight - element.scrollTop - element.clientHeight;
+  if (distance <= 0) {
+    lastScrollHeightRef.current = currentScrollHeight;
+    return;
+  }
+
+  lastScrollHeightRef.current = currentScrollHeight;
+  markProgrammaticScroll();
+  if (distance < STREAMING_SMOOTH_DISTANCE_PX) {
+    element.scrollTo({ top: currentScrollHeight, behavior: 'smooth' });
+    return;
+  }
+
+  // Avoid animating a long stream over hundreds of pixels. Land close to the
+  // tail first, then let one short smooth segment settle; if the user takes
+  // over during the gap, the queued frame is discarded.
+  element.scrollTop = Math.max(0, currentScrollHeight - 200);
+  requestAnimationFrame(() => {
+    if (!followingRef.current) return;
+    element.scrollTo({ top: currentScrollHeight, behavior: 'smooth' });
+  });
+}
 
 export {
   buildConversationTimeline,
@@ -125,6 +159,15 @@ export const ChatConversationView = memo(function ChatConversationView({
   const timeline = turns.flatMap((turn) => turn.entries);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followTimelineRef = useRef(true);
+  // PinHarness 的滚动控制将“用户接管”和“程序滚动”分成两个同步 ref。
+  // 仅依赖 React state 会在 streaming/rAF 密集更新时读到旧闭包，导致上滑
+  // 后又被下一帧拉回底部，表现为滚动鬼畜或卡死。
+  const followingRef = useRef(true);
+  const programmaticScrollRef = useRef(false);
+  const programmaticCooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timelineScrollRafRef = useRef<number | null>(null);
+  const lastStreamingScrollHeightRef = useRef(0);
+  const touchStartYRef = useRef<number | null>(null);
   // Layout effects and the virtualizer can emit a synthetic scroll event while
   // the panel is still acquiring its real height. Keep the initial follow
   // intent authoritative until the first non-zero viewport has been aligned.
@@ -183,6 +226,41 @@ export const ChatConversationView = memo(function ChatConversationView({
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
         ?.id
     : undefined;
+  const updateFollowing = useCallback((next: boolean) => {
+    followingRef.current = next;
+    followTimelineRef.current = next;
+    setIsFollowingTimeline((current) => (current === next ? current : next));
+  }, []);
+  const markProgrammaticScroll = useCallback(() => {
+    programmaticScrollRef.current = true;
+    if (programmaticCooldownRef.current) clearTimeout(programmaticCooldownRef.current);
+    programmaticCooldownRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+      programmaticCooldownRef.current = null;
+    }, 350);
+  }, []);
+  const userTakesOverScroll = useCallback(() => {
+    programmaticScrollRef.current = false;
+    if (programmaticCooldownRef.current) {
+      clearTimeout(programmaticCooldownRef.current);
+      programmaticCooldownRef.current = null;
+    }
+  }, []);
+  const userIntentExitFollow = useCallback(() => {
+    const element = scrollRef.current;
+    // Assigning the current value cancels an in-flight smooth scroll without
+    // changing the visible position. The next streaming rAF sees followingRef
+    // immediately and skips its pending scrollTo.
+    if (element && typeof element.scrollTo === 'function') {
+      element.scrollTo({ top: element.scrollTop, behavior: 'auto' });
+    }
+    if (timelineScrollRafRef.current !== null) {
+      cancelAnimationFrame(timelineScrollRafRef.current);
+      timelineScrollRafRef.current = null;
+    }
+    userNavigatedTimelineRef.current = true;
+    updateFollowing(false);
+  }, [updateFollowing]);
   const clearUserScrollIntent = useCallback(() => {
     userScrollIntentRef.current = false;
     if (userScrollIntentTimerRef.current !== undefined) {
@@ -203,14 +281,23 @@ export const ChatConversationView = memo(function ChatConversationView({
   }, []);
   useEffect(() => {
     initialFollowPendingRef.current = true;
+    followingRef.current = true;
     followTimelineRef.current = true;
     userNavigatedTimelineRef.current = false;
     clearUserScrollIntent();
     setIsFollowingTimeline(true);
     setUnreadCount(0);
     setTimelineWindowStart(0);
+    lastStreamingScrollHeightRef.current = 0;
   }, [clearUserScrollIntent, session.id]);
   useEffect(() => clearUserScrollIntent, [clearUserScrollIntent]);
+  useEffect(
+    () => () => {
+      if (programmaticCooldownRef.current) clearTimeout(programmaticCooldownRef.current);
+      if (timelineScrollRafRef.current !== null) cancelAnimationFrame(timelineScrollRafRef.current);
+    },
+    [],
+  );
   useEffect(() => {
     const previousLength = previousTimelineLengthRef.current;
     if (!isFollowingTimeline && timeline.length > previousLength) {
@@ -242,14 +329,25 @@ export const ChatConversationView = memo(function ChatConversationView({
     let trailingFrame: number | undefined;
     const scrollToLatest = () => {
       const element = scrollRef.current;
-      if (!element || element.clientHeight <= 0 || userScrollIntentRef.current) return;
+      if (
+        !element ||
+        element.clientHeight <= 0 ||
+        userScrollIntentRef.current ||
+        !followingRef.current
+      )
+        return;
       initialFollowPendingRef.current = false;
-      element.scrollTop = element.scrollHeight;
+      followStreamingBottom(
+        element,
+        lastStreamingScrollHeightRef,
+        followingRef,
+        markProgrammaticScroll,
+      );
     };
     const scheduleScroll = () => {
       if (!followTimelineRef.current || userScrollIntentRef.current) return;
-      requestAnimationFrame(() => {
-        if (!followTimelineRef.current || userScrollIntentRef.current) return;
+      if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
+      trailingFrame = requestAnimationFrame(() => {
         trailingFrame = requestAnimationFrame(scrollToLatest);
       });
     };
@@ -270,19 +368,22 @@ export const ChatConversationView = memo(function ChatConversationView({
       observer.disconnect();
       if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
     };
-  }, [displayTurns.length, latestTimelineId, viewportMeasured]);
+  }, [displayTurns.length, latestTimelineId, markProgrammaticScroll, viewportMeasured]);
   const scheduleLatestScroll = () => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    if (timelineScrollRafRef.current !== null) cancelAnimationFrame(timelineScrollRafRef.current);
+    timelineScrollRafRef.current = requestAnimationFrame(() => {
+      timelineScrollRafRef.current = requestAnimationFrame(() => {
+        timelineScrollRafRef.current = null;
         const element = scrollRef.current;
         if (
           element &&
-          followTimelineRef.current &&
+          followingRef.current &&
           !userScrollIntentRef.current &&
           element.clientHeight > 0
         ) {
           initialFollowPendingRef.current = false;
-          element.scrollTop = element.scrollHeight;
+          markProgrammaticScroll();
+          element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
         }
       });
     });
@@ -290,7 +391,10 @@ export const ChatConversationView = memo(function ChatConversationView({
   const preserveScrollAnchor = (previousHeight: number, previousTop: number) => {
     requestAnimationFrame(() => {
       const current = scrollRef.current;
-      if (current) current.scrollTop = current.scrollHeight - previousHeight + previousTop;
+      if (current) {
+        markProgrammaticScroll();
+        current.scrollTop = current.scrollHeight - previousHeight + previousTop;
+      }
     });
   };
   const loadPreviousMessages = async () => {
@@ -322,8 +426,7 @@ export const ChatConversationView = memo(function ChatConversationView({
   const jumpToLatest = () => {
     initialFollowPendingRef.current = false;
     clearUserScrollIntent();
-    followTimelineRef.current = true;
-    setIsFollowingTimeline(true);
+    updateFollowing(true);
     setUnreadCount(0);
     setTimelineWindowStart(latestWindowStart);
     scheduleLatestScroll();
@@ -359,13 +462,34 @@ export const ChatConversationView = memo(function ChatConversationView({
           role="log"
           aria-live="polite"
           aria-relevant="additions text"
-          onWheel={markUserScrollIntent}
+          onWheel={(event) => {
+            // wheel/touch input is authoritative user intent. Clear the
+            // programmatic cooldown before checking history so a smooth
+            // streaming scroll cannot reclaim control in the same frame.
+            userTakesOverScroll();
+            markUserScrollIntent();
+            if (event.deltaY < 0) userIntentExitFollow();
+          }}
           onPointerDown={(event) => {
             // Content clicks (for example expanding thought/tool details) must
             // not be mistaken for a scrollbar drag and break follow mode.
             if (event.target === event.currentTarget) markUserScrollIntent();
           }}
-          onTouchMove={markUserScrollIntent}
+          onTouchStart={(event) => {
+            touchStartYRef.current = event.touches[0]?.clientY ?? null;
+          }}
+          onTouchMove={(event) => {
+            userTakesOverScroll();
+            markUserScrollIntent();
+            const startY = touchStartYRef.current;
+            const currentY = event.touches[0]?.clientY;
+            if (startY !== null && currentY !== undefined && currentY - startY > 6) {
+              userIntentExitFollow();
+            }
+          }}
+          onTouchEnd={() => {
+            touchStartYRef.current = null;
+          }}
           onKeyDown={(event) => {
             if (
               ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)
@@ -375,20 +499,14 @@ export const ChatConversationView = memo(function ChatConversationView({
           }}
           onScroll={(event) => {
             const element = event.currentTarget;
+            if (programmaticScrollRef.current) return;
             const nextFollowing =
               element.scrollHeight - element.scrollTop - element.clientHeight < 120;
             const userInitiated = userScrollIntentRef.current;
             if (userInitiated) clearUserScrollIntent();
-            if (!userInitiated && followTimelineRef.current) {
-              if (!nextFollowing) scheduleLatestScroll();
-              return;
-            }
             if (!userInitiated && initialFollowPendingRef.current && !nextFollowing) return;
             if (initialFollowPendingRef.current) initialFollowPendingRef.current = false;
-            followTimelineRef.current = nextFollowing;
-            setIsFollowingTimeline((current) =>
-              current === nextFollowing ? current : nextFollowing,
-            );
+            updateFollowing(nextFollowing);
             if (element.scrollTop < 80) void loadPreviousMessages();
           }}
         >

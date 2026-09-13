@@ -190,18 +190,37 @@ export function AhLoadingState({
   description?: string;
   rows?: number;
 }) {
+  const skeletonRows = Math.max(1, Math.min(6, Math.round(rows)));
   return (
-    <div className="space-y-4" role="status" aria-live="polite" aria-busy="true" aria-label={label}>
-      <div className="flex items-center gap-2 text-sm text-[hsl(var(--foreground-muted))]">
-        <CircleNotchIcon className="size-4 animate-spin text-[hsl(var(--primary))]" aria-hidden />
-        <span>{label}</span>
+    <div
+      className="ah-loading-state"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={label}
+    >
+      <div className="ah-loading-state-head">
+        <span className="ah-loading-state-orb" aria-hidden="true">
+          <CircleNotchIcon className="size-4" />
+        </span>
+        <div className="ah-loading-state-copy">
+          <strong>{label}</strong>
+          {description ? <span>{description}</span> : null}
+        </div>
+        <span className="ah-loading-state-pulse" aria-hidden="true" />
       </div>
-      {description ? (
-        <p className="m-0 text-xs leading-5 text-[hsl(var(--foreground-muted))]">{description}</p>
-      ) : null}
-      <div className="space-y-3">
-        {Array.from({ length: rows }, (_, index) => (
-          <PinSkeleton key={index} className={index === 0 ? 'h-11 w-full' : 'h-8 w-full'} />
+      <div className="ah-loading-state-skeletons" aria-hidden="true">
+        {Array.from({ length: skeletonRows }, (_, index) => (
+          <PinSkeleton
+            key={index}
+            className={cn(
+              'ah-loading-skeleton skeleton-shimmer',
+              index === 0 ? 'h-10 w-full rounded-[var(--radius)]' : 'h-3',
+              index === 1 ? 'w-11/12' : '',
+              index === 2 ? 'w-4/5' : '',
+              index > 2 ? (index % 2 === 0 ? 'w-5/6' : 'w-3/4') : '',
+            )}
+          />
         ))}
       </div>
     </div>

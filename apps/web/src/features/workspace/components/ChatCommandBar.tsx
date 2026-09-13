@@ -410,7 +410,7 @@ export function ChatCommandBar({
         // the empty surface ergonomic without stealing toolbar focus.
         // biome-ignore lint/a11y/useKeyWithClickEvents: card click focuses its textarea
         onClick={handleCardClick}
-        className={`chat-command-card relative flex min-w-0 cursor-text flex-col overflow-visible rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/98 shadow-[0_1px_3px_hsl(var(--foreground)/0.05),0_1px_2px_hsl(var(--foreground)/0.04)] backdrop-blur-sm transition-[border-color,box-shadow] duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:border-[hsl(var(--border-strong))] focus-within:border-[hsl(var(--primary))]/45 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.07),0_2px_6px_hsl(var(--foreground)/0.06)] motion-reduce:transition-none ${send.isPending ? 'pointer-events-none' : ''}`}
+        className={`chat-command-card relative flex min-w-0 cursor-text flex-col overflow-visible rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))]/98 shadow-[0_1px_3px_hsl(var(--foreground)/0.05),0_1px_2px_hsl(var(--foreground)/0.04),inset_0_1px_0_var(--card-inner-highlight)] backdrop-blur-sm transition-[border-color,box-shadow] duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] hover:border-[hsl(var(--border-strong))] focus-within:border-[hsl(var(--primary))]/45 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.07),0_2px_6px_hsl(var(--foreground)/0.06),inset_0_1px_0_var(--card-inner-highlight)] motion-reduce:transition-none ${send.isPending ? 'pointer-events-none' : ''}`}
         data-focused={focused || undefined}
         data-running={Boolean(activeRun) || undefined}
         data-sending={send.isPending || undefined}

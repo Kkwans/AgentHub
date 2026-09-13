@@ -1375,6 +1375,112 @@ body {
   animation: ah-skeleton 1.5s var(--ah-ease-standard) infinite;
 }
 
+/* PinHarness-style loading surface: one quiet status row plus structural
+   skeletons. A bare spinner leaves the page feeling stalled; this keeps the
+   incoming layout visible while all motion stays on opacity/transform. */
+.ah-loading-state {
+  display: grid;
+  width: min(100%, 720px);
+  gap: 14px;
+  padding: 14px;
+  color: hsl(var(--foreground));
+  background: hsl(var(--surface) / 0.76);
+  border: 1px solid hsl(var(--border) / 0.78);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  animation: hci-entry var(--motion-base) var(--ease-out-expo) both;
+}
+
+.ah-loading-state-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.ah-loading-state-orb {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary-soft));
+  border: 1px solid hsl(var(--primary) / 0.16);
+  border-radius: 9px;
+}
+
+.ah-loading-state-orb svg {
+  animation: ah-spin 900ms linear infinite;
+}
+
+.ah-loading-state-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 2px;
+}
+
+.ah-loading-state-copy strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 620;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-loading-state-copy span {
+  overflow: hidden;
+  color: hsl(var(--foreground-muted));
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-loading-state-pulse {
+  width: 42px;
+  height: 4px;
+  flex: 0 0 42px;
+  overflow: hidden;
+  background: hsl(var(--border));
+  border-radius: 999px;
+}
+
+.ah-loading-state-pulse::after {
+  display: block;
+  width: 45%;
+  height: 100%;
+  content: '';
+  background: hsl(var(--primary) / 0.62);
+  border-radius: inherit;
+  transform: translateX(-120%);
+  animation: ah-loading-sweep 1.35s var(--ease-standard) infinite;
+}
+
+.ah-loading-state-skeletons {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ah-loading-skeleton {
+  min-width: 0;
+  background: hsl(var(--surface-muted));
+  border-radius: 5px;
+}
+
+@keyframes ah-loading-sweep {
+  0%,
+  100% {
+    transform: translateX(-120%);
+  }
+  55% {
+    transform: translateX(250%);
+  }
+}
+
 @keyframes ah-skeleton {
   from {
     transform: translateX(-180%);
@@ -1413,6 +1519,9 @@ body {
   }
 
   .ah-skeleton::after,
+  .ah-loading-state,
+  .ah-loading-state-orb svg,
+  .ah-loading-state-pulse::after,
   .ah-button-loader,
   .ah-icon-button-loader,
   .ah-workbench-status[data-busy='true'] .ah-workbench-status-dot {

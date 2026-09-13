@@ -11,6 +11,7 @@ import {
   AhDialog,
   AhDrawer,
   AhInput,
+  AhLoadingState,
   AhProjectContext,
   AhStatusPill,
   AhStatusDot,
@@ -93,6 +94,13 @@ describe('product components', () => {
       </AgentHubProvider>,
     );
     expect(screen.getByRole('textbox', { name: '工作描述' })).toBeTruthy();
+  });
+
+  it('uses the PinHarness loading surface with structural skeleton rows', () => {
+    render(<AhLoadingState label="正在加载页面" description="正在读取最新状态" rows={3} />);
+    expect(screen.getByRole('status', { name: '正在加载页面' })).toHaveClass('ah-loading-state');
+    expect(screen.getByText('正在读取最新状态')).toBeInTheDocument();
+    expect(document.querySelectorAll('.ah-loading-skeleton')).toHaveLength(3);
   });
 
   it('renders project context tabs and theme preference control', () => {
