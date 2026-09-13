@@ -87,12 +87,20 @@ export function LoadingState({ label = '正在加载真实状态' }: { label?: s
   return <AhLoadingState label={`${label}…`} description="正在读取最新状态" rows={3} />;
 }
 
-export function ErrorState({ error, retry }: { error: Error; retry?: () => void }) {
+export function ErrorState({
+  error,
+  retry,
+  title,
+}: {
+  error: Error;
+  retry?: () => void;
+  title?: string;
+}) {
   const authorizationError = error instanceof ApiError && error.code === 'AUTH_REQUIRED';
   const message = error instanceof ApiError ? error.message : '服务暂时不可用，请检查连接后重试。';
   return (
     <AhErrorState
-      title={authorizationError ? '登录已失效' : '暂时无法加载'}
+      title={authorizationError ? '登录已失效' : (title ?? '暂时无法加载')}
       description={message}
       {...(retry ? { retry, retryLabel: '重新加载' } : {})}
     />

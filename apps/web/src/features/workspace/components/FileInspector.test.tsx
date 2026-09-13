@@ -34,7 +34,7 @@ describe('FileInspector pane states', () => {
     );
 
     expect(document.querySelectorAll('.file-inspector-state')).toHaveLength(2);
-    expect(document.querySelector('.file-tree .ah-loading-state')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: '正在读取文件树' })).toBeInTheDocument();
     expect(screen.getByText('选择文件')).toBeInTheDocument();
   });
 
@@ -45,17 +45,14 @@ describe('FileInspector pane states', () => {
         onSelect={vi.fn()}
         files={queryState<FileEntry[]>({ data: [] })}
         content={queryState<{ content: string; path: string }>({
-          error: new ApiError(
-            'FILE_PATH_OUTSIDE_PROJECT',
-            '路径不能越过当前 Project 根目录。',
-            400,
-          ),
+          error: new ApiError('PATH_ABSOLUTE_FORBIDDEN', '路径不能越过当前 Project 根目录。', 400),
         })}
       />,
     );
 
     expect(document.querySelector('.file-tree .file-inspector-state')).not.toBeInTheDocument();
     expect(document.querySelector('.editor-frame .file-inspector-state')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('文件路径不在当前 Project 内');
     expect(screen.getByRole('alert')).toHaveTextContent('路径不能越过当前 Project 根目录。');
   });
 });

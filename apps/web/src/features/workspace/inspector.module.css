@@ -242,6 +242,65 @@
   max-width: none;
 }
 
+:global(.workspace) :global(.file-pane-loading) {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 14px;
+}
+
+:global(.workspace) :global(.file-pane-loading-copy) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+:global(.workspace) :global(.file-pane-loading-copy strong) {
+  overflow: hidden;
+  color: var(--ah-text-primary);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.file-pane-loading-copy span) {
+  overflow: hidden;
+  color: var(--ah-text-tertiary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.workspace) :global(.file-pane-skeleton-lines),
+:global(.workspace) :global(.file-pane-code-skeleton) {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+:global(.workspace) :global(.file-pane-skeleton-row) {
+  min-width: 0;
+  border-radius: 4px;
+  background: var(--ah-surface-subtle);
+}
+
+:global(.workspace) :global(.file-pane-skeleton-lines .file-pane-skeleton-row:nth-child(2)) {
+  margin-left: 10px;
+}
+
+:global(.workspace) :global(.file-pane-skeleton-lines .file-pane-skeleton-row:nth-child(3)) {
+  margin-left: 18px;
+}
+
+:global(.workspace) :global(.file-pane-skeleton-lines .file-pane-skeleton-row:nth-child(4)) {
+  margin-left: 18px;
+}
+
+:global(.workspace) :global(.file-pane-code-skeleton) {
+  gap: 11px;
+}
+
 :global(.workspace) :global(.editor-frame > .file-inspector-state) {
   flex: 1 1 auto;
   padding: 20px 14px;

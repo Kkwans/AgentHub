@@ -1,9 +1,16 @@
-import { AgentHubThemeContext, ChevronDown, ChevronRight, FileCode2, Files } from '@agenthub/ui';
+import {
+  AgentHubThemeContext,
+  ChevronDown,
+  ChevronRight,
+  FileCode2,
+  Files,
+  Skeleton,
+} from '@agenthub/ui';
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import Editor from '@monaco-editor/react';
 
-import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
-import type { FileEntry } from '../../../lib/api';
+import { EmptyState, ErrorState } from '../../../components/Feedback';
+import { ApiError, type FileEntry } from '../../../lib/api';
 import type { QueryState } from '../workspace-types';
 
 export function FileInspector({
@@ -24,6 +31,7 @@ export function FileInspector({
       ? 'dark'
       : 'light');
   const [monacoReady, setMonacoReady] = useState(false);
+  const contentErrorTitle = content.error ? fileErrorTitle(content.error) : undefined;
   useEffect(() => {
     let active = true;
     void import('../../../lib/monaco').then(() => {
@@ -41,7 +49,7 @@ export function FileInspector({
         </div>
         {files.isLoading ? (
           <InspectorState>
-            <LoadingState />
+            <FileTreeLoadingState />
           </InspectorState>
         ) : files.error ? (
           <InspectorState>
@@ -58,15 +66,19 @@ export function FileInspector({
           </InspectorState>
         ) : content.isLoading ? (
           <InspectorState>
-            <LoadingState />
+            <FilePreviewLoadingState label="正在读取文件内容" />
           </InspectorState>
         ) : content.error ? (
           <InspectorState>
-            <ErrorState error={content.error} retry={() => content.refetch()} />
+            <ErrorState
+              error={content.error}
+              retry={() => content.refetch()}
+              {...(contentErrorTitle ? { title: contentErrorTitle } : {})}
+            />
           </InspectorState>
         ) : !monacoReady ? (
           <InspectorState>
-            <LoadingState label="正在准备文件预览" />
+            <FilePreviewLoadingState label="正在准备文件预览" />
           </InspectorState>
         ) : (
           <>
@@ -102,6 +114,67 @@ export function FileInspector({
 
 function InspectorState({ children }: { children: ReactNode }) {
   return <div className="file-inspector-state">{children}</div>;
+}
+
+function FileTreeLoadingState() {
+  return (
+    <div
+      className="file-pane-loading"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="正在读取文件树"
+    >
+      <div className="file-pane-loading-copy">
+        <strong>正在读取文件树</strong>
+        <span>从当前 Project 读取可访问路径</span>
+      </div>
+      <div className="file-pane-skeleton-lines" aria-hidden="true">
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-11/12" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-4/5" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-5/6" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-3/4" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-2/3" />
+      </div>
+    </div>
+  );
+}
+
+function FilePreviewLoadingState({ label }: { label: string }) {
+  return (
+    <div
+      className="file-pane-loading file-pane-loading--editor"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={label}
+    >
+      <div className="file-pane-loading-copy">
+        <strong>{label}</strong>
+        <span>保持只读预览布局</span>
+      </div>
+      <div className="file-pane-code-skeleton" aria-hidden="true">
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-4/5" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-full" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-11/12" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-3/4" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-5/6" />
+        <Skeleton className="file-pane-skeleton-row skeleton-shimmer h-3 w-2/3" />
+      </div>
+    </div>
+  );
+}
+
+function fileErrorTitle(error: Error): string | undefined {
+  if (
+    error instanceof ApiError &&
+    ['PATH_ABSOLUTE_FORBIDDEN', 'PATH_TRAVERSAL', 'PATH_INVALID', 'PATH_ENCODING_INVALID'].includes(
+      error.code,
+    )
+  ) {
+    return '文件路径不在当前 Project 内';
+  }
+  return undefined;
 }
 
 function FileNodes({
