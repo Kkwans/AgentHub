@@ -473,7 +473,10 @@ export const ChatConversationView = memo(function ChatConversationView({
           onPointerDown={(event) => {
             // Content clicks (for example expanding thought/tool details) must
             // not be mistaken for a scrollbar drag and break follow mode.
-            if (event.target === event.currentTarget) markUserScrollIntent();
+            if (event.target === event.currentTarget) {
+              userTakesOverScroll();
+              markUserScrollIntent();
+            }
           }}
           onTouchStart={(event) => {
             touchStartYRef.current = event.touches[0]?.clientY ?? null;
@@ -494,7 +497,16 @@ export const ChatConversationView = memo(function ChatConversationView({
             if (
               ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)
             ) {
+              userTakesOverScroll();
               markUserScrollIntent();
+              if (
+                event.key === 'ArrowUp' ||
+                event.key === 'PageUp' ||
+                event.key === 'Home' ||
+                (event.key === ' ' && event.shiftKey)
+              ) {
+                userIntentExitFollow();
+              }
             }
           }}
           onScroll={(event) => {
