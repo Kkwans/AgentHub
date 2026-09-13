@@ -3,6 +3,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createRef } from 'react';
 
 import { TerminalDock } from './TerminalDock';
 
@@ -76,6 +77,29 @@ describe('TerminalDock', () => {
       '当前环境缺少 node-pty native binding',
     );
     expect(screen.getByRole('button', { name: /打开 Terminal/ })).toBeDisabled();
+  });
+
+  it('关闭态入口可以直接渲染到 Composer 工具栏 slot，不再占用独立网格行', async () => {
+    const actions = terminalActions();
+    const launcherSlotRef = createRef<HTMLSpanElement>();
+    render(
+      <>
+        <span ref={launcherSlotRef} data-testid="composer-terminal-slot" />
+        <TerminalDock
+          capability={{ available: true }}
+          capabilityError={null}
+          projectId="project-1"
+          projectRoot="/workspace"
+          cwd="/workspace/src"
+          launcherSlotRef={launcherSlotRef}
+          {...actions}
+        />
+      </>,
+    );
+
+    const launcher = await screen.findByRole('button', { name: /打开 Terminal/ });
+    expect(screen.getByTestId('composer-terminal-slot')).toContainElement(launcher);
+    expect(launcher).toHaveClass('terminal-launcher');
   });
 
   it('打开时只把当前 Project 内的相对 cwd 交给 Terminal，并复用 terminal topic', async () => {

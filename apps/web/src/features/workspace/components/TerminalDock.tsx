@@ -1,11 +1,14 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
@@ -53,6 +56,8 @@ export type TerminalDockProps = {
   resizeTerminal: (terminalId: string, input: { cols: number; rows: number }) => Promise<unknown>;
   closeTerminal: (terminalId: string) => Promise<unknown>;
   subscribe: (topic: string, listener: (event: TerminalEvent) => void) => () => void;
+  /** Render the closed-state trigger inside ComposerToolbar, matching PinHarness. */
+  launcherSlotRef?: RefObject<HTMLElement | null>;
 };
 
 type TerminalState = 'closed' | 'opening' | 'open' | 'exited' | 'error';
@@ -69,6 +74,7 @@ export function TerminalDock({
   resizeTerminal,
   closeTerminal,
   subscribe,
+  launcherSlotRef,
 }: TerminalDockProps) {
   const preferenceKey = `agenthub.workspace.terminal.${sessionId ?? projectId ?? 'global'}`;
   const [expanded, setExpanded] = useState(() => readTerminalPreference(preferenceKey).expanded);
@@ -78,6 +84,17 @@ export function TerminalDock({
   const [state, setState] = useState<TerminalState>('closed');
   const [error, setError] = useState<string>();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [launcherSlotReady, setLauncherSlotReady] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!launcherSlotRef) {
+      setLauncherSlotReady(false);
+      return;
+    }
+    // Refs are assigned during commit. Waiting for the layout phase prevents
+    // the closed launcher from flashing in the old standalone grid row.
+    setLauncherSlotReady(Boolean(launcherSlotRef.current));
+  }, [launcherSlotRef]);
 
   useEffect(() => {
     if (preferenceKeyRef.current === preferenceKey) return;
@@ -269,12 +286,13 @@ export function TerminalDock({
       (projectId ? '本机 PTY 未就绪' : '当前 Session 尚未绑定 Project'));
 
   if (!expanded) {
-    return (
+    const launcher = (
       <button
         type="button"
         className={`${terminalStyles.owner} terminal-launcher`}
         disabled={!canOpen}
-        onClick={() => {
+        onClick={(event) => {
+          event.stopPropagation();
           setExpanded(true);
           persistPreference({ expanded: true });
         }}
@@ -285,6 +303,12 @@ export function TerminalDock({
         <span>Terminal</span>
       </button>
     );
+
+    if (launcherSlotRef) {
+      if (!launcherSlotReady || !launcherSlotRef.current) return null;
+      return createPortal(launcher, launcherSlotRef.current);
+    }
+    return launcher;
   }
 
   return (

@@ -190,21 +190,20 @@
 :global(.workspace-terminal-slot) {
   position: relative;
   z-index: 12;
-  display: flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 12px 10px;
+  /* Closed-state Terminal is portaled into ComposerToolbar. Keeping this
+     wrapper transparent makes the explicit grid auto-row collapse to zero;
+     only the expanded dock becomes a real layout item. */
+  display: contents;
 }
 
 :global(.workspace-terminal-slot .terminal-dock-shell.expanded) {
-  flex: 1 1 auto;
-  width: 100%;
+  grid-column: 1;
+  width: auto;
+  margin: 0 12px 10px;
 }
 
 :global(.workspace-terminal-slot:has(.terminal-dock-shell.expanded)) {
-  align-items: stretch;
-  padding: 0 12px 10px;
+  display: contents;
 }
 
 :global(.workspace-terminal-slot:has(.terminal-dock-shell.expanded) .terminal-dock-shell) {

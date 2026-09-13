@@ -1,5 +1,6 @@
 import { Button } from '@agenthub/ui';
 import { AtSign, ArrowUp, ListChecks, Loader2, ShieldCheck, Square } from 'lucide-react';
+import type { RefObject } from 'react';
 
 import type { SessionConfigurationRecord } from '../../../lib/api';
 import type { ComposerPlanSummary } from './ChatCommandBar';
@@ -31,6 +32,7 @@ export function ComposerToolbar({
   sendingBlocked,
   onSend,
   onStop,
+  terminalLauncherSlotRef,
 }: {
   contextOpen: boolean;
   contextStatus: ComposerContextStatus;
@@ -56,6 +58,7 @@ export function ComposerToolbar({
   sendingBlocked: boolean;
   onSend: () => void;
   onStop: () => void;
+  terminalLauncherSlotRef?: RefObject<HTMLElement | null>;
 }) {
   const sessionLocked = sessionStatus !== 'READY';
   const lockedStateLabel = resolveLockedSessionState(sessionStatus);
@@ -75,12 +78,12 @@ export function ComposerToolbar({
     : 0;
   return (
     <div
-      className="composer-toolbar flex min-h-11 items-center justify-between gap-2 border-t border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/35 px-2 py-1 sm:px-3 sm:py-1.5"
+      className="composer-toolbar flex min-h-11 items-center justify-between gap-2 border-t border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/15 px-2 py-1 sm:px-3 sm:py-2"
       aria-label="发送配置"
       data-running={activeRun || undefined}
       data-locked={sessionLocked || undefined}
     >
-      <div className="composer-toolbar-start flex min-w-0 items-center gap-1 overflow-hidden">
+      <div className="composer-toolbar-start flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         <Button
           type="button"
           size="sm"
@@ -134,6 +137,13 @@ export function ComposerToolbar({
           <span className={`size-1.5 rounded-full ${runStateDot}`} aria-hidden="true" />
           {runStateLabel}
         </span>
+        {terminalLauncherSlotRef ? (
+          <span
+            ref={terminalLauncherSlotRef}
+            className="composer-terminal-launcher-slot inline-flex min-w-0 shrink-0 items-center rounded-lg"
+            aria-label="Terminal 操作"
+          />
+        ) : null}
       </div>
       <div className="composer-toolbar-end flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
         <SessionConfigurationControl

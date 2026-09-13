@@ -17,6 +17,7 @@ import {
   type FocusEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from 'react';
 
 import type {
@@ -88,6 +89,7 @@ export function ChatCommandBar({
   onSend,
   onStop,
   onUpdateConfiguration,
+  terminalLauncherSlotRef,
 }: {
   session: SessionRecord;
   agent: AgentRecord | undefined;
@@ -110,6 +112,8 @@ export function ChatCommandBar({
     mode?: string;
     reasoningEffort?: string;
   }) => Promise<SessionConfigurationRecord>;
+  /** Portal target for the workspace Terminal trigger inside the PinHarness toolbar. */
+  terminalLauncherSlotRef?: RefObject<HTMLElement | null>;
 }) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -499,6 +503,7 @@ export function ChatCommandBar({
           sendingBlocked={sendingBlocked}
           onSend={sendCurrentText}
           onStop={() => stop.mutate(undefined)}
+          {...(terminalLauncherSlotRef ? { terminalLauncherSlotRef } : {})}
         />
         {configurationError && (
           <div

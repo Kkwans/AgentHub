@@ -75,7 +75,7 @@ export function ComposerSurface({
   return (
     <>
       <div
-        className="composer-input-surface relative flex min-w-0 items-end gap-2 bg-transparent px-3 pb-2 pt-3 sm:px-4"
+        className="composer-input-surface relative min-w-0 bg-transparent"
         data-focused={focused || undefined}
         data-read-only={readOnly || undefined}
       >
@@ -94,33 +94,37 @@ export function ComposerSurface({
             className="h-0.5 w-8 rounded-full bg-[hsl(var(--foreground-faint))] opacity-0 transition-opacity group-hover/resize:opacity-60"
           />
         </div>
-        <textarea
-          ref={inputRef}
-          aria-label="给 Agent 发送工程指令"
-          autoComplete="off"
-          name="message"
-          value={text}
-          onChange={(event) => onTextChange(event.target.value)}
-          onKeyDown={onKeyDown}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          onCompositionStart={onCompositionStart}
-          onCompositionEnd={onCompositionEnd}
-          placeholder={placeholder}
-          rows={2}
-          disabled={inputDisabled}
-          readOnly={readOnly}
-          data-active-run={activeRun ? 'true' : undefined}
-          className="w-full resize-none overflow-y-auto border-0 bg-transparent px-0 pb-1.5 pt-2 text-[13px] leading-[1.45] text-[hsl(var(--foreground))] placeholder-[hsl(var(--foreground-faint))] outline-none transition-[color] duration-150 focus:outline-none focus-visible:shadow-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-0 sm:pb-2.5 sm:pt-2.5"
-          style={{ height: `${inputHeight}px`, boxShadow: 'none' }}
-        />
-        {slashMenuOpen ? (
-          <SlashCommandMenu
-            commands={commands}
-            activeIndex={activeCommandIndex}
-            onSelect={onSelectCommand}
+        {/* Keep suggestions anchored to the editor edge without changing the
+            toolbar height, matching PinHarness's command-bar structure. */}
+        <div className="relative">
+          <textarea
+            ref={inputRef}
+            aria-label="给 Agent 发送工程指令"
+            autoComplete="off"
+            name="message"
+            value={text}
+            onChange={(event) => onTextChange(event.target.value)}
+            onKeyDown={onKeyDown}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            onCompositionStart={onCompositionStart}
+            onCompositionEnd={onCompositionEnd}
+            placeholder={placeholder}
+            rows={2}
+            disabled={inputDisabled}
+            readOnly={readOnly}
+            data-active-run={activeRun ? 'true' : undefined}
+            className="block w-full resize-none overflow-y-auto border-0 bg-transparent px-3 pb-1.5 pt-2 text-[13px] leading-relaxed text-[hsl(var(--foreground))] placeholder-[hsl(var(--foreground-faint))] outline-none transition-[color] duration-150 focus:outline-none focus-visible:shadow-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-4 sm:pb-2.5 sm:pt-2.5"
+            style={{ height: `${inputHeight}px`, boxShadow: 'none' }}
           />
-        ) : null}
+          {slashMenuOpen ? (
+            <SlashCommandMenu
+              commands={commands}
+              activeIndex={activeCommandIndex}
+              onSelect={onSelectCommand}
+            />
+          ) : null}
+        </div>
       </div>
       {stopError ? (
         <div

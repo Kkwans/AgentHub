@@ -13,7 +13,7 @@ import {
   X,
   type CompactPanel,
 } from '@agenthub/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '../../../components/Feedback';
 import { ChatCommandBar } from '../components/ChatCommandBar';
@@ -27,6 +27,10 @@ import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
 export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const [immersive, setImmersive] = useState(false);
+  // Keep the Terminal trigger in the CommandBar, where the PinHarness source
+  // places workspace actions. The dock itself remains a sibling only while
+  // expanded, so a closed Terminal never creates an extra grid row.
+  const terminalLauncherSlotRef = useRef<HTMLSpanElement>(null);
   const {
     id,
     session,
@@ -334,6 +338,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                       onSend={(input) => sendRun.mutateAsync(input)}
                       onStop={(runId) => stopRun.mutateAsync(runId)}
                       onUpdateConfiguration={(patch) => updateConfiguration.mutateAsync(patch)}
+                      terminalLauncherSlotRef={terminalLauncherSlotRef}
                     />
                   }
                 />
@@ -350,6 +355,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                     resizeTerminal={resizeTerminal}
                     closeTerminal={closeTerminal}
                     subscribe={subscribeTerminal}
+                    launcherSlotRef={terminalLauncherSlotRef}
                   />
                 </div>
               </div>
