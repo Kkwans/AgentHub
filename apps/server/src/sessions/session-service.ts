@@ -111,6 +111,11 @@ const CONTINUATION_SUMMARY_LIMIT = 8 * 1024;
 const CONTINUATION_TIMEOUT_MS = 30_000;
 type StoredSession = NonNullable<Awaited<ReturnType<SessionRepository<AgentHubDatabase>['get']>>>;
 
+interface ApprovalEffectEpoch {
+  activationId: string | undefined;
+  references: number;
+}
+
 interface ActiveSession {
   activationId: string;
   handle: AgentSessionHandle;
@@ -127,6 +132,7 @@ interface CancellationTimer {
 }
 
 export class SessionService {
+  private readonly approvalEpochs = new Map<string, ApprovalEffectEpoch>();
   private readonly active = new Map<string, ActiveSession>();
   private readonly preparationFences = new Set<string>();
   private readonly activationCommits = new Map<string, Promise<void>>();
@@ -657,37 +663,48 @@ export class SessionService {
         missingVariables: promptContext.missingVariables,
       });
     }
+    let admissionOwnershipLost = false;
     const gitBeforeSha = await this.git.readHead(session.cwd);
     try {
-      await this.runs.create({
-        id: runId,
-        sessionId,
-        taskId: session.taskId,
-        status: 'QUEUED',
-        dispatchState: 'PREPARING',
-        model: session.model,
-        mode: session.mode,
-        gitBeforeSha,
-        metadataJson: promptContext
-          ? {
-              promptContext: {
-                finalContextHash: createHash('sha256')
-                  .update(promptContext.finalContext)
-                  .digest('hex'),
-                items: promptContext.items.map((item) => ({
-                  promptId: item.promptId,
-                  versionId: item.versionId,
-                  version: item.version,
-                  label: item.label,
-                  contentHash: item.contentHash,
-                  bindingId: item.bindingId,
-                  slot: item.slot,
-                  targetType: item.targetType,
-                  targetId: item.targetId,
-                })),
-              },
-            }
-          : {},
+      await this.withActivationCommit(sessionId, async () => {
+        const current = await this.sessions.get(sessionId);
+        if (current?.status !== 'READY' || this.active.get(sessionId) !== active)
+          throw new AppError(409, 'SESSION_NOT_READY', 'Session 连接或状态已变化，未派发');
+        if (
+          this.preparationFences.has(sessionId) ||
+          (await this.runs.findBlockingForSession(sessionId))
+        )
+          throw new AppError(409, 'SESSION_RUN_UNRESOLVED', 'Session 有未决 Run，请先核对原操作');
+        await this.runs.create({
+          id: runId,
+          sessionId,
+          taskId: session.taskId,
+          status: 'QUEUED',
+          dispatchState: 'PREPARING',
+          model: session.model,
+          mode: session.mode,
+          gitBeforeSha,
+          metadataJson: promptContext
+            ? {
+                promptContext: {
+                  finalContextHash: createHash('sha256')
+                    .update(promptContext.finalContext)
+                    .digest('hex'),
+                  items: promptContext.items.map((item) => ({
+                    promptId: item.promptId,
+                    versionId: item.versionId,
+                    version: item.version,
+                    label: item.label,
+                    contentHash: item.contentHash,
+                    bindingId: item.bindingId,
+                    slot: item.slot,
+                    targetType: item.targetType,
+                    targetId: item.targetId,
+                  })),
+                },
+              }
+            : {},
+        });
       });
     } catch (error) {
       if (error instanceof DatabaseInvariantError && error.code === 'TASK_CANCELED')
@@ -697,6 +714,10 @@ export class SessionService {
       throw error;
     }
     try {
+      if (this.active.get(sessionId) !== active) {
+        admissionOwnershipLost = true;
+        throw new Error('Connection changed during Run admission');
+      }
       await this.captureGitSnapshot(runId, session.projectId, session.cwd, 'BEFORE');
       const userMessage = await this.messages.append({
         sessionId,
@@ -722,7 +743,12 @@ export class SessionService {
       await this.sessions.transition(sessionId, 'RUNNING');
       if (!(await this.runs.markDispatchAttempted(runId, sessionId)))
         throw new Error('Run admission changed before dispatch');
+      // No await separates this check from sendTurn below. A detached connection
+      // is still a proven pre-send failure even if the durable intent marker was written.
+      if (this.active.get(sessionId) !== active)
+        throw new Error('Connection changed before dispatch');
     } catch {
+      admissionOwnershipLost ||= this.active.get(sessionId) !== active;
       this.preparationFences.add(sessionId);
       try {
         const terminal = await this.runs.tryTransition(
@@ -740,9 +766,12 @@ export class SessionService {
         if (terminal.run.taskId && !this.taskLifecycle?.onRunStopped)
           throw new Error('Task lifecycle recovery observer missing');
         await this.notifyRunStopped(terminal.run, 'FAILED');
-        const current = await this.sessions.get(sessionId);
-        if (!current) throw new Error('Session missing');
-        if (current.status !== 'READY') await this.sessions.transition(sessionId, 'READY');
+        await this.withActivationCommit(sessionId, async () => {
+          if (admissionOwnershipLost || this.active.get(sessionId) !== active) return;
+          const current = await this.sessions.get(sessionId);
+          if (!current) throw new Error('Session missing');
+          if (current.status !== 'READY') await this.sessions.transition(sessionId, 'READY');
+        });
         await this.runs.patch(runId, {
           errorCode: 'RUN_PREPARATION_FAILED',
           errorMessage: 'Run 准备失败，尚未向 Agent 发送指令',
@@ -752,7 +781,10 @@ export class SessionService {
         // The durable pending code (or still-active Run) also fences admission.
         // Best-effort connection state is not the source of safety.
         try {
-          await this.safeSessionTransition(sessionId, 'DISCONNECTED');
+          await this.withActivationCommit(sessionId, async () => {
+            if (!admissionOwnershipLost && this.active.get(sessionId) === active)
+              await this.safeSessionTransition(sessionId, 'DISCONNECTED');
+          });
         } catch {
           /* Best effort includes the initial Session read. */
         }
@@ -1123,6 +1155,18 @@ export class SessionService {
     const delivery = await this.approvals.claimDelivery(deliveryId);
     if (!delivery) return;
 
+    const epoch = this.retainApprovalEpoch(delivery.sessionId);
+    try {
+      await this.dispatchClaimedApproval(delivery, epoch);
+    } finally {
+      this.releaseApprovalEpoch(delivery.sessionId, epoch);
+    }
+  }
+
+  private async dispatchClaimedApproval(
+    delivery: NonNullable<Awaited<ReturnType<typeof this.approvals.getDelivery>>>,
+    epoch: ApprovalEffectEpoch,
+  ): Promise<void> {
     const active = this.active.get(delivery.sessionId);
     if (!active) {
       const dead = await this.approvals.markDeliveryDead(
@@ -1131,7 +1175,7 @@ export class SessionService {
         '决定已保存，但 Session 已断开，未发送给 Agent',
       );
       if (dead) {
-        await this.convergeApprovalDeliveryFailure(dead, 'DEAD');
+        await this.convergeApprovalDeliveryFailure(dead, 'DEAD', epoch);
       }
       return;
     }
@@ -1143,7 +1187,7 @@ export class SessionService {
         'SESSION_ACTIVATION_CHANGED_BEFORE_DELIVERY',
         '决定已保存，但 Session 连接已变化，未发送给 Agent',
       );
-      if (dead) await this.convergeApprovalDeliveryFailure(dead, 'DEAD');
+      if (dead) await this.convergeApprovalDeliveryFailure(dead, 'DEAD', epoch);
       return;
     }
 
@@ -1204,33 +1248,40 @@ export class SessionService {
       : 'Agent 返回错误，无法确认是否已收到决定，为避免重复执行不会自动重发';
     const unknown = await this.approvals.markDeliveryUnknown(delivery.id, code, message);
     if (!unknown) return;
-    const detached = this.detachActive(delivery.sessionId, activationId);
-    if (detached) await this.closeHandleSafely(detached.handle);
-    await this.convergeApprovalDeliveryFailure(unknown, 'UNKNOWN');
+    await this.convergeApprovalDeliveryFailure(unknown, 'UNKNOWN', epoch);
   }
 
   private async convergeApprovalDeliveryFailure(
     delivery: NonNullable<Awaited<ReturnType<typeof this.approvals.getDelivery>>>,
     state: 'UNKNOWN' | 'DEAD',
+    epoch: ApprovalEffectEpoch,
   ): Promise<void> {
-    const transitioned = await this.runs.tryTransition(
-      delivery.runId,
-      ['STARTING', 'RUNNING', 'WAITING_APPROVAL'],
-      'DISCONNECTED',
-      {
-        finishedAt: new Date(),
-        errorCode: delivery.lastErrorCode ?? 'APPROVAL_DELIVERY_UNCONFIRMED',
-        errorMessage: delivery.lastErrorMessage ?? 'Approval 决定投递状态无法确认',
-      },
-    );
-    if (transitioned.changed && transitioned.run.taskId) {
+    const effect = await this.withActivationCommit(delivery.sessionId, async () => {
+      if (this.approvalEpochs.get(delivery.sessionId) !== epoch) return;
+      const result = await this.runs.convergeApprovalFailure(
+        delivery.sessionId,
+        delivery.runId,
+        delivery.lastErrorCode ?? 'APPROVAL_DELIVERY_UNCONFIRMED',
+        delivery.lastErrorMessage ?? 'Approval 决定投递状态无法确认',
+      );
+      if (!result.eligible || this.approvalEpochs.get(delivery.sessionId) !== epoch) return;
+      const detached = epoch.activationId
+        ? this.detachActive(delivery.sessionId, epoch.activationId)
+        : undefined;
+      return { result, detached };
+    });
+    if (effect?.detached) await this.closeHandleSafely(effect.detached.handle);
+    if (
+      effect?.result.changed &&
+      effect.result.run?.taskId &&
+      this.approvalEpochs.get(delivery.sessionId) === epoch
+    )
       await this.taskLifecycle?.onRunStopped?.(
-        transitioned.run.taskId,
-        transitioned.run.id,
+        effect.result.run.taskId,
+        effect.result.run.id,
         'DISCONNECTED',
       );
-    }
-    await this.safeSessionTransition(delivery.sessionId, 'DISCONNECTED');
+    // Delivery history is independent of eligibility to mutate the current connection.
     await this.publishApprovalDeliveryEvent(
       delivery,
       state === 'UNKNOWN' ? 'approval.delivery_unknown' : 'approval.delivery_aborted',
@@ -1284,6 +1335,7 @@ export class SessionService {
     if (['RUNNING', 'WAITING_APPROVAL'].includes(session.status)) {
       throw new AppError(409, 'SESSION_HAS_ACTIVE_RUN', '请先停止当前 Run 再关闭 Session');
     }
+    this.approvalEpochs.delete(id); // Only an accepted close revokes pending delivery effects.
     this.clearCancellationTimersForSession(id);
     this.configurationQueues.delete(id);
     const active = this.detachActive(id);
@@ -1349,6 +1401,7 @@ export class SessionService {
       projectId,
       consumer: Promise.resolve(),
     };
+    this.approvalEpochs.set(sessionId, { activationId, references: 0 });
     this.active.set(sessionId, active);
     active.consumer = this.consumeEvents(sessionId, projectId, handle, activationId);
   }
@@ -1709,10 +1762,33 @@ export class SessionService {
     return session;
   }
 
+  private retainApprovalEpoch(sessionId: string): ApprovalEffectEpoch {
+    let epoch = this.approvalEpochs.get(sessionId);
+    if (!epoch) {
+      epoch = { activationId: this.active.get(sessionId)?.activationId, references: 0 };
+      this.approvalEpochs.set(sessionId, epoch);
+    }
+    epoch.references++;
+    return epoch;
+  }
+
+  private releaseApprovalEpoch(sessionId: string, epoch: ApprovalEffectEpoch): void {
+    epoch.references--;
+    if (
+      epoch.references === 0 &&
+      this.approvalEpochs.get(sessionId) === epoch &&
+      (!this.active.has(sessionId) ||
+        this.active.get(sessionId)?.activationId !== epoch.activationId)
+    )
+      this.approvalEpochs.delete(sessionId);
+  }
+
   private detachActive(sessionId: string, activationId?: string): ActiveSession | undefined {
     const current = this.active.get(sessionId);
     if (!current || (activationId && current.activationId !== activationId)) return undefined;
     this.active.delete(sessionId);
+    const epoch = this.approvalEpochs.get(sessionId);
+    if (epoch && epoch.references === 0) this.approvalEpochs.delete(sessionId);
     return current;
   }
 

@@ -2617,6 +2617,72 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
     return cleared.map((run) => ({ id: run.id }));
   }
 
+  async convergeApprovalFailure(
+    sessionId: string,
+    runId: string,
+    errorCode: string,
+    errorMessage: string,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [candidate] = await transaction
+        .select()
+        .from(agentRuns)
+        .where(eq(agentRuns.id, runId))
+        .limit(1);
+      const skipped = { eligible: false as const, changed: false, run: undefined };
+      if (!candidate || candidate.sessionId !== sessionId) return skipped;
+      if (candidate.taskId)
+        await transaction
+          .select({ id: tasks.id })
+          .from(tasks)
+          .where(eq(tasks.id, candidate.taskId))
+          .for('update')
+          .limit(1);
+      const [session] = await transaction
+        .select()
+        .from(agentSessions)
+        .where(eq(agentSessions.id, sessionId))
+        .for('update')
+        .limit(1);
+      if (
+        !session ||
+        session.latestRunId !== runId ||
+        (session.taskId ?? null) !== (candidate.taskId ?? null) ||
+        !['READY', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED'].includes(session.status)
+      )
+        return skipped;
+      const [current] = await transaction
+        .select()
+        .from(agentRuns)
+        .where(eq(agentRuns.id, runId))
+        .for('update')
+        .limit(1);
+      if (
+        !current ||
+        current.sessionId !== sessionId ||
+        !['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED'].includes(current.status)
+      )
+        return skipped;
+      const changed = current.status !== 'DISCONNECTED';
+      let run = current;
+      if (changed) {
+        const [updated] = await transaction
+          .update(agentRuns)
+          .set({ status: 'DISCONNECTED', finishedAt: new Date(), errorCode, errorMessage })
+          .where(eq(agentRuns.id, runId))
+          .returning();
+        if (!updated) throw new DatabaseInvariantError('RUN_NOT_FOUND', 'Run 不存在');
+        run = updated;
+      }
+      if (session.status !== 'DISCONNECTED')
+        await transaction
+          .update(agentSessions)
+          .set({ status: 'DISCONNECTED', lastActiveAt: new Date() })
+          .where(eq(agentSessions.id, sessionId));
+      return { eligible: true as const, changed, run };
+    });
+  }
+
   async create(input: typeof agentRuns.$inferInsert) {
     return this.db.transaction(async (transaction) => {
       // Task callbacks take the same Task -> Session locks. Do not insert first:

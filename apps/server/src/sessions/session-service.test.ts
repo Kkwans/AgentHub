@@ -1009,6 +1009,454 @@ describe('Session/Run/Approval 持久化闭环', () => {
     return { ...fixture, adapter, tasks, taskService, task, session };
   }
 
+  it('AH060消息准备挂起后close已detach，派发前重验不调用旧handle', async () => {
+    const f = await preparationFixture();
+    let releaseMessage!: () => void;
+    let entered = false;
+    const append = f.repositories.messages.append.bind(f.repositories.messages);
+    vi.spyOn(f.repositories.messages, 'append').mockImplementationOnce(async (input) => {
+      entered = true;
+      await new Promise<void>((resolve) => {
+        releaseMessage = resolve;
+      });
+      return append(input);
+    });
+    const send = vi.spyOn(f.adapter.handles[0]!, 'sendTurn');
+    const originalClose = f.adapter.handles[0]!.close.bind(f.adapter.handles[0]);
+    let releaseClose!: () => void;
+    let closing = false;
+    vi.spyOn(f.adapter.handles[0]!, 'close').mockImplementationOnce(async () => {
+      closing = true;
+      await new Promise<void>((resolve) => {
+        releaseClose = resolve;
+      });
+      await originalClose();
+    });
+    const start = f.service
+      .startRun(f.session.id, { text: '晚期准备' })
+      .catch((error: unknown) => error);
+    await waitFor(async () => entered);
+    const closed = f.service.close(f.session.id);
+    await waitFor(async () => closing);
+    try {
+      releaseMessage();
+      expect(await start).toMatchObject({ code: 'RUN_PREPARATION_FAILED' });
+      expect(send).not.toHaveBeenCalled();
+      expect((await f.repositories.runs.list(f.session.id))[0]).toMatchObject({
+        status: 'FAILED',
+        dispatchState: 'PREPARING',
+        errorCode: 'RUN_PREPARATION_FAILED',
+      });
+      releaseClose();
+      expect((await closed).status).toBe('CLOSED');
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('CLOSED');
+    } finally {
+      releaseMessage();
+      releaseClose();
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH060无连接DEAD历史持久化且无active epoch引用最终回收', async () => {
+    const f = await preparationFixture('approval-error');
+    const send = vi.spyOn(f.adapter.handles[0]!, 'resolveApproval');
+    const run = await f.service.startRun(f.session.id, { text: 'DEAD归属' });
+    await waitFor(
+      async () => (await f.repositories.runs.get(run.id))?.status === 'WAITING_APPROVAL',
+    );
+    const approval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+    await f.adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+    );
+    const dispatch = vi.spyOn(
+      f.service as unknown as { dispatchApprovalDecision: (id: string) => Promise<void> },
+      'dispatchApprovalDecision',
+    );
+    try {
+      await f.service.resolveApproval(approval.id, 'allow');
+      await dispatch.mock.results[0]!.value;
+      expect((await f.service.getApproval(approval.id)).deliveryState).toBe('DEAD');
+      expect((await f.repositories.runs.get(run.id))?.status).toBe('DISCONNECTED');
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
+      expect(
+        (f.service as unknown as { approvalEpochs: Map<string, unknown> }).approvalEpochs.has(
+          f.session.id,
+        ),
+      ).toBe(false);
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH060 CANCELING仍由取消路径负责，旧投递UNKNOWN不关handle', async () => {
+    const f = await approvalConvergenceFixture();
+    const close = vi.spyOn(f.adapter.handles[0]!, 'close');
+    try {
+      await f.service.cancelRun(f.session.id, f.first.id);
+      f.rejectDelivery(new Error('controlled rejection'));
+      await f.deliveryDone;
+      expect((await f.service.getApproval(f.approval.id)).deliveryState).toBe('UNKNOWN');
+      expect((await f.repositories.runs.get(f.first.id))?.status).toBe('CANCELING');
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['close', 'resume'] as const)(
+    'AH060准备补偿Task回调挂起期间%s接管，迟到不写新Session',
+    async (action) => {
+      const f = await preparationFixture();
+      Object.assign(f.adapter, {
+        resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+      });
+      vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(
+        new Error('preparation failed'),
+      );
+      let release!: () => void;
+      let entered = false;
+      const stopped = f.taskService.onRunStopped.bind(f.taskService);
+      vi.spyOn(f.taskService, 'onRunStopped').mockImplementationOnce(async (task, run) => {
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return stopped(task, run);
+      });
+      const pending = f.service
+        .startRun(f.session.id, { text: '准备补偿' })
+        .catch((error: unknown) => error);
+      await waitFor(async () => entered);
+      try {
+        if (action === 'close') await f.service.close(f.session.id);
+        else {
+          await f.adapter.handles[0]!.close();
+          await waitFor(
+            async () =>
+              (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+          );
+          await f.service.resume(f.session.id);
+        }
+        const transition = vi.spyOn(f.repositories.sessions, 'transition');
+        release();
+        expect(await pending).toMatchObject({ code: 'RUN_PREPARATION_FAILED' });
+        expect(transition).not.toHaveBeenCalled();
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe(
+          action === 'close' ? 'CLOSED' : 'READY',
+        );
+        expect((await f.repositories.runs.list(f.session.id))[0]).toMatchObject({
+          status: 'FAILED',
+          dispatchState: 'PREPARING',
+          errorCode: 'RUN_PREPARATION_FAILED',
+        });
+      } finally {
+        release();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('AH060 Run已插入时close撤销：不send、不留QUEUED、不复活CLOSED', async () => {
+    const f = await preparationFixture();
+    let release!: () => void;
+    let inserted = false;
+    const create = f.repositories.runs.create.bind(f.repositories.runs);
+    vi.spyOn(f.repositories.runs, 'create').mockImplementationOnce(async (input) => {
+      const result = await create(input);
+      inserted = true;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return result;
+    });
+    const send = vi.spyOn(f.adapter.handles[0]!, 'sendTurn');
+    const close = vi.spyOn(f.adapter.handles[0]!, 'close');
+    const start = f.service
+      .startRun(f.session.id, { text: '取消准入' })
+      .catch((error: unknown) => error);
+    await waitFor(async () => inserted);
+    const closing = f.service.close(f.session.id);
+    await waitFor(async () => close.mock.calls.length === 1);
+    try {
+      release();
+      expect(await start).toMatchObject({ code: 'RUN_PREPARATION_FAILED' });
+      expect((await closing).status).toBe('CLOSED');
+      expect(send).not.toHaveBeenCalled();
+      const runs = await f.repositories.runs.list(f.session.id);
+      expect(runs).toHaveLength(1);
+      expect(runs[0]).toMatchObject({
+        status: 'FAILED',
+        dispatchState: 'PREPARING',
+        errorCode: 'RUN_PREPARATION_FAILED',
+      });
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('CLOSED');
+      expect((await f.tasks.get(f.task.id))?.status).toBe('BLOCKED');
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['failure-first', 'admission-first'] as const)(
+    'AH060失败收敛与新Run提交共享gate：%s',
+    async (order) => {
+      const f = await approvalConvergenceFixture();
+      f.adapter.handles[0]!.complete(f.first.id);
+      await waitFor(async () => (await f.tasks.get(f.task.id))?.status === 'WAITING_REVIEW');
+      let release!: () => void;
+      let waiting = false;
+      const failure = f.repositories.runs.convergeApprovalFailure.bind(f.repositories.runs);
+      const create = f.repositories.runs.create.bind(f.repositories.runs);
+      const failed = vi
+        .spyOn(f.repositories.runs, 'convergeApprovalFailure')
+        .mockImplementation(async (...args) => {
+          if (order === 'failure-first') {
+            waiting = true;
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          }
+          return failure(...args);
+        });
+      const admission = vi
+        .spyOn(f.repositories.runs, 'create')
+        .mockImplementation(async (input) => {
+          if (order === 'admission-first') {
+            waiting = true;
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          }
+          return create(input);
+        });
+      const close = vi.spyOn(f.adapter.handles[0]!, 'close');
+      let next: ReturnType<typeof f.service.startRun>;
+      if (order === 'failure-first') {
+        f.rejectDelivery(new Error('controlled rejection'));
+        await waitFor(async () => waiting);
+        next = f.service.startRun(f.session.id, { text: '新轮次' });
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(admission).not.toHaveBeenCalled();
+      } else {
+        next = f.service.startRun(f.session.id, { text: '新轮次' });
+        await waitFor(async () => waiting);
+        f.rejectDelivery(new Error('controlled rejection'));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(failed).not.toHaveBeenCalled();
+      }
+      try {
+        release();
+        const run = await next;
+        await f.deliveryDone;
+        expect((await f.repositories.sessions.get(f.session.id))?.latestRunId).toBe(run.id);
+        expect((await f.repositories.runs.get(f.first.id))?.status).toBe('COMPLETED');
+        expect(close).not.toHaveBeenCalled();
+        expect((await f.service.getApproval(f.approval.id)).deliveryState).toBe('UNKNOWN');
+      } finally {
+        release();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('AH060拒绝close不撤销lease，正常UNKNOWN收敛后refs释放', async () => {
+    const f = await approvalConvergenceFixture();
+    const epochs = (f.service as unknown as { approvalEpochs: Map<string, { references: number }> })
+      .approvalEpochs;
+    const epoch = epochs.get(f.session.id);
+    expect(epoch?.references).toBe(1);
+    await expect(f.service.close(f.session.id)).rejects.toMatchObject({
+      code: 'SESSION_HAS_ACTIVE_RUN',
+    });
+    expect(epochs.get(f.session.id)).toBe(epoch);
+    try {
+      f.rejectDelivery(new Error('controlled rejection'));
+      await f.deliveryDone;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
+      expect((await f.repositories.runs.get(f.first.id))?.status).toBe('DISCONNECTED');
+      expect((await f.service.getApproval(f.approval.id)).deliveryState).toBe('UNKNOWN');
+      expect(epoch?.references).toBe(0);
+      expect(epochs.has(f.session.id)).toBe(false);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  async function approvalConvergenceFixture() {
+    const f = await preparationFixture('approval-error');
+    Object.assign(f.adapter, {
+      resumeSession: async (input: CreateAgentSessionInput) => {
+        const handle = new ControlledHandle(input, 'never');
+        f.adapter.handles.push(handle);
+        return handle;
+      },
+    });
+    let rejectDelivery!: (error: Error) => void;
+    let delivering = false;
+    vi.spyOn(f.adapter.handles[0]!, 'resolveApproval').mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectDelivery = reject;
+          delivering = true;
+        }),
+    );
+    const first = await f.service.startRun(f.session.id, { text: '权限收敛审计' });
+    await waitFor(
+      async () => (await f.repositories.runs.get(first.id))?.status === 'WAITING_APPROVAL',
+    );
+    const approval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+    const dispatch = vi.spyOn(
+      f.service as unknown as { dispatchApprovalDecision: (id: string) => Promise<void> },
+      'dispatchApprovalDecision',
+    );
+    await f.service.resolveApproval(approval.id, 'allow');
+    await waitFor(async () => delivering);
+    return {
+      ...f,
+      first,
+      approval,
+      rejectDelivery,
+      deliveryDone: dispatch.mock.results[0]!.value as Promise<void>,
+    };
+  }
+
+  it('AH060：同activation显式R2后旧投递失败不关闭R2 handle', async () => {
+    const f = await approvalConvergenceFixture();
+    const handle = f.adapter.handles[0]!;
+    const close = vi.spyOn(handle, 'close');
+    try {
+      handle.complete(f.first.id);
+      await waitFor(async () => (await f.tasks.get(f.task.id))?.status === 'WAITING_REVIEW');
+      const second = await f.service.startRun(f.session.id, { text: '同连接显式新Run' });
+      await waitFor(
+        async () => (await f.repositories.runs.get(second.id))?.status === 'WAITING_APPROVAL',
+      );
+      expect(close).not.toHaveBeenCalled();
+      f.rejectDelivery(new Error('old delivery rejected'));
+      await f.deliveryDone;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('WAITING_APPROVAL');
+      expect(close).not.toHaveBeenCalled();
+      expect((await f.repositories.runs.get(f.first.id))?.status).toBe('COMPLETED');
+      expect((await f.repositories.runs.get(second.id))?.status).toBe('WAITING_APPROVAL');
+      expect((await f.service.getApproval(f.approval.id)).deliveryState).toBe('UNKNOWN');
+    } finally {
+      f.rejectDelivery(new Error('cleanup'));
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH060：恢复及新Run后旧投递拒绝不影响新Session', async () => {
+    const f = await approvalConvergenceFixture();
+    await f.adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+    );
+    try {
+      await f.service.resume(f.session.id);
+      const epochs = (f.service as unknown as { approvalEpochs: Map<string, unknown> })
+        .approvalEpochs;
+      const newEpoch = epochs.get(f.session.id);
+      const newHandle = f.adapter.handles[1]!;
+      const close = vi.spyOn(newHandle, 'close');
+      newHandle.complete(f.first.id);
+      await waitFor(async () => (await f.tasks.get(f.task.id))?.status === 'WAITING_REVIEW');
+      const second = await f.service.startRun(f.session.id, { text: '显式新Run' });
+      f.rejectDelivery(new Error('late delivery rejection'));
+      await f.deliveryDone;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('RUNNING');
+      expect((await f.repositories.runs.get(f.first.id))?.status).toBe('COMPLETED');
+      expect((await f.repositories.runs.get(second.id))?.status).toBe('RUNNING');
+      expect((await f.tasks.get(f.task.id))?.status).toBe('WAITING_REVIEW');
+      expect((await f.service.getApproval(f.approval.id)).deliveryState).toBe('UNKNOWN');
+      expect(close).not.toHaveBeenCalled();
+      expect(epochs.get(f.session.id)).toBe(newEpoch);
+    } finally {
+      f.rejectDelivery(new Error('cleanup'));
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH060：旧handle关闭挂起期间可恢复，迟到清理不影响新Session', async () => {
+    const f = await approvalConvergenceFixture();
+    let releaseClose!: () => void;
+    let closing = false;
+    const originalClose = f.adapter.handles[0]!.close.bind(f.adapter.handles[0]);
+    const closeOld = vi.spyOn(f.adapter.handles[0]!, 'close').mockImplementation(async () => {
+      closing = true;
+      await new Promise<void>((resolve) => {
+        releaseClose = resolve;
+      });
+      await originalClose();
+    });
+    f.rejectDelivery(new Error('delivery rejection'));
+    await waitFor(async () => closing);
+    try {
+      await waitFor(
+        async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+      );
+      await f.service.resume(f.session.id);
+      const closeNew = vi.spyOn(f.adapter.handles[1]!, 'close');
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+      releaseClose();
+      await f.deliveryDone;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+      expect((await f.repositories.runs.get(f.first.id))?.status).toBe('DISCONNECTED');
+      expect(closeOld).toHaveBeenCalledTimes(1);
+      expect(closeNew).not.toHaveBeenCalled();
+    } finally {
+      releaseClose();
+      closeOld.mockRestore();
+      await originalClose();
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH060：双权限合法DEAD收敛打开恢复窗口，旧Task回调不改新Session', async () => {
+    const f = await approvalConvergenceFixture();
+    f.adapter.handles[0]!.requestApproval('second-permission');
+    await waitFor(
+      async () => (await f.repositories.approvals.listPending(f.session.id)).length === 1,
+    );
+    const secondApproval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+    let release!: () => void;
+    let stopped = false;
+    const originalStop = f.taskService.onRunStopped.bind(f.taskService);
+    vi.spyOn(f.taskService, 'onRunStopped').mockImplementationOnce(async (task, run) => {
+      stopped = true;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return originalStop(task, run);
+    });
+    f.rejectDelivery(new Error('first delivery rejected'));
+    await waitFor(async () => stopped);
+    try {
+      expect((await f.repositories.runs.get(f.first.id))?.status).toBe('DISCONNECTED');
+      // A second user decision has no active connection: its durable DEAD convergence is another real path.
+      await f.service.resolveApproval(secondApproval.id, 'allow');
+      await waitFor(
+        async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+      );
+      expect((await f.service.getApproval(secondApproval.id)).deliveryState).toBe('DEAD');
+      await f.service.resume(f.session.id);
+      const close = vi.spyOn(f.adapter.handles[1]!, 'close');
+      const taskBefore = (await f.tasks.get(f.task.id))?.status;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+      release();
+      await f.deliveryDone;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+      expect((await f.tasks.get(f.task.id))?.status).toBe(taskBefore);
+      expect((await f.repositories.runs.get(f.first.id))?.status).toBe('DISCONNECTED');
+      expect(await f.repositories.runs.list(f.session.id)).toHaveLength(1);
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
   it.each(['old-write', 'new-ready', 'close-queued'] as const)(
     'AH059真实提交barrier顺序%s保护activation交接',
     async (order) => {
@@ -1051,13 +1499,15 @@ describe('Session/Run/Approval 持久化闭环', () => {
       const transition = f.repositories.sessions.transition.bind(f.repositories.sessions);
       vi.spyOn(f.repositories.sessions, 'transition').mockImplementation(
         async (id, to, patch, options) => {
+          const result = await transition(id, to, patch, options);
           if (order !== 'new-ready' && to === 'DISCONNECTED' && !oldWaiting) {
+            // The DB commit is visible while its completion is still pending in the short gate.
+            // Approval convergence now shares this gate, so it cannot be a bypassing writer.
             oldWaiting = true;
             await new Promise<void>((resolve) => {
               releaseOld = resolve;
             });
           }
-          const result = await transition(id, to, patch, options);
           if (order === 'new-ready' && to === 'READY') {
             readyWaiting = true;
             await new Promise<void>((resolve) => {
@@ -2766,6 +3216,18 @@ class ControlledHandle implements AgentSessionHandle {
   async close(): Promise<void> {
     this.closed = true;
     for (const resolve of this.waiters.splice(0)) resolve({ value: undefined, done: true });
+  }
+
+  requestApproval(id: string): void {
+    this.emit(
+      'approval.requested',
+      {
+        approvalId: id,
+        title: '并发权限请求',
+        options: [{ id: 'allow', label: '允许一次', kind: 'allow_once' }],
+      },
+      this.runId,
+    );
   }
 
   complete(runId: string): void {
