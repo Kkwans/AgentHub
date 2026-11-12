@@ -2,9 +2,10 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { api } from '../../../lib/api';
 import type { ApprovalRecord, EventRecord } from '../../../lib/api';
 import type { ComponentProps } from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 
 import { ChatConversationView } from './ChatConversationView';
 
@@ -47,8 +48,13 @@ const props: ComponentProps<typeof ChatConversationView> = {
   onResolveApproval: vi.fn(),
 };
 
+beforeEach(() => {
+  vi.spyOn(api, 'get').mockImplementation(() => new Promise(() => undefined));
+});
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
   window.sessionStorage.clear();
 });
 
@@ -172,3 +178,49 @@ it.each(['DELIVERED', 'UNKNOWN', 'DEAD', 'QUEUED'] as const)(
     expect(submit).toHaveBeenCalledTimes(1);
   },
 );
+
+it('投递读取失败显示独立只读重试，不重新提交权限决定', async () => {
+  const approval: ApprovalRecord = {
+    id: 'approval-read',
+    sessionId: props.session.id,
+    runId: 'run-read',
+    title: '权限决定',
+    description: null,
+    status: 'PENDING',
+    optionsJson: [{ id: 'allow', label: '允许一次', kind: 'allow_once' }],
+    selectedOptionId: null,
+    deliveryId: null,
+    deliveryState: null,
+    deliveryAttemptCount: null,
+    deliveryErrorCode: null,
+    deliveryErrorMessage: null,
+  };
+  const saved: ApprovalRecord = {
+    ...approval,
+    status: 'APPROVED',
+    selectedOptionId: 'allow',
+    deliveryId: 'delivery-read',
+    deliveryState: 'DISPATCHING',
+    deliveryAttemptCount: 1,
+  };
+  const submit = vi.fn(async () => saved);
+  vi.mocked(api.get)
+    .mockRejectedValueOnce(new Error('read failed'))
+    .mockResolvedValueOnce({ ...saved, deliveryState: 'DELIVERED' });
+  render(
+    <MemoryRouter>
+      <ChatConversationView
+        {...props}
+        approvals={{ ...props.approvals, data: [approval] }}
+        onResolveApproval={submit}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: '允许一次' }));
+  const retry = await screen.findByRole('button', { name: '重新查询投递状态' });
+  expect(screen.queryByRole('button', { name: '重试此选项' })).not.toBeInTheDocument();
+  fireEvent.click(retry);
+  await screen.findByText('决定已保存，Agent 已确认接收。', { exact: true });
+  expect(submit).toHaveBeenCalledTimes(1);
+  expect(api.get).toHaveBeenCalledTimes(2);
+});

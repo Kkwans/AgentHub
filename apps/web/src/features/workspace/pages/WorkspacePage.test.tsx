@@ -443,6 +443,15 @@ describe('WorkspacePage 数据分区可靠性', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path === `/api/v1/approvals?sessionId=${session.id}`) return jsonResponse([approval]);
+      if (path === '/api/v1/approvals/approval-1')
+        return jsonResponse({
+          ...approval,
+          status: 'APPROVED',
+          selectedOptionId: 'allow',
+          deliveryId: 'delivery-1',
+          deliveryState: 'QUEUED',
+          deliveryAttemptCount: 0,
+        });
       if (path === '/api/v1/approvals/approval-1/resolve' && init?.method === 'POST') {
         attempts += 1;
         return attempts === 1

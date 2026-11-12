@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuthMode, useAuthUser } from '../../../components/AccessGate';
-import { authSession, type ApprovalRecord } from '../../../lib/api';
+import { api, authSession, type ApprovalRecord } from '../../../lib/api';
 import {
   approvalDeliveryPresentation,
   mergeDeliveryObservation,
@@ -15,6 +15,8 @@ type Resolution = {
   pending: boolean;
   error?: Error;
   observation?: DeliveryObservation;
+  readError?: string | undefined;
+  checking?: boolean;
 };
 export function useApprovalResolution(
   sessionId: string,
@@ -48,6 +50,8 @@ export function useApprovalResolution(
   const inFlight = useRef(new Set<string>());
   const [resolution, setResolution] = useState<Resolution>();
   const [, redraw] = useState(0);
+  const [readAttempt, retryRead] = useState(0);
+  const activeRead = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
     mounted.current = true;
     const stop = authSession.onAuthorizationRequired(() => {
@@ -141,16 +145,161 @@ export function useApprovalResolution(
     resolution.sequence === sequence.current
       ? resolution
       : undefined;
-  const feedback = current?.observation
-    ? current.observation.conflict
-      ? {
-          message: '投递记录不一致，无法确认 Agent 是否收到。请刷新核对；不会自动重发。',
-          tone: 'attention' as const,
-        }
-      : approvalDeliveryPresentation(current.observation.approval.deliveryState)
-    : undefined;
+
+  const terminalReceipt = Boolean(
+    current?.observation &&
+    (current.observation.conflict ||
+      ['DELIVERED', 'UNKNOWN', 'DEAD'].includes(current.observation.approval.deliveryState ?? '')),
+  );
+  const receipt = current?.observation?.approval;
+  const receiptOperation = current?.sequence;
+  useEffect(() => {
+    if (!receipt || terminalReceipt || receiptOperation === undefined || revoked.current || !scope)
+      return;
+    const frozen = receipt;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let requestTimer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    let count = 0;
+    const live = () =>
+      !stopped &&
+      mounted.current &&
+      !revoked.current &&
+      owner.current === identity &&
+      sequence.current === receiptOperation;
+    const change = (update: (value: Resolution) => Resolution) => {
+      if (live())
+        setResolution((value) =>
+          value?.identity === identity && value.sequence === receiptOperation
+            ? update(value)
+            : value,
+        );
+    };
+    const failure = () =>
+      change((value) => ({
+        ...value,
+        checking: false,
+        readError: '决定已保存，但无法核验 Agent 接收状态。可重新查询；不会重新提交决定。',
+      }));
+    const stopRead = () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      if (requestTimer) clearTimeout(requestTimer);
+      controller?.abort();
+      if (activeRead.current === controller) activeRead.current = undefined;
+    };
+    const deadline = setTimeout(() => {
+      if (live()) failure();
+      stopRead();
+    }, 60_000);
+    const query = async () => {
+      if (!live()) return;
+      if (count++ >= 20) {
+        failure();
+        return;
+      }
+      controller = new AbortController();
+      activeRead.current = controller;
+      change((value) => ({ ...value, checking: true, readError: undefined }));
+      requestTimer = setTimeout(() => {
+        if (live()) failure();
+        controller?.abort();
+        stopped = true;
+        if (activeRead.current === controller) activeRead.current = undefined;
+      }, 10_000);
+      try {
+        const result = await api.get<ApprovalRecord>(
+          '/approvals/' + encodeURIComponent(frozen.id),
+          { signal: controller.signal },
+        );
+        if (!live()) return;
+        if (
+          !result ||
+          typeof result !== 'object' ||
+          result.id !== frozen.id ||
+          result.sessionId !== frozen.sessionId ||
+          result.runId !== frozen.runId ||
+          result.selectedOptionId !== frozen.selectedOptionId ||
+          result.deliveryId !== frozen.deliveryId ||
+          !['APPROVED', 'REJECTED'].includes(result.status) ||
+          ![
+            null,
+            'QUEUED',
+            'CLAIMED',
+            'DISPATCHING',
+            'RETRY_WAIT',
+            'DELIVERED',
+            'UNKNOWN',
+            'DEAD',
+          ].includes(result.deliveryState) ||
+          (result.deliveryState !== null && !result.deliveryId)
+        )
+          throw new Error('receipt identity mismatch');
+        change((value) =>
+          value.observation
+            ? {
+                ...value,
+                checking: false,
+                readError: undefined,
+                observation: mergeDeliveryObservation(value.observation, result),
+              }
+            : value,
+        );
+        if (!['DELIVERED', 'UNKNOWN', 'DEAD'].includes(result.deliveryState ?? ''))
+          timer = setTimeout(() => void query(), 3_000);
+      } catch {
+        if (live()) failure();
+      } finally {
+        if (requestTimer) clearTimeout(requestTimer);
+        if (activeRead.current === controller) activeRead.current = undefined;
+      }
+    };
+    void query();
+    return () => {
+      clearTimeout(deadline);
+      stopRead();
+    };
+    // Receipt identity is immutable for this decision; updates must not reset the polling budget.
+  }, [
+    identity,
+    receiptOperation,
+    receipt?.id,
+    receipt?.deliveryId,
+    terminalReceipt,
+    readAttempt,
+    scope,
+  ]);
+  const retryDeliveryRead = () => {
+    if (
+      !mounted.current ||
+      revoked.current ||
+      owner.current !== identity ||
+      !current?.readError ||
+      current.sequence !== sequence.current ||
+      activeRead.current !== undefined ||
+      current.checking ||
+      terminalReceipt
+    )
+      return;
+    retryRead((attempt) => attempt + 1);
+  };
+  const feedback =
+    current?.readError && !terminalReceipt
+      ? { message: current.readError, tone: 'attention' as const }
+      : current?.observation
+        ? current.observation.conflict
+          ? {
+              message: '投递记录不一致，无法确认 Agent 是否收到。请刷新核对；不会自动重发。',
+              tone: 'attention' as const,
+            }
+          : approvalDeliveryPresentation(current.observation.approval.deliveryState)
+        : undefined;
   return {
     resolveApproval: resolve,
+    retryDeliveryRead,
+    deliveryReadError: terminalReceipt ? undefined : current?.readError,
+    deliveryChecking: current?.checking ?? false,
     approvalFeedback: feedback,
     resolving: current?.pending ? current.variables.id : undefined,
     resolveError: current?.error,

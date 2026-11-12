@@ -130,8 +130,16 @@ export const ChatConversationView = memo(function ChatConversationView({
   /** PinHarness keeps the CommandBar adjacent to the conversation in this source shell. */
   composer?: ReactNode;
 }) {
-  const { approvalFeedback, resolving, resolveError, resolveVariables, resolveApproval } =
-    useApprovalResolution(session.id, approvals.data, onResolveApproval);
+  const {
+    approvalFeedback,
+    resolving,
+    resolveError,
+    resolveVariables,
+    resolveApproval,
+    retryDeliveryRead,
+    deliveryReadError,
+    deliveryChecking,
+  } = useApprovalResolution(session.id, approvals.data, onResolveApproval);
   const turns = buildConversationTurns(
     buildConversationTimeline(messages.data ?? [], events.data ?? [], approvals.data ?? []),
   );
@@ -561,6 +569,11 @@ export const ChatConversationView = memo(function ChatConversationView({
               aria-live="polite"
             >
               {approvalFeedback.message}
+              {deliveryReadError && (
+                <button type="button" disabled={deliveryChecking} onClick={retryDeliveryRead}>
+                  重新查询投递状态
+                </button>
+              )}
             </div>
           )}
           {messages.isLoading && <LoadingState label="正在读取消息" />}

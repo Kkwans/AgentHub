@@ -273,8 +273,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export const api = {
-  get<T>(path: string): Promise<T> {
-    return request<T>(path);
+  get<T>(path: string, options?: { signal?: AbortSignal }): Promise<T> {
+    return request<T>(path, options);
   },
   post<T>(path: string, body?: unknown): Promise<T> {
     return request<T>(path, {

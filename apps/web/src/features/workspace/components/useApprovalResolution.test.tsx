@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { api } from '../../../lib/api';
 import { act, cleanup, renderHook } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { authSession } from '../../../lib/auth-api';
 import type { ApprovalRecord } from '../../../lib/api';
 import { useApprovalResolution } from './useApprovalResolution';
@@ -9,8 +10,13 @@ vi.mock('../../../components/AccessGate', () => ({
   useAuthMode: () => auth.mode,
   useAuthUser: () => auth.user,
 }));
+beforeEach(() => {
+  vi.spyOn(api, 'get').mockImplementation(() => new Promise(() => undefined));
+});
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
   auth.mode = 'local_trusted';
   auth.user = null;
 });
@@ -206,4 +212,158 @@ it.each([null, undefined])('异常POST返回%s只提示身份无法确认', asyn
   });
   expect(h.result.current.resolveError?.message).toContain('返回身份无法确认');
   expect(h.result.current.approvalFeedback).toBeUndefined();
+});
+
+it.each(['DELIVERED', 'UNKNOWN', 'DEAD'] as const)(
+  'pending列表消失后单条GET确认%s，终态停查无POST',
+  async (state) => {
+    vi.useFakeTimers();
+    vi.mocked(api.get).mockResolvedValue(decided(state));
+    const h = mount();
+    await act(async () => {
+      await h.result.current.resolveApproval(variables);
+    });
+    h.rerender({ sessionId: pending.sessionId, approvals: [] });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith('/approvals/approval-a', {
+      signal: expect.any(AbortSignal),
+    });
+    expect(h.result.current.approvalFeedback?.tone).toBe(
+      state === 'DELIVERED' ? 'confirmed' : 'attention',
+    );
+    expect(h.submit).toHaveBeenCalledTimes(1);
+    expect(h.result.current.resolveError).toBeUndefined();
+  },
+);
+it('单条读取失败仅提供只读重试，不走重新决定', async () => {
+  vi.mocked(api.get)
+    .mockRejectedValueOnce(new Error('read failed'))
+    .mockResolvedValueOnce(decided('DELIVERED'));
+  const h = mount();
+  await act(async () => {
+    await h.result.current.resolveApproval(variables);
+  });
+  expect(h.result.current.deliveryReadError).toContain('无法核验');
+  expect(h.result.current.resolveError).toBeUndefined();
+  await act(async () => {
+    h.result.current.retryDeliveryRead();
+  });
+  expect(h.result.current.approvalFeedback?.tone).toBe('confirmed');
+  expect(h.submit).toHaveBeenCalledTimes(1);
+  expect(api.get).toHaveBeenCalledTimes(2);
+});
+it.each(['session', 'auth', 'decision'] as const)(
+  '单条GET在%s变化后取消并忽略迟到结果',
+  async (change) => {
+    const query = deferred();
+    vi.mocked(api.get).mockReturnValueOnce(query.promise as never);
+    const h = mount();
+    await act(async () => {
+      await h.result.current.resolveApproval(variables);
+    });
+    const signal = vi.mocked(api.get).mock.calls[0]?.[1]?.signal;
+    if (change === 'session') h.rerender({ sessionId: 'session-b', approvals: [] });
+    if (change === 'auth') act(() => authSession.notifyAuthorizationRequired());
+    if (change === 'decision') {
+      const next = { ...pending, id: 'approval-b' };
+      h.rerender({ sessionId: pending.sessionId, approvals: [next] });
+      await act(async () => {
+        await h.result.current.resolveApproval({ id: next.id, optionId: 'allow' });
+      });
+    }
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      query.resolve(decided('DELIVERED'));
+    });
+    expect(h.result.current.approvalFeedback?.tone).not.toBe('confirmed');
+  },
+);
+it.each(['sessionId', 'runId', 'selectedOptionId', 'deliveryId'] as const)(
+  '单条GET错误%s不可借用确认',
+  async (field) => {
+    vi.mocked(api.get).mockResolvedValue({ ...decided('DELIVERED'), [field]: 'wrong' });
+    const h = mount();
+    await act(async () => {
+      await h.result.current.resolveApproval(variables);
+    });
+    expect(h.result.current.deliveryReadError).toContain('无法核验');
+    expect(h.result.current.approvalFeedback?.tone).toBe('attention');
+    expect(h.result.current.resolveError).toBeUndefined();
+  },
+);
+it('单条GET挂起10秒后取消，停止自动查询而非重发决定', async () => {
+  vi.useFakeTimers();
+  const h = mount();
+  await act(async () => {
+    await h.result.current.resolveApproval(variables);
+  });
+  const signal = vi.mocked(api.get).mock.calls[0]?.[1]?.signal;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(10_000);
+  });
+  expect(signal?.aborted).toBe(true);
+  expect(h.result.current.deliveryReadError).toContain('无法核验');
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(90_000);
+  });
+  expect(api.get).toHaveBeenCalledTimes(1);
+  expect(h.submit).toHaveBeenCalledTimes(1);
+});
+it('非终态最多20次单条读取，预算耗尽只读重试', async () => {
+  vi.useFakeTimers();
+  vi.mocked(api.get).mockResolvedValue(decided('DISPATCHING'));
+  const h = mount();
+  await act(async () => {
+    await h.result.current.resolveApproval(variables);
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(90_000);
+  });
+  expect(api.get).toHaveBeenCalledTimes(20);
+  expect(h.result.current.deliveryReadError).toContain('无法核验');
+  expect(h.submit).toHaveBeenCalledTimes(1);
+});
+
+it('真实异步POST pending已渲染后返回，列表清空仍启动单条GET', async () => {
+  const response = deferred();
+  vi.mocked(api.get).mockResolvedValue(decided('DELIVERED'));
+  const h = mount(vi.fn(() => response.promise));
+  let wait!: Promise<void>;
+  act(() => {
+    wait = h.result.current.resolveApproval(variables);
+  });
+  expect(h.result.current.resolving).toBe(pending.id);
+  expect(api.get).not.toHaveBeenCalled();
+  h.rerender({ sessionId: pending.sessionId, approvals: [] });
+  await act(async () => {
+    response.resolve(decided('DISPATCHING'));
+    await wait;
+  });
+  expect(api.get).toHaveBeenCalledTimes(1);
+  expect(h.result.current.approvalFeedback?.tone).toBe('confirmed');
+});
+it('每次GET耗时9秒也在60秒总预算截止，而非20乘10秒', async () => {
+  vi.useFakeTimers();
+  vi.mocked(api.get).mockImplementation(
+    () =>
+      new Promise((resolve) => setTimeout(() => resolve(decided('DISPATCHING') as never), 9_000)),
+  );
+  const h = mount();
+  await act(async () => {
+    await h.result.current.resolveApproval(variables);
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(h.result.current.deliveryReadError).toContain('无法核验');
+  const count = vi.mocked(api.get).mock.calls.length;
+  expect(count).toBeLessThanOrEqual(6);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(120_000);
+  });
+  expect(api.get).toHaveBeenCalledTimes(count);
+  expect(h.submit).toHaveBeenCalledTimes(1);
 });
