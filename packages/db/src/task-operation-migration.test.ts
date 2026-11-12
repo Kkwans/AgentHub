@@ -1,3 +1,4 @@
+import { createLegacyTask } from './migration-test-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -45,13 +46,13 @@ it('从0005升级保留既有任务，操作账本与重放跨关闭重开持久
       status: 'ACTIVE',
       repoKind: 'NONE',
     });
-    const original = await new TaskRepository(database.db).create({
-      id: randomUUID(),
-      projectId: project.id,
-      title: '原始任务',
-      description: '旧正文😀不丢失',
-      status: 'BACKLOG',
-    });
+    const original = await createLegacyTask(
+      database.db,
+      randomUUID(),
+      project.id,
+      '原始任务',
+      '旧正文😀不丢失',
+    );
     const oldPrompts = new PromptRepository(database.db);
     const prompt = await oldPrompts.createPrompt({
       projectId: project.id,
@@ -72,7 +73,7 @@ it('从0005升级保留既有任务，操作账本与重放跨关闭重开持久
     database = undefined;
     database = await createPgliteDatabase({ dataDir });
     let tasks = new TaskRepository(database.db);
-    expect(await tasks.get(original.id)).toEqual(original);
+    expect(await tasks.get(original.id)).toEqual({ ...original, promptVariablesJson: {} });
     expect(await new PromptRepository(database.db).getPrompt(prompt.id)).toEqual(prompt);
     expect(await new PromptRepository(database.db).getVersionById(prompt.id, version.id)).toEqual(
       version,
@@ -82,7 +83,13 @@ it('从0005升级保留既有任务，操作账本与重放跨关闭重开持久
       operationId: randomUUID(),
       requestHash: 'a'.repeat(64),
     };
-    const input = { id: randomUUID(), projectId: project.id, title: '持久操作', status: 'BACKLOG' };
+    const input = {
+      id: randomUUID(),
+      projectId: project.id,
+      title: '持久操作',
+      status: 'BACKLOG',
+      promptVariablesJson: { nested: { name: '跨重开😀', empty: null }, flags: [false, 0] },
+    };
     const created = await tasks.createIdempotent(input, operation);
     await database.close();
     database = undefined;
@@ -95,7 +102,8 @@ it('从0005升级保留既有任务，操作账本与重放跨关闭重开持久
       created.id,
     );
     expect(await tasks.list()).toHaveLength(2);
-    expect(await tasks.get(original.id)).toEqual(original);
+    expect((await tasks.get(created.id))?.promptVariablesJson).toEqual(input.promptVariablesJson);
+    expect(await tasks.get(original.id)).toEqual({ ...original, promptVariablesJson: {} });
     expect(await new PromptRepository(database.db).getPrompt(prompt.id)).toEqual(prompt);
     expect(await new PromptRepository(database.db).getVersionById(prompt.id, version.id)).toEqual(
       version,

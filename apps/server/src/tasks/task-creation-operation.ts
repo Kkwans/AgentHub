@@ -14,6 +14,7 @@ export interface CreateTaskInput {
   position?: string | undefined;
   selectedPrompt?: { promptId: string; versionId?: string | undefined } | undefined;
   operationId?: string | undefined;
+  promptVariables?: Record<string, unknown> | undefined;
 }
 export function creationOwnerScope(principal: AuthPrincipal | undefined): string {
   if (!principal) throw new AppError(401, 'AUTH_REQUIRED', '请先登录 AgentHub');
@@ -36,6 +37,9 @@ export function taskCreationHash(input: CreateTaskInput): string {
   return createHash('sha256')
     .update(
       JSON.stringify({
+        ...(input.promptVariables && Object.keys(input.promptVariables).length
+          ? { promptVariables: canonicalVariables(input.promptVariables) }
+          : {}),
         projectId: input.projectId.toLowerCase(),
         goalId: input.goalId?.toLowerCase() ?? null,
         parentId: input.parentId?.toLowerCase() ?? null,
@@ -54,4 +58,15 @@ export function taskCreationHash(input: CreateTaskInput): string {
       }),
     )
     .digest('hex');
+}
+
+function canonicalVariables(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalVariables);
+  if (value && typeof value === 'object')
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([key, item]) => [key, canonicalVariables(item)]),
+    );
+  return value;
 }

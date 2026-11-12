@@ -38,6 +38,7 @@ const taskListQuery = z.object({
   status: taskStatus.optional(),
 });
 const taskCreate = z.object({
+  promptVariables: z.record(z.string(), z.unknown()).optional(),
   operationId: z.string().uuid().optional(),
   projectId: z.string().uuid(),
   selectedPrompt: z

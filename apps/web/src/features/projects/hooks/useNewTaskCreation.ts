@@ -118,6 +118,7 @@ export function useNewTaskCreation(
           title: draft.title.trim(),
           description: draft.description.trim() || undefined,
           priority: 2,
+          promptVariables: draft.promptVariables,
           selectedPrompt: draft.promptId
             ? { promptId: draft.promptId, versionId: draft.promptVersionId }
             : undefined,

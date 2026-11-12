@@ -21,7 +21,7 @@ import {
 } from '@agenthub/agent-core';
 import pino from 'pino';
 import request from 'supertest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AgentService } from '../agents/agent-service.js';
 import { createApp } from '../app.js';
 import { PromptService } from '../promptos/prompt-service.js';
@@ -31,8 +31,8 @@ import { TaskService } from './task-service.js';
 class CaptureAdapter extends FakeAgentAdapter {
   readonly turns: AgentTurnInput[] = [];
   createdSessions = 0;
-  constructor() {
-    super({ scenario: 'idle' });
+  constructor(scenario: 'idle' | 'complete' = 'idle') {
+    super({ scenario });
   }
   override async createSession(input: CreateAgentSessionInput) {
     this.createdSessions += 1;
@@ -52,7 +52,7 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
     for (const close of cleanups.splice(0).reverse()) await close();
   });
 
-  async function fixture() {
+  async function fixture(scenario: 'idle' | 'complete' = 'idle') {
     const database = await createPgliteDatabase({ dataDir: 'memory://' });
     const targets = new ExecutionTargetRepository(database.db);
     const projects = new ProjectRepository(database.db);
@@ -93,7 +93,7 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
       status: 'READY',
     });
     const promptos = new PromptService(prompts, new SkillRepository(database.db), projects);
-    const adapter = new CaptureAdapter();
+    const adapter = new CaptureAdapter(scenario);
     const agentService = new AgentService(
       agents,
       targets,
@@ -117,6 +117,7 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
       promptos,
     );
     const service = new TaskService(goals, tasks, projects, sessionService, promptos);
+    sessionService.setTaskLifecycleObserver(service);
     const app = createApp({ tasks: service, promptos, logger: pino({ level: 'silent' }) });
     cleanups.push(async () => {
       await sessionService.shutdown();
@@ -248,6 +249,78 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
       });
     expect(invalid.status).toBe(400);
     expect(await f.tasks.list({ projectId: f.projectId })).toHaveLength(1);
+  });
+
+  it('AH002保存模板变量后稍后启动无需再次输入且保持固定版本', async () => {
+    const f = await fixture();
+    const asset = await f.makePrompt('处理 {{ subject }}', f.projectId, {
+      type: 'object',
+      properties: { subject: { type: 'string' } },
+      required: ['subject'],
+    });
+    const created = await request(f.app)
+      .post('/api/v1/tasks')
+      .send({
+        projectId: f.projectId,
+        title: '保存稍后执行',
+        selectedPrompt: { promptId: asset.prompt.id, versionId: asset.version.id },
+        promptVariables: { subject: '已保存的主题' },
+      });
+    expect(created.status).toBe(201);
+    const taskId = created.body.data.id as string;
+    await f.promptos.createVersion(asset.prompt.id, { content: { text: '不得改用此新版' } });
+    expect(await f.promptos.listBindings({ targetType: 'TASK', targetId: taskId })).toEqual([
+      expect.objectContaining({ versionId: asset.version.id }),
+    ]);
+    await f.service.transitionTask(taskId, 'READY');
+    const started = await request(f.app)
+      .post(`/api/v1/tasks/${taskId}/start`)
+      .send({ agentId: f.agentId });
+    expect(started.status).toBe(201);
+    expect(f.adapter.turns[0]?.text).toContain('处理 已保存的主题');
+    expect(f.adapter.turns[0]?.text).not.toContain('不得改用此新版');
+  });
+
+  it('AH002启动覆盖按键生效但不改保存默认，返工恢复保存值', async () => {
+    const f = await fixture('complete');
+    const asset = await f.makePrompt('处理 {{ subject }} / {{ suffix }}', f.projectId, {
+      type: 'object',
+      properties: { subject: { type: 'string' }, suffix: { type: 'string' } },
+      required: ['subject', 'suffix'],
+    });
+    const task = await f.service.createTask({
+      projectId: f.projectId,
+      title: '变量覆盖',
+      selectedPrompt: { promptId: asset.prompt.id },
+      promptVariables: { subject: 'saved', suffix: 'retained' },
+    });
+    await f.service.transitionTask(task.id, 'READY');
+    const started = await request(f.app)
+      .post(`/api/v1/tasks/${task.id}/start`)
+      .send({ agentId: f.agentId, promptVariables: { subject: null } });
+    expect(started.status).toBe(201);
+    expect(f.adapter.turns[0]?.text).toContain('处理 null / retained');
+    expect((await f.service.getTask(task.id)).promptVariablesJson).toEqual({
+      subject: 'saved',
+      suffix: 'retained',
+    });
+    await vi.waitFor(async () =>
+      expect((await f.service.getTask(task.id)).status).toBe('WAITING_REVIEW'),
+    );
+    await f.service.reviewTask(task.id, { decision: 'REWORK', feedback: '按保存的原始主题继续' });
+    expect(f.adapter.turns[1]?.text).toContain('处理 saved / retained');
+    const other = await f.service.createTask({
+      projectId: f.projectId,
+      title: '明确覆盖',
+      selectedPrompt: { promptId: asset.prompt.id },
+      promptVariables: { subject: 'saved', suffix: 'retained' },
+    });
+    await f.service.transitionTask(other.id, 'READY');
+    await f.service.startTask(other.id, {
+      agentId: f.agentId,
+      promptVariables: { subject: 'override' },
+    });
+    expect(f.adapter.turns[2]?.text).toContain('处理 override / retained');
   });
 
   it('没有 production 时固定 latest，缺少变量在创建 Session 之前拒绝且可明确重试', async () => {

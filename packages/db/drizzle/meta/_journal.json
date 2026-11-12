@@ -64,6 +64,13 @@
       "when": 1794488226789,
       "tag": "0008_run_dispatch_state",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794517300000,
+      "tag": "0009_task_prompt_variables",
+      "breakpoints": true
     }
   ]
 }

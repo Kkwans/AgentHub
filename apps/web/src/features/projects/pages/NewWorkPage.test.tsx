@@ -625,7 +625,7 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
     expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(false);
   });
-  it('没有 Agent 时不静默丢弃变量，清空变量才允许仅保存模板绑定', async () => {
+  it('没有 Agent 时变量可保存，清空后保存空默认而不启动', async () => {
     const f = promptWorkflow({ noAgent: true });
     show(f.fetchMock);
     await selectPrompt();
@@ -633,17 +633,12 @@ describe('新建 Task 的明确 Prompt 选择', () => {
       target: { value: '{"subject":"本次变量"}' },
     });
     await previewPrompt();
-    expect(
-      screen.getByText('变量仅用于本次启动；请选择 Agent 后创建并开始，或清空变量仅保存模板绑定。'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
-    expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(false);
+    expect(screen.getByRole('button', { name: '创建任务' })).not.toBeDisabled();
     fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
       target: { value: '{}' },
     });
     await previewPrompt();
-    expect(screen.getByText('仅保存模板版本绑定，不保存本次预览变量。')).toBeInTheDocument();
+    expect(screen.getByText('保存模板版本与变量，稍后启动自动使用。')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
     await waitFor(() =>
       expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(true),
@@ -655,11 +650,18 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     show(f.fetchMock);
     await selectPrompt();
     expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{"subject":"保存后再执行"}' },
+    });
     await previewPrompt();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '创建任务' })).not.toBeDisabled(),
+    );
     fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
     await waitFor(() => expect(f.bodies.some((x) => x.path === '/api/v1/tasks')).toBe(true));
     expect(f.bodies.find((x) => x.path === '/api/v1/tasks')?.body).toMatchObject({
       title: '主目标保留',
+      promptVariables: { subject: '保存后再执行' },
       selectedPrompt: { promptId: 'prompt-1', versionId: 'version-7' },
     });
     expect(f.bodies.some((x) => x.path.endsWith('/start'))).toBe(false);

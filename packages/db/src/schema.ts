@@ -537,6 +537,10 @@ export const tasks = pgTable(
     title: text('title').notNull(),
     description: text('description'),
     acceptanceCriteria: text('acceptance_criteria'),
+    promptVariablesJson: jsonb('prompt_variables_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(emptyObject),
     status: text('status').notNull(),
     priority: integer('priority').notNull().default(0),
     assignedAgentId: uuid('assigned_agent_id').references(() => agents.id),

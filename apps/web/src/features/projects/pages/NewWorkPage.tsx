@@ -125,18 +125,9 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
       if (live.current && generation === previewGeneration.current) setPreviewBusy(false);
     }
   };
-  const variablesRequireAgent = Boolean(
-    promptId && !agentId && Object.keys(promptVariables).length,
-  );
   const promptReady =
     !promptId ||
-    Boolean(
-      preview &&
-      !previewBusy &&
-      variablesValid &&
-      !preview.missingVariables.length &&
-      !variablesRequireAgent,
-    );
+    Boolean(preview && !previewBusy && variablesValid && !preview.missingVariables.length);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const goals = useQuery({
     queryKey: ['goals', project.id],
@@ -510,11 +501,6 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                       minRows={3}
                     />
                     {!variablesValid ? <p role="alert">请输入有效的 JSON 对象。</p> : null}
-                    {variablesRequireAgent ? (
-                      <p role="alert">
-                        变量仅用于本次启动；请选择 Agent 后创建并开始，或清空变量仅保存模板绑定。
-                      </p>
-                    ) : null}
                     <AhButton
                       variant="default"
                       onClick={() => {
@@ -528,7 +514,7 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                     {preview ? (
                       <section aria-label="Prompt 预览">
                         <p>已固定版本 v{preview.version}；作为任务补充上下文，主目标保持不变。</p>
-                        {!agentId ? <p>仅保存模板版本绑定，不保存本次预览变量。</p> : null}
+                        {!agentId ? <p>保存模板版本与变量，稍后启动自动使用。</p> : null}
                         {preview.missingVariables.length ? (
                           <p role="alert">缺少变量：{preview.missingVariables.join('、')}</p>
                         ) : null}

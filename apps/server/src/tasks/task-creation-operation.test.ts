@@ -189,6 +189,51 @@ describe('持久 Task 创建操作', () => {
     expect((await recover(operationId)).status).toBe(404);
     expect((await recover('invalid')).status).toBe(400);
   });
+  it('AH002变量嵌套键序重放一致，改变值冲突且保留原值', async () => {
+    const input = {
+      projectId,
+      title: '持久变量',
+      operationId: randomUUID(),
+      promptVariables: { subject: 'first', nested: { b: false, a: 0 }, list: [null, 'x'] },
+    };
+    const first = await post(input);
+    expect(first.status).toBe(201);
+    const replay = await post({
+      ...input,
+      promptVariables: { list: [null, 'x'], nested: { a: 0, b: false }, subject: 'first' },
+    });
+    expect(replay.status).toBe(201);
+    expect(replay.body.data.id).toBe(first.body.data.id);
+    expect(replay.body.data.promptVariablesJson).toEqual(input.promptVariables);
+    expect(
+      (await post({ ...input, promptVariables: { ...input.promptVariables, subject: 'second' } }))
+        .status,
+    ).toBe(409);
+    for (const promptVariables of [null, [], 'text'])
+      expect((await post({ projectId, title: '非法变量', promptVariables })).status).toBe(400);
+  });
+  it('AH002空变量保持既有hash，非空值/数组顺序/特殊键不被canonical抹掉', () => {
+    const input = { projectId: '11111111-1111-4111-8111-111111111111', title: 'legacy' };
+    expect(taskCreationHash(input)).toBe(
+      '8ed2d57f0e261325fbaf937d2dbf0ed5b97d2616e35621ffd693011b0a059c4e',
+    );
+    expect(taskCreationHash({ ...input, promptVariables: {} })).toBe(taskCreationHash(input));
+    const values = [
+      { v: 0 },
+      { v: '0' },
+      { v: false },
+      { v: null },
+      { v: '' },
+      { v: [1, 2] },
+      { v: [2, 1] },
+      JSON.parse('{"__proto__":{"a":1}}') as Record<string, unknown>,
+    ];
+    expect(
+      new Set(values.map((promptVariables) => taskCreationHash({ ...input, promptVariables })))
+        .size,
+    ).toBe(values.length);
+  });
+
   it('所有UUID引用大小写等价，首次大写请求和小写重放不误判冲突', async () => {
     const a = await asset();
     const goal = await service.createGoal({ projectId, title: '归属目标' });

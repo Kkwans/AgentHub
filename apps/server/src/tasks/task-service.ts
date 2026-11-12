@@ -220,7 +220,8 @@ export class TaskService implements TaskRunLifecycleObserver {
       if (parent.projectId !== input.projectId)
         throw new AppError(409, 'TASK_PARENT_PROJECT_MISMATCH', '父 Task 不属于当前 Project');
     }
-    const { selectedPrompt, ...taskInput } = input;
+    const { selectedPrompt, promptVariables, ...rest } = input;
+    const taskInput = { ...rest, promptVariablesJson: promptVariables ?? {} };
     if (!selectedPrompt) {
       const record = { id: randomUUID(), status: 'BACKLOG', ...taskInput };
       return operation ? this.tasks.createIdempotent(record, operation) : this.tasks.create(record);
@@ -321,6 +322,7 @@ export class TaskService implements TaskRunLifecycleObserver {
     if (task.status !== 'READY')
       throw new AppError(409, 'TASK_NOT_READY', '只有就绪的 Task 可以交给 Agent');
     const project = await this.requireProject(task.projectId);
+    const promptVariables = { ...task.promptVariablesJson, ...input.promptVariables };
     if (this.promptos) {
       let context;
       try {
@@ -328,7 +330,7 @@ export class TaskService implements TaskRunLifecycleObserver {
           projectId: task.projectId,
           agentId: input.agentId,
           taskId: task.id,
-          variables: input.promptVariables ?? {},
+          variables: promptVariables,
         });
       } catch (error) {
         if (!(error instanceof AppError) || error.status >= 500) throw error;
@@ -371,7 +373,7 @@ export class TaskService implements TaskRunLifecycleObserver {
     try {
       run = await this.sessions.startRun(session.id, {
         text,
-        ...(input.promptVariables ? { promptVariables: input.promptVariables } : {}),
+        promptVariables,
       });
     } catch (error) {
       if (error instanceof RunStartError) throw error;
@@ -429,7 +431,10 @@ export class TaskService implements TaskRunLifecycleObserver {
       .join('\n');
     let run: Awaited<ReturnType<TaskSessionController['startRun']>>;
     try {
-      run = await this.sessions.startRun(session.id, { text });
+      run = await this.sessions.startRun(session.id, {
+        text,
+        promptVariables: task.promptVariablesJson,
+      });
     } catch (error) {
       if (error instanceof RunStartError) throw error;
       await this.tasks.transition(id, 'BLOCKED');

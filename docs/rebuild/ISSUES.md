@@ -162,3 +162,6 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH065 / P1：旧连接配置事件/请求会越过恢复后的配置归属。真实Service/PGlite确认三类：旧原生事件持久化迟到覆盖新模型/模式；旧provider setter响应在resume后仍成功写旧值；新activation配置请求被旧provider长挂队列阻塞。旧源3条负控全失败。修复按activation隔离配置队列、调用前与提交时重验、原生事件短提交并标记ignored；169专项与独立CR通过，S46全仓门禁进行中。已发送旧provider操作不回滚、不自动重放；跨进程与全局shutdown协调不在本片范围。
 - AH065验收更新：lint/types/build及独立CR通过，169专项通过；默认全仓因两未修改PGlite测试文件OOM退出，保留失败。资源隔离后对完整清单核验927项全通过且无遗漏，10原有skip不变，QA10通过；待新HEAD远端CI。
+
+- AH002延后启动变量切片：真实HTTP创建携变量后稍后启动409缺变量；固定版本正确保留，丢失的是变量。前端此前有明确无Agent变量保存禁用护栏，并非静默丢失。现Task新增默认{}的持久JSON、0009兼容迁移；创建API/事务/幂等及前端保存均传递变量，普通Task start逐键覆盖保存默认、review返工用保存默认。非空变量递归canonical纳入hash，省略/{}保持旧hash，显式null不回退。120专项/迁移测试及独立CR通过，S47完整覆盖门禁进行中。Worktree独立派发与继承绑定变量输入仍开放，不关闭AH002整体。
+- AH002本切片验收：S47资源隔离完整覆盖931项/10原有skip，lint/types/build/QA通过，120专项/迁移与独立CR通过；待新HEAD真实浏览器CI，不关闭剩余Worktree/继承绑定输入范围。

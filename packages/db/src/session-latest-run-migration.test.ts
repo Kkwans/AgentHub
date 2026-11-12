@@ -1,3 +1,4 @@
+import { createLegacyTask, readLegacyTask } from './migration-test-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -48,13 +49,13 @@ it('从0006升级保留会话与Run，不猜历史所有权；新指针跨重开
       status: 'ACTIVE',
       repoKind: 'NONE',
     });
-    const original = await new TaskRepository(database.db).create({
-      id: randomUUID(),
-      projectId: project.id,
-      title: '原始任务',
-      description: '旧正文😀不丢失',
-      status: 'BACKLOG',
-    });
+    const original = await createLegacyTask(
+      database.db,
+      randomUUID(),
+      project.id,
+      '原始任务',
+      '旧正文😀不丢失',
+    );
 
     const agent = await new AgentRepository(database.db).create({
       id: randomUUID(),
@@ -72,12 +73,10 @@ it('从0006升级保留会话与Run，不猜历史所有权；新指针跨重开
       values (${sessionId}, ${project.id}, ${agent.id}, ${original.id}, '旧会话😀', '/tmp/migration', 'READY')`);
     await database.db.execute(sql`insert into agent_runs (id, session_id, task_id, status)
       values (${oldRunId}, ${sessionId}, ${original.id}, 'COMPLETED')`);
-    await new TaskRepository(database.db).update(original.id, {
-      status: 'IN_PROGRESS',
-      sessionId,
-      assignedAgentId: agent.id,
-    });
-    const before = await new TaskRepository(database.db).get(original.id);
+    await database.db.execute(
+      sql`update tasks set status='IN_PROGRESS',session_id=${sessionId},assigned_agent_id=${agent.id} where id=${original.id}`,
+    );
+    const before = { ...(await readLegacyTask(database.db, original.id)), promptVariablesJson: {} };
     await database.close();
     database = undefined;
     database = await createPgliteDatabase({ dataDir });
