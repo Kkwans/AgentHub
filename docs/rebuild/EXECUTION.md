@@ -69,3 +69,11 @@
 - AH-017 独立真实 HTTP/PGlite/fixture ACP 复测通过：并发任务启动返回 201 + 409 TASK_NOT_READY，只有一个关联 Session；不再留下失败方孤立 Session。
 - 8 项 TaskService 测试通过；全量 342 项通过、10 项跳过；lint/typecheck/build 通过。
 - 范围限定同一 TaskService 实例 startTask；多实例、并发返工、Session创建后DB错误仍需后续处理。
+
+### M1.2b 连接授权生命周期
+
+- AH-005：连接改用可撤销授权租约，注销、改密、撤销 token 后关闭匹配旧连接；过期与延迟 replay 在发送前重新检查，释放连接租约。
+- 8 项真实 HTTP/WebSocket/PGlite 回归通过，包含健康连接隔离、认证竞争与延迟 replay；terminal input 使用 stub，仅证明撤销后的 HTTP 请求不会到达输入方法，不声称测试真实 PTY。
+- 全仓 lint/typecheck/build 通过；全量 350 项通过、10 项跳过。源代码审查与集成差异检查完成。
+- 范围为同一 AuthService 实例；不关闭底层 PTY，不包含多进程直接数据库失效传播。
+- ff160132 已发布真实服务浏览器 CI 与 140 张基线截图/几何完整性门禁。尚未取得此提交 CI 的完成证据，不把门禁配置等同视觉验收。

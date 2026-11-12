@@ -222,6 +222,7 @@ describe('统一 WebSocket topic', () => {
     const broker = new TopicBroker(router, undefined, {
       authorize: async (headers) =>
         Boolean(headers['sec-websocket-protocol']?.includes('agenthub-token.good-token')),
+      authorizeConnection: async () => ({ isActive: () => true, dispose: () => undefined }),
     });
     openRouters.push(router);
     openBrokers.push(broker);

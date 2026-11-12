@@ -5,7 +5,7 @@ import type { AgentHubDatabase, ApiTokenRepository, LocalAuthRepository } from '
 import type { RequestHandler } from 'express';
 
 import { AppError } from '../errors.js';
-import type { WebSocketAuthenticator } from '../websocket.js';
+import type { ConnectionAuthorization, WebSocketAuthenticator } from '../websocket.js';
 import { hashPassword, verifyPassword } from './password.js';
 
 export type AuthMode = 'local_trusted' | 'token';
@@ -25,10 +25,17 @@ export type AuthPrincipal =
       sessionId: string;
       accountId: string;
       username: string;
+      expiresAt?: Date;
       role: 'ADMIN';
     };
 
 export class AuthService implements WebSocketAuthenticator {
+  private authorizationRevision = 0;
+  private readonly connections = new Set<{
+    principal: AuthPrincipal;
+    browserTokenHash?: string;
+    invalidate(): void;
+  }>();
   private readonly bootstrapHash: string | undefined;
   private readonly loginFailures = new Map<string, { count: number; blockedUntil?: number }>();
 
@@ -109,7 +116,11 @@ export class AuthService implements WebSocketAuthenticator {
 
   async logout(cookieHeader: string | undefined) {
     const token = readCookie(cookieHeader, browserSessionCookie);
-    if (token) await this.localAuth.revokeSessionByHash(hashToken(token));
+    if (token) {
+      const tokenHash = hashToken(token);
+      await this.localAuth.revokeSessionByHash(tokenHash);
+      this.invalidateConnections((connection) => connection.browserTokenHash === tokenHash);
+    }
   }
 
   async changePassword(
@@ -128,6 +139,11 @@ export class AuthService implements WebSocketAuthenticator {
     }
     await this.localAuth.updatePassword(account.id, await hashPassword(newPassword));
     await this.localAuth.revokeAccountSessions(account.id);
+    this.invalidateConnections(
+      (connection) =>
+        connection.principal.kind === 'browser_session' &&
+        connection.principal.accountId === account.id,
+    );
     return this.createBrowserSession(account.id, account.username, 'ADMIN');
   }
 
@@ -150,6 +166,10 @@ export class AuthService implements WebSocketAuthenticator {
   async revokeToken(id: string) {
     const revoked = await this.tokens.revoke(id);
     if (!revoked) throw new AppError(404, 'API_TOKEN_NOT_FOUND', 'API token 不存在或已撤销');
+    this.invalidateConnections(
+      (connection) =>
+        connection.principal.kind === 'api_token' && connection.principal.tokenId === id,
+    );
     return revoked;
   }
 
@@ -163,6 +183,72 @@ export class AuthService implements WebSocketAuthenticator {
       next(error);
     }
   };
+
+  async authorizeConnection(
+    headers: IncomingHttpHeaders,
+    onInvalidated: () => void,
+  ): Promise<ConnectionAuthorization | undefined> {
+    // Revocation may finish while the database read is in flight. Refuse a
+    // stale snapshot rather than install a lease after its invalidation event.
+    const revision = this.authorizationRevision;
+    const principal = await this.authenticate(headers, false);
+    if (!principal || revision !== this.authorizationRevision) return undefined;
+    const expiresAt =
+      principal.kind === 'browser_session' ? principal.expiresAt?.getTime() : undefined;
+    if (
+      principal.kind === 'browser_session' &&
+      (expiresAt === undefined || expiresAt <= Date.now())
+    )
+      return undefined;
+    const browserToken =
+      principal.kind === 'browser_session'
+        ? readCookie(headers.cookie, browserSessionCookie)
+        : undefined;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const dispose = () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      this.connections.delete(connection);
+    };
+    const connection = {
+      principal,
+      ...(browserToken ? { browserTokenHash: hashToken(browserToken) } : {}),
+      invalidate: () => {
+        if (!active) return;
+        dispose();
+        onInvalidated();
+      },
+    };
+    this.connections.add(connection);
+    if (expiresAt !== undefined) {
+      timer = setTimeout(connection.invalidate, Math.max(0, expiresAt - Date.now()));
+      timer.unref?.();
+    }
+    return {
+      isActive: () => {
+        if (active && expiresAt !== undefined && Date.now() >= expiresAt) connection.invalidate();
+        return active;
+      },
+      dispose,
+    };
+  }
+
+  private invalidateConnections(
+    matches: (connection: { principal: AuthPrincipal; browserTokenHash?: string }) => boolean,
+  ): void {
+    this.authorizationRevision += 1;
+    for (const connection of [...this.connections]) {
+      if (!matches(connection)) continue;
+      // A broken transport callback must not prevent other leases revoking or
+      // turn a successful credential revocation into an HTTP failure.
+      try {
+        connection.invalidate();
+      } catch {
+        /* lease is already disposed */
+      }
+    }
+  }
 
   async authorize(headers: IncomingHttpHeaders): Promise<boolean> {
     return Boolean(await this.authenticate(headers));
@@ -225,6 +311,7 @@ export class AuthService implements WebSocketAuthenticator {
       sessionId: session.sessionId,
       accountId: session.accountId,
       username: session.username,
+      expiresAt: session.expiresAt,
       role: 'ADMIN',
     };
   }

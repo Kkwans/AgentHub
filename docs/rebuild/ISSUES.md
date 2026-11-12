@@ -8,7 +8,7 @@
 | AH-002 | P1     | 同文件 promptId 只在回退 URL 出现，start 请求只有 agentId，成功跳 Workspace 后所选资产不生效                   | 源码确认                              | 选中 Prompt 的版本、变量和来源进入 Run 上下文；缺变量阻止执行；真实请求断言 |
 | AH-003 | P1     | `TaskService.startTask` 使用 description                                                                       |                                       | title，填写补充上下文后主目标丢失                                           | 已确认 | Run 输入同时保留目标、补充说明和验收标准；测试覆盖空说明与多行文本 |
 | AH-004 | P1     | CreateProjectPage 仅 roots 下拉，未使用 directories/project-candidates，难以选允许根目录下的仓库               | 源码确认                              | 安全目录浏览、候选仓库、路径错误与返回选择完整闭环                          |
-| AH-005 | P0     | TopicBroker 仅 WS upgrade 认证；AuthService 撤销未通知已连接客户端                                             | 待运行复现                            | 注销、改密、撤销、过期后旧 WS/PTY 停止读写；竞争和健康连接隔离测试          |
+| AH-005 | P0 | TopicBroker 仅 WS upgrade 认证；AuthService 撤销未通知已连接客户端 | 单实例连接授权修复，8 项真实 HTTP/WS/PGlite 回归通过 | 注销、改密、撤销、过期关闭旧流；跨进程失效传播仍待实现；不终止底层 PTY |
 | AH-006 | P2     | NewWork Agent 只过滤 READY，未统一 enabled/target/online 条件                                                  | 源码确认                              | 服务端与界面共用明确可执行判定；禁用/离线/目标不匹配不可误选                |
 | AH-007 | P2     | 无 Agent 时按钮仍叫“创建并开始”，实际仅创建任务                                                                | 源码确认                              | 动作名称、结果反馈和下一步与实际行为一致                                    |
 | AH-008 | P2     | AppShell 所有 NavLink end 导致子路由丢高亮；ProfileSurface 交互外观但无动作                                    | 源码确认                              | 分区路由高亮稳定；账户入口有明确功能或改为非交互信息                        |
