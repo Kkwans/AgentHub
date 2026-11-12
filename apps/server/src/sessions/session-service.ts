@@ -359,6 +359,7 @@ export class SessionService {
     });
     await this.sessions.transition(id, 'STARTING');
 
+    let ownedHandle: AgentSessionHandle | undefined;
     try {
       const handle = await adapter.createSession({
         sessionId: id,
@@ -369,18 +370,55 @@ export class SessionService {
         ...(mode ? { mode } : {}),
         ...(reasoningEffort ? { reasoningEffort } : {}),
       });
+      ownedHandle = handle;
       await this.persistEffectiveConfiguration(id, handle);
       const ready = await this.sessions.transition(id, 'READY', {
         externalSessionId: handle.externalSessionId,
         startedAt: new Date(),
       });
       this.activate(id, projectId, adapter, handle);
+      ownedHandle = undefined; // Ownership has transferred to the active Session lifecycle.
       return ready;
     } catch (error) {
-      await this.sessions.transition(id, 'FAILED');
-      throw new AppError(502, 'AGENT_SESSION_CREATE_FAILED', 'Agent Session 创建失败', undefined, {
-        cause: error,
-      });
+      let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
+        'NOT_ACQUIRED';
+      if (ownedHandle) {
+        if (this.active.get(id)?.handle === ownedHandle) {
+          // Never tear down a handle already handed to an activation from this catch.
+          handleCleanup = 'ACTIVE_OWNED';
+        } else {
+          try {
+            await withTimeout(
+              Promise.resolve().then(() => ownedHandle!.close()),
+              Math.min(this.cancelConvergenceTimeoutMs, 1_000),
+            );
+            // The adapter close contract returned, not independent proof that an OS process exited.
+            handleCleanup = 'HANDLE_CLOSE_RETURNED';
+          } catch {
+            handleCleanup = 'UNKNOWN';
+          }
+        }
+      }
+      let failureStateRecorded = false;
+      if (handleCleanup !== 'ACTIVE_OWNED') {
+        try {
+          await this.sessions.transition(id, 'FAILED');
+          failureStateRecorded = true;
+        } catch {
+          // Preserve the original creation error; DB failure must not skip owned cleanup.
+        }
+      }
+      throw new AppError(
+        502,
+        'AGENT_SESSION_CREATE_FAILED',
+        handleCleanup === 'ACTIVE_OWNED'
+          ? 'Agent Session 创建响应异常；已有会话仍受管理，请核对会话状态。'
+          : handleCleanup === 'UNKNOWN'
+            ? 'Agent Session 创建失败；资源清理结果未知，请核对 Agent 进程。'
+            : 'Agent Session 创建失败',
+        { sessionId: id, handleCleanup, failureStateRecorded },
+        { cause: error },
+      );
     }
   }
 

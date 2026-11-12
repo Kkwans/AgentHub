@@ -161,6 +161,218 @@ describe('Session/Run/Approval 持久化闭环', () => {
     };
   }
 
+  it.each([false, true])(
+    '创建资源回收：READY写失败且FAILED也失败=%s时先关闭owned handle',
+    async (failFailed) => {
+      const adapter = new ControlledAdapter('never');
+      const fixture = await createFixture('idle', undefined, {}, { adapter });
+      const readyFailure = new Error('injected READY persistence failure');
+      const failedFailure = new Error('injected FAILED persistence failure');
+      const original = fixture.repositories.sessions.transition.bind(fixture.repositories.sessions);
+      const transition = vi
+        .spyOn(fixture.repositories.sessions, 'transition')
+        .mockImplementation(async (id, to, patch) => {
+          if (to === 'READY') throw readyFailure;
+          if (failFailed && to === 'FAILED') throw failedFailure;
+          return original(id, to, patch);
+        });
+      const close = vi.spyOn(ControlledHandle.prototype, 'close');
+      const events = vi.spyOn(ControlledHandle.prototype, 'events');
+      try {
+        const error = await fixture.service
+          .create({
+            projectId: fixture.projectId,
+            agentId: fixture.agentId,
+            title: '资源所有权审计',
+            cwd: '/tmp',
+          })
+          .catch((failure: unknown) => failure);
+        expect(adapter.handles).toHaveLength(1);
+        expect(close).toHaveBeenCalledTimes(1);
+        expect(events).not.toHaveBeenCalled();
+        const rows = await fixture.repositories.sessions.list(fixture.projectId);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]?.status).toBe(failFailed ? 'STARTING' : 'FAILED');
+        expect(error).toMatchObject({
+          code: 'AGENT_SESSION_CREATE_FAILED',
+          cause: readyFailure,
+          details: { handleCleanup: 'HANDLE_CLOSE_RETURNED', failureStateRecorded: !failFailed },
+        });
+        await fixture.service.shutdown();
+        expect(close).toHaveBeenCalledTimes(1);
+      } finally {
+        transition.mockRestore();
+        close.mockRestore();
+        events.mockRestore();
+        // Idempotent test-owned final cleanup, after production call counts were asserted.
+        await adapter.handles[0]?.close();
+        await fixture.service.shutdown();
+      }
+    },
+  );
+
+  it.each(['REJECT', 'TIMEOUT'] as const)(
+    '创建资源回收：close %s只报告未知且不遮蔽原错',
+    async (mode) => {
+      const adapter = new ControlledAdapter('never');
+      const fixture = await createFixture('idle', undefined, {}, { adapter });
+      const readyFailure = new Error('injected READY failure');
+      const original = fixture.repositories.sessions.transition.bind(fixture.repositories.sessions);
+      const transition = vi
+        .spyOn(fixture.repositories.sessions, 'transition')
+        .mockImplementation(async (id, to, patch) => {
+          if (to === 'READY') throw readyFailure;
+          return original(id, to, patch);
+        });
+      const close = vi.spyOn(ControlledHandle.prototype, 'close').mockImplementation(async () => {
+        if (mode === 'REJECT') throw new Error('close diagnostic must not replace original error');
+        await new Promise<void>(() => undefined);
+      });
+      try {
+        const startedAt = Date.now();
+        const error = await fixture.service
+          .create({
+            projectId: fixture.projectId,
+            agentId: fixture.agentId,
+            title: '资源回收未知',
+            cwd: '/tmp',
+          })
+          .catch((failure: unknown) => failure);
+        expect(Date.now() - startedAt).toBeLessThan(2_500);
+        expect(error).toMatchObject({
+          code: 'AGENT_SESSION_CREATE_FAILED',
+          cause: readyFailure,
+          message: expect.stringContaining('资源清理结果未知'),
+          details: { handleCleanup: 'UNKNOWN', failureStateRecorded: true },
+        });
+        expect(close).toHaveBeenCalledTimes(1);
+        expect((await fixture.repositories.sessions.list(fixture.projectId))[0]?.status).toBe(
+          'FAILED',
+        );
+      } finally {
+        transition.mockRestore();
+        close.mockRestore();
+        await adapter.handles[0]?.close();
+        await fixture.service.shutdown();
+      }
+    },
+  );
+
+  it('创建资源回收：失败Session只关闭自己的handle，不提前关闭成功activation', async () => {
+    const adapter = new ControlledAdapter('never');
+    const fixture = await createFixture('idle', undefined, {}, { adapter });
+    const close = vi.spyOn(ControlledHandle.prototype, 'close');
+    const original = fixture.repositories.sessions.transition.bind(fixture.repositories.sessions);
+    let rejectReady = false;
+    const transition = vi
+      .spyOn(fixture.repositories.sessions, 'transition')
+      .mockImplementation(async (id, to, patch) => {
+        if (rejectReady && to === 'READY') throw new Error('next READY failed');
+        return original(id, to, patch);
+      });
+    try {
+      const ready = await fixture.service.create({
+        projectId: fixture.projectId,
+        agentId: fixture.agentId,
+        title: '保留成功会话',
+        cwd: '/tmp',
+      });
+      expect(ready.status).toBe('READY');
+      expect(close).not.toHaveBeenCalled();
+      rejectReady = true;
+      await expect(
+        fixture.service.create({
+          projectId: fixture.projectId,
+          agentId: fixture.agentId,
+          title: '第二次创建失败',
+          cwd: '/tmp',
+        }),
+      ).rejects.toMatchObject({ code: 'AGENT_SESSION_CREATE_FAILED' });
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(close.mock.contexts[0]).toBe(adapter.handles[1]);
+      expect((await fixture.repositories.sessions.get(ready.id))?.status).toBe('READY');
+      await fixture.service.shutdown();
+      expect(close).toHaveBeenCalledTimes(2);
+      expect(close.mock.contexts[1]).toBe(adapter.handles[0]);
+    } finally {
+      transition.mockRestore();
+      close.mockRestore();
+      await fixture.service.shutdown();
+    }
+  });
+
+  it('创建资源回收：adapter未返回handle时不虚构清理成功', async () => {
+    const adapter = new ControlledAdapter('never');
+    const fixture = await createFixture('idle', undefined, {}, { adapter });
+    const failure = new Error('adapter creation failed');
+    vi.spyOn(adapter, 'createSession').mockRejectedValueOnce(failure);
+    const close = vi.spyOn(ControlledHandle.prototype, 'close');
+    try {
+      await expect(
+        fixture.service.create({
+          projectId: fixture.projectId,
+          agentId: fixture.agentId,
+          title: '未取得资源',
+          cwd: '/tmp',
+        }),
+      ).rejects.toMatchObject({
+        code: 'AGENT_SESSION_CREATE_FAILED',
+        cause: failure,
+        details: { handleCleanup: 'NOT_ACQUIRED', failureStateRecorded: true },
+      });
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      close.mockRestore();
+      await fixture.service.shutdown();
+    }
+  });
+
+  it('创建资源回收：防御性移交后异常不能关闭active或覆盖READY', async () => {
+    const adapter = new ControlledAdapter('never');
+    const fixture = await createFixture('idle', undefined, {}, { adapter });
+    const failure = new Error('injected failure after activation transfer');
+    // Deliberate private-boundary fault injection; normal activate currently does not throw after transfer.
+    const activation = fixture.service as unknown as {
+      activate(
+        id: string,
+        projectId: string,
+        adapter: AgentRuntimeAdapter,
+        handle: AgentSessionHandle,
+      ): void;
+    };
+    const original = activation.activate.bind(fixture.service);
+    const activate = vi.spyOn(activation, 'activate').mockImplementation((...args) => {
+      original(...args);
+      throw failure;
+    });
+    const close = vi.spyOn(ControlledHandle.prototype, 'close');
+    try {
+      await expect(
+        fixture.service.create({
+          projectId: fixture.projectId,
+          agentId: fixture.agentId,
+          title: '已移交active',
+          cwd: '/tmp',
+        }),
+      ).rejects.toMatchObject({
+        code: 'AGENT_SESSION_CREATE_FAILED',
+        cause: failure,
+        message: expect.stringContaining('已有会话仍受管理'),
+        details: { handleCleanup: 'ACTIVE_OWNED', failureStateRecorded: false },
+      });
+      expect(close).not.toHaveBeenCalled();
+      expect((await fixture.repositories.sessions.list(fixture.projectId))[0]?.status).toBe(
+        'READY',
+      );
+      await fixture.service.shutdown();
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      activate.mockRestore();
+      close.mockRestore();
+      await fixture.service.shutdown();
+    }
+  });
+
   it.each(['RUN_FIRST', 'CALLBACK_FIRST'] as const)(
     '真实事件READY与Task观察器之间的同会话下一轮：%s',
     async (order) => {

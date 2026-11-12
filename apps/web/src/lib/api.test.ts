@@ -65,4 +65,53 @@ describe('web api error boundary', () => {
       status: 500,
     });
   });
+  it.each([
+    ['UNKNOWN', '资源清理结果未知'],
+    ['ACTIVE_OWNED', '现有会话仍由系统管理'],
+    ['HANDLE_CLOSE_RETURNED', '请先核对现有会话和 Agent 诊断'],
+    ['NOT_ACQUIRED', '请先核对现有会话和 Agent 诊断'],
+    ['unrecognized', '请先核对现有会话和 Agent 诊断'],
+  ])('preserves safe session cleanup guidance for %s', async (handleCleanup, expected) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: 'AGENT_SESSION_CREATE_FAILED',
+              message: 'private provider cause',
+              details: { handleCleanup, failureStateRecorded: false },
+            },
+          },
+          { status: 502 },
+        ),
+      ),
+    );
+    const failure = await api.post('/sessions', {}).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as Error).message).toContain(expected);
+    expect((failure as Error).message).not.toContain('private provider cause');
+    expect(failure).toMatchObject({ details: { handleCleanup, failureStateRecorded: false } });
+  });
+
+  it('does not apply cleanup guidance to unrelated errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: 'INTERNAL_ERROR',
+              message: 'private provider cause',
+              details: { handleCleanup: 'ACTIVE_OWNED' },
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    await expect(api.post('/sessions', {})).rejects.toMatchObject({
+      message: '服务发生异常，请前往设置查看诊断信息。',
+    });
+  });
 });

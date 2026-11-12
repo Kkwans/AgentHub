@@ -124,7 +124,8 @@ const errorMessages: Record<string, string> = {
   AGENT_KIND_INVALID: 'Agent 类型不受支持。',
   AGENT_RUN_START_FAILED: 'Agent Run 启动失败，请查看 Agent 诊断。',
   AGENT_TRANSPORT_FAILED: 'Agent 实时连接失败，请检查网络代理与 Agent 授权后重试。',
-  AGENT_SESSION_CREATE_FAILED: 'Agent Session 创建失败，请先完成 preflight。',
+  AGENT_SESSION_CREATE_FAILED:
+    'Agent Session 创建失败，请先核对现有会话和 Agent 诊断，再决定是否重新创建。',
   AGENT_SESSION_RESUME_FAILED: 'Agent Session 恢复失败，请重新检查连接。',
   AGENT_TARGET_CONFIG_INVALID: 'Agent 的执行环境配置不完整。',
   AGENT_TARGET_KIND_UNSUPPORTED: '当前执行环境不支持该 Agent。',
@@ -251,12 +252,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (error.code === 'AUTH_REQUIRED') {
       authSession.notifyAuthorizationRequired();
     }
-    throw new ApiError(
-      error.code,
-      errorMessages[error.code] ?? '请求失败，请查看设置中的诊断信息。',
-      response.status,
-      'details' in error && isRecord(error.details) ? error.details : undefined,
-    );
+    const details = 'details' in error && isRecord(error.details) ? error.details : undefined;
+    let message = errorMessages[error.code] ?? '请求失败，请查看设置中的诊断信息。';
+    if (error.code === 'AGENT_SESSION_CREATE_FAILED' && response.status === 502) {
+      if (details?.handleCleanup === 'UNKNOWN') {
+        message =
+          'Agent Session 创建失败，资源清理结果未知。请先核对现有会话和 Agent 进程，勿直接重复创建。';
+      } else if (details?.handleCleanup === 'ACTIVE_OWNED') {
+        message =
+          'Agent Session 创建响应异常，但现有会话仍由系统管理。请先核对现有会话，勿直接重复创建。';
+      }
+    }
+    throw new ApiError(error.code, message, response.status, details);
   }
   return body.data;
 }
