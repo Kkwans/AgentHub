@@ -5,6 +5,11 @@
   min-width: 0;
 }
 
+/* Keep short Prompt states at their intrinsic height, not stretched grid tracks. */
+.promptPage {
+  align-content: start;
+}
+
 .pageHeader {
   display: flex;
   align-items: flex-end;

@@ -2,6 +2,7 @@ import { test, expect } from './fixtures.js';
 
 test.use({ authMode: 'local_trusted' });
 test.setTimeout(120_000);
+const promptName = '跨项目代码审查与风险复核的正式模板：保留全部上下文并逐项确认执行结果';
 for (const width of [390, 768, 1024, 1440]) {
   for (const theme of ['light', 'dark']) {
     test(`Prompt 空库到内容与筛选 ${width} ${theme}`, async ({ page, context, app }, info) => {
@@ -18,6 +19,27 @@ for (const width of [390, 768, 1024, 1440]) {
         { theme, origin: app.origin },
       );
       const capture = async (state: string) => {
+        // The Prompt grid must not distribute spare viewport height into its
+        // header. Compare intrinsic content, not a fixed height: wrapping and
+        // the non-empty state's create action legitimately make it taller.
+        const headerGeometry = await page.locator('.navigation-page-header').evaluate((outer) => {
+          const inner = outer.querySelector('.page-header-row');
+          if (!inner) throw new Error('Prompt page header content is missing');
+          const container = outer.getBoundingClientRect();
+          const content = inner.getBoundingClientRect();
+          return { containerHeight: container.height, contentHeight: content.height };
+        });
+        expect(headerGeometry.contentHeight).toBeGreaterThan(0);
+        expect(
+          headerGeometry.containerHeight - headerGeometry.contentHeight,
+        ).toBeGreaterThanOrEqual(0);
+        expect(headerGeometry.containerHeight - headerGeometry.contentHeight).toBeLessThanOrEqual(
+          2,
+        );
+        await info.attach(`header-geometry-${state}`, {
+          body: JSON.stringify(headerGeometry),
+          contentType: 'application/json',
+        });
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
         ).toBeLessThanOrEqual(1);
@@ -44,16 +66,14 @@ for (const width of [390, 768, 1024, 1440]) {
       expect(emptyResponse.ok()).toBe(true);
       expect((await emptyResponse.json()).data).toEqual([]);
       await create.click();
-      await dialog
-        .getByRole('textbox', { name: '名称', exact: true })
-        .fill('移动端可编辑的正式模板');
+      await dialog.getByRole('textbox', { name: '名称', exact: true }).fill(promptName);
       await dialog
         .getByRole('textbox', { name: 'Key', exact: true })
         .fill('visual/empty-to-content');
       await dialog.getByRole('button', { name: '创建', exact: true }).click();
       await expect(dialog).not.toBeVisible();
       const editor = page.getByRole('region', { name: 'Prompt 编辑器' });
-      await expect(editor.getByRole('heading', { name: '移动端可编辑的正式模板' })).toBeVisible();
+      await expect(editor.getByRole('heading', { name: promptName })).toBeVisible();
       await capture('content');
       // The asset-creation dialog has no Select. Exercise the real binding dialog,
       // which uses the same FormDialog and a labelled, portaled Radix Select.
@@ -123,18 +143,18 @@ for (const width of [390, 768, 1024, 1440]) {
       const search = page.getByRole('textbox', { name: '搜索 Prompt' });
       await search.fill('完全不匹配的关键词');
       await expect(page.getByText('没有匹配的 Prompt', { exact: true })).toBeVisible();
-      await expect(editor.getByRole('heading', { name: '移动端可编辑的正式模板' })).toBeVisible();
+      await expect(editor.getByRole('heading', { name: promptName })).toBeVisible();
       await expect(page.getByText('还没有 Prompt', { exact: true })).toHaveCount(0);
       await capture('filtered');
       await search.fill('');
       await expect(
         page
           .getByRole('complementary', { name: 'Prompt 目录' })
-          .getByRole('button', { name: /移动端可编辑的正式模板/ }),
+          .getByRole('button', { name: promptName }),
       ).toBeVisible();
       await page.goto('/home');
       await page.goBack();
-      await expect(editor.getByRole('heading', { name: '移动端可编辑的正式模板' })).toBeVisible();
+      await expect(editor.getByRole('heading', { name: promptName })).toBeVisible();
       expect(errors).toEqual([]);
     });
   }
