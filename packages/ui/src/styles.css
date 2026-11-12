@@ -805,7 +805,7 @@ body {
 
 .ah-dialog-backdrop {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--ah-z-modal);
   inset: 0;
   display: grid;
   place-items: center;
@@ -996,7 +996,7 @@ body {
 
 .ah-drawer-backdrop {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--ah-z-modal);
   inset: 0;
   display: flex;
   background: rgb(15 23 42 / 42%);

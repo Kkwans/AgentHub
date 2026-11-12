@@ -9,6 +9,10 @@
 :root {
   color-scheme: light;
 
+  /* Body portals: modal surfaces, then their interactive popovers. */
+  --ah-z-modal: 1000;
+  --ah-z-modal-popover: 1100;
+
   --ah-space-1: 4px;
   --ah-space-2: 8px;
   --ah-space-3: 12px;

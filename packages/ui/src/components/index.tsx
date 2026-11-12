@@ -1,4 +1,8 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
+import { FocusScope } from '@radix-ui/react-focus-scope';
+import { DismissableLayer } from '@radix-ui/react-dismissable-layer';
+import { hideOthers } from 'aria-hidden';
 import { XIcon } from '@phosphor-icons/react/X';
 
 import { Select as PinSelect } from '../pinharness/ui/select.js';
@@ -13,6 +17,37 @@ function resolveFocusableControl(element: HTMLElement): HTMLElement | undefined 
   return element.querySelector<HTMLElement>(FOCUSABLE_CONTROL_SELECTOR) ?? undefined;
 }
 
+// aria-hidden is reference-counted; independently hiding siblings would hide
+// both when two dialogs mount together. Keep one screen-reader isolation lease.
+// Keyboard and focus stacking remain owned by Radix (including Select portals).
+const modalVisibility = new WeakMap<
+  Document,
+  {
+    nodes: Set<HTMLElement>;
+    restore?: (() => void) | undefined;
+  }
+>();
+function isolateModal(content: HTMLElement): () => void {
+  const document = content.ownerDocument;
+  let state = modalVisibility.get(document);
+  if (!state) {
+    state = { nodes: new Set() };
+    modalVisibility.set(document, state);
+  }
+  const update = () => {
+    state.restore?.();
+    state.restore = undefined;
+    const top = [...state.nodes].at(-1);
+    if (top) state.restore = hideOthers(top);
+  };
+  state.nodes.add(content);
+  update();
+  return () => {
+    state.nodes.delete(content);
+    update();
+  };
+}
+
 export interface FormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,6 +57,7 @@ export interface FormDialogProps {
   footer?: React.ReactNode;
   size?: FormDialogSize;
   fullScreen?: boolean;
+  canClose?: boolean;
   labelledBy?: string;
   describedBy?: string;
   onOpenAutoFocus?: (event: {
@@ -36,7 +72,13 @@ export interface FormDialogProps {
   }) => void;
 }
 
-export function FormDialog({
+export function FormDialog(props: FormDialogProps) {
+  // Each open lifetime owns its focus callbacks and opener. Delayed cleanup
+  // from an earlier mount must never read a newly opened dialog's refs.
+  return props.open ? <OpenFormDialog {...props} /> : null;
+}
+
+function OpenFormDialog({
   open,
   onOpenChange,
   title,
@@ -45,95 +87,142 @@ export function FormDialog({
   footer,
   size = 'medium',
   fullScreen = false,
+  canClose = true,
   labelledBy,
   describedBy,
   onOpenAutoFocus: _onOpenAutoFocus,
   onCloseAutoFocus: _onCloseAutoFocus,
 }: FormDialogProps) {
-  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
+  const contentRef = React.useRef<HTMLElement | null>(null);
+  const callbacks = React.useRef({ onOpenChange, _onOpenAutoFocus, _onCloseAutoFocus, canClose });
+  callbacks.current = { onOpenChange, _onOpenAutoFocus, _onCloseAutoFocus, canClose };
+  const opener = React.useRef<HTMLElement | null>(null);
+  const lastContent = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
-    if (open) {
-      const activeElement = document.activeElement;
-      if (activeElement instanceof HTMLElement && activeElement !== document.body) {
-        restoreFocusRef.current ??= activeElement;
-      }
-      const focusDialogControl = () => {
-        const content = document.querySelector<HTMLElement>('.ah-dialog');
-        if (!content) return;
-        const event = {
-          currentTarget: content,
-          defaultPrevented: false,
-          preventDefault() {
-            this.defaultPrevented = true;
-          },
-        };
-        _onOpenAutoFocus?.(event);
-        if (event.defaultPrevented) return;
-        const firstInvalid = Array.from(
-          content.querySelectorAll<HTMLElement>('[aria-invalid="true"], :invalid'),
-        )
-          .map(resolveFocusableControl)
-          .find((element): element is HTMLElement => Boolean(element));
-        const firstControl = content.querySelector<HTMLElement>(FOCUSABLE_CONTROL_SELECTOR);
-        (firstInvalid ?? firstControl)?.focus();
-      };
-      const timer = window.setTimeout(focusDialogControl, 25);
-      return () => window.clearTimeout(timer);
-    }
-    const opener = restoreFocusRef.current;
-    restoreFocusRef.current = null;
-    const content = document.querySelector<HTMLElement>('.ah-dialog');
-    if (content) {
-      const event = {
-        currentTarget: content,
-        defaultPrevented: false,
-        preventDefault() {
-          this.defaultPrevented = true;
-        },
-      };
-      _onCloseAutoFocus?.(event);
-      if (event.defaultPrevented) return undefined;
-    }
-    if (opener?.isConnected) opener.focus();
-    return undefined;
-  }, [open, _onCloseAutoFocus, _onOpenAutoFocus]);
+    if (!open || !contentRef.current) return;
+    return isolateModal(contentRef.current);
+  }, [open]);
+
+  const autoFocusEvent = (content: HTMLElement) => ({
+    currentTarget: content,
+    defaultPrevented: false,
+    preventDefault() {
+      this.defaultPrevented = true;
+    },
+  });
 
   const generatedTitleId = React.useId();
   if (!open) return null;
   const titleId = labelledBy ?? `ah-dialog-title-${generatedTitleId.replaceAll(':', '')}`;
   const descriptionId = describedBy ?? (description ? `${titleId}-description` : undefined);
-  return (
+  return createPortal(
     <div
       className="ah-dialog-backdrop"
       data-fullscreen={fullScreen || undefined}
       role="presentation"
     >
-      <section
-        className={`ah-dialog ah-dialog-${size}${fullScreen ? ' ah-dialog-fullscreen' : ''}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        {...(descriptionId ? { 'aria-describedby': descriptionId } : {})}
+      <FocusScope
+        asChild
+        trapped={open}
+        loop
+        onMountAutoFocus={(event) => {
+          const content = contentRef.current;
+          if (!content) return;
+          opener.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          lastContent.current = content;
+          const custom = autoFocusEvent(content);
+          callbacks.current._onOpenAutoFocus?.(custom);
+          if (custom.defaultPrevented) {
+            event.preventDefault();
+            return;
+          }
+          const invalid = Array.from(
+            content.querySelectorAll<HTMLElement>('[aria-invalid="true"], :invalid'),
+          )
+            .map(resolveFocusableControl)
+            .find((element) => element !== undefined);
+          if (invalid) {
+            invalid.focus();
+            event.preventDefault();
+          }
+        }}
+        onUnmountAutoFocus={(event) => {
+          // FocusScope restores asynchronously. Do not steal focus from a newer
+          // route/dialog that has already deliberately focused another element.
+          event.preventDefault();
+          const content = lastContent.current;
+          if (!content) return;
+          const custom = autoFocusEvent(content);
+          callbacks.current._onCloseAutoFocus?.(custom);
+          if (custom.defaultPrevented) return;
+          const active = document.activeElement;
+          if (
+            active !== document.body &&
+            active instanceof HTMLElement &&
+            active.isConnected &&
+            !content.contains(active)
+          )
+            return;
+          if (opener.current?.isConnected) opener.current.focus();
+        }}
       >
-        <div className="ah-dialog-header">
-          <div>
-            <h2 id={titleId}>{title}</h2>
-            {description ? <p id={descriptionId}>{description}</p> : null}
-          </div>
-          <button
-            type="button"
-            className="ah-dialog-close"
-            aria-label="关闭"
-            onClick={() => onOpenChange(false)}
+        <DismissableLayer
+          asChild
+          disableOutsidePointerEvents
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onFocusOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => {
+            if (!callbacks.current.canClose) {
+              event.preventDefault();
+              return;
+            }
+            // DismissableLayer selects only the top layer. Wait for child
+            // keyboard handlers so their preventDefault can consume Escape.
+            queueMicrotask(() => {
+              if (
+                !event.defaultPrevented &&
+                contentRef.current?.isConnected &&
+                callbacks.current.canClose
+              )
+                callbacks.current.onOpenChange(false);
+            });
+          }}
+        >
+          <section
+            ref={contentRef}
+            tabIndex={-1}
+            className={`ah-dialog ah-dialog-${size}${fullScreen ? ' ah-dialog-fullscreen' : ''}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            {...(descriptionId ? { 'aria-describedby': descriptionId } : {})}
           >
-            <XIcon aria-hidden size={18} />
-          </button>
-        </div>
-        <div className="ah-dialog-body">{children}</div>
-        {footer ? <div className="ah-dialog-footer">{footer}</div> : null}
-      </section>
-    </div>
+            <div className="ah-dialog-header">
+              <div>
+                <h2 id={titleId}>{title}</h2>
+                {description ? <p id={descriptionId}>{description}</p> : null}
+              </div>
+              <button
+                type="button"
+                className="ah-dialog-close"
+                aria-label="关闭"
+                disabled={!canClose}
+                onClick={() => {
+                  if (callbacks.current.canClose) callbacks.current.onOpenChange(false);
+                }}
+              >
+                <XIcon aria-hidden size={18} />
+              </button>
+            </div>
+            <div className="ah-dialog-body">{children}</div>
+            {footer ? <div className="ah-dialog-footer">{footer}</div> : null}
+          </section>
+        </DismissableLayer>
+      </FocusScope>
+    </div>,
+    document.body,
   );
 }
 
@@ -161,7 +250,13 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <FormDialog open={open} onOpenChange={onOpenChange} title={title} description={description}>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      canClose={!pending}
+    >
       <div className="ah-dialog-footer">
         <button
           type="button"

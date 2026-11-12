@@ -121,7 +121,8 @@ export function Select({
         <RadixSelect.Content
           position="popper"
           sideOffset={5}
-          className="z-[100] max-h-72 w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-1 shadow-[var(--shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1"
+          style={{ zIndex: 'var(--ah-z-modal-popover, 1100)' }}
+          className="max-h-72 w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-1 shadow-[var(--shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1"
         >
           {searchable ? (
             <div

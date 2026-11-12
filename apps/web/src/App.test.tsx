@@ -221,29 +221,52 @@ describe('AgentHub App', () => {
 
   it('renders creation flows as responsive overlay contracts', async () => {
     stubApi();
-    renderApp(['/projects/new']);
-    expect(await screen.findByRole('dialog', { name: '创建项目' })).toBeInTheDocument();
+    const { container } = renderApp(['/projects/new']);
+    const dialog = await screen.findByRole('dialog', { name: '创建项目' });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.closest('.ah-dialog-backdrop')?.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(dialog);
+    expect(container).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByTestId('create-project-dialog')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '项目' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '项目', hidden: true })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '项目' })).not.toBeInTheDocument();
   });
 
   it('keeps New Work focused on the task description and current Project context', async () => {
     stubApi();
-    renderApp([`/projects/${project.id}/work/new`]);
-    expect(await screen.findByRole('dialog', { name: '描述一项工作' })).toBeInTheDocument();
+    const { container } = renderApp([`/projects/${project.id}/work/new`]);
+    const dialog = await screen.findByRole('dialog', { name: '描述一项工作' });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.closest('.ah-dialog-backdrop')?.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(dialog);
+    expect(container).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByTestId('new-work-dialog')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '你想完成什么？' })).toBeInTheDocument();
     expect(screen.getAllByText(project.name).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole('link', { name: '工作', current: 'page' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: '工作', current: 'page', hidden: true }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '工作', current: 'page' })).not.toBeInTheDocument();
   });
 
   it('presents Agent discovery as a two-zone modal with real candidate state', async () => {
     stubApi();
-    renderApp(['/agents/agents/discover']);
-    expect(await screen.findByRole('dialog', { name: '发现 Agent' })).toBeInTheDocument();
+    const { container } = renderApp(['/agents/agents/discover']);
+    const dialog = await screen.findByRole('dialog', { name: '发现 Agent' });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.closest('.ah-dialog-backdrop')?.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(dialog);
+    // aria-live regions remain exposed; hideOthers may isolate app-shell
+    // descendants rather than the outer render container.
+    expect(
+      screen
+        .getByRole('heading', { name: 'Agent 中心', hidden: true })
+        .closest('[aria-hidden="true"]'),
+    ).not.toBeNull();
     expect(screen.getByTestId('discover-agents-dialog')).toBeInTheDocument();
     expect(screen.getByText('Local Host')).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: '候选 Agent' }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole('heading', { name: 'Agent 中心' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Agent 中心', hidden: true })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Agent 中心' })).not.toBeInTheDocument();
   });
 });

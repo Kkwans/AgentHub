@@ -70,7 +70,7 @@ describe('product components', () => {
   });
 
   it('exposes non-native input and composable dialog primitives', () => {
-    render(
+    const { container } = render(
       <AgentHubProvider>
         <AhInput label="搜索" placeholder="输入关键词" />
         <AhDialog open title="测试弹层" onClose={() => undefined}>
@@ -78,7 +78,12 @@ describe('product components', () => {
         </AhDialog>
       </AgentHubProvider>,
     );
-    expect(screen.getByRole('textbox', { name: '搜索' })).toBeTruthy();
+    expect(screen.getByLabelText('搜索')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '搜索' })).not.toBeInTheDocument();
+    expect(container).toHaveAttribute('aria-hidden', 'true');
+    const dialog = screen.getByRole('dialog', { name: '测试弹层' });
+    expect(dialog.closest('.ah-dialog-backdrop')?.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(dialog);
     expect(screen.getByRole('dialog', { name: '测试弹层' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '关闭' })).toBeTruthy();
   });
