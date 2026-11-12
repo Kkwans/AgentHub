@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import type { SessionRecord } from '../../../lib/api';
-import { resolveWorkspaceRunState } from '../../../presentation/domain-labels';
+import { labelSessionBranch, resolveWorkspaceRunState } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';
 import { sessionGroupKey } from '../../shared/page-primitives';
 import sessionRailStyles from '../sessionRail.module.css';
@@ -107,7 +107,7 @@ export function SessionRail({
       <div>
         <strong>{session.title}</strong>
         <code>
-          {session.branch || '无 Git'} · {session.cwd.split('/').at(-1)}
+          {labelSessionBranch(session.branch)} · {session.cwd.split('/').at(-1)}
           {session.continuedFromSessionId ? '（续接）' : ''}
         </code>
       </div>

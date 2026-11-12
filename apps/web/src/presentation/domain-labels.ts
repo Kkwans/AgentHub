@@ -530,3 +530,8 @@ export const RAW_ENUM_ALLOWLIST_FOR_DEBUG = [
   'TEXT',
   'CHAT',
 ] as const;
+
+/** A missing session snapshot does not establish whether the directory uses Git. */
+export function labelSessionBranch(branch: string | null | undefined): string {
+  return branch?.trim() ? branch : '分支未记录';
+}

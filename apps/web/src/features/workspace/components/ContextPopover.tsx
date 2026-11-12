@@ -3,6 +3,7 @@ import { Button, GitBranch, cn } from '@agenthub/ui';
 import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { ProjectRecord, ResolvedPromptContextRecord, SessionRecord } from '../../../lib/api';
 import {
+  labelSessionBranch,
   labelPromptBindingSlot,
   labelPromptBindingTarget,
 } from '../../../presentation/domain-labels';
@@ -81,7 +82,7 @@ export function ContextPopover({
                 branch
               </span>
               <strong className="flex min-w-0 items-center gap-1 truncate text-xs font-medium">
-                <GitBranch aria-hidden size={13} /> {session.branch || '无 Git'}
+                <GitBranch aria-hidden size={13} /> {labelSessionBranch(session.branch)}
               </strong>
             </div>
             <div className="grid min-w-0 gap-1 rounded-[var(--radius)] border border-[hsl(var(--border))]/60 bg-[hsl(var(--surface-muted))]/60 p-2">

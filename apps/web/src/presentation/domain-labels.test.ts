@@ -14,6 +14,7 @@ import {
   TASK_STATUS_LABELS,
   WORKTREE_STATUS_LABELS,
   labelAgentKind,
+  labelSessionBranch,
   labelAgentEventType,
   labelExecutionTargetKind,
   labelPromptKind,
@@ -93,4 +94,16 @@ describe('domain presentation labels', () => {
     expect(result.debug).not.toContain('https://chatgpt.com');
     expect(result.debug).not.toContain('token=secret');
   });
+});
+
+describe('session branch snapshot labels', () => {
+  it.each([null, undefined, '', ' ', '\t\n'])('does not infer Git absence from %j', (branch) => {
+    expect(labelSessionBranch(branch)).toBe('分支未记录');
+  });
+  it.each(['main', 'feature/修复', 'release/v1.2', ' recorded-value '])(
+    'preserves recorded branch %s',
+    (branch) => {
+      expect(labelSessionBranch(branch)).toBe(branch);
+    },
+  );
 });

@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PanelLeft, PanelRight } from 'lucide-react';
 import { StatusBadge } from '../../../components/Feedback';
+import { labelSessionBranch } from '../../../presentation/domain-labels';
 import { ChatCommandBar } from '../components/ChatCommandBar';
 import { ChatConversationView } from '../components/ChatConversationView';
 import { SessionRail } from '../components/SessionRail';
@@ -196,7 +197,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
             </span>
             <span>
-              <GitBranch size={14} /> {currentSession.branch || '无 Git'}
+              <GitBranch size={14} /> {labelSessionBranch(currentSession.branch)}
             </span>
             <code title={currentSession.cwd}>{currentSession.cwd}</code>
           </div>
