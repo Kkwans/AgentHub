@@ -33,23 +33,56 @@ async function capture(page: Page, info: TestInfo, name: string, region?: Locato
   if (region) {
     await region.scrollIntoViewIfNeeded();
     await expect(region).toBeVisible();
-    await expect(region).toBeInViewport({ ratio: 1 });
-    const geometry = await region.evaluate((node) => {
-      const rect = node.getBoundingClientRect();
-      return {
-        left: rect.left,
-        right: rect.right,
-        viewportWidth: innerWidth,
-        overflow: node.scrollWidth - node.clientWidth,
-      };
-    });
-    expect(geometry.left).toBeGreaterThanOrEqual(0);
-    expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
-    expect(geometry.overflow).toBeLessThanOrEqual(1);
+    // scrollIntoView can leave a border at a fractional clip edge. Measure the
+    // browser's actual intersection (including AppShell scroll ancestors), not
+    // only window bounds or a blanket relaxed area ratio.
+    const geometry = await region.evaluate(
+      (node) =>
+        new Promise<{
+          left: number;
+          right: number;
+          viewportWidth: number;
+          overflow: number;
+          ratio: number;
+          visible: boolean;
+          clipped: { top: number; bottom: number; left: number; right: number };
+        }>((resolve) => {
+          const observer = new IntersectionObserver(
+            ([entry]) => {
+              if (!entry) return;
+              observer.disconnect();
+              const rect = entry.boundingClientRect;
+              const visible = entry.intersectionRect;
+              resolve({
+                left: rect.left,
+                right: rect.right,
+                viewportWidth: innerWidth,
+                overflow: node.scrollWidth - node.clientWidth,
+                ratio: entry.intersectionRatio,
+                visible: entry.isIntersecting,
+                clipped: {
+                  top: Math.max(0, visible.top - rect.top),
+                  bottom: Math.max(0, rect.bottom - visible.bottom),
+                  left: Math.max(0, visible.left - rect.left),
+                  right: Math.max(0, rect.right - visible.right),
+                },
+              });
+            },
+            { threshold: [0, 1] },
+          );
+          observer.observe(node);
+        }),
+    );
     await info.attach(`${name}-geometry`, {
       body: JSON.stringify(geometry),
       contentType: 'application/json',
     });
+    expect(geometry.visible).toBe(true);
+    for (const clippedEdge of Object.values(geometry.clipped))
+      expect(clippedEdge).toBeLessThanOrEqual(1);
+    expect(geometry.left).toBeGreaterThanOrEqual(0);
+    expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
+    expect(geometry.overflow).toBeLessThanOrEqual(1);
   }
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
