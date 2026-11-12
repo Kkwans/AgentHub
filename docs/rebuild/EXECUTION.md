@@ -6,8 +6,8 @@
 
 | 范围 | 最新事实 | 后续动作 |
 | --- | --- | --- |
-| 已验收发布基线 | `2ecf46f`最新CI已双绿；已发布功能修复可按该SHA核验，resume新缺陷尚在独立修复 | 不合并main、不部署 |
-| 本地最终门禁 | S39 lint/types/build、115文件872单测通过/10跳过、QA10通过；S34旧fixture失败及e866真实失败记录保留 | 新真实CI未完成前不宣称浏览器通过 |
+| 已验收发布基线 | `62b821d`最新CI已双绿；已发布resume修复可按该SHA核验，AH059另片实施中 | 不合并main、不部署 |
+| 本地最终门禁 | S40 lint/types/build、115文件880单测通过/10跳过、QA10通过；S34旧fixture失败及e866真实失败记录保留 | 新真实CI未完成前不宣称浏览器通过 |
 | 当前CI | `6ab6ef5`真实87、`ce6994b`真实105、`c69e88c`真实113均双绿，均通过140几何检查 | 02eb01b real116/140通过但verify红；2ecf46f verify856单测/48fixture与real116/140均绿，artifact实算SHA256通过 |
 | 已知前轮失败 | 74f49ba/c78905f的Esc故障已修；17566/70c838/4156787的Agent容器边缘断言已用原生IO取证修正，095485c通过 | 原红灯与依据保留在下方历史，不隐去失败 |
 | 视觉状态 | 用户明确否定现有整体样式；已读设计资料并提供三个完整概念，用户全部否定（第二个仅稍好），正在重新探索 | 暂停AH049/AH051等旧微调，不能以测试绿称设计成功 |
@@ -391,3 +391,31 @@
 - root另外强化API错误文案4种断言，准确区分旧连接、本次新连接、两者未知与已受管资源，不回显原始cause。S39最终lint/types/build、115文件872单测通过/10跳过（269.15秒）、QA10全部通过，独立最终CR无阻断；真实Agent/NAS及多进程runtime激活仍未验收。
 
 - AH057/AH058最终CR确认自然detach、旧handle复用拒绝、配置原子条件和默认配置合同均符合本片边界。AH059仍只记录既有源码风险，未运行复现、未修复、不声称关闭。
+
+
+### 62b821d发布后核验与AH059定向审计
+
+- 已发布代码 `4e731199c59a4eee14800a39d679fa3aa2d91ae5` 与台账HEAD `62b821dcd5d2e2a8eeb6b8fca8e23d3ccfa396d9`，远端树核验一致。
+- exact run `43257274729` 的 verify `131318783184` 已绿：115文件872单测/10跳过、48fixture通过（1.8分钟）。real `131318783650`仍运行，未借用2ecf46f旧绿。
+- AH059继续仅审计：要求实际Service/PGlite/受控adapter沿现有合法收敛路径构造barrier，不能靠任意改DB状态或新active对象伪造可达性。现阶段没有新增生产修复，也没有视觉实现。
+
+
+### AH059由源码风险升级为合法竞争复现
+
+- 独立62b树实际Service/PGlite/受控adapter审计3项通过，含2个坏行为正例与1个不可达否定对照，不是修复通过。
+- 旧findActive snapshot迟到案例只损坏新Session状态，R2仍RUNNING，新handle未关闭，R1已COMPLETED/Task WAITING_REVIEW保持；旧Task callback迟到案例借合法Approval投递失败恢复窗口损坏新READY Session，原Run/Task未虚假终结。
+- 未直接改DB状态、未伪造新active、未直接调用私有handler。此前“未复现”记录保留为当时状态；现在生产仍未实现修复，先审查最小本实例写入/activation互斥方案，不承诺跨进程或全部事件处理原子化。
+
+
+- 后续直接核验：`62b821d` run `43257274729` 的 verify/real 两job均 completed/success，成为新的双绿基线；实际逐项/产物继续核对。AH059短提交队列仍在独立树，尚未进入该SHA，不借双绿称其已验收。
+- AH059短队列初稿经独立源码CR：非拒绝tail且finally仅清理自己，未见锁嵌套；resume获得提交区后重验token、旧handler每个受保护提交区重验activation，provider/Task/handle.close留区外。双方提交barrier和失败后队列可继续已专项验证，最终整合门禁待实施片交付。
+
+- `62b821d`逐项证据核对完成：verify872单测/10跳过、fixture48（1.8分钟）；real116（16.8分钟）与140几何检查通过。artifact `13963807810`，91,783,660字节，下载实算SHA256 `c995b31d064e08dcd9e341bab31e8530e4c36712c76d5d17f943db54237e607b`匹配。只覆盖已发布代码，不包含AH059未发布实现。
+
+
+### AH059修复整合与S40门禁
+
+- 已整合每Session短提交队列：resume READY+activate、失败FAILED条件收敛、close最终CLOSED、断连消费者Run/Session提交共享边界。队列tail不拒绝、finally仅清自身；锁内重验归属，Task/provider/handle.close不持锁。
+- 最终Session81专项通过（基线73+新增8），servertypes/lint通过；旧源码两条合法正例均红，cancel反例绿。覆盖旧提交先行、新READY先行、排队恢复被close撤销、提交失败不毒化后续、长挂Task回调不阻close。
+- 追加FAILED提交初轮曾暴露已撤销resume无意义等待close提交的回归，已改为失去ownership先跳过排队、仍owned者入队后再复核；保留原测试，没有延长超时或删断言。测试类型参数/外层错误码断言亦按真实接口纠正后重跑。
+- 独立最终源码CR与root复审无阻断；S40完整lint/types/build、115文件880单测通过/10跳过（266.82秒）、QA10全部通过，准备按独立逻辑切片发布；新SHA真实CI仍待验。不保证挂起DB操作不阻队列，不取消已开始的任意外部Task observer，不覆盖其他persistEvent/Approval收敛或跨进程。

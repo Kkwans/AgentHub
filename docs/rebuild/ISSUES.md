@@ -135,6 +135,10 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 - AH-058（P1，本地修复，待真实CI）：两个resume同时通过DISCONNECTED读取，R1先READY并激活后，R2的无归属detachActive关闭R1赢家，READY→READY失败后将Session写FAILED，且泄漏R2 handle。受控并发诊断已复现。计划首await前同Session同步拒绝重入、按捕获activation身份替换旧连接，失败写入不能覆盖并发close/新赢家；不承诺跨进程完整生命周期隔离。
 
 
-- AH-059（待定向复现）：旧handleActivationDisconnected仅入口检查activation，后续findActiveForSession/Run写/Task回调/Session写跨await未重新核对；safeSessionTransition仅排除CLOSED。若旧回调挂起期间另一条路径已使Session可恢复，迟到回调可能作用新Run/新Session状态。独立源码已确认该结构为既有代码，尚未barrier复现，不能说正常单次断连必现。AH057/058只保证resume自身归属，不宣称所有consumer副作用或跨进程隔离；完整原子生命周期fence另行评估。
+- AH-059（P1，本实例消费者修复，待新CI）：旧handleActivationDisconnected仅入口检查activation，后续findActiveForSession/Run写/Task回调/Session写跨await未重新核对；safeSessionTransition仅排除CLOSED。若旧回调挂起期间另一条路径已使Session可恢复，迟到回调可能作用新Run/新Session状态。最初只确认既有源码结构；现已用真实Service/PGlite/受控adapter沿合法cancel/Approval失败与resume路径完成2条正例barrier复现，另1条cancel候选不可达已否定。不能说正常单次断连必现。AH057/058只保证resume自身归属，不宣称所有consumer副作用或跨进程隔离；完整原子生命周期fence另行评估。
 
 - AH057/AH058整合结果：恢复互斥、close撤销、迟到handle/配置、自然detach与新旧资源清理已完成；旧源Service3红、DB2红；S39完整872单测及lint/types/build/QA通过，仍待新exact-head CI。只保护本实例resume自身归属，不扩大为AH059或多进程生命周期已解决。
+
+- AH059精确证据：旧findActive已取得R1快照后挂起，经合法cancel拒绝断连、resume、权威完成R1再显式R2，旧回调把新RUNNING Session改DISCONNECTED，而R2仍RUNNING、新handle未关闭。另一条旧Task回调挂起时Approval投递失败推进Session断连，resumeREADY后旧回调再改DISCONNECTED。仅cancel拒绝且Run已断连的候选不会推进Session，resume409，为否定对照。生产尚未修，下一片要求归属检查与最终Session写在本实例activation切换边界保持一致，不能只check再盲await。
+
+- AH059整合：两条正例已修、否定对照保留；短提交队列及双方提交顺序/撤销/失败释放共81专项、S40完整880单测/lint/types/build/QA通过。仅本实例此断连消费者与resume/close必要提交；其他事件路径/跨进程不在完成范围，新SHA真实CI待验。
