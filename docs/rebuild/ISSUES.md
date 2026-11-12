@@ -83,3 +83,9 @@ AH-024 追加：首页空态8张实际图已审阅，主CTA无阻塞问题；有
 
 - AH-031（P1）：同Session R1终态先将Session置READY，Task observer完成前可创建R2，旧R1回调仍可把R2执行中的Task改待审阅/阻塞。新增Session.latestRunId，Run插入/指针与Task回调统一Task→Session锁顺序；回调须命中持久最新Run。旧源新增7例全失败，修复64专项通过，最终集成门禁中。历史指针NULL不猜时间戳；直接续发不会隐式重启已待审阅Task。PGlite顺序证明不等于独立Postgres连接竞争实测。
 - AH-032（P1，待独立复现）：额外服务回归暴露GitHeadProbe返回undefined时，Run完成后可能执行空gitAfterSha UPDATE并中断Task observer。非Git目录是合法输入，不应使已完成Run的Task状态无法收敛；正在独立验证，不以测试探针修复关闭生产问题。
+
+- AH-032复现/修复：受控无HEAD探针+真实Session/Task/PGlite在旧源失败，Session错误转DISCONNECTED且Task不收敛。修复只在SHA非undefined时更新gitAfterSha，避免空UPDATE；真实探针异常保持原错误路径，不catch吞掉。完整Session27项通过，集成门禁中。
+- AH-033（P1）：实际Agent卡片显示Session/Run/Sessions重复且凭空承诺支持；原实现硬补Session/Run，并把嵌套对象truthy当支持。改为真实嵌套合同及旧别名中明确true的已知能力，去重并明确未知，不把能力徽章当项目实时可用证明。
+- AH-034（P2）：Agent整卡/查看诊断看似特定Agent入口，实际均进当前AgentHub服务器诊断。取消伪详情导航，保留明确“服务器诊断”及范围说明；不虚构尚未实现的Agent详情。真实四宽双主题验收新增，待CI实际执行。
+- AH-035（P1）：74f49ba真实CI四宽双主题均复现多项目弹窗Escape不能关闭；共享FormDialog是role=dialog的section但无Escape/焦点圈定，原全局querySelector还会混淆多个弹层。正在修共享组件，保留失败验收，不通过删除Esc断言转绿。
+- AH-036（P2）：实际390 Prompt空库目录创建按钮受局部288px滚动裁切，下方重复编辑器空态。仅原始资产成功返回空数组时显示单一创建入口；筛选无结果仍保留已有选中编辑器，加载/错误不冒充空库。5项定向验证通过，真实八组合待新CI。

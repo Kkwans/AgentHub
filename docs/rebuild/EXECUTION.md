@@ -176,3 +176,15 @@
 - 独立CR无阻塞；旧源码新增7例全失败，修复后所有权/回滚/迁移11项及Task/Prompt/Session53项通过。迁移验证升级/重开/重复执行保留数据；PGlite并发调用串行化不能冒充独立Postgres连接竞争实测。
 - 集成生产改动的lint/typecheck/串行build、95文件562测试（10跳过，198.50秒）、QA10全通过。补充真实SessionService事件屏障回归：Session READY后暂停Task observer，实际启动R2，再释放R1；与callback-first对照。初次两例因测试Git探针仅两次返回、第二轮耗尽而失败，不计通过；补齐四次返回后两例通过，暴露的非Git收敛风险另立项，不掩盖。
 - 修正测试Git探针后完整SessionService25项、server类型和lint通过；服务级两条屏障用真实ControlledAdapter事件验证新Run先提交/旧回调先完成两种顺序。未把测试替身称为真实付费Agent。
+
+### M1.2i 无Git终态收敛与M2.6 Agent真实性
+
+- 合法无HEAD不再执行空gitAfterSha更新，Run完成可继续将Session置READY并通知Task；真实probe异常仍显式走既有错误路径。旧源一例失败一例对照通过，修复完整Session27项通过。
+- 实拍Agent卡片能力重复/虚构，改只映射明确true的嵌套能力与兼容别名；false/空对象/字符串不当支持。整卡不再伪装Agent详情链接；独立服务器诊断指向控制面环境，名称与页面说明一致，保留44px键盘焦点目标。
+- 新真实API用例验证known/unknown/false三类已注册Agent的实际GET能力、四宽双主题、键盘入口、无误导航/横向溢出/console错误；本机仅类型/收集，实际像素待新CI。
+- 最终集成lint/typecheck/串行build通过，96文件571项测试通过/10跳过（195.53秒），QA10通过；Agent真实E2E独立类型/collection通过，补充实际诊断目的页范围可见断言。独立CR无阻塞；能力只证明适配器上报与UI一致，不冒充供应商能力执行测试。
+
+### M2.7 Prompt空库与共享弹窗键盘
+
+- 实际Prompt移动空库重复占位/按钮裁切，改真正空库仅显示单一创建CTA，不应用目录局部滚动与680px两栏占位。筛选无匹配不等于空库，选中编辑器保留；加载/错误仍明确。5专项通过，新增四宽双主题真实创建/取消/筛选/返回门禁。
+- 74f49ba真实恢复8项成功；Home选择的8个Esc失败是产品缺键盘关闭，正在共享FormDialog修复，不删断言。恢复截图当前仅默认浅色四宽，不误写成双主题已验收。

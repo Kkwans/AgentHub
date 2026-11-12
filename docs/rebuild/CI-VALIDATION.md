@@ -49,3 +49,5 @@
 
 - `fe878f3d34a2bc4c5e3bfb60a6d7244dc94066d3` / run `43208909811` 同一HEAD双绿：verify `131151060643`、real-service `131151061160`。523单测、48 fixture浏览器、23真实服务测试和140图几何通过。独立下载的real artifact 13941041192校验ZIP digest一致；390/768双主题内容态错误列表为空、documentWidth等于viewport。
 - 新增 `task-creation-recovery.spec.ts`：真实POST成功后丢弃响应、刷新/关闭重开仅GET、同编号冻结重放不start、真实404保留记录、写存储失败不POST、同账户重新登录恢复。新增 `home-project-choice.spec.ts`：四宽双主题名称/目录选择、排除TEST/归档、Esc焦点返回、单项目目标。故障诊断仅允许精确注入请求对应的错误，不整体忽略console。
+
+- `74f49ba` / run `43212686276`：verify成功；real-service 31通过/8失败，恢复8项全部通过，140图几何通过。全部失败是Home多项目选择弹窗Esc未关闭，确认为共享FormDialog缺少键盘关闭实现，不删除或放宽断言。artifact13943615203含失败截图/trace，修复与新HEAD复验中，不能称该HEAD双绿。
