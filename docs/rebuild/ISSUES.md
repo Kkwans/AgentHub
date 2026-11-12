@@ -101,7 +101,7 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 - AH-039（P1）：普通任务工作列表对IN_PROGRESS执行取消仅转换Task为CANCELED，不调用Session/Run取消；实际TaskService+stub复现Task已取消而Run仍RUNNING、cancelCalls=0。首片阻止进行中直接取消并明确进入所属工作区停止Run，未运行任务仍可取消；不把请求返回当执行已停止，完整权威取消交互后续完善。实现/独立CR完成，最终集成651单测、lint/types/build及QA通过，新真实CI待发布；非真实Agent/NAS测试。Task取消先胜出后的反向直接Session准入仍需独立修复。
 
 - AH-040（P1）：Task取消先提交后，旧READY Session的Run admission仍可能创建关联新Run；不能仅凭Task行锁称双向竞争已解决。需明确CANCELED/DONE与审阅会话直接继续的合同，再在持久准入处核验。持久准入修复及历史漂移 fixture 修正已完成，86 项专项和所有权文件 10 项通过；完整 S31 726 单测、lint/types/build/QA 全过，按逻辑切片发布；真实 Agent/NAS 与多进程不在本次证明范围。
-- AH-041（P2）：项目工作列表无Agent的“开始”直接请求BACKLOG→IN_PROGRESS，与状态机需先READY不符；需单独核对手工任务入口。AH-039只保留可合法形成的无Session任务取消，未修该旧启动入口。
+- AH-041（P2）：项目工作列表无Agent的“开始”直接请求BACKLOG→IN_PROGRESS，与状态机需先READY不符；AH041已补合法两步与未知结果只读恢复、身份/导航隔离，58专项通过，S33完整753单测、lint/types/build/QA通过，真实CI待验；不放宽状态机，不启动Agent。
 
 - AH-042（P2）：Agent管理390首屏被状态说明/技术ID占据，主要编辑入口从y767才开始。局部层级重排已实现，关键警告不折叠、技术区原生键盘可展开；29组件专项通过，初始输入视口断言及实际像素待新CI。
 
