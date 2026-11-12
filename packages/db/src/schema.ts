@@ -317,6 +317,7 @@ export const agentRuns = pgTable(
     inputMessageId: uuid('input_message_id'),
     externalRunId: text('external_run_id'),
     status: text('status').notNull(),
+    dispatchState: text('dispatch_state').notNull().default('LEGACY_UNKNOWN'),
     model: text('model'),
     mode: text('mode'),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
@@ -336,6 +337,10 @@ export const agentRuns = pgTable(
       .default(emptyObject),
   },
   (table) => [
+    check(
+      'agent_runs_dispatch_state_check',
+      sql`${table.dispatchState} in ('PREPARING', 'ATTEMPTED', 'LEGACY_UNKNOWN')`,
+    ),
     check(
       'agent_runs_status_check',
       sql`${table.status} in ('QUEUED', 'STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'CANCELED', 'COMPLETED', 'FAILED', 'DISCONNECTED')`,

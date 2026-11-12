@@ -327,14 +327,15 @@ describe('Session/Run/Approval 持久化闭环', () => {
     },
   );
 
-  async function preparationFixture() {
-    const adapter = new ControlledAdapter('never');
+  async function preparationFixture(scenario: ControlledScenario = 'never') {
+    const adapter = new ControlledAdapter(scenario);
     const fixture = await createFixture(
       'idle',
       undefined,
       {},
       {
         adapter,
+        cancelConvergenceTimeoutMs: 1_000,
         git: { readHead: async () => undefined },
       },
     );
@@ -627,7 +628,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     }
   });
 
-  it('首次清理CAS与断连读取都失败仍返回typed错误；startup改写边界显式保留待phase2', async () => {
+  it('首次清理CAS失败仍保留未派发证据，startup修复Task后解除持久fence', async () => {
     const f = await preparationFixture();
     vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(
       new Error('prepare private body'),
@@ -649,15 +650,88 @@ describe('Session/Run/Approval 持久化闭环', () => {
       await f.service.recoverAfterRestart(); // Real startup path, not just a new service object.
       expect(await f.repositories.runs.get(run!.id)).toMatchObject({
         status: 'FAILED',
-        errorCode: 'SERVER_RESTARTED',
+        errorCode: 'RUN_PREPARATION_RECOVERY_REQUIRED',
+        dispatchState: 'PREPARING',
       });
       expect((await f.tasks.get(f.task.id))?.status).toBe('IN_PROGRESS');
-      // This slice cannot claim a durable preparation marker when its first CAS
-      // never committed. Startup reconciliation is explicitly deferred, not a
-      // reason to automatically reconnect or replay the original input.
+      expect((await f.repositories.runs.findBlockingForSession(f.session.id))?.id).toBe(run?.id);
+      await f.taskService.recoverAfterRestart();
+      await f.repositories.runs.clearReconciledPreparationFences();
+      expect((await f.tasks.get(f.task.id))?.status).toBe('BLOCKED');
       expect(await f.repositories.runs.findBlockingForSession(f.session.id)).toBeUndefined();
       expect(f.adapter.handles).toHaveLength(1);
     } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it.each([
+    ['never', 'COMPLETED', false],
+    ['never', 'CANCELED', false],
+    ['reject', 'COMPLETED', false],
+    ['reject', 'CANCELED', false],
+    ['never', 'CANCELED', true],
+    ['reject', 'CANCELED', true],
+  ] as const)(
+    '取消%s后未知隔离，显式重连收到%s才收敛，历史=%s',
+    async (scenario, terminal, legacy) => {
+      const f = await preparationFixture(scenario);
+      const send = vi.spyOn(ControlledHandle.prototype, 'sendTurn');
+      try {
+        const run = await f.service.startRun(f.session.id, { text: '只派发一次' });
+        expect((await f.repositories.runs.get(run.id))?.dispatchState).toBe('ATTEMPTED');
+        await f.service.cancelRun(f.session.id, run.id);
+        await waitFor(
+          async () => (await f.repositories.runs.get(run.id))?.status === 'DISCONNECTED',
+          2_500,
+        );
+        if (legacy) await f.repositories.runs.patch(run.id, { dispatchState: 'LEGACY_UNKNOWN' });
+        expect((await f.tasks.get(f.task.id))?.status).toBe('IN_PROGRESS');
+        await expect(f.service.cancelRun(f.session.id, run.id)).rejects.toMatchObject({
+          code: 'RUN_DISPATCH_UNRESOLVED',
+        });
+        Object.assign(f.adapter, {
+          resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+        });
+        await f.service.resume(f.session.id);
+        await expect(f.service.startRun(f.session.id, { text: '不应重发' })).rejects.toMatchObject({
+          code: 'SESSION_RUN_UNRESOLVED',
+        });
+        f.adapter.handles[0]!.terminal(run.id, terminal);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect((await f.repositories.runs.get(run.id))?.status).toBe('DISCONNECTED');
+        f.adapter.handles.at(-1)!.terminal(run.id, terminal);
+        await waitFor(
+          async () =>
+            (await f.tasks.get(f.task.id))?.status ===
+            (terminal === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED'),
+        );
+        expect(await f.repositories.runs.findBlockingForSession(f.session.id)).toBeUndefined();
+        expect((await f.repositories.runs.get(run.id))?.dispatchState).toBe('ATTEMPTED');
+        expect(send).toHaveBeenCalledTimes(1);
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('派发意图CAS未确认时绝不调用Agent，保留未派发错误语义', async () => {
+    const f = await preparationFixture();
+    const send = vi.spyOn(ControlledHandle.prototype, 'sendTurn');
+    const mark = vi
+      .spyOn(f.repositories.runs, 'markDispatchAttempted')
+      .mockRejectedValueOnce(new Error('intent write'));
+    try {
+      await expect(
+        f.service.startRun(f.session.id, { text: '不能越过持久意图' }),
+      ).rejects.toMatchObject({ code: 'RUN_PREPARATION_FAILED' });
+      expect(send).not.toHaveBeenCalled();
+      expect((await f.repositories.runs.list(f.session.id))[0]).toMatchObject({
+        status: 'FAILED',
+        dispatchState: 'PREPARING',
+      });
+    } finally {
+      mark.mockRestore();
       await f.service.shutdown();
     }
   });
@@ -1165,7 +1239,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await fixture.service.shutdown();
   });
 
-  it('取消没有终态事件时按短 deadline 收敛，并记录超时原因', async () => {
+  it('取消没有终态事件时按短 deadline 保持未知隔离，并记录超时原因', async () => {
     const fixture = await createFixture(
       'idle',
       undefined,
@@ -1182,11 +1256,11 @@ describe('Session/Run/Approval 持久化闭环', () => {
     const requested = await fixture.service.cancelRun(session.id, run.id);
     expect(requested.status).toBe('CANCELING');
     await waitFor(
-      async () => (await fixture.repositories.runs.get(run.id))?.status === 'CANCELED',
+      async () => (await fixture.repositories.runs.get(run.id))?.status === 'DISCONNECTED',
       2_500,
     );
     expect(await fixture.repositories.runs.get(run.id)).toMatchObject({
-      status: 'CANCELED',
+      status: 'DISCONNECTED',
       errorCode: 'CANCEL_CONFIRMATION_TIMEOUT',
     });
     expect((await fixture.repositories.sessions.get(session.id))?.status).toBe('DISCONNECTED');
@@ -1219,7 +1293,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await fixture.service.shutdown();
   });
 
-  it('取消立即被 Agent 拒绝时只由 CAS 赢家标记 FAILED 并断开 Session', async () => {
+  it('取消立即被 Agent 拒绝时只由 CAS 赢家保留未知DISCONNECTED 并断开 Session', async () => {
     const fixture = await createFixture(
       'idle',
       undefined,
@@ -1234,9 +1308,11 @@ describe('Session/Run/Approval 持久化闭环', () => {
     });
     const run = await fixture.service.startRun(session.id, { text: '立即拒绝' });
     await fixture.service.cancelRun(session.id, run.id);
-    await waitFor(async () => (await fixture.repositories.runs.get(run.id))?.status === 'FAILED');
+    await waitFor(
+      async () => (await fixture.repositories.runs.get(run.id))?.status === 'DISCONNECTED',
+    );
     expect(await fixture.repositories.runs.get(run.id)).toMatchObject({
-      status: 'FAILED',
+      status: 'DISCONNECTED',
       errorCode: 'AGENT_RUN_CANCEL_FAILED',
     });
     expect((await fixture.repositories.sessions.get(session.id))?.status).toBe('DISCONNECTED');
@@ -1619,6 +1695,10 @@ class ControlledHandle implements AgentSessionHandle {
 
   complete(runId: string): void {
     this.emit('run.completed', {}, runId);
+  }
+
+  terminal(runId: string, outcome: 'COMPLETED' | 'CANCELED') {
+    this.emit(outcome === 'COMPLETED' ? 'run.completed' : 'run.cancelled', {}, runId);
   }
 
   private emit(

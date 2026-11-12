@@ -60,7 +60,7 @@ describe('Worktree Task Runner 编排', () => {
     const original = runtime.sessions.startRun;
     runtime.sessions.startRun = async (sessionId, input) => {
       const run = await original(sessionId, input);
-      if (completeFirst) await service.onRunCompleted(task.id, run.id);
+      if (completeFirst) await complete(service, task.id, run.id);
       throw new RunStartError('DISPATCH_UNKNOWN', sessionId, run.id);
     };
     let executionId: string | undefined;
@@ -74,7 +74,7 @@ describe('Worktree Task Runner 编排', () => {
         completeFirst ? 'WAITING_REVIEW' : 'IN_PROGRESS',
       );
       expect(runtime.sessions.started).toHaveLength(1);
-      if (!completeFirst) await service.onRunCompleted(task.id, runtime.sessions.started[0]!.runId);
+      if (!completeFirst) await complete(service, task.id, runtime.sessions.started[0]!.runId);
       expect((await executions.get(queued.execution.id))?.status).toBe('REVIEW');
       await expect(service.rework(queued.execution.id, '再次修改')).rejects.toMatchObject({
         code: 'AGENT_RUN_DISPATCH_UNKNOWN',
@@ -90,7 +90,7 @@ describe('Worktree Task Runner 编排', () => {
       if (executionId) {
         const current = (await executions.get(executionId))!;
         if (['RUNNING', 'AWAITING_INPUT'].includes(current.status))
-          await service.onRunStopped(task.id, current.runId!, 'CANCELED');
+          await stop(service, task.id, current.runId!, 'CANCELED');
         else await service.cancel(executionId);
       }
       await service.shutdown();
@@ -137,7 +137,7 @@ describe('Worktree Task Runner 编排', () => {
       expect(initial.runId).toBe(runtime.sessions.started[0]!.runId);
       if (mode === 'REWORK') {
         await runs.transition(initial.runId!, 'COMPLETED');
-        await service.onRunCompleted(task.id, initial.runId!);
+        await complete(service, task.id, initial.runId!);
         await expect(service.rework(first.execution.id, '返工')).rejects.toMatchObject({
           code: 'AGENT_RUN_DISPATCH_UNKNOWN',
         });
@@ -161,8 +161,8 @@ describe('Worktree Task Runner 编排', () => {
       expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
       expect((await executions.get(next.execution.id))?.status).toBe('QUEUED');
       await runs.transition(actual, winner);
-      if (winner === 'COMPLETED') await service.onRunCompleted(task.id, actual);
-      else await service.onRunStopped(task.id, actual, 'CANCELED');
+      if (winner === 'COMPLETED') await complete(service, task.id, actual);
+      else await stop(service, task.id, actual, 'CANCELED');
       expect((await executions.get(current.id))?.status).toBe(
         winner === 'COMPLETED' ? 'REVIEW' : 'CANCELED',
       );
@@ -179,7 +179,7 @@ describe('Worktree Task Runner 编排', () => {
       for (const id of [first.execution.id, next.execution.id]) {
         const current = (await executions.get(id))!;
         if (['RUNNING', 'AWAITING_INPUT'].includes(current.status))
-          await service.onRunStopped(current.taskId, current.runId!, 'CANCELED');
+          await stop(service, current.taskId, current.runId!, 'CANCELED');
         else if (!['DONE', 'CANCELED'].includes(current.status)) await service.cancel(id);
       }
       await service.shutdown();
@@ -205,7 +205,7 @@ describe('Worktree Task Runner 编排', () => {
       try {
         await service.processQueue(fixture.projectId);
         if (mode === 'REWORK') {
-          await service.onRunCompleted(task.id, runtime.sessions.started.at(-1)!.runId);
+          await complete(service, task.id, runtime.sessions.started.at(-1)!.runId);
           binding.mockRejectedValue(new Error('DB binding'));
           await expect(service.rework(queued.execution.id, '再次修改')).rejects.toMatchObject({
             code: 'AGENT_RUN_DISPATCH_UNKNOWN',
@@ -219,13 +219,13 @@ describe('Worktree Task Runner 编排', () => {
         await service.cancel(queued.execution.id);
         expect(cancel).toHaveBeenCalledWith(runtime.sessions.started.at(-1)!.sessionId, runId);
         expect((await executions.get(queued.execution.id))?.status).toBe('RUNNING');
-        await service.onRunCompleted(task.id, runId);
+        await complete(service, task.id, runId);
         expect((await executions.get(queued.execution.id))?.status).toBe('REVIEW');
       } finally {
         binding.mockRestore();
         const current = (await executions.get(queued.execution.id))!;
         if (current.status === 'RUNNING')
-          await service.onRunStopped(task.id, runtime.sessions.started.at(-1)!.runId, 'CANCELED');
+          await stop(service, task.id, runtime.sessions.started.at(-1)!.runId, 'CANCELED');
         else await service.cancel(queued.execution.id);
         await service.shutdown();
       }
@@ -266,14 +266,14 @@ describe('Worktree Task Runner 编排', () => {
     await service.onRunWaitingForInput(firstTask.id, firstRunning.runId!);
     expect((await executions.get(first.execution.id))?.status).toBe('AWAITING_INPUT');
     await service.onRunResumed(firstTask.id, firstRunning.runId!);
-    await service.onRunCompleted(firstTask.id, firstRunning.runId!);
+    await complete(service, firstTask.id, firstRunning.runId!);
     expect((await tasks.get(firstTask.id))?.status).toBe('WAITING_REVIEW');
     expect((await executions.get(second.execution.id))?.status).toBe('QUEUED');
 
     const reworked = await service.rework(first.execution.id, '请补充回归测试');
     expect(reworked.status).toBe('RUNNING');
     expect(runtime.sessions.started.at(-1)?.input.text).toBe('请补充回归测试');
-    await service.onRunCompleted(firstTask.id, reworked.runId!);
+    await complete(service, firstTask.id, reworked.runId!);
     const merged = await service.merge(first.execution.id);
     expect(merged.execution.status).toBe('DONE');
     expect((await tasks.get(firstTask.id))?.status).toBe('DONE');
@@ -285,7 +285,7 @@ describe('Worktree Task Runner 编排', () => {
     );
     await service.cancel(second.execution.id);
     const canceledRun = (await executions.get(second.execution.id))!.runId!;
-    await service.onRunStopped(secondTask.id, canceledRun, 'CANCELED');
+    await stop(service, secondTask.id, canceledRun, 'CANCELED');
     await service.shutdown();
   });
 
@@ -307,7 +307,7 @@ describe('Worktree Task Runner 编排', () => {
     const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
     await service.processQueue(fixture.projectId);
     const running = await waitForStatus(queued.execution.id, 'RUNNING');
-    await service.onRunCompleted(task.id, running.runId!);
+    await complete(service, task.id, running.runId!);
 
     await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
       code: 'WORKTREE_MERGE_CONFLICT',
@@ -417,6 +417,36 @@ describe('Worktree Task Runner 编排', () => {
       runtime.git,
       runtime.publisher,
     );
+  }
+
+  async function complete(service: WorktreeTaskService, taskId: string, runId: string) {
+    const runs = new RunRepository(database.db);
+    const run = await runs.get(runId);
+    if (run?.status !== 'COMPLETED')
+      await runs.tryTransition(
+        runId,
+        ['RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
+        'COMPLETED',
+      );
+    return service.onRunCompleted(taskId, runId);
+  }
+  async function stop(
+    service: WorktreeTaskService,
+    taskId: string,
+    runId: string,
+    reason: 'CANCELED' | 'FAILED' | 'DISCONNECTED',
+  ) {
+    const runs = new RunRepository(database.db);
+    const run = await runs.get(runId);
+    if (run?.status !== reason)
+      await runs.tryTransition(
+        runId,
+        reason === 'DISCONNECTED'
+          ? ['RUNNING', 'WAITING_APPROVAL', 'CANCELING']
+          : ['RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
+        reason,
+      );
+    return service.onRunStopped(taskId, runId, reason);
   }
 
   async function waitForStatus(id: string, status: string) {

@@ -1,3 +1,4 @@
+import { recoverRuntimeAfterRestart } from './startup-recovery.js';
 import { logRedaction } from './log-redaction.js';
 import { createServer, type Server } from 'node:http';
 import { existsSync } from 'node:fs';
@@ -319,10 +320,12 @@ export async function startServer(
     approvalRepository,
     agentRepository,
   );
-  const recovery = {
-    sessions: await sessions.recoverAfterRestart(),
-    worktrees: await worktrees.recoverAfterRestart(),
-  };
+  const recovery = await recoverRuntimeAfterRestart({
+    sessions,
+    worktrees,
+    tasks,
+    runs: runRepository,
+  });
   const app = createApp({
     logger,
     eventSource: eventRepository,

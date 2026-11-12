@@ -162,6 +162,26 @@ describe('Goal 与 Task service', () => {
     expect((await tasks.get(task.id))?.status).toBe('BLOCKED');
   });
 
+  it.each(['COMPLETED', 'FAILED', 'CANCELED'] as const)(
+    'AH039/AH015：真实终态 %s 不因保留旧取消诊断码而永久阻止任务操作',
+    async (status) => {
+      const task = await service.createTask({ projectId, title: '真实结果解除历史隔离' });
+      await service.transitionTask(task.id, 'READY');
+      const started = await service.startTask(task.id, { agentId });
+      await new RunRepository(database.db).patch(started.run.id, {
+        status,
+        dispatchState: 'ATTEMPTED',
+        errorCode: 'CANCEL_CONFIRMATION_TIMEOUT',
+      });
+      if (status === 'COMPLETED') await service.onRunCompleted(task.id, started.run.id);
+      else await service.onRunStopped(task.id, started.run.id);
+      expect((await service.getTask(task.id)).status).toBe(
+        status === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED',
+      );
+      expect((await service.transitionTask(task.id, 'CANCELED')).status).toBe('CANCELED');
+    },
+  );
+
   it('AH039：任务缺少Session关联仍须检查taskId归属的真实Run', async () => {
     const task = await service.createTask({ projectId, title: '关联缺失不等于无运行' });
     await service.transitionTask(task.id, 'READY');

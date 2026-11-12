@@ -304,16 +304,9 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
   }
 
   async onRunCompleted(taskId: string, runId: string): Promise<boolean> {
-    const execution = await this.findForRun(taskId, runId);
-    if (!execution || !['RUNNING', 'AWAITING_INPUT'].includes(execution.status)) return false;
-    const review = await this.executions.transitionWithTask(
-      execution.id,
-      'REVIEW',
-      'WAITING_REVIEW',
-      { runId, reviewReadyAt: new Date(), errorCode: null, errorMessage: null },
-      { finalRunId: runId },
-    );
-    this.publish('worktree.execution.review_ready', review.execution);
+    const execution = await this.executions.applyRunOutcome(taskId, runId, 'COMPLETED');
+    if (!execution) return false;
+    this.publish('worktree.execution.review_ready', execution);
     return true;
   }
 
@@ -322,25 +315,17 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     runId: string,
     reason: 'FAILED' | 'CANCELED' | 'DISCONNECTED',
   ): Promise<boolean> {
-    const execution = await this.findForRun(taskId, runId);
+    const execution = await this.executions.applyRunOutcome(taskId, runId, reason);
     if (!execution) return false;
-    if (execution.status === 'CANCELED') return true;
-    if (!['RUNNING', 'AWAITING_INPUT'].includes(execution.status)) return false;
-    if (reason === 'CANCELED') {
-      const canceled = await this.executions.transitionWithTask(
-        execution.id,
-        'CANCELED',
-        'CANCELED',
-        { runId, completedAt: new Date() },
-      );
-      this.publish('worktree.execution.canceled', canceled.execution);
-    } else {
-      await this.block(execution.id, {
-        code: reason === 'DISCONNECTED' ? 'AGENT_DISCONNECTED' : 'AGENT_RUN_FAILED',
-        message: reason === 'DISCONNECTED' ? 'Agent 连接已断开' : 'Agent Run 失败',
-      });
-    }
-    this.schedule(execution.projectId);
+    this.publish(
+      reason === 'DISCONNECTED'
+        ? 'worktree.execution.recovery_unresolved'
+        : reason === 'CANCELED'
+          ? 'worktree.execution.canceled'
+          : 'worktree.execution.blocked',
+      execution,
+    );
+    if (reason !== 'DISCONNECTED') this.schedule(execution.projectId);
     return true;
   }
 
@@ -361,20 +346,15 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
   }
 
   async recoverAfterRestart() {
-    const interrupted = await this.executions.recoverInterrupted();
-    for (const execution of interrupted) {
-      const task = await this.tasks.get(execution.taskId);
-      if (task && ['IN_PROGRESS', 'WAITING_REVIEW'].includes(task.status)) {
-        await this.tasks.transition(execution.taskId, 'BLOCKED', {
-          finalRunId: execution.runId,
-        });
+    // Repository recovery updates each Execution/Task pair atomically and leaves
+    // unknown runtime outcomes in the active set so claimNext cannot bypass them.
+    const recovered = await this.executions.recoverInterrupted();
+    for (const [kind, ids] of Object.entries(recovered))
+      for (const id of ids) {
+        const execution = await this.executions.get(id);
+        if (execution) this.publish(`worktree.execution.recovery_${kind}`, execution);
       }
-      this.publish('worktree.execution.blocked', execution);
-    }
-    return {
-      blocked: interrupted.map((execution) => execution.id),
-      queuedProjects: await this.executions.listQueuedProjectIds(),
-    };
+    return { ...recovered, queuedProjects: await this.executions.listQueuedProjectIds() };
   }
 
   resumeQueued(projectIds: string[]): void {

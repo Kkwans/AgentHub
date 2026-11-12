@@ -496,6 +496,7 @@ export class SessionService {
       sessionId,
       taskId: session.taskId,
       status: 'QUEUED',
+      dispatchState: 'PREPARING',
       model: session.model,
       mode: session.mode,
       gitBeforeSha,
@@ -544,6 +545,8 @@ export class SessionService {
       await this.runs.transition(runId, 'STARTING');
       await this.runs.transition(runId, 'RUNNING');
       await this.sessions.transition(sessionId, 'RUNNING');
+      if (!(await this.runs.markDispatchAttempted(runId, sessionId)))
+        throw new Error('Run admission changed before dispatch');
     } catch {
       this.preparationFences.add(sessionId);
       try {
@@ -553,6 +556,7 @@ export class SessionService {
           'FAILED',
           {
             finishedAt: new Date(),
+            dispatchState: 'PREPARING',
             errorCode: 'RUN_PREPARATION_RECOVERY_REQUIRED',
             errorMessage: 'Run 尚未发送，准备失败后的恢复未完成',
           },
@@ -653,6 +657,12 @@ export class SessionService {
         '只有 CLOSED Session 可以继续',
       );
     }
+    if (await this.runs.findBlockingForSession(id))
+      throw new AppError(
+        409,
+        'SESSION_RUN_UNRESOLVED',
+        '原 Session 尚有未决 Run，不能通过继续会话绕过核对',
+      );
     const project = await this.projects.get(source.projectId);
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
     const title = continuationTitle(source.title);
@@ -841,11 +851,31 @@ export class SessionService {
   async cancelRun(sessionId: string, runId: string) {
     const run = await this.runs.get(runId);
     if (!run || run.sessionId !== sessionId) throw new AppError(404, 'RUN_NOT_FOUND', 'Run 不存在');
+    if (
+      run.dispatchState === 'LEGACY_UNKNOWN' &&
+      ['CANCELED', 'FAILED'].includes(run.status) &&
+      [
+        'CANCEL_CONFIRMATION_TIMEOUT',
+        'AGENT_RUN_CANCEL_FAILED',
+        'AGENT_RUN_START_FAILED',
+        'SERVER_RESTARTED',
+      ].includes(run.errorCode ?? '')
+    ) {
+      throw new AppError(
+        409,
+        'RUN_DISPATCH_UNRESOLVED',
+        '历史记录的终态不能证明执行已停止，请人工核对；不会自动释放或重发',
+      );
+    }
     if (['CANCELED', 'COMPLETED', 'FAILED'].includes(run.status)) return run;
     if (run.status === 'CANCELING') return run;
     const active = this.active.get(sessionId);
-    if (!active && run.status !== 'DISCONNECTED') {
-      throw new AppError(409, 'SESSION_NOT_CONNECTED', 'Session 尚未连接或需要恢复');
+    if (!active) {
+      throw new AppError(
+        409,
+        'RUN_DISPATCH_UNRESOLVED',
+        '没有可用连接确认取消，原 Run 可能仍在执行；请显式重连核对',
+      );
     }
     if (!['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED'].includes(run.status)) {
       throw new AppError(409, 'RUN_NOT_CANCELABLE', 'Run 当前不能取消');
@@ -1193,6 +1223,10 @@ export class SessionService {
     activationId: string,
   ): Promise<void> {
     const currentActivation = this.isCurrentActivation(event.sessionId, activationId);
+    if (currentActivation && event.runId) {
+      const run = await this.runs.get(event.runId);
+      if (!run || run.sessionId !== event.sessionId) return;
+    }
     let payload = currentActivation
       ? event.payload
       : { ...event.payload, ignored: true, ignoredReason: 'STALE_ACTIVATION' };
@@ -1303,12 +1337,14 @@ export class SessionService {
       event.type === 'run.completed' &&
       event.runId
     ) {
+      const ownedRun = await this.runs.get(event.runId);
+      if (!ownedRun || ownedRun.sessionId !== event.sessionId) return;
       const session = await this.get(event.sessionId);
       const transitioned = await this.runs.tryTransition(
         event.runId,
-        ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
+        ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
         'COMPLETED',
-        { finishedAt: new Date() },
+        { finishedAt: new Date(), dispatchState: 'ATTEMPTED' },
       );
       if (transitioned.changed) {
         await this.captureGitSnapshot(event.runId, session.projectId, session.cwd, 'AFTER');
@@ -1332,7 +1368,7 @@ export class SessionService {
         event.runId,
         ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
         'CANCELED',
-        { finishedAt: new Date() },
+        { finishedAt: new Date(), dispatchState: 'ATTEMPTED' },
       );
       if (transitioned.changed) {
         this.clearCancellationTimer(event.runId);
@@ -1357,6 +1393,7 @@ export class SessionService {
         'FAILED',
         {
           finishedAt: new Date(),
+          dispatchState: 'ATTEMPTED',
           errorCode: typeof payload.code === 'string' ? payload.code : 'AGENT_RUN_FAILED',
           errorMessage: typeof payload.message === 'string' ? payload.message : 'Agent Run 失败',
         },
@@ -1510,20 +1547,20 @@ export class SessionService {
     try {
       await active.handle.cancel(runId);
     } catch {
-      const transitioned = await this.runs.tryTransition(runId, ['CANCELING'], 'FAILED', {
+      const transitioned = await this.runs.tryTransition(runId, ['CANCELING'], 'DISCONNECTED', {
         finishedAt: new Date(),
         errorCode: 'AGENT_RUN_CANCEL_FAILED',
-        errorMessage: 'Agent 拒绝取消 Run',
+        errorMessage: 'Agent 取消请求未确认，原 Run 可能仍在执行',
       });
       if (!transitioned.changed) return;
       this.clearCancellationTimer(runId);
       const detached = this.detachActive(sessionId, active.activationId);
       if (detached) await this.closeHandleSafely(detached.handle);
       await this.safeSessionTransition(sessionId, 'DISCONNECTED');
-      await this.notifyRunStopped(transitioned.run, 'FAILED');
-      await this.publishSyntheticTerminalEvent(sessionId, runId, 'run.failed', {
+      await this.notifyRunStopped(transitioned.run, 'DISCONNECTED');
+      await this.publishSyntheticTerminalEvent(sessionId, runId, 'adapter.disconnected', {
         code: 'AGENT_RUN_CANCEL_FAILED',
-        message: 'Agent 拒绝取消 Run',
+        message: 'Agent 取消请求未确认，原 Run 可能仍在执行',
         synthetic: true,
       });
     }
@@ -1534,10 +1571,10 @@ export class SessionService {
     runId: string,
     activationId?: string,
   ): Promise<void> {
-    const transitioned = await this.runs.tryTransition(runId, ['CANCELING'], 'CANCELED', {
+    const transitioned = await this.runs.tryTransition(runId, ['CANCELING'], 'DISCONNECTED', {
       finishedAt: new Date(),
       errorCode: 'CANCEL_CONFIRMATION_TIMEOUT',
-      errorMessage: 'Agent 未在取消超时内确认，Run 已收敛为已取消',
+      errorMessage: 'Agent 未在超时内确认取消，原 Run 执行结果仍未知',
     });
     if (!transitioned.changed) {
       this.clearCancellationTimer(runId);
@@ -1547,8 +1584,8 @@ export class SessionService {
     const detached = activationId ? this.detachActive(sessionId, activationId) : undefined;
     if (detached) await this.closeHandleSafely(detached.handle);
     await this.safeSessionTransition(sessionId, 'DISCONNECTED');
-    await this.notifyRunStopped(transitioned.run, 'CANCELED');
-    await this.publishSyntheticTerminalEvent(sessionId, runId, 'run.cancelled', {
+    await this.notifyRunStopped(transitioned.run, 'DISCONNECTED');
+    await this.publishSyntheticTerminalEvent(sessionId, runId, 'adapter.disconnected', {
       reason: 'CANCEL_CONFIRMATION_TIMEOUT',
       synthetic: true,
     });
@@ -1564,7 +1601,7 @@ export class SessionService {
   private async publishSyntheticTerminalEvent(
     sessionId: string,
     runId: string,
-    type: 'run.cancelled' | 'run.failed',
+    type: 'run.cancelled' | 'run.failed' | 'adapter.disconnected',
     payload: Record<string, unknown>,
   ): Promise<void> {
     try {

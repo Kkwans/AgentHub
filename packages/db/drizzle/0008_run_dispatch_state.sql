@@ -1,0 +1,2 @@
+ALTER TABLE "agent_runs" ADD COLUMN "dispatch_state" text DEFAULT 'LEGACY_UNKNOWN' NOT NULL;--> statement-breakpoint
+ALTER TABLE "agent_runs" ADD CONSTRAINT "agent_runs_dispatch_state_check" CHECK ("agent_runs"."dispatch_state" in ('PREPARING', 'ATTEMPTED', 'LEGACY_UNKNOWN'));

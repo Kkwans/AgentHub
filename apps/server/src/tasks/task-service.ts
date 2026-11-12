@@ -438,6 +438,10 @@ export class TaskService implements TaskRunLifecycleObserver {
     return { task: await this.getTask(id), session, run };
   }
 
+  recoverAfterRestart() {
+    return this.tasks.recoverTerminalOutcomes();
+  }
+
   async onRunCompleted(taskId: string, runId: string): Promise<boolean> {
     return this.tasks.tryApplyRunOutcome(taskId, runId, 'COMPLETED');
   }

@@ -136,12 +136,19 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
         outcome === 'COMPLETED'
           ? service.onRunCompleted(task.id, rework.run!.id)
           : service.onRunStopped(task.id, rework.run!.id);
-      expect(await apply()).toBe(true);
-      expect(await apply()).toBe(false);
-      expect(await service.getTask(task.id)).toMatchObject({
-        status: outcome === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED',
-        finalRunId: rework.run!.id,
-      });
+      if (outcome === 'DISCONNECTED') {
+        expect(await apply()).toBe(false);
+        expect(await service.getTask(task.id)).toMatchObject({ status: 'IN_PROGRESS', finalRunId: null });
+        await runs.transition(rework.run!.id, 'COMPLETED');
+        expect(await service.onRunCompleted(task.id, rework.run!.id)).toBe(true);
+      } else {
+        expect(await apply()).toBe(true);
+        expect(await apply()).toBe(false);
+        expect(await service.getTask(task.id)).toMatchObject({
+          status: outcome === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED',
+          finalRunId: rework.run!.id,
+        });
+      }
     },
   );
   it('Session 的任务或项目归属不匹配时，不修改 Task 或 Run', async () => {
@@ -305,16 +312,21 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
       expect(await tasks.get(task.id)).toEqual(beforeTask);
       expect(await sessions.get(session.id)).toEqual(beforeSession);
       expect(await runs.get(run.id)).toEqual(beforeRun);
-      // The rejection must not consume the event or poison a valid subsequent callback.
-      expect(
-        status === 'COMPLETED'
+      // Disconnect is uncertainty, not proof of a stopped execution.
+      if (status === 'DISCONNECTED') {
+        expect(await service.onRunStopped(task.id, run.id)).toBe(false);
+        expect(await tasks.get(task.id)).toEqual(beforeTask);
+        await runs.transition(run.id, 'COMPLETED');
+        expect(await service.onRunCompleted(task.id, run.id)).toBe(true);
+      } else {
+        expect(status === 'COMPLETED'
           ? await service.onRunCompleted(task.id, run.id)
-          : await service.onRunStopped(task.id, run.id),
-      ).toBe(true);
-      expect(await tasks.get(task.id)).toMatchObject({
-        status: status === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED',
-        finalRunId: run.id,
-      });
+          : await service.onRunStopped(task.id, run.id)).toBe(true);
+        expect(await tasks.get(task.id)).toMatchObject({
+          status: status === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED',
+          finalRunId: run.id,
+        });
+      }
     },
   );
 });

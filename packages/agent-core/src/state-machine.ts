@@ -74,7 +74,7 @@ const runTransitions: Record<RunStatus, readonly RunStatus[]> = {
   // the cancellation request with a normal completion or a disconnect; the
   // first atomic terminal transition wins in the persistence layer.
   CANCELING: ['CANCELED', 'COMPLETED', 'FAILED', 'DISCONNECTED'],
-  DISCONNECTED: ['RUNNING', 'CANCELING', 'CANCELED', 'FAILED'],
+  DISCONNECTED: ['RUNNING', 'CANCELING', 'CANCELED', 'COMPLETED', 'FAILED'],
   CANCELED: [],
   COMPLETED: [],
   FAILED: [],

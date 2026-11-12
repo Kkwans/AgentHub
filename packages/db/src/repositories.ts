@@ -55,6 +55,22 @@ import {
   worktreeExecutions,
 } from './schema.js';
 
+const legacyUncertainRunCodes = [
+  'CANCEL_CONFIRMATION_TIMEOUT',
+  'AGENT_RUN_CANCEL_FAILED',
+  'AGENT_RUN_START_FAILED',
+  'SERVER_RESTARTED',
+];
+function isLegacyUncertainRun(
+  run: Pick<typeof agentRuns.$inferSelect, 'dispatchState' | 'status' | 'errorCode'>,
+) {
+  return (
+    run.dispatchState === 'LEGACY_UNKNOWN' &&
+    ['FAILED', 'CANCELED'].includes(run.status) &&
+    legacyUncertainRunCodes.includes(run.errorCode ?? '')
+  );
+}
+
 export class DatabaseInvariantError extends Error {
   constructor(
     readonly code: string,
@@ -1496,19 +1512,17 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
       const [created] = await transaction.insert(tasks).values(input).returning();
       if (!created) throw new DatabaseInvariantError('TASK_CREATE_FAILED', 'Task 创建失败');
       if (selectedPrompt)
-        await transaction
-          .insert(promptBindings)
-          .values({
-            id: randomUUID(),
-            targetType: 'TASK',
-            targetId: created.id,
-            slot: 'TASK_PRIMER',
-            promptId: selectedPrompt.promptId,
-            selectorType: 'VERSION',
-            versionId: selectedPrompt.versionId,
-            priority: 0,
-            enabled: true,
-          });
+        await transaction.insert(promptBindings).values({
+          id: randomUUID(),
+          targetType: 'TASK',
+          targetId: created.id,
+          slot: 'TASK_PRIMER',
+          promptId: selectedPrompt.promptId,
+          selectorType: 'VERSION',
+          versionId: selectedPrompt.versionId,
+          priority: 0,
+          enabled: true,
+        });
       await transaction
         .update(taskCreationOperations)
         .set({ taskId: created.id })
@@ -1596,11 +1610,16 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
           ),
         )
         .limit(1);
-      if (!owned || owned.session.agentId !== task.assignedAgentId) return false;
+      if (
+        !owned ||
+        owned.session.agentId !== task.assignedAgentId ||
+        isLegacyUncertainRun(owned.run)
+      )
+        return false;
       const validTerminal =
         outcome === 'COMPLETED'
           ? owned.run.status === 'COMPLETED'
-          : ['FAILED', 'CANCELED', 'DISCONNECTED'].includes(owned.run.status);
+          : ['FAILED', 'CANCELED'].includes(owned.run.status);
       if (!validTerminal) return false;
       const [updated] = await transaction
         .update(tasks)
@@ -1619,6 +1638,33 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
         .returning();
       return Boolean(updated);
     });
+  }
+
+  async recoverTerminalOutcomes() {
+    const candidates = await this.db
+      .select({ id: tasks.id, runId: agentRuns.id, status: agentRuns.status })
+      .from(tasks)
+      .innerJoin(agentSessions, eq(agentSessions.id, tasks.sessionId))
+      .innerJoin(agentRuns, eq(agentRuns.id, agentSessions.latestRunId))
+      .where(
+        and(
+          eq(tasks.status, 'IN_PROGRESS'),
+          inArray(agentRuns.status, ['COMPLETED', 'FAILED', 'CANCELED']),
+          sql`not exists (select 1 from ${worktreeExecutions} where ${worktreeExecutions.taskId} = ${tasks.id}
+          and ${worktreeExecutions.status} in ('QUEUED','SETTING_UP','RUNNING','AWAITING_INPUT','REVIEW','MERGING'))`,
+        ),
+      );
+    const applied: string[] = [];
+    for (const row of candidates)
+      if (
+        await this.tryApplyRunOutcome(
+          row.id,
+          row.runId,
+          row.status === 'COMPLETED' ? 'COMPLETED' : 'STOPPED',
+        )
+      )
+        applied.push(row.id);
+    return applied;
   }
 
   async transition(
@@ -1656,13 +1702,12 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
                   'CANCELING',
                   'DISCONNECTED',
                 ]),
-                inArray(agentRuns.errorCode, [
-                  'RUN_PREPARATION_RECOVERY_REQUIRED',
-                  'SERVER_RESTARTED',
-                  'CANCEL_CONFIRMATION_TIMEOUT',
-                  'AGENT_RUN_CANCEL_FAILED',
-                  'AGENT_RUN_START_FAILED',
-                ]),
+                and(
+                  eq(agentRuns.dispatchState, 'LEGACY_UNKNOWN'),
+                  inArray(agentRuns.status, ['FAILED', 'CANCELED']),
+                  inArray(agentRuns.errorCode, legacyUncertainRunCodes),
+                ),
+                eq(agentRuns.errorCode, 'RUN_PREPARATION_RECOVERY_REQUIRED'),
               ),
             ),
           )
@@ -1789,6 +1834,108 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
         .where(eq(worktreeExecutions.id, id))
         .returning();
       return bound ? { execution: bound, run } : undefined;
+    });
+  }
+
+  async applyRunOutcome(
+    taskId: string,
+    runId: string,
+    outcome: 'COMPLETED' | 'FAILED' | 'CANCELED' | 'DISCONNECTED',
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [execution] = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(
+          and(
+            eq(worktreeExecutions.taskId, taskId),
+            inArray(worktreeExecutions.status, ['RUNNING', 'AWAITING_INPUT']),
+          ),
+        )
+        .for('update')
+        .limit(1);
+      if (!execution?.sessionId) return undefined;
+      const [task] = await transaction
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .for('update')
+        .limit(1);
+      if (
+        !task ||
+        task.status !== 'IN_PROGRESS' ||
+        task.sessionId !== execution.sessionId ||
+        task.assignedAgentId !== execution.agentId
+      )
+        return undefined;
+      const [session] = await transaction
+        .select()
+        .from(agentSessions)
+        .where(eq(agentSessions.id, execution.sessionId))
+        .for('update')
+        .limit(1);
+      if (
+        !session ||
+        session.latestRunId !== runId ||
+        session.taskId !== taskId ||
+        session.projectId !== task.projectId ||
+        session.agentId !== execution.agentId
+      )
+        return undefined;
+      const [run] = await transaction
+        .select()
+        .from(agentRuns)
+        .where(
+          and(
+            eq(agentRuns.id, runId),
+            eq(agentRuns.sessionId, session.id),
+            eq(agentRuns.taskId, taskId),
+            eq(agentRuns.status, outcome),
+          ),
+        )
+        .limit(1);
+      if (!run || isLegacyUncertainRun(run)) return undefined;
+      if (outcome === 'DISCONNECTED') {
+        const [held] = await transaction
+          .update(worktreeExecutions)
+          .set({
+            runId,
+            errorCode: 'WORKTREE_RECOVERY_UNRESOLVED',
+            errorMessage: '原 Run 连接中断，执行结果未知；保留活动槽位等待核对',
+          })
+          .where(eq(worktreeExecutions.id, execution.id))
+          .returning();
+        return held;
+      }
+      const status =
+        outcome === 'COMPLETED' ? 'REVIEW' : outcome === 'CANCELED' ? 'CANCELED' : 'BLOCKED';
+      const [updated] = await transaction
+        .update(worktreeExecutions)
+        .set({
+          status,
+          runId,
+          updatedAt: new Date(),
+          errorCode: outcome === 'FAILED' ? 'AGENT_RUN_FAILED' : null,
+          errorMessage: outcome === 'FAILED' ? 'Agent Run 已失败' : null,
+          ...(outcome === 'COMPLETED' ? { reviewReadyAt: new Date() } : {}),
+          ...(outcome === 'CANCELED' ? { completedAt: new Date() } : {}),
+        })
+        .where(eq(worktreeExecutions.id, execution.id))
+        .returning();
+      await transaction
+        .update(tasks)
+        .set({
+          status:
+            outcome === 'COMPLETED'
+              ? 'WAITING_REVIEW'
+              : status === 'REVIEW'
+                ? 'WAITING_REVIEW'
+                : status,
+          finalRunId: runId,
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, taskId));
+      return updated;
     });
   }
 
@@ -2068,18 +2215,152 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
   }
 
   async recoverInterrupted() {
-    return this.db
-      .update(worktreeExecutions)
-      .set({
-        status: 'BLOCKED',
-        errorCode: 'SERVER_RESTARTED',
-        errorMessage: '服务重启中断了 Worktree Execution，请检查保留的工作区后重试',
-        updatedAt: new Date(),
-      })
+    const candidates = await this.db
+      .select({ id: worktreeExecutions.id })
+      .from(worktreeExecutions)
       .where(
         inArray(worktreeExecutions.status, ['SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'MERGING']),
-      )
-      .returning();
+      );
+    const result: {
+      blocked: string[];
+      review: string[];
+      canceled: string[];
+      quarantined: string[];
+    } = {
+      blocked: [],
+      review: [],
+      canceled: [],
+      quarantined: [],
+    };
+    for (const candidate of candidates) {
+      const outcome = await this.db.transaction(async (transaction) => {
+        const [execution] = await transaction
+          .select()
+          .from(worktreeExecutions)
+          .where(eq(worktreeExecutions.id, candidate.id))
+          .for('update')
+          .limit(1);
+        if (
+          !execution ||
+          !['SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'MERGING'].includes(execution.status)
+        )
+          return undefined;
+        const [task] = await transaction
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, execution.taskId))
+          .for('update')
+          .limit(1);
+        const taskOwnership = Boolean(
+          task &&
+          task.projectId === execution.projectId &&
+          task.sessionId === execution.sessionId &&
+          task.assignedAgentId === execution.agentId,
+        );
+        let sessionOwnership = !execution.sessionId && taskOwnership;
+        let run: typeof agentRuns.$inferSelect | undefined;
+        if (
+          task &&
+          taskOwnership &&
+          task.sessionId === execution.sessionId &&
+          task.assignedAgentId === execution.agentId &&
+          execution.sessionId
+        ) {
+          const [session] = await transaction
+            .select()
+            .from(agentSessions)
+            .where(eq(agentSessions.id, execution.sessionId))
+            .for('update')
+            .limit(1);
+          if (
+            session?.latestRunId &&
+            session.taskId === task.id &&
+            session.projectId === task.projectId &&
+            session.agentId === execution.agentId
+          ) {
+            sessionOwnership =
+              execution.status !== 'MERGING' || session.latestRunId === execution.runId;
+            [run] = await transaction
+              .select()
+              .from(agentRuns)
+              .where(
+                and(
+                  eq(agentRuns.id, session.latestRunId),
+                  eq(agentRuns.sessionId, session.id),
+                  eq(agentRuns.taskId, task.id),
+                ),
+              )
+              .limit(1);
+          }
+        }
+        const noDispatchSetup = execution.status === 'SETTING_UP' && !execution.sessionId;
+        const interruptedMerge = execution.status === 'MERGING';
+        const terminal =
+          run &&
+          ['COMPLETED', 'FAILED', 'CANCELED'].includes(run.status) &&
+          !isLegacyUncertainRun(run);
+        if (
+          !taskOwnership ||
+          !sessionOwnership ||
+          (!noDispatchSetup && !interruptedMerge && !terminal)
+        ) {
+          await transaction
+            .update(worktreeExecutions)
+            .set({
+              errorCode: 'WORKTREE_RECOVERY_UNRESOLVED',
+              errorMessage: '原执行结果未知，保留活动槽位；请人工核对，不会自动重发或放行队列',
+            })
+            .where(eq(worktreeExecutions.id, execution.id));
+          return 'quarantined' as const;
+        }
+        const status = interruptedMerge
+          ? 'BLOCKED'
+          : run?.status === 'COMPLETED'
+            ? 'REVIEW'
+            : run?.status === 'CANCELED'
+              ? 'CANCELED'
+              : 'BLOCKED';
+        await transaction
+          .update(worktreeExecutions)
+          .set({
+            status,
+            ...(run ? { runId: run.id } : {}),
+            errorCode: interruptedMerge
+              ? 'WORKTREE_MERGE_UNRESOLVED'
+              : status === 'BLOCKED'
+                ? 'SERVER_RESTARTED'
+                : null,
+            errorMessage: interruptedMerge
+              ? '合并结果未确认，需人工检查 Git 状态；不会自动合并或重试'
+              : status === 'BLOCKED'
+                ? '服务重启后已确认未派发或执行已停止；请人工检查后重试'
+                : null,
+            ...(status === 'REVIEW' ? { reviewReadyAt: new Date() } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(worktreeExecutions.id, execution.id));
+        if (
+          task &&
+          (task.status === 'IN_PROGRESS' || (interruptedMerge && task.status === 'WAITING_REVIEW'))
+        ) {
+          await transaction
+            .update(tasks)
+            .set({
+              status: status === 'REVIEW' ? 'WAITING_REVIEW' : status,
+              ...(run ? { finalRunId: run.id } : {}),
+              updatedAt: new Date(),
+            })
+            .where(eq(tasks.id, task.id));
+        }
+        return status === 'REVIEW'
+          ? ('review' as const)
+          : status === 'CANCELED'
+            ? ('canceled' as const)
+            : ('blocked' as const);
+      });
+      if (outcome) result[outcome].push(candidate.id);
+    }
+    return result;
   }
 
   async listQueuedProjectIds() {
@@ -2269,13 +2550,59 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
               'RUNNING',
               'WAITING_APPROVAL',
               'CANCELING',
+              'DISCONNECTED',
             ]),
+            and(
+              eq(agentRuns.dispatchState, 'LEGACY_UNKNOWN'),
+              inArray(agentRuns.status, ['FAILED', 'CANCELED']),
+              inArray(agentRuns.errorCode, legacyUncertainRunCodes),
+            ),
             eq(agentRuns.errorCode, 'RUN_PREPARATION_RECOVERY_REQUIRED'),
           ),
         ),
       )
       .limit(1);
     return run;
+  }
+
+  async markDispatchAttempted(id: string, sessionId: string): Promise<boolean> {
+    const [marked] = await this.db
+      .update(agentRuns)
+      .set({ dispatchState: 'ATTEMPTED' })
+      .where(
+        and(
+          eq(agentRuns.id, id),
+          eq(agentRuns.sessionId, sessionId),
+          eq(agentRuns.status, 'RUNNING'),
+          eq(agentRuns.dispatchState, 'PREPARING'),
+          sql`exists (select 1 from ${agentSessions} where ${agentSessions.id} = ${sessionId}
+          and ${agentSessions.latestRunId} = ${id})`,
+        ),
+      )
+      .returning();
+    return Boolean(marked);
+  }
+
+  async clearReconciledPreparationFences() {
+    const cleared = await this.db
+      .update(agentRuns)
+      .set({
+        errorCode: 'RUN_PREPARATION_FAILED',
+        errorMessage: '尚未派发的 Run 已核对并收敛；不会自动重发',
+      })
+      .where(
+        and(
+          eq(agentRuns.status, 'FAILED'),
+          eq(agentRuns.errorCode, 'RUN_PREPARATION_RECOVERY_REQUIRED'),
+          sql`not exists (select 1 from ${tasks} where ${tasks.id} = ${agentRuns.taskId}
+        and ${tasks.status} = 'IN_PROGRESS')`,
+          sql`not exists (select 1 from ${worktreeExecutions}
+        where ${worktreeExecutions.sessionId} = ${agentRuns.sessionId}
+        and ${worktreeExecutions.status} in ('SETTING_UP','RUNNING','AWAITING_INPUT','MERGING'))`,
+        ),
+      )
+      .returning();
+    return cleared.map((run) => ({ id: run.id }));
   }
 
   async create(input: typeof agentRuns.$inferInsert) {
@@ -2380,28 +2707,57 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
   }
 
   async recoverInterrupted() {
-    const recoverable = ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'] as const;
-    const disconnected = await this.db
-      .update(agentRuns)
-      .set({
-        status: 'DISCONNECTED',
-        finishedAt: new Date(),
-        errorCode: 'SERVER_RESTARTED',
-        errorMessage: 'AgentHub 重启导致运行连接中断',
-      })
-      .where(inArray(agentRuns.status, recoverable))
-      .returning();
-    const queued = await this.db
-      .update(agentRuns)
-      .set({
-        status: 'FAILED',
-        finishedAt: new Date(),
-        errorCode: 'SERVER_RESTARTED',
-        errorMessage: 'AgentHub 重启前 Run 尚未启动',
-      })
-      .where(eq(agentRuns.status, 'QUEUED'))
-      .returning();
-    return { disconnected: disconnected.map((row) => row.id), failed: queued.map((row) => row.id) };
+    // PREPARING is durable evidence from the original insert. ATTEMPTED and
+    // migrated historical rows never acquire an invented no-dispatch guarantee.
+    return this.db.transaction(async (transaction) => {
+      const failed = await transaction
+        .update(agentRuns)
+        .set({
+          status: 'FAILED',
+          finishedAt: new Date(),
+          errorCode: 'RUN_PREPARATION_RECOVERY_REQUIRED',
+          errorMessage: '服务重启前尚未派发，等待关联任务恢复',
+        })
+        .where(
+          and(
+            eq(agentRuns.dispatchState, 'PREPARING'),
+            inArray(agentRuns.status, [
+              'QUEUED',
+              'STARTING',
+              'RUNNING',
+              'WAITING_APPROVAL',
+              'CANCELING',
+              'DISCONNECTED',
+            ]),
+          ),
+        )
+        .returning();
+      const disconnected = await transaction
+        .update(agentRuns)
+        .set({
+          status: 'DISCONNECTED',
+          finishedAt: new Date(),
+          errorCode: 'RUN_DISPATCH_UNRESOLVED',
+          errorMessage: '服务重启或连接中断，原 Run 可能已执行；需人工核对，不会自动重发',
+        })
+        .where(
+          and(
+            inArray(agentRuns.dispatchState, ['ATTEMPTED', 'LEGACY_UNKNOWN']),
+            inArray(agentRuns.status, [
+              'QUEUED',
+              'STARTING',
+              'RUNNING',
+              'WAITING_APPROVAL',
+              'CANCELING',
+            ]),
+          ),
+        )
+        .returning();
+      return {
+        disconnected: disconnected.map((row) => row.id),
+        failed: failed.map((row) => row.id),
+      };
+    });
   }
 }
 
