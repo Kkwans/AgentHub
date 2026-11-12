@@ -797,3 +797,50 @@ describe('项目作用域 Agent 资格', () => {
     expect(screen.getByRole('button', { name: '创建任务' })).toBeEnabled();
   });
 });
+
+describe('完整工作要求与短标题', () => {
+  it('241字以上完整要求提交到说明，显示可编辑标题并在安全重试中冻结', async () => {
+    const f = workflow({ start: () => failure('AGENT_NOT_READY') });
+    show(f.fetchMock);
+    const instructions = `${'详细要求'.repeat(80)}\n必须完成第二段`;
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: instructions } });
+    fireEvent.change(screen.getByLabelText('补充上下文（可选）'), {
+      target: { value: '额外约束' },
+    });
+    expect(screen.getByLabelText('任务短标题（可编辑）')).toHaveValue(
+      `${'详细要求'.repeat(30).slice(0, 119)}…`,
+    );
+    fireEvent.change(screen.getByLabelText('任务短标题（可编辑）'), {
+      target: { value: '人工短标题' },
+    });
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
+    await screen.findByRole('button', { name: '重试启动' });
+    const create = f.fetchMock.mock.calls.find(
+      ([path, init]) => String(path) === '/api/v1/tasks' && init?.method === 'POST',
+    );
+    expect(JSON.parse(String(create?.[1]?.body))).toMatchObject({
+      title: '人工短标题',
+      description: `任务要求：\n${instructions}\n\n补充上下文：\n额外约束`,
+    });
+    expect(screen.getByLabelText('任务短标题（可编辑）')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '重试启动' }));
+    await waitFor(() => expect(f.calls.start).toBe(2));
+    expect(f.calls.create).toBe(1);
+  });
+  it('总说明或 Goal 标题超限明确阻止提交，不截断文字', async () => {
+    const f = workflow();
+    show(f.fetchMock);
+    const tooLong = '文'.repeat(100000);
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: tooLong } });
+    expect(screen.getByText(/任务说明（含分节标题）不能超过/)).toBeInTheDocument();
+    expect(screen.getByLabelText('你想完成什么？')).toHaveValue(tooLong);
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    fireEvent.click(screen.getByText('高级设置'));
+    fireEvent.click(screen.getByRole('button', { name: 'Goal' }));
+    expect(screen.getByText('Goal 标题不能超过 240 个字符。')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建 Goal' })).toBeDisabled();
+    expect(f.calls.create).toBe(0);
+  });
+});

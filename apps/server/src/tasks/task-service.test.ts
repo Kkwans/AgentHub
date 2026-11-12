@@ -139,8 +139,26 @@ describe('Goal 与 Task service', () => {
     await service.transitionTask(task.id, 'READY');
     await service.startTask(task.id, { agentId });
     expect(startedRuns.at(-1)?.text).toBe(
-      '修复任务创建\n\n补充说明：\n第一行上下文\n第二行上下文\n\n验收标准：\n第一条验收\n第二条验收',
+      '修复任务创建\n\n任务说明：\n第一行上下文\n第二行上下文\n\n验收标准：\n第一条验收\n第二条验收',
     );
+  });
+
+  it('完整长任务说明在首次执行和返工中不被短标题替代', async () => {
+    const description = `任务要求：\n${'完整要求'.repeat(100)}\n第二段\n\n补充上下文：\n原始约束`;
+    const task = await service.createTask({
+      projectId,
+      title: '短标题',
+      description,
+      acceptanceCriteria: '保留验收',
+    });
+    await service.transitionTask(task.id, 'READY');
+    const started = await service.startTask(task.id, { agentId });
+    const expected = `短标题\n\n任务说明：\n${description}\n\n验收标准：\n保留验收`;
+    expect(startedRuns.at(-1)?.text).toBe(expected);
+    await service.onRunCompleted(task.id, started.run.id);
+    await service.reviewTask(task.id, { decision: 'REWORK', feedback: '继续完善' });
+    expect(startedRuns.at(-1)?.text).toContain(`原任务：\n${expected}`);
+    expect((await service.getTask(task.id)).description).toBe(description);
   });
 
   it('同一 Task 并发启动只创建一个 Session', async () => {

@@ -32,7 +32,7 @@ function buildTaskInstructions(task: {
 }): string {
   return [
     task.title.trim(),
-    task.description?.trim() ? `补充说明：\n${task.description.trim()}` : '',
+    task.description?.trim() ? `任务说明：\n${task.description.trim()}` : '',
     task.acceptanceCriteria?.trim() ? `验收标准：\n${task.acceptanceCriteria.trim()}` : '',
   ]
     .filter(Boolean)

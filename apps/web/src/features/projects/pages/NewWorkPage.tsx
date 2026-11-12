@@ -1,4 +1,5 @@
-import { AhButton, AhDialog, AhErrorState, AhSelect, AhTextarea } from '@agenthub/ui';
+import { prepareNewWork, suggestTaskTitle } from '../lib/new-work-draft';
+import { AhButton, AhDialog, AhErrorState, AhSelect, AhTextarea, AhInput } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -92,8 +93,15 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
   const compact = useCompactViewport();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [shortTitle, setShortTitle] = useState<string | undefined>();
   const [intent, setIntent] = useState('');
   const [kind, setKind] = useState<'goal' | 'task'>('task');
+  const prepared = prepareNewWork({
+    kind,
+    instructions: title,
+    supplemental: description,
+    shortTitle,
+  });
   const [goalId, setGoalId] = useState('');
   const [agentId, setAgentId] = useState('');
   const agentChoiceMade = useRef(false);
@@ -259,7 +267,7 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
     if (
       !live.current ||
       locked ||
-      !title.trim() ||
+      Boolean(prepared.error) ||
       (kind === 'task' && (!promptReady || !selectedEligible))
     )
       return;
@@ -267,8 +275,8 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
     else
       taskCreation.submit({
         projectId: project.id,
-        title,
-        description,
+        title: prepared.title,
+        description: prepared.description,
         goalId,
         agentId,
         promptId,
@@ -318,7 +326,10 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
               <AhButton
                 onClick={submit}
                 loading={busy}
-                disabled={!title.trim() || (kind === 'task' && (!promptReady || !selectedEligible))}
+                disabled={
+                  Boolean(prepared.error) ||
+                  (kind === 'task' && (!promptReady || !selectedEligible))
+                }
               >
                 {kind === 'goal' ? '创建 Goal' : agentId ? '创建并开始' : '创建任务'}
               </AhButton>
@@ -345,6 +356,27 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
               required
               minRows={5}
             />
+            {kind === 'task' ? (
+              <>
+                <AhInput
+                  label="任务短标题（可编辑）"
+                  value={shortTitle ?? suggestTaskTitle(title)}
+                  onChange={(event) => setShortTitle(event.currentTarget.value)}
+                />
+                <AhButton variant="default" size="xs" onClick={() => setShortTitle(undefined)}>
+                  恢复自动标题
+                </AhButton>
+                <p className={layout.subtle}>
+                  标题用于列表；以上完整要求会保留在任务说明。自动标题仅摘要首行，不会截断完整要求。
+                </p>
+                <p className={layout.subtle}>
+                  任务说明：{prepared.description.length} / 100000 字符（含分节标题）
+                </p>
+              </>
+            ) : (
+              <p className={layout.subtle}>Goal 标题上限 240 字符，补充上下文上限 20000 字符。</p>
+            )}
+            {prepared.error && title.trim() ? <p role="alert">{prepared.error}</p> : null}
             <div className={layout.quickIntents} aria-label="快速意图">
               <span className={layout.subtle}>快速意图（可选）</span>
               {quickIntents.map((value) => (

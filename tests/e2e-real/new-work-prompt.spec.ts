@@ -85,7 +85,7 @@ for (const width of [1440, 1024, 768, 390]) {
     const task = tasks[0]!;
     expect(task).toMatchObject({
       title: '主目标必须保留',
-      description: '补充验收细节',
+      description: '任务要求：\n主目标必须保留\n\n补充上下文：\n补充验收细节',
       goalId: goal.id,
       sessionId,
     });
@@ -144,7 +144,9 @@ for (const width of [1440, 1024, 768, 390]) {
     );
     expect(
       messages.filter((message) => message.role === 'USER').map((message) => message.text),
-    ).toEqual(['主目标必须保留\n\n补充说明：\n补充验收细节']);
+    ).toEqual([
+      '主目标必须保留\n\n任务说明：\n任务要求：\n主目标必须保留\n\n补充上下文：\n补充验收细节',
+    ]);
     expect(errors).toEqual([]);
   });
 }

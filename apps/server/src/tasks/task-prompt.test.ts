@@ -199,7 +199,7 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
     expect(text).toContain('production 原始内容');
     expect(text).not.toContain('不能意外注入的新版');
     expect(text).toContain(
-      '[用户任务]\n主目标\n\n补充说明：\n补充上下文\n\n验收标准：\n验收标准内容',
+      '[用户任务]\n主目标\n\n任务说明：\n补充上下文\n\n验收标准：\n验收标准内容',
     );
     expect(text.indexOf('项目附加上下文')).toBeLessThan(text.indexOf('production 原始内容'));
     expect(text.indexOf('production 原始内容')).toBeLessThan(text.indexOf('[用户任务]'));
