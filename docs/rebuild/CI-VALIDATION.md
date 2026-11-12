@@ -51,3 +51,5 @@
 - 新增 `task-creation-recovery.spec.ts`：真实POST成功后丢弃响应、刷新/关闭重开仅GET、同编号冻结重放不start、真实404保留记录、写存储失败不POST、同账户重新登录恢复。新增 `home-project-choice.spec.ts`：四宽双主题名称/目录选择、排除TEST/归档、Esc焦点返回、单项目目标。故障诊断仅允许精确注入请求对应的错误，不整体忽略console。
 
 - `74f49ba` / run `43212686276`：verify成功；real-service 31通过/8失败，恢复8项全部通过，140图几何通过。全部失败是Home多项目选择弹窗Esc未关闭，确认为共享FormDialog缺少键盘关闭实现，不删除或放宽断言。artifact13943615203含失败截图/trace，修复与新HEAD复验中，不能称该HEAD双绿。
+- `c78905f` / run `43214263478` 已核对精确日志：verify成功，real仍31通过/8失败，全部为相同Home项目选择Esc；恢复8例、workbench4例、Prompt5例与140图几何通过，无新增已观察后端失败。`9bdbbc9` / run `43216288952` 单独运行，不用前一HEAD结果替代。
+- 新Dialog门禁不仅断言CSS数字：在真实绑定弹窗检查Select选项中心elementFromPoint命中并普通点击，再检查下拉Escape/父层Escape、Tab首尾圈定、焦点恢复和关闭重开；四宽双主题截图。测试收集与jsdom均不能证明绘制层级已通过，等待新HEAD浏览器。
