@@ -83,7 +83,18 @@ describe('HTTP 账号认证', () => {
         'token',
         'test-bootstrap-token',
       );
-      const app = createApp({ auth, logger: pino({ level: 'silent' }) });
+      const logs: string[] = [];
+      const app = createApp({
+        auth,
+        logger: pino(
+          {},
+          {
+            write: (line) => {
+              logs.push(line);
+            },
+          },
+        ),
+      });
       const browser = request.agent(app);
       expect((await browser.get('/api/v1/auth/status')).body.data).toEqual({
         mode: 'token',
@@ -107,6 +118,13 @@ describe('HTTP 账号认证', () => {
         .get('/api/v1')
         .set('authorization', 'Bearer test-bootstrap-token');
       expect(authorized.status).toBe(200);
+      const captured = logs.join('');
+      const sessionToken = setup.headers['set-cookie']?.[0]?.split(';')[0]?.split('=')[1];
+      if (!sessionToken) throw new Error('测试响应缺少浏览器会话 Cookie');
+      expect(captured).not.toContain(sessionToken);
+      expect(captured).not.toContain('test-bootstrap-token');
+      expect(captured).toContain('[REDACTED]');
+      expect(captured).toContain('request completed');
     } finally {
       await database.close();
     }

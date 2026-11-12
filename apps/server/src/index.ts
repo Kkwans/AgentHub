@@ -1,3 +1,4 @@
+import { logRedaction } from './log-redaction.js';
 import { createServer, type Server } from 'node:http';
 import { existsSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
@@ -128,22 +129,7 @@ export async function startServer(
 
   const logger = pino({
     level: environment.LOG_LEVEL ?? 'info',
-    redact: {
-      paths: [
-        'req.headers.authorization',
-        'request.headers.authorization',
-        'headers.authorization',
-        'req.headers.cookie',
-        'request.headers.cookie',
-        'headers.cookie',
-        '*.token',
-        '*.password',
-        '*.currentPassword',
-        '*.newPassword',
-        '*.secret',
-      ],
-      censor: '[REDACTED]',
-    },
+    redact: logRedaction,
   });
   const database = await createDatabase({
     databaseUrl: environment.DATABASE_URL,

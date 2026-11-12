@@ -1,3 +1,4 @@
+import { logRedaction } from './log-redaction.js';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
@@ -79,6 +80,7 @@ export function createApp(options: AppOptions = {}): Express {
   app.use(
     pinoHttp({
       logger,
+      redact: logRedaction,
       genReqId(request, response) {
         const incoming = request.headers['x-request-id'];
         const requestId =
