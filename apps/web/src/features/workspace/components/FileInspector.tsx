@@ -10,7 +10,8 @@ import { useContext, useEffect, useState, type ReactNode } from 'react';
 import Editor from '@monaco-editor/react';
 
 import { EmptyState, ErrorState } from '../../../components/Feedback';
-import { ApiError, type FileEntry } from '../../../lib/api';
+import type { FileEntry } from '../../../lib/api';
+import { ApiError } from '../../../lib/api-error';
 import type { QueryState } from '../workspace-types';
 
 export function FileInspector({

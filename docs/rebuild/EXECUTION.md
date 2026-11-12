@@ -39,3 +39,11 @@
 - 文档提交 c5a797a 已在本地；远程推送因明确发布授权不足被拒绝，未执行。继续本地工作，等待用户决定，不通过其他工具绕过。
 
 - M1.1 本地实现通过 6 项 TaskService 测试、全仓 lint/typecheck/build；独立审查无阻塞。旧代码的初始与返工目标保留断言均失败。真实 HTTP 复测待补，当前尚未远程发布。
+
+### 发布与验证更新
+
+- 用户已明确授权及时 commit/push 独立开发分支。远端文档 a7002b8、任务目标修复 4ec0e49 已通过 fetch 验证，代码树与本地一致。
+- AH-016：FileInspector 改从独立 api-error 模块导入错误类型，保留原架构断言，4 项架构测试通过。
+- 当前全量 76 文件、337 项测试通过，10 项跳过；lint/typecheck/build 通过。跳过项不是已验收。
+- 仓库 real Playwright workbench 四项均在 Chromium 启动阶段遇到 socket Operation not permitted，页面断言未执行；不能按产品失败或视觉通过计数。
+- AH-012 已以真实 PGlite 复现两个并发 Run 留孤儿记录；隔离修复准备中，尚未集成。
