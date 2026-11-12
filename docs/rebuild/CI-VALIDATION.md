@@ -39,3 +39,6 @@
 ### Workspace 失败进一步拆分
 
 61176 fixture最终41/48：4个Home旧契约已修；1024/768左缘252/299是原本的medium辅助栏并列布局（d430截图亦相同），1440历史样本只有101px滚动范围。仅修测试样本与契约：添加真实展开的长工具输出、验证中宽辅助栏/对话间距和关栏全宽、桌面面板开关/重载宽度恢复；保留120px滚动门槛、文件交互与内容断言，生产CSS未改。定向lint、Bundler类型检查和48项collection通过，新的浏览器结果待CI。
+
+- `a0ac4ee` real-service job `131135186122` 完整成功，包含新增Projects/Home内容态/字体实际glyph证据及140图几何。
+- `2e633474` verify job `131140375865` 完整成功：497 unit通过/10跳过，lint/typecheck/build通过，48 fixture浏览器全部通过（2.1分钟）。该提交real-service仍运行，不能把不同提交的绿色job拼成最新HEAD全绿。

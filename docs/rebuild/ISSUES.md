@@ -7,7 +7,7 @@
 | AH-001 | P1 | 创建、READY、start 串行 mutation，后步失败后重试可能重复创建 | 当前弹窗恢复已实现，24 项 React 回归通过；整体未关闭 | 刷新/关闭重开后的持续恢复、服务端持久操作 ID 与幂等、真实浏览器验收仍待实现 |
 | AH-002 | P1 | 所选 Prompt 未进入成功启动链路 | 固定版本任务绑定与变量预览已集成，等待完整验收 | 明确选择版本/来源进入 Run；变量延后启动持久化与继承绑定变量 UI 仍开放 |
 | AH-003 | P1 | TaskService 优先 description 导致主目标 title 丢失 | 已修复；初始/返工回归及真实 HTTP 通过 | 共享构造器保留主目标、补充说明和验收；后续 Prompt 改动必须保持 |
-| AH-004 | P1 | 仅 roots 下拉，无法选授权父目录下嵌套仓库 | 目录浏览/候选/预检已集成，22 项组件回归通过 | f49468f 四视口真实浏览器目录选择已通过；目标 NAS/真实 Agent 仍未验收 |
+| AH-004 | P1 | 仅 roots 下拉，无法选授权父目录下嵌套仓库 | 已关闭（控制面目录选择路径）；22 项组件回归及 f49468f/a0ac4ee 四宽真实浏览器通过 | 授权边界、嵌套选择与真实创建已验证；目标 NAS/真实 Agent 仍未验收 |
 | AH-005 | P0 | TopicBroker 仅 WS upgrade 认证；AuthService 撤销未通知已连接客户端 | 单实例连接授权修复，8 项真实 HTTP/WS/PGlite 回归通过 | 注销、改密、撤销、过期关闭旧流；跨进程失效传播仍待实现；不终止底层 PTY |
 | AH-006 | P2 | Agent 只按 READY 筛选，忽略禁用和项目可达性 | 服务端注册资格只读 API 与前端过滤已实现；61 项针对回归通过 | 这是注册状态准入，不承诺实时认证/容器健康；真实浏览器验收待 CI |
 | AH-007 | P2 | 无 Agent 时按钮仍叫“创建并开始”，实际仅创建任务 | 已修正按钮名称并增加回归 | 视觉检查待真实浏览器证据 |
@@ -72,3 +72,7 @@ AH-024 追加：首页空态8张实际图已审阅，主CTA无阻塞问题；有
 已用真实PGlite+受控Session创建复现：两个REWORK创建两个Session；REWORK尚在创建时APPROVE成功；start/rework与手动CANCEL交错。旧源新增五例中四失败、一安全回归通过。修复将start/review/manual transition置于同实例同步准入，重叠操作直接409，不排队过期意图；失败finally释放，生命周期回调不加锁。针对20项通过，完整497项通过/10跳过，lint/typecheck/build通过。跨进程会话创建预留/故障回收、旧Run迟到回调的所有权仍单独处理，不因本修复关闭整体生命周期风险。
 
 - AH-026（P1）：旧Session的Run完成/失败/取消/断连回调只检查Task仍IN_PROGRESS，可覆盖已经进入新返工Session的状态和finalRunId。真实PGlite五项回归在旧代码均失败；修复使用Task行锁下的持久Run/Session所有权和终态验证，拒绝missing/stale/mismatch，专项25项通过，独立CR补齐边界后完整507项通过/10跳过，lint/typecheck/build通过。跨进程回调更新在同一DB事务内校验，但不代表跨进程Session创建预留或同Session最新Run排序已解决。
+
+- AH-027（P2）：a0ac真实Projects归档卡片显示“状态”且使用警告色，AhStatusPill/Dot共享映射缺ARCHIVED。已补“已归档”和中性gray，两条回归先红后绿；完整509项通过，待新截图复核。
+- AH-028（P2）：真实Home内容态390/768长事项标题与描述占用过多纵向空间；≤860px分层摘要与可键盘展开全文实施中，保留动作/原href及5/7事项列表契约。
+- AH-029（P2）：字体token漂移，pinharness覆盖已有Geist/CJK栈；8档真实CDP显示中文WenQuanYi Zen Hei、Geist未加载、Home标题weight400。按实际命中统一现有token并复核字重，不引入大字体资源或只修CI字体环境。

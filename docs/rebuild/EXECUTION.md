@@ -146,3 +146,9 @@
 - 61176 Workspace实际证据：1024 rail285px、对话left299；768 rail238px、对话left252，符合原medium并列辅助栏设计，d430截图相同，非本轮CSS清理回归。测试改验证宿主/栏间距/对话可用宽度与关闭后的全宽恢复，保留文件交互/重载状态；1440原历史不足仅101px，提供明确长工具输出且仍要求滚动范围>120及真实跳转到底部。
 - Workspace E2E单文件lint/typecheck及48项收集通过；真实浏览器执行待新CI，不以此宣称视觉通过。
 - 独立CR无阻塞，补充Agent错绑与四种终态/回调不匹配无副作用回归；最终89文件、507测试通过、10跳过（183.37秒）。lint/typecheck/串行build通过，补测后类型检查与全量测试再次通过。PGlite证明迟到/错绑与事务行为，不冒充多连接并发压测。
+
+### M2.3 归档状态语义与统一字体token
+
+- 实拍归档项目误显示“状态”且带警告色；补齐ARCHIVED的“已归档”和中性gray映射，Pill/Dot两条回归先红后绿，真实Projects四宽双主题增加精确徽章断言。
+- pinharness的--font-sans复用已有--ah-font-sans，正文/标题移除重复fallback覆盖，保留mono和特殊展示字体；Home h1明确650字重，不新增字体包或CDN。真实字体证据继续核对中文fallback，并要求现有英文Agent字形由自带Geist实际绘制、标题computedweight正确。
+- 最终lint/typecheck/串行build通过，89文件、509项测试通过、10跳过（175.52秒）。修改E2E单独lint/Bundler类型/9项collection通过；新字形与像素效果待CI，不称跨平台中文字体完全统一。
