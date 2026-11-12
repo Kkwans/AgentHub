@@ -144,3 +144,66 @@ it.each([
   expect((failure as Error).message).not.toContain('private raw cause');
   expect((failure as Error).message).toContain('勿直接重复恢复');
 });
+
+describe('Task Prompt recovery error contract', () => {
+  it.each([
+    ['TASK_PROMPT_VARIABLES_MISSING', '任务 Prompt 缺少必填变量，尚未启动 Agent', 'post'],
+    [
+      'TASK_PROMPT_VARIABLES_LOCKED',
+      '任务已开始或状态已变化，无法修改变量。请刷新查看原任务。',
+      'patch',
+    ],
+    ['TASK_PROMPT_RESOLUTION_FAILED', '任务 Prompt 无法解析，请核对绑定与版本后重试。', 'post'],
+  ] as const)('preserves actionable safe guidance for %s', async (code, message, method) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code,
+              message: 'private provider cause /secret/path',
+              details: { missingVariables: ['subject'] },
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    const failure = await api[method](
+      method === 'patch' ? '/tasks/current' : '/tasks/current/start',
+      {},
+    ).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure).toMatchObject({
+      code,
+      status: 409,
+      message,
+      details: { missingVariables: ['subject'] },
+    });
+    expect((failure as Error).message).not.toContain('private provider');
+    expect((failure as Error).message).not.toContain('/secret/path');
+  });
+  it('keeps unknown Task errors generic instead of forwarding server text', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: 'TASK_PROMPT_UNKNOWN_PROVIDER_FAILURE',
+              message: 'private provider cause /secret/path',
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    const failure = await api.get('/tasks/current').catch((error: unknown) => error);
+    expect(failure).toMatchObject({
+      code: 'TASK_PROMPT_UNKNOWN_PROVIDER_FAILURE',
+      status: 409,
+      message: '请求失败，请查看设置中的诊断信息。',
+    });
+  });
+});
