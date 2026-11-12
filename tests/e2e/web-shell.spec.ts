@@ -493,6 +493,25 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   // Workspace screenshots include the editor/font payload; keep the visual
   // matrix deterministic on the NAS without weakening the assertions.
   test.setTimeout(120_000);
+  // CI's empty tool detail yields only 101px overflow at 1440px. Supply
+  // realistic history output for this test rather than relaxing the 120px gate.
+  const historyOutput = Array.from(
+    { length: 30 },
+    (_, index) => `历史测试输出第 ${index + 1} 行：Workspace 面板与滚动行为验收通过。`,
+  ).join('\n');
+  await page.route(`**/api/v1/sessions/${session.id}/events*`, async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: conversationEvents.map((event) =>
+          event.id === 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee04'
+            ? { ...event, payloadJson: { ...event.payloadJson, rawOutput: historyOutput } }
+            : event,
+        ),
+        requestId: 'workspace-history-fixture',
+      }),
+    });
+  });
   await page.goto(`/workspace/${session.id}`, { waitUntil: 'domcontentloaded' });
   // The Workspace waits for a dozen independent session resources before
   // replacing its bootstrap shell; allow the local fixture server that time
@@ -551,6 +570,14 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await firstToolTrigger.click();
   await expect(firstToolTrigger).toHaveAttribute('aria-expanded', 'true');
   await expect(firstTool.locator('.tool-entry-detail-body')).toBeVisible();
+  const historyTool = toolRows.last();
+  const historyTrigger = historyTool.getByRole('button', { name: /工具调用完成/ });
+  await expect(historyTrigger).toHaveAttribute('aria-expanded', 'false');
+  await historyTrigger.click();
+  await expect(historyTrigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(historyTool.locator('.tool-entry-detail-body')).toContainText(
+    '历史测试输出第 30 行',
+  );
   const conversationLog = page.getByRole('log');
   await expect
     .poll(
@@ -558,7 +585,8 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       { message: '展开工具后应有足够历史验证滚动恢复' },
     )
     .toBeGreaterThan(120);
-  await conversationLog.hover();
+  // Target log padding, not the nested output scroller.
+  await conversationLog.hover({ position: { x: 2, y: 2 } });
   await page.mouse.wheel(0, -10_000);
   await expect
     .poll(() => conversationLog.evaluate((element) => element.scrollTop), {
@@ -614,12 +642,36 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   const conversationGeometry = geometry.find(({ className }) =>
     className.includes('conversation-panel'),
   );
-  if (viewportWidth < 1_180) {
+  const panels = page.locator('.workspace-panels');
+  const conversationPanel = page.locator('.conversation-panel');
+  const assertMediumOpenGeometry = async () => {
+    const [host, side, conversation] = await Promise.all([
+      panels.boundingBox(),
+      page.locator('.three-column-split--medium aside').boundingBox(),
+      conversationPanel.boundingBox(),
+    ]);
+    expect(host).not.toBeNull();
+    expect(side).not.toBeNull();
+    expect(conversation).not.toBeNull();
+    // Medium mode is a column beside Conversation, not an overlay. Validate
+    // containment, a real separation gap and usable remaining conversation.
+    expect(side!.x).toBeGreaterThanOrEqual(host!.x - 1);
+    expect(conversation!.x - side!.x - side!.width).toBeGreaterThanOrEqual(8);
+    expect(conversation!.x - side!.x - side!.width).toBeLessThanOrEqual(16);
+    expect(conversation!.width).toBeGreaterThanOrEqual(host!.width * 0.6);
+    expect(
+      Math.abs(conversation!.x + conversation!.width - host!.x - host!.width),
+    ).toBeLessThanOrEqual(2);
+    return { host, side, conversation };
+  };
+  if (viewportWidth >= 768 && viewportWidth < 1_180) {
+    const mediumGeometry = await assertMediumOpenGeometry();
+    await testInfo.attach(`workspace-medium-open-${testInfo.project.name}.json`, {
+      body: Buffer.from(JSON.stringify(mediumGeometry, null, 2)),
+      contentType: 'application/json',
+    });
+  } else if (viewportWidth < 768) {
     expect(conversationGeometry?.left).toBeLessThanOrEqual(4);
-  }
-  if (viewportWidth < 900) {
-    // The two 4px separators remain in the flex group while auxiliary panels
-    // are moved to drawers, so the conversation owns the viewport minus 8px.
     expect(conversationGeometry?.width).toBeGreaterThanOrEqual(viewportWidth - 8);
   }
   if (viewportWidth < 768) {
@@ -628,8 +680,8 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   }
   await attachViewportScreenshot(page, testInfo, 'workspace-initial');
 
-  if (viewportWidth >= 1_280) {
-    await expect(page.getByRole('button', { name: '折叠检查器' })).toBeVisible();
+  if (viewportWidth >= 1_180) {
+    await expect(page.getByRole('button', { name: '隐藏检查器' })).toBeVisible();
     const inspector = page.getByRole('tablist', { name: '检查器视图' });
     await expect(inspector.getByRole('tab', { name: '变更' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: '文件' })).toBeVisible();
@@ -645,20 +697,52 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await page.getByRole('button', { name: 'workspace.module.css', exact: true }).click();
     await expect(page.locator('.file-preview-header')).toContainText('workspace.module.css');
     await attachViewportScreenshot(page, testInfo, 'workspace-files');
-    await page.getByRole('button', { name: '折叠会话列表' }).click();
+    const beforeCollapse = await conversationPanel.boundingBox();
+    expect(beforeCollapse).not.toBeNull();
+    await page.getByRole('button', { name: '隐藏会话列表' }).click();
+    await expect(page.locator('.session-rail-panel')).toBeHidden();
+    await expect
+      .poll(async () => (await conversationPanel.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(beforeCollapse!.width);
     await page.reload();
-    await expect(page.getByRole('button', { name: '展开会话列表' })).toBeVisible({
+    await expect(page.getByRole('button', { name: '显示会话列表' })).toBeVisible({
       timeout: 15_000,
     });
-    await page.getByRole('button', { name: '展开会话列表' }).click();
+    await expect(page.locator('.session-rail-panel')).toBeHidden();
+    await expect
+      .poll(async () => (await conversationPanel.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(beforeCollapse!.width);
+    await page.getByRole('button', { name: '显示会话列表' }).click();
+    await expect(page.locator('.session-rail-panel')).toBeVisible();
+    await expect(page.getByRole('button', { name: '隐藏检查器' })).toBeVisible();
+    await expect
+      .poll(async () => (await conversationPanel.boundingBox())?.width ?? Infinity)
+      .toBeLessThanOrEqual(beforeCollapse!.width + 2);
   } else if (viewportWidth >= 768) {
+    const closeAuxiliary = page.getByRole('button', { name: '关闭辅助栏' });
+    await expect(closeAuxiliary).toHaveAttribute('aria-expanded', 'true');
+    await closeAuxiliary.click();
     await expect(page.getByRole('button', { name: '打开辅助栏' })).toBeVisible();
+    await expect
+      .poll(
+        async () => {
+          const host = await panels.boundingBox();
+          const conversation = await conversationPanel.boundingBox();
+          return host && conversation
+            ? Math.max(Math.abs(conversation.x - host.x), Math.abs(conversation.width - host.width))
+            : Infinity;
+        },
+        { message: '关闭辅助栏后对话应占满实际工作区容器' },
+      )
+      .toBeLessThanOrEqual(2);
     await expect(page.locator('.workspace-mobile-tabs')).toBeHidden();
     await page.getByRole('button', { name: '打开辅助栏' }).click();
     await expect(page.getByRole('button', { name: '关闭会话列表' })).toBeVisible();
+    await assertMediumOpenGeometry();
     const auxiliary = page.getByRole('tablist', { name: '辅助栏视图' });
     await auxiliary.getByRole('tab', { name: '检查器' }).click();
     await expect(page.getByRole('button', { name: '关闭检查器' })).toBeVisible();
+    await assertMediumOpenGeometry();
     await page
       .getByRole('tablist', { name: '检查器视图' })
       .getByRole('tab', { name: '文件' })
