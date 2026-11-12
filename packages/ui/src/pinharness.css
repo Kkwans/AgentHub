@@ -57,9 +57,7 @@
 
   /* 类型层级：系统无衬线用于界面，衬线仅供特定展示内容按需启用 */
   --font-serif: ui-serif, Georgia, 'Times New Roman', Times, serif;
-  --font-sans:
-    system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica,
-    Arial, sans-serif;
+  --font-sans: var(--ah-font-sans);
   --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace;
   --foreground: 220 14% 11%; /* #171A1F */
   --foreground-muted: 218 12% 30%;
@@ -326,7 +324,7 @@ body {
 }
 
 body {
-  font-family: var(--font-sans), 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
   letter-spacing: normal;
@@ -372,12 +370,12 @@ textarea::placeholder {
   }
 }
 
-/* 产品界面标题沿用系统字体，避免中西文衬线字体混排造成视觉割裂。 */
+/* 产品界面标题沿用统一字体 token，避免中西文衬线字体混排造成视觉割裂。 */
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-sans), 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  font-family: var(--font-sans);
   text-wrap: balance;
   letter-spacing: normal;
 }

@@ -132,12 +132,14 @@ async function assertHomeGeometry(page: Page) {
 // that actually painted Chinese glyphs. Ask the same CI Chromium via CDP; do
 // not infer its installed fonts from the machine running source-only checks.
 async function collectChineseFontEvidence(page: Page) {
+  await page.evaluate(() => document.fonts.ready);
   const targets = [
     { label: '中文主标题', selector: 'main h1' },
     {
       label: '中文说明正文',
       selector: 'section[aria-labelledby="home-attention-title"] > div > p',
     },
+    { label: '英文 Agent 与中文混排', selector: 'main header > div > p' },
   ];
   const environment = await page.evaluate(() => ({
     url: location.href,
@@ -175,9 +177,16 @@ async function collectChineseFontEvidence(page: Page) {
           fontSynthesis: style.fontSynthesis,
         };
       });
-      // These are existing product nodes, not inserted probes or mixed Latin
-      // samples whose font counts could conceal the actual Chinese fallback.
-      expect(computed.text, target.label).toMatch(/^[\p{Script=Han}\p{Punctuation}\s]+$/u);
+      // Existing product nodes only: pure Chinese samples identify fallback;
+      // the header sentence's sole Latin word (Agent) verifies the bundled font.
+      const hasLatin = target.label === '英文 Agent 与中文混排';
+      if (hasLatin) {
+        expect(computed.text.match(/[A-Za-z]+/g)).toEqual(['Agent']);
+      } else {
+        expect(computed.text, target.label).toMatch(/^[\p{Script=Han}\p{Punctuation}\s]+$/u);
+      }
+      expect(computed.fontFamily).toContain('Geist Variable');
+      if (target.selector === 'main h1') expect(computed.fontWeight).toBe('650');
       const { nodeId } = await client.send('DOM.querySelector', {
         nodeId: root.nodeId,
         selector: target.selector,
@@ -188,6 +197,20 @@ async function collectChineseFontEvidence(page: Page) {
         fonts.some((font) => font.glyphCount > 0),
         target.label,
       ).toBe(true);
+      if (hasLatin) {
+        expect(
+          fonts.some(
+            (font) => font.isCustomFont && /Geist/i.test(font.familyName) && font.glyphCount >= 5,
+          ),
+          'Agent must actually render with bundled Geist',
+        ).toBe(true);
+      } else {
+        // CJK remains OS fallback; do not pin Linux's WenQuanYi on other platforms.
+        expect(
+          fonts.some((font) => font.glyphCount > 0 && !/Geist/i.test(font.familyName)),
+          'Chinese must retain a real CJK fallback',
+        ).toBe(true);
+      }
       samples.push({ ...target, computed, platformFonts: fonts });
     }
     return {
