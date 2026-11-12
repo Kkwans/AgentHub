@@ -143,6 +143,75 @@ describe('Goal 与 Task service', () => {
     );
   });
 
+  it('同一 Task 并发启动只创建一个 Session', async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    let duplicateEntered!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const firstEntry = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const duplicateEntry = new Promise<void>((resolve) => {
+      duplicateEntered = resolve;
+    });
+    let created = 0;
+    const controlled = new TaskService(
+      new GoalRepository(database.db),
+      new TaskRepository(database.db),
+      new ProjectRepository(database.db),
+      {
+        create: async () => {
+          created += 1;
+          if (created === 1) entered();
+          else duplicateEntered();
+          await gate;
+          return { id: randomUUID() };
+        },
+        startRun: async () => ({ id: randomUUID() }),
+      },
+    );
+    const task = await controlled.createTask({ projectId, title: '并发启动' });
+    await controlled.transitionTask(task.id, 'READY');
+    const first = controlled.startTask(task.id, { agentId });
+    await firstEntry;
+    const second = controlled.startTask(task.id, { agentId }).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    await Promise.race([duplicateEntry, second]);
+    release();
+    await first;
+    expect(await second).toMatchObject({ code: 'TASK_NOT_READY' });
+    expect(created).toBe(1);
+  });
+
+  it('Task 创建 Session 前失败后释放准入，显式重试不被永久锁定', async () => {
+    let attempts = 0;
+    const controlled = new TaskService(
+      new GoalRepository(database.db),
+      new TaskRepository(database.db),
+      new ProjectRepository(database.db),
+      {
+        create: async () => {
+          if (++attempts === 1) throw new Error('adapter temporarily unavailable');
+          return { id: randomUUID() };
+        },
+        startRun: async () => ({ id: randomUUID() }),
+      },
+    );
+    const task = await controlled.createTask({ projectId, title: '恢复启动' });
+    await controlled.transitionTask(task.id, 'READY');
+    await expect(controlled.startTask(task.id, { agentId })).rejects.toThrow(
+      'adapter temporarily unavailable',
+    );
+    expect((await controlled.getTask(task.id)).status).toBe('READY');
+    const recovered = await controlled.startTask(task.id, { agentId });
+    expect(recovered.task.status).toBe('IN_PROGRESS');
+    expect(attempts).toBe(2);
+  });
+
   it('继续修改必须填写反馈，并创建新的 Session/Run 形成下一轮', async () => {
     const task = await service.createTask({
       projectId,

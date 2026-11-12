@@ -15,6 +15,13 @@ import type {
   TaskRunLifecycleObserver,
 } from '../sessions/session-service.js';
 
+interface StartTaskInput {
+  agentId: string;
+  model?: string | undefined;
+  mode?: string | undefined;
+  promptVariables?: Record<string, unknown> | undefined;
+}
+
 type GoalStatus = 'DRAFT' | 'ACTIVE' | 'ACHIEVED' | 'CANCELED';
 
 function buildTaskInstructions(task: {
@@ -44,6 +51,8 @@ const goalTransitions: Record<GoalStatus, readonly GoalStatus[]> = {
 };
 
 export class TaskService implements TaskRunLifecycleObserver {
+  private readonly taskAdmissions = new Set<string>();
+
   constructor(
     private readonly goals: GoalRepository<AgentHubDatabase>,
     private readonly tasks: TaskRepository<AgentHubDatabase>,
@@ -180,15 +189,21 @@ export class TaskService implements TaskRunLifecycleObserver {
     });
   }
 
-  async startTask(
-    id: string,
-    input: {
-      agentId: string;
-      model?: string | undefined;
-      mode?: string | undefined;
-      promptVariables?: Record<string, unknown> | undefined;
-    },
-  ) {
+  async startTask(id: string, input: StartTaskInput) {
+    // Reserve the task before creating an Agent session. Losing a later task
+    // state race must not leave a second, unowned live session behind.
+    if (this.taskAdmissions.has(id)) {
+      throw new AppError(409, 'TASK_NOT_READY', 'Task 正在启动，请等待当前请求完成');
+    }
+    this.taskAdmissions.add(id);
+    try {
+      return await this.startAdmittedTask(id, input);
+    } finally {
+      this.taskAdmissions.delete(id);
+    }
+  }
+
+  private async startAdmittedTask(id: string, input: StartTaskInput) {
     const task = await this.getTask(id);
     if (task.status !== 'READY')
       throw new AppError(409, 'TASK_NOT_READY', '只有就绪的 Task 可以交给 Agent');

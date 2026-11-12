@@ -27,7 +27,7 @@
 - AH-014 / P2：Agent discovery 可能返回 READY 同时 reasonCode=RUNTIME_STOPPED；注册信息不能覆盖当前运行状态。
 - AH-015 / P1：Run 创建后的前置持久化错误未统一回收，QUEUED 不在重启恢复列表；需故障注入确认。
 
-2026-11-13 独立运行证据：真实本地服务+PGlite+fixture ACP 中，带补充说明的任务 USER 消息丢失主目标；重复模拟新建→转 READY→启动失败得到两个任务；目录候选接口返回父根下两个仓库。这里没有调用用户的真实 Agent 或 NAS。
+2026-11-12 独立运行证据：真实本地服务+PGlite+fixture ACP 中，带补充说明的任务 USER 消息丢失主目标；重复模拟新建→转 READY→启动失败得到两个任务；目录候选接口返回父根下两个仓库。这里没有调用用户的真实 Agent 或 NAS。
 
 - AH-016 / P2：基线 presentation architecture 测试失败，FileInspector 从 API 模块导入 ApiError，违反显示面板依赖边界。先判断正确抽象位置，再修复而非删除断言。
 
@@ -37,3 +37,14 @@
 - AH-016：使用已存在的独立 api-error 模块，架构测试不再失败；全量 337 项通过。视觉行为未改变，不把此修复称为 UI 重设计。
 
 - AH-012：真实 PGlite 已复现并完成单实例准入修复；23 项 Session 测试与全量 340 项通过，远端 CI 待核验。跨进程幂等、其他生命周期竞争不在此修复范围。
+
+## 第二轮运行审查
+
+- AH-017 / P1：同一 Task 的并发 start 在任务状态变更前已创建两个 Session，真实 HTTP 返回 201+409 但失败方留下未关闭 READY Session。与 AH-012（同一 Session 并发 Run）不同；Task 级准入修复实施中。
+- AH-018 / P2：`qa:css-budget` 基线失败：Workspace CSS 19,809 bytes 超过 16,384，8 个 !important 超过 4。保留预算，不提高阈值掩盖设计层债务。
+- AH-019 / P1：`release:version-truth` 基线失败，v1.1.0 视觉 manifest 明确 complete=false。现有发布记录不能当作全面验收；补新鲜证据后再评估。
+- AH-020 / P1（待复现）：Task返工也在状态变更前创建新Session，需验证并发审阅/返工与任务启动交错。不得把 AH-017 的局部 start 保护称为全部 Task 生命周期安全。
+
+AH-003 修复后的真实 HTTP+PGlite+fixture ACP 已复测：持久 USER 消息同时包含主目标与补充说明。真实 Agent/NAS 仍未测。
+
+- AH-017：任务级同步准入修复经真实 HTTP复测及独立审查通过，全量342项测试通过；保持同实例范围说明，不关闭AH-020。
