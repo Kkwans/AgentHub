@@ -9,21 +9,36 @@ import { NewWorkPage } from './NewWorkPage';
 import { authSession } from '../../../lib/api';
 
 const context = vi.hoisted(() => ({
-  project: { id: 'project-1', name: '项目一', rootPath: '/projects/one' },
+  project: {
+    id: '11111111-1111-4111-8111-111111111111',
+    name: '项目一',
+    rootPath: '/projects/one',
+  },
+  mode: 'local_trusted' as string | undefined,
+  user: null as { id: string } | null,
+}));
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthMode: () => context.mode,
+  useAuthUser: () => context.user,
 }));
 vi.mock('./ProjectContextLayout', () => ({ useProjectContext: () => context.project }));
 vi.mock('./ProjectWorkPage', () => ({ ProjectWorkPage: () => <div>任务列表</div> }));
 
 const task = {
-  id: 'task-1',
-  projectId: 'project-1',
+  id: '33333333-3333-4333-8333-333333333333',
+  projectId: '11111111-1111-4111-8111-111111111111',
   title: '修复登录',
   status: 'BACKLOG',
   sessionId: null,
 };
 const started = () => ({
-  task: { ...task, status: 'IN_PROGRESS', sessionId: 'session-1' },
-  session: { id: 'session-1', projectId: task.projectId, taskId: task.id, agentId: 'agent-1' },
+  task: { ...task, status: 'IN_PROGRESS', sessionId: '44444444-4444-4444-8444-444444444444' },
+  session: {
+    id: '44444444-4444-4444-8444-444444444444',
+    projectId: task.projectId,
+    taskId: task.id,
+    agentId: 'agent-1',
+  },
 });
 const agent = { id: 'agent-1', name: '测试 Agent', status: 'READY', enabled: true };
 const json = (data: unknown) =>
@@ -51,7 +66,7 @@ function show(fetchMock: typeof fetch) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const tree = () => (
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/projects/project-1/work/new']}>
+      <MemoryRouter initialEntries={['/projects/11111111-1111-4111-8111-111111111111/work/new']}>
         <Location />
         <NewWorkPage />
       </MemoryRouter>
@@ -77,7 +92,8 @@ function base(path: string) {
       ],
     });
   if (path === '/api/v1/agents') return json([agent]);
-  if (path === '/api/v1/tasks/task-1') return json({ ...task, status: 'READY' });
+  if (path === '/api/v1/tasks/33333333-3333-4333-8333-333333333333')
+    return json({ ...task, status: 'READY' });
   return json([]);
 }
 function deferred<T>() {
@@ -102,7 +118,7 @@ function workflow(
           ? 'transition'
           : path.endsWith('/start')
             ? 'start'
-            : path === '/api/v1/tasks/task-1'
+            : path === '/api/v1/tasks/33333333-3333-4333-8333-333333333333'
               ? 'read'
               : undefined;
     if (operation) {
@@ -122,8 +138,16 @@ async function submitTask() {
 }
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  window.localStorage.clear();
+  context.mode = 'local_trusted';
+  context.user = null;
   vi.unstubAllGlobals();
-  context.project = { id: 'project-1', name: '项目一', rootPath: '/projects/one' };
+  context.project = {
+    id: '11111111-1111-4111-8111-111111111111',
+    name: '项目一',
+    rootPath: '/projects/one',
+  };
 });
 
 describe('新建工作部分成功恢复', () => {
@@ -150,7 +174,9 @@ describe('新建工作部分成功恢复', () => {
     await screen.findByText(/Agent 尚未预检就绪/);
     fireEvent.click(screen.getByRole('button', { name: /^(创建并开始|重试启动)$/ }));
     await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent('/workspace/session-1'),
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/workspace/44444444-4444-4444-8444-444444444444',
+      ),
     );
     expect(creates).toBe(1);
     expect(starts).toBe(2);
@@ -182,7 +208,9 @@ describe('新建工作部分成功恢复', () => {
     expect(screen.queryByRole('button', { name: '创建并开始' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '重试启动' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '核对任务列表' }));
-    expect(screen.getByTestId('location')).toHaveTextContent('/projects/project-1/work');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/projects/11111111-1111-4111-8111-111111111111/work',
+    );
     expect(calls.create).toBe(1);
     expect(calls.start).toBe(0);
   });
@@ -196,18 +224,25 @@ describe('新建工作部分成功恢复', () => {
     expect(calls.start).toBe(0);
   });
 
-  it('只有明确的创建校验拒绝才允许修改草稿重试', async () => {
-    let attempt = 0;
-    const { calls, fetchMock } = workflow({
-      create: () => (++attempt === 1 ? failure('VALIDATION_FAILED', 400) : json(task)),
-    });
+  it('创建已发送后即使校验4xx也保留原ID和未知边界，不自动换ID', async () => {
+    const { calls, fetchMock } = workflow({ create: () => failure('VALIDATION_FAILED', 400) });
     show(fetchMock);
     await submitTask();
-    await screen.findByText('创建被拒绝');
-    expect(screen.getByLabelText('你想完成什么？')).not.toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
-    await waitFor(() => expect(calls.start).toBe(1));
-    expect(calls.create).toBe(2);
+    await screen.findByText('后续结果需要处理');
+    expect(screen.getByLabelText('你想完成什么？')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '创建并开始' })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '再次查询创建结果' })).toBeEnabled(),
+    );
+    const keys = Object.keys(localStorage);
+    expect(keys).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: '再次查询创建结果' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '再次查询创建结果' })).toBeEnabled(),
+    );
+    expect(Object.keys(localStorage)).toEqual(keys);
+    expect(calls.create).toBe(1);
+    expect(calls.start).toBe(0);
   });
 
   it('启动响应丢失后只读核对，即使状态仍 READY 也不解锁盲目重试', async () => {
@@ -275,7 +310,11 @@ describe('新建工作部分成功恢复', () => {
     const { calls, fetchMock } = workflow({ create: () => pending.promise });
     const view = show(fetchMock);
     await submitTask();
-    context.project = { id: 'project-2', name: '项目二', rootPath: '/projects/two' };
+    context.project = {
+      id: '22222222-2222-4222-8222-222222222222',
+      name: '项目二',
+      rootPath: '/projects/two',
+    };
     view.refresh();
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '另一个目标' } });
     await act(async () => {
@@ -305,7 +344,8 @@ describe('新建工作部分成功恢复', () => {
   it('核对发现任务已有会话时不再启动，可打开已有工作区', async () => {
     const { calls, fetchMock } = workflow({
       start: () => failure('AGENT_NOT_READY'),
-      read: () => json({ ...task, status: 'IN_PROGRESS', sessionId: 'existing-session' }),
+      read: () =>
+        json({ ...task, status: 'IN_PROGRESS', sessionId: '55555555-5555-4555-8555-555555555555' }),
     });
     show(fetchMock);
     await submitTask();
@@ -315,7 +355,9 @@ describe('新建工作部分成功恢复', () => {
     expect(calls.start).toBe(1);
     expect(calls.create).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: '打开已有工作区' }));
-    expect(screen.getByTestId('location')).toHaveTextContent('/workspace/existing-session');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/workspace/55555555-5555-4555-8555-555555555555',
+    );
   });
 
   it('核对返回其他项目或任务时不进行任何恢复写入', async () => {
@@ -343,9 +385,13 @@ describe('新建工作部分成功恢复', () => {
     await act(async () => {
       pending.resolve(json(started()));
     });
-    expect(screen.getByTestId('location')).toHaveTextContent('/projects/project-1/work');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/projects/11111111-1111-4111-8111-111111111111/work',
+    );
     expect(screen.getByTestId('location')).not.toHaveTextContent('/workspace/');
-    expect(screen.getByTestId('location')).toHaveTextContent('?task=task-1');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '?task=33333333-3333-4333-8333-333333333333',
+    );
   });
   it('未选择 Agent 时明确仅创建任务，不发出启动请求', async () => {
     const { calls, fetchMock } = workflow();
@@ -353,8 +399,13 @@ describe('新建工作部分成功恢复', () => {
       String(input) === '/api/v1/agents' ? json([]) : fetchMock(input, init),
     );
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '修复登录' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: '创建任务' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('?task=task-1'));
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '?task=33333333-3333-4333-8333-333333333333',
+      ),
+    );
     expect(calls.create).toBe(1);
     expect(calls.transition).toBe(0);
     expect(calls.start).toBe(0);
@@ -374,7 +425,11 @@ describe('新建工作部分成功恢复', () => {
     const { fetchMock } = workflow({
       start: () => Promise.reject(new TypeError('network')),
       read: () =>
-        json({ ...task, status: 'READY', sessionId: ++read === 1 ? 'old-session' : null }),
+        json({
+          ...task,
+          status: 'READY',
+          sessionId: ++read === 1 ? '66666666-6666-4666-8666-666666666666' : null,
+        }),
     });
     show(fetchMock);
     await submitTask();
@@ -436,7 +491,10 @@ describe('新建工作部分成功恢复', () => {
         return value;
       },
     ],
-    ['incomplete session', () => ({ ...started(), session: { id: 'session-1' } })],
+    [
+      'incomplete session',
+      () => ({ ...started(), session: { id: '44444444-4444-4444-8444-444444444444' } }),
+    ],
   ])('启动成功响应的 %s 不匹配时不导航、不允许重试', async (_name, result) => {
     const { calls, fetchMock } = workflow({ start: () => json(result()) });
     show(fetchMock);
@@ -497,6 +555,7 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     return { fetchMock, bodies };
   }
   async function selectPrompt() {
+    await waitFor(() => expect(screen.getByLabelText('你想完成什么？')).not.toBeDisabled());
     fireEvent.click(screen.getByText('高级设置'));
     fireEvent.click(screen.getByLabelText('PromptOS 资产（可选）'));
     fireEvent.click(await screen.findByRole('option', { name: /测试资产/ }));
@@ -624,7 +683,9 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
     fireEvent.click(await screen.findByRole('button', { name: '重试启动' }));
     await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent('/workspace/session-1'),
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/workspace/44444444-4444-4444-8444-444444444444',
+      ),
     );
     expect(f.bodies.filter((x) => x.path === '/api/v1/tasks')).toHaveLength(1);
     expect(f.bodies.filter((x) => x.path.endsWith('/start')).map((x) => x.body)).toEqual([
@@ -680,7 +741,7 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     'PROMPT_NOT_FOUND',
     'PROMPT_VERSION_NOT_FOUND',
     'PROMPT_LABEL_NOT_FOUND',
-  ])('选择在持久化前被拒绝时允许修改：%s', async (code) => {
+  ])('Prompt创建4xx不清除同ID恢复记录：%s', async (code) => {
     const f = promptWorkflow();
     show(async (input, init) =>
       String(input) === '/api/v1/tasks' && init?.method === 'POST'
@@ -690,8 +751,9 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     await selectPrompt();
     await previewPrompt();
     fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
-    await screen.findByText('创建被拒绝');
-    expect(screen.getByLabelText('你想完成什么？')).not.toBeDisabled();
+    await screen.findByText('后续结果需要处理');
+    expect(screen.getByLabelText('你想完成什么？')).toBeDisabled();
+    expect(Object.keys(localStorage)).toHaveLength(1);
     expect(screen.queryByRole('button', { name: '重试启动' })).not.toBeInTheDocument();
   });
 });
@@ -704,7 +766,7 @@ describe('项目作用域 Agent 资格', () => {
     agentStatus: 'READY',
     targetStatus: 'STOPPED',
   };
-  const eligibility = (entries = [entry], projectId = 'project-1') => ({
+  const eligibility = (entries = [entry], projectId = '11111111-1111-4111-8111-111111111111') => ({
     projectId,
     basis: 'REGISTERED_STATE',
     livePreflight: false,
@@ -766,6 +828,7 @@ describe('项目作用域 Agent 资格', () => {
   it('禁用但 READY 的 Agent 不自动选择并显示原因', async () => {
     const f = withEligibility(() => json(eligibility()), [{ ...agent, enabled: false }]);
     show(f.fetchMock);
+    await waitFor(() => expect(screen.getByLabelText('推荐 Agent')).toBeEnabled());
     fireEvent.click(screen.getByLabelText('推荐 Agent'));
     expect(await screen.findByRole('option', { name: /测试 Agent · 已禁用/ })).toHaveAttribute(
       'aria-disabled',
@@ -843,4 +906,236 @@ describe('完整工作要求与短标题', () => {
     expect(screen.getByRole('button', { name: '创建 Goal' })).toBeDisabled();
     expect(f.calls.create).toBe(0);
   });
+});
+
+describe('跨刷新任务创建恢复', () => {
+  const operationId = '55555555-5555-4555-8555-555555555555';
+  const marker = {
+    version: 1,
+    scope: 'local-trusted',
+    projectId: task.projectId,
+    operationId,
+    stage: 'CREATE_PENDING',
+  };
+  const storageKey = `agenthub:task-creation:v1:local-trusted:${task.projectId}:${operationId}`;
+  const recovered = {
+    operationId,
+    projectId: task.projectId,
+    taskId: task.id,
+    status: 'READY',
+    sessionId: null,
+  };
+  function store() {
+    localStorage.setItem(storageKey, JSON.stringify(marker));
+  }
+  it('首次POST之前保存ID记录，正文变量不入存储且请求带同一operationId', async () => {
+    const pending = deferred<Response>();
+    let seen = false;
+    const f = workflow({
+      create: () => {
+        const key = Object.keys(localStorage).find((key) =>
+          key.startsWith('agenthub:task-creation:v1:'),
+        )!;
+        const saved = JSON.parse(localStorage.getItem(key)!);
+        expect(Object.keys(saved).sort()).toEqual([
+          'operationId',
+          'projectId',
+          'scope',
+          'stage',
+          'version',
+        ]);
+        expect(saved.stage).toBe('CREATE_PENDING');
+        seen = true;
+        return pending.promise;
+      },
+    });
+    show(f.fetchMock);
+    await submitTask();
+    await waitFor(() => expect(seen).toBe(true));
+    const call = f.fetchMock.mock.calls.find(
+      ([path, init]) => String(path) === '/api/v1/tasks' && init?.method === 'POST',
+    );
+    const sent = JSON.parse(String(call?.[1]?.body));
+    expect(
+      localStorage.getItem(
+        `agenthub:task-creation:v1:local-trusted:${task.projectId}:${sent.operationId}`,
+      ),
+    ).not.toContain('修复登录');
+    await act(async () => pending.resolve(json(task)));
+    await screen.findByTestId('location');
+  });
+  it('重开仅GET恢复，不自动创建转换启动；手动打开原工作区', async () => {
+    store();
+    const f = workflow();
+    show((input, init) =>
+      String(input).includes('/creation-operations/')
+        ? Promise.resolve(json({ ...recovered, sessionId: started().session.id }))
+        : f.fetchMock(input, init),
+    );
+    await screen.findByText('已找到原任务；请手动查看结果。');
+    expect(screen.queryByRole('button', { name: '同编号重试创建' })).not.toBeInTheDocument();
+    expect(f.calls).toEqual({ create: 0, transition: 0, start: 0, read: 0 });
+    fireEvent.click(screen.getByRole('button', { name: '打开原工作区' }));
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/workspace/44444444-4444-4444-8444-444444444444',
+    );
+  });
+  it.each(['404', 'network', 'mismatch'])('恢复%s保持未决，不换ID创建', async (mode) => {
+    store();
+    const f = workflow();
+    show((input, init) =>
+      String(input).includes('/creation-operations/')
+        ? mode === 'network'
+          ? Promise.reject(new Error('offline'))
+          : Promise.resolve(
+              mode === '404'
+                ? failure('TASK_CREATION_OPERATION_NOT_FOUND', 404)
+                : json({ ...recovered, projectId: '22222222-2222-4222-8222-222222222222' }),
+            )
+        : f.fetchMock(input, init),
+    );
+    await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
+    expect(localStorage.getItem(storageKey)).toBe(JSON.stringify(marker));
+    expect(f.calls.create).toBe(0);
+  });
+  it('首次存储失败不发创建请求，损坏记录必须明确确认后才可移除', async () => {
+    const f = workflow();
+    show(f.fetchMock);
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota');
+    });
+    await submitTask();
+    await screen.findByText('恢复记录保存失败，创建请求尚未发送。');
+    expect(f.calls.create).toBe(0);
+    spy.mockRestore();
+    cleanup();
+    localStorage.setItem(storageKey, 'broken');
+    show(f.fetchMock);
+    await screen.findByText('本机恢复记录已损坏，不能自动判断原请求结果。');
+    fireEvent.click(screen.getByRole('button', { name: '移除此本机恢复记录' }));
+    expect(localStorage.getItem(storageKey)).toBe('broken');
+    fireEvent.click(screen.getByRole('button', { name: '已核对，移除此本机记录' }));
+    await waitFor(() => expect(localStorage.getItem(storageKey)).toBeNull());
+    expect(f.calls.create).toBe(0);
+  });
+  it('token模式身份缺失不降级本地；切账户后旧恢复响应不得导航', async () => {
+    store();
+    context.mode = 'token';
+    context.user = null;
+    const f = workflow();
+    const view = show(f.fetchMock);
+    await screen.findByText('当前认证身份无法安全恢复任务，请使用管理员账户登录。');
+    expect(f.calls.create).toBe(0);
+    context.mode = 'local_trusted';
+    const pending = deferred<Response>();
+    vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('/creation-operations/') ? pending.promise : f.fetchMock(input, init),
+    );
+    view.refresh();
+    await screen.findByText('正在读取创建恢复记录…');
+    context.mode = 'token';
+    context.user = { id: '66666666-6666-4666-8666-666666666666' };
+    view.refresh();
+    await act(async () => pending.resolve(json(recovered)));
+    expect(screen.queryByText('已找到原任务；请手动查看结果。')).not.toBeInTheDocument();
+    expect(localStorage.getItem(storageKey)).not.toBeNull();
+  });
+  it('关闭在途创建再重开只恢复，旧响应到达也不补发启动', async () => {
+    const pending = deferred<Response>();
+    const f = workflow({ create: () => pending.promise });
+    const first = show(f.fetchMock);
+    await submitTask();
+    const key = Object.keys(localStorage).find((key) =>
+      key.startsWith('agenthub:task-creation:v1:'),
+    )!;
+    const saved = JSON.parse(localStorage.getItem(key)!);
+    first.unmount();
+    show((input, init) =>
+      String(input).includes('/creation-operations/')
+        ? Promise.resolve(json({ ...recovered, operationId: saved.operationId }))
+        : f.fetchMock(input, init),
+    );
+    await screen.findByText('已找到原任务；请手动查看结果。');
+    await act(async () => pending.resolve(json(task)));
+    expect(f.calls).toEqual({ create: 1, transition: 0, start: 0, read: 0 });
+    expect(localStorage.getItem(key)).not.toBeNull();
+  });
+  it('创建成功后存储进展失败停止后续转换/启动，保留原编号', async () => {
+    const originalSet = Storage.prototype.setItem;
+    let writes = 0;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (++writes > 1) throw new Error('quota');
+      originalSet.call(this, key, value);
+    });
+    const f = workflow();
+    show(f.fetchMock);
+    await submitTask();
+    await screen.findByText('恢复记录保存失败，请查看原任务。');
+    expect(f.calls.create).toBe(1);
+    expect(f.calls.transition).toBe(0);
+    expect(f.calls.start).toBe(0);
+    const key = Object.keys(localStorage).find((key) =>
+      key.startsWith('agenthub:task-creation:v1:'),
+    )!;
+    expect(JSON.parse(localStorage.getItem(key)!).stage).toBe('CREATE_PENDING');
+  });
+  it('其他标签页写入未决记录后阻止本页新建，移除失败不隐瞒', async () => {
+    const f = workflow();
+    show(f.fetchMock);
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    store();
+    fireEvent(window, new StorageEvent('storage', { key: storageKey }));
+    await screen.findByRole('alert');
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '不能重复' } });
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('denied');
+    });
+    fireEvent.click(screen.getByRole('button', { name: '移除此本机恢复记录' }));
+    fireEvent.click(screen.getByRole('button', { name: '已核对，移除此本机记录' }));
+    await screen.findByText('本机记录移除失败，请检查浏览器存储设置。');
+    expect(localStorage.getItem(storageKey)).not.toBeNull();
+    expect(f.calls.create).toBe(0);
+  });
+  it('当前页可用完全相同编号和冻结payload重试创建，成功后不自动续启', async () => {
+    let attempts = 0;
+    const f = workflow({
+      create: () => (++attempts === 1 ? failure('VALIDATION_FAILED', 400) : json(task)),
+    });
+    show(f.fetchMock);
+    await submitTask();
+    const retryButton = await screen.findByRole('button', { name: '同编号重试创建' });
+    localStorage.clear(); // Explicit retry restores the same marker before network.
+    fireEvent.click(retryButton);
+    await waitFor(() => expect(f.calls.create).toBe(2));
+    await screen.findByText('任务已创建');
+    const bodies = f.fetchMock.mock.calls
+      .filter(([path, init]) => String(path) === '/api/v1/tasks' && init?.method === 'POST')
+      .map(([, init]) => String(init?.body));
+    expect(bodies[0]).toBe(bodies[1]);
+    expect(Object.keys(localStorage)).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem(Object.keys(localStorage)[0]!)!).operationId).toBe(
+      JSON.parse(bodies[0]!).operationId,
+    );
+    expect(f.calls.transition).toBe(0);
+    expect(f.calls.start).toBe(0);
+    expect(screen.getByTestId('location')).not.toHaveTextContent('/workspace/');
+    expect(screen.queryByRole('button', { name: '重试启动' })).not.toBeInTheDocument();
+  });
+  it.each([{ id: 'bad-id' }, { sessionId: 'bad-session' }])(
+    'malformed task identity never exposes a task link: %j',
+    async (invalid) => {
+      const f = workflow({ create: () => json({ ...task, ...invalid }) });
+      show(f.fetchMock);
+      await submitTask();
+      await screen.findByText('任务响应无法确认，请到任务列表核对。');
+      expect(screen.queryByRole('button', { name: '查看原任务' })).not.toBeInTheDocument();
+      expect(screen.queryByText('任务已创建')).not.toBeInTheDocument();
+      expect(f.calls.transition).toBe(0);
+      expect(f.calls.start).toBe(0);
+      expect(Object.keys(localStorage)).toHaveLength(1);
+    },
+  );
 });

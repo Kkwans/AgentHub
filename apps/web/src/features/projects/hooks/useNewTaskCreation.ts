@@ -1,3 +1,5 @@
+import type { TaskCreationRecovery } from './useTaskCreationRecovery';
+import type { CreationMarker } from '../lib/task-creation-recovery';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -29,18 +31,6 @@ type CreationState = {
 // Only errors known to be emitted before persistence/runtime creation qualify.
 // A generic 4xx/5xx, malformed response, or transport failure is not proof that
 // nothing happened. In particular an adapter failure can leave a Session.
-const createRejections = new Set([
-  'VALIDATION_FAILED',
-  'PROJECT_NOT_FOUND',
-  'PROJECT_NOT_ACTIVE',
-  'GOAL_NOT_FOUND',
-  'GOAL_PARENT_PROJECT_MISMATCH',
-  'TASK_PARENT_PROJECT_MISMATCH',
-  'TASK_PROMPT_PROJECT_MISMATCH',
-  'PROMPT_NOT_FOUND',
-  'PROMPT_VERSION_NOT_FOUND',
-  'PROMPT_LABEL_NOT_FOUND',
-]);
 const startRejections = new Set([
   'VALIDATION_FAILED',
   'PROJECT_NOT_FOUND',
@@ -56,18 +46,19 @@ function rejectedBeforeWrite(error: unknown, codes: Set<string>): boolean {
     error instanceof ApiError && error.status >= 400 && error.status < 500 && codes.has(error.code)
   );
 }
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function taskIdentity(value: unknown, projectId: string, taskId?: string): TaskIdentity {
   const task = value as Partial<TaskRecord> | null;
   if (
     !task ||
     typeof task.id !== 'string' ||
-    !task.id ||
+    !uuid.test(task.id) ||
     task.projectId !== projectId ||
     (taskId !== undefined && task.id !== taskId) ||
     !['BACKLOG', 'READY', 'IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'BLOCKED', 'CANCELED'].includes(
       task.status ?? '',
     ) ||
-    !(task.sessionId === null || (typeof task.sessionId === 'string' && task.sessionId.length > 0))
+    !(task.sessionId === null || (typeof task.sessionId === 'string' && uuid.test(task.sessionId)))
   ) {
     throw new Error('任务响应无法确认，请到任务列表核对。');
   }
@@ -76,8 +67,11 @@ function taskIdentity(value: unknown, projectId: string, taskId?: string): TaskI
 
 export function useNewTaskCreation(
   onStarted: (draft: NewTaskDraft, task: TaskIdentity, sessionId?: string) => void,
+  recovery: TaskCreationRecovery,
 ) {
   const client = useQueryClient();
+  const operation = useRef<CreationMarker | undefined>(undefined);
+  const createBody = useRef<Record<string, unknown> | undefined>(undefined);
   const [state, setState] = useState<CreationState>({
     busy: false,
     unknown: false,
@@ -111,23 +105,27 @@ export function useNewTaskCreation(
     const draft = input ? structuredClone(input) : previous.draft!;
     let task = previous.task;
     let stage: Stage = input ? 'create' : 'check';
+    let createSent = false;
     busy.current = true;
     update({ ...previous, draft, busy: true, error: undefined });
     try {
       if (input) {
-        task = taskIdentity(
-          await api.post<unknown>('/tasks', {
-            projectId: draft.projectId,
-            goalId: draft.goalId || undefined,
-            title: draft.title.trim(),
-            description: draft.description.trim() || undefined,
-            priority: 2,
-            selectedPrompt: draft.promptId
-              ? { promptId: draft.promptId, versionId: draft.promptVersionId }
-              : undefined,
-          }),
-          draft.projectId,
-        );
+        operation.current = recovery.begin();
+        createBody.current = {
+          operationId: operation.current.operationId,
+          projectId: draft.projectId,
+          goalId: draft.goalId || undefined,
+          title: draft.title.trim(),
+          description: draft.description.trim() || undefined,
+          priority: 2,
+          selectedPrompt: draft.promptId
+            ? { promptId: draft.promptId, versionId: draft.promptVersionId }
+            : undefined,
+        };
+        createSent = true;
+        task = taskIdentity(await api.post<unknown>('/tasks', createBody.current), draft.projectId);
+        if (!live.current) return;
+        operation.current = recovery.advance(operation.current, 'TASK_CREATED', task.id);
         void client.invalidateQueries({ queryKey: ['tasks'] });
         update({ draft, task, busy: true, unknown: false, retryable: true });
       } else {
@@ -166,6 +164,7 @@ export function useNewTaskCreation(
       }
       if (!draft.agentId) {
         update({ draft, task, busy: false, unknown: false, retryable: false });
+        if (operation.current) recovery.complete(operation.current);
         onStarted(draft, task);
         return;
       }
@@ -184,6 +183,8 @@ export function useNewTaskCreation(
           throw new Error('任务状态无法确认，请查看原任务。');
       }
       stage = 'start';
+      if (!operation.current) throw new Error('创建操作编号缺失，已停止启动。');
+      operation.current = recovery.advance(operation.current, 'START_PENDING', task.id);
       const result = await api.post<{
         task?: unknown;
         session?: { id?: unknown; projectId?: unknown; taskId?: unknown; agentId?: unknown };
@@ -191,6 +192,7 @@ export function useNewTaskCreation(
         agentId: draft.agentId,
         promptVariables: draft.promptVariables,
       });
+      if (!live.current) return;
       const startedTask = taskIdentity(result?.task, draft.projectId, task.id);
       if (
         typeof result?.session?.id !== 'string' ||
@@ -211,9 +213,15 @@ export function useNewTaskCreation(
         retryable: false,
         sessionId: result.session.id,
       });
-      if (live.current) onStarted(draft, task, result.session.id);
+      if (live.current) {
+        recovery.complete(operation.current);
+        onStarted(draft, task, result.session.id);
+      }
     } catch (error) {
-      const safeCreate = stage === 'create' && rejectedBeforeWrite(error, createRejections);
+      // Once POST was sent, even a 4xx cannot rule out another same-key request.
+      // Preserve the operation and frozen draft until explicit recovery/abandonment.
+      const safeCreate = stage === 'create' && !createSent;
+      if (stage === 'create' && createSent && !safeCreate) recovery.reveal();
       const safeStart = stage === 'start' && rejectedBeforeWrite(error, startRejections);
       const safeTransition =
         stage === 'transition' && rejectedBeforeWrite(error, new Set(['VALIDATION_FAILED']));
@@ -230,9 +238,72 @@ export function useNewTaskCreation(
       busy.current = false;
     }
   };
+  const retryCreate = async () => {
+    const previous = current.current;
+    const marker = operation.current;
+    if (
+      !live.current ||
+      busy.current ||
+      !previous.unknown ||
+      previous.task ||
+      !previous.draft ||
+      marker?.stage !== 'CREATE_PENDING' ||
+      !createBody.current
+    )
+      return;
+    busy.current = true;
+    update({ ...previous, busy: true, error: undefined });
+    let task: TaskIdentity | undefined;
+    try {
+      recovery.retainPending(marker);
+      // Exact original in-memory body and key. No regenerated payload, transition,
+      // Agent launch, or automatic navigation after a recovery replay.
+      task = taskIdentity(
+        await api.post<unknown>('/tasks', createBody.current),
+        previous.draft.projectId,
+      );
+      if (!live.current) return;
+      operation.current = recovery.advance(marker, 'TASK_CREATED', task.id);
+      void client.invalidateQueries({ queryKey: ['tasks'] });
+      update({
+        ...previous,
+        task,
+        busy: false,
+        unknown: false,
+        retryable: false,
+        error: undefined,
+        sessionId: task.sessionId ?? undefined,
+      });
+      recovery.reveal();
+    } catch (failure) {
+      if (live.current) {
+        update({
+          ...previous,
+          ...(task ? { task } : {}),
+          busy: false,
+          unknown: true,
+          retryable: false,
+          error: failure instanceof Error ? failure.message : '原操作结果仍无法确认。',
+        });
+        recovery.reveal();
+      }
+    } finally {
+      busy.current = false;
+    }
+  };
   return {
     ...state,
     locked: Boolean(state.draft),
+    canRetryCreate: Boolean(
+      state.unknown &&
+      !state.task &&
+      state.draft &&
+      operation.current?.stage === 'CREATE_PENDING' &&
+      createBody.current,
+    ),
+    retryCreate: () => {
+      void retryCreate();
+    },
     submit: (draft: NewTaskDraft) => {
       void run(draft);
     },

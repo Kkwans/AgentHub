@@ -1,3 +1,7 @@
+import { useAuthMode, useAuthUser } from '../../../components/AccessGate';
+import { browserCreationScope } from '../lib/task-creation-recovery';
+import { useTaskCreationRecovery } from '../hooks/useTaskCreationRecovery';
+import { TaskCreationRecoveryPanel } from '../components/TaskCreationRecoveryPanel';
 import { prepareNewWork, suggestTaskTitle } from '../lib/new-work-draft';
 import { AhButton, AhDialog, AhErrorState, AhSelect, AhTextarea, AhInput } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -72,10 +76,14 @@ function parseEligibility(value: unknown, projectId: string): EligibilityEntry[]
 
 export function NewWorkPage() {
   const project = useProjectContext();
-  return <NewWorkForm key={project.id} project={project} />;
+  const scope = browserCreationScope(useAuthMode(), useAuthUser());
+  return (
+    <NewWorkForm key={`${project.id}:${scope ?? 'unknown'}`} project={project} scope={scope} />
+  );
 }
 
-function NewWorkForm({ project }: { project: ProjectRecord }) {
+function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string | null }) {
+  const recovery = useTaskCreationRecovery(project.id, scope);
   const navigate = useNavigate();
   const client = useQueryClient();
   const live = useRef(true);
@@ -239,15 +247,15 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
         ? `/workspace/${encodeURIComponent(sessionId)}`
         : `/projects/${encodeURIComponent(draft.projectId)}/work?task=${encodeURIComponent(task.id)}${query ? `&${query}` : ''}`,
     );
-  });
+  }, recovery);
   useEffect(() => {
-    if (!agentChoiceMade.current && !taskCreation.locked && eligibilityKnown) {
+    if (!agentChoiceMade.current && !taskCreation.locked && !recovery.blocked && eligibilityKnown) {
       agentChoiceMade.current = true;
       setAgentId(selectableAgents[0]?.id ?? '');
     }
-  }, [eligibilityKnown, selectableAgents, taskCreation.locked]);
+  }, [eligibilityKnown, selectableAgents, taskCreation.locked, recovery.blocked]);
   const busy = createGoal.isPending || taskCreation.busy;
-  const locked = busy || taskCreation.locked;
+  const locked = busy || taskCreation.locked || recovery.blocked;
   const close = () => {
     live.current = false;
     taskCreation.abandon();
@@ -302,6 +310,15 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
             </AhButton>
             {taskCreation.locked ? (
               <>
+                {taskCreation.canRetryCreate ? (
+                  <AhButton
+                    variant="default"
+                    onClick={taskCreation.retryCreate}
+                    loading={taskCreation.busy}
+                  >
+                    同编号重试创建
+                  </AhButton>
+                ) : null}
                 {taskCreation.task ? (
                   <AhButton
                     variant="default"
@@ -327,6 +344,7 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
                 onClick={submit}
                 loading={busy}
                 disabled={
+                  recovery.blocked ||
                   Boolean(prepared.error) ||
                   (kind === 'task' && (!promptReady || !selectedEligible))
                 }
@@ -343,6 +361,19 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
             <strong>{project.name}</strong>
             <code title={project.rootPath}>{project.rootPath}</code>
           </div>
+          <TaskCreationRecoveryPanel
+            recovery={recovery}
+            open={(result, workspace) => {
+              if (!live.current) return;
+              live.current = false;
+              taskCreation.abandon();
+              navigate(
+                workspace && result.sessionId
+                  ? `/workspace/${encodeURIComponent(result.sessionId)}`
+                  : `/projects/${encodeURIComponent(project.id)}/work?task=${encodeURIComponent(result.taskId)}`,
+              );
+            }}
+          />
           <fieldset
             disabled={locked}
             className={layout.dialogBody}
@@ -583,9 +614,14 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
               {taskCreation.task ? (
                 <p>原任务：{taskCreation.draft?.title}。后续操作只针对这个任务，不会重新创建。</p>
               ) : null}
+              {taskCreation.canRetryCreate ? (
+                <p>
+                  当前页仍保留冻结的原请求；同编号重试使用完全相同内容，成功后只提供原任务入口，不会继续启动。
+                </p>
+              ) : null}
               {taskCreation.unknown ? (
                 <p>
-                  请求可能已生效。已暂停重试，请先核对任务列表或原任务状态；页面关闭不等于取消。
+                  请求可能已生效。已暂停自动续启和新建，请先核对任务列表或原任务状态；页面关闭不等于取消。
                 </p>
               ) : null}
               {taskCreation.retryable && !taskCreation.busy ? (
