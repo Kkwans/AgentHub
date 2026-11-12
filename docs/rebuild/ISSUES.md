@@ -129,3 +129,12 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 
 - AH-056（P1，CI复现，本地修复待新CI）：02eb verify的839测试断言通过，但WorkspacePage销毁jsdom后发生未处理window is not defined，React Virtualizer被已卸载observer的scroll-end debounce再次通知。上游dispose只移除监听，不取消已排timer；已保持官方observer行为、仅隔离已失效订阅回调，不屏蔽未处理异常或伪造全局window。fixture阶段因此未执行，真实矩阵独立继续。负控2红/1绿；修复专项66通过，S38完整856通过，需新exact-head CI确认。
+
+
+- AH-057（P1，本地修复，待真实CI）：Session resume拿到新handle后READY持久化失败，未close/未activate，shutdown找不到；FAILED二次写失败还遮蔽原异常。真实Service+PGlite/受控adapter已复现，不是从create类推，不涉及用户真实Agent。需有界回收本次尚未交接handle并保留原错误；旧active关闭失败与新handle清理不能混为已全部释放。
+- AH-058（P1，本地修复，待真实CI）：两个resume同时通过DISCONNECTED读取，R1先READY并激活后，R2的无归属detachActive关闭R1赢家，READY→READY失败后将Session写FAILED，且泄漏R2 handle。受控并发诊断已复现。计划首await前同Session同步拒绝重入、按捕获activation身份替换旧连接，失败写入不能覆盖并发close/新赢家；不承诺跨进程完整生命周期隔离。
+
+
+- AH-059（待定向复现）：旧handleActivationDisconnected仅入口检查activation，后续findActiveForSession/Run写/Task回调/Session写跨await未重新核对；safeSessionTransition仅排除CLOSED。若旧回调挂起期间另一条路径已使Session可恢复，迟到回调可能作用新Run/新Session状态。独立源码已确认该结构为既有代码，尚未barrier复现，不能说正常单次断连必现。AH057/058只保证resume自身归属，不宣称所有consumer副作用或跨进程隔离；完整原子生命周期fence另行评估。
+
+- AH057/AH058整合结果：恢复互斥、close撤销、迟到handle/配置、自然detach与新旧资源清理已完成；旧源Service3红、DB2红；S39完整872单测及lint/types/build/QA通过，仍待新exact-head CI。只保护本实例resume自身归属，不扩大为AH059或多进程生命周期已解决。

@@ -1,14 +1,14 @@
 # 任务执行台账
 
-更新时间：2026-11-12（UTC+08:00）。分支 `dot/agenthub-rebuild`，接手基线 `608fdd4`。
+更新时间：2026-11-13（UTC+08:00）。分支 `dot/agenthub-rebuild`，接手基线 `608fdd4`。
 
 ## 当前状态
 
 | 范围 | 最新事实 | 后续动作 |
 | --- | --- | --- |
-| 已验收发布基线 | `c69e88c`真实CI已双绿；本轮功能修复已发布至02eb01b，新的完整CI未绿；提交引用见下方 | 不合并main、不部署 |
-| 本地最终门禁 | S38 lint/types/build、115文件856单测通过/10跳过、QA10通过；S34旧fixture失败及e866真实失败记录保留 | 新真实CI未完成前不宣称浏览器通过 |
-| 当前CI | `6ab6ef5`真实87、`ce6994b`真实105、`c69e88c`真实113均双绿，均通过140几何检查 | e866e28 real红104/10；02eb01b verify因1个卸载后异常红（839断言绿）、real待验 |
+| 已验收发布基线 | `2ecf46f`最新CI已双绿；已发布功能修复可按该SHA核验，resume新缺陷尚在独立修复 | 不合并main、不部署 |
+| 本地最终门禁 | S39 lint/types/build、115文件872单测通过/10跳过、QA10通过；S34旧fixture失败及e866真实失败记录保留 | 新真实CI未完成前不宣称浏览器通过 |
+| 当前CI | `6ab6ef5`真实87、`ce6994b`真实105、`c69e88c`真实113均双绿，均通过140几何检查 | 02eb01b real116/140通过但verify红；2ecf46f verify856单测/48fixture与real116/140均绿，artifact实算SHA256通过 |
 | 已知前轮失败 | 74f49ba/c78905f的Esc故障已修；17566/70c838/4156787的Agent容器边缘断言已用原生IO取证修正，095485c通过 | 原红灯与依据保留在下方历史，不隐去失败 |
 | 视觉状态 | 用户明确否定现有整体样式；已读设计资料并提供三个完整概念，用户全部否定（第二个仅稍好），正在重新探索 | 暂停AH049/AH051等旧微调，不能以测试绿称设计成功 |
 | 下一重点 | 三个方向均未选定，重新探索；期间完成AH054真实性与AH056卸载回调修复并重新验证 | 保留所有授权/未知结果/生命周期合同，暂不实施任一概念 |
@@ -362,3 +362,32 @@
 - 采用官方observeElementOffset，清理时先将本订阅标为失效再调用官方unsubscribe，禁止该已销毁订阅的迟到回调通知React。未吞活跃回调异常、未全局stub window、未改ignoreUnhandledErrors；RTL/scrollend沿用官方实现，上游timer仍自然到期，不声称被取消。
 - 原官方observer负控2失败/1通过；修复后新3项+原Chat/Workspace63项共66通过，webtypes/lint通过。覆盖活跃scroll/end、卸载后的已排timer/新scroll、同元素重新订阅隔离。
 - root已整合AH054、AH053 status强化及AH056，S38 lint/types/build、115文件856单测通过/10跳过（274.32秒）、QA10全部通过，无unhandled；按逻辑切片发布后仍须核对新SHA真实CI。
+
+
+### 已发布2ecf46f的CI跟进
+
+- `02eb01b` real job `131285851971` 已通过：116真实测试（18.0分钟）及140几何检查，包含Session创建2、Workspace投递反馈8、项目资格1、Settings导航10。artifact `13958124356`，91,899,028字节，服务端SHA256 `39441bea0d25fe75f98be8129b47354563775290251d287f9106b84ef12d8ca2`。该run整体仍因verify卸载异常失败，不称双绿。
+- 最新 `2ecf46f9cd5d3231cdd5ca1efcec2c55cff9c6e3` run `43250972055`：verify `131296335362` 已绿，856单测/10跳过及48fixture通过；未再因上述unhandled退出。real `131296335223`仍运行，尚未宣告全门禁通过。
+- 视觉方向仍未获选择，继续只做独立正确性审查；下一项仅审计Session resume的handle所有权，不能把create已修结论直接推广为resume已安全。
+
+
+### Session resume独立审计（AH057/AH058）
+
+- 真实Service+PGlite+受控adapter的3条诊断通过=坏行为复现，不是修复验收；生产代码尚未改。新handle失败泄漏及FAILED二次写遮蔽原因、并发迟到resume关闭已成功赢家均已证实。
+- 下一片先建立同Session本次恢复准入和activation归属，失败清理/状态写入不得伤害并发close或后来的active赢家；仅按当前单实例能力陈述，未知清理不伪称完成。仍不实现未选择视觉方向。
+
+
+- 后续直接核验：`2ecf46f` run `43250972055` 两个job均 completed/success，已成为新的双绿基线；真实逐项结果及artifact仍由专门检查收集。新AH057/AH058只在独立树实施，不包含在此已绿SHA中。
+
+- `2ecf46f` real精确结果：116通过（18.2分钟）、140几何检查。artifact `13960117527`，92,041,853字节；下载后实算SHA256 `bb800400b777db8652c18375d595a13954a3c2378386e3fc576b4cbb8d4853c8`匹配。此为功能/回归基线，不代表新视觉方向获认可。
+
+
+### AH057/AH058实施与S39最终验证
+
+- 已在本地整合：同Session恢复同步拒绝重入；close可撤销挂起的resume，不等待其adapter，不采用“resume挂起就一直禁止close”的方案。旧操作finally不能释放新操作token；迟到新handle仅清理自己，已交接/复用旧handle不被误关。
+- READY/FAILED转换在DB行锁内仅接受DISCONNECTED；resume的配置读取返回后检查归属，配置UPDATE附DISCONNECTED条件，防止close已CLOSED后迟到配置继续写。其他create/live配置默认合同不变；不宣称阻止所有已发出外部副作用。
+- 原activation自然消失不等于出现新赢家，允许正常恢复；只按捕获activation精确detach，旧连接关闭超时/拒绝会阻止新激活且明确旧/新清理未知。close本来的全局清理及AH059消费者跨await风险不在本片关闭范围。
+- 原Service新增回归3/3红；旧DB产物真实PGlite条件更新2/2红，恢复新DB后同2/2绿；隔离树确实导入自己构建的DB产物。固定Session73+API13共86专项通过，server/webtypes、DB build、lint通过。
+- root另外强化API错误文案4种断言，准确区分旧连接、本次新连接、两者未知与已受管资源，不回显原始cause。S39最终lint/types/build、115文件872单测通过/10跳过（269.15秒）、QA10全部通过，独立最终CR无阻断；真实Agent/NAS及多进程runtime激活仍未验收。
+
+- AH057/AH058最终CR确认自然detach、旧handle复用拒绝、配置原子条件和默认配置合同均符合本片边界。AH059仍只记录既有源码风险，未运行复现、未修复、不声称关闭。
