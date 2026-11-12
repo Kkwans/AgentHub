@@ -558,6 +558,7 @@ export interface GoalRecord {
 }
 
 export interface TaskRecord {
+  promptVariablesJson?: Record<string, unknown>;
   id: string;
   projectId: string;
   goalId: string | null;

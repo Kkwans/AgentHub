@@ -164,6 +164,258 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
     };
   }
 
+  it('S52修复已保存任务的继承变量后启动原任务', async () => {
+    const f = await fixture();
+    const asset = await f.makePrompt('修复主题 {{ subject }}', f.projectId, {
+      type: 'object',
+      properties: { subject: { type: 'string' } },
+      required: ['subject'],
+    });
+    await f.promptos.createBinding({
+      targetType: 'PROJECT',
+      targetId: f.projectId,
+      slot: 'RULES',
+      promptId: asset.prompt.id,
+      selectorType: 'VERSION',
+      versionId: asset.version.id,
+    });
+    const task = await f.service.createTask({ projectId: f.projectId, title: '保存后补变量' });
+    await f.service.transitionTask(task.id, 'READY');
+    const denied = await request(f.app)
+      .post(`/api/v1/tasks/${task.id}/start`)
+      .send({ agentId: f.agentId });
+    expect(denied.status).toBe(409);
+    expect(denied.body.error.code).toBe('TASK_PROMPT_VARIABLES_MISSING');
+    const repaired = await request(f.app)
+      .patch(`/api/v1/tasks/${task.id}`)
+      .send({ promptVariables: { subject: '补全值' } });
+    expect(repaired.status).toBe(200);
+    expect(repaired.body.data.promptVariablesJson).toEqual({ subject: '补全值' });
+    const started = await request(f.app)
+      .post(`/api/v1/tasks/${task.id}/start`)
+      .send({ agentId: f.agentId });
+    expect(started.status).toBe(201);
+    expect(f.adapter.createdSessions).toBe(1);
+    expect(f.adapter.turns[0]?.text).toContain('修复主题 补全值');
+  });
+  it('S52变量PATCH替换与清空，不影响其他字段更新', async () => {
+    const f = await fixture();
+    const task = await f.service.createTask({
+      projectId: f.projectId,
+      title: '旧标题',
+      promptVariables: { old: 1, keep: 2 },
+    });
+    const patch = (body: unknown) =>
+      request(f.app)
+        .patch(`/api/v1/tasks/${task.id}`)
+        .send(body as object);
+    const replaced = await patch({
+      title: '新标题',
+      promptVariables: { nested: { value: null }, list: [0, false] },
+    });
+    expect(replaced.status).toBe(200);
+    expect(replaced.body.data).toMatchObject({
+      title: '新标题',
+      promptVariablesJson: { nested: { value: null }, list: [0, false] },
+    });
+    expect(replaced.body.data.promptVariablesJson).not.toHaveProperty('old');
+    for (const promptVariables of [null, [], 'text', 42])
+      expect((await patch({ promptVariables })).status).toBe(400);
+    expect((await f.service.getTask(task.id)).promptVariablesJson).toEqual(
+      replaced.body.data.promptVariablesJson,
+    );
+    const cleared = await patch({ promptVariables: {} });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.promptVariablesJson).toEqual({});
+  });
+  it('S52拒绝不安全状态与历史Session任务的变量修改且不写其他字段', async () => {
+    const f = await fixture('complete');
+    const task = await f.service.createTask({
+      projectId: f.projectId,
+      title: '保留标题',
+      promptVariables: { original: 1 },
+    });
+    await f.service.transitionTask(task.id, 'READY');
+    await f.service.startTask(task.id, { agentId: f.agentId });
+    await vi.waitFor(async () =>
+      expect((await f.service.getTask(task.id)).status).toBe('WAITING_REVIEW'),
+    );
+    for (const status of ['WAITING_REVIEW', 'BLOCKED', 'READY'] as const) {
+      if (status !== 'WAITING_REVIEW') await f.service.transitionTask(task.id, status);
+      const denied = await request(f.app)
+        .patch(`/api/v1/tasks/${task.id}`)
+        .send({ title: '不应保存', promptVariables: {} });
+      expect(denied.status).toBe(409);
+      expect(denied.body.error.code).toBe('TASK_PROMPT_VARIABLES_LOCKED');
+      expect(await f.service.getTask(task.id)).toMatchObject({
+        title: '保留标题',
+        promptVariablesJson: { original: 1 },
+      });
+    }
+    expect(
+      (await request(f.app).patch(`/api/v1/tasks/${task.id}`).send({ title: '仍可编辑标题' }))
+        .status,
+    ).toBe(200);
+    const manual = await f.service.createTask({ projectId: f.projectId, title: '未绑定Session' });
+    for (const status of ['READY', 'IN_PROGRESS', 'BLOCKED', 'CANCELED'] as const) {
+      await f.service.transitionTask(manual.id, status);
+      if (status === 'READY') continue;
+      expect(
+        (
+          await request(f.app)
+            .patch(`/api/v1/tasks/${manual.id}`)
+            .send({ promptVariables: { value: 'unsafe' } })
+        ).status,
+      ).toBe(409);
+      expect((await f.service.getTask(manual.id)).promptVariablesJson).toEqual({});
+    }
+  });
+
+  it('S52变量保存持有准入时并行start被拒绝，保存后可开始', async () => {
+    const f = await fixture();
+    const task = await f.service.createTask({
+      projectId: f.projectId,
+      title: '变量保存竞争',
+      promptVariables: { value: 'before' },
+    });
+    await f.service.transitionTask(task.id, 'READY');
+    let entered!: () => void;
+    let release!: () => void;
+    const atUpdate = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const original = f.tasks.update.bind(f.tasks);
+    vi.spyOn(f.tasks, 'update').mockImplementationOnce(async (...args) => {
+      entered();
+      await gate;
+      return original(...args);
+    });
+    const saving = request(f.app)
+      .patch(`/api/v1/tasks/${task.id}`)
+      .send({ promptVariables: { value: 'after' } })
+      .then((response) => response);
+    await atUpdate;
+    try {
+      const blocked = await request(f.app)
+        .post(`/api/v1/tasks/${task.id}/start`)
+        .send({ agentId: f.agentId });
+      expect(blocked.status).toBe(409);
+      expect(blocked.body.error.code).toBe('TASK_NOT_READY');
+      expect(f.adapter.createdSessions).toBe(0);
+      expect((await f.service.getTask(task.id)).promptVariablesJson).toEqual({ value: 'before' });
+    } finally {
+      release();
+    }
+    expect((await saving).status).toBe(200);
+    expect(
+      (await request(f.app).post(`/api/v1/tasks/${task.id}/start`).send({ agentId: f.agentId }))
+        .status,
+    ).toBe(201);
+    expect((await f.service.getTask(task.id)).promptVariablesJson).toEqual({ value: 'after' });
+  });
+  it('S52启动持有准入时变量PATCH被拒绝且不写入', async () => {
+    const f = await fixture();
+    const task = await f.service.createTask({
+      projectId: f.projectId,
+      title: '启动竞争',
+      promptVariables: { value: 'before' },
+    });
+    await f.service.transitionTask(task.id, 'READY');
+    let entered!: () => void;
+    let release!: () => void;
+    const atCreate = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const original = f.sessionService.create.bind(f.sessionService);
+    vi.spyOn(f.sessionService, 'create').mockImplementationOnce(async (...args) => {
+      entered();
+      await gate;
+      return original(...args);
+    });
+    const starting = request(f.app)
+      .post(`/api/v1/tasks/${task.id}/start`)
+      .send({ agentId: f.agentId })
+      .then((response) => response);
+    await atCreate;
+    try {
+      const blocked = await request(f.app)
+        .patch(`/api/v1/tasks/${task.id}`)
+        .send({ promptVariables: { value: 'after' } });
+      expect(blocked.status).toBe(409);
+      expect(blocked.body.error.code).toBe('TASK_OPERATION_IN_PROGRESS');
+      expect((await f.service.getTask(task.id)).promptVariablesJson).toEqual({ value: 'before' });
+    } finally {
+      release();
+    }
+    expect((await starting).status).toBe(201);
+  });
+
+  it.each(['active', 'session'] as const)(
+    'S52陈旧读取后%s变化必须在最终写入拒绝',
+    async (change) => {
+      const f = await fixture('complete');
+      const task = await f.service.createTask({
+        projectId: f.projectId,
+        title: '不得覆盖',
+        promptVariables: { original: 1 },
+      });
+      await f.service.transitionTask(task.id, 'READY');
+      const otherService = new TaskService(
+        new GoalRepository(f.database.db),
+        f.tasks,
+        f.projects,
+        f.sessionService,
+        f.promptos,
+      );
+      let entered!: () => void;
+      let release!: () => void;
+      const atUpdate = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const original = f.tasks.update.bind(f.tasks);
+      vi.spyOn(f.tasks, 'update').mockImplementationOnce(async (...args) => {
+        entered();
+        await gate;
+        return original(...args);
+      });
+      const saving = request(f.app)
+        .patch(`/api/v1/tasks/${task.id}`)
+        .send({ title: '不应保存', promptVariables: { replacement: 2 } })
+        .then((response) => response);
+      await atUpdate;
+      try {
+        if (change === 'active') await otherService.transitionTask(task.id, 'IN_PROGRESS');
+        else {
+          await otherService.startTask(task.id, { agentId: f.agentId });
+          await vi.waitFor(async () =>
+            expect((await f.service.getTask(task.id)).status).toBe('WAITING_REVIEW'),
+          );
+          await otherService.transitionTask(task.id, 'BLOCKED');
+          await otherService.transitionTask(task.id, 'READY');
+          expect((await f.service.getTask(task.id)).sessionId).not.toBeNull();
+        }
+      } finally {
+        release();
+      }
+      const denied = await saving;
+      expect(denied.status).toBe(409);
+      expect(denied.body.error.code).toBe('TASK_PROMPT_VARIABLES_LOCKED');
+      expect(await f.service.getTask(task.id)).toMatchObject({
+        title: '不得覆盖',
+        promptVariablesJson: { original: 1 },
+      });
+    },
+  );
+
   it.each(['PROJECT', 'AGENT'] as const)(
     '继承 %s Binding 使用保存变量而不要求显式资产',
     async (targetType) => {

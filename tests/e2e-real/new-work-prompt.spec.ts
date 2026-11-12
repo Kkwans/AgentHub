@@ -359,3 +359,124 @@ test('继承 Project Binding 时输入变量并直接启动，不创建显式 Ta
     },
   });
 });
+
+for (const width of [390, 768, 1024, 1440]) {
+  test(`已保存任务缺变量后原地修复并启动 ${width}`, async ({ page, context, app }, info) => {
+    const { project, agent } = await seedWorkspace(context, app);
+    const prompt = await apiData<Identified>(context, 'post', '/prompts', {
+      projectId: project.id,
+      key: 'e2e/repair-task-variables',
+      name: '需要变量的项目模板',
+      kind: 'TASK',
+      type: 'TEXT',
+    });
+    const version = await apiData<Version>(context, 'post', `/prompts/${prompt.id}/versions`, {
+      content: { text: '修复后上下文：{{ subject }}' },
+      variables: {
+        type: 'object',
+        properties: { subject: { type: 'string' } },
+        required: ['subject'],
+      },
+    });
+    await apiData(context, 'post', '/prompt-bindings', {
+      targetType: 'PROJECT',
+      targetId: project.id,
+      slot: 'RULES',
+      promptId: prompt.id,
+      selectorType: 'VERSION',
+      versionId: version.id,
+    });
+    const task = await apiData<Task>(context, 'post', '/tasks', {
+      projectId: project.id,
+      title: '修复保存的任务变量',
+    });
+    await apiData(context, 'post', `/tasks/${task.id}/transition`, { status: 'READY' });
+    const initialSessions = await apiData<Identified[]>(
+      context,
+      'get',
+      `/sessions?projectId=${project.id}`,
+    );
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    const errors: string[] = [];
+    const starts: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        new URL(request.url()).pathname === `/api/v1/tasks/${task.id}/start`
+      )
+        starts.push(request.url());
+    });
+    await page.goto(`/projects/${project.id}/work?task=${task.id}&agentId=${agent.id}`);
+    await page.getByRole('button', { name: '启动 Session', exact: true }).click();
+    await expect(
+      page.getByText('任务 Prompt 缺少必填变量，尚未启动 Agent', { exact: true }),
+    ).toBeVisible();
+    expect(
+      (await apiData<Identified[]>(context, 'get', `/sessions?projectId=${project.id}`))
+        .map((item) => item.id)
+        .sort(),
+    ).toEqual(initialSessions.map((item) => item.id).sort());
+    const variables = page.getByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' });
+    await variables.fill('{"subject":"保存后修复的输入"}');
+    await variables.scrollIntoViewIfNeeded();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const editorScreenshot = info.outputPath(`task-variable-editor-${width}.png`);
+    await page.screenshot({ path: editorScreenshot, fullPage: true });
+    await info.attach('原任务变量修复表单', { path: editorScreenshot, contentType: 'image/png' });
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname === `/api/v1/tasks/${task.id}`,
+    );
+    await page.getByRole('button', { name: '保存变量', exact: true }).click();
+    expect((await saved).ok()).toBe(true);
+    await expect
+      .poll(
+        async () => (await apiData<Task>(context, 'get', `/tasks/${task.id}`)).promptVariablesJson,
+      )
+      .toEqual({ subject: '保存后修复的输入' });
+    expect(starts).toHaveLength(1); // Saving repairs input, never silently starts execution.
+    await page.reload();
+    await expect(variables).toHaveValue(/保存后修复的输入/);
+    await page.getByRole('button', { name: '启动 Session', exact: true }).click();
+    await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+    const stored = await apiData<Task>(context, 'get', `/tasks/${task.id}`);
+    expect(stored.id).toBe(task.id);
+    expect(stored.promptVariablesJson).toEqual({ subject: '保存后修复的输入' });
+    expect(starts).toHaveLength(2);
+    expect(await apiData<Task[]>(context, 'get', `/tasks?projectId=${project.id}`)).toHaveLength(1);
+    const resolved = await apiData<{ finalContext: string }>(
+      context,
+      'post',
+      '/prompt-context/resolve',
+      {
+        projectId: project.id,
+        taskId: task.id,
+        agentId: agent.id,
+        variables: stored.promptVariablesJson,
+      },
+    );
+    const runs = await apiData<Array<{ metadataJson: unknown }>>(
+      context,
+      'get',
+      `/sessions/${stored.sessionId}/runs`,
+    );
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.metadataJson).toMatchObject({
+      promptContext: {
+        finalContextHash: createHash('sha256').update(resolved.finalContext).digest('hex'),
+      },
+    });
+    expect(resolved.finalContext).toContain('修复后上下文：保存后修复的输入');
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const screenshot = info.outputPath(`repaired-task-variables-${width}.png`);
+    await page.screenshot({ path: screenshot, fullPage: true });
+    await info.attach('已修复变量并进入工作区', { path: screenshot, contentType: 'image/png' });
+    expect(errors).toEqual([]);
+  });
+}

@@ -1560,13 +1560,31 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
     });
   }
 
-  async update(id: string, patch: Partial<typeof tasks.$inferInsert>) {
+  async update(
+    id: string,
+    patch: Partial<typeof tasks.$inferInsert>,
+    options: { requireUnstartedPromptVariables?: boolean } = {},
+  ) {
     const [updated] = await this.db
       .update(tasks)
       .set({ ...patch, updatedAt: new Date() })
-      .where(eq(tasks.id, id))
+      .where(
+        and(
+          eq(tasks.id, id),
+          ...(options.requireUnstartedPromptVariables
+            ? [inArray(tasks.status, ['BACKLOG', 'READY']), isNull(tasks.sessionId)]
+            : []),
+        ),
+      )
       .returning();
-    if (!updated) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+    if (!updated) {
+      if (options.requireUnstartedPromptVariables)
+        throw new DatabaseInvariantError(
+          'TASK_PROMPT_VARIABLES_LOCKED',
+          'Task 已开始执行或关联 Session，不能修改变量',
+        );
+      throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+    }
     return updated;
   }
 

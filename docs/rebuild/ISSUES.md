@@ -183,3 +183,10 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 - 源码证据：Inspector选框/摘要使用runAgentId或assignedAgentId，按钮、请求、手工说明仅使用runAgentId。无URL参数打开已有Agent任务，会显示Agent但走手工分支；BLOCKED时手工按钮还被禁用。
 - 状态：三条组件红测确证后修复，专项35项及完整966项覆盖、lint/types/build/QA10、独立CR通过；新exact CI待发布后核验。显示/说明/操作共用同一有效选择；任务切换不带入上一任务显式选择；保留明确URL override、显式清空语义，等待期间不改变已发起选择。
 - 不涉及整体UI样式、默认推荐策略、Agent实时可用性或多实例启动幂等。
+
+## AH-068 / P1：已保存任务缺变量后无法修复
+
+- 真实使用链：继承模板要求变量，已有任务启动安全拒绝TASK_PROMPT_VARIABLES_MISSING且不创建Session；但旧PATCH无变量字段、Inspector无编辑入口，用户不能修复原任务。
+- 本片合同：仅无Session且BACKLOG/READY任务可明确保存变量对象；整体替换，{}清空；非法类型拒绝。保存不自动启动、不修改已有执行快照；状态限制须在最终数据库写入时仍成立，避免Worktree队列或其他实例改变状态后仍写入。
+- 状态：后端3条入口红测与2条跨实例状态推进红测、前端2条缺入口红测均确证后修复；69后端/50前端专项、完整988项覆盖及lint/types/build/QA10、独立CR通过，新exact CI待发布核验。新增四宽真实场景验证拒绝→修复→刷新保留→原任务成功启动及实际上下文hash，不复制任务。
+- 不更改视觉方向、模板绑定/版本、运行中执行变量或用户Agent配置。

@@ -59,6 +59,7 @@ const taskCreate = z.object({
 });
 const taskUpdate = z
   .object({
+    promptVariables: z.record(z.string(), z.unknown()).optional(),
     goalId: z.string().uuid().nullable().optional(),
     title: z.string().trim().min(1).max(240).optional(),
     description: z.string().max(100_000).nullable().optional(),

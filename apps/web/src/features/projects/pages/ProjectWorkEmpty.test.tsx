@@ -443,3 +443,175 @@ it('跨项目切换不保留前项目的本地Agent选择', async () => {
     expect(screen.getByRole('combobox', { name: '运行 Agent' })).toHaveTextContent('执行者一'),
   );
 });
+
+it('保存任务变量只PATCH当前任务，不自动启动', async () => {
+  const stored = { ...task, sessionId: null, promptVariablesJson: { subject: '原值' } };
+  vi.mocked(api.patch).mockResolvedValue({
+    ...stored,
+    promptVariablesJson: { subject: '修复值' },
+  } as never);
+  mount([stored]);
+  const input = await screen.findByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' });
+  expect(input).toHaveValue(JSON.stringify(stored.promptVariablesJson, null, 2));
+  fireEvent.change(input, { target: { value: '{"subject":"修复值"}' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存变量' }));
+  await waitFor(() =>
+    expect(api.patch).toHaveBeenCalledWith('/tasks/task-1', {
+      promptVariables: { subject: '修复值' },
+    }),
+  );
+  expect(api.post).not.toHaveBeenCalled();
+  expect(await screen.findByText('变量已保存。')).toBeVisible();
+});
+it('任务变量非法JSON不允许保存，背景刷新不覆盖未保存输入', async () => {
+  const stored = { ...task, sessionId: null, promptVariablesJson: { subject: '原值' } };
+  const client = mount([stored]);
+  const input = await screen.findByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' });
+  fireEvent.change(input, { target: { value: '[' } });
+  expect(screen.getByRole('button', { name: '保存变量' })).toBeDisabled();
+  await act(async () =>
+    client.setQueryData(
+      ['tasks', project.id],
+      [{ ...stored, promptVariablesJson: { subject: '后台更新' } }],
+    ),
+  );
+  expect(input).toHaveValue('[');
+  expect(api.patch).not.toHaveBeenCalled();
+});
+
+it.each(['null', '[]', '"文本"', '4'])('任务变量拒绝非对象JSON %s', async (value) => {
+  mount([{ ...task, sessionId: null }]);
+  fireEvent.change(await screen.findByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' }), {
+    target: { value },
+  });
+  expect(screen.getByRole('button', { name: '保存变量' })).toBeDisabled();
+  expect(api.patch).not.toHaveBeenCalled();
+});
+it.each([
+  { status: 'IN_PROGRESS', sessionId: null },
+  { status: 'BLOCKED', sessionId: null },
+  { status: 'READY', sessionId: 'session-1' },
+  { status: 'READY', sessionId: undefined },
+])('已执行或非待启动任务不提供变量编辑 $status/$sessionId', async (state) => {
+  mount([{ ...task, ...state }]);
+  await screen.findByRole('complementary', { name: '工作 Inspector' });
+  expect(
+    screen.queryByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' }),
+  ).not.toBeInTheDocument();
+});
+it('保存期间锁定竞争动作，失败保留草稿可重试', async () => {
+  let fail!: (reason: unknown) => void;
+  vi.mocked(api.patch).mockImplementation(
+    () =>
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }) as never,
+  );
+  mount([{ ...task, sessionId: null }], '?agentId=agent-1', selectableAgents);
+  const input = await screen.findByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' });
+  fireEvent.change(input, { target: { value: '{"subject":"保留草稿"}' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存变量' }));
+  await waitFor(() => expect(input).toBeDisabled());
+  expect(screen.getByRole('button', { name: '启动 Session' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '取消' })).toBeDisabled();
+  expect(screen.getByRole('combobox', { name: '运行 Agent' })).toBeDisabled();
+  await act(async () => fail(new Error('保存失败，请重试')));
+  expect(await screen.findByText('保存失败，请重试')).toBeVisible();
+  expect(input).toHaveValue('{"subject":"保留草稿"}');
+  expect(screen.getByRole('button', { name: '保存变量' })).toBeEnabled();
+  expect(api.post).not.toHaveBeenCalled();
+});
+it('旧任务保存晚回包不覆盖新任务草稿或显示旧成功', async () => {
+  const first = { ...task, sessionId: null, promptVariablesJson: { subject: '一' } };
+  const second = {
+    ...task,
+    id: 'task-2',
+    title: '第二任务',
+    sessionId: null,
+    promptVariablesJson: { subject: '二' },
+  };
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.patch).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  mount([first, second]);
+  fireEvent.change(await screen.findByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' }), {
+    target: { value: '{"subject":"一更新"}' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '保存变量' }));
+  await waitFor(() => expect(api.patch).toHaveBeenCalledTimes(1));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /第二任务/,
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' })).toHaveValue(
+      JSON.stringify(second.promptVariablesJson, null, 2),
+    ),
+  );
+  await act(async () => finish({ ...first, promptVariablesJson: { subject: '一更新' } }));
+  expect(screen.queryByText('变量已保存。')).not.toBeInTheDocument();
+  const input = screen.getByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' });
+  expect(input).toHaveValue(JSON.stringify(second.promptVariablesJson, null, 2));
+  fireEvent.change(input, { target: { value: '{"subject":"二草稿"}' } });
+  expect(input).toHaveValue('{"subject":"二草稿"}');
+  expect(api.post).not.toHaveBeenCalled();
+});
+it('清空变量整体保存空对象且重复点击不会并发PATCH', async () => {
+  let finish!: (value: unknown) => void;
+  const stored = { ...task, sessionId: null, promptVariablesJson: { subject: '原值' } };
+  vi.mocked(api.patch).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  mount([stored]);
+  fireEvent.change(await screen.findByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' }), {
+    target: { value: '{}' },
+  });
+  const save = screen.getByRole('button', { name: '保存变量' });
+  fireEvent.click(save);
+  fireEvent.click(save);
+  await waitFor(() => expect(api.patch).toHaveBeenCalledTimes(1));
+  expect(api.patch).toHaveBeenCalledWith('/tasks/task-1', { promptVariables: {} });
+  await act(async () => finish({ ...stored, promptVariablesJson: {} }));
+  expect(await screen.findByText('变量已保存。')).toBeVisible();
+});
+it('错误任务的保存响应不冒称成功并保留草稿', async () => {
+  vi.mocked(api.patch).mockResolvedValue({
+    ...task,
+    id: 'wrong-task',
+    promptVariablesJson: {},
+  } as never);
+  mount([{ ...task, sessionId: null }]);
+  const input = await screen.findByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' });
+  fireEvent.change(input, { target: { value: '{"subject":"不能丢"}' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存变量' }));
+  expect(await screen.findByText('保存响应无法确认，请核对原任务的变量。')).toBeVisible();
+  expect(input).toHaveValue('{"subject":"不能丢"}');
+  expect(screen.queryByText('变量已保存。')).not.toBeInTheDocument();
+});
+
+it('修复变量后清除旧启动错误但不自动再次启动', async () => {
+  const stored = { ...task, status: 'READY', sessionId: null, promptVariablesJson: {} };
+  vi.mocked(api.post).mockRejectedValue(new Error('任务 Prompt 缺少必填变量，尚未启动 Agent'));
+  vi.mocked(api.patch).mockResolvedValue({
+    ...stored,
+    promptVariablesJson: { subject: '修复' },
+  } as never);
+  mount([stored], '?agentId=agent-1', selectableAgents);
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  expect(await screen.findByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).toBeVisible();
+  fireEvent.change(screen.getByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' }), {
+    target: { value: '{"subject":"修复"}' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '保存变量' }));
+  expect(await screen.findByText('变量已保存。')).toBeVisible();
+  expect(screen.queryByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).not.toBeInTheDocument();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});

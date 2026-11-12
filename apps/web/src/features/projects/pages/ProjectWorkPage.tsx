@@ -1,3 +1,4 @@
+import { TaskPromptVariablesEditor } from '../components/TaskPromptVariablesEditor';
 import { useAuthMode, useAuthUser } from '../../../components/AccessGate';
 import { browserCreationScope } from '../lib/task-creation-recovery';
 import { useManualTaskStart } from '../hooks/useManualTaskStart';
@@ -198,6 +199,8 @@ export function ProjectWorkPage() {
     { status: 'DONE', label: '已完成' },
     { status: 'CANCELED', label: '已取消' },
   ];
+  const [variableSaveKey, setVariableSaveKey] = useState<string | null>(null);
+  const variablesSaving = variableSaveKey !== null;
   const operationContext = useRef({ identity: '', generation: 0, mounted: true });
   const selectionIdentity = JSON.stringify([project.id, selected?.id, runAgentId]);
   if (operationContext.current.identity !== selectionIdentity) {
@@ -511,7 +514,9 @@ export function ProjectWorkPage() {
                       <h4>执行</h4>
                       <AhSelect
                         aria-label="运行 Agent"
-                        disabled={start.isPending || transition.isPending || manual.busy}
+                        disabled={
+                          start.isPending || transition.isPending || manual.busy || variablesSaving
+                        }
                         label=""
                         value={runAgentId}
                         onChange={(value) =>
@@ -564,6 +569,29 @@ export function ProjectWorkPage() {
                         </p>
                       ) : null}
                     </section>
+                    {['BACKLOG', 'READY'].includes(selected.status) &&
+                    selected.sessionId === null ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>Prompt 变量</h4>
+                        <TaskPromptVariablesEditor
+                          key={`${project.id}:${selected.id}`}
+                          task={selected}
+                          disabled={
+                            start.isPending ||
+                            transition.isPending ||
+                            manual.busy ||
+                            manual.unknown ||
+                            variablesSaving
+                          }
+                          onSaved={() => start.reset()}
+                          onSavingChange={(key, saving) =>
+                            setVariableSaveKey((current) =>
+                              saving ? key : current === key ? null : current,
+                            )
+                          }
+                        />
+                      </section>
+                    ) : null}
                     {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
                     {manual.message ? <p role="status">{manual.message}</p> : null}
                     {actionError ? (
@@ -590,6 +618,7 @@ export function ProjectWorkPage() {
                           ) ||
                           (!runAgentId && manual.unavailable) ||
                           manual.busy ||
+                          variablesSaving ||
                           transition.isPending ||
                           start.isPending ||
                           (manual.unknown && (Boolean(runAgentId) || !manual.status)) ||
@@ -621,7 +650,11 @@ export function ProjectWorkPage() {
                       <TaskCancelAction
                         task={selected}
                         pending={
-                          transition.isPending || start.isPending || manual.busy || manual.unknown
+                          transition.isPending ||
+                          start.isPending ||
+                          manual.busy ||
+                          manual.unknown ||
+                          variablesSaving
                         }
                         onCancel={() =>
                           transition.mutate({

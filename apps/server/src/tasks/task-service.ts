@@ -245,6 +245,7 @@ export class TaskService implements TaskRunLifecycleObserver {
   async updateTask(
     id: string,
     patch: {
+      promptVariables?: Record<string, unknown> | undefined;
       goalId?: string | null | undefined;
       title?: string | undefined;
       description?: string | null | undefined;
@@ -254,19 +255,51 @@ export class TaskService implements TaskRunLifecycleObserver {
       position?: string | undefined;
     },
   ) {
-    const task = await this.getTask(id);
-    if (patch.goalId) await this.requireGoalProject(patch.goalId, task.projectId);
-    return this.tasks.update(id, {
-      ...(patch.goalId !== undefined ? { goalId: patch.goalId } : {}),
-      ...(patch.title !== undefined ? { title: patch.title } : {}),
-      ...(patch.description !== undefined ? { description: patch.description } : {}),
-      ...(patch.acceptanceCriteria !== undefined
-        ? { acceptanceCriteria: patch.acceptanceCriteria }
-        : {}),
-      ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
-      ...(patch.branch !== undefined ? { branch: patch.branch } : {}),
-      ...(patch.position !== undefined ? { position: patch.position } : {}),
-    });
+    const update = async () => {
+      const task = await this.getTask(id);
+      if (
+        patch.promptVariables !== undefined &&
+        (!['BACKLOG', 'READY'].includes(task.status) || task.sessionId !== null)
+      )
+        throw new AppError(
+          409,
+          'TASK_PROMPT_VARIABLES_LOCKED',
+          '只能修改尚未关联 Session 的待排期或待开始任务变量',
+        );
+      if (patch.goalId) await this.requireGoalProject(patch.goalId, task.projectId);
+      try {
+        return await this.tasks.update(
+          id,
+          {
+            ...(patch.promptVariables !== undefined
+              ? { promptVariablesJson: patch.promptVariables }
+              : {}),
+            ...(patch.goalId !== undefined ? { goalId: patch.goalId } : {}),
+            ...(patch.title !== undefined ? { title: patch.title } : {}),
+            ...(patch.description !== undefined ? { description: patch.description } : {}),
+            ...(patch.acceptanceCriteria !== undefined
+              ? { acceptanceCriteria: patch.acceptanceCriteria }
+              : {}),
+            ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+            ...(patch.branch !== undefined ? { branch: patch.branch } : {}),
+            ...(patch.position !== undefined ? { position: patch.position } : {}),
+          },
+          { requireUnstartedPromptVariables: patch.promptVariables !== undefined },
+        );
+      } catch (error) {
+        if (
+          error instanceof DatabaseInvariantError &&
+          error.code === 'TASK_PROMPT_VARIABLES_LOCKED'
+        )
+          throw new AppError(
+            409,
+            error.code,
+            '任务已开始执行或关联 Session，请刷新状态；变量未保存',
+          );
+        throw error;
+      }
+    };
+    return patch.promptVariables !== undefined ? this.withTaskAdmission(id, update) : update();
   }
 
   async transitionTask(id: string, to: TaskStatus) {
