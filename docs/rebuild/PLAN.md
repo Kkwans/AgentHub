@@ -84,3 +84,6 @@
 - AH061：取消拒绝/超时收敛采用专属CANCELING事务谓词，与当前Run/activation准入协调；152专项和三条旧源负控已完成，S42全量910单测与lint/types/build/QA通过，代码53cf131已发布。完成后独立代码/台账提交，核验精确新SHA CI；不修改未选定的Codex参考视觉。
 
 - AH062：显式断连事件统一既有 activation fence，已复现旧回调覆盖恢复后的 Session；四项新增回归及156专项、S43全仓914单测和lint/types/build/QA通过，待新HEAD CI，保持视觉实现暂停。AH063 将同 activation 连接级原子收敛单独登记，先复现再定修复合同。
+
+- AH063：两条合法复现后实施连接级同实例短提交，覆盖当前Run选择与Session/连接收敛，不再让历史event.runId遗漏新Run。160专项通过、S44全仓门禁进行中，远端新CI待发布后核验；视觉方向继续等待用户。
+- AH063 S44完成：918单测和lint/types/build/QA全过，准备及时发布本切片；下一轮核验exact CI后再决定独立功能问题，不反复扩大已完成切片。

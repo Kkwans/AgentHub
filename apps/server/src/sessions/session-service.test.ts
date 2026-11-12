@@ -1770,16 +1770,20 @@ describe('Session/Run/Approval 持久化闭环', () => {
       let readyWaiting = false;
       let resumed = false;
       let oldFinished = false;
-      const lookup = f.repositories.runs.findActiveForSession.bind(f.repositories.runs);
+      const consumer = f.service as unknown as {
+        handleActivationDisconnected: (id: string, activation: string) => Promise<void>;
+      };
+      const handleDisconnect = consumer.handleActivationDisconnected.bind(f.service);
       if (order === 'new-ready')
-        vi.spyOn(f.repositories.runs, 'findActiveForSession').mockImplementationOnce(async (id) => {
-          const snapshot = await lookup(id);
-          oldWaiting = true;
-          await new Promise<void>((resolve) => {
-            releaseOld = resolve;
-          });
-          return snapshot;
-        });
+        vi.spyOn(consumer, 'handleActivationDisconnected').mockImplementationOnce(
+          async (...args) => {
+            oldWaiting = true;
+            await new Promise<void>((resolve) => {
+              releaseOld = resolve;
+            });
+            return handleDisconnect(...args);
+          },
+        );
       const transition = f.repositories.sessions.transition.bind(f.repositories.sessions);
       vi.spyOn(f.repositories.sessions, 'transition').mockImplementation(
         async (id, to, patch, options) => {
@@ -1886,7 +1890,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     }
   });
 
-  it('AH059合法cancel拒绝先断连，旧findActive返回后误断开恢复后的新Run Session', async () => {
+  it('AH059合法cancel拒绝先断连，旧断连消费者恢复后不影响新Run Session', async () => {
     const f = await preparationFixture();
     Object.assign(f.adapter, {
       resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
@@ -1902,17 +1906,18 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await f.service.cancelRun(f.session.id, first.id);
     let release!: () => void;
     let entered = false;
-    const lookup = f.repositories.runs.findActiveForSession.bind(f.repositories.runs);
+    const consumer = f.service as unknown as {
+      handleActivationDisconnected: (id: string, activation: string) => Promise<void>;
+    };
+    const handleDisconnect = consumer.handleActivationDisconnected.bind(f.service);
     const barrier = vi
-      .spyOn(f.repositories.runs, 'findActiveForSession')
-      .mockImplementationOnce(async (id) => {
-        const snapshot = await lookup(id);
-        expect(snapshot?.id).toBe(first.id);
+      .spyOn(consumer, 'handleActivationDisconnected')
+      .mockImplementationOnce(async (...args) => {
         entered = true;
         await new Promise<void>((resolve) => {
           release = resolve;
         });
-        return snapshot;
+        return handleDisconnect(...args);
       });
     const disconnect = vi.spyOn(
       f.service as unknown as {
@@ -1949,6 +1954,84 @@ describe('Session/Run/Approval 持久化闭环', () => {
       await f.service.shutdown();
     }
   });
+
+  it('AH063断连读取空闲快照后显式新Run准入不能留下RUNNING孤儿', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '断连准入交错',
+      cwd: '/tmp',
+    });
+    let release = () => undefined as void;
+    let entered = false;
+    const lookup = f.repositories.runs.findActiveForSession.bind(f.repositories.runs);
+    vi.spyOn(f.repositories.runs, 'findActiveForSession').mockImplementationOnce(async (id) => {
+      const result = await lookup(id);
+      expect(result).toBeUndefined();
+      entered = true;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return result;
+    });
+    try {
+      adapter.handles[0]!.disconnect();
+      await waitFor(async () => entered);
+      const commits = f.service as unknown as {
+        withActivationCommit: (id: string, action: () => Promise<unknown>) => Promise<unknown>;
+      };
+      const commit = commits.withActivationCommit.bind(f.service);
+      let admissionQueued = false;
+      vi.spyOn(commits, 'withActivationCommit').mockImplementation((id, action) => {
+        admissionQueued = true;
+        return commit(id, action);
+      });
+      const starting = f.service.startRun(session.id, { text: '空闲窗口显式新工作' });
+      const outcome = starting.catch((error: unknown) => error);
+      await waitFor(async () => admissionQueued);
+      release();
+      expect(await outcome).toMatchObject({ code: expect.stringMatching(/^SESSION_/) });
+      expect(await f.repositories.runs.list(session.id)).toHaveLength(0);
+      expect((await f.repositories.sessions.get(session.id))?.status).toBe('DISCONNECTED');
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['historical', 'current', 'none'] as const)(
+    'AH063同连接断连事件runId=%s应收敛当前Run且保留历史完成',
+    async (reference) => {
+      const adapter = new ControlledAdapter('never');
+      const f = await createFixture('idle', undefined, {}, { adapter });
+      const session = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: '连接级断连',
+        cwd: '/tmp',
+      });
+      try {
+        const first = await f.service.startRun(session.id, { text: '第一轮' });
+        adapter.handles[0]!.complete(first.id);
+        await waitFor(
+          async () => (await f.repositories.sessions.get(session.id))?.status === 'READY',
+        );
+        const second = await f.service.startRun(session.id, { text: '第二轮' });
+        adapter.handles[0]!.disconnect(
+          reference === 'historical' ? first.id : reference === 'current' ? second.id : undefined,
+        );
+        await waitFor(
+          async () => (await f.repositories.sessions.get(session.id))?.status === 'DISCONNECTED',
+        );
+        expect((await f.repositories.runs.get(first.id))?.status).toBe('COMPLETED');
+        expect((await f.repositories.runs.get(second.id))?.status).toBe('DISCONNECTED');
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
 
   it.each([true, false])(
     'AH062当前连接显式断连事件携带runId=%s仍正常收敛',
@@ -2109,7 +2192,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     },
   );
 
-  it('AH059 taskLifecycle已持久DISCONNECTED时cancel拒绝不能打开提前resume窗口', async () => {
+  it('AH059断连先提交后Task回调挂起不阻塞恢复，迟到cancel拒绝不污染新连接', async () => {
     const f = await preparationFixture();
     Object.assign(f.adapter, {
       resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
@@ -2135,32 +2218,19 @@ describe('Session/Run/Approval 持久化闭环', () => {
         return f.taskService.onRunStopped(task, run);
       },
     });
-    const convergence = f.repositories.runs.convergeCancellationFailure.bind(f.repositories.runs);
-    let rejectedCancelConverged = false;
-    vi.spyOn(f.repositories.runs, 'convergeCancellationFailure').mockImplementation(
-      async (...args) => {
-        const result = await convergence(...args);
-        expect(result.changed).toBe(false);
-        rejectedCancelConverged = true;
-        return result;
-      },
-    );
+    const convergence = vi.spyOn(f.repositories.runs, 'convergeCancellationFailure');
     await f.adapter.handles[0]!.close();
     await waitFor(async () => entered);
     try {
-      rejectCancel(new Error('controlled cancellation rejection'));
-      await waitFor(async () => rejectedCancelConverged);
       expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
-      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('RUNNING');
-      await expect(f.service.resume(f.session.id)).rejects.toMatchObject({
-        code: 'SESSION_NOT_DISCONNECTED',
-      });
-      expect(f.adapter.handles).toHaveLength(1);
-      release();
-      await waitFor(
-        async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
-      );
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
       expect((await f.service.resume(f.session.id)).status).toBe('READY');
+      rejectCancel(new Error('controlled cancellation rejection'));
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(convergence).not.toHaveBeenCalled();
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+      expect(f.adapter.handles).toHaveLength(2);
     } finally {
       release();
       await f.service.shutdown();

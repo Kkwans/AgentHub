@@ -1428,41 +1428,34 @@ export class SessionService {
     await this.handleActivationDisconnected(sessionId, activationId);
   }
 
-  private async handleActivationDisconnected(
-    sessionId: string,
-    activationId: string,
-    runId?: string,
-  ) {
-    if (!this.isCurrentActivation(sessionId, activationId)) return;
-    const activeRun = runId
-      ? await this.runs.get(runId)
-      : await this.runs.findActiveForSession(sessionId);
-    if (activeRun) {
-      const result = await this.withActivationCommit(sessionId, async () => {
-        if (!this.isCurrentActivation(sessionId, activationId)) return;
-        const result = await this.runs.tryTransition(
-          activeRun.id,
-          ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
-          'DISCONNECTED',
-          {
-            finishedAt: new Date(),
-            errorCode: 'ADAPTER_DISCONNECTED',
-            errorMessage: 'Agent 连接已断开',
-          },
-        );
-        if (result.changed) this.clearCancellationTimer(activeRun.id);
-        return result;
-      });
+  private async handleActivationDisconnected(sessionId: string, activationId: string) {
+    const result = await this.withActivationCommit(sessionId, async () => {
       if (!this.isCurrentActivation(sessionId, activationId)) return;
-      if (result?.changed && result.run.taskId) {
-        await this.taskLifecycle?.onRunStopped?.(result.run.taskId, result.run.id, 'DISCONNECTED');
-      }
-    }
-    await this.withActivationCommit(sessionId, async () => {
-      if (!this.isCurrentActivation(sessionId, activationId)) return;
+      // Disconnect is connection-wide. An event's runId is audit metadata and
+      // may reference a completed turn; select the current Run at commit time.
+      const activeRun = await this.runs.findActiveForSession(sessionId);
+      const result = activeRun
+        ? await this.runs.tryTransition(
+            activeRun.id,
+            ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
+            'DISCONNECTED',
+            {
+              finishedAt: new Date(),
+              errorCode: 'ADAPTER_DISCONNECTED',
+              errorMessage: 'Agent 连接已断开',
+            },
+          )
+        : undefined;
+      if (result?.changed) this.clearCancellationTimer(result.run.id, activationId);
       await this.safeSessionTransition(sessionId, 'DISCONNECTED');
       this.detachActive(sessionId, activationId);
+      return result;
     });
+    // The deliberate detach above retires this activation. Task persistence
+    // checks durable Run ownership and must not be skipped because of detach.
+    if (result?.changed && result.run.taskId) {
+      await this.taskLifecycle?.onRunStopped?.(result.run.taskId, result.run.id, 'DISCONNECTED');
+    }
   }
 
   private async persistEvent(
@@ -1668,7 +1661,7 @@ export class SessionService {
       // Explicit disconnect events and iterator termination share the same
       // activation fence. A slow Task callback must not disconnect a resumed
       // Session after another failure has already retired this activation.
-      await this.handleActivationDisconnected(event.sessionId, activationId, event.runId);
+      await this.handleActivationDisconnected(event.sessionId, activationId);
     }
   }
 

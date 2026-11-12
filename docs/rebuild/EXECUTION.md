@@ -491,3 +491,15 @@
 
 - 全仓lint、typecheck、串行build通过；115测试文件914单测通过/10跳过（272.00秒），QA10通过。156专项通过，旧源4例负控1失败/3通过，证明恢复污染而非把正常与关闭路径一并否定。
 - 独立CR在窄合同下无新增阻断；仅修旧activation迟到事件，AH063原子收敛保持开放。准备将代码与本次台账作为同一逻辑切片提交并发布开发分支，远端新HEAD CI尚未运行，不复用7ee9749全绿作为新提交验收。
+
+### AH063证据与S44门禁
+
+- 基于ce8c190真实Service/PGlite合法诊断：空闲Session断连查询得到空快照后，新Run经公开startRun准入；旧断连继续会留下Session断开而Run仍RUNNING。另一条R1权威完成、R2公开启动后，携历史R1的显式断连也遗漏R2。旧源4例中2失败、2正常对照通过；未篡改DB状态或active映射。
+- 最小修复把当前活动Run选择、状态收敛、Session断连与精确detach放同一短activation提交队列；Task回调在提交后锁外运行，事件runId仍保留原始审计但不作为连接级收敛目标。未增加跨进程事务，也未盲把QUEUED/PREPARING归类为已发送断连。
+- 旧AH059查询barrier迁至消费者入口，保留新activation先赢防污染目的；新AH063使用明确准入排队信号验证当前连接互斥，不依赖固定睡眠。160专项、定向types/lint通过，独立CR无阻断，S44全仓门禁进行中。
+- 准备阶段候选作否定对照：messages.append挂起时断连，释放后返回RUN_PREPARATION_FAILED且sendTurn未调用，Session保持DISCONNECTED；不把未复现假设登记为确诊缺陷。
+
+### S44完成
+
+- 全仓lint、typecheck、串行build通过；115测试文件918单测通过/10跳过（278.29秒），QA10通过。最终确定性4项回归全绿，旧源2红2绿，独立CR无阻断。
+- 发布前复核ce8c190 exact CI43282000251：verify成功，真实服务矩阵仍运行，不记录为全绿。AH063本切片新HEAD远端CI待发布后核验；不合并main、不部署、不实施未选定的UI。

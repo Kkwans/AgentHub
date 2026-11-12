@@ -153,3 +153,6 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH062 / P1：显式 `adapter.disconnected` 事件在 Run/Task await 后直接回写 Session，未复用 AH059 的 activation 提交保护。真实 Service/PGlite 合法 barrier 复现：旧 Task 回调挂起，权限失败收敛后 resume 已 READY，旧事件继续会将新 Session 改回 DISCONNECTED。基线 resume 回归失败，close 为正确早退对照。现统一到既有断连 helper，保留显式 runId 选择语义；新增恢复、关闭、有/无 runId 正常断连四项回归；156专项、S43全仓914单测/10跳过、lint/types/build/QA全部通过，独立CR无阻断，待新HEAD远端CI。范围仅旧 activation 迟到污染，不宣称连接级全路径原子化。
 - AH063 / P1（源码审查，待运行复现）：连接级断连 helper 在队列外选择 Run、在 Task 回调前后分两段提交。同 activation 新 Run 准入以及携带历史 runId 的断连，可能留下连接已移除而当前 Run 仍活动；需独立合法 barrier 复现，再决定当前 Run/Session 原子收敛，不能借 AH062 的旧 activation 回归关闭此项。
+
+- AH063运行证据与修复：已用真实Service/PGlite确认空快照→新Run准入、历史R1断连遗漏R2两条合法竞争，当前事件普通对照通过。当前Run查询/CAS、Session断连和精确detach已统一同实例短队列，Task锁外；160专项与独立CR通过，全仓S44进行中。事件历史审计和终态保留；跨进程/准备阶段不在关闭声明内。
+- AH063本地验收补充：S44全仓918单测/10跳过，lint/typecheck/build/QA全部通过；状态为待新HEAD远端CI验收，不将同实例队列保护扩大为跨进程保证。
