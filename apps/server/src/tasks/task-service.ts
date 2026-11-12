@@ -196,21 +196,33 @@ export class TaskService implements TaskRunLifecycleObserver {
   }
 
   async transitionTask(id: string, to: TaskStatus) {
-    await this.getTask(id);
-    return this.tasks.transition(id, to, {
-      ...(to === 'DONE' ? { completedAt: new Date() } : {}),
+    return this.withTaskAdmission(id, async () => {
+      await this.getTask(id);
+      return this.tasks.transition(id, to, {
+        ...(to === 'DONE' ? { completedAt: new Date() } : {}),
+      });
     });
   }
 
   async startTask(id: string, input: StartTaskInput) {
-    // Reserve the task before creating an Agent session. Losing a later task
-    // state race must not leave a second, unowned live session behind.
+    return this.withTaskAdmission(id, () => this.startAdmittedTask(id, input), 'TASK_NOT_READY');
+  }
+
+  // Synchronous admission covers all user-driven state-changing operations in
+  // this service instance, before any Session side effect. Reject overlap rather
+  // than queue stale intent. Lifecycle callbacks deliberately do not acquire it.
+  // This is not a distributed lease or cross-process ownership guarantee.
+  private async withTaskAdmission<T>(
+    id: string,
+    operation: () => Promise<T>,
+    conflictCode = 'TASK_OPERATION_IN_PROGRESS',
+  ): Promise<T> {
     if (this.taskAdmissions.has(id)) {
-      throw new AppError(409, 'TASK_NOT_READY', 'Task 正在启动，请等待当前请求完成');
+      throw new AppError(409, conflictCode, 'Task 正在处理其他操作，请核对状态后重试');
     }
     this.taskAdmissions.add(id);
     try {
-      return await this.startAdmittedTask(id, input);
+      return await operation();
     } finally {
       this.taskAdmissions.delete(id);
     }
@@ -280,6 +292,13 @@ export class TaskService implements TaskRunLifecycleObserver {
   }
 
   async reviewTask(
+    id: string,
+    input: { decision: 'APPROVE' } | { decision: 'REWORK'; feedback: string },
+  ) {
+    return this.withTaskAdmission(id, () => this.reviewAdmittedTask(id, input));
+  }
+
+  private async reviewAdmittedTask(
     id: string,
     input: { decision: 'APPROVE' } | { decision: 'REWORK'; feedback: string },
   ) {

@@ -66,3 +66,7 @@ AH-003 修复后的真实 HTTP+PGlite+fixture ACP 已复测：持久 USER 消息
 - AH-021：d430519 真实服务 job 全绿；fixture 44 通过/4 失败，失败停在查看旧工具详情后的错误滚动假设。已改为主动滚离→回到底部的行为验证，等待新 CI，而非删除断言。
 
 AH-024 追加：首页空态8张实际图已审阅，主CTA无阻塞问题；有数据首页（STANDARD项目、7事项、3会话）与移动Projects渐进筛选正补独立真实服务验收，不能用空态140图代替内容态验证。
+
+### AH-020 返工与状态交错
+
+已用真实PGlite+受控Session创建复现：两个REWORK创建两个Session；REWORK尚在创建时APPROVE成功；start/rework与手动CANCEL交错。旧源新增五例中四失败、一安全回归通过。修复将start/review/manual transition置于同实例同步准入，重叠操作直接409，不排队过期意图；失败finally释放，生命周期回调不加锁。针对20项通过，完整497项通过/10跳过，lint/typecheck/build通过。跨进程会话创建预留/故障回收、旧Run迟到回调的所有权仍单独处理，不因本修复关闭整体生命周期风险。

@@ -161,6 +161,185 @@ describe('Goal 与 Task service', () => {
     expect((await service.getTask(task.id)).description).toBe(description);
   });
 
+  it('同一待审阅任务并发返工不创建第二个无归属 Session', async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    let duplicateEntered!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const firstEntry = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const duplicateEntry = new Promise<void>((resolve) => {
+      duplicateEntered = resolve;
+    });
+    let created = 0;
+    const repository = new TaskRepository(database.db);
+    const task = await repository.create({
+      id: randomUUID(),
+      projectId,
+      title: '并发返工',
+      status: 'WAITING_REVIEW',
+      assignedAgentId: agentId,
+    });
+    const controlled = new TaskService(
+      new GoalRepository(database.db),
+      repository,
+      new ProjectRepository(database.db),
+      {
+        create: async () => {
+          created++;
+          if (created === 1) entered();
+          else duplicateEntered();
+          await gate;
+          return { id: randomUUID() };
+        },
+        startRun: async () => ({ id: randomUUID() }),
+      },
+    );
+    const first = controlled.reviewTask(task.id, { decision: 'REWORK', feedback: '继续修复' });
+    await firstEntry;
+    const second = controlled
+      .reviewTask(task.id, { decision: 'REWORK', feedback: '重复请求' })
+      .then(
+        () => undefined,
+        (error) => error,
+      );
+    await Promise.race([duplicateEntry, second]);
+    release();
+    await first;
+    const error = await second;
+    expect(created).toBe(1);
+    expect(error).toMatchObject({ status: 409 });
+  });
+
+  it('返工创建 Session 期间不能批准同一任务，避免已完成任务留下运行现场', async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const entry = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const repository = new TaskRepository(database.db);
+    const task = await repository.create({
+      id: randomUUID(),
+      projectId,
+      title: '返工与批准',
+      status: 'WAITING_REVIEW',
+      assignedAgentId: agentId,
+    });
+    const controlled = new TaskService(
+      new GoalRepository(database.db),
+      repository,
+      new ProjectRepository(database.db),
+      {
+        create: async () => {
+          entered();
+          await gate;
+          return { id: randomUUID() };
+        },
+        startRun: async () => ({ id: randomUUID() }),
+      },
+    );
+    const rework = controlled
+      .reviewTask(task.id, { decision: 'REWORK', feedback: '继续修复' })
+      .then(
+        (value) => value,
+        (error) => error,
+      );
+    await entry;
+    const approved = await controlled.reviewTask(task.id, { decision: 'APPROVE' }).then(
+      (value) => value,
+      (error) => error,
+    );
+    release();
+    const result = await rework;
+    expect(approved).toMatchObject({ status: 409 });
+    expect(result).toHaveProperty('run.id');
+    expect((await controlled.getTask(task.id)).status).toBe('IN_PROGRESS');
+  });
+
+  it.each(['start', 'rework'] as const)('%s 创建 Session 时拒绝手动状态交错', async (operation) => {
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const entry = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const repository = new TaskRepository(database.db);
+    const task = await repository.create({
+      id: randomUUID(),
+      projectId,
+      title: '状态交错',
+      status: operation === 'start' ? 'READY' : 'WAITING_REVIEW',
+      assignedAgentId: agentId,
+    });
+    const controlled = new TaskService(
+      new GoalRepository(database.db),
+      repository,
+      new ProjectRepository(database.db),
+      {
+        create: async () => {
+          entered();
+          await gate;
+          return { id: randomUUID() };
+        },
+        startRun: async () => ({ id: randomUUID() }),
+      },
+    );
+    const running = (
+      operation === 'start'
+        ? controlled.startTask(task.id, { agentId })
+        : controlled.reviewTask(task.id, { decision: 'REWORK', feedback: '继续' })
+    ).then(
+      (value) => value,
+      (error) => error,
+    );
+    await entry;
+    const transition = await controlled.transitionTask(task.id, 'CANCELED').then(
+      (value) => value,
+      (error) => error,
+    );
+    release();
+    const result = await running;
+    expect(transition).toMatchObject({ code: 'TASK_OPERATION_IN_PROGRESS' });
+    expect(result).toHaveProperty('run.id');
+    expect((await controlled.getTask(task.id)).status).toBe('IN_PROGRESS');
+  });
+
+  it('返工创建失败释放 admission，后续独立审阅仍可执行', async () => {
+    const repository = new TaskRepository(database.db);
+    const task = await repository.create({
+      id: randomUUID(),
+      projectId,
+      title: '失败释放',
+      status: 'WAITING_REVIEW',
+      assignedAgentId: agentId,
+    });
+    const controlled = new TaskService(
+      new GoalRepository(database.db),
+      repository,
+      new ProjectRepository(database.db),
+      {
+        create: async () => {
+          throw new Error('确定性创建失败');
+        },
+        startRun: async () => ({ id: randomUUID() }),
+      },
+    );
+    await expect(
+      controlled.reviewTask(task.id, { decision: 'REWORK', feedback: '继续' }),
+    ).rejects.toThrow('确定性创建失败');
+    expect((await controlled.reviewTask(task.id, { decision: 'APPROVE' })).task.status).toBe(
+      'DONE',
+    );
+  });
+
   it('同一 Task 并发启动只创建一个 Session', async () => {
     let release!: () => void;
     let entered!: () => void;

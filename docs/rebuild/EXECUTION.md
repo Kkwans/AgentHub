@@ -131,3 +131,10 @@
 - 三项组件回归通过；新增四宽双主题真实API筛选流程，含手机↔桌面换宽保留条件及三阶段截图。新增Home正式项目、7事项、3会话的四宽双主题内容态验收和实际中文glyph命中证据，不能把手动任务状态样本称为真实Agent执行。
 - 修复Home fixture旧文案定位为当前区域内全部会话/待审阅动作精确契约；真实设置导航改exact，保留实际路由/标题断言。
 - 最终 lint/typecheck/串行build通过，88文件、492项测试通过、10跳过；新真实浏览器collection9项、fixture48项，新增/修改E2E独立Bundler模式typecheck与lint通过。NodeNext单文件检查不匹配项目Vite/Bundler的axe-core默认导入，未修改生产依赖掩盖此模式差异。真实Chromium执行仍等待发布后CI，不将collection作为视觉通过。
+
+### M1.2d 返工、批准与手动状态单实例准入
+
+- Task.start/review/manual transition共享同步准入，首次await前保留操作资格；内部repository迁移不重入服务guard。重叠请求明确409，避免将过期意图排队执行；生命周期回调不加锁，避免同步完成死锁。
+- 旧源四项真实PGlite竞态回归失败（重复返工、返工与批准、start/rework与CANCEL），修复20项TaskService/Prompt专项通过；创建失败释放准入的安全回归也保留。
+- 这只限制同TaskService实例，未提供分布式租约；部分持久化失败回收和旧Run所有权单独实现。
+- 最终lint/typecheck/串行build通过，完整497项测试通过、10项跳过，浏览器行为无变更。CI仍按精确提交继续追踪，不把专项通过等同部署验收。
