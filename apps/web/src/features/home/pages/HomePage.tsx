@@ -1,6 +1,6 @@
 import { AhStatusPill, AlertTriangle, ArrowRight, Bot, CircleStop } from '@agenthub/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import type {
@@ -134,11 +134,6 @@ export function HomePage() {
   ).length;
   const projectName = (projectId: string | null | undefined) =>
     projectId ? projectById.get(projectId)?.name : undefined;
-  const attentionToneClasses = {
-    warning: homeStyles.attentionWarning,
-    danger: homeStyles.attentionDanger,
-    info: homeStyles.attentionInfo,
-  } as const;
   const [showAllAttention, setShowAllAttention] = useState(false);
   const attentionItems = attention.map((item) => {
     if ('optionsJson' in item) {
@@ -237,30 +232,7 @@ export function HomePage() {
                     <p>批准请求、受阻任务与待审阅结果</p>
                   </div>
                   {(showAllAttention ? attentionItems : attentionItems.slice(0, 5)).map((item) => (
-                    <Link className={homeStyles.row} key={item.id} to={item.href}>
-                      <span
-                        className={`${homeStyles.icon} ${attentionToneClasses[item.tone]}`}
-                        aria-hidden="true"
-                      >
-                        {item.tone === 'warning' ? (
-                          <AlertTriangle size={18} />
-                        ) : item.tone === 'danger' ? (
-                          <CircleStop size={18} />
-                        ) : (
-                          <Bot size={18} />
-                        )}
-                      </span>
-                      <span className={homeStyles.copy}>
-                        <strong>{item.title}</strong>
-                        <small>
-                          {item.meta}
-                          {item.description ? ` · ${item.description}` : ''}
-                        </small>
-                      </span>
-                      <span className={homeStyles.rowAction}>
-                        {item.action} <ArrowRight size={14} aria-hidden="true" />
-                      </span>
-                    </Link>
+                    <AttentionItemRow key={item.id} item={item} />
                   ))}
                   {attentionItems.length > 5 ? (
                     <button
@@ -396,6 +368,95 @@ export function HomePage() {
             </>
           ) : null}
         </>
+      ) : null}
+    </div>
+  );
+}
+
+type AttentionItem = {
+  title: string;
+  description: string | null | undefined;
+  meta: string | undefined;
+  action: string;
+  href: string;
+  tone: 'warning' | 'danger' | 'info';
+};
+
+function AttentionItemRow({ item }: { item: AttentionItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useEffect(() => {
+    const text = textRef.current;
+    if (!text || expanded) return;
+    let active = true;
+    const measure = () => {
+      if (!active) return;
+      setTruncated(
+        Array.from(text.children).some((child) => child.scrollHeight > child.clientHeight + 1),
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const child of text.children) observer.observe(child);
+    // Font substitution can change scrollHeight without resizing the clamped box.
+    const fonts = document.fonts;
+    void fonts?.ready.then(measure, () => undefined);
+    fonts?.addEventListener('loadingdone', measure);
+    return () => {
+      active = false;
+      observer.disconnect();
+      fonts?.removeEventListener('loadingdone', measure);
+    };
+  }, [expanded, item.title, item.description, item.meta]);
+  const toneClass = {
+    warning: homeStyles.attentionWarning,
+    danger: homeStyles.attentionDanger,
+    info: homeStyles.attentionInfo,
+  }[item.tone];
+  return (
+    <div
+      className={homeStyles.attentionItem}
+      data-expanded={expanded}
+      data-has-details={truncated || expanded}
+    >
+      <Link className={`${homeStyles.row} ${homeStyles.attentionLink}`} to={item.href}>
+        <span className={`${homeStyles.icon} ${toneClass}`} aria-hidden="true">
+          {item.tone === 'warning' ? (
+            <AlertTriangle size={18} />
+          ) : item.tone === 'danger' ? (
+            <CircleStop size={18} />
+          ) : (
+            <Bot size={18} />
+          )}
+        </span>
+        <span
+          className={`${homeStyles.copy} ${homeStyles.attentionText}`}
+          id={detailsId}
+          ref={textRef}
+        >
+          <strong>{item.title}</strong>
+          <small>
+            {item.meta}
+            {item.description ? ` · ${item.description}` : ''}
+          </small>
+        </span>
+        <span className={homeStyles.rowAction}>
+          {item.action} <ArrowRight size={14} aria-hidden="true" />
+        </span>
+      </Link>
+      {truncated || expanded ? (
+        <button
+          type="button"
+          className={homeStyles.attentionDetailsToggle}
+          aria-expanded={expanded}
+          aria-controls={detailsId}
+          aria-label={`${expanded ? '收起' : '展开'}详情：${item.title}`}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? '收起详情' : '展开详情'}
+        </button>
       ) : null}
     </div>
   );

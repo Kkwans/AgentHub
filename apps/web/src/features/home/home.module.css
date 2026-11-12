@@ -312,3 +312,57 @@
   outline: 2px solid var(--ah-accent-primary);
   outline-offset: 4px;
 }
+
+/* Keep long attention items compact without making full text hover-only. */
+.attentionItem {
+  min-width: 0;
+}
+.attentionDetailsToggle {
+  display: none;
+}
+@media (max-width: 860px) {
+  .attentionItem {
+    border-top: 1px solid var(--ah-border-subtle);
+  }
+  .attentionItem .attentionLink {
+    border-top: 0;
+    align-items: flex-start;
+  }
+  .attentionItem[data-has-details='true'] .attentionLink {
+    padding-bottom: 0;
+  }
+  .attentionText strong,
+  .attentionText small {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .attentionItem[data-expanded='true'] .attentionText strong,
+  .attentionItem[data-expanded='true'] .attentionText small {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+  .attentionItem .rowAction {
+    min-height: 32px;
+    flex-shrink: 0;
+  }
+  .attentionDetailsToggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-left: 48px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: var(--ah-accent-primary);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .attentionDetailsToggle:focus-visible {
+    outline: 2px solid var(--ah-accent-primary);
+    outline-offset: 2px;
+  }
+}

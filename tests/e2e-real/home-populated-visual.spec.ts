@@ -275,6 +275,47 @@ test.describe('Home populated real-service visual acceptance', () => {
           await expect(attention.getByRole('link')).toHaveCount(5);
           const initialGeometry = await assertHomeGeometry(page);
           await capture(page, testInfo, `${name}-collapsed`);
+          // The disclosure must be driven by actual clipped pixels, not string length.
+          const detailButtons = attention.getByRole('button', { name: /^展开详情：/ });
+          if (viewport.width <= 860) {
+            const firstTitle = attention.getByRole('link').first().locator('strong');
+            await expect(firstTitle).toHaveCSS('-webkit-line-clamp', '2');
+            for (const row of await attention.getByRole('link').all()) {
+              const hasDetails = await row.locator('..').getAttribute('data-has-details');
+              await expect(row).toHaveCSS('padding-bottom', hasDetails === 'true' ? '0px' : '14px');
+            }
+            if (viewport.width === 390) await expect(detailButtons.first()).toBeVisible();
+            if (await detailButtons.count()) {
+              const detailButton = detailButtons.first();
+              const contentId = await detailButton.getAttribute('aria-controls');
+              expect(contentId).toBeTruthy();
+              const content = page.locator(`[id="${contentId}"]`);
+              const rowLink = content.locator('..');
+              const destination = await rowLink.getAttribute('href');
+              await expect(detailButton).toHaveAttribute('aria-expanded', 'false');
+              expect(await detailButton.evaluate((node) => node.closest('a'))).toBeNull();
+              await detailButton.focus();
+              await page.keyboard.press('Enter');
+              const collapseDetails = attention.getByRole('button', { name: /^收起详情：/ });
+              await expect(collapseDetails).toHaveAttribute('aria-expanded', 'true');
+              expect(
+                await content.evaluate((node) =>
+                  Array.from(node.children).every(
+                    (child) => child.scrollHeight <= child.clientHeight + 1,
+                  ),
+                ),
+              ).toBe(true);
+              await expect(rowLink).toHaveAttribute('href', destination!);
+              await capture(page, testInfo, `${name}-item-detail`);
+              await collapseDetails.focus();
+              await page.keyboard.press('Space');
+              await expect(attention.getByRole('button', { name: /^收起详情：/ })).toHaveCount(0);
+              await expect(rowLink).toHaveAttribute('href', destination!);
+              await expect(attention.getByRole('link')).toHaveCount(5);
+            }
+          } else {
+            await expect(detailButtons).toHaveCount(0);
+          }
           const chineseFonts = await collectChineseFontEvidence(page);
           await testInfo.attach(`${name}-chinese-fonts`, {
             body: JSON.stringify({ theme, viewport, ...chineseFonts }, null, 2),
