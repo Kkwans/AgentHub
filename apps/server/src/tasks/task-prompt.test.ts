@@ -164,6 +164,50 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
     };
   }
 
+  it.each(['PROJECT', 'AGENT'] as const)(
+    '继承 %s Binding 使用保存变量而不要求显式资产',
+    async (targetType) => {
+      const f = await fixture();
+      const asset = await f.makePrompt('继承上下文 {{ subject }}', f.projectId, {
+        type: 'object',
+        properties: { subject: { type: 'string' } },
+        required: ['subject'],
+      });
+      await f.promptos.createBinding({
+        targetType,
+        targetId: targetType === 'PROJECT' ? f.projectId : f.agentId,
+        slot: 'RULES',
+        promptId: asset.prompt.id,
+        selectorType: 'VERSION',
+        versionId: asset.version.id,
+      });
+      const missing = await f.service.createTask({ projectId: f.projectId, title: '无变量任务' });
+      await f.service.transitionTask(missing.id, 'READY');
+      const denied = await request(f.app)
+        .post(`/api/v1/tasks/${missing.id}/start`)
+        .send({ agentId: f.agentId });
+      expect(denied.status).toBe(409);
+      expect(denied.body.error.code).toBe('TASK_PROMPT_VARIABLES_MISSING');
+      expect(f.adapter.createdSessions).toBe(0);
+      const created = await request(f.app)
+        .post('/api/v1/tasks')
+        .send({
+          projectId: f.projectId,
+          title: '有继承变量任务',
+          promptVariables: { subject: '继承变量' },
+        });
+      expect(created.status).toBe(201);
+      const id = created.body.data.id as string;
+      await f.service.transitionTask(id, 'READY');
+      const started = await request(f.app)
+        .post(`/api/v1/tasks/${id}/start`)
+        .send({ agentId: f.agentId });
+      expect(started.status).toBe(201);
+      expect(f.adapter.turns[0]?.text).toContain('继承上下文 继承变量');
+      expect(await f.promptos.listBindings({ targetType: 'TASK', targetId: id })).toEqual([]);
+    },
+  );
+
   it('创建时固定 production 版本，后续移动标签不改变任务；保留 Goal/正文与 Run 来源', async () => {
     const f = await fixture();
     const asset = await f.makePrompt('production 原始内容');

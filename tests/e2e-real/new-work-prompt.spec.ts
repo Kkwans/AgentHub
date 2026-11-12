@@ -15,6 +15,7 @@ type Task = Identified & {
   description: string;
   goalId: string;
   sessionId: string | null;
+  status: string;
   promptVariablesJson: Record<string, unknown>;
 };
 
@@ -209,6 +210,7 @@ test('没有 Agent 时保存模板版本与变量，稍后启动使用固定输�
   expect(tasks).toHaveLength(1);
   expect(tasks[0]).toMatchObject({
     title: '仅保存任务',
+    status: 'BACKLOG',
     sessionId: null,
     promptVariablesJson: { subject: '稍后处理登录回归' },
   });
@@ -241,6 +243,10 @@ test('没有 Agent 时保存模板版本与变量，稍后启动使用固定输�
     { cwd: app.projectRoot },
   );
   expect(preflight.status).toBe('READY');
+  const ready = await apiData<Task>(context, 'post', `/tasks/${tasks[0]!.id}/transition`, {
+    status: 'READY',
+  });
+  expect(ready.status).toBe('READY');
   await apiData(context, 'post', `/tasks/${tasks[0]!.id}/start`, { agentId: agent.id });
   const started = await apiData<Task>(context, 'get', `/tasks/${tasks[0]!.id}`);
   expect(started.sessionId).toBeTruthy();
@@ -269,6 +275,87 @@ test('没有 Agent 时保存模板版本与变量，稍后启动使用固定输�
     promptContext: {
       finalContextHash: createHash('sha256').update(resolved.finalContext).digest('hex'),
       items: [expect.objectContaining({ promptId: prompt.id, versionId: version.id })],
+    },
+  });
+});
+
+test('继承 Project Binding 时输入变量并直接启动，不创建显式 Task Binding', async ({
+  page,
+  context,
+  app,
+}) => {
+  const { project, agent } = await seedWorkspace(context, app);
+  const prompt = await apiData<Identified>(context, 'post', '/prompts', {
+    projectId: project.id,
+    key: 'e2e/inherited-variables',
+    name: '项目继承模板',
+    kind: 'TASK',
+    type: 'TEXT',
+  });
+  const version = await apiData<Version>(context, 'post', `/prompts/${prompt.id}/versions`, {
+    content: { text: '项目继承上下文：{{ subject }}' },
+    variables: {
+      type: 'object',
+      properties: { subject: { type: 'string' } },
+      required: ['subject'],
+    },
+  });
+  await apiData(context, 'post', '/prompt-bindings', {
+    targetType: 'PROJECT',
+    targetId: project.id,
+    slot: 'RULES',
+    promptId: prompt.id,
+    selectorType: 'VERSION',
+    versionId: version.id,
+  });
+  await page.goto(`/projects/${project.id}/work/new`);
+  const dialog = page.getByRole('dialog', { name: '描述一项工作' });
+  await dialog.getByRole('textbox', { name: '你想完成什么？' }).fill('使用继承上下文');
+  await dialog.getByText('高级设置', { exact: true }).click();
+  await dialog
+    .getByRole('textbox', { name: 'Prompt 变量（JSON 对象）' })
+    .fill('{"subject":"继承登录回归"}');
+  await expect(dialog.getByRole('button', { name: '预览并固定版本' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: '创建并开始', exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+  const sessionId = new URL(page.url()).pathname.split('/').at(-1)!;
+  const tasks = await apiData<Task[]>(context, 'get', `/tasks?projectId=${project.id}`);
+  expect(tasks).toHaveLength(1);
+  const task = tasks[0]!;
+  expect(task).toMatchObject({ sessionId, promptVariablesJson: { subject: '继承登录回归' } });
+  expect(
+    await apiData(context, 'get', `/prompt-bindings?targetType=TASK&targetId=${task.id}`),
+  ).toEqual([]);
+  const resolved = await apiData<{ finalContext: string; ready: boolean }>(
+    context,
+    'post',
+    '/prompt-context/resolve',
+    {
+      projectId: project.id,
+      taskId: task.id,
+      agentId: agent.id,
+      variables: task.promptVariablesJson,
+    },
+  );
+  expect(resolved.ready).toBe(true);
+  expect(resolved.finalContext).toContain('项目继承上下文：继承登录回归');
+  const runs = await apiData<Array<{ metadataJson: unknown }>>(
+    context,
+    'get',
+    `/sessions/${sessionId}/runs`,
+  );
+  expect(runs).toHaveLength(1);
+  expect(runs[0]?.metadataJson).toMatchObject({
+    promptContext: {
+      finalContextHash: createHash('sha256').update(resolved.finalContext).digest('hex'),
+      items: [
+        expect.objectContaining({
+          promptId: prompt.id,
+          versionId: version.id,
+          targetType: 'PROJECT',
+          targetId: project.id,
+        }),
+      ],
     },
   });
 });

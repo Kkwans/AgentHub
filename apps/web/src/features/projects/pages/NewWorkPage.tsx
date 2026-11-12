@@ -126,8 +126,8 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
     }
   };
   const promptReady =
-    !promptId ||
-    Boolean(preview && !previewBusy && variablesValid && !preview.missingVariables.length);
+    variablesValid &&
+    (!promptId || Boolean(preview && !previewBusy && !preview.missingVariables.length));
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const goals = useQuery({
     queryKey: ['goals', project.id],
@@ -223,7 +223,7 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
         agentId,
         promptId,
         promptVersionId: preview?.versionId,
-        promptVariables: promptId ? promptVariables : undefined,
+        promptVariables,
       });
   };
   const quickIntents = ['Bug', 'Feature', 'Refactor', 'Research'];
@@ -487,9 +487,9 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                     ? 'Goal 创建不会绑定 Prompt；请在具体 Task 上选择。'
                     : selectedPrompt
                       ? `待预览 ${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）；确认版本后才会绑定任务。`
-                      : '未选择时按当前 Project / Task Binding 解析 Prompt。'}
+                      : '变量会保存到任务，供继承的 Global / Project / Agent 等 Binding 使用；未固定模板版本，按启动时的绑定解析。'}
                 </p>
-                {kind === 'task' && promptId ? (
+                {kind === 'task' ? (
                   <>
                     <AhTextarea
                       label="Prompt 变量（JSON 对象）"
@@ -501,30 +501,36 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                       minRows={3}
                     />
                     {!variablesValid ? <p role="alert">请输入有效的 JSON 对象。</p> : null}
-                    <AhButton
-                      variant="default"
-                      onClick={() => {
-                        void previewPrompt();
-                      }}
-                      disabled={!variablesValid || locked}
-                      loading={previewBusy}
-                    >
-                      预览并固定版本
-                    </AhButton>
-                    {preview ? (
-                      <section aria-label="Prompt 预览">
-                        <p>已固定版本 v{preview.version}；作为任务补充上下文，主目标保持不变。</p>
-                        {!agentId ? <p>保存模板版本与变量，稍后启动自动使用。</p> : null}
-                        {preview.missingVariables.length ? (
-                          <p role="alert">缺少变量：{preview.missingVariables.join('、')}</p>
+                    {promptId ? (
+                      <>
+                        <AhButton
+                          variant="default"
+                          onClick={() => {
+                            void previewPrompt();
+                          }}
+                          disabled={!variablesValid || locked}
+                          loading={previewBusy}
+                        >
+                          预览并固定版本
+                        </AhButton>
+                        {preview ? (
+                          <section aria-label="Prompt 预览">
+                            <p>
+                              已固定版本 v{preview.version}；作为任务补充上下文，主目标保持不变。
+                            </p>
+                            {!agentId ? <p>保存模板版本与变量，稍后启动自动使用。</p> : null}
+                            {preview.missingVariables.length ? (
+                              <p role="alert">缺少变量：{preview.missingVariables.join('、')}</p>
+                            ) : null}
+                            <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                              {preview.text}
+                            </pre>
+                          </section>
                         ) : null}
-                        <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                          {preview.text}
-                        </pre>
-                      </section>
-                    ) : null}
-                    {previewError ? (
-                      <AhErrorState title="Prompt 预览失败" description={previewError} />
+                        {previewError ? (
+                          <AhErrorState title="Prompt 预览失败" description={previewError} />
+                        ) : null}
+                      </>
                     ) : null}
                   </>
                 ) : null}

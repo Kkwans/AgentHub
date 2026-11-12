@@ -1141,3 +1141,84 @@ describe('跨刷新任务创建恢复', () => {
     },
   );
 });
+
+describe('继承 Binding 的变量输入', () => {
+  it('不选择资产也能输入变量并传给创建及启动', async () => {
+    const f = workflow();
+    show(f.fetchMock);
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), {
+      target: { value: '继承模板任务' },
+    });
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    fireEvent.click(screen.getByText('高级设置'));
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{"subject":"继承变量"}' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
+    await waitFor(() => expect(f.calls.start).toBe(1));
+    for (const path of ['/api/v1/tasks', `/api/v1/tasks/${task.id}/start`]) {
+      const call = f.fetchMock.mock.calls.find(
+        ([input, init]) => String(input) === path && init?.method === 'POST',
+      );
+      expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+        promptVariables: { subject: '继承变量' },
+      });
+    }
+  });
+});
+
+describe('继承变量的保存与校验边界', () => {
+  it('没有 Agent 时也保存非空变量，不固定资产、不启动', async () => {
+    const f = workflow();
+    show((input, init) =>
+      String(input) === '/api/v1/agents' ? Promise.resolve(json([])) : f.fetchMock(input, init),
+    );
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '稍后继承' } });
+    fireEvent.click(screen.getByText('高级设置'));
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{"subject":"保存值"}' },
+    });
+    expect(screen.queryByRole('button', { name: '预览并固定版本' })).not.toBeInTheDocument();
+    expect(screen.getByText(/未固定模板版本，按启动时的绑定解析/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: '创建任务' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
+    await waitFor(() => expect(f.calls.create).toBe(1));
+    const call = f.fetchMock.mock.calls.find(
+      ([path, init]) => String(path) === '/api/v1/tasks' && init?.method === 'POST',
+    );
+    expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+      promptVariables: { subject: '保存值' },
+    });
+    expect(JSON.parse(String(call?.[1]?.body))).not.toHaveProperty('selectedPrompt');
+    expect(f.calls.start).toBe(0);
+  });
+  it.each(['{', '[]', 'null'])(
+    '无显式资产时非法对象 %s 阻止提交，切换 Goal 不受影响',
+    async (value) => {
+      const f = workflow();
+      show(f.fetchMock);
+      fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '目标内容' } });
+      await screen.findByText('测试 Agent 可选择，启动时检查');
+      fireEvent.click(screen.getByText('高级设置'));
+      fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), { target: { value } });
+      expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+      expect(screen.getByText('请输入有效的 JSON 对象。')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Goal' }));
+      expect(screen.queryByLabelText('Prompt 变量（JSON 对象）')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '创建 Goal' })).toBeEnabled();
+      fireEvent.click(screen.getByRole('button', { name: '创建 Goal' }));
+      await waitFor(() =>
+        expect(
+          f.fetchMock.mock.calls.some(
+            ([path, init]) => String(path) === '/api/v1/goals' && init?.method === 'POST',
+          ),
+        ).toBe(true),
+      );
+      const call = f.fetchMock.mock.calls.find(
+        ([path, init]) => String(path) === '/api/v1/goals' && init?.method === 'POST',
+      );
+      expect(JSON.parse(String(call?.[1]?.body))).not.toHaveProperty('promptVariables');
+      expect(f.calls.create).toBe(0);
+    },
+  );
+});
