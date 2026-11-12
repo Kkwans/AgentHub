@@ -42,3 +42,5 @@
 
 - `a0ac4ee` real-service job `131135186122` 完整成功，包含新增Projects/Home内容态/字体实际glyph证据及140图几何。
 - `2e633474` verify job `131140375865` 完整成功：497 unit通过/10跳过，lint/typecheck/build通过，48 fixture浏览器全部通过（2.1分钟）。该提交real-service仍运行，不能把不同提交的绿色job拼成最新HEAD全绿。
+
+- `2c326df` / run `43206234705` 两个job均完整成功：verify `131141970588` 和 real-service `131141970205`。这是同一提交的双绿，包含Run所有权修复、48 fixture、真实控制面核心/内容态/目录/Prompt和140图几何；后续badge/字体提交仍需各自新CI。

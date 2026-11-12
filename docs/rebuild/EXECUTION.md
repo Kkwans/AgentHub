@@ -152,3 +152,10 @@
 - 实拍归档项目误显示“状态”且带警告色；补齐ARCHIVED的“已归档”和中性gray映射，Pill/Dot两条回归先红后绿，真实Projects四宽双主题增加精确徽章断言。
 - pinharness的--font-sans复用已有--ah-font-sans，正文/标题移除重复fallback覆盖，保留mono和特殊展示字体；Home h1明确650字重，不新增字体包或CDN。真实字体证据继续核对中文fallback，并要求现有英文Agent字形由自带Geist实际绘制、标题computedweight正确。
 - 最终lint/typecheck/串行build通过，89文件、509项测试通过、10跳过（175.52秒）。修改E2E单独lint/Bundler类型/9项collection通过；新字形与像素效果待CI，不称跨平台中文字体完全统一。
+
+### M1.2f 服务端创建幂等与M2.4移动事项全文
+
+- 新增0006操作账本迁移，带operationId的Task创建按服务端认证范围和规范hash幂等；Task/固定Prompt绑定/账本同事务，重放不重新解析归档资产。GET恢复不返回正文或变量、no-store、404不等于未执行。详情见CREATION-RECOVERY.md。
+- 同账户跨登录、跨身份隔离、同key异内容并发、UUID大小写、失败回滚、资产归档重放、旧客户端兼容及旧库升级/关闭重开通过；人工reset只更新同项目计划和警告，未执行用户数据清空。独立CR无阻塞；真实Postgres多连接、浏览器持久恢复、start幂等仍未完成。
+- 移动Home待办标题/说明各2行，实测裁切才显示独立详情按钮，支持键盘展开全文；保留原href、状态动作、5/7总列表。短行保留底间距；字体完成/resize重测并在卸载时撤销迟到回调。桌面不截断，不把详情按钮嵌套在链接内。
+- 最终lint/typecheck/串行build通过，91文件、523单测通过、10跳过（190.26秒）；QA辅助10项通过。修改真实Home E2E独立类型检查及collection通过，新密度像素/键盘交互待发布后CI。
