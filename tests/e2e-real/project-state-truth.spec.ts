@@ -20,6 +20,26 @@ test('项目概览与页头遵循登记资格而非全局就绪数', async ({ pa
   expect(eligibility.agents.find((entry) => entry.agentId === agent.id)?.eligible).toBe(true);
   await page.goto(`/projects/${project.id}/overview`);
   await expect(page.getByText('1 个登记可用 Agent', { exact: true })).toBeVisible();
+  await expect(page.getByText('0 项未结束工作', { exact: true })).toBeVisible();
+  const sessions = await apiData<Array<{ branch: string | null; lastActiveAt: string }>>(
+    context,
+    'get',
+    `/sessions?projectId=${project.id}`,
+  );
+  const branch = sessions
+    .sort((left, right) => Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt))[0]
+    ?.branch?.trim();
+  await expect(
+    page.getByText(branch ? `最近会话分支：${branch}` : '当前分支未核验', { exact: true }),
+  ).toBeVisible();
+  await apiData(context, 'post', '/tasks', {
+    projectId: project.id,
+    title: '待排期工作不是活跃执行',
+  });
+  await page.reload();
+  await expect(page.getByText('1 项未结束工作', { exact: true })).toBeVisible();
+  await expect(page.getByText(/个运行中/)).toHaveCount(0);
+
   await expect(
     page.getByText('登记状态下 1 个可用；运行前仍需预检', { exact: true }),
   ).toBeVisible();

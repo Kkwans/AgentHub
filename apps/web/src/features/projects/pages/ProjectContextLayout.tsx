@@ -144,9 +144,22 @@ export function ProjectContextLayout() {
   const latestSession = [...(sessions.data ?? [])].sort(
     (left, right) => Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt),
   )[0];
-  const activeWorkCount = (tasks.data ?? []).filter(
-    (task) => !['DONE', 'CANCELED'].includes(task.status),
-  ).length;
+  // Task lifecycle is not evidence of an active Run.
+  const unfinishedWorkCount =
+    tasks.isSuccess && !tasks.isFetching
+      ? tasks.data.filter((task) => !['DONE', 'CANCELED'].includes(task.status)).length
+      : undefined;
+  const recordedSessionBranch = latestSession?.branch?.trim();
+  // A Session branch is historical context, never proof of the repository's current HEAD.
+  const branchLabel = sessions.isError
+    ? '会话分支读取失败'
+    : !sessions.isSuccess || sessions.isFetching
+      ? '会话分支确认中'
+      : recordedSessionBranch
+        ? `最近会话分支：${recordedSessionBranch}`
+        : project.data.repoKind === 'GIT'
+          ? '当前分支未核验'
+          : '未登记 Git 仓库';
   const eligibleAgentCount =
     eligibility.isSuccess && !eligibility.isFetching
       ? eligibility.data.filter((entry) => entry.eligible).length
@@ -180,9 +193,9 @@ export function ProjectContextLayout() {
               <p className={projectsStyles.identityDescription}>{project.data.description}</p>
             ) : null}
             <div className={projectsStyles.identityFacts}>
-              <span title={latestSession?.branch ?? undefined}>
+              <span title={branchLabel}>
                 <GitBranch size={13} aria-hidden="true" />
-                {latestSession?.branch ?? (project.data.repoKind === 'GIT' ? 'main' : '无 Git')}
+                {branchLabel}
               </span>
               {projectType ? <span title={project.data.rootPath}>{projectType}</span> : null}
               <span title="仅登记状态下的项目资格，运行前仍需预检。">
@@ -192,7 +205,13 @@ export function ProjectContextLayout() {
                     ? 'Agent 资格读取失败'
                     : 'Agent 资格确认中'}
               </span>
-              <span>{activeWorkCount} 个运行中</span>
+              <span title="按任务状态统计未结束工作，不代表正在执行的 Run 数量。">
+                {unfinishedWorkCount !== undefined
+                  ? `${unfinishedWorkCount} 项未结束工作`
+                  : tasks.isError
+                    ? '工作数量读取失败'
+                    : '工作数量确认中'}
+              </span>
             </div>
           </div>
           <div className={projectsStyles.identityActions}>
