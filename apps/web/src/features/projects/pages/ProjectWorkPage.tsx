@@ -227,10 +227,12 @@ export function ProjectWorkPage() {
       .map((item) => item.replace(/^[-*]\s*/, '').trim())
       .filter(Boolean) ?? [];
   const workError = tasks.error ?? goals.error ?? worktrees.error;
+  const workLoading = tasks.isLoading || goals.isLoading || worktrees.isLoading;
+  const emptyWork = tasks.isSuccess && tasks.data.length === 0 && !workLoading && !workError;
   return (
     <div className={projectsStyles.workPage}>
       <QueryMessage
-        loading={tasks.isLoading || goals.isLoading || worktrees.isLoading}
+        loading={workLoading}
         error={workError}
         retry={() => {
           void tasks.refetch();
@@ -239,7 +241,18 @@ export function ProjectWorkPage() {
         }}
         label="正在加载 Work"
       />
-      {!tasks.isLoading && !workError ? (
+      {emptyWork ? (
+        <section className={projectsStyles.workEmpty} aria-labelledby={`work-empty-${project.id}`}>
+          <h2 id={`work-empty-${project.id}`}>开始这个项目的第一项工作</h2>
+          <p>使用上方“新建工作”，描述想完成的结果、约束和验收标准。</p>
+          <p>
+            工作将归入 <strong>{project.name}</strong>；创建后可在这里查看进展与结果。
+          </p>
+          {goals.data?.length ? (
+            <p>已有 {goals.data.length} 个 Goal，可在新建工作的高级设置中关联。</p>
+          ) : null}
+        </section>
+      ) : !workLoading && !workError ? (
         <>
           <div className={projectsStyles.workToolbar} aria-label="工作筛选">
             <div
