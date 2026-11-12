@@ -444,9 +444,9 @@
 
   .navigation {
     position: static;
-    display: flex;
-    overflow-x: auto;
-    gap: 5px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
     padding-bottom: 2px;
   }
 
@@ -456,10 +456,18 @@
 
   .navigationLink {
     display: flex;
-    flex: 0 0 auto;
     gap: 6px;
-    min-height: 36px;
+    min-height: 44px;
     padding: 5px 8px;
+  }
+
+  .navigationLink > span:nth-child(2) {
+    min-width: 0;
+  }
+
+  .navigationLink strong {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .navigationLink > span:nth-child(2) small,
