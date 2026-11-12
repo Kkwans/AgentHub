@@ -1009,6 +1009,290 @@ describe('Session/Run/Approval 持久化闭环', () => {
     return { ...fixture, adapter, tasks, taskService, task, session };
   }
 
+  it.each(['reject', 'deadline'] as const)(
+    'AH061 %s提交返回迟到时终态与新Run不能越过取消收敛',
+    async (source) => {
+      const f = await preparationFixture();
+      let rejectCancel!: (error: Error) => void;
+      vi.spyOn(f.adapter.handles[0]!, 'cancel').mockImplementation(
+        () =>
+          new Promise<void>((_r, reject) => {
+            rejectCancel = reject;
+          }),
+      );
+      const first = await f.service.startRun(f.session.id, { text: '取消旧Run' });
+      let release!: () => void;
+      let committed = false;
+      const converge = f.repositories.runs.convergeCancellationFailure.bind(f.repositories.runs);
+      const convergence = vi
+        .spyOn(f.repositories.runs, 'convergeCancellationFailure')
+        .mockImplementation(async (...args) => {
+          const result = await converge(...args);
+          committed = true;
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          return result;
+        });
+      const terminal = vi.spyOn(f.repositories.runs, 'tryTransition');
+      const close = vi.spyOn(f.adapter.handles[0]!, 'close');
+      await f.service.cancelRun(f.session.id, first.id);
+      if (source === 'reject') rejectCancel(new Error('controlled failure'));
+      await waitFor(async () => committed, 2500);
+      try {
+        f.adapter.handles[0]!.complete(first.id);
+        await waitFor(async () =>
+          (await f.repositories.events.listAfter(f.session.id, 0, 100)).some(
+            (event) => event.type === 'run.completed',
+          ),
+        );
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
+        expect(terminal.mock.calls.some((call) => call[2] === 'COMPLETED')).toBe(false);
+        await expect(
+          f.service.startRun(f.session.id, { text: '不允许新Run' }),
+        ).rejects.toMatchObject({ code: 'SESSION_RUN_UNRESOLVED' });
+        release();
+        await waitFor(async () => close.mock.calls.length === 1);
+        await waitFor(async () => convergence.mock.results[0]?.type === 'return');
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
+        expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+        expect(await f.repositories.runs.list(f.session.id)).toHaveLength(1);
+      } finally {
+        release();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it.each(['reject', 'deadline'] as const)(
+    'AH061 %s旧handle关闭迟到不得回写恢复后的READY',
+    async (source) => {
+      const f = await preparationFixture();
+      Object.assign(f.adapter, {
+        resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+      });
+      let rejectCancel!: (error: Error) => void;
+      vi.spyOn(f.adapter.handles[0]!, 'cancel').mockImplementation(
+        () =>
+          new Promise<void>((_r, reject) => {
+            rejectCancel = reject;
+          }),
+      );
+      let releaseClose!: () => void;
+      let closing = false;
+      const originalClose = f.adapter.handles[0]!.close.bind(f.adapter.handles[0]);
+      vi.spyOn(f.adapter.handles[0]!, 'close').mockImplementationOnce(async () => {
+        closing = true;
+        await new Promise<void>((resolve) => {
+          releaseClose = resolve;
+        });
+        await originalClose();
+      });
+      const stopped = vi.spyOn(f.taskService, 'onRunStopped');
+      const first = await f.service.startRun(f.session.id, { text: '取消' });
+      await f.service.cancelRun(f.session.id, first.id);
+      if (source === 'reject') rejectCancel(new Error('controlled failure'));
+      await waitFor(async () => closing, 2500);
+      try {
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
+        await f.service.resume(f.session.id);
+        const closeWinner = vi.spyOn(f.adapter.handles[1]!, 'close');
+        releaseClose();
+        await waitFor(async () => stopped.mock.calls.length > 0);
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+        expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+        expect(closeWinner).not.toHaveBeenCalled();
+      } finally {
+        releaseClose();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('AH061完成提交先获锁：取消拒绝等待后不能关闭当前handle或新Run', async () => {
+    const f = await preparationFixture();
+    let rejectCancel!: (error: Error) => void;
+    vi.spyOn(f.adapter.handles[0]!, 'cancel').mockImplementation(
+      () =>
+        new Promise<void>((_r, reject) => {
+          rejectCancel = reject;
+        }),
+    );
+    const first = await f.service.startRun(f.session.id, { text: '先完成' });
+    await f.service.cancelRun(f.session.id, first.id);
+    let release!: () => void;
+    let committed = false;
+    const transition = f.repositories.runs.tryTransition.bind(f.repositories.runs);
+    vi.spyOn(f.repositories.runs, 'tryTransition').mockImplementation(
+      async (id, expected, to, patch) => {
+        const result = await transition(id, expected, to, patch);
+        if (id === first.id && to === 'COMPLETED') {
+          committed = true;
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        }
+        return result;
+      },
+    );
+    const convergence = vi.spyOn(f.repositories.runs, 'convergeCancellationFailure');
+    const request = vi.spyOn(
+      f.service as unknown as { requestAdapterCancellation: (...args: unknown[]) => Promise<void> },
+      'requestAdapterCancellation',
+    );
+    const close = vi.spyOn(f.adapter.handles[0]!, 'close');
+    try {
+      f.adapter.handles[0]!.complete(first.id);
+      await waitFor(async () => committed);
+      rejectCancel(new Error('late failure'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(convergence).not.toHaveBeenCalled();
+      release();
+      await waitFor(
+        async () => (await f.repositories.sessions.get(f.session.id))?.status === 'READY',
+      );
+      await waitFor(async () => convergence.mock.calls.length === 1);
+      const second = await f.service.startRun(f.session.id, { text: '显式第二轮' });
+      expect((await f.repositories.runs.get(second.id))?.status).toBe('RUNNING');
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('RUNNING');
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      release?.();
+      request.mockRestore();
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH061只有供应商拒绝迟到且原Run已完成时不影响新Run', async () => {
+    const f = await preparationFixture();
+    let rejectCancel!: (error: Error) => void;
+    vi.spyOn(f.adapter.handles[0]!, 'cancel').mockImplementation(
+      () =>
+        new Promise<void>((_r, reject) => {
+          rejectCancel = reject;
+        }),
+    );
+    const first = await f.service.startRun(f.session.id, { text: '第一轮' });
+    const request = vi.spyOn(
+      f.service as unknown as { requestAdapterCancellation: (...args: unknown[]) => Promise<void> },
+      'requestAdapterCancellation',
+    );
+    await f.service.cancelRun(f.session.id, first.id);
+    f.adapter.handles[0]!.complete(first.id);
+    await waitFor(async () => (await f.tasks.get(f.task.id))?.status === 'WAITING_REVIEW');
+    const second = await f.service.startRun(f.session.id, { text: '第二轮' });
+    const close = vi.spyOn(f.adapter.handles[0]!, 'close');
+    try {
+      rejectCancel(new Error('late failure'));
+      await request.mock.results[0]!.value;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('RUNNING');
+      expect((await f.repositories.runs.get(second.id))?.status).toBe('RUNNING');
+      expect(close).not.toHaveBeenCalled();
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH061旧取消拒绝不能清除恢复后同Run的新deadline', async () => {
+    const f = await preparationFixture();
+    Object.assign(f.adapter, {
+      resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+    });
+    let rejectCancel!: (error: Error) => void;
+    vi.spyOn(f.adapter.handles[0]!, 'cancel').mockImplementation(
+      () =>
+        new Promise<void>((_r, reject) => {
+          rejectCancel = reject;
+        }),
+    );
+    const first = await f.service.startRun(f.session.id, { text: '同Run恢复' });
+    const request = vi.spyOn(
+      f.service as unknown as { requestAdapterCancellation: (...args: unknown[]) => Promise<void> },
+      'requestAdapterCancellation',
+    );
+    await f.service.cancelRun(f.session.id, first.id);
+    await f.adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+    );
+    await f.service.resume(f.session.id);
+    vi.spyOn(f.adapter.handles[1]!, 'cancel').mockImplementation(
+      () => new Promise<void>(() => undefined),
+    );
+    try {
+      await f.service.cancelRun(f.session.id, first.id);
+      rejectCancel(new Error('旧activation迟到拒绝'));
+      await request.mock.results[0]!.value;
+      expect((await f.repositories.runs.get(first.id))?.status).toBe('CANCELING');
+      await waitFor(
+        async () =>
+          (await f.repositories.runs.get(first.id))?.errorCode === 'CANCEL_CONFIRMATION_TIMEOUT',
+        2500,
+      );
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
+      await waitFor(async () =>
+        f.published.some((entry) => {
+          const payload = entry.event.payloadJson as Record<string, unknown> | undefined;
+          return payload?.reason === 'CANCEL_CONFIRMATION_TIMEOUT';
+        }),
+      );
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH061完成快照未收尾时保持原准入栅栏，下一轮不会提前派发', async () => {
+    let release!: () => void;
+    let entered = false;
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture(
+      'idle',
+      undefined,
+      {},
+      {
+        adapter,
+        git: {
+          readHead: async () => undefined,
+          capture: async (_run, _project, _cwd, type) => {
+            if (type === 'AFTER') {
+              entered = true;
+              await new Promise<void>((resolve) => {
+                release = resolve;
+              });
+            }
+          },
+        },
+      },
+    );
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '快照边界',
+      cwd: '/tmp',
+    });
+    const first = await f.service.startRun(session.id, { text: '第一轮' });
+    const send = vi.spyOn(adapter.handles[0]!, 'sendTurn');
+    adapter.handles[0]!.complete(first.id);
+    await waitFor(async () => entered);
+    let next: Promise<unknown> | undefined;
+    try {
+      expect((await f.repositories.sessions.get(session.id))?.status).toBe('RUNNING');
+      expect((await f.repositories.runs.get(first.id))?.status).toBe('COMPLETED');
+      next = f.service.startRun(session.id, { text: '快照结束后才能执行' });
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(send).not.toHaveBeenCalled();
+      expect(await f.repositories.runs.list(session.id)).toHaveLength(1);
+      release();
+      await next;
+      expect(send).toHaveBeenCalledTimes(1);
+      expect((await f.repositories.sessions.get(session.id))?.status).toBe('RUNNING');
+    } finally {
+      release();
+      await next?.catch(() => undefined);
+      await f.service.shutdown();
+    }
+  });
+
   it('AH060消息准备挂起后close已detach，派发前重验不调用旧handle', async () => {
     const f = await preparationFixture();
     let releaseMessage!: () => void;
@@ -1758,15 +2042,13 @@ describe('Session/Run/Approval 持久化闭环', () => {
         return f.taskService.onRunStopped(task, run);
       },
     });
-    const transition = f.repositories.runs.tryTransition.bind(f.repositories.runs);
+    const convergence = f.repositories.runs.convergeCancellationFailure.bind(f.repositories.runs);
     let rejectedCancelConverged = false;
-    vi.spyOn(f.repositories.runs, 'tryTransition').mockImplementation(
-      async (id, expected, to, patch) => {
-        const result = await transition(id, expected, to, patch);
-        if (patch?.errorCode === 'AGENT_RUN_CANCEL_FAILED') {
-          expect(result.changed).toBe(false);
-          rejectedCancelConverged = true;
-        }
+    vi.spyOn(f.repositories.runs, 'convergeCancellationFailure').mockImplementation(
+      async (...args) => {
+        const result = await convergence(...args);
+        expect(result.changed).toBe(false);
+        rejectedCancelConverged = true;
         return result;
       },
     );

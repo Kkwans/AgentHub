@@ -2623,6 +2623,30 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
     errorCode: string,
     errorMessage: string,
   ) {
+    return this.convergeCurrentRunFailure(sessionId, runId, errorCode, errorMessage, [
+      'STARTING',
+      'RUNNING',
+      'WAITING_APPROVAL',
+      'DISCONNECTED',
+    ]);
+  }
+
+  async convergeCancellationFailure(
+    sessionId: string,
+    runId: string,
+    errorCode: string,
+    errorMessage: string,
+  ) {
+    return this.convergeCurrentRunFailure(sessionId, runId, errorCode, errorMessage, ['CANCELING']);
+  }
+
+  private async convergeCurrentRunFailure(
+    sessionId: string,
+    runId: string,
+    errorCode: string,
+    errorMessage: string,
+    expected: readonly string[],
+  ) {
     return this.db.transaction(async (transaction) => {
       const [candidate] = await transaction
         .select()
@@ -2657,11 +2681,7 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
         .where(eq(agentRuns.id, runId))
         .for('update')
         .limit(1);
-      if (
-        !current ||
-        current.sessionId !== sessionId ||
-        !['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED'].includes(current.status)
-      )
+      if (!current || current.sessionId !== sessionId || !expected.includes(current.status))
         return skipped;
       const changed = current.status !== 'DISCONNECTED';
       let run = current;

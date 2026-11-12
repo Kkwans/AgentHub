@@ -75,6 +75,64 @@ describe('同 Session 最新 Run 的持久所有权', () => {
     return { tasks, sessions, runs, task, session };
   }
 
+  it.each(['CANCELING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELED', 'DISCONNECTED'] as const)(
+    'AH061取消失败只收敛当前CANCELING，不重写%s权威状态',
+    async (status) => {
+      const { sessions, runs, task, session } = await fixture();
+      const run = await runs.create({
+        id: randomUUID(),
+        sessionId: session.id,
+        taskId: task.id,
+        status,
+      });
+      const result = await runs.convergeCancellationFailure(
+        session.id,
+        run.id,
+        'AGENT_RUN_CANCEL_FAILED',
+        '取消未知',
+      );
+      expect(result.eligible).toBe(status === 'CANCELING');
+      expect(result.changed).toBe(status === 'CANCELING');
+      expect((await runs.get(run.id))?.status).toBe(
+        status === 'CANCELING' ? 'DISCONNECTED' : status,
+      );
+      expect((await sessions.get(session.id))?.status).toBe(
+        status === 'CANCELING' ? 'DISCONNECTED' : 'READY',
+      );
+    },
+  );
+
+  it.each(['NEW_RUN', 'CLOSED', 'WRONG_SESSION'] as const)(
+    'AH061取消失败遇到%s不修改Run或Session',
+    async (mode) => {
+      const { sessions, runs, task, session } = await fixture();
+      const run = await runs.create({
+        id: randomUUID(),
+        sessionId: session.id,
+        taskId: task.id,
+        status: 'CANCELING',
+      });
+      if (mode === 'NEW_RUN')
+        await runs.create({
+          id: randomUUID(),
+          sessionId: session.id,
+          taskId: task.id,
+          status: 'RUNNING',
+        });
+      if (mode === 'CLOSED') await sessions.transition(session.id, 'CLOSED');
+      const before = await sessions.get(session.id);
+      const result = await runs.convergeCancellationFailure(
+        mode === 'WRONG_SESSION' ? randomUUID() : session.id,
+        run.id,
+        'CANCEL_CONFIRMATION_TIMEOUT',
+        '取消超时',
+      );
+      expect(result.eligible).toBe(false);
+      expect((await runs.get(run.id))?.status).toBe('CANCELING');
+      expect(await sessions.get(session.id)).toEqual(before);
+    },
+  );
+
   it.each(['OMITTED', 'OTHER'] as const)('Run不能通过%s任务归属绕过Session绑定', async (mode) => {
     const { runs, sessions, tasks, task, session } = await fixture();
     await tasks.transition(task.id, 'CANCELED');

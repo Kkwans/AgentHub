@@ -1579,23 +1579,28 @@ export class SessionService {
       event.type === 'run.completed' &&
       event.runId
     ) {
-      const ownedRun = await this.runs.get(event.runId);
-      if (!ownedRun || ownedRun.sessionId !== event.sessionId) return;
       const session = await this.get(event.sessionId);
-      const transitioned = await this.runs.tryTransition(
+      const transitioned = await this.commitTerminalEvent(
+        event.sessionId,
         event.runId,
+        activationId,
         ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
         'COMPLETED',
         { finishedAt: new Date(), dispatchState: 'ATTEMPTED' },
       );
-      if (transitioned.changed) {
+      if (transitioned?.changed) {
         await this.captureGitSnapshot(event.runId, session.projectId, session.cwd, 'AFTER');
         const gitAfterSha = await this.git.readHead(session.cwd);
         // Non-Git/empty repositories legitimately have no HEAD. Avoid an empty
         // SQL UPDATE, but do not suppress an actual probe or persistence error.
         if (gitAfterSha !== undefined) await this.runs.patch(event.runId, { gitAfterSha });
+        await this.withActivationCommit(event.sessionId, async () => {
+          if (!this.isCurrentActivation(event.sessionId, activationId)) return;
+          const current = await this.sessions.get(event.sessionId);
+          if (current?.latestRunId === event.runId)
+            await this.safeSessionTransition(event.sessionId, 'READY');
+        });
         this.clearCancellationTimer(event.runId);
-        await this.safeSessionTransition(event.sessionId, 'READY');
         if (transitioned.run.taskId)
           await this.taskLifecycle?.onRunCompleted(transitioned.run.taskId, event.runId);
       }
@@ -1606,15 +1611,16 @@ export class SessionService {
       event.type === 'run.cancelled' &&
       event.runId
     ) {
-      const transitioned = await this.runs.tryTransition(
+      const transitioned = await this.commitTerminalEvent(
+        event.sessionId,
         event.runId,
+        activationId,
         ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
         'CANCELED',
         { finishedAt: new Date(), dispatchState: 'ATTEMPTED' },
       );
-      if (transitioned.changed) {
+      if (transitioned?.changed) {
         this.clearCancellationTimer(event.runId);
-        await this.safeSessionTransition(event.sessionId, 'READY');
         if (transitioned.run.taskId)
           await this.taskLifecycle?.onRunStopped?.(
             transitioned.run.taskId,
@@ -1629,8 +1635,10 @@ export class SessionService {
       event.type === 'run.failed' &&
       event.runId
     ) {
-      const transitioned = await this.runs.tryTransition(
+      const transitioned = await this.commitTerminalEvent(
+        event.sessionId,
         event.runId,
+        activationId,
         ['QUEUED', 'STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
         'FAILED',
         {
@@ -1640,9 +1648,8 @@ export class SessionService {
           errorMessage: typeof payload.message === 'string' ? payload.message : 'Agent Run 失败',
         },
       );
-      if (transitioned.changed) {
+      if (transitioned?.changed) {
         this.clearCancellationTimer(event.runId);
-        await this.safeSessionTransition(event.sessionId, 'READY');
         if (transitioned.run.taskId)
           await this.taskLifecycle?.onRunStopped?.(transitioned.run.taskId, event.runId, 'FAILED');
       }
@@ -1679,6 +1686,31 @@ export class SessionService {
       await this.safeSessionTransition(event.sessionId, 'DISCONNECTED');
       this.detachActive(event.sessionId, activationId);
     }
+  }
+
+  private async commitTerminalEvent(
+    sessionId: string,
+    runId: string,
+    activationId: string,
+    expected: RunStatus[],
+    status: 'COMPLETED' | 'CANCELED' | 'FAILED',
+    patch: Parameters<RunRepository<AgentHubDatabase>['tryTransition']>[3],
+  ) {
+    return this.withActivationCommit(sessionId, async () => {
+      if (!this.isCurrentActivation(sessionId, activationId)) return;
+      const session = await this.sessions.get(sessionId);
+      const run = await this.runs.get(runId);
+      if (run?.sessionId !== sessionId) return;
+      const transitioned = await this.runs.tryTransition(runId, expected, status, patch);
+      if (
+        transitioned.changed &&
+        status !== 'COMPLETED' &&
+        session?.latestRunId === runId &&
+        this.isCurrentActivation(sessionId, activationId)
+      )
+        await this.safeSessionTransition(sessionId, 'READY');
+      return transitioned;
+    });
   }
 
   private isCurrentActivation(sessionId: string, activationId: string): boolean {
@@ -1818,22 +1850,13 @@ export class SessionService {
     try {
       await active.handle.cancel(runId);
     } catch {
-      const transitioned = await this.runs.tryTransition(runId, ['CANCELING'], 'DISCONNECTED', {
-        finishedAt: new Date(),
-        errorCode: 'AGENT_RUN_CANCEL_FAILED',
-        errorMessage: 'Agent 取消请求未确认，原 Run 可能仍在执行',
-      });
-      if (!transitioned.changed) return;
-      this.clearCancellationTimer(runId);
-      const detached = this.detachActive(sessionId, active.activationId);
-      if (detached) await this.closeHandleSafely(detached.handle);
-      await this.safeSessionTransition(sessionId, 'DISCONNECTED');
-      await this.notifyRunStopped(transitioned.run, 'DISCONNECTED');
-      await this.publishSyntheticTerminalEvent(sessionId, runId, 'adapter.disconnected', {
-        code: 'AGENT_RUN_CANCEL_FAILED',
-        message: 'Agent 取消请求未确认，原 Run 可能仍在执行',
-        synthetic: true,
-      });
+      await this.convergeCancellationFailure(
+        sessionId,
+        runId,
+        active.activationId,
+        'AGENT_RUN_CANCEL_FAILED',
+        'Agent 取消请求未确认，原 Run 可能仍在执行',
+      );
     }
   }
 
@@ -1842,22 +1865,45 @@ export class SessionService {
     runId: string,
     activationId?: string,
   ): Promise<void> {
-    const transitioned = await this.runs.tryTransition(runId, ['CANCELING'], 'DISCONNECTED', {
-      finishedAt: new Date(),
-      errorCode: 'CANCEL_CONFIRMATION_TIMEOUT',
-      errorMessage: 'Agent 未在超时内确认取消，原 Run 执行结果仍未知',
+    await this.convergeCancellationFailure(
+      sessionId,
+      runId,
+      activationId,
+      'CANCEL_CONFIRMATION_TIMEOUT',
+      'Agent 未在超时内确认取消，原 Run 执行结果仍未知',
+    );
+  }
+
+  private async convergeCancellationFailure(
+    sessionId: string,
+    runId: string,
+    activationId: string | undefined,
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<void> {
+    const effect = await this.withActivationCommit(sessionId, async () => {
+      if (!activationId || !this.isCurrentActivation(sessionId, activationId)) return;
+      // The current Run predicate and both durable states commit together. New
+      // Run admission and authoritative terminal events share this short queue.
+      const result = await this.runs.convergeCancellationFailure(
+        sessionId,
+        runId,
+        errorCode,
+        errorMessage,
+      );
+      if (!result.eligible || !this.isCurrentActivation(sessionId, activationId)) return;
+      return { result, detached: this.detachActive(sessionId, activationId) };
     });
-    if (!transitioned.changed) {
-      this.clearCancellationTimer(runId);
-      return;
-    }
-    this.clearCancellationTimer(runId);
-    const detached = activationId ? this.detachActive(sessionId, activationId) : undefined;
-    if (detached) await this.closeHandleSafely(detached.handle);
-    await this.safeSessionTransition(sessionId, 'DISCONNECTED');
-    await this.notifyRunStopped(transitioned.run, 'DISCONNECTED');
+    if (activationId) this.clearCancellationTimer(runId, activationId);
+    if (!effect) return;
+    // Closing an old handle may hang or complete after resume. It must never
+    // be followed by an unscoped write to the Session (or detach its successor).
+    if (effect.detached) await this.closeHandleSafely(effect.detached.handle);
+    await this.notifyRunStopped(effect.result.run, 'DISCONNECTED');
     await this.publishSyntheticTerminalEvent(sessionId, runId, 'adapter.disconnected', {
-      reason: 'CANCEL_CONFIRMATION_TIMEOUT',
+      code: errorCode,
+      message: errorMessage,
+      ...(errorCode === 'CANCEL_CONFIRMATION_TIMEOUT' ? { reason: errorCode } : {}),
       synthetic: true,
     });
   }
@@ -1893,9 +1939,9 @@ export class SessionService {
     }
   }
 
-  private clearCancellationTimer(runId: string): void {
+  private clearCancellationTimer(runId: string, activationId?: string): void {
     const entry = this.cancellationTimers.get(runId);
-    if (!entry) return;
+    if (!entry || (activationId && entry.activationId !== activationId)) return;
     clearTimeout(entry.timer);
     this.cancellationTimers.delete(runId);
   }
