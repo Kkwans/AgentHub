@@ -12,6 +12,7 @@ import type {
   TaskRecord,
 } from '../../../lib/api';
 import { api } from '../../../lib/api';
+import { usePromptVersionDraft } from './usePromptVersionDraft';
 
 export type PromptMainTab = 'content' | 'variables' | 'bindings' | 'playground';
 export type PromptFilter = 'all' | 'SYSTEM' | 'TASK' | 'REVIEW' | 'RULE';
@@ -114,41 +115,15 @@ export function usePromptLibrary() {
     },
   });
 
-  const [versionOpen, setVersionOpen] = useState(false);
+  const versionDraft = usePromptVersionDraft(
+    selected,
+    prompts.data,
+    projectId ?? 'all',
+    selectedId,
+  );
   const [lifecycleOpen, setLifecycleOpen] = useState(false);
   const [diffFrom, setDiffFrom] = useState('');
   const [diffTo, setDiffTo] = useState('');
-  const [versionContent, setVersionContent] = useState('');
-  const [versionVariables, setVersionVariables] = useState('{}');
-  const [versionChangelog, setVersionChangelog] = useState('');
-  const versionCreate = useMutation({
-    mutationFn: () => {
-      if (!selected) throw new Error('请先选择 Prompt');
-      let variables: Record<string, unknown>;
-      try {
-        variables = JSON.parse(versionVariables || '{}') as Record<string, unknown>;
-      } catch {
-        throw new Error('Variables 必须是有效 JSON');
-      }
-      const content =
-        selected.type === 'CHAT'
-          ? JSON.parse(versionContent || '{"messages":[]}')
-          : { text: versionContent };
-      return api.post(`/prompts/${selected.id}/versions`, {
-        content,
-        variables,
-        changelog: versionChangelog.trim() || undefined,
-      });
-    },
-    onSuccess: () => {
-      setVersionOpen(false);
-      setVersionContent('');
-      setVersionVariables('{}');
-      setVersionChangelog('');
-      void client.invalidateQueries({ queryKey: ['prompt-versions', selected?.id] });
-      void client.invalidateQueries({ queryKey: ['prompt-labels', selected?.id] });
-    },
-  });
 
   const [labelOpen, setLabelOpen] = useState(false);
   const [labelName, setLabelName] = useState('production');
@@ -342,15 +317,7 @@ export function usePromptLibrary() {
     key,
     setKey,
     create,
-    versionOpen,
-    setVersionOpen,
-    versionContent,
-    setVersionContent,
-    versionVariables,
-    setVersionVariables,
-    versionChangelog,
-    setVersionChangelog,
-    versionCreate,
+    ...versionDraft,
     lifecycleOpen,
     setLifecycleOpen,
     labelOpen,

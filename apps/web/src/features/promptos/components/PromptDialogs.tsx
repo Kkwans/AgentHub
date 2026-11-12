@@ -15,13 +15,16 @@ export function PromptDialogs({ model }: { model: PromptLibraryModel }) {
     versionOpen,
     setVersionOpen,
     versionCreate,
+    versionTarget,
+    versionOutcomeUnknown,
+    checkVersionOutcome,
+    resumeVersionEditing,
     versionContent,
     setVersionContent,
     versionVariables,
     setVersionVariables,
     versionChangelog,
     setVersionChangelog,
-    selected,
     labelOpen,
     setLabelOpen,
     moveLabel,
@@ -96,31 +99,69 @@ export function PromptDialogs({ model }: { model: PromptLibraryModel }) {
             <AhButton
               onClick={() => versionCreate.mutate()}
               loading={versionCreate.isPending}
-              disabled={!versionContent.trim()}
+              disabled={!versionContent.trim() || Boolean(versionOutcomeUnknown)}
             >
               创建版本
             </AhButton>
           </>
         }
       >
+        <p>目标 Prompt：{versionTarget?.name}</p>
+        <p>离开或关闭不会撤回已发送的创建请求。重新进入前请先检查版本历史。</p>
         {versionCreate.error ? <AhErrorState description={versionCreate.error.message} /> : null}
+        {versionOutcomeUnknown ? (
+          <section aria-label="核对版本创建结果">
+            <p role="alert">创建结果尚未确认，版本可能已经保存。请先核对，避免重复创建。</p>
+            <AhButton
+              variant="default"
+              onClick={() => void checkVersionOutcome()}
+              loading={versionCreate.isPending}
+            >
+              读取此 Prompt 的版本列表
+            </AhButton>
+            {versionOutcomeUnknown.checked ? (
+              <>
+                <p>
+                  当前读到 {versionOutcomeUnknown.checked.length}{' '}
+                  个版本。列表不证明此前请求已结束，请确认是否已包含本次正文。
+                </p>
+                <ul>
+                  {versionOutcomeUnknown.checked.map((version) => (
+                    <li key={version.id}>
+                      v{version.version} · {version.id}
+                      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">
+                        {JSON.stringify(version.contentJson, null, 2)}
+                      </pre>
+                    </li>
+                  ))}
+                </ul>
+                <AhButton variant="default" onClick={resumeVersionEditing}>
+                  已核对，重新编辑
+                </AhButton>
+              </>
+            ) : null}
+          </section>
+        ) : null}
         <AhTextarea
-          label={selected?.type === 'CHAT' ? 'CHAT 内容 JSON' : 'Prompt 内容'}
+          label={versionTarget?.type === 'CHAT' ? 'CHAT 内容 JSON' : 'Prompt 内容'}
+          disabled={versionCreate.isPending || Boolean(versionOutcomeUnknown)}
           value={versionContent}
           onChange={(event) => setVersionContent(event.currentTarget.value)}
-          minRows={selected?.type === 'CHAT' ? 10 : 8}
+          minRows={versionTarget?.type === 'CHAT' ? 10 : 8}
           placeholder={
-            selected?.type === 'CHAT' ? '{"messages":[]}' : '输入 {{ variable }} 模板内容'
+            versionTarget?.type === 'CHAT' ? '{"messages":[]}' : '输入 {{ variable }} 模板内容'
           }
         />
         <AhTextarea
           label="Variables JSON"
+          disabled={versionCreate.isPending || Boolean(versionOutcomeUnknown)}
           value={versionVariables}
           onChange={(event) => setVersionVariables(event.currentTarget.value)}
           minRows={6}
         />
         <AhInput
           label="变更说明"
+          disabled={versionCreate.isPending || Boolean(versionOutcomeUnknown)}
           value={versionChangelog}
           onChange={(event) => setVersionChangelog(event.currentTarget.value)}
           placeholder="说明本次变化"
