@@ -53,3 +53,9 @@
 - `74f49ba` / run `43212686276`：verify成功；real-service 31通过/8失败，恢复8项全部通过，140图几何通过。全部失败是Home多项目选择弹窗Esc未关闭，确认为共享FormDialog缺少键盘关闭实现，不删除或放宽断言。artifact13943615203含失败截图/trace，修复与新HEAD复验中，不能称该HEAD双绿。
 - `c78905f` / run `43214263478` 已核对精确日志：verify成功，real仍31通过/8失败，全部为相同Home项目选择Esc；恢复8例、workbench4例、Prompt5例与140图几何通过，无新增已观察后端失败。`9bdbbc9` / run `43216288952` 单独运行，不用前一HEAD结果替代。
 - 新Dialog门禁不仅断言CSS数字：在真实绑定弹窗检查Select选项中心elementFromPoint命中并普通点击，再检查下拉Escape/父层Escape、Tab首尾圈定、焦点恢复和关闭重开；四宽双主题截图。测试收集与jsdom均不能证明绘制层级已通过，等待新HEAD浏览器。
+
+### Workspace 非空模块证据补齐
+
+- 已有 140 图基线中的 Workspace 为无消息/干净 Git，不能证明文件预览和非空 Diff 的呈现质量；原 workbench 成功流程虽验证批准/提交，但没有每步主动截图。
+- 新 workspace-content-visual 覆盖四宽双主题，每例复用一次隔离 ACP 运行：批准卡、完成消息/工具、真实文件树与 Monaco 预览、Git Diff、提交回执。截图同时保存当前视口和对应区域，附内部滚动尺寸，不把 fullPage 等同所有内部内容。
+- 所有 Git 写入仅测试 fixture 临时仓库，真实 HTTP/文件/HEAD/clean 核验；不使用用户项目、NAS 或付费 Agent。类型、lint 与八项收集通过，真实执行待新 CI，不预宣称已生成 80 张证据图。
