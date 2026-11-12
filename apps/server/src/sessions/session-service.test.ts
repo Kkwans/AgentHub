@@ -1009,6 +1009,339 @@ describe('Session/Run/Approval 持久化闭环', () => {
     return { ...fixture, adapter, tasks, taskService, task, session };
   }
 
+  it.each(['old-write', 'new-ready', 'close-queued'] as const)(
+    'AH059真实提交barrier顺序%s保护activation交接',
+    async (order) => {
+      const f = await preparationFixture('approval-error');
+      Object.assign(f.adapter, {
+        resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+      });
+      let rejectDelivery!: (error: Error) => void;
+      let delivering = false;
+      vi.spyOn(f.adapter.handles[0]!, 'resolveApproval').mockImplementation(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectDelivery = reject;
+            delivering = true;
+          }),
+      );
+      const run = await f.service.startRun(f.session.id, { text: '提交互斥' });
+      await waitFor(
+        async () => (await f.repositories.runs.get(run.id))?.status === 'WAITING_APPROVAL',
+      );
+      const approval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+      await f.service.resolveApproval(approval.id, 'allow');
+      await waitFor(async () => delivering);
+      let releaseOld = () => undefined as void;
+      let releaseReady = () => undefined as void;
+      let oldWaiting = false;
+      let readyWaiting = false;
+      let resumed = false;
+      let oldFinished = false;
+      const lookup = f.repositories.runs.findActiveForSession.bind(f.repositories.runs);
+      if (order === 'new-ready')
+        vi.spyOn(f.repositories.runs, 'findActiveForSession').mockImplementationOnce(async (id) => {
+          const snapshot = await lookup(id);
+          oldWaiting = true;
+          await new Promise<void>((resolve) => {
+            releaseOld = resolve;
+          });
+          return snapshot;
+        });
+      const transition = f.repositories.sessions.transition.bind(f.repositories.sessions);
+      vi.spyOn(f.repositories.sessions, 'transition').mockImplementation(
+        async (id, to, patch, options) => {
+          if (order !== 'new-ready' && to === 'DISCONNECTED' && !oldWaiting) {
+            oldWaiting = true;
+            await new Promise<void>((resolve) => {
+              releaseOld = resolve;
+            });
+          }
+          const result = await transition(id, to, patch, options);
+          if (order === 'new-ready' && to === 'READY') {
+            readyWaiting = true;
+            await new Promise<void>((resolve) => {
+              releaseReady = resolve;
+            });
+          }
+          return result;
+        },
+      );
+      const disconnect = vi.spyOn(
+        f.service as unknown as {
+          handleActivationDisconnected: (id: string, activation: string) => Promise<void>;
+        },
+        'handleActivationDisconnected',
+      );
+      await f.adapter.handles[0]!.close();
+      await waitFor(async () => oldWaiting);
+      const oldDone = (disconnect.mock.results[0]!.value as Promise<void>).then(() => {
+        oldFinished = true;
+      });
+      try {
+        rejectDelivery(new Error('controlled rejection'));
+        await waitFor(
+          async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+        );
+        const resume = f.service
+          .resume(f.session.id)
+          .then((value) => {
+            resumed = true;
+            return value;
+          })
+          .catch((error: unknown) => error);
+        let closing: Promise<unknown> | undefined;
+        await waitFor(async () => f.adapter.handles.length === 2);
+        if (order !== 'new-ready') {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          expect(resumed).toBe(false);
+          expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('DISCONNECTED');
+          if (order === 'close-queued') closing = f.service.close(f.session.id);
+          releaseOld();
+        } else {
+          await waitFor(async () => readyWaiting);
+          releaseOld();
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          expect(oldFinished).toBe(false);
+          expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+          releaseReady();
+        }
+        if (order === 'close-queued') {
+          expect(await resume).toMatchObject({
+            code: 'AGENT_SESSION_RESUME_FAILED',
+            cause: { code: 'SESSION_LIFECYCLE_SUPERSEDED' },
+          });
+          expect(await closing).toMatchObject({ status: 'CLOSED' });
+        } else expect(await resume).toMatchObject({ status: 'READY' });
+        await oldDone;
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe(
+          order === 'close-queued' ? 'CLOSED' : 'READY',
+        );
+        expect((await f.repositories.runs.get(run.id))?.status).toBe('DISCONNECTED');
+      } finally {
+        releaseOld();
+        releaseReady();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('AH059提交失败不毒化队列，随后close仍可完成', async () => {
+    const f = await preparationFixture();
+    Object.assign(f.adapter, {
+      resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+    });
+    await f.adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+    );
+    const transition = f.repositories.sessions.transition.bind(f.repositories.sessions);
+    vi.spyOn(f.repositories.sessions, 'transition').mockImplementation(
+      async (id, to, patch, options) => {
+        if (to === 'READY') throw new Error('controlled READY commit failure');
+        return transition(id, to, patch, options);
+      },
+    );
+    try {
+      await expect(f.service.resume(f.session.id)).rejects.toMatchObject({
+        code: 'AGENT_SESSION_RESUME_FAILED',
+      });
+      expect((await f.service.close(f.session.id)).status).toBe('CLOSED');
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH059合法cancel拒绝先断连，旧findActive返回后误断开恢复后的新Run Session', async () => {
+    const f = await preparationFixture();
+    Object.assign(f.adapter, {
+      resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+    });
+    let rejectCancel!: (error: Error) => void;
+    const cancel = vi.spyOn(f.adapter.handles[0]!, 'cancel').mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectCancel = reject;
+        }),
+    );
+    const first = await f.service.startRun(f.session.id, { text: '原始Run' });
+    await f.service.cancelRun(f.session.id, first.id);
+    let release!: () => void;
+    let entered = false;
+    const lookup = f.repositories.runs.findActiveForSession.bind(f.repositories.runs);
+    const barrier = vi
+      .spyOn(f.repositories.runs, 'findActiveForSession')
+      .mockImplementationOnce(async (id) => {
+        const snapshot = await lookup(id);
+        expect(snapshot?.id).toBe(first.id);
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return snapshot;
+      });
+    const disconnect = vi.spyOn(
+      f.service as unknown as {
+        handleActivationDisconnected: (id: string, activation: string) => Promise<void>;
+      },
+      'handleActivationDisconnected',
+    );
+    await f.adapter.handles[0]!.close();
+    await waitFor(async () => entered);
+    try {
+      rejectCancel(new Error('controlled cancellation rejection'));
+      await waitFor(
+        async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+      );
+      expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+      await f.service.resume(f.session.id);
+      const newHandle = f.adapter.handles[1]!;
+      const newClose = vi.spyOn(newHandle, 'close');
+      newHandle.complete(first.id); // Authoritative recovered-provider outcome, not a DB rewrite.
+      await waitFor(async () => (await f.tasks.get(f.task.id))?.status === 'WAITING_REVIEW');
+      const second = await f.service.startRun(f.session.id, { text: '用户显式新轮次' });
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('RUNNING');
+      release();
+      await disconnect.mock.results[0]!.value;
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('RUNNING');
+      expect((await f.repositories.runs.get(first.id))?.status).toBe('COMPLETED');
+      expect((await f.repositories.runs.get(second.id))?.status).toBe('RUNNING');
+      expect((await f.tasks.get(f.task.id))?.status).toBe('WAITING_REVIEW');
+      expect(newClose).not.toHaveBeenCalled();
+    } finally {
+      release();
+      cancel.mockRestore();
+      barrier.mockRestore();
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['resume', 'close'] as const)(
+    'AH059权限投递失败后长挂Task回调不阻塞%s且迟到不改赢家',
+    async (action) => {
+      const f = await preparationFixture('approval-error');
+      Object.assign(f.adapter, {
+        resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+      });
+      let rejectDelivery!: (error: Error) => void;
+      let delivering = false;
+      vi.spyOn(f.adapter.handles[0]!, 'resolveApproval').mockImplementation(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectDelivery = reject;
+            delivering = true;
+          }),
+      );
+      const first = await f.service.startRun(f.session.id, { text: '权限Run' });
+      await waitFor(
+        async () => (await f.repositories.runs.get(first.id))?.status === 'WAITING_APPROVAL',
+      );
+      const approval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+      await f.service.resolveApproval(approval.id, 'allow');
+      await waitFor(async () => delivering);
+      let release!: () => void;
+      let entered = false;
+      const stopped = f.taskService.onRunStopped.bind(f.taskService);
+      vi.spyOn(f.taskService, 'onRunStopped').mockImplementationOnce(async (task, run) => {
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return stopped(task, run);
+      });
+      const disconnect = vi.spyOn(
+        f.service as unknown as {
+          handleActivationDisconnected: (id: string, activation: string) => Promise<void>;
+        },
+        'handleActivationDisconnected',
+      );
+      await f.adapter.handles[0]!.close();
+      await waitFor(async () => entered);
+      try {
+        expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+        rejectDelivery(new Error('controlled delivery rejection'));
+        await waitFor(
+          async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+        );
+        if (action === 'resume') await f.service.resume(f.session.id);
+        else await f.service.close(f.session.id);
+        const expected = action === 'resume' ? 'READY' : 'CLOSED';
+        const close = action === 'resume' ? vi.spyOn(f.adapter.handles[1]!, 'close') : undefined;
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe(expected);
+        release();
+        await disconnect.mock.results[0]!.value;
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe(expected);
+        expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+        expect((await f.tasks.get(f.task.id))?.status).toBe('IN_PROGRESS');
+        if (close) expect(close).not.toHaveBeenCalled();
+        expect(await f.repositories.runs.list(f.session.id)).toHaveLength(1);
+      } finally {
+        release();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('AH059 taskLifecycle已持久DISCONNECTED时cancel拒绝不能打开提前resume窗口', async () => {
+    const f = await preparationFixture();
+    Object.assign(f.adapter, {
+      resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+    });
+    let rejectCancel!: (error: Error) => void;
+    vi.spyOn(f.adapter.handles[0]!, 'cancel').mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectCancel = reject;
+        }),
+    );
+    const first = await f.service.startRun(f.session.id, { text: '原始Run' });
+    await f.service.cancelRun(f.session.id, first.id);
+    let release!: () => void;
+    let entered = false;
+    f.service.setTaskLifecycleObserver({
+      onRunCompleted: (task, run) => f.taskService.onRunCompleted(task, run),
+      onRunStopped: async (task, run) => {
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return f.taskService.onRunStopped(task, run);
+      },
+    });
+    const transition = f.repositories.runs.tryTransition.bind(f.repositories.runs);
+    let rejectedCancelConverged = false;
+    vi.spyOn(f.repositories.runs, 'tryTransition').mockImplementation(
+      async (id, expected, to, patch) => {
+        const result = await transition(id, expected, to, patch);
+        if (patch?.errorCode === 'AGENT_RUN_CANCEL_FAILED') {
+          expect(result.changed).toBe(false);
+          rejectedCancelConverged = true;
+        }
+        return result;
+      },
+    );
+    await f.adapter.handles[0]!.close();
+    await waitFor(async () => entered);
+    try {
+      rejectCancel(new Error('controlled cancellation rejection'));
+      await waitFor(async () => rejectedCancelConverged);
+      expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+      expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('RUNNING');
+      await expect(f.service.resume(f.session.id)).rejects.toMatchObject({
+        code: 'SESSION_NOT_DISCONNECTED',
+      });
+      expect(f.adapter.handles).toHaveLength(1);
+      release();
+      await waitFor(
+        async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+      );
+      expect((await f.service.resume(f.session.id)).status).toBe('READY');
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
   it('取消先于Run持久准入提交：读取旧READY也不派发或移动latestRun', async () => {
     const f = await preparationFixture();
     await f.tasks.transition(f.task.id, 'WAITING_REVIEW');

@@ -129,6 +129,7 @@ interface CancellationTimer {
 export class SessionService {
   private readonly active = new Map<string, ActiveSession>();
   private readonly preparationFences = new Set<string>();
+  private readonly activationCommits = new Map<string, Promise<void>>();
   private readonly lifecycleAdmissions = new Map<
     string,
     { kind: 'resume' | 'close'; token: symbol }
@@ -426,6 +427,24 @@ export class SessionService {
     }
   }
 
+  // Only short repository writes and synchronous activation transfer belong here.
+  // Provider calls, handle.close and Task observers must remain outside this queue.
+  private async withActivationCommit<T>(id: string, action: () => Promise<T>): Promise<T> {
+    const previous = this.activationCommits.get(id);
+    let release!: () => void;
+    const tail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.activationCommits.set(id, tail);
+    await previous;
+    try {
+      return await action();
+    } finally {
+      release(); // This tail never rejects, even when the action fails.
+      if (this.activationCommits.get(id) === tail) this.activationCommits.delete(id);
+    }
+  }
+
   private async withLifecycleAdmission<T>(
     id: string,
     kind: 'resume' | 'close',
@@ -527,16 +546,19 @@ export class SessionService {
         previousHandleCleanup = 'HANDLE_CLOSE_RETURNED';
         assertOwned();
       }
-      const ready = await this.sessions.transition(
-        id,
-        'READY',
-        {},
-        { expectedFrom: 'DISCONNECTED' },
-      );
-      assertOwned();
-      this.activate(id, session.projectId, adapter, handle);
-      ownedHandle = undefined;
-      return ready;
+      return await this.withActivationCommit(id, async () => {
+        assertOwned();
+        const ready = await this.sessions.transition(
+          id,
+          'READY',
+          {},
+          { expectedFrom: 'DISCONNECTED' },
+        );
+        assertOwned();
+        this.activate(id, session.projectId, adapter, handle);
+        ownedHandle = undefined;
+        return ready;
+      });
     } catch (error) {
       if (!ownedHandle && error instanceof AppError) throw error;
       let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
@@ -555,15 +577,18 @@ export class SessionService {
           }
         }
       }
-      let failureStateRecorded = false;
-      if (owned() && !this.active.has(id)) {
-        try {
-          await this.sessions.transition(id, 'FAILED', {}, { expectedFrom: 'DISCONNECTED' });
-          failureStateRecorded = true;
-        } catch {
-          /* Preserve the original error and any newer durable lifecycle state. */
-        }
-      }
+      const failureStateRecorded = owned()
+        ? await this.withActivationCommit(id, async () => {
+            if (!owned() || this.active.has(id)) return false;
+            try {
+              await this.sessions.transition(id, 'FAILED', {}, { expectedFrom: 'DISCONNECTED' });
+              return true;
+            } catch {
+              // Preserve the original error and any newer durable lifecycle state.
+              return false;
+            }
+          })
+        : false;
       throw new AppError(
         502,
         'AGENT_SESSION_RESUME_FAILED',
@@ -1266,7 +1291,9 @@ export class SessionService {
       await this.closeHandleSafely(active.handle);
     }
     if (session.status === 'CLOSED') return session;
-    return this.sessions.transition(id, 'CLOSED', { closedAt: new Date() });
+    return this.withActivationCommit(id, () =>
+      this.sessions.transition(id, 'CLOSED', { closedAt: new Date() }),
+    );
   }
 
   async recoverAfterRestart() {
@@ -1352,23 +1379,31 @@ export class SessionService {
     if (!this.isCurrentActivation(sessionId, activationId)) return;
     const activeRun = await this.runs.findActiveForSession(sessionId);
     if (activeRun) {
-      const result = await this.runs.tryTransition(
-        activeRun.id,
-        ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
-        'DISCONNECTED',
-        {
-          finishedAt: new Date(),
-          errorCode: 'ADAPTER_DISCONNECTED',
-          errorMessage: 'Agent 连接已断开',
-        },
-      );
-      if (result.changed && result.run.taskId) {
+      const result = await this.withActivationCommit(sessionId, async () => {
+        if (!this.isCurrentActivation(sessionId, activationId)) return;
+        const result = await this.runs.tryTransition(
+          activeRun.id,
+          ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
+          'DISCONNECTED',
+          {
+            finishedAt: new Date(),
+            errorCode: 'ADAPTER_DISCONNECTED',
+            errorMessage: 'Agent 连接已断开',
+          },
+        );
+        if (result.changed) this.clearCancellationTimer(activeRun.id);
+        return result;
+      });
+      if (!this.isCurrentActivation(sessionId, activationId)) return;
+      if (result?.changed && result.run.taskId) {
         await this.taskLifecycle?.onRunStopped?.(result.run.taskId, result.run.id, 'DISCONNECTED');
       }
-      if (result.changed) this.clearCancellationTimer(activeRun.id);
     }
-    await this.safeSessionTransition(sessionId, 'DISCONNECTED');
-    this.detachActive(sessionId, activationId);
+    await this.withActivationCommit(sessionId, async () => {
+      if (!this.isCurrentActivation(sessionId, activationId)) return;
+      await this.safeSessionTransition(sessionId, 'DISCONNECTED');
+      this.detachActive(sessionId, activationId);
+    });
   }
 
   private async persistEvent(
