@@ -94,6 +94,11 @@ AH-024 追加：首页空态8张实际图已审阅，主CTA无阻塞问题；有
 
 AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他活动Run/Session断连，不能继续笼统称“QUEUED不在恢复列表”。仍缺的是普通Task的重启收敛，以及QUEUED插入后、sendTurn前多项持久化异常没有统一收敛。sendTurn后的外部Run ID保存错误还可能被当作已确认失败；必须区分未派发证明与未知执行，不能自动重发。第一切片已实现准备/派发分类、恢复未完成隔离、Worktree真实Run绑定和权威取消；83项专项通过，集成633单测及lint/types/build/QA通过。第一笔恢复标记写失败后的完整startup隔离和普通Task收敛仍属第二切片，未关闭。
 
-- AH-037（P1）：Agent 卡片缺少真实逐项管理路径。新增精确 ID 详情及默认模型/模式读写，30专项通过；错误目标核对保持锁定，真实九项待新CI。未提供启停/删除、服务端CAS或持久未决编辑恢复，不能称完整Agent运维能力。
+- AH-037（P1）：Agent 卡片缺少真实逐项管理路径。新增精确 ID 详情及默认模型/模式读写，30专项通过；错误目标核对保持锁定，真实九项已在23a2a51 CI通过，独立像素复审待完成。未提供启停/删除、服务端CAS或持久未决编辑恢复，不能称完整Agent运维能力。
 
 - AH-038（P2）：7bbead8实际390 Prompt空库页头说明后约180px留白，内容态反而更紧凑；需核对空actions布局合同并做双主题四宽回归。最小Prompt根网格修复和真实几何回归已完成，5专项通过，等待新HEAD CI，不改全局页头。
+
+- AH-039（P1）：普通任务工作列表对IN_PROGRESS执行取消仅转换Task为CANCELED，不调用Session/Run取消；实际TaskService+stub复现Task已取消而Run仍RUNNING、cancelCalls=0。首片阻止进行中直接取消并明确进入所属工作区停止Run，未运行任务仍可取消；不把请求返回当执行已停止，完整权威取消交互后续完善。实现/独立CR完成，最终集成651单测、lint/types/build及QA通过，新真实CI待发布；非真实Agent/NAS测试。Task取消先胜出后的反向直接Session准入仍需独立修复。
+
+- AH-040（P1）：Task取消先提交后，旧READY Session的Run admission仍可能创建关联新Run；不能仅凭Task行锁称双向竞争已解决。需明确CANCELED/DONE与审阅会话直接继续的合同，再在持久准入处核验。已确认源码路径，尚未实施。
+- AH-041（P2）：项目工作列表无Agent的“开始”直接请求BACKLOG→IN_PROGRESS，与状态机需先READY不符；需单独核对手工任务入口。AH-039只保留可合法形成的无Session任务取消，未修该旧启动入口。

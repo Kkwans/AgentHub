@@ -11,3 +11,5 @@
 验证：AgentDetail+AgentCenter+原合同共29项定向通过（含StrictMode、精确ID、无效/重复ID、null清空、错误ID/目标/值/形状成功响应、丢响应readback、不同readback、缺失readback、身份变化/迟到响应、auth撤销与重复提交）。web typecheck通过；修正2处lint后ESLint通过。真实E2E已收集9项：4宽双主题真实PATCH与reload，另1次真实提交后故意丢响应/只读核对；验证其他Agent不变、无Session创建。浏览器/像素门禁尚未运行，需加入CI显式文件清单。已集成开发工作树，等待完整门禁和发布后的精确HEAD验证。
 
 CR修正：未决请求保留冻结expectedTargetId，readback必须同时匹配Agent ID与目标ID。目标变化即锁存身份异常，不能显示值一致、采用或继续保存，必须返回列表重新进入。标签/能力函数抽出纯agent-presentation模块，详情不依赖整页Center。此增量30项专项通过（18详情+10卡片+2原合同），web typecheck/ESLint均通过。
+
+实际验证更新：23a2a51 的 CI run43222305725 已双绿，真实服务61项中本切片9项全部通过（四宽双主题保存/刷新8项、实际保存后响应丢失只读核对1项）。这是隔离真实服务/PGlite，不是用户真实供应商或NAS；独立像素复审由后续产物记录承接。
