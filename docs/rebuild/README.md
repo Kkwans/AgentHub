@@ -11,6 +11,8 @@
 - [真实视觉基线](VISUAL-BASELINE.md)：本轮 CI 截图、已查看页面与设计判断。
 - [创建与恢复合同](CREATION-RECOVERY.md)：持久创建幂等、认证范围及刷新恢复边界。
 - [Run 结果所有权](RUN-OWNERSHIP.md)：最新Run指针、锁顺序与升级边界。
+- [Run 准备与派发](RUN-PREPARATION.md)：已知未发送、未知派发、取消与重启隔离边界。
+- [Agent 管理合同](AGENT-MANAGEMENT.md)：精确身份、默认字段保存与只读核对。
 - [CI 验证边界](CI-VALIDATION.md)：真实服务、fixture 与产物门禁。
 - [任务规划](PLAN.md)：里程碑、切片、依赖与验收。
 - [任务执行台账](EXECUTION.md)：进行中、已完成、阻塞、下一步。

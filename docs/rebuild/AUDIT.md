@@ -1,6 +1,8 @@
 # 现状审查
 
-## 1. 当前结论
+本文记录接手基线；最新状态以 EXECUTION.md 顶部总览和各专项合同为准。
+
+## 1. 接手结论
 
 当前不是缺少技术框架，而是核心旅程缺乏可靠闭环、设计层反复叠加、测试证据与真实可用性脱节。保留 Node 24 / TypeScript / React / Express 模块化单体作为第一阶段基础，先拆除脆弱流程和重复 UI 层；没有证据支持为了“重构”直接换语言或框架。
 
@@ -10,7 +12,7 @@
 - `apps/web`：React 19 + Vite 8，TanStack Query；已有 feature 目录，但页面职责和设计层仍重复。
 - `packages`：领域接口、数据库、ACP/OpenClaw 适配、UI。
 - 数据：PGlite 默认、外部 PostgreSQL 选项；必须保留已有数据与迁移兼容。
-- CI 当前执行 lint/typecheck/unit/build 及 fixture 浏览器测试；未执行 `test:e2e:real`、`test:qa`。现有 real 测试中还有被 skip 的 legacy 主流程，不能以测试文件存在认定覆盖。
+- 接手时 CI 执行 lint/typecheck/unit/build 及 fixture 浏览器测试；当时未执行 `test:e2e:real`、`test:qa`。现有 real 测试中还有被 skip 的 legacy 主流程，不能以测试文件存在认定覆盖。
 - UI/web CSS 总计约 14,095 行，`pinharness.css` 4,669 行。CSS 数量不是错误，但多套全局层、组件原语和页面样式并存使继续打补丁风险很高。
 - `SessionService` 约 2020 行，跨生命周期、配置、批准与恢复，需要按有测试保障的职责边界拆分。
 
