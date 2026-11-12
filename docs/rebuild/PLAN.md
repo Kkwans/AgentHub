@@ -80,3 +80,5 @@
 - 最新视觉反馈覆盖：第二轮概念也被否定；改为参考Codex实际UI开展研究，不再延续品牌配色探索。两轮中相对稍好的选项都不是批准，暂停视觉实施。
 
 - AH060：四条合法权限失败竞争已确证，包括同activation误关R2；实施epoch lease+Run归属+准入/失败短提交边界，要求双向DB barrier、close期间失效不留QUEUED、历史UNKNOWN/DEAD不丢失，之后完整门禁与新CI。
+
+- AH061：取消拒绝/超时收敛采用专属CANCELING事务谓词，与当前Run/activation准入协调；152专项和三条旧源负控已完成，S42全量910单测与lint/types/build/QA通过，代码53cf131已发布。完成后独立代码/台账提交，核验精确新SHA CI；不修改未选定的Codex参考视觉。

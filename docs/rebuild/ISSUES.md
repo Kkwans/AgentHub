@@ -146,3 +146,7 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH-060（P1，已修复且本地门禁通过，待新SHA CI）：Approval投递失败收敛未隔离当前activation与Run归属。真实Service/PGlite/受控adapter四条诊断通过：旧回执拒绝、旧handle.close迟到、旧Task回调迟到可污染恢复后新Session状态；第四条不换activation，R1权威完成后显式R2已WAITING_APPROVAL，旧决定失败实际close同handle一次，而R2仍WAITING_APPROVAL。前三例新handle未被close，不与第四例混淆。第三例额外需要两个合法权限请求。未直接改DB/active，未用真实用户Agent。
 - AH060计划要求UNKNOWN/DEAD历史状态仍持久化，但当前Session/handle副作用必须同时核验activation代际与当前Run，并与新Run准入提交互斥。RunRepository现有Task→Session锁+latestRunId原子写不能代替服务层长await后的重新准入检查；只read latestRun再await不是完整fence。已整合epoch lease、DB条件收敛与Run准入短提交边界，123专项通过，S41 lint/types/build、893单测/10跳过、QA10通过，新SHA CI待验。
+
+- AH-061（P1，代码53cf131已发布，S42完整门禁通过，新CI待核验）：取消失败收敛先CAS Run为DISCONNECTED，再等待原handle关闭，最后无条件写Session。三条实际Service/PGlite/受控adapter诊断分别证明：CAS已提交但返回迟到时，同activation的显式R2被旧取消真正关闭handle；更换activation后不误关新handle但误标新Session；旧close挂起时，合法并行权限失败打开恢复窗口，旧close返回再误标新READY。仅供应商拒绝迟到且CAS.changed=false的否定对照正确早退。4项诊断通过等于缺陷证明，不是修复绿；未直接篡改DB/active。deadline分支目前仅同结构源码风险，未声称实测。
+
+- AH-061修复范围：取消拒绝/超时使用当前Run、CANCELING状态及Session的事务条件提交，单实例短提交队列协调准入与权威终态；仅精确detach原activation，锁外关闭后不再回写Session。计时器按activation清理，完成Git AFTER取证仍在下一轮READY准入前。新增拒绝/超时提交顺序、close迟到、同Run恢复后再取消、Git屏障及DB谓词回归；152专项通过，旧Service3项负控均失败。跨进程内存activation协调、其他消费者及真实Agent/NAS未覆盖。

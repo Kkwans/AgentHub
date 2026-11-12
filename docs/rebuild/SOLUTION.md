@@ -88,3 +88,7 @@ Agent 停止输出不代表 Run 成功；Run 成功不代表任务完成。任�
 方案以有引用计数的connection epoch lease跨detach保留代际，释放只回收自身；通过DB锁内核对Session归属、latestRunId及Run状态决定当前副作用是否仍适用。Run准入在同一短提交区重新验证READY/active并持久化latestRun，prompt/git/provider在区外。失败提交与精确detach需受同一边界保护，handle.close和Task observer在区外，后续不再盲写Session。
 
 close可在DB await期间撤销归属，因此必须在DB返回后再验；Run创建已持久后再发现失效，须按本次runId走确定未派发的准备失败收敛，不能直接抛409留下QUEUED，也不能误标派发未知。补偿不得把已关闭或被新activation接管的Session改回READY。未取得明确lease不能借“active为空”授权当前资源副作用。此方案仍不代表跨进程runtime协调已完成。
+
+## AH061取消失败收敛边界
+
+取消拒绝和超时都不能证明供应商已停止。只有当前Session的最新Run仍为CANCELING，才在Task→Session→Run锁顺序的事务中将Run和Session标为DISCONNECTED，并与本实例准入/终态共用短提交区。精确拆下原activation后，关闭连接和Task通知在锁外执行，之后不得迟到改写Session。旧activation不能清除同Run恢复后重新取消的计时器。完成事件保留Git AFTER证据先于READY的顺序，Git调用不持提交锁。该机制不是跨进程连接所有权协调，也不声称修复全部消费者。
