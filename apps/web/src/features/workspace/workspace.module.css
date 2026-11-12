@@ -29,10 +29,6 @@
   position: relative;
 }
 
-.contextbar {
-  flex: 0 0 50px;
-}
-
 .workspace :global(.composer) {
   flex: 0 0 auto;
 }
@@ -43,53 +39,6 @@
 
 .workspace :global(.workspace-drawer-close) {
   display: none;
-}
-
-.contextbar {
-  position: relative;
-  z-index: 4;
-  display: flex;
-  min-width: 0;
-  min-height: 50px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 0 18px;
-  background: var(--workspace-panel);
-  border-bottom: 1px solid var(--ah-border-subtle);
-}
-
-.contextTitle,
-.contextFacts {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 9px;
-}
-
-.panelActions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 4px;
-}
-
-.panelActions button {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  padding: 0;
-  color: var(--ah-text-secondary);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-}
-
-.panelActions button:hover {
-  color: var(--ah-text-primary);
-  background: var(--workspace-panel-subtle);
-  border-color: var(--ah-border-subtle);
 }
 
 .workspace :global(.workspace-layout-actions) {
@@ -151,48 +100,6 @@
   background: transparent;
   font-size: 12px;
   font-weight: 560;
-}
-
-.contextTitle a,
-.contextFacts span {
-  color: var(--ah-text-secondary);
-  font-size: 12.5px;
-  font-weight: 560;
-  white-space: nowrap;
-}
-
-.contextTitle a:hover {
-  color: var(--ah-text-primary);
-}
-
-.contextTitle > span {
-  color: var(--ah-text-disabled);
-  font-size: 13px;
-}
-
-.contextTitle strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ah-text-primary);
-  font-size: 14.5px;
-  font-weight: 650;
-  letter-spacing: -0.022em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.contextFacts {
-  color: var(--ah-text-tertiary);
-}
-
-.contextFacts code {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ah-text-tertiary);
-  font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 :global(.workspace-terminal-slot) {
@@ -336,33 +243,6 @@
   display: none;
 }
 
-.panels {
-  position: relative;
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  background: var(--workspace-panel);
-}
-
-.conversationShell {
-  position: relative;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--workspace-panel);
-}
-
-.conversationShell > :global(.conversation) {
-  height: auto;
-  min-height: 0;
-}
-
 /* Keep every workbench scroll surface on the same quiet, reserved gutter.
    Native Chromium scrollbars were consuming a visible slice of the rail and
    conversation columns; their late appearance also changed the text width
@@ -415,62 +295,6 @@
   overflow-anchor: none;
 }
 
-.panel {
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--workspace-panel);
-}
-
-.sessionRail {
-  min-width: 0;
-  background: color-mix(in srgb, var(--workspace-panel-subtle) 72%, var(--workspace-bg));
-}
-
-.conversationPanel {
-  min-width: 0;
-}
-
-.inspectorPanel {
-  min-width: 0;
-  background: color-mix(in srgb, var(--workspace-inspector) 88%, var(--workspace-bg));
-}
-
-.panelOpen > :global(.session-rail),
-.panelOpen > :global(.inspector) {
-  animation: workspace-panel-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.separator {
-  position: relative;
-  z-index: 3;
-  width: 4px;
-  min-width: 4px;
-  flex: 0 0 4px;
-  cursor: col-resize;
-  background: transparent;
-  transition: background-color var(--ah-motion-fast, 120ms) ease;
-}
-
-.separator::before {
-  position: absolute;
-  inset: 0 1px;
-  background: var(--ah-border-subtle);
-  content: '';
-  transition: background-color var(--ah-motion-fast, 120ms) ease;
-}
-
-.separator:hover,
-.separator:focus-visible {
-  background: var(--ah-accent-soft);
-  outline: 0;
-}
-
-.separator:hover::before,
-.separator:focus-visible::before {
-  background: color-mix(in srgb, var(--ah-accent-primary) 65%, var(--ah-border-default));
-}
-
 .workspace :global(a:focus-visible),
 .workspace :global(button:focus-visible),
 .workspace :global(textarea:focus-visible),
@@ -506,31 +330,10 @@
     transform: rotate(360deg);
   }
 }
-@keyframes workspace-panel-enter {
-  from {
-    opacity: 0;
-    transform: translateX(6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@media (max-width: 1180px) {
-  .contextbar {
-    padding-inline: 14px;
-  }
-}
 
 @media (max-width: 1023px) {
   .workspace :global(.workspace-layout-actions) {
     display: none;
-  }
-
-  .contextbar {
-    gap: 10px;
   }
 
   .mobileTabs {
@@ -543,14 +346,6 @@
     height: 100dvh;
     min-height: 100vh;
     margin: 0;
-  }
-
-  .contextbar {
-    padding-inline: 12px;
-  }
-
-  .contextFacts {
-    max-width: 45%;
   }
 
   .mobileTabs {
@@ -593,14 +388,6 @@
     overflow-x: hidden;
   }
 
-  .contextTitle {
-    flex: 1 1 auto;
-  }
-
-  .contextTitle a {
-    display: none;
-  }
-
   .sessionStatus {
     max-width: 82px;
     overflow: hidden;
@@ -612,29 +399,6 @@
     font-size: 12px;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .contextTitle strong {
-    max-width: 100%;
-    font-size: 13px;
-  }
-
-  .contextFacts {
-    display: grid;
-    max-width: none;
-    gap: 8px;
-  }
-
-  .contextFacts span {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: normal;
-  }
-
-  .contextFacts code {
-    overflow-wrap: anywhere;
-    white-space: normal;
   }
 
   .mobileTabs {
@@ -655,11 +419,6 @@
 }
 
 @media (min-width: 1180px) {
-  .contextbar {
-    flex-basis: 50px;
-    min-height: 50px;
-  }
-
   .workspace :global(.session-rail-panel),
   .workspace :global(.inspector-panel) {
     display: flex;
@@ -681,8 +440,8 @@
   /* ThreeColumnSplit 的拖拽手柄是唯一的栏间边界；相邻 workbench-panel
      不再各自绘制 border，避免中间出现三条连续竖线。 */
   .workspace :global(.workspace-panel.workbench-panel) {
-    border: 0 !important;
-    box-shadow: none !important;
+    border: 0;
+    box-shadow: none;
   }
 
   .workspace :global(.three-column-split > [role='separator'][aria-orientation='vertical']) {
@@ -693,10 +452,10 @@
   }
 
   .workspace :global(.three-column-split > [role='separator'][aria-orientation='vertical'] > span) {
-    top: 0 !important;
-    bottom: 0 !important;
-    width: 1px !important;
-    background: var(--ah-border-subtle) !important;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--ah-border-subtle);
     opacity: 0.9;
   }
 
@@ -706,8 +465,8 @@
     :global(
       .three-column-split > [role='separator'][aria-orientation='vertical']:focus-visible > span
     ) {
-    width: 2px !important;
-    background: var(--ah-accent-primary) !important;
+    width: 2px;
+    background: var(--ah-accent-primary);
     opacity: 0.72;
   }
 }
@@ -807,8 +566,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .separator,
-  .separator::before,
   .workspace :global(.session-list a),
   .workspace :global(.tool-card),
   .workspace :global(.tool-summary),
@@ -819,9 +576,7 @@
   .workspace :global(.approval-card),
   .workspace :global(.run-state-banner),
   .workspace :global(.inspector-tabs button),
-  .workspace :global(.composer-input .send-button),
-  .panelOpen > :global(.session-rail),
-  .panelOpen > :global(.inspector) {
+  .workspace :global(.composer-input .send-button) {
     transition: none;
     animation: none;
   }
