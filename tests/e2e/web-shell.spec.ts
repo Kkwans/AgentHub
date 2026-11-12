@@ -529,7 +529,47 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   expect(userMessageBox, '用户消息应可见').not.toBeNull();
   expect(assistantMessageBox, 'Agent 消息应可见').not.toBeNull();
   expect(userMessageBox!.x).toBeGreaterThan(assistantMessageBox!.x + 32);
-  await expect(page.getByRole('button', { name: '回到最新' })).toHaveCount(0);
+  // Inspecting an older tool can legitimately scroll the conversation away
+  // from its tail (Playwright also scrolls controls into view before clicking).
+  // Keep its detail open so every viewport has a real scrollable history, then
+  // test the user action and resulting position rather than assuming follow.
+  await firstToolTrigger.click();
+  await expect(firstToolTrigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(firstTool.locator('.tool-entry-detail-body')).toBeVisible();
+  const conversationLog = page.getByRole('log');
+  await expect
+    .poll(
+      () => conversationLog.evaluate((element) => element.scrollHeight - element.clientHeight),
+      { message: '展开工具后应有足够历史验证滚动恢复' },
+    )
+    .toBeGreaterThan(120);
+  await conversationLog.hover();
+  await page.mouse.wheel(0, -10_000);
+  await expect
+    .poll(() => conversationLog.evaluate((element) => element.scrollTop), {
+      message: '用户向上滚动后应停留在历史记录顶部',
+    })
+    .toBeLessThanOrEqual(2);
+  await expect
+    .poll(() =>
+      conversationLog.evaluate(
+        (element) => element.scrollHeight - element.clientHeight - element.scrollTop,
+      ),
+    )
+    .toBeGreaterThan(120);
+  const jumpLatest = page.getByRole('button', { name: '回到最新' });
+  await expect(jumpLatest).toBeVisible();
+  await jumpLatest.click();
+  await expect
+    .poll(
+      () =>
+        conversationLog.evaluate((element) =>
+          Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop),
+        ),
+      { message: '回到最新必须实际滚到底部，不能只隐藏按钮' },
+    )
+    .toBeLessThanOrEqual(2);
+  await expect(jumpLatest).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   const geometry = await page
     .locator('.workspace-panels, .workspace-panel, .resize-handle')
