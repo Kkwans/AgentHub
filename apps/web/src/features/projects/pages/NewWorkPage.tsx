@@ -18,6 +18,57 @@ import { useNewTaskCreation } from '../hooks/useNewTaskCreation';
 import { useProjectContext } from './ProjectContextLayout';
 import { ProjectWorkPage } from './ProjectWorkPage';
 
+const eligibilityReasons: Record<string, string> = {
+  DISABLED: '已禁用',
+  NOT_READY: '尚未就绪',
+  TARGET_MISSING: '执行环境不存在',
+  PROJECT_TARGET_MISSING: '项目执行环境不存在',
+  PROJECT_INACTIVE: '项目未启用',
+  INCOMPATIBLE_WORKSPACE: '无法访问项目工作区',
+  REMOTE_GATEWAY_UNAVAILABLE: '远程网关不可用',
+};
+type EligibilityEntry = {
+  agentId: string;
+  eligible: boolean;
+  reason: string | null;
+  agentStatus: string;
+  targetStatus: string | null;
+};
+function parseEligibility(value: unknown, projectId: string): EligibilityEntry[] {
+  const data = value as {
+    projectId?: unknown;
+    basis?: unknown;
+    livePreflight?: unknown;
+    agents?: unknown;
+  } | null;
+  if (
+    !data ||
+    data.projectId !== projectId ||
+    data.basis !== 'REGISTERED_STATE' ||
+    data.livePreflight !== false ||
+    !Array.isArray(data.agents)
+  )
+    throw new Error('项目 Agent 资格响应无法确认，请刷新后重试。');
+  const ids = new Set<string>();
+  for (const entry of data.agents) {
+    if (
+      !entry ||
+      typeof entry.agentId !== 'string' ||
+      !entry.agentId ||
+      ids.has(entry.agentId) ||
+      typeof entry.eligible !== 'boolean' ||
+      typeof entry.agentStatus !== 'string' ||
+      !(entry.targetStatus === null || typeof entry.targetStatus === 'string') ||
+      (entry.eligible
+        ? entry.reason !== null || entry.agentStatus !== 'READY' || entry.targetStatus === null
+        : typeof entry.reason !== 'string' || !Object.hasOwn(eligibilityReasons, entry.reason))
+    )
+      throw new Error('项目 Agent 资格响应无法确认，请刷新后重试。');
+    ids.add(entry.agentId);
+  }
+  return data.agents as EligibilityEntry[];
+}
+
 export function NewWorkPage() {
   const project = useProjectContext();
   return <NewWorkForm key={project.id} project={project} />;
@@ -45,6 +96,7 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
   const [kind, setKind] = useState<'goal' | 'task'>('task');
   const [goalId, setGoalId] = useState('');
   const [agentId, setAgentId] = useState('');
+  const agentChoiceMade = useRef(false);
   const [promptId, setPromptId] = useState('');
   const [variableText, setVariableText] = useState('{}');
   const [preview, setPreview] = useState<RenderedPromptRecord>();
@@ -131,6 +183,25 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
     queryKey: ['prompts', project.id],
     queryFn: () => api.get<PromptRecord[]>(`/prompts?projectId=${project.id}`),
   });
+  const eligibility = useQuery({
+    queryKey: ['agent-eligibility', project.id],
+    queryFn: async () =>
+      parseEligibility(
+        await api.get<unknown>(`/projects/${encodeURIComponent(project.id)}/agent-eligibility`),
+        project.id,
+      ),
+    retry: false,
+  });
+  const eligibilityKnown =
+    eligibility.isSuccess && !eligibility.isFetching && !agents.isError && !agents.isPending;
+  const selectableAgents = (agents.data ?? []).filter(
+    (agent) =>
+      agent.enabled &&
+      agent.status === 'READY' &&
+      eligibilityKnown &&
+      eligibility.data?.some((entry) => entry.agentId === agent.id && entry.eligible),
+  );
+  const selectedEligible = !agentId || selectableAgents.some((agent) => agent.id === agentId);
   const selectedAgent = agents.data?.find((agent) => agent.id === agentId);
   const selectedPrompt = prompts.data?.find((prompt) => prompt.id === promptId);
   const contextQuery = () =>
@@ -162,9 +233,11 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
     );
   });
   useEffect(() => {
-    if (!agentId && !taskCreation.locked)
-      setAgentId(agents.data?.find((agent) => agent.status === 'READY')?.id ?? '');
-  }, [agentId, agents.data, taskCreation.locked]);
+    if (!agentChoiceMade.current && !taskCreation.locked && eligibilityKnown) {
+      agentChoiceMade.current = true;
+      setAgentId(selectableAgents[0]?.id ?? '');
+    }
+  }, [eligibilityKnown, selectableAgents, taskCreation.locked]);
   const busy = createGoal.isPending || taskCreation.busy;
   const locked = busy || taskCreation.locked;
   const close = () => {
@@ -183,7 +256,13 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
     navigate(`/workspace/${encodeURIComponent(taskCreation.sessionId)}`);
   };
   const submit = () => {
-    if (!live.current || locked || !title.trim() || (kind === 'task' && !promptReady)) return;
+    if (
+      !live.current ||
+      locked ||
+      !title.trim() ||
+      (kind === 'task' && (!promptReady || !selectedEligible))
+    )
+      return;
     if (kind === 'goal') createGoal.mutate();
     else
       taskCreation.submit({
@@ -239,7 +318,7 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
               <AhButton
                 onClick={submit}
                 loading={busy}
-                disabled={!title.trim() || (kind === 'task' && !promptReady)}
+                disabled={!title.trim() || (kind === 'task' && (!promptReady || !selectedEligible))}
               >
                 {kind === 'goal' ? '创建 Goal' : agentId ? '创建并开始' : '创建任务'}
               </AhButton>
@@ -292,27 +371,70 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
             />
             <AhSelect
               label="推荐 Agent"
-              value={agentId}
+              value={agentId || '__later__'}
               disabled={locked}
-              onChange={(value) => setAgentId(value ?? '')}
-              data={(agents.data ?? [])
-                .filter((agent) => agent.status === 'READY')
-                .map((agent) => ({
-                  value: agent.id,
-                  label: `${agent.name} · ${agent.detectedVersion ?? '版本待检测'}`,
-                }))}
+              onChange={(value) => {
+                agentChoiceMade.current = true;
+                setAgentId(value === '__later__' ? '' : (value ?? ''));
+              }}
+              data={[
+                { value: '__later__', label: '稍后选择，仅创建任务' },
+                ...(agents.data ?? []).map((agent) => {
+                  const entry = eligibility.data?.find((item) => item.agentId === agent.id);
+                  const selectable = selectableAgents.some((item) => item.id === agent.id);
+                  const reason = !agent.enabled
+                    ? '已禁用'
+                    : agent.status !== 'READY'
+                      ? '尚未就绪'
+                      : !eligibilityKnown
+                        ? '资格待确认'
+                        : entry?.reason
+                          ? eligibilityReasons[entry.reason]
+                          : !entry
+                            ? '资格未返回'
+                            : '';
+                  return {
+                    value: agent.id,
+                    label: `${agent.name} · ${selectable ? '可选择，启动时检查' : reason} · 环境记录：${entry?.targetStatus ?? '未知'}`,
+                    disabled: !selectable,
+                  };
+                }),
+              ]}
               placeholder="稍后在 Work Inspector 中选择"
             />
             <div className={layout.mutedBox}>
               {selectedAgent ? (
                 <>
-                  <strong>{selectedAgent.name} 可用</strong>
-                  <div>创建后会用这个 Agent 启动 Session，并把实时事件带入 Workspace。</div>
+                  <strong>
+                    {selectedAgent.name}{' '}
+                    {selectedEligible
+                      ? '可选择，启动时检查'
+                      : '当前资格不满足，请重新选择或仅创建任务'}
+                  </strong>
+                  <div>
+                    选择依据是已登记状态与工作区映射，不代表实时登录、进程或容器健康。启动时仍会检查。
+                  </div>
                 </>
               ) : (
                 '还没有选择 Agent；创建后仍可在 Work Inspector 中选择并开始。'
               )}
             </div>
+            {eligibility.isPending || eligibility.isFetching ? (
+              <p role="status">正在确认项目 Agent 资格；也可选择仅创建任务。</p>
+            ) : null}
+            {eligibility.isError || agents.isError ? (
+              <p role="alert">无法确认项目 Agent 资格，不会自动选择 Agent。</p>
+            ) : null}
+            <AhButton
+              variant="default"
+              onClick={() => {
+                void eligibility.refetch();
+                void agents.refetch();
+              }}
+              disabled={locked}
+            >
+              刷新 Agent 资格
+            </AhButton>
             <details
               open={advancedOpen}
               onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}

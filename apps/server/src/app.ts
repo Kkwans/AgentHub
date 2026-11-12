@@ -150,7 +150,8 @@ export function createApp(options: AppOptions = {}): Express {
     app.use('/api/v1/sessions', createSessionRouter(options.sessions));
     app.use('/api/v1/approvals', createApprovalRouter(options.sessions));
   }
-  if (options.projects) app.use('/api/v1/projects', createProjectRouter(options.projects));
+  if (options.projects)
+    app.use('/api/v1/projects', createProjectRouter(options.projects, options.agents));
   if (options.git) app.use('/api/v1/projects/:id/git', createGitRouter(options.git));
   if (options.terminal) {
     app.use('/api/v1/terminals', createTerminalRouter(options.terminal));

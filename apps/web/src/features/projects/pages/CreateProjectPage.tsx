@@ -1,9 +1,10 @@
+import { ApiError } from '../../../lib/api-error';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AhButton, AhDialog, AhErrorState, AhInput, AhSelect, AhTextarea } from '@agenthub/ui';
 
-import { api, ApiError, authSession, type ExecutionTargetRecord } from '../../../lib/api';
+import { api, authSession, type ExecutionTargetRecord } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';
 import { useCompactViewport } from '../../shared/page-primitives';
 import { ProjectDirectoryPicker } from '../components/ProjectDirectoryPicker';

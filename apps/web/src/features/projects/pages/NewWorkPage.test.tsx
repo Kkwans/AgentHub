@@ -61,6 +61,21 @@ function show(fetchMock: typeof fetch) {
   return { ...view, refresh: () => view.rerender(tree()) };
 }
 function base(path: string) {
+  if (path.endsWith('/agent-eligibility'))
+    return json({
+      projectId: context.project.id,
+      basis: 'REGISTERED_STATE',
+      livePreflight: false,
+      agents: [
+        {
+          agentId: agent.id,
+          eligible: true,
+          reason: null,
+          agentStatus: 'READY',
+          targetStatus: 'READY',
+        },
+      ],
+    });
   if (path === '/api/v1/agents') return json([agent]);
   if (path === '/api/v1/tasks/task-1') return json({ ...task, status: 'READY' });
   return json([]);
@@ -102,7 +117,7 @@ function workflow(
 }
 async function submitTask() {
   fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '修复登录' } });
-  await screen.findByText('测试 Agent 可用');
+  await screen.findByText('测试 Agent 可选择，启动时检查');
   fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
 }
 afterEach(() => {
@@ -130,7 +145,7 @@ describe('新建工作部分成功恢复', () => {
     });
     show(fetchMock);
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '修复登录' } });
-    await screen.findByText('测试 Agent 可用');
+    await screen.findByText('测试 Agent 可选择，启动时检查');
     fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
     await screen.findByText(/Agent 尚未预检就绪/);
     fireEvent.click(screen.getByRole('button', { name: /^(创建并开始|重试启动)$/ }));
@@ -227,7 +242,7 @@ describe('新建工作部分成功恢复', () => {
     const { calls, fetchMock } = workflow({ create: () => pending.promise });
     show(fetchMock);
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '修复登录' } });
-    await screen.findByText('测试 Agent 可用');
+    await screen.findByText('测试 Agent 可选择，启动时检查');
     const submit = screen.getByRole('button', { name: '创建并开始' });
     act(() => {
       submit.click();
@@ -678,5 +693,107 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     await screen.findByText('创建被拒绝');
     expect(screen.getByLabelText('你想完成什么？')).not.toBeDisabled();
     expect(screen.queryByRole('button', { name: '重试启动' })).not.toBeInTheDocument();
+  });
+});
+
+describe('项目作用域 Agent 资格', () => {
+  const entry = {
+    agentId: agent.id,
+    eligible: true,
+    reason: null,
+    agentStatus: 'READY',
+    targetStatus: 'STOPPED',
+  };
+  const eligibility = (entries = [entry], projectId = 'project-1') => ({
+    projectId,
+    basis: 'REGISTERED_STATE',
+    livePreflight: false,
+    agents: entries,
+  });
+  const withEligibility = (response: () => Promise<Response> | Response, agents = [agent]) => {
+    const f = workflow();
+    const fetchMock = (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).endsWith('/agent-eligibility')
+        ? Promise.resolve(response())
+        : String(input) === '/api/v1/agents'
+          ? Promise.resolve(json(agents))
+          : f.fetchMock(input, init);
+    return { ...f, fetchMock };
+  };
+  async function chooseLater() {
+    fireEvent.click(screen.getByLabelText('推荐 Agent'));
+    fireEvent.click(await screen.findByRole('option', { name: '稍后选择，仅创建任务' }));
+  }
+  it('服务端认可的跨环境映射可选，同时展示停止状态而不声称可用', async () => {
+    const f = withEligibility(() => json(eligibility()));
+    show(f.fetchMock);
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    fireEvent.click(screen.getByLabelText('推荐 Agent'));
+    expect(await screen.findByRole('option', { name: /环境记录：STOPPED/ })).toBeInTheDocument();
+    expect(screen.queryByText('测试 Agent 可用')).not.toBeInTheDocument();
+  });
+  it('显式稍后选择在资格刷新后保持，不再次自动分配', async () => {
+    const f = withEligibility(() => json(eligibility()));
+    show(f.fetchMock);
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await chooseLater();
+    fireEvent.click(screen.getByRole('button', { name: '刷新 Agent 资格' }));
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '仅保存任务' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
+    await waitFor(() => expect(f.calls.create).toBe(1));
+    expect(f.calls.start).toBe(0);
+  });
+  it.each(['loading', 'error', 'malformed', 'wrong-project'])(
+    '资格%s不会自动指派',
+    async (mode) => {
+      const pending = deferred<Response>();
+      const f = withEligibility(() =>
+        mode === 'loading'
+          ? pending.promise
+          : mode === 'error'
+            ? failure('FAILED', 500)
+            : mode === 'malformed'
+              ? json([])
+              : json(eligibility([entry], 'other-project')),
+      );
+      show(f.fetchMock);
+      if (mode === 'loading') await screen.findByText(/正在确认项目 Agent 资格/);
+      else await screen.findByText('无法确认项目 Agent 资格，不会自动选择 Agent。');
+      expect(screen.queryByText('测试 Agent 可选择，启动时检查')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '创建任务' })).toBeInTheDocument();
+    },
+  );
+  it('禁用但 READY 的 Agent 不自动选择并显示原因', async () => {
+    const f = withEligibility(() => json(eligibility()), [{ ...agent, enabled: false }]);
+    show(f.fetchMock);
+    fireEvent.click(screen.getByLabelText('推荐 Agent'));
+    expect(await screen.findByRole('option', { name: /测试 Agent · 已禁用/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    fireEvent.keyDown(screen.getByRole('option', { name: /测试 Agent · 已禁用/ }), {
+      key: 'Escape',
+    });
+    expect(screen.getByRole('button', { name: '创建任务' })).toBeInTheDocument();
+  });
+  it('所选 Agent 刷新后失去资格不替换，阻止启动但可改为仅创建', async () => {
+    let disabled = false;
+    const f = withEligibility(() =>
+      json({
+        ...eligibility(),
+        agents: [
+          { ...entry, eligible: !disabled, reason: disabled ? 'INCOMPATIBLE_WORKSPACE' : null },
+        ],
+      }),
+    );
+    show(f.fetchMock);
+    await screen.findByText('测试 Agent 可选择，启动时检查');
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '保留任务' } });
+    disabled = true;
+    fireEvent.click(screen.getByRole('button', { name: '刷新 Agent 资格' }));
+    await screen.findByText('测试 Agent 当前资格不满足，请重新选择或仅创建任务');
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    await chooseLater();
+    expect(screen.getByRole('button', { name: '创建任务' })).toBeEnabled();
   });
 });

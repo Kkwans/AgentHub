@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
+import type { AgentService } from '../agents/agent-service.js';
 import { validate } from '../validation.js';
 import type { ProjectService } from './project-service.js';
 
@@ -30,8 +31,25 @@ const treeQuery = z.object({
 });
 const contentQuery = z.object({ path: z.string().min(1).max(4_096) });
 
-export function createProjectRouter(service: ProjectService): Router {
+export function createProjectRouter(service: ProjectService, agents?: AgentService): Router {
   const router = Router();
+
+  if (agents)
+    router.get(
+      '/:id/agent-eligibility',
+      validate({ params: idParams }),
+      async (request, response, next) => {
+        try {
+          const project = await service.get(idParams.parse(request.params).id);
+          response.json({
+            data: await agents.listProjectEligibility(project),
+            requestId: String(request.id),
+          });
+        } catch (error) {
+          next(error);
+        }
+      },
+    );
 
   router.get('/', async (request, response, next) => {
     try {

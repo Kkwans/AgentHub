@@ -22,6 +22,26 @@ import { AppError } from '../errors.js';
 
 type AdapterKind = 'ACP_STDIO' | 'OPENCLAW_GATEWAY' | 'OPENCLAW_EXEC';
 
+type AgentRecord = NonNullable<Awaited<ReturnType<AgentRepository<AgentHubDatabase>['get']>>>;
+type TargetRecord = NonNullable<
+  Awaited<ReturnType<ExecutionTargetRepository<AgentHubDatabase>['get']>>
+>;
+export type AgentEligibilityReason =
+  | 'DISABLED'
+  | 'NOT_READY'
+  | 'TARGET_MISSING'
+  | 'PROJECT_TARGET_MISSING'
+  | 'PROJECT_INACTIVE'
+  | 'INCOMPATIBLE_WORKSPACE'
+  | 'REMOTE_GATEWAY_UNAVAILABLE';
+export interface AgentEligibility {
+  agentId: string;
+  eligible: boolean;
+  reason: AgentEligibilityReason | null;
+  agentStatus: string;
+  targetStatus: string | null;
+}
+
 export interface RegisterAgentInput {
   name: string;
   targetId: string;
@@ -185,27 +205,86 @@ export class AgentService {
   }> {
     const agent = await this.agents.get(id);
     if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
-    if (!agent.enabled || agent.status !== 'READY') {
-      throw new AppError(409, 'AGENT_NOT_READY', '只有就绪且已启用的 Agent 可以创建或恢复 Session');
-    }
     const agentTarget = await this.targets.get(agent.targetId);
-    if (!agentTarget) {
+    const projectTarget =
+      agent.targetId === expectedTargetId ? agentTarget : await this.targets.get(expectedTargetId);
+    const reason = this.runtimeEligibilityReason(agent, agentTarget, projectTarget, cwd);
+    if (reason === 'DISABLED' || reason === 'NOT_READY')
+      throw new AppError(409, 'AGENT_NOT_READY', '只有就绪且已启用的 Agent 可以创建或恢复 Session');
+    if (reason === 'TARGET_MISSING' || !agentTarget)
       throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
-    }
-    if (agent.targetId !== expectedTargetId) {
-      const projectTarget = await this.targets.get(expectedTargetId);
-      if (!projectTarget || !canAgentReachProject(agentTarget, projectTarget, cwd)) {
-        throw new AppError(
-          409,
-          'AGENT_PROJECT_TARGET_MISMATCH',
-          'Agent 的执行环境无法访问当前 Project 工作区',
-        );
-      }
-    }
+    if (reason === 'PROJECT_TARGET_MISSING' || reason === 'INCOMPATIBLE_WORKSPACE')
+      throw new AppError(
+        409,
+        'AGENT_PROJECT_TARGET_MISMATCH',
+        'Agent 的执行环境无法访问当前 Project 工作区',
+      );
+    if (reason === 'REMOTE_GATEWAY_UNAVAILABLE')
+      throw new AppError(503, 'REMOTE_NODE_GATEWAY_UNAVAILABLE', 'Remote Node Gateway 不可用');
     return {
       profile: toAgentProfile(agent, agentTarget, { cwd }),
       adapter: this.adapterForTarget(agentTarget.kind, agent.adapterKind as AdapterKind),
     };
+  }
+
+  // Registration snapshot only: this deliberately does not create an adapter,
+  // probe executable/login state, start a container, or update preflight data.
+  async listProjectEligibility(project: {
+    id: string;
+    targetId: string;
+    realRootPath: string;
+    status: string;
+  }) {
+    const [agents, projectTarget] = await Promise.all([
+      this.agents.list(),
+      this.targets.get(project.targetId),
+    ]);
+    const targetCache = new Map<string, TargetRecord | undefined>([
+      [project.targetId, projectTarget],
+    ]);
+    const entries: AgentEligibility[] = [];
+    for (const agent of agents) {
+      if (!targetCache.has(agent.targetId))
+        targetCache.set(agent.targetId, await this.targets.get(agent.targetId));
+      const target = targetCache.get(agent.targetId);
+      const reason =
+        project.status !== 'ACTIVE'
+          ? 'PROJECT_INACTIVE'
+          : this.runtimeEligibilityReason(agent, target, projectTarget, project.realRootPath);
+      entries.push({
+        agentId: agent.id,
+        eligible: reason === null,
+        reason,
+        agentStatus: agent.status,
+        targetStatus: target?.status ?? null,
+      });
+    }
+    return {
+      projectId: project.id,
+      basis: 'REGISTERED_STATE' as const,
+      livePreflight: false as const,
+      agents: entries,
+    };
+  }
+
+  private runtimeEligibilityReason(
+    agent: AgentRecord,
+    agentTarget: TargetRecord | undefined,
+    projectTarget: TargetRecord | undefined,
+    cwd: string,
+  ): AgentEligibilityReason | null {
+    if (!agent.enabled) return 'DISABLED';
+    if (agent.status !== 'READY') return 'NOT_READY';
+    if (!agentTarget) return 'TARGET_MISSING';
+    if (!projectTarget) return 'PROJECT_TARGET_MISSING';
+    if (
+      agentTarget.id !== projectTarget.id &&
+      !canAgentReachProject(agentTarget, projectTarget, cwd)
+    )
+      return 'INCOMPATIBLE_WORKSPACE';
+    if (agentTarget.kind === 'REMOTE_NODE' && !this.remoteAdapter)
+      return 'REMOTE_GATEWAY_UNAVAILABLE';
+    return null;
   }
 
   private adapterForTarget(targetKind: string, adapterKind: AdapterKind): AgentRuntimeAdapter {
