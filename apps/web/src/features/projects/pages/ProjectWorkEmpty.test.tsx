@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ProjectContextLayout } from './ProjectContextLayout';
 import { ProjectWorkPage } from './ProjectWorkPage';
@@ -38,11 +38,12 @@ const task = {
   status: 'BACKLOG',
   updatedAt: '2026-11-12T00:00:00Z',
 };
-function mount(rows: unknown[] | Promise<unknown[]> = [], query = '') {
+function mount(rows: unknown[] | Promise<unknown[]> = [], query = '', agents: unknown[] = []) {
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path === `/projects/${project.id}`) return project as T;
     if (path.startsWith('/tasks?')) return (await rows) as T;
     if (path === '/tasks/task-1') return task as T;
+    if (path === '/agents') return agents as T;
     return [] as T;
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -312,4 +313,133 @@ it('READY转换期间锁定运行Agent选择，失败结束后恢复选择', asy
   await screen.findByText('转换失败');
   expect(selector).not.toBeDisabled();
   expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+const selectableAgents = [
+  { id: 'agent-1', name: '执行者一', status: 'READY', enabled: true },
+  { id: 'agent-2', name: '执行者二', status: 'READY', enabled: true },
+];
+it('已分配Agent的任务默认显示与实际启动一致', async () => {
+  vi.mocked(api.post).mockResolvedValue({ session: { id: 'session-1' } } as never);
+  mount([{ ...task, status: 'READY', assignedAgentId: 'agent-1' }], '', selectableAgents);
+  const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
+  await waitFor(() => expect(selector).toHaveTextContent('执行者一'));
+  fireEvent.click(screen.getByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/start', { agentId: 'agent-1' }),
+  );
+});
+it('明确清除运行Agent不会回退显示任务已分配Agent', async () => {
+  mount(
+    [{ ...task, status: 'READY', assignedAgentId: 'agent-1' }],
+    '?agentId=agent-2',
+    selectableAgents,
+  );
+  const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
+  await waitFor(() => expect(selector).toHaveTextContent('执行者二'));
+  fireEvent.click(selector);
+  fireEvent.click(await screen.findByRole('option', { name: '不选择 Agent' }));
+  await waitFor(() => expect(selector).toHaveTextContent('不选择 Agent'));
+  expect(screen.getByRole('button', { name: '开始手工任务' })).toBeVisible();
+});
+it('任务切换不沿用上个任务明确选择的Agent', async () => {
+  mount(
+    [
+      { ...task, status: 'READY', assignedAgentId: 'agent-1' },
+      { ...task, id: 'task-2', title: '第二项工作', status: 'READY', assignedAgentId: 'agent-1' },
+    ],
+    '',
+    selectableAgents,
+  );
+  const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
+  await waitFor(() => expect(selector).toHaveTextContent('执行者一'));
+  fireEvent.click(selector);
+  fireEvent.click(await screen.findByRole('option', { name: '执行者二' }));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /第二项工作/,
+    }),
+  );
+  await waitFor(() => expect(selector).toHaveTextContent('执行者一'));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /真实任务/,
+    }),
+  );
+  await waitFor(() => expect(selector).toHaveTextContent('执行者一'));
+});
+
+it('URL明确Agent覆盖已分配默认并用于请求', async () => {
+  vi.mocked(api.post).mockResolvedValue({ session: { id: 'session-1' } } as never);
+  mount(
+    [{ ...task, status: 'READY', assignedAgentId: 'agent-1' }],
+    '?agentId=agent-2',
+    selectableAgents,
+  );
+  const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
+  await waitFor(() => expect(selector).toHaveTextContent('执行者二'));
+  fireEvent.click(screen.getByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/start', { agentId: 'agent-2' }),
+  );
+});
+it('界面切换任务后不把URL的Agent覆盖带给下一任务', async () => {
+  mount(
+    [
+      { ...task, status: 'READY', assignedAgentId: 'agent-1' },
+      { ...task, id: 'task-2', title: '第二项工作', status: 'READY', assignedAgentId: 'agent-1' },
+    ],
+    '?agentId=agent-2',
+    selectableAgents,
+  );
+  const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
+  await waitFor(() => expect(selector).toHaveTextContent('执行者二'));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /第二项工作/,
+    }),
+  );
+  await waitFor(() => expect(selector).toHaveTextContent('执行者一'));
+});
+it('跨项目切换不保留前项目的本地Agent选择', async () => {
+  const project2 = { ...project, id: 'project-2', name: '第二项目' };
+  vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
+    if (path === '/projects/project-1') return project as T;
+    if (path === '/projects/project-2') return project2 as T;
+    if (path.startsWith('/tasks?'))
+      return [
+        {
+          ...task,
+          id: path.includes('project-2') ? 'task-2' : task.id,
+          projectId: path.includes('project-2') ? project2.id : project.id,
+          status: 'READY',
+          assignedAgentId: 'agent-1',
+        },
+      ] as T;
+    if (path === '/agents') return selectableAgents as T;
+    return [] as T;
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/projects/project-1/work']}>
+        <Link to="/projects/project-2/work">转到第二项目</Link>
+        <Routes>
+          <Route path="/projects/:projectId" element={<ProjectContextLayout />}>
+            <Route path="work" element={<ProjectWorkPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
+  await waitFor(() => expect(selector).toHaveTextContent('执行者一'));
+  fireEvent.click(selector);
+  fireEvent.click(await screen.findByRole('option', { name: '执行者二' }));
+  await waitFor(() => expect(selector).toHaveTextContent('执行者二'));
+  fireEvent.click(screen.getByRole('link', { name: '转到第二项目' }));
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: '运行 Agent' })).toHaveTextContent('执行者一'),
+  );
 });

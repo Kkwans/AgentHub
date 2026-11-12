@@ -105,14 +105,19 @@ for (const width of [390, 768, 1024, 1440]) {
 
 for (const width of [390, 768, 1024, 1440]) {
   test(`阻塞任务可通过合法转换重新启动 Agent ${width}`, async ({ page, context, app }, info) => {
-    const { project } = await seedWorkspace(context, app);
+    const { project, agent } = await seedWorkspace(context, app);
     const task = await apiData<{ id: string }>(context, 'post', '/tasks', {
       projectId: project.id,
       title: '恢复被阻塞的工作',
     });
-    for (const status of ['READY', 'IN_PROGRESS', 'BLOCKED']) {
-      await apiData(context, 'post', `/tasks/${task.id}/transition`, { status });
-    }
+    await apiData(context, 'post', `/tasks/${task.id}/transition`, { status: 'READY' });
+    await apiData(context, 'post', `/tasks/${task.id}/start`, { agentId: agent.id });
+    await expect
+      .poll(
+        async () => (await apiData<{ status: string }>(context, 'get', `/tasks/${task.id}`)).status,
+      )
+      .toBe('WAITING_REVIEW');
+    await apiData(context, 'post', `/tasks/${task.id}/transition`, { status: 'BLOCKED' });
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     const requests: Array<{ path: string; body: unknown }> = [];
     const errors: string[] = [];
@@ -123,8 +128,11 @@ for (const width of [390, 768, 1024, 1440]) {
         requests.push({ path, body: request.postDataJSON() });
     });
     await page.goto(`/projects/${project.id}/work?task=${task.id}`);
-    await page.getByRole('combobox', { name: '运行 Agent' }).click();
-    await page.getByRole('option', { name: 'v1 baseline agent', exact: true }).click();
+    // A previously assigned Agent must drive the visible action without requiring
+    // the user to reselect the identical option just to leave manual mode.
+    await expect(page.getByRole('combobox', { name: '运行 Agent' })).toHaveText(
+      'v1 baseline agent',
+    );
     const start = page.getByRole('button', { name: '启动 Session', exact: true });
     await expect(start).toBeEnabled();
     await start.scrollIntoViewIfNeeded();
@@ -135,6 +143,7 @@ for (const width of [390, 768, 1024, 1440]) {
       `/api/v1/tasks/${task.id}/start`,
     ]);
     expect(requests[0]?.body).toEqual({ status: 'READY' });
+    expect(requests[1]?.body).toEqual({ agentId: agent.id });
     const stored = await apiData<{ sessionId: string }>(context, 'get', `/tasks/${task.id}`);
     expect(page.url()).toContain(`/workspace/${stored.sessionId}`);
     expect(

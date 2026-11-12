@@ -138,7 +138,7 @@ export function ProjectWorkPage() {
   const [statusFilter, setStatusFilter] = useState(statusFromQuery ?? 'all');
   const [agentFilter, setAgentFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(selectedFromQuery ?? '');
-  const [runAgentId, setRunAgentId] = useState(selectedAgentFromQuery ?? '');
+  const [agentChoice, setAgentChoice] = useState<{ key: string; value: string }>();
   useEffect(() => {
     if (selectedFromQuery && tasks.data?.some((task) => task.id === selectedFromQuery))
       setSelectedId(selectedFromQuery);
@@ -146,9 +146,6 @@ export function ProjectWorkPage() {
   useEffect(() => {
     if (!selectedId && tasks.data?.[0]) setSelectedId(tasks.data[0].id);
   }, [selectedId, tasks.data]);
-  useEffect(() => {
-    if (selectedAgentFromQuery) setRunAgentId(selectedAgentFromQuery);
-  }, [selectedAgentFromQuery]);
   useEffect(() => {
     if (statusFromQuery) setStatusFilter(statusFromQuery);
   }, [statusFromQuery]);
@@ -172,9 +169,15 @@ export function ProjectWorkPage() {
     tasks.data?.find((task) => task.id === selectedId) ??
     filteredTasks[0] ??
     tasks.data?.[0];
-  const selectedAgent = agents.data?.find(
-    (agent) => agent.id === (runAgentId || selected?.assignedAgentId),
-  );
+  const agentChoiceKey = JSON.stringify([project.id, selected?.id, selectedAgentFromQuery]);
+  const runAgentId =
+    agentChoice?.key === agentChoiceKey
+      ? agentChoice.value
+      : (selectedAgentFromQuery ?? selected?.assignedAgentId ?? '');
+  useEffect(() => {
+    setAgentChoice((choice) => (choice?.key === agentChoiceKey ? choice : undefined));
+  }, [agentChoiceKey]);
+  const selectedAgent = agents.data?.find((agent) => agent.id === runAgentId);
   const selectedPrompt = prompts.data?.find((prompt) => prompt.id === selectedPromptId);
   const selectedWorktree = selected
     ? worktrees.data?.find((item) => item.taskId === selected.id)
@@ -196,7 +199,7 @@ export function ProjectWorkPage() {
     { status: 'CANCELED', label: '已取消' },
   ];
   const operationContext = useRef({ identity: '', generation: 0, mounted: true });
-  const selectionIdentity = `${project.id}:${selected?.id ?? ''}`;
+  const selectionIdentity = JSON.stringify([project.id, selected?.id, runAgentId]);
   if (operationContext.current.identity !== selectionIdentity) {
     operationContext.current.identity = selectionIdentity;
     operationContext.current.generation += 1;
@@ -273,6 +276,10 @@ export function ProjectWorkPage() {
     setSelectedId(task.id);
     const next = new URLSearchParams(searchParams);
     next.set('task', task.id);
+    if (task.id !== selected?.id) {
+      next.delete('agentId');
+      setAgentChoice(undefined);
+    }
     setSearchParams(next, { replace: true });
   };
   const acceptanceCriteria =
@@ -506,12 +513,17 @@ export function ProjectWorkPage() {
                         aria-label="运行 Agent"
                         disabled={start.isPending || transition.isPending || manual.busy}
                         label=""
-                        value={runAgentId || selected.assignedAgentId || ''}
-                        onChange={(value) => setRunAgentId(value ?? '')}
-                        data={readyAgents.map((agent) => ({
-                          value: agent.id,
-                          label: agent.name,
-                        }))}
+                        value={runAgentId}
+                        onChange={(value) =>
+                          setAgentChoice({ key: agentChoiceKey, value: value ?? '' })
+                        }
+                        data={[
+                          { value: '', label: '不选择 Agent' },
+                          ...readyAgents.map((agent) => ({
+                            value: agent.id,
+                            label: agent.name,
+                          })),
+                        ]}
                         placeholder="选择可用 Agent"
                       />
                       <div className={projectsStyles.runSummary}>
