@@ -23,6 +23,8 @@
   margin: 0;
   font-size: clamp(24px, 2.6vw, 32px);
   font-weight: 650;
+  /* Allow a heavier CJK heading when the platform only supplies regular glyphs. */
+  font-synthesis: weight;
   line-height: 1.3;
   letter-spacing: -0.035em;
 }

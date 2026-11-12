@@ -186,7 +186,14 @@ async function collectChineseFontEvidence(page: Page) {
         expect(computed.text, target.label).toMatch(/^[\p{Script=Han}\p{Punctuation}\s]+$/u);
       }
       expect(computed.fontFamily).toContain('Geist Variable');
-      if (target.selector === 'main h1') expect(computed.fontWeight).toBe('650');
+      if (target.selector === 'main h1') {
+        expect(computed.fontWeight).toBe('650');
+        // Permission to synthesize weight, not proof of a native CJK 650 face
+        // or proof that Chromium actually synthesized it. Review the pixels too.
+        expect(computed.fontSynthesis).toBe('weight');
+      } else {
+        expect(computed.fontSynthesis).toBe('none');
+      }
       const { nodeId } = await client.send('DOM.querySelector', {
         nodeId: root.nodeId,
         selector: target.selector,
