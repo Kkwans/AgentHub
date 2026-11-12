@@ -1,3 +1,4 @@
+import { RunStartError } from '../sessions/run-start-error.js';
 import { DatabaseInvariantError } from '@agenthub/db';
 import { taskCreationHash, type CreateTaskInput } from './task-creation-operation.js';
 import { randomUUID } from 'node:crypto';
@@ -351,16 +352,18 @@ export class TaskService implements TaskRunLifecycleObserver {
       sessionId: session.id,
     });
     const text = buildTaskInstructions(task);
+    let run: Awaited<ReturnType<TaskSessionController['startRun']>>;
     try {
-      const run = await this.sessions.startRun(session.id, {
+      run = await this.sessions.startRun(session.id, {
         text,
         ...(input.promptVariables ? { promptVariables: input.promptVariables } : {}),
       });
-      return { task: await this.getTask(id), session, run };
     } catch (error) {
+      if (error instanceof RunStartError) throw error;
       await this.tasks.transition(id, 'BLOCKED');
       throw error;
     }
+    return { task: await this.getTask(id), session, run };
   }
 
   async reviewTask(
@@ -409,13 +412,15 @@ export class TaskService implements TaskRunLifecycleObserver {
     ]
       .filter(Boolean)
       .join('\n');
+    let run: Awaited<ReturnType<TaskSessionController['startRun']>>;
     try {
-      const run = await this.sessions.startRun(session.id, { text });
-      return { task: await this.getTask(id), session, run };
+      run = await this.sessions.startRun(session.id, { text });
     } catch (error) {
+      if (error instanceof RunStartError) throw error;
       await this.tasks.transition(id, 'BLOCKED');
       throw error;
     }
+    return { task: await this.getTask(id), session, run };
   }
 
   async onRunCompleted(taskId: string, runId: string): Promise<boolean> {

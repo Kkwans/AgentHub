@@ -1,3 +1,4 @@
+import { RunStartError } from './run-start-error.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, realpath, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -127,6 +128,7 @@ interface CancellationTimer {
 
 export class SessionService {
   private readonly active = new Map<string, ActiveSession>();
+  private readonly preparationFences = new Set<string>();
   private readonly runAdmissions = new Set<string>();
   private readonly cancellationTimers = new Map<string, CancellationTimer>();
   private readonly configurationQueues = new Map<string, Promise<void>>();
@@ -447,6 +449,16 @@ export class SessionService {
   }
 
   private async startAdmittedRun(sessionId: string, input: StartRunInput) {
+    if (
+      this.preparationFences.has(sessionId) ||
+      (await this.runs.findBlockingForSession(sessionId))
+    ) {
+      throw new AppError(
+        409,
+        'SESSION_RUN_UNRESOLVED',
+        'Session 有未决 Run 或未完成恢复，请先核对原操作',
+      );
+    }
     let session = await this.get(sessionId);
     if (
       session.status !== 'READY' &&
@@ -508,29 +520,67 @@ export class SessionService {
           }
         : {},
     });
-    await this.captureGitSnapshot(runId, session.projectId, session.cwd, 'BEFORE');
-    const userMessage = await this.messages.append({
-      sessionId,
-      runId,
-      role: 'USER',
-      kind: 'TEXT',
-      text: input.text,
-      contentJson: {
-        content: input.content ?? [],
-        ...(promptContext
-          ? {
-              promptContext: {
-                itemCount: promptContext.items.length,
-                missingVariables: promptContext.missingVariables,
-              },
-            }
-          : {}),
-      },
-    });
-    await this.runs.patch(runId, { inputMessageId: userMessage.id });
-    await this.runs.transition(runId, 'STARTING');
-    await this.runs.transition(runId, 'RUNNING');
-    await this.sessions.transition(sessionId, 'RUNNING');
+    try {
+      await this.captureGitSnapshot(runId, session.projectId, session.cwd, 'BEFORE');
+      const userMessage = await this.messages.append({
+        sessionId,
+        runId,
+        role: 'USER',
+        kind: 'TEXT',
+        text: input.text,
+        contentJson: {
+          content: input.content ?? [],
+          ...(promptContext
+            ? {
+                promptContext: {
+                  itemCount: promptContext.items.length,
+                  missingVariables: promptContext.missingVariables,
+                },
+              }
+            : {}),
+        },
+      });
+      await this.runs.patch(runId, { inputMessageId: userMessage.id });
+      await this.runs.transition(runId, 'STARTING');
+      await this.runs.transition(runId, 'RUNNING');
+      await this.sessions.transition(sessionId, 'RUNNING');
+    } catch {
+      this.preparationFences.add(sessionId);
+      try {
+        const terminal = await this.runs.tryTransition(
+          runId,
+          ['QUEUED', 'STARTING', 'RUNNING'],
+          'FAILED',
+          {
+            finishedAt: new Date(),
+            errorCode: 'RUN_PREPARATION_RECOVERY_REQUIRED',
+            errorMessage: 'Run 尚未发送，准备失败后的恢复未完成',
+          },
+        );
+        if (!terminal.changed) throw new Error('Run outcome already changed');
+        if (terminal.run.taskId && !this.taskLifecycle?.onRunStopped)
+          throw new Error('Task lifecycle recovery observer missing');
+        await this.notifyRunStopped(terminal.run, 'FAILED');
+        const current = await this.sessions.get(sessionId);
+        if (!current) throw new Error('Session missing');
+        if (current.status !== 'READY') await this.sessions.transition(sessionId, 'READY');
+        await this.runs.patch(runId, {
+          errorCode: 'RUN_PREPARATION_FAILED',
+          errorMessage: 'Run 准备失败，尚未向 Agent 发送指令',
+        });
+        this.preparationFences.delete(sessionId);
+      } catch {
+        // The durable pending code (or still-active Run) also fences admission.
+        // Best-effort connection state is not the source of safety.
+        try {
+          await this.safeSessionTransition(sessionId, 'DISCONNECTED');
+        } catch {
+          /* Best effort includes the initial Session read. */
+        }
+        throw new RunStartError('PREPARATION_RECOVERY_REQUIRED', sessionId, runId);
+      }
+      throw new RunStartError('PREPARATION_FAILED', sessionId, runId);
+    }
 
     try {
       const reference = await active.handle.sendTurn({
@@ -555,21 +605,11 @@ export class SessionService {
         : await this.runs.get(runId);
       if (!run) throw new Error(`Run ${runId} 在启动后不存在`);
       return run;
-    } catch (error) {
-      await this.runs.tryTransition(
-        runId,
-        ['QUEUED', 'STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING', 'DISCONNECTED'],
-        'FAILED',
-        {
-          finishedAt: new Date(),
-          errorCode: 'AGENT_RUN_START_FAILED',
-          errorMessage: 'Agent 无法启动 Run',
-        },
-      );
-      await this.safeSessionTransition(sessionId, 'READY');
-      throw new AppError(502, 'AGENT_RUN_START_FAILED', 'Agent 无法启动 Run', undefined, {
-        cause: error,
-      });
+    } catch {
+      // Once sendTurn was invoked, rejection or acknowledgement bookkeeping
+      // failure is not proof the Agent did nothing. Keep authoritative Run/Task
+      // state and the active-Run admission fence; never automatically resend.
+      throw new RunStartError('DISPATCH_UNKNOWN', sessionId, runId);
     }
   }
 

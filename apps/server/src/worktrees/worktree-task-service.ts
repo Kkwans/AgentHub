@@ -1,3 +1,4 @@
+import { RunStartError } from '../sessions/run-start-error.js';
 import { randomUUID } from 'node:crypto';
 
 import type { WorktreeExecutionStatus } from '@agenthub/agent-core';
@@ -178,12 +179,27 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       { reviewReadyAt: null, errorCode: null, errorMessage: null },
       { finalRunId: null, completedAt: null },
     );
+    let startedRun: { id: string } | undefined;
     try {
-      const run = await this.sessions.startRun(execution.sessionId, { text: feedback });
-      const updated = await this.executions.patch(id, { runId: run.id });
+      startedRun = await this.sessions.startRun(execution.sessionId, { text: feedback });
+      const bound = await this.executions.bindCurrentRun(id, {
+        sessionId: execution.sessionId,
+        runId: startedRun.id,
+      });
+      const updated = bound?.execution ?? (await this.get(id));
+      if (!bound && ['RUNNING', 'AWAITING_INPUT'].includes(updated.status))
+        throw new RunStartError('DISPATCH_UNKNOWN', execution.sessionId, startedRun.id);
       this.publish('worktree.execution.rework_started', updated);
       return updated;
     } catch (error) {
+      if (startedRun || error instanceof RunStartError) {
+        const uncertain =
+          error instanceof RunStartError
+            ? error
+            : new RunStartError('DISPATCH_UNKNOWN', execution.sessionId, startedRun!.id);
+        if (uncertain.phase === 'DISPATCH_UNKNOWN') await this.bindUnknownRun(id, uncertain);
+        throw uncertain;
+      }
       await this.block(id, error);
       throw asAppError(error, 'WORKTREE_REWORK_FAILED', 'Worktree 继续修改失败');
     }
@@ -250,13 +266,17 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         'Worktree 正在创建或合并，请等待当前原子步骤完成',
       );
     }
-    if (
-      ['RUNNING', 'AWAITING_INPUT'].includes(execution.status) &&
-      execution.sessionId &&
-      execution.runId
-    ) {
-      await this.sessions.cancelRun(execution.sessionId, execution.runId);
-      execution = await this.get(id);
+    if (['RUNNING', 'AWAITING_INPUT'].includes(execution.status)) {
+      const current = await this.executions.bindCurrentRun(id);
+      if (!current) {
+        execution = await this.get(id);
+        if (!['RUNNING', 'AWAITING_INPUT'].includes(execution.status)) return execution;
+        throw new AppError(409, 'WORKTREE_RUN_UNRESOLVED', '当前 Run 无法确认，未取消或释放队列');
+      }
+      await this.sessions.cancelRun(current.execution.sessionId!, current.run.id);
+      // Cancel is a request, not proof that runtime execution stopped.
+      // Only the authoritative terminal callback can release this queue slot.
+      return this.get(id);
     }
     if (execution.status === 'CANCELED') return execution;
 
@@ -382,6 +402,8 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
 
   private async startClaimed(id: string): Promise<boolean> {
     const execution = await this.get(id);
+    let startedRun: { id: string } | undefined;
+    let startedSessionId: string | undefined;
     try {
       const [project, task] = await Promise.all([
         this.requireProject(execution.projectId),
@@ -419,16 +441,40 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         },
         { sessionId: session.id },
       );
-      const run = await this.sessions.startRun(session.id, {
+      startedSessionId = session.id;
+      startedRun = await this.sessions.startRun(session.id, {
         text: worktreePrompt(task, execution.baseBranch, execution.taskBranch),
         ...(config.promptVariables ? { promptVariables: config.promptVariables } : {}),
       });
-      const running = await this.executions.patch(id, { runId: run.id });
+      const bound = await this.executions.bindCurrentRun(id, {
+        sessionId: session.id,
+        runId: startedRun.id,
+      });
+      const running = bound?.execution ?? (await this.get(id));
+      if (!bound && ['RUNNING', 'AWAITING_INPUT'].includes(running.status))
+        throw new RunStartError('DISPATCH_UNKNOWN', session.id, startedRun.id);
       this.publish('worktree.execution.running', running);
       return true;
     } catch (error) {
+      if (startedRun || error instanceof RunStartError) {
+        const uncertain =
+          error instanceof RunStartError
+            ? error
+            : new RunStartError('DISPATCH_UNKNOWN', startedSessionId!, startedRun!.id);
+        if (uncertain.phase === 'DISPATCH_UNKNOWN') await this.bindUnknownRun(id, uncertain);
+        return uncertain.phase !== 'PREPARATION_FAILED';
+      }
       await this.block(id, error);
       return false;
+    }
+  }
+
+  private async bindUnknownRun(id: string, error: RunStartError): Promise<void> {
+    try {
+      await this.executions.bindCurrentRun(id, { sessionId: error.sessionId, runId: error.runId });
+    } catch {
+      // Keep execution active. cancel() independently resolves the durable
+      // current Run, so a failed binding cannot cancel an old Run or free a slot.
     }
   }
 

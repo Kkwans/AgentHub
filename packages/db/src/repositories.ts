@@ -1683,6 +1683,72 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
     return execution;
   }
 
+  // Lock in the same Execution -> Task order as transitionWithTask, then the
+  // Session used by Run admission. Never bind an old turn or a terminal winner.
+  async bindCurrentRun(id: string, expected?: { sessionId: string; runId: string }) {
+    return this.db.transaction(async (transaction) => {
+      const [execution] = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(eq(worktreeExecutions.id, id))
+        .for('update')
+        .limit(1);
+      if (
+        !execution ||
+        !['RUNNING', 'AWAITING_INPUT'].includes(execution.status) ||
+        !execution.sessionId ||
+        (expected && execution.sessionId !== expected.sessionId)
+      )
+        return undefined;
+      const [task] = await transaction
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, execution.taskId))
+        .for('update')
+        .limit(1);
+      if (
+        !task ||
+        task.status !== 'IN_PROGRESS' ||
+        task.sessionId !== execution.sessionId ||
+        task.assignedAgentId !== execution.agentId
+      )
+        return undefined;
+      const [session] = await transaction
+        .select()
+        .from(agentSessions)
+        .where(eq(agentSessions.id, execution.sessionId))
+        .for('update')
+        .limit(1);
+      if (
+        !session ||
+        session.taskId !== task.id ||
+        session.projectId !== task.projectId ||
+        session.agentId !== execution.agentId ||
+        !session.latestRunId ||
+        (expected && session.latestRunId !== expected.runId)
+      )
+        return undefined;
+      const [run] = await transaction
+        .select()
+        .from(agentRuns)
+        .where(
+          and(
+            eq(agentRuns.id, session.latestRunId),
+            eq(agentRuns.sessionId, session.id),
+            eq(agentRuns.taskId, task.id),
+          ),
+        )
+        .limit(1);
+      if (!run) return undefined;
+      const [bound] = await transaction
+        .update(worktreeExecutions)
+        .set({ runId: run.id })
+        .where(eq(worktreeExecutions.id, id))
+        .returning();
+      return bound ? { execution: bound, run } : undefined;
+    });
+  }
+
   async getByRunId(runId: string) {
     const [execution] = await this.db
       .select()
@@ -2140,6 +2206,29 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
         and(
           eq(agentRuns.sessionId, sessionId),
           inArray(agentRuns.status, ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING']),
+        ),
+      )
+      .limit(1);
+    return run;
+  }
+
+  async findBlockingForSession(sessionId: string) {
+    const [run] = await this.db
+      .select()
+      .from(agentRuns)
+      .where(
+        and(
+          eq(agentRuns.sessionId, sessionId),
+          or(
+            inArray(agentRuns.status, [
+              'QUEUED',
+              'STARTING',
+              'RUNNING',
+              'WAITING_APPROVAL',
+              'CANCELING',
+            ]),
+            eq(agentRuns.errorCode, 'RUN_PREPARATION_RECOVERY_REQUIRED'),
+          ),
         ),
       )
       .limit(1);

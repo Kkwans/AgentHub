@@ -1,7 +1,9 @@
+import { RunStartError } from '../sessions/run-start-error.js';
 import { randomUUID } from 'node:crypto';
 
 import {
-  agentRuns,
+  RunRepository,
+  SessionRepository,
   agentSessions,
   AgentRepository,
   createPgliteDatabase,
@@ -10,7 +12,7 @@ import {
   TaskRepository,
   WorktreeExecutionRepository,
 } from '@agenthub/db';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AppError } from '../errors.js';
 import type { CreateSessionInput, StartRunInput } from '../sessions/session-service.js';
@@ -44,6 +46,191 @@ describe('Worktree Task Runner 编排', () => {
   });
 
   afterAll(async () => database.close());
+
+  it.each([false, true])('派发未知不覆盖Worktree状态，权威完成先到=%s', async (completeFirst) => {
+    const fixture = await seedFixture('Unknown dispatch');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '未知派发',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const original = runtime.sessions.startRun;
+    runtime.sessions.startRun = async (sessionId, input) => {
+      const run = await original(sessionId, input);
+      if (completeFirst) await service.onRunCompleted(task.id, run.id);
+      throw new RunStartError('DISPATCH_UNKNOWN', sessionId, run.id);
+    };
+    let executionId: string | undefined;
+    try {
+      const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+      executionId = queued.execution.id;
+      await service.processQueue(fixture.projectId);
+      const execution = await executions.get(queued.execution.id);
+      expect(execution?.status).toBe(completeFirst ? 'REVIEW' : 'RUNNING');
+      expect((await tasks.get(task.id))?.status).toBe(
+        completeFirst ? 'WAITING_REVIEW' : 'IN_PROGRESS',
+      );
+      expect(runtime.sessions.started).toHaveLength(1);
+      if (!completeFirst) await service.onRunCompleted(task.id, runtime.sessions.started[0]!.runId);
+      expect((await executions.get(queued.execution.id))?.status).toBe('REVIEW');
+      await expect(service.rework(queued.execution.id, '再次修改')).rejects.toMatchObject({
+        code: 'AGENT_RUN_DISPATCH_UNKNOWN',
+      });
+      expect((await executions.get(queued.execution.id))?.status).toBe(
+        completeFirst ? 'REVIEW' : 'RUNNING',
+      );
+      expect((await tasks.get(task.id))?.status).toBe(
+        completeFirst ? 'WAITING_REVIEW' : 'IN_PROGRESS',
+      );
+      expect(runtime.sessions.started).toHaveLength(2);
+    } finally {
+      if (executionId) {
+        const current = (await executions.get(executionId))!;
+        if (['RUNNING', 'AWAITING_INPUT'].includes(current.status))
+          await service.onRunStopped(task.id, current.runId!, 'CANCELED');
+        else await service.cancel(executionId);
+      }
+      await service.shutdown();
+    }
+  });
+
+  it.each([
+    ['START', 'CANCELED'],
+    ['REWORK', 'CANCELED'],
+    ['START', 'COMPLETED'],
+    ['REWORK', 'COMPLETED'],
+  ] as const)('未知%s取消精确新Run，%s权威回调前不释放队列', async (mode, winner) => {
+    const fixture = await seedFixture('取消未确认');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '当前',
+      status: 'READY',
+    });
+    const nextTask = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '下一项',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const runs = new RunRepository(database.db);
+    const original = runtime.sessions.startRun;
+    runtime.sessions.startRun = async (sessionId, input) => {
+      const run = await original(sessionId, input);
+      throw new RunStartError('DISPATCH_UNKNOWN', sessionId, run.id);
+    };
+    const cancel = vi
+      .spyOn(runtime.sessions, 'cancelRun')
+      .mockImplementation(async (_sessionId, runId) => {
+        return runs.transition(runId, 'CANCELING');
+      });
+    const first = await service.queueTask(task.id, { agentId: fixture.agentId });
+    const next = await service.queueTask(nextTask.id, { agentId: fixture.agentId });
+    try {
+      await service.processQueue(fixture.projectId);
+      const initial = (await executions.get(first.execution.id))!;
+      expect(initial.runId).toBe(runtime.sessions.started[0]!.runId);
+      if (mode === 'REWORK') {
+        await runs.transition(initial.runId!, 'COMPLETED');
+        await service.onRunCompleted(task.id, initial.runId!);
+        await expect(service.rework(first.execution.id, '返工')).rejects.toMatchObject({
+          code: 'AGENT_RUN_DISPATCH_UNKNOWN',
+        });
+      }
+      const current = (await executions.get(first.execution.id))!;
+      const actual = runtime.sessions.started.at(-1)!.runId;
+      expect(current.runId).toBe(actual);
+      if (mode === 'REWORK') {
+        expect(actual).not.toBe(initial.runId);
+        expect(
+          await executions.bindCurrentRun(current.id, {
+            sessionId: current.sessionId!,
+            runId: initial.runId!,
+          }),
+        ).toBeUndefined();
+      }
+      await service.cancel(current.id);
+      expect(cancel).toHaveBeenCalledWith(current.sessionId, actual);
+      expect((await runs.get(actual))?.status).toBe('CANCELING');
+      expect((await executions.get(current.id))?.status).toBe('RUNNING');
+      expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
+      expect((await executions.get(next.execution.id))?.status).toBe('QUEUED');
+      await runs.transition(actual, winner);
+      if (winner === 'COMPLETED') await service.onRunCompleted(task.id, actual);
+      else await service.onRunStopped(task.id, actual, 'CANCELED');
+      expect((await executions.get(current.id))?.status).toBe(
+        winner === 'COMPLETED' ? 'REVIEW' : 'CANCELED',
+      );
+      expect(
+        await executions.bindCurrentRun(current.id, {
+          sessionId: current.sessionId!,
+          runId: actual,
+        }),
+      ).toBeUndefined();
+      if (winner === 'COMPLETED')
+        expect((await executions.get(next.execution.id))?.status).toBe('QUEUED');
+    } finally {
+      await service.shutdown();
+      for (const id of [first.execution.id, next.execution.id]) {
+        const current = (await executions.get(id))!;
+        if (['RUNNING', 'AWAITING_INPUT'].includes(current.status))
+          await service.onRunStopped(current.taskId, current.runId!, 'CANCELED');
+        else if (!['DONE', 'CANCELED'].includes(current.status)) await service.cancel(id);
+      }
+      await service.shutdown();
+      cancel.mockRestore();
+    }
+  });
+
+  it.each(['START', 'REWORK'] as const)(
+    '%s成功派发后的绑定写失败不会BLOCKED，cancel仍从durable最新Run定位',
+    async (mode) => {
+      const fixture = await seedFixture('绑定写失败');
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '绑定失败',
+        status: 'READY',
+      });
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      const binding = vi.spyOn(executions, 'bindCurrentRun');
+      if (mode === 'START') binding.mockRejectedValue(new Error('DB binding'));
+      const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+      try {
+        await service.processQueue(fixture.projectId);
+        if (mode === 'REWORK') {
+          await service.onRunCompleted(task.id, runtime.sessions.started.at(-1)!.runId);
+          binding.mockRejectedValue(new Error('DB binding'));
+          await expect(service.rework(queued.execution.id, '再次修改')).rejects.toMatchObject({
+            code: 'AGENT_RUN_DISPATCH_UNKNOWN',
+          });
+        }
+        expect((await executions.get(queued.execution.id))?.status).toBe('RUNNING');
+        expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
+        const runId = runtime.sessions.started.at(-1)!.runId;
+        binding.mockRestore();
+        const cancel = vi.spyOn(runtime.sessions, 'cancelRun');
+        await service.cancel(queued.execution.id);
+        expect(cancel).toHaveBeenCalledWith(runtime.sessions.started.at(-1)!.sessionId, runId);
+        expect((await executions.get(queued.execution.id))?.status).toBe('RUNNING');
+        await service.onRunCompleted(task.id, runId);
+        expect((await executions.get(queued.execution.id))?.status).toBe('REVIEW');
+      } finally {
+        binding.mockRestore();
+        const current = (await executions.get(queued.execution.id))!;
+        if (current.status === 'RUNNING')
+          await service.onRunStopped(task.id, runtime.sessions.started.at(-1)!.runId, 'CANCELED');
+        else await service.cancel(queued.execution.id);
+        await service.shutdown();
+      }
+    },
+  );
 
   it('同 Project FIFO 执行，Review 阻塞队列并支持 Rework 与显式 Merge', async () => {
     const fixture = await seedFixture('FIFO');
@@ -97,6 +284,8 @@ describe('Worktree Task Runner 编排', () => {
       true,
     );
     await service.cancel(second.execution.id);
+    const canceledRun = (await executions.get(second.execution.id))!.runId!;
+    await service.onRunStopped(secondTask.id, canceledRun, 'CANCELED');
     await service.shutdown();
   });
 
@@ -286,7 +475,13 @@ function createRuntime(database: Awaited<ReturnType<typeof createPgliteDatabase>
     },
     startRun: async (sessionId, input) => {
       const runId = randomUUID();
-      await database.db.insert(agentRuns).values({ id: runId, sessionId, status: 'RUNNING' });
+      const session = await new SessionRepository(database.db).get(sessionId);
+      await new RunRepository(database.db).create({
+        id: runId,
+        sessionId,
+        taskId: session?.taskId,
+        status: 'RUNNING',
+      });
       started.push({ sessionId, input, runId });
       return { id: runId };
     },

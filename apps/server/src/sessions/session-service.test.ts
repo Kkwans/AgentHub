@@ -29,7 +29,7 @@ import {
   SessionRepository,
   SessionContinuationRepository,
 } from '@agenthub/db';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { TaskService } from '../tasks/task-service.js';
 import { AgentService } from '../agents/agent-service.js';
@@ -41,6 +41,7 @@ import {
 } from './session-service.js';
 
 describe('Session/Run/Approval 持久化闭环', () => {
+  afterEach(() => vi.restoreAllMocks());
   let database: Awaited<ReturnType<typeof createPgliteDatabase>>;
 
   beforeAll(async () => {
@@ -152,6 +153,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     );
     return {
       service,
+      agentService,
       repositories: { sessions, runs, messages, events, approvals, continuations },
       projectId,
       agentId,
@@ -324,6 +326,341 @@ describe('Session/Run/Approval 持久化闭环', () => {
       }
     },
   );
+
+  async function preparationFixture() {
+    const adapter = new ControlledAdapter('never');
+    const fixture = await createFixture(
+      'idle',
+      undefined,
+      {},
+      {
+        adapter,
+        git: { readHead: async () => undefined },
+      },
+    );
+    const tasks = new TaskRepository(database.db);
+    const taskService = new TaskService(
+      new GoalRepository(database.db),
+      tasks,
+      new ProjectRepository(database.db),
+      fixture.service,
+    );
+    fixture.service.setTaskLifecycleObserver(taskService);
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '准备窗口',
+      status: 'IN_PROGRESS',
+      assignedAgentId: fixture.agentId,
+    });
+    const session = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      taskId: task.id,
+      title: '准备窗口',
+      cwd: '/tmp',
+    });
+    await tasks.update(task.id, { sessionId: session.id });
+    return { ...fixture, adapter, tasks, taskService, task, session };
+  }
+
+  it.each(['MESSAGE', 'MESSAGE_LINK', 'STARTING', 'RUNNING', 'SESSION_RUNNING'] as const)(
+    '准备失败%s不会派发、删除消息或遗留QUEUED Run',
+    async (point) => {
+      const f = await preparationFixture();
+      const send = vi.spyOn(f.adapter.handles[0]!, 'sendTurn');
+      if (point === 'MESSAGE')
+        vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(
+          new Error('body must not leak'),
+        );
+      if (point === 'MESSAGE_LINK')
+        vi.spyOn(f.repositories.runs, 'patch').mockRejectedValueOnce(new Error('link'));
+      if (point === 'STARTING' || point === 'RUNNING') {
+        const original = f.repositories.runs.transition.bind(f.repositories.runs);
+        let rejected = false;
+        vi.spyOn(f.repositories.runs, 'transition').mockImplementation(
+          async (id, status, patch) => {
+            if (!rejected && status === point) {
+              rejected = true;
+              throw new Error('state');
+            }
+            return original(id, status, patch);
+          },
+        );
+      }
+      if (point === 'SESSION_RUNNING') {
+        const original = f.repositories.sessions.transition.bind(f.repositories.sessions);
+        vi.spyOn(f.repositories.sessions, 'transition').mockImplementation(
+          async (id, status, patch) => {
+            if (status === 'RUNNING') throw new Error('session');
+            return original(id, status, patch);
+          },
+        );
+      }
+      try {
+        await expect(
+          f.service.startRun(f.session.id, { text: '私有正文不入error' }),
+        ).rejects.toMatchObject({ code: 'RUN_PREPARATION_FAILED' });
+        expect(send).not.toHaveBeenCalled();
+        const runs = await f.repositories.runs.list(f.session.id);
+        expect(runs).toHaveLength(1);
+        expect(runs[0]).toMatchObject({ status: 'FAILED', errorCode: 'RUN_PREPARATION_FAILED' });
+        expect((await f.tasks.get(f.task.id))?.status).toBe('BLOCKED');
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe('READY');
+        expect(await f.repositories.messages.list(f.session.id)).toHaveLength(
+          point === 'MESSAGE' ? 0 : 1,
+        );
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it.each(['TASK', 'SESSION'] as const)(
+    '准备清理%s失败持久隔离，即使显式重连也不得派发下一Run',
+    async (point) => {
+      const f = await preparationFixture();
+      let restoreSessionFailure: (() => void) | undefined;
+      if (point === 'TASK') {
+        vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(new Error('prepare'));
+        vi.spyOn(f.tasks, 'tryApplyRunOutcome').mockRejectedValueOnce(new Error('cleanup'));
+      } else {
+        const original = f.repositories.sessions.transition.bind(f.repositories.sessions);
+        const spy = vi
+          .spyOn(f.repositories.sessions, 'transition')
+          .mockImplementation(async (id, status, patch) => {
+            if (status === 'READY') throw new Error('cleanup Session write');
+            const result = await original(id, status, patch);
+            if (status === 'RUNNING')
+              throw new Error('preparation write committed but acknowledgement lost');
+            return result;
+          });
+        restoreSessionFailure = () => spy.mockRestore();
+      }
+      const send = vi.spyOn(ControlledHandle.prototype, 'sendTurn');
+      let restarted: SessionService | undefined;
+      try {
+        await expect(f.service.startRun(f.session.id, { text: '不能重发' })).rejects.toMatchObject({
+          code: 'RUN_PREPARATION_RECOVERY_REQUIRED',
+        });
+        const [run] = await f.repositories.runs.list(f.session.id);
+        expect(run).toMatchObject({
+          status: 'FAILED',
+          errorCode: 'RUN_PREPARATION_RECOVERY_REQUIRED',
+        });
+        await expect(f.service.startRun(f.session.id, { text: '再次提交' })).rejects.toMatchObject({
+          code: 'SESSION_RUN_UNRESOLVED',
+        });
+        restoreSessionFailure?.();
+        const r = f.repositories;
+        restarted = new SessionService(
+          r.sessions,
+          r.runs,
+          r.messages,
+          r.events,
+          r.approvals,
+          new ProjectRepository(database.db),
+          f.agentService,
+          { publish: () => undefined },
+          { readHead: async () => undefined },
+        );
+        Object.assign(f.adapter, {
+          resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+        });
+        await restarted.resume(f.session.id); // Explicit test action, never automatic recovery.
+        await expect(
+          restarted.startRun(f.session.id, { text: '新实例也不能重发' }),
+        ).rejects.toMatchObject({ code: 'SESSION_RUN_UNRESOLVED' });
+        expect(send).not.toHaveBeenCalled();
+        expect(await r.runs.list(f.session.id)).toHaveLength(1);
+      } finally {
+        restoreSessionFailure?.();
+        await restarted?.shutdown();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('Session为READY仍拒绝持久QUEUED Run，不产生第二条Run', async () => {
+    const f = await preparationFixture();
+    try {
+      await f.repositories.runs.create({
+        id: randomUUID(),
+        sessionId: f.session.id,
+        taskId: f.task.id,
+        status: 'QUEUED',
+      });
+      const send = vi.spyOn(f.adapter.handles[0]!, 'sendTurn');
+      await expect(
+        f.service.startRun(f.session.id, { text: '不能越过旧排队' }),
+      ).rejects.toMatchObject({ code: 'SESSION_RUN_UNRESOLVED' });
+      expect(send).not.toHaveBeenCalled();
+      expect(await f.repositories.runs.list(f.session.id)).toHaveLength(1);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['START', 'REWORK'] as const)(
+    'Task%s已派发但externalRunId写失败保留权威结果，不自动重发或BLOCKED',
+    async (mode) => {
+      const adapter = new ControlledAdapter('never');
+      const f = await createFixture(
+        'idle',
+        undefined,
+        {},
+        { adapter, git: { readHead: async () => undefined } },
+      );
+      const tasks = new TaskRepository(database.db);
+      const taskService = new TaskService(
+        new GoalRepository(database.db),
+        tasks,
+        new ProjectRepository(database.db),
+        f.service,
+      );
+      f.service.setTaskLifecycleObserver(taskService);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: f.projectId,
+        title: '已派发未确认',
+        status: mode === 'START' ? 'READY' : 'WAITING_REVIEW',
+        assignedAgentId: f.agentId,
+      });
+      const send = vi
+        .spyOn(ControlledHandle.prototype, 'sendTurn')
+        .mockImplementation(async (input) => ({
+          runId: input.runId,
+          externalRunId: 'acknowledged',
+        }));
+      const original = f.repositories.runs.patch.bind(f.repositories.runs);
+      vi.spyOn(f.repositories.runs, 'patch').mockImplementation(async (id, patch) => {
+        if (patch.externalRunId) throw new Error('ack bookkeeping');
+        return original(id, patch);
+      });
+      try {
+        const result =
+          mode === 'START'
+            ? taskService.startTask(task.id, { agentId: f.agentId })
+            : taskService.reviewTask(task.id, { decision: 'REWORK', feedback: '继续' });
+        await expect(result).rejects.toMatchObject({ code: 'AGENT_RUN_DISPATCH_UNKNOWN' });
+        const current = (await tasks.get(task.id))!;
+        expect(current.status).toBe('IN_PROGRESS');
+        const [run] = await f.repositories.runs.list(current.sessionId!);
+        expect(run?.status).toBe('RUNNING');
+        await expect(
+          f.service.startRun(current.sessionId!, { text: '不能重复' }),
+        ).rejects.toMatchObject({ code: 'SESSION_RUN_UNRESOLVED' });
+        expect(send).toHaveBeenCalledTimes(1);
+        adapter.handles[0]!.complete(run!.id);
+        await waitFor(async () => (await tasks.get(task.id))?.status === 'WAITING_REVIEW');
+        expect((await tasks.get(task.id))?.finalRunId).toBe(run!.id);
+        expect(send).toHaveBeenCalledTimes(1);
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('有Task但缺少停止观察器时不谎称准备清理完成', async () => {
+    const f = await preparationFixture();
+    f.service.setTaskLifecycleObserver({ onRunCompleted: async () => undefined });
+    vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(new Error('prepare'));
+    try {
+      await expect(f.service.startRun(f.session.id, { text: '缺少观察器' })).rejects.toMatchObject({
+        code: 'RUN_PREPARATION_RECOVERY_REQUIRED',
+      });
+      expect((await f.tasks.get(f.task.id))?.status).toBe('IN_PROGRESS');
+      expect((await f.repositories.runs.list(f.session.id))[0]?.errorCode).toBe(
+        'RUN_PREPARATION_RECOVERY_REQUIRED',
+      );
+      await expect(f.service.startRun(f.session.id, { text: '不能重复' })).rejects.toMatchObject({
+        code: 'SESSION_RUN_UNRESOLVED',
+      });
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['START', 'REWORK'] as const)(
+    'Task%s准备失败由停止观察器收敛后不重复BLOCKED转换',
+    async (mode) => {
+      const f = await preparationFixture();
+      await f.tasks.update(f.task.id, { status: mode === 'START' ? 'READY' : 'WAITING_REVIEW' });
+      vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(new Error('prepare'));
+      try {
+        const result =
+          mode === 'START'
+            ? f.taskService.startTask(f.task.id, { agentId: f.agentId })
+            : f.taskService.reviewTask(f.task.id, { decision: 'REWORK', feedback: '继续' });
+        await expect(result).rejects.toMatchObject({ code: 'RUN_PREPARATION_FAILED' });
+        expect((await f.tasks.get(f.task.id))?.status).toBe('BLOCKED');
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('权威完成先于ack写失败时UNKNOWN不得覆盖已完成Task', async () => {
+    const f = await preparationFixture();
+    await f.tasks.update(f.task.id, { status: 'READY' });
+    const send = vi
+      .spyOn(ControlledHandle.prototype, 'sendTurn')
+      .mockImplementation(async (input) => ({ runId: input.runId, externalRunId: 'ack' }));
+    const original = f.repositories.runs.patch.bind(f.repositories.runs);
+    vi.spyOn(f.repositories.runs, 'patch').mockImplementation(async (id, patch) => {
+      if (patch.externalRunId) {
+        f.adapter.handles.at(-1)!.complete(id);
+        await waitFor(async () => (await f.tasks.get(f.task.id))?.status === 'WAITING_REVIEW');
+        throw new Error('ack save failed after completion');
+      }
+      return original(id, patch);
+    });
+    try {
+      await expect(
+        f.taskService.startTask(f.task.id, { agentId: f.agentId }),
+      ).rejects.toMatchObject({ code: 'AGENT_RUN_DISPATCH_UNKNOWN' });
+      expect((await f.tasks.get(f.task.id))?.status).toBe('WAITING_REVIEW');
+      expect((await f.tasks.get(f.task.id))?.finalRunId).toBeTruthy();
+      expect(send).toHaveBeenCalledTimes(1);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('首次清理CAS与断连读取都失败仍返回typed错误；startup改写边界显式保留待phase2', async () => {
+    const f = await preparationFixture();
+    vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(
+      new Error('prepare private body'),
+    );
+    vi.spyOn(f.repositories.runs, 'tryTransition').mockImplementationOnce(async () => {
+      vi.spyOn(f.repositories.sessions, 'get').mockRejectedValueOnce(new Error('private DB read'));
+      throw new Error('terminal CAS unavailable');
+    });
+    try {
+      await expect(f.service.startRun(f.session.id, { text: '不重放' })).rejects.toMatchObject({
+        code: 'RUN_PREPARATION_RECOVERY_REQUIRED',
+      });
+      const [run] = await f.repositories.runs.list(f.session.id);
+      expect(run?.status).toBe('QUEUED');
+      expect((await f.repositories.runs.findBlockingForSession(f.session.id))?.id).toBe(run?.id);
+      await expect(
+        f.service.startRun(f.session.id, { text: '同实例不放行' }),
+      ).rejects.toMatchObject({ code: 'SESSION_RUN_UNRESOLVED' });
+      await f.service.recoverAfterRestart(); // Real startup path, not just a new service object.
+      expect(await f.repositories.runs.get(run!.id)).toMatchObject({
+        status: 'FAILED',
+        errorCode: 'SERVER_RESTARTED',
+      });
+      expect((await f.tasks.get(f.task.id))?.status).toBe('IN_PROGRESS');
+      // This slice cannot claim a durable preparation marker when its first CAS
+      // never committed. Startup reconciliation is explicitly deferred, not a
+      // reason to automatically reconnect or replay the original input.
+      expect(await f.repositories.runs.findBlockingForSession(f.session.id)).toBeUndefined();
+      expect(f.adapter.handles).toHaveLength(1);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
 
   it('创建 Session 前拒绝 archived Project、disabled/BROKEN Agent 与 target mismatch', async () => {
     const archived = await createFixture('idle', undefined, {}, { projectStatus: 'ARCHIVED' });
