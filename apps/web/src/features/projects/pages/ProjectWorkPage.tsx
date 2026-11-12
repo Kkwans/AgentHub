@@ -42,7 +42,7 @@ import {
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Link,
   NavLink,
@@ -195,23 +195,70 @@ export function ProjectWorkPage() {
     { status: 'DONE', label: '已完成' },
     { status: 'CANCELED', label: '已取消' },
   ];
+  const operationContext = useRef({ identity: '', generation: 0, mounted: true });
+  const selectionIdentity = `${project.id}:${selected?.id ?? ''}`;
+  if (operationContext.current.identity !== selectionIdentity) {
+    operationContext.current.identity = selectionIdentity;
+    operationContext.current.generation += 1;
+  }
+  useEffect(() => {
+    operationContext.current.mounted = true;
+    return () => {
+      operationContext.current.mounted = false;
+      operationContext.current.generation += 1;
+    };
+  }, []);
+  const currentOperation = (generation: number) =>
+    operationContext.current.mounted && operationContext.current.generation === generation;
   const transition = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: TaskRecord['status'] }) =>
-      api.post(`/tasks/${id}/transition`, { status }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['tasks', project.id] }),
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: TaskRecord['status'];
+      generation: number;
+    }) => api.post(`/tasks/${id}/transition`, { status }),
+    onSettled: () => void client.invalidateQueries({ queryKey: ['tasks', project.id] }),
   });
   const start = useMutation({
-    mutationFn: async ({ id, agentId }: { id: string; agentId: string }) => {
-      if (selected?.status === 'BACKLOG')
+    mutationFn: async ({
+      id,
+      agentId,
+      status,
+      generation,
+    }: {
+      id: string;
+      agentId: string;
+      status: TaskRecord['status'];
+      generation: number;
+    }) => {
+      if (!['BACKLOG', 'BLOCKED', 'READY'].includes(status))
+        throw new Error('当前任务状态不支持启动，请刷新后核对。');
+      if (!currentOperation(generation)) return null;
+      if (status === 'BACKLOG' || status === 'BLOCKED')
         await api.post(`/tasks/${id}/transition`, { status: 'READY' });
+      // A new selection or navigation must not continue the old multi-step action.
+      if (!currentOperation(generation)) return null;
       return api.post<{ session: { id: string } }>(`/tasks/${id}/start`, { agentId });
     },
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
+      if (result && currentOperation(variables.generation))
+        navigate(`/workspace/${result.session.id}`);
+    },
+    onSettled: () => {
       void client.invalidateQueries({ queryKey: ['tasks', project.id] });
       void client.invalidateQueries({ queryKey: ['sessions', project.id] });
-      navigate(`/workspace/${result.session.id}`);
     },
   });
+  const actionError =
+    start.error && start.variables && currentOperation(start.variables.generation)
+      ? start.error
+      : transition.error &&
+          transition.variables &&
+          currentOperation(transition.variables.generation)
+        ? transition.error
+        : null;
   const manualScope = browserCreationScope(useAuthMode(), useAuthUser());
   const manual = useManualTaskStart(project.id, selected?.id, manualScope, () => {
     void client.invalidateQueries({ queryKey: ['tasks', project.id] });
@@ -457,6 +504,7 @@ export function ProjectWorkPage() {
                       <h4>执行</h4>
                       <AhSelect
                         aria-label="运行 Agent"
+                        disabled={start.isPending || transition.isPending || manual.busy}
                         label=""
                         value={runAgentId || selected.assignedAgentId || ''}
                         onChange={(value) => setRunAgentId(value ?? '')}
@@ -506,13 +554,21 @@ export function ProjectWorkPage() {
                     </section>
                     {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
                     {manual.message ? <p role="status">{manual.message}</p> : null}
+                    {actionError ? (
+                      <AhErrorState title="任务操作失败" description={actionError.message} />
+                    ) : null}
                     <div className={projectsStyles.inspectorActions}>
                       <AhButton
                         size="xs"
                         variant="light"
                         onClick={() =>
                           runAgentId
-                            ? start.mutate({ id: selected.id, agentId: runAgentId })
+                            ? start.mutate({
+                                id: selected.id,
+                                agentId: runAgentId,
+                                status: selected.status,
+                                generation: operationContext.current.generation,
+                              })
                             : void manual.begin()
                         }
                         loading={transition.isPending || start.isPending || manual.busy}
@@ -555,7 +611,13 @@ export function ProjectWorkPage() {
                         pending={
                           transition.isPending || start.isPending || manual.busy || manual.unknown
                         }
-                        onCancel={() => transition.mutate({ id: selected.id, status: 'CANCELED' })}
+                        onCancel={() =>
+                          transition.mutate({
+                            id: selected.id,
+                            status: 'CANCELED',
+                            generation: operationContext.current.generation,
+                          })
+                        }
                       />
                     </div>
                   </>

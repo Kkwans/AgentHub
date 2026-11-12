@@ -51,6 +51,7 @@ function mount(rows: unknown[] | Promise<unknown[]> = [], query = '') {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/projects/${project.id}/work${query}`]}>
         <Routes>
+          <Route path="/workspace/:sessionId" element={<h2>已进入工作区</h2>} />
           <Route path="/projects/:projectId" element={<ProjectContextLayout />}>
             <Route path="work" element={<ProjectWorkPage />} />
             <Route path="work/new" element={<h2>创建当前项目工作</h2>} />
@@ -126,4 +127,189 @@ it('无Agent手工开始从BACKLOG先READY再IN_PROGRESS，不启动Session', as
     ]),
   );
   await screen.findByText('任务已标记为进行中；没有启动 Agent。');
+});
+
+it.each(['BACKLOG', 'BLOCKED', 'READY'])('Agent启动%s遵守READY前置合同', async (status) => {
+  vi.mocked(api.post).mockResolvedValue({ session: { id: 'session-1' } } as never);
+  mount([{ ...task, status }], '?agentId=agent-1');
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/start', { agentId: 'agent-1' }),
+  );
+  expect(vi.mocked(api.post).mock.calls).toEqual([
+    ...(status === 'READY' ? [] : [['/tasks/task-1/transition', { status: 'READY' }]]),
+    ['/tasks/task-1/start', { agentId: 'agent-1' }],
+  ]);
+});
+it('Agent启动前转换失败可见且不继续start', async () => {
+  vi.mocked(api.post).mockRejectedValue(new Error('任务状态已变化，请刷新'));
+  mount([{ ...task, status: 'BACKLOG' }], '?agentId=agent-1');
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  expect(await screen.findByText('任务状态已变化，请刷新')).toBeVisible();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+it('Agent启动失败可见且不自动重试', async () => {
+  vi.mocked(api.post).mockRejectedValue(new Error('任务 Prompt 缺少必填变量，尚未启动 Agent'));
+  mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  expect(await screen.findByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).toBeVisible();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+it.each(['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'])(
+  '%s不允许重复Agent启动',
+  async (status) => {
+    mount([{ ...task, status }], '?agentId=agent-1');
+    const button = await screen.findByRole('button', { name: '启动 Session' });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(api.post).not.toHaveBeenCalled();
+  },
+);
+it('取消状态转换失败可见', async () => {
+  vi.mocked(api.post).mockRejectedValue(new Error('取消状态更新失败'));
+  mount([task]);
+  fireEvent.click(await screen.findByRole('button', { name: '取消' }));
+  expect(await screen.findByText('取消状态更新失败')).toBeVisible();
+});
+
+it('切换选择后不继续旧任务的启动，也不把旧错误显示给新任务', async () => {
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  const client = mount([{ ...task, status: 'BLOCKED' }], '?agentId=agent-1');
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/transition', { status: 'READY' }),
+  );
+  await act(async () =>
+    client.setQueryData(
+      ['tasks', project.id],
+      [{ ...task, id: 'task-2', title: '另一项工作', status: 'READY' }],
+    ),
+  );
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('complementary', { name: '工作 Inspector' })).getByText('另一项工作'),
+    ).toBeVisible(),
+  );
+  await act(async () => finish({ ...task, status: 'READY' }));
+  expect(api.post).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('任务操作失败')).not.toBeInTheDocument();
+});
+it('旧任务启动失败不污染后来选中的任务', async () => {
+  let reject!: (reason: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      }) as never,
+  );
+  const client = mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/start', { agentId: 'agent-1' }),
+  );
+  // Keep the refreshed response aligned with the new selected row.
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(path: string) =>
+      (path === `/projects/${project.id}`
+        ? project
+        : path.startsWith('/tasks?')
+          ? [{ ...task, id: 'task-2', title: '另一项工作', status: 'READY' }]
+          : []) as T,
+  );
+  await act(async () =>
+    client.setQueryData(
+      ['tasks', project.id],
+      [{ ...task, id: 'task-2', title: '另一项工作', status: 'READY' }],
+    ),
+  );
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('complementary', { name: '工作 Inspector' })).getByText('另一项工作'),
+    ).toBeVisible(),
+  );
+  await act(async () => reject(new Error('旧任务失败')));
+  expect(screen.queryByText('旧任务失败')).not.toBeInTheDocument();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+it('旧任务启动成功迟到后不跳离新选择', async () => {
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  const client = mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/start', { agentId: 'agent-1' }),
+  );
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(path: string) =>
+      (path === `/projects/${project.id}`
+        ? project
+        : path.startsWith('/tasks?')
+          ? [{ ...task, id: 'task-2', title: '另一项工作', status: 'READY' }]
+          : []) as T,
+  );
+  await act(async () =>
+    client.setQueryData(
+      ['tasks', project.id],
+      [{ ...task, id: 'task-2', title: '另一项工作', status: 'READY' }],
+    ),
+  );
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('complementary', { name: '工作 Inspector' })).getByText('另一项工作'),
+    ).toBeVisible(),
+  );
+  await act(async () => finish({ session: { id: 'session-1' } }));
+  expect(screen.queryByText('已进入工作区')).not.toBeInTheDocument();
+  expect(screen.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
+});
+it('离开页面后不继续转换之后的启动请求', async () => {
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  mount([{ ...task, status: 'BLOCKED' }], '?agentId=agent-1');
+  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/transition', { status: 'READY' }),
+  );
+  cleanup();
+  await act(async () => finish({ ...task, status: 'READY' }));
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+it('READY转换期间锁定运行Agent选择，失败结束后恢复选择', async () => {
+  let reject!: (reason: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      }) as never,
+  );
+  mount([{ ...task, status: 'BLOCKED' }], '?agentId=agent-1');
+  const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
+  expect(selector).not.toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '启动 Session' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/transition', { status: 'READY' }),
+  );
+  expect(selector).toBeDisabled();
+  await act(async () => reject(new Error('转换失败')));
+  await screen.findByText('转换失败');
+  expect(selector).not.toBeDisabled();
+  expect(api.post).toHaveBeenCalledTimes(1);
 });

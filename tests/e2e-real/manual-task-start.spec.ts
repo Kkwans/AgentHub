@@ -1,4 +1,4 @@
-import { apiData } from './baseline-support.js';
+import { apiData, seedWorkspace } from './baseline-support.js';
 import { expect, initializeGitProject, test } from './fixtures.js';
 
 test.use({ authMode: 'local_trusted' });
@@ -101,4 +101,48 @@ for (const width of [390, 768, 1024, 1440]) {
       expect(errors).toEqual([]);
     });
   }
+}
+
+for (const width of [390, 768, 1024, 1440]) {
+  test(`阻塞任务可通过合法转换重新启动 Agent ${width}`, async ({ page, context, app }, info) => {
+    const { project } = await seedWorkspace(context, app);
+    const task = await apiData<{ id: string }>(context, 'post', '/tasks', {
+      projectId: project.id,
+      title: '恢复被阻塞的工作',
+    });
+    for (const status of ['READY', 'IN_PROGRESS', 'BLOCKED']) {
+      await apiData(context, 'post', `/tasks/${task.id}/transition`, { status });
+    }
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    const requests: Array<{ path: string; body: unknown }> = [];
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname;
+      if (request.method() === 'POST' && path.startsWith(`/api/v1/tasks/${task.id}/`))
+        requests.push({ path, body: request.postDataJSON() });
+    });
+    await page.goto(`/projects/${project.id}/work?task=${task.id}`);
+    await page.getByRole('combobox', { name: '运行 Agent' }).click();
+    await page.getByRole('option', { name: 'v1 baseline agent', exact: true }).click();
+    const start = page.getByRole('button', { name: '启动 Session', exact: true });
+    await expect(start).toBeEnabled();
+    await start.scrollIntoViewIfNeeded();
+    await start.click();
+    await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+    expect(requests.map((request) => request.path)).toEqual([
+      `/api/v1/tasks/${task.id}/transition`,
+      `/api/v1/tasks/${task.id}/start`,
+    ]);
+    expect(requests[0]?.body).toEqual({ status: 'READY' });
+    const stored = await apiData<{ sessionId: string }>(context, 'get', `/tasks/${task.id}`);
+    expect(page.url()).toContain(`/workspace/${stored.sessionId}`);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const screenshot = info.outputPath(`blocked-task-restarted-${width}.png`);
+    await page.screenshot({ path: screenshot, fullPage: true });
+    await info.attach('阻塞任务已恢复工作区', { path: screenshot, contentType: 'image/png' });
+    expect(errors).toEqual([]);
+  });
 }
