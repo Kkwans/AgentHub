@@ -1955,6 +1955,354 @@ describe('Session/Run/Approval 持久化闭环', () => {
     }
   });
 
+  it('AH065当前连接配置失败不毒化队列且仅持久化请求字段', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '有效配置',
+      cwd: '/tmp',
+      mode: 'initial-mode',
+    });
+    const set = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('controlled failure'))
+      .mockResolvedValueOnce({
+        supported: true,
+        current: { model: 'selected-model', mode: 'unrequested-mode', reasoningEffort: null },
+        options: { models: [], modes: [], reasoningEfforts: [] },
+      });
+    Object.assign(adapter.handles[0]!, { setConfiguration: set });
+    try {
+      const failed = f.service
+        .updateConfiguration(session.id, { model: 'bad-model' })
+        .catch((error: unknown) => error);
+      const success = f.service.updateConfiguration(session.id, { model: 'selected-model' });
+      expect(await failed).toMatchObject({ code: 'SESSION_CONFIGURATION_FAILED' });
+      expect(await success).toMatchObject({ current: { model: 'selected-model' } });
+      expect(set).toHaveBeenCalledTimes(2);
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'selected-model',
+        mode: 'initial-mode',
+      });
+      adapter.handles[0]!.configuration({ mode: 'event-mode' });
+      await waitFor(
+        async () => (await f.repositories.sessions.get(session.id))?.mode === 'event-mode',
+      );
+      expect((await f.repositories.sessions.get(session.id))?.model).toBe('selected-model');
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH065旧配置事件写入挂起后恢复的新模型不能被覆盖', async () => {
+    const adapter = Object.assign(new ControlledAdapter('reject'), {
+      async resumeSession(this: ControlledAdapter, input: CreateAgentSessionInput) {
+        const handle = await this.createSession(input);
+        return Object.assign(handle, {
+          async getConfiguration() {
+            return {
+              supported: true,
+              current: { model: 'new-model', mode: 'new-mode', reasoningEffort: null },
+              options: { models: [], modes: [], reasoningEfforts: [] },
+            };
+          },
+        });
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '配置代际',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: '原连接' });
+    let release = () => undefined as void;
+    let entered = false;
+    const configurationConsumer = f.service as unknown as {
+      persistConfigurationPayload: (...args: unknown[]) => Promise<boolean>;
+    };
+    const apply = configurationConsumer.persistConfigurationPayload.bind(f.service);
+    vi.spyOn(configurationConsumer, 'persistConfigurationPayload').mockImplementationOnce(
+      async (...args) => {
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return apply(...args);
+      },
+    );
+    const consumer = f.service as unknown as {
+      persistEvent: (...args: unknown[]) => Promise<void>;
+    };
+    const event = vi.spyOn(consumer, 'persistEvent');
+    try {
+      adapter.handles[0]!.configuration({ model: 'old-model', mode: 'old-mode' });
+      await waitFor(async () => entered);
+      await f.service.cancelRun(session.id, run.id);
+      await waitFor(
+        async () => (await f.repositories.sessions.get(session.id))?.status === 'DISCONNECTED',
+      );
+      await f.service.resume(session.id);
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'new-model',
+        mode: 'new-mode',
+      });
+      release();
+      await event.mock.results[0]!.value;
+      expect(
+        f.published.find(
+          ({ topic, event }) =>
+            topic === `session:${session.id}` && event.type === 'agent.configuration.updated',
+        )?.event.payloadJson,
+      ).toMatchObject({ ignored: true, ignoredReason: 'STALE_ACTIVATION' });
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'new-model',
+        mode: 'new-mode',
+      });
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH065当前配置持久化先赢时取消等待提交且恢复覆盖旧值', async () => {
+    const adapter = Object.assign(new ControlledAdapter('reject'), {
+      async resumeSession(this: ControlledAdapter, input: CreateAgentSessionInput) {
+        const handle = await this.createSession(input);
+        return Object.assign(handle, {
+          async getConfiguration() {
+            return {
+              supported: true,
+              current: { model: 'new-model', mode: 'new-mode', reasoningEffort: null },
+              options: { models: [], modes: [], reasoningEfforts: [] },
+            };
+          },
+        });
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '配置代际',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: '原连接' });
+    let release = () => undefined as void;
+    let entered = false;
+    const update = f.repositories.sessions.updateConfiguration.bind(f.repositories.sessions);
+    vi.spyOn(f.repositories.sessions, 'updateConfiguration').mockImplementation(
+      async (id, patch, options) => {
+        if (patch.model === 'old-model') {
+          entered = true;
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        }
+        return update(id, patch, options);
+      },
+    );
+    const consumer = f.service as unknown as {
+      persistEvent: (...args: unknown[]) => Promise<void>;
+    };
+    const event = vi.spyOn(consumer, 'persistEvent');
+    try {
+      adapter.handles[0]!.configuration({ model: 'old-model', mode: 'old-mode' });
+      await waitFor(async () => entered);
+      const commits = f.service as unknown as {
+        withActivationCommit: (id: string, action: () => Promise<unknown>) => Promise<unknown>;
+      };
+      const commit = commits.withActivationCommit.bind(f.service);
+      let queued = false;
+      vi.spyOn(commits, 'withActivationCommit').mockImplementation((id, action) => {
+        queued = true;
+        return commit(id, action);
+      });
+      let canceled = false;
+      const cancellation = f.service.cancelRun(session.id, run.id).then((result) => {
+        canceled = true;
+        return result;
+      });
+      await waitFor(async () => queued);
+      expect(canceled).toBe(false);
+      release();
+      await cancellation;
+      await waitFor(
+        async () => (await f.repositories.sessions.get(session.id))?.status === 'DISCONNECTED',
+      );
+      await f.service.resume(session.id);
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'new-model',
+        mode: 'new-mode',
+      });
+      release();
+      await event.mock.results[0]!.value;
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'new-model',
+        mode: 'new-mode',
+      });
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH065旧配置请求与排队请求恢复后不得写入或调用旧handle', async () => {
+    const adapter = Object.assign(new ControlledAdapter('reject'), {
+      async resumeSession(this: ControlledAdapter, input: CreateAgentSessionInput) {
+        const handle = await this.createSession(input);
+        return Object.assign(handle, {
+          async getConfiguration() {
+            return {
+              supported: true,
+              current: { model: 'new-model', mode: 'new-mode', reasoningEffort: null },
+              options: { models: [], modes: [], reasoningEfforts: [] },
+            };
+          },
+        });
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '配置代际',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: '原连接' });
+    let release = () => undefined as void;
+    let entered = false;
+    const set = vi.fn(async () => {
+      if (!entered) {
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      return {
+        supported: true,
+        current: { model: 'old-model', mode: 'old-mode', reasoningEffort: null },
+        options: { models: [], modes: [], reasoningEfforts: [] },
+      };
+    });
+    Object.assign(adapter.handles[0]!, { setConfiguration: set });
+    let first: Promise<unknown> | undefined;
+    let second: Promise<unknown> | undefined;
+    try {
+      first = f.service
+        .updateConfiguration(session.id, { model: 'old-model' })
+        .catch((error: unknown) => error);
+      await waitFor(async () => entered);
+      second = f.service
+        .updateConfiguration(session.id, { mode: 'old-mode' })
+        .catch((error: unknown) => error);
+      await f.service.cancelRun(session.id, run.id);
+      await waitFor(
+        async () => (await f.repositories.sessions.get(session.id))?.status === 'DISCONNECTED',
+      );
+      await f.service.resume(session.id);
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'new-model',
+        mode: 'new-mode',
+      });
+      release();
+      expect(await first).toMatchObject({ code: 'SESSION_LIFECYCLE_SUPERSEDED' });
+      expect(await second).toMatchObject({ code: 'SESSION_LIFECYCLE_SUPERSEDED' });
+      expect(set).toHaveBeenCalledTimes(1);
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'new-model',
+        mode: 'new-mode',
+      });
+    } finally {
+      release();
+      await Promise.allSettled([first, second]);
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH065新activation配置请求不应被旧provider挂起阻塞', async () => {
+    const adapter = Object.assign(new ControlledAdapter('reject'), {
+      async resumeSession(this: ControlledAdapter, input: CreateAgentSessionInput) {
+        const handle = await this.createSession(input);
+        return Object.assign(handle, {
+          async getConfiguration() {
+            return {
+              supported: true,
+              current: { model: 'new-model', mode: 'new-mode', reasoningEffort: null },
+              options: { models: [], modes: [], reasoningEfforts: [] },
+            };
+          },
+        });
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '配置代际',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: '原连接' });
+    let release = () => undefined as void;
+    let entered = false;
+    const set = vi.fn(async () => {
+      if (!entered) {
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+      return {
+        supported: true,
+        current: { model: 'old-model', mode: 'old-mode', reasoningEffort: null },
+        options: { models: [], modes: [], reasoningEfforts: [] },
+      };
+    });
+    Object.assign(adapter.handles[0]!, { setConfiguration: set });
+    let first: Promise<unknown> | undefined;
+    let second: Promise<unknown> | undefined;
+    try {
+      first = f.service
+        .updateConfiguration(session.id, { model: 'old-model' })
+        .catch((error: unknown) => error);
+      await waitFor(async () => entered);
+      second = f.service
+        .updateConfiguration(session.id, { mode: 'old-mode' })
+        .catch((error: unknown) => error);
+      await f.service.cancelRun(session.id, run.id);
+      await waitFor(
+        async () => (await f.repositories.sessions.get(session.id))?.status === 'DISCONNECTED',
+      );
+      await f.service.resume(session.id);
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        model: 'new-model',
+        mode: 'new-mode',
+      });
+      const newSet = vi.fn(async () => ({
+        supported: true,
+        current: { model: 'fresh-model', mode: 'new-mode', reasoningEffort: null },
+        options: { models: [], modes: [], reasoningEfforts: [] },
+      }));
+      Object.assign(adapter.handles[1]!, { setConfiguration: newSet });
+      const fresh = f.service
+        .updateConfiguration(session.id, { model: 'fresh-model' })
+        .catch((error: unknown) => error);
+      await waitFor(async () => newSet.mock.calls.length === 1, 500);
+      expect(await fresh).toMatchObject({ current: { model: 'fresh-model' } });
+      release();
+      await first;
+      await second;
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({ model: 'fresh-model' });
+    } finally {
+      release();
+      await Promise.allSettled([first, second]);
+      await f.service.shutdown();
+    }
+  });
+
   it.each(['cancel', 'resume'] as const)(
     'AH064权限读取后%s胜出不得发布旧权限或覆盖Session',
     async (action) => {
@@ -3837,6 +4185,10 @@ class ControlledHandle implements AgentSessionHandle {
       },
       this.runId,
     );
+  }
+
+  configuration(current: Record<string, unknown>): void {
+    this.emit('agent.configuration.updated', { current });
   }
 
   disconnect(runId?: string): void {

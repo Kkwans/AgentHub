@@ -159,3 +159,6 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH064 / P1：审批请求建row后的第二次Run读取可与取消交错；真实Service/PGlite两条旧源诊断失败：取消先赢仍把Session写为WAITING_APPROVAL，取消拒绝并resume后仍发布已取消旧审批的可操作通知。第二条未污染Session（非法转换被拒绝），不扩大证据。修复将审批资格/latestRun/activation检查、状态与请求建立、可操作通知和取消CAS/撤销pending共享同实例短提交边界；Task回调与供应商取消在锁外。164专项通过，S45完整门禁进行中；保留已决定历史、原始事件，多请求取消与双向顺序有回归。
 - AH064验收更新：S45全仓922单测/10跳过、lint/types/build/QA通过，最终164专项与独立CR通过；待发布后exact CI验证，限同实例审批/取消提交协调。
+
+- AH065 / P1：旧连接配置事件/请求会越过恢复后的配置归属。真实Service/PGlite确认三类：旧原生事件持久化迟到覆盖新模型/模式；旧provider setter响应在resume后仍成功写旧值；新activation配置请求被旧provider长挂队列阻塞。旧源3条负控全失败。修复按activation隔离配置队列、调用前与提交时重验、原生事件短提交并标记ignored；169专项与独立CR通过，S46全仓门禁进行中。已发送旧provider操作不回滚、不自动重放；跨进程与全局shutdown协调不在本片范围。
+- AH065验收更新：lint/types/build及独立CR通过，169专项通过；默认全仓因两未修改PGlite测试文件OOM退出，保留失败。资源隔离后对完整清单核验927项全通过且无遗漏，10原有skip不变，QA10通过；待新HEAD远端CI。

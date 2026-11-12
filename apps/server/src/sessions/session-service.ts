@@ -142,7 +142,10 @@ export class SessionService {
   >();
   private readonly runAdmissions = new Set<string>();
   private readonly cancellationTimers = new Map<string, CancellationTimer>();
-  private readonly configurationQueues = new Map<string, Promise<void>>();
+  private readonly configurationQueues = new Map<
+    string,
+    { activationId: string; settled: Promise<void> }
+  >();
   private readonly cancelConvergenceTimeoutMs: number;
   private readonly approvalDeliveryTimeoutMs: number;
   private taskLifecycle?: TaskRunLifecycleObserver;
@@ -255,32 +258,47 @@ export class SessionService {
       throw new AppError(409, 'SESSION_NOT_CONNECTED', 'Session 当前未连接 Agent');
     }
 
-    const previous = this.configurationQueues.get(id) ?? Promise.resolve();
+    const queued = this.configurationQueues.get(id);
+    const previous =
+      queued?.activationId === active.activationId ? queued.settled : Promise.resolve();
     const operation = previous.then(async () => {
+      const assertCurrent = () => {
+        if (!this.isCurrentActivation(id, active.activationId))
+          throw new AppError(
+            409,
+            'SESSION_LIFECYCLE_SUPERSEDED',
+            'Session 连接已变化，请重新读取当前配置',
+          );
+      };
+      assertCurrent();
       let configuration: SessionConfiguration;
       try {
         configuration = await active.handle.setConfiguration!(patch);
       } catch (error) {
         throw configurationError(error, '更新 Session 配置失败');
       }
-      const current = configuration.current;
-      await this.sessions.updateConfiguration(id, {
-        ...(Object.prototype.hasOwnProperty.call(patch, 'model') ? { model: current.model } : {}),
-        ...(Object.prototype.hasOwnProperty.call(patch, 'mode') ? { mode: current.mode } : {}),
-        ...(Object.prototype.hasOwnProperty.call(patch, 'reasoningEffort')
-          ? { reasoningEffort: current.reasoningEffort }
-          : {}),
+      return this.withActivationCommit(id, async () => {
+        assertCurrent();
+        const current = configuration.current;
+        await this.sessions.updateConfiguration(id, {
+          ...(Object.prototype.hasOwnProperty.call(patch, 'model') ? { model: current.model } : {}),
+          ...(Object.prototype.hasOwnProperty.call(patch, 'mode') ? { mode: current.mode } : {}),
+          ...(Object.prototype.hasOwnProperty.call(patch, 'reasoningEffort')
+            ? { reasoningEffort: current.reasoningEffort }
+            : {}),
+        });
+        await this.publishConfigurationEvent(id, session.projectId, configuration);
+        return configuration;
       });
-      await this.publishConfigurationEvent(id, session.projectId, configuration);
-      return configuration;
     });
     const settled = operation.then(
       () => undefined,
       () => undefined,
     );
-    this.configurationQueues.set(id, settled);
+    const entry = { activationId: active.activationId, settled };
+    this.configurationQueues.set(id, entry);
     void settled.finally(() => {
-      if (this.configurationQueues.get(id) === settled) this.configurationQueues.delete(id);
+      if (this.configurationQueues.get(id) === entry) this.configurationQueues.delete(id);
     });
     return operation;
   }
@@ -1473,7 +1491,12 @@ export class SessionService {
       ? event.payload
       : { ...event.payload, ignored: true, ignoredReason: 'STALE_ACTIVATION' };
     if (currentActivation && event.type === 'agent.configuration.updated') {
-      await this.persistConfigurationPayload(event.sessionId, payload);
+      const applied = await this.persistConfigurationPayload(
+        event.sessionId,
+        payload,
+        activationId,
+      );
+      if (!applied) payload = { ...payload, ignored: true, ignoredReason: 'STALE_ACTIVATION' };
     }
     if (
       currentActivation &&
@@ -1727,25 +1750,30 @@ export class SessionService {
   private async persistConfigurationPayload(
     sessionId: string,
     payload: Record<string, unknown>,
-  ): Promise<void> {
-    const current = isRecord(payload.current) ? payload.current : undefined;
-    if (!current) return;
-    const patch: {
-      model?: string | null;
-      mode?: string | null;
-      reasoningEffort?: string | null;
-    } = {};
-    if (Object.prototype.hasOwnProperty.call(current, 'model')) {
-      patch.model = typeof current.model === 'string' ? current.model : null;
-    }
-    if (Object.prototype.hasOwnProperty.call(current, 'mode')) {
-      patch.mode = typeof current.mode === 'string' ? current.mode : null;
-    }
-    if (Object.prototype.hasOwnProperty.call(current, 'reasoningEffort')) {
-      patch.reasoningEffort =
-        typeof current.reasoningEffort === 'string' ? current.reasoningEffort : null;
-    }
-    if (Object.keys(patch).length) await this.sessions.updateConfiguration(sessionId, patch);
+    activationId: string,
+  ): Promise<boolean> {
+    return this.withActivationCommit(sessionId, async () => {
+      if (!this.isCurrentActivation(sessionId, activationId)) return false;
+      const current = isRecord(payload.current) ? payload.current : undefined;
+      if (!current) return true;
+      const patch: {
+        model?: string | null;
+        mode?: string | null;
+        reasoningEffort?: string | null;
+      } = {};
+      if (Object.prototype.hasOwnProperty.call(current, 'model')) {
+        patch.model = typeof current.model === 'string' ? current.model : null;
+      }
+      if (Object.prototype.hasOwnProperty.call(current, 'mode')) {
+        patch.mode = typeof current.mode === 'string' ? current.mode : null;
+      }
+      if (Object.prototype.hasOwnProperty.call(current, 'reasoningEffort')) {
+        patch.reasoningEffort =
+          typeof current.reasoningEffort === 'string' ? current.reasoningEffort : null;
+      }
+      if (Object.keys(patch).length) await this.sessions.updateConfiguration(sessionId, patch);
+      return true;
+    });
   }
 
   private async publishConfigurationEvent(
