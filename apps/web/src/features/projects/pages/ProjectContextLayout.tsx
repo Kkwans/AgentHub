@@ -1,3 +1,4 @@
+import { useProjectEligibility } from '../hooks/useProjectEligibility';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   AhButton,
@@ -116,10 +117,7 @@ export function ProjectContextLayout() {
     queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${projectId}`),
     enabled: Boolean(projectId),
   });
-  const agents = useQuery({
-    queryKey: ['agents'],
-    queryFn: () => api.get<AgentRecord[]>('/agents'),
-  });
+  const eligibility = useProjectEligibility(projectId);
   const [searchParams, setSearchParams] = useSearchParams();
   const [kind, setKind] = useState<'STANDARD' | 'TEST'>('STANDARD');
   useEffect(() => {
@@ -149,9 +147,10 @@ export function ProjectContextLayout() {
   const activeWorkCount = (tasks.data ?? []).filter(
     (task) => !['DONE', 'CANCELED'].includes(task.status),
   ).length;
-  const readyAgentCount = (agents.data ?? []).filter(
-    (agent) => agent.enabled && agent.status === 'READY',
-  ).length;
+  const eligibleAgentCount =
+    eligibility.isSuccess && !eligibility.isFetching
+      ? eligibility.data.filter((entry) => entry.eligible).length
+      : undefined;
   const tabs = [
     { to: `${base}/overview`, label: '概览' },
     { to: `${base}/work`, label: '工作' },
@@ -186,7 +185,13 @@ export function ProjectContextLayout() {
                 {latestSession?.branch ?? (project.data.repoKind === 'GIT' ? 'main' : '无 Git')}
               </span>
               {projectType ? <span title={project.data.rootPath}>{projectType}</span> : null}
-              <span>{readyAgentCount} Agent</span>
+              <span title="仅登记状态下的项目资格，运行前仍需预检。">
+                {eligibleAgentCount !== undefined
+                  ? `${eligibleAgentCount} 个登记可用 Agent`
+                  : eligibility.isError
+                    ? 'Agent 资格读取失败'
+                    : 'Agent 资格确认中'}
+              </span>
               <span>{activeWorkCount} 个运行中</span>
             </div>
           </div>

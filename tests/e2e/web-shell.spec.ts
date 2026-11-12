@@ -798,6 +798,10 @@ test('Projects 使用高密度实体列表并打开路由弹层', async ({ page 
 
 test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, testInfo) => {
   await page.goto(`/projects/${project.id}/overview`);
+  await expect(page.getByText('1 个登记可用 Agent', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('登记状态下 1 个可用；运行前仍需预检', { exact: true }),
+  ).toBeVisible();
   const context = page.getByRole('navigation', { name: '项目上下文' });
   await expect(context.getByRole('link')).toHaveText(['概览', '工作', '会话'], {
     timeout: SHELL_READY_TIMEOUT,
@@ -974,6 +978,21 @@ async function fulfillFixture(route: Route) {
       setupRequired: false,
       authenticated: true,
       user: null,
+    };
+  } else if (path.endsWith(`/projects/${project.id}/agent-eligibility`)) {
+    data = {
+      projectId: project.id,
+      basis: 'REGISTERED_STATE',
+      livePreflight: false,
+      agents: [
+        {
+          agentId: agent.id,
+          eligible: true,
+          reason: null,
+          agentStatus: 'READY',
+          targetStatus: 'READY',
+        },
+      ],
     };
   } else if (path.endsWith(`/projects/${project.id}/preflight`)) {
     data = {

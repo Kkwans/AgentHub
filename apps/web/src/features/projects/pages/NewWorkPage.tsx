@@ -1,3 +1,5 @@
+import { eligibilityReasons } from '../lib/project-eligibility';
+import { useProjectEligibility } from '../hooks/useProjectEligibility';
 import { useAuthMode, useAuthUser } from '../../../components/AccessGate';
 import { browserCreationScope } from '../lib/task-creation-recovery';
 import { useTaskCreationRecovery } from '../hooks/useTaskCreationRecovery';
@@ -22,57 +24,6 @@ import { domainStatusLabel, useCompactViewport } from '../../shared/page-primiti
 import { useNewTaskCreation } from '../hooks/useNewTaskCreation';
 import { useProjectContext } from './ProjectContextLayout';
 import { ProjectWorkPage } from './ProjectWorkPage';
-
-const eligibilityReasons: Record<string, string> = {
-  DISABLED: '已禁用',
-  NOT_READY: '尚未就绪',
-  TARGET_MISSING: '执行环境不存在',
-  PROJECT_TARGET_MISSING: '项目执行环境不存在',
-  PROJECT_INACTIVE: '项目未启用',
-  INCOMPATIBLE_WORKSPACE: '无法访问项目工作区',
-  REMOTE_GATEWAY_UNAVAILABLE: '远程网关不可用',
-};
-type EligibilityEntry = {
-  agentId: string;
-  eligible: boolean;
-  reason: string | null;
-  agentStatus: string;
-  targetStatus: string | null;
-};
-function parseEligibility(value: unknown, projectId: string): EligibilityEntry[] {
-  const data = value as {
-    projectId?: unknown;
-    basis?: unknown;
-    livePreflight?: unknown;
-    agents?: unknown;
-  } | null;
-  if (
-    !data ||
-    data.projectId !== projectId ||
-    data.basis !== 'REGISTERED_STATE' ||
-    data.livePreflight !== false ||
-    !Array.isArray(data.agents)
-  )
-    throw new Error('项目 Agent 资格响应无法确认，请刷新后重试。');
-  const ids = new Set<string>();
-  for (const entry of data.agents) {
-    if (
-      !entry ||
-      typeof entry.agentId !== 'string' ||
-      !entry.agentId ||
-      ids.has(entry.agentId) ||
-      typeof entry.eligible !== 'boolean' ||
-      typeof entry.agentStatus !== 'string' ||
-      !(entry.targetStatus === null || typeof entry.targetStatus === 'string') ||
-      (entry.eligible
-        ? entry.reason !== null || entry.agentStatus !== 'READY' || entry.targetStatus === null
-        : typeof entry.reason !== 'string' || !Object.hasOwn(eligibilityReasons, entry.reason))
-    )
-      throw new Error('项目 Agent 资格响应无法确认，请刷新后重试。');
-    ids.add(entry.agentId);
-  }
-  return data.agents as EligibilityEntry[];
-}
 
 export function NewWorkPage() {
   const project = useProjectContext();
@@ -199,15 +150,7 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
     queryKey: ['prompts', project.id],
     queryFn: () => api.get<PromptRecord[]>(`/prompts?projectId=${project.id}`),
   });
-  const eligibility = useQuery({
-    queryKey: ['agent-eligibility', project.id],
-    queryFn: async () =>
-      parseEligibility(
-        await api.get<unknown>(`/projects/${encodeURIComponent(project.id)}/agent-eligibility`),
-        project.id,
-      ),
-    retry: false,
-  });
+  const eligibility = useProjectEligibility(project.id);
   const eligibilityKnown =
     eligibility.isSuccess && !eligibility.isFetching && !agents.isError && !agents.isPending;
   const selectableAgents = (agents.data ?? []).filter(

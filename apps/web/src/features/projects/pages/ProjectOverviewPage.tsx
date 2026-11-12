@@ -1,3 +1,4 @@
+import { useProjectEligibility } from '../hooks/useProjectEligibility';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   AhButton,
@@ -101,6 +102,7 @@ import { useProjectContext } from './ProjectContextLayout';
 
 export function ProjectOverviewPage() {
   const project = useProjectContext();
+  const eligibility = useProjectEligibility(project.id);
   const tasks = useQuery({
     queryKey: ['tasks', project.id],
     queryFn: () => api.get<TaskRecord[]>(`/tasks?projectId=${project.id}`),
@@ -169,31 +171,45 @@ export function ProjectOverviewPage() {
         .slice(0, 4),
     [sessions.data],
   );
-  const healthItems = [
-    project.repoKind === 'GIT'
-      ? {
-          label: 'Git 仓库',
-          detail: preflight.data?.git?.branch
-            ? `${preflight.data.git.branch}${preflight.data.git.dirty ? ' · 有未提交变更' : ' · 工作区干净'}`
-            : '已识别 Git 仓库',
-          ok: preflight.data?.git?.detected !== false && !preflight.error,
-        }
-      : null,
-    agents.data
-      ? {
-          label: 'Agent 可用',
-          detail: `${agents.data.filter((agent) => agent.status === 'READY' && agent.enabled).length} 个已就绪`,
-          ok: agents.data.some((agent) => agent.status === 'READY' && agent.enabled),
-        }
-      : null,
-    preflight.data
-      ? {
-          label: '项目目录',
-          detail: preflight.data.status === 'READY' ? '路径与权限检查通过' : '需要处理目录检查',
-          ok: preflight.data.status === 'READY',
-        }
-      : null,
-  ].filter((item): item is { label: string; detail: string; ok: boolean } => Boolean(item));
+  const preflightKnown = preflight.isSuccess && !preflight.isFetching;
+  const eligibilityKnown = eligibility.isSuccess && !eligibility.isFetching;
+  const healthItems: Array<{ label: string; detail: string; ok: boolean | null }> = [
+    ...(project.repoKind === 'GIT'
+      ? [
+          {
+            label: 'Git 仓库',
+            detail: !preflightKnown
+              ? '已登记为 Git 项目；当前预检结果待确认'
+              : preflight.data.git?.detected !== true
+                ? '当前预检未确认 Git 仓库'
+                : preflight.data.git.branch
+                  ? `${preflight.data.git.branch}${preflight.data.git.dirty === true ? ' · 有未提交变更' : preflight.data.git.dirty === false ? ' · 工作区干净' : ''}`
+                  : '当前预检已确认 Git 仓库',
+            ok: preflightKnown
+              ? preflight.data.status === 'READY' && preflight.data.git?.detected === true
+              : null,
+          },
+        ]
+      : []),
+    {
+      label: '项目 Agent 资格',
+      detail: eligibilityKnown
+        ? `登记状态下 ${eligibility.data.filter((entry) => entry.eligible).length} 个可用；运行前仍需预检`
+        : eligibility.isError
+          ? '登记资格读取失败，无法确认可用数量'
+          : '正在读取项目登记资格',
+      ok: eligibilityKnown ? eligibility.data.some((entry) => entry.eligible) : null,
+    },
+    {
+      label: '项目目录',
+      detail: !preflightKnown
+        ? '当前路径与权限检查结果待确认'
+        : preflight.data.status === 'READY'
+          ? '路径与权限检查通过'
+          : '需要处理目录检查',
+      ok: preflightKnown ? preflight.data.status === 'READY' : null,
+    },
+  ];
   return (
     <div className={projectsStyles.overviewGrid}>
       <AhSurface className={`${projectsStyles.overviewPanel} ${projectsStyles.overviewPanelWide}`}>
@@ -205,7 +221,15 @@ export function ProjectOverviewPage() {
           <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
         </div>
         <div className={projectsStyles.overviewList}>
-          {activeTasks.map((task) => {
+          <QueryMessage
+            loading={tasks.isFetching}
+            error={tasks.error}
+            retry={() => void tasks.refetch()}
+            label={
+              tasks.data && !tasks.isError ? '正在更新工作，下方为上次读取结果' : '正在读取工作'
+            }
+          />
+          {(!tasks.isError ? activeTasks : []).map((task) => {
             const agent = task.assignedAgentId ? agentById.get(task.assignedAgentId) : undefined;
             return (
               <Link
@@ -228,7 +252,7 @@ export function ProjectOverviewPage() {
               </Link>
             );
           })}
-          {!tasks.isLoading && !activeTasks.length ? (
+          {tasks.isSuccess && !tasks.isFetching && !activeTasks.length ? (
             <AhEmptyState
               compact
               title="没有进行中的 Work"
@@ -252,13 +276,29 @@ export function ProjectOverviewPage() {
           </div>
         </div>
         <div className={projectsStyles.healthStack}>
+          <QueryMessage
+            loading={eligibility.isFetching}
+            error={eligibility.error}
+            retry={() => void eligibility.refetch()}
+            label="正在读取项目登记资格"
+          />
+          <QueryMessage
+            loading={preflight.isFetching}
+            error={preflight.error}
+            retry={() => void preflight.refetch()}
+            label="正在进行项目预检"
+          />
           {healthItems.map((item) => (
             <div className={projectsStyles.healthRow} key={item.label}>
               <span
-                className={`${projectsStyles.healthMark} ${item.ok ? '' : projectsStyles.healthMarkWarning}`}
+                className={
+                  item.ok === null
+                    ? undefined
+                    : `${projectsStyles.healthMark} ${item.ok === false ? projectsStyles.healthMarkWarning : ''}`
+                }
                 aria-hidden="true"
               >
-                {item.ok ? '✓' : '!'}
+                {item.ok === null ? '?' : item.ok ? '✓' : '!'}
               </span>
               <span className={projectsStyles.healthCopy}>
                 <strong>{item.label}</strong>
@@ -286,7 +326,17 @@ export function ProjectOverviewPage() {
           <Link to={`/projects/${project.id}/sessions`}>全部会话 →</Link>
         </div>
         <div className={projectsStyles.overviewList}>
-          {recentSessions.map((session) => {
+          <QueryMessage
+            loading={sessions.isFetching}
+            error={sessions.error}
+            retry={() => void sessions.refetch()}
+            label={
+              sessions.data && !sessions.isError
+                ? '正在更新会话，下方为上次读取结果'
+                : '正在读取会话'
+            }
+          />
+          {(!sessions.isError ? recentSessions : []).map((session) => {
             const agent = agentById.get(session.agentId);
             return (
               <Link
@@ -309,7 +359,7 @@ export function ProjectOverviewPage() {
               </Link>
             );
           })}
-          {!sessions.isLoading && !recentSessions.length ? (
+          {sessions.isSuccess && !sessions.isFetching && !recentSessions.length ? (
             <AhEmptyState
               compact
               title="还没有 Session"
@@ -329,7 +379,17 @@ export function ProjectOverviewPage() {
           <Link to={`/projects/${project.id}/work?status=WAITING_REVIEW`}>全部审阅 →</Link>
         </div>
         <div className={projectsStyles.overviewList}>
-          {reviewTasks.map((task) => (
+          <QueryMessage
+            loading={tasks.isFetching}
+            error={tasks.error}
+            retry={() => void tasks.refetch()}
+            label={
+              tasks.data && !tasks.isError
+                ? '正在更新待审阅工作，下方为上次读取结果'
+                : '正在读取待审阅工作'
+            }
+          />
+          {(!tasks.isError ? reviewTasks : []).map((task) => (
             <Link
               className={projectsStyles.reviewQueueRow}
               key={task.id}
@@ -347,7 +407,7 @@ export function ProjectOverviewPage() {
               <span className={projectsStyles.reviewAction}>查看结果</span>
             </Link>
           ))}
-          {!tasks.isLoading && !reviewTasks.length ? (
+          {tasks.isSuccess && !tasks.isFetching && !reviewTasks.length ? (
             <AhEmptyState
               compact
               title="没有待审阅结果"
