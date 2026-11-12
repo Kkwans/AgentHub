@@ -6,6 +6,8 @@ import { join, resolve } from 'node:path';
 import { expect, it } from 'vitest';
 import { createPgliteDatabase } from './client.js';
 import {
+  AgentRepository,
+  WorktreeExecutionRepository,
   ExecutionTargetRepository,
   ProjectRepository,
   PromptRepository,
@@ -91,6 +93,28 @@ it('从0005升级保留既有任务，操作账本与重放跨关闭重开持久
       promptVariablesJson: { nested: { name: '跨重开😀', empty: null }, flags: [false, 0] },
     };
     const created = await tasks.createIdempotent(input, operation);
+    const agent = await new AgentRepository(database.db).create({
+      id: randomUUID(),
+      targetId: target.id,
+      name: '持久执行Agent',
+      agentKind: 'CUSTOM_ACP',
+      adapterKind: 'ACP_STDIO',
+      executable: '/bin/false',
+      status: 'READY',
+    });
+    await tasks.transition(created.id, 'READY');
+    const execution = await new WorktreeExecutionRepository(database.db).enqueue({
+      id: randomUUID(),
+      taskId: created.id,
+      projectId: project.id,
+      agentId: agent.id,
+      assignedAgentId: agent.id,
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: 'test/persisted',
+      configJson: { promptVariables: input.promptVariablesJson },
+    });
+
     await database.close();
     database = undefined;
     database = await createPgliteDatabase({ dataDir });
@@ -103,6 +127,10 @@ it('从0005升级保留既有任务，操作账本与重放跨关闭重开持久
     );
     expect(await tasks.list()).toHaveLength(2);
     expect((await tasks.get(created.id))?.promptVariablesJson).toEqual(input.promptVariablesJson);
+    expect(
+      (await new WorktreeExecutionRepository(database.db).get(execution.execution.id))?.configJson
+        .promptVariables,
+    ).toEqual(input.promptVariablesJson);
     expect(await tasks.get(original.id)).toEqual({ ...original, promptVariablesJson: {} });
     expect(await new PromptRepository(database.db).getPrompt(prompt.id)).toEqual(prompt);
     expect(await new PromptRepository(database.db).getVersionById(prompt.id, version.id)).toEqual(

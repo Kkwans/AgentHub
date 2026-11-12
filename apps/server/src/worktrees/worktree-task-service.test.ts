@@ -47,6 +47,120 @@ describe('Worktree Task Runner 编排', () => {
 
   afterAll(async () => database.close());
 
+  it('AH002隔离执行保存Task默认变量且显式值覆盖，返工沿用执行快照', async () => {
+    const fixture = await seedFixture('Prompt variables');
+    const defaults = { subject: 'saved', suffix: 'retained', flag: true, count: 7 };
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '保存模板稍后隔离执行',
+      status: 'READY',
+      promptVariablesJson: defaults,
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const queued = await service.queueTask(task.id, {
+      agentId: fixture.agentId,
+      promptVariables: { subject: 'override', flag: false, count: 0 },
+    });
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    const expected = { subject: 'override', suffix: 'retained', flag: false, count: 0 };
+    expect((await executions.get(queued.execution.id))?.configJson.promptVariables).toEqual(
+      expected,
+    );
+    expect(runtime.sessions.started[0]?.input.promptVariables).toEqual(expected);
+    await complete(service, task.id, running.runId!);
+    const reworked = await service.rework(queued.execution.id, '保留同一隔离执行的模板上下文');
+    expect(runtime.sessions.started[1]?.input.promptVariables).toEqual(expected);
+    expect((await tasks.get(task.id))?.promptVariablesJson).toEqual(defaults);
+    await stop(service, task.id, reworked.runId!, 'CANCELED');
+    await service.shutdown();
+  });
+
+  it('AH002隔离返工不得丢掉已显式存入execution的变量', async () => {
+    const fixture = await seedFixture('Explicit variables');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '显式模板变量',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const variables = { subject: 'execution-context', empty: null };
+    const queued = await service.queueTask(task.id, {
+      agentId: fixture.agentId,
+      promptVariables: variables,
+    });
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    expect(runtime.sessions.started[0]?.input.promptVariables).toEqual(variables);
+    await complete(service, task.id, running.runId!);
+    const reworked = await service.rework(queued.execution.id, '继续修改');
+    expect(runtime.sessions.started[1]?.input.promptVariables).toEqual(variables);
+    await stop(service, task.id, reworked.runId!, 'CANCELED');
+    await service.shutdown();
+  });
+
+  it.each(['snapshot', 'empty', 'legacy'] as const)(
+    'AH002排队等待与服务重建保留%s执行输入，不吸收后来Task变量',
+    async (mode) => {
+      const fixture = await seedFixture('Queued snapshot');
+      const blocker = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '占用隔离槽位',
+        status: 'READY',
+      });
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '排队模板',
+        status: 'READY',
+        promptVariablesJson: mode === 'snapshot' ? { subject: 'saved', nested: { value: 0 } } : {},
+      });
+      const firstRuntime = createRuntime(database);
+      const firstService = createService(firstRuntime);
+      const blocking = await firstService.queueTask(blocker.id, { agentId: fixture.agentId });
+      await firstService.processQueue(fixture.projectId);
+      const blockingRun = await waitForStatus(blocking.execution.id, 'RUNNING');
+      const queued = await firstService.queueTask(task.id, { agentId: fixture.agentId });
+      await firstService.processQueue(fixture.projectId);
+      expect((await executions.get(queued.execution.id))?.status).toBe('QUEUED');
+      if (mode === 'legacy') await executions.patch(queued.execution.id, { configJson: {} });
+      else
+        expect((await executions.get(queued.execution.id))?.configJson.promptVariables).toEqual(
+          mode === 'snapshot' ? { subject: 'saved', nested: { value: 0 } } : {},
+        );
+      await tasks.update(task.id, {
+        promptVariablesJson: { subject: 'later-default', extra: 'must-not-leak' },
+      });
+      await firstService.shutdown();
+      await stop(firstService, blocker.id, blockingRun.runId!, 'CANCELED');
+      const resumedRuntime = createRuntime(database);
+      const resumedService = createService(resumedRuntime);
+      await resumedService.processQueue(fixture.projectId);
+      const running = await waitForStatus(queued.execution.id, 'RUNNING');
+      const expected =
+        mode === 'legacy'
+          ? undefined
+          : mode === 'snapshot'
+            ? { subject: 'saved', nested: { value: 0 } }
+            : {};
+      expect(resumedRuntime.sessions.started[0]?.input.promptVariables).toEqual(expected);
+      await complete(resumedService, task.id, running.runId!);
+      const reworked = await resumedService.rework(queued.execution.id, '同一执行继续');
+      expect(resumedRuntime.sessions.started[1]?.input.promptVariables).toEqual(expected);
+      expect((await tasks.get(task.id))?.promptVariablesJson).toEqual({
+        subject: 'later-default',
+        extra: 'must-not-leak',
+      });
+      await stop(resumedService, task.id, reworked.runId!, 'CANCELED');
+      await resumedService.shutdown();
+    },
+  );
+
   it.each([false, true])('派发未知不覆盖Worktree状态，权威完成先到=%s', async (completeFirst) => {
     const fixture = await seedFixture('Unknown dispatch');
     const task = await tasks.create({

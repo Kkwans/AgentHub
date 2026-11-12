@@ -1,3 +1,4 @@
+import { WorktreeTaskService } from '../worktrees/worktree-task-service.js';
 import { randomUUID } from 'node:crypto';
 import {
   AgentRepository,
@@ -13,6 +14,7 @@ import {
   SessionRepository,
   SkillRepository,
   TaskRepository,
+  WorktreeExecutionRepository,
 } from '@agenthub/db';
 import {
   FakeAgentAdapter,
@@ -143,6 +145,9 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
     };
     return {
       database,
+      agents,
+      targets,
+      sessionService,
       projects,
       tasks,
       sessions,
@@ -322,6 +327,69 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
     });
     expect(f.adapter.turns[2]?.text).toContain('处理 override / retained');
   });
+
+  it.each(['defaults', 'explicit'] as const)(
+    'AH002隔离真实Prompt链路%s在首次与返工均使用执行变量',
+    async (mode) => {
+      const f = await fixture('complete');
+      await f.projects.update(f.projectId, { repoKind: 'GIT' });
+      const executions = new WorktreeExecutionRepository(f.database.db);
+      const git = {
+        inspectBase: async () => ({ branch: 'main', sha: 'a'.repeat(40) }),
+        taskBranch: () => `test/${randomUUID()}`,
+        create: async () => '/tmp',
+        review: async (): Promise<never> => {
+          throw new Error('not invoked');
+        },
+        commitAndMerge: async (): Promise<never> => {
+          throw new Error('not invoked');
+        },
+      };
+      const worktrees = new WorktreeTaskService(
+        executions,
+        f.tasks,
+        f.projects,
+        f.agents,
+        f.targets,
+        f.sessionService,
+        git,
+        { publish: () => undefined },
+      );
+      f.sessionService.setTaskLifecycleObserver(worktrees);
+      const app = createApp({ worktrees, logger: pino({ level: 'silent' }) });
+      const asset = await f.makePrompt('隔离主题 {{ subject }}', f.projectId, {
+        type: 'object',
+        properties: { subject: { type: 'string' } },
+        required: ['subject'],
+      });
+      const task = await f.service.createTask({
+        projectId: f.projectId,
+        title: '隔离模板',
+        selectedPrompt: { promptId: asset.prompt.id },
+        promptVariables: { subject: 'saved' },
+      });
+      await f.service.transitionTask(task.id, 'READY');
+      const queued = await request(app)
+        .post(`/api/v1/tasks/${task.id}/worktree/queue`)
+        .send({
+          agentId: f.agentId,
+          ...(mode === 'explicit' ? { promptVariables: { subject: 'override' } } : {}),
+        });
+      expect(queued.status).toBe(202);
+      const id = queued.body.data.execution.id as string;
+      await worktrees.processQueue(f.projectId);
+      await vi.waitFor(async () => expect((await executions.get(id))?.status).toBe('REVIEW'));
+      const expected = mode === 'explicit' ? 'override' : 'saved';
+      expect(f.adapter.turns[0]?.text).toContain(`隔离主题 ${expected}`);
+      const rework = await request(app)
+        .post(`/api/v1/worktree-executions/${id}/rework`)
+        .send({ feedback: '继续修改但保持模板上下文' });
+      expect(rework.status).toBe(200);
+      expect(f.adapter.turns[1]?.text).toContain(`隔离主题 ${expected}`);
+      await vi.waitFor(async () => expect((await executions.get(id))?.status).toBe('REVIEW'));
+      await worktrees.shutdown();
+    },
+  );
 
   it('没有 production 时固定 latest，缺少变量在创建 Session 之前拒绝且可明确重试', async () => {
     const f = await fixture();

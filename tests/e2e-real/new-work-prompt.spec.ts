@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { apiData, seedWorkspace } from './baseline-support.js';
 import { expect, initializeGitProject, test } from './fixtures.js';
@@ -13,6 +15,7 @@ type Task = Identified & {
   description: string;
   goalId: string;
   sessionId: string | null;
+  promptVariablesJson: Record<string, unknown>;
 };
 
 for (const width of [1440, 1024, 768, 390]) {
@@ -151,7 +154,7 @@ for (const width of [1440, 1024, 768, 390]) {
   });
 }
 
-test('没有 Agent 时保存模板版本绑定，不创建 Session', async ({ page, context, app }) => {
+test('没有 Agent 时保存模板版本与变量，稍后启动使用固定输入', async ({ page, context, app }) => {
   await initializeGitProject(app.projectRoot);
   const target = await apiData<Identified>(context, 'post', '/execution-targets', {
     name: '模板保存环境',
@@ -169,28 +172,46 @@ test('没有 Agent 时保存模板版本绑定，不创建 Session', async ({ pa
   const prompt = await apiData<Identified>(context, 'post', '/prompts', {
     projectId: project.id,
     key: 'e2e/template-only',
-    name: '无变量模板',
+    name: '稍后启动模板',
     kind: 'TASK',
     type: 'TEXT',
   });
   const version = await apiData<Version>(context, 'post', `/prompts/${prompt.id}/versions`, {
-    content: { text: '稍后执行的模板' },
+    content: { text: '稍后执行旧模板：{{ subject }}' },
+    variables: {
+      type: 'object',
+      properties: { subject: { type: 'string' } },
+      required: ['subject'],
+    },
   });
   await page.goto(`/projects/${project.id}/work/new`);
   const dialog = page.getByRole('dialog', { name: '描述一项工作' });
   await dialog.getByRole('textbox', { name: '你想完成什么？' }).fill('仅保存任务');
   await dialog.getByText('高级设置', { exact: true }).click();
   await dialog.getByRole('combobox', { name: 'PromptOS 资产（可选）' }).click();
-  await page.getByRole('option', { name: /无变量模板/ }).click();
+  await page.getByRole('option', { name: /稍后启动模板/ }).click();
+  await dialog
+    .getByRole('textbox', { name: 'Prompt 变量（JSON 对象）' })
+    .fill('{"subject":"稍后处理登录回归"}');
   await dialog.getByRole('button', { name: '预览并固定版本' }).click();
   await expect(dialog.getByRole('region', { name: 'Prompt 预览' })).toContainText(
-    '仅保存模板版本绑定',
+    '保存模板版本与变量，稍后启动自动使用。',
   );
+  await expect(dialog.getByRole('region', { name: 'Prompt 预览' })).toContainText(
+    '稍后执行旧模板：稍后处理登录回归',
+  );
+  await apiData(context, 'post', `/prompts/${prompt.id}/versions`, {
+    content: { text: '不应使用的新模板' },
+  });
   await dialog.getByRole('button', { name: '创建任务', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/work\\?task=`));
   const tasks = await apiData<Task[]>(context, 'get', `/tasks?projectId=${project.id}`);
   expect(tasks).toHaveLength(1);
-  expect(tasks[0]).toMatchObject({ title: '仅保存任务', sessionId: null });
+  expect(tasks[0]).toMatchObject({
+    title: '仅保存任务',
+    sessionId: null,
+    promptVariablesJson: { subject: '稍后处理登录回归' },
+  });
   const bindings = await apiData<unknown[]>(
     context,
     'get',
@@ -204,4 +225,50 @@ test('没有 Agent 时保存模板版本绑定，不创建 Session', async ({ pa
     }),
   ]);
   expect(await apiData(context, 'get', `/sessions?projectId=${project.id}`)).toEqual([]);
+
+  // A later start must consume the saved defaults without resubmitting variables.
+  const agent = await apiData<Identified>(context, 'post', '/agents', {
+    name: '稍后启动 Agent',
+    targetId: target.id,
+    agentKind: 'CUSTOM_ACP',
+    executable: process.execPath,
+    args: [resolve(dirname(fileURLToPath(import.meta.url)), '../fixtures/acp/fake-agent.mjs')],
+  });
+  const preflight = await apiData<{ status: string }>(
+    context,
+    'post',
+    `/agents/${agent.id}/preflight`,
+    { cwd: app.projectRoot },
+  );
+  expect(preflight.status).toBe('READY');
+  await apiData(context, 'post', `/tasks/${tasks[0]!.id}/start`, { agentId: agent.id });
+  const started = await apiData<Task>(context, 'get', `/tasks/${tasks[0]!.id}`);
+  expect(started.sessionId).toBeTruthy();
+  expect(started.promptVariablesJson).toEqual({ subject: '稍后处理登录回归' });
+  const resolved = await apiData<{ finalContext: string; ready: boolean }>(
+    context,
+    'post',
+    '/prompt-context/resolve',
+    {
+      projectId: project.id,
+      taskId: started.id,
+      agentId: agent.id,
+      variables: started.promptVariablesJson,
+    },
+  );
+  expect(resolved.ready).toBe(true);
+  expect(resolved.finalContext).toContain('稍后执行旧模板：稍后处理登录回归');
+  expect(resolved.finalContext).not.toContain('不应使用的新模板');
+  const runs = await apiData<Array<{ metadataJson: unknown }>>(
+    context,
+    'get',
+    `/sessions/${started.sessionId}/runs`,
+  );
+  expect(runs).toHaveLength(1);
+  expect(runs[0]?.metadataJson).toMatchObject({
+    promptContext: {
+      finalContextHash: createHash('sha256').update(resolved.finalContext).digest('hex'),
+      items: [expect.objectContaining({ promptId: prompt.id, versionId: version.id })],
+    },
+  });
 });

@@ -125,7 +125,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         configJson: {
           ...(input.model ? { model: input.model } : {}),
           ...(input.mode ? { mode: input.mode } : {}),
-          ...(input.promptVariables ? { promptVariables: input.promptVariables } : {}),
+          promptVariables: { ...task.promptVariablesJson, ...input.promptVariables },
         },
       });
       this.publish('worktree.execution.queued', queued.execution);
@@ -181,7 +181,12 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     );
     let startedRun: { id: string } | undefined;
     try {
-      startedRun = await this.sessions.startRun(execution.sessionId, { text: feedback });
+      startedRun = await this.sessions.startRun(execution.sessionId, {
+        text: feedback,
+        ...(execution.configJson.promptVariables
+          ? { promptVariables: execution.configJson.promptVariables }
+          : {}),
+      });
       const bound = await this.executions.bindCurrentRun(id, {
         sessionId: execution.sessionId,
         runId: startedRun.id,
