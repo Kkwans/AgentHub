@@ -1950,6 +1950,99 @@ describe('Session/Run/Approval 持久化闭环', () => {
     }
   });
 
+  it.each([true, false])(
+    'AH062当前连接显式断连事件携带runId=%s仍正常收敛',
+    async (includeRunId) => {
+      const f = await preparationFixture();
+      const run = await f.service.startRun(f.session.id, { text: '当前连接断连' });
+      try {
+        f.adapter.handles[0]!.disconnect(includeRunId ? run.id : undefined);
+        await waitFor(
+          async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+        );
+        expect(await f.repositories.runs.get(run.id)).toMatchObject({
+          status: 'DISCONNECTED',
+          errorCode: 'ADAPTER_DISCONNECTED',
+        });
+        await expect(
+          f.service.startRun(f.session.id, { text: '不能继续使用断开的连接' }),
+        ).rejects.toBeDefined();
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it.each(['resume', 'close'] as const)(
+    'AH062显式断连事件后长挂Task回调不阻塞%s且迟到不改赢家',
+    async (action) => {
+      const f = await preparationFixture('approval-error');
+      Object.assign(f.adapter, {
+        resumeSession: (input: CreateAgentSessionInput) => f.adapter.createSession(input),
+      });
+      let rejectDelivery!: (error: Error) => void;
+      let delivering = false;
+      vi.spyOn(f.adapter.handles[0]!, 'resolveApproval').mockImplementation(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectDelivery = reject;
+            delivering = true;
+          }),
+      );
+      const first = await f.service.startRun(f.session.id, { text: '权限Run' });
+      await waitFor(
+        async () => (await f.repositories.runs.get(first.id))?.status === 'WAITING_APPROVAL',
+      );
+      const approval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+      await f.service.resolveApproval(approval.id, 'allow');
+      await waitFor(async () => delivering);
+      let release!: () => void;
+      let entered = false;
+      const stopped = f.taskService.onRunStopped.bind(f.taskService);
+      vi.spyOn(f.taskService, 'onRunStopped').mockImplementationOnce(async (task, run) => {
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return stopped(task, run);
+      });
+      const disconnect = vi.spyOn(
+        f.service as unknown as {
+          persistEvent: (
+            event: NormalizedAgentEvent,
+            project: string,
+            activation: string,
+          ) => Promise<void>;
+        },
+        'persistEvent',
+      );
+      f.adapter.handles[0]!.disconnect(first.id);
+      await waitFor(async () => entered);
+      try {
+        expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+        rejectDelivery(new Error('controlled delivery rejection'));
+        await waitFor(
+          async () => (await f.repositories.sessions.get(f.session.id))?.status === 'DISCONNECTED',
+        );
+        if (action === 'resume') await f.service.resume(f.session.id);
+        else await f.service.close(f.session.id);
+        const expected = action === 'resume' ? 'READY' : 'CLOSED';
+        const close = action === 'resume' ? vi.spyOn(f.adapter.handles[1]!, 'close') : undefined;
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe(expected);
+        release();
+        await disconnect.mock.results[0]!.value;
+        expect((await f.repositories.sessions.get(f.session.id))?.status).toBe(expected);
+        expect((await f.repositories.runs.get(first.id))?.status).toBe('DISCONNECTED');
+        expect((await f.tasks.get(f.task.id))?.status).toBe('IN_PROGRESS');
+        if (close) expect(close).not.toHaveBeenCalled();
+        expect(await f.repositories.runs.list(f.session.id)).toHaveLength(1);
+      } finally {
+        release();
+        await f.service.shutdown();
+      }
+    },
+  );
+
   it.each(['resume', 'close'] as const)(
     'AH059权限投递失败后长挂Task回调不阻塞%s且迟到不改赢家',
     async (action) => {
@@ -3510,6 +3603,10 @@ class ControlledHandle implements AgentSessionHandle {
       },
       this.runId,
     );
+  }
+
+  disconnect(runId?: string): void {
+    this.emit('adapter.disconnected', {}, runId);
   }
 
   complete(runId: string): void {

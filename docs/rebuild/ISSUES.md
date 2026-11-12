@@ -150,3 +150,6 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 - AH-061（P1，代码53cf131已发布，S42完整门禁通过，新CI待核验）：取消失败收敛先CAS Run为DISCONNECTED，再等待原handle关闭，最后无条件写Session。三条实际Service/PGlite/受控adapter诊断分别证明：CAS已提交但返回迟到时，同activation的显式R2被旧取消真正关闭handle；更换activation后不误关新handle但误标新Session；旧close挂起时，合法并行权限失败打开恢复窗口，旧close返回再误标新READY。仅供应商拒绝迟到且CAS.changed=false的否定对照正确早退。4项诊断通过等于缺陷证明，不是修复绿；未直接篡改DB/active。deadline分支目前仅同结构源码风险，未声称实测。
 
 - AH-061修复范围：取消拒绝/超时使用当前Run、CANCELING状态及Session的事务条件提交，单实例短提交队列协调准入与权威终态；仅精确detach原activation，锁外关闭后不再回写Session。计时器按activation清理，完成Git AFTER取证仍在下一轮READY准入前。新增拒绝/超时提交顺序、close迟到、同Run恢复后再取消、Git屏障及DB谓词回归；152专项通过，旧Service3项负控均失败。跨进程内存activation协调、其他消费者及真实Agent/NAS未覆盖。
+
+- AH062 / P1：显式 `adapter.disconnected` 事件在 Run/Task await 后直接回写 Session，未复用 AH059 的 activation 提交保护。真实 Service/PGlite 合法 barrier 复现：旧 Task 回调挂起，权限失败收敛后 resume 已 READY，旧事件继续会将新 Session 改回 DISCONNECTED。基线 resume 回归失败，close 为正确早退对照。现统一到既有断连 helper，保留显式 runId 选择语义；新增恢复、关闭、有/无 runId 正常断连四项回归；156专项、S43全仓914单测/10跳过、lint/types/build/QA全部通过，独立CR无阻断，待新HEAD远端CI。范围仅旧 activation 迟到污染，不宣称连接级全路径原子化。
+- AH063 / P1（源码审查，待运行复现）：连接级断连 helper 在队列外选择 Run、在 Task 回调前后分两段提交。同 activation 新 Run 准入以及携带历史 runId 的断连，可能留下连接已移除而当前 Run 仍活动；需独立合法 barrier 复现，再决定当前 Run/Session 原子收敛，不能借 AH062 的旧 activation 回归关闭此项。

@@ -480,3 +480,14 @@
 
 - 最终全仓lint、typecheck、串行build通过；115文件910单测通过/10跳过（269.11秒），QA10通过，无失败退出。Session/Task/DB专项152通过，旧Service3条负控全部失败。
 - 代码53cf131bb3b5c0a5224a1f1968684a10485e70e0已发布到独立开发分支，fetch后远端树0568a5e与本地测试树相同。尚未核验该新SHA的浏览器CI，不借147bee6基线通过证明新代码。未合并main、部署或实施未选择的视觉方案。
+
+### AH062显式断连事件保护，S43进行中
+
+- 7ee9749 的 exact CI43277714845 已 completed/success，verify 与真实服务/视觉证据两项 job 均成功；仅云端控制面测试，不代表真实供应商/NAS或审美认可。
+- 确认显式 adapter.disconnected 事件独立于 iterator结束路径可达；真实Service/PGlite旧源回归resume失败、close对照通过。两文件窄修复合并到既有activation提交helper，保留显式runId语义；新增当前断连有/无runId正常路径，避免只测早退。
+- 定向lint/types已过，S43全仓lint、types、串行build、全量单测及QA开始。独立CR同时检查窄修复，AH063更广的同activation原子性问题独立登记，不隐去、也不无证据扩大改动。
+
+### S43完成，AH062待远端验收
+
+- 全仓lint、typecheck、串行build通过；115测试文件914单测通过/10跳过（272.00秒），QA10通过。156专项通过，旧源4例负控1失败/3通过，证明恢复污染而非把正常与关闭路径一并否定。
+- 独立CR在窄合同下无新增阻断；仅修旧activation迟到事件，AH063原子收敛保持开放。准备将代码与本次台账作为同一逻辑切片提交并发布开发分支，远端新HEAD CI尚未运行，不复用7ee9749全绿作为新提交验收。

@@ -1428,9 +1428,15 @@ export class SessionService {
     await this.handleActivationDisconnected(sessionId, activationId);
   }
 
-  private async handleActivationDisconnected(sessionId: string, activationId: string) {
+  private async handleActivationDisconnected(
+    sessionId: string,
+    activationId: string,
+    runId?: string,
+  ) {
     if (!this.isCurrentActivation(sessionId, activationId)) return;
-    const activeRun = await this.runs.findActiveForSession(sessionId);
+    const activeRun = runId
+      ? await this.runs.get(runId)
+      : await this.runs.findActiveForSession(sessionId);
     if (activeRun) {
       const result = await this.withActivationCommit(sessionId, async () => {
         if (!this.isCurrentActivation(sessionId, activationId)) return;
@@ -1659,32 +1665,10 @@ export class SessionService {
       this.isCurrentActivation(event.sessionId, activationId) &&
       event.type === 'adapter.disconnected'
     ) {
-      const activeRun = event.runId
-        ? await this.runs.get(event.runId)
-        : await this.runs.findActiveForSession(event.sessionId);
-      if (activeRun) {
-        const transitioned = await this.runs.tryTransition(
-          activeRun.id,
-          ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
-          'DISCONNECTED',
-          {
-            finishedAt: new Date(),
-            errorCode: 'ADAPTER_DISCONNECTED',
-            errorMessage: 'Agent 连接已断开',
-          },
-        );
-        if (transitioned.changed) {
-          this.clearCancellationTimer(activeRun.id);
-          if (transitioned.run.taskId)
-            await this.taskLifecycle?.onRunStopped?.(
-              transitioned.run.taskId,
-              transitioned.run.id,
-              'DISCONNECTED',
-            );
-        }
-      }
-      await this.safeSessionTransition(event.sessionId, 'DISCONNECTED');
-      this.detachActive(event.sessionId, activationId);
+      // Explicit disconnect events and iterator termination share the same
+      // activation fence. A slow Task callback must not disconnect a resumed
+      // Session after another failure has already retired this activation.
+      await this.handleActivationDisconnected(event.sessionId, activationId, event.runId);
     }
   }
 
