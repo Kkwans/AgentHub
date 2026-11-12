@@ -110,6 +110,25 @@ export function runtimeDisplayName(displayName: string): string {
   return /^sha256:[0-9a-f]{32,}$/i.test(displayName.trim()) ? '未命名 Docker 容器' : displayName;
 }
 
+/** Preserve provider diagnostics; an absent detail must not contradict the known state. */
+export function runtimeStatusDetail(runtime: { state: string; statusText?: string }): string {
+  if (runtime.statusText?.trim()) return runtime.statusText;
+  switch (runtime.state) {
+    case 'READY':
+      return '就绪';
+    case 'STOPPED':
+      return '已停止';
+    case 'UNAVAILABLE':
+      return '不可用';
+    case 'UNSUPPORTED':
+      return '不支持';
+    case 'BROKEN':
+      return '异常';
+    default:
+      return '状态待确认';
+  }
+}
+
 export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'diagnostics' }) {
   const client = useQueryClient();
   const [showStoppedRuntimes, setShowStoppedRuntimes] = useState(false);
@@ -213,7 +232,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
                 <div className={layout.rowMain}>
                   <span className={layout.rowTitle}>{runtimeDisplayName(runtime.displayName)}</span>
                   <span className={layout.rowMeta}>
-                    {runtimeImageLabel(runtime)} · {runtime.statusText ?? '状态待确认'}
+                    {runtimeImageLabel(runtime)} · {runtimeStatusDetail(runtime)}
                   </span>
                 </div>
                 <AhStatusPill status={runtime.state} />
