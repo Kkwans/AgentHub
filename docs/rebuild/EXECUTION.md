@@ -168,3 +168,11 @@
 - Home多活跃正式项目不再默认选第一个，而是键盘可操作的名称+目录选择；单项目显示目标，TEST/归档不混入。选择前读取最新缓存且刷新/错误时阻止选择。
 - 新增真实服务恢复8项和项目选择四宽双主题8项，加入CI显式列表。本机浏览器仍受环境限制，实际故障注入/像素验收等待新CI。
 - 最终集成 lint/typecheck/串行build通过；93文件、551单测通过、10跳过（187.90秒），QA辅助10项通过。三份新/修改真实E2E独立Bundler类型通过、17项收集通过；收集不是浏览器执行，待精确新HEAD CI。
+
+### M1.2h 同Session最新Run所有权
+
+- 0007仅新增可空latestRunId；Run创建与指针更新同事务，失败整笔回滚。创建和Task终态回调都按Task→Session加锁，在锁内验证最新Run和原持久关联，禁止旧Run覆盖新Run；不依靠可相同的startedAt或随机UUID排序。
+- 历史会话指针保持NULL，旧Run终态不推进Task，需要核对后正式恢复/返工；不静默推断历史归属。若R1先完成Task转换，后续直接Session发R2仍保持原Task状态，此处不擅自增加自动重启语义。
+- 独立CR无阻塞；旧源码新增7例全失败，修复后所有权/回滚/迁移11项及Task/Prompt/Session53项通过。迁移验证升级/重开/重复执行保留数据；PGlite并发调用串行化不能冒充独立Postgres连接竞争实测。
+- 集成生产改动的lint/typecheck/串行build、95文件562测试（10跳过，198.50秒）、QA10全通过。补充真实SessionService事件屏障回归：Session READY后暂停Task observer，实际启动R2，再释放R1；与callback-first对照。初次两例因测试Git探针仅两次返回、第二轮耗尽而失败，不计通过；补齐四次返回后两例通过，暴露的非Git收敛风险另立项，不掩盖。
+- 修正测试Git探针后完整SessionService25项、server类型和lint通过；服务级两条屏障用真实ControlledAdapter事件验证新Run先提交/旧回调先完成两种顺序。未把测试替身称为真实付费Agent。

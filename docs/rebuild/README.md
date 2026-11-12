@@ -10,6 +10,7 @@
 - [界面与交互规格](UX-SPEC.md)：页面、状态机、响应式和设计系统迁移。
 - [真实视觉基线](VISUAL-BASELINE.md)：本轮 CI 截图、已查看页面与设计判断。
 - [创建与恢复合同](CREATION-RECOVERY.md)：持久创建幂等、认证范围及刷新恢复边界。
+- [Run 结果所有权](RUN-OWNERSHIP.md)：最新Run指针、锁顺序与升级边界。
 - [CI 验证边界](CI-VALIDATION.md)：真实服务、fixture 与产物门禁。
 - [任务规划](PLAN.md)：里程碑、切片、依赖与验收。
 - [任务执行台账](EXECUTION.md)：进行中、已完成、阻塞、下一步。
