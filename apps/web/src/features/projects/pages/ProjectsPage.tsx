@@ -125,6 +125,21 @@ export function ProjectsPage() {
   const [sort, setSort] = useState('updated');
   const [view, setView] = useState<'list' | 'grid'>('list');
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const compact = useCompactViewport();
+  const activeFilterCount = [
+    query.trim() !== '',
+    status !== 'all',
+    kind !== 'all',
+    language !== 'all',
+    sort !== 'updated',
+  ].filter(Boolean).length;
+  const clearFilters = () => {
+    setQuery('');
+    setStatus('all');
+    setKind('all');
+    setLanguage('all');
+    setSort('updated');
+  };
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const allProjects = projects.data ?? [];
@@ -319,70 +334,80 @@ export function ProjectsPage() {
                   leftSection={<Search size={16} />}
                 />
               </div>
-              <div className={projectsStyles.toolbarSelect}>
-                <AhSelect
-                  aria-label="项目状态"
-                  label=""
-                  value={status}
-                  onChange={(value) => setStatus(value ?? 'all')}
-                  data={[
-                    { value: 'all', label: '全部状态' },
-                    ...statusOptions.map((value) => ({ value, label: domainStatusLabel(value) })),
-                  ]}
-                />
-              </div>
-              <div className={projectsStyles.toolbarSelect}>
-                <AhSelect
-                  aria-label="项目类型"
-                  label=""
-                  value={kind}
-                  onChange={(value) => setKind((value ?? 'all') as 'all' | 'STANDARD' | 'TEST')}
-                  data={kindOptions}
-                />
-              </div>
-              <div className={projectsStyles.toolbarSelect}>
-                <AhSelect
-                  aria-label="项目排序"
-                  label=""
-                  value={sort}
-                  onChange={(value) => setSort(value ?? 'updated')}
-                  data={[
-                    { value: 'updated', label: '最新更新' },
-                    { value: 'name', label: '名称 A-Z' },
-                    { value: 'status', label: '状态' },
-                  ]}
-                />
-              </div>
-              <button
-                type="button"
-                className={`${projectsStyles.toolbarMore} ${moreFiltersOpen ? projectsStyles.toolbarMoreActive : ''}`}
-                aria-expanded={moreFiltersOpen}
-                onClick={() => setMoreFiltersOpen((open) => !open)}
-              >
-                <ScanSearch size={14} />
-                更多筛选
-                {language !== 'all' ? <span className={projectsStyles.filterCount}>1</span> : null}
-              </button>
-              {moreFiltersOpen ? (
-                <div className={projectsStyles.toolbarAdvanced}>
-                  {languageOptions.length ? (
-                    <div className={projectsStyles.toolbarSelect}>
-                      <AhSelect
-                        aria-label="项目语言"
-                        label=""
-                        value={language}
-                        onChange={(value) => setLanguage(value ?? 'all')}
-                        data={[
-                          { value: 'all', label: '全部语言' },
-                          ...languageOptions.map((value) => ({ value, label: value })),
-                        ]}
-                      />
-                    </div>
-                  ) : (
-                    <span className={projectsStyles.toolbarNoFilters}>暂无其他筛选</span>
-                  )}
-                </div>
+              {compact ? (
+                <button
+                  type="button"
+                  className={`${projectsStyles.toolbarMore} ${moreFiltersOpen ? projectsStyles.toolbarMoreActive : ''}`}
+                  aria-expanded={moreFiltersOpen}
+                  aria-controls="project-filter-options"
+                  onClick={() => setMoreFiltersOpen((open) => !open)}
+                >
+                  <ScanSearch size={14} aria-hidden="true" />
+                  筛选和排序
+                  {activeFilterCount ? (
+                    <span className={projectsStyles.filterCount}>{activeFilterCount}</span>
+                  ) : null}
+                </button>
               ) : null}
+              {activeFilterCount ? (
+                <button type="button" className={projectsStyles.toolbarMore} onClick={clearFilters}>
+                  清除条件{!compact ? `（${activeFilterCount}）` : ''}
+                </button>
+              ) : null}
+              <div
+                id="project-filter-options"
+                className={projectsStyles.filterOptions}
+                hidden={compact && !moreFiltersOpen}
+              >
+                <div className={projectsStyles.toolbarSelect}>
+                  <AhSelect
+                    aria-label="项目状态"
+                    label=""
+                    value={status}
+                    onChange={(value) => setStatus(value ?? 'all')}
+                    data={[
+                      { value: 'all', label: '全部状态' },
+                      ...statusOptions.map((value) => ({ value, label: domainStatusLabel(value) })),
+                    ]}
+                  />
+                </div>
+                <div className={projectsStyles.toolbarSelect}>
+                  <AhSelect
+                    aria-label="项目类型"
+                    label=""
+                    value={kind}
+                    onChange={(value) => setKind((value ?? 'all') as 'all' | 'STANDARD' | 'TEST')}
+                    data={kindOptions}
+                  />
+                </div>
+                <div className={projectsStyles.toolbarSelect}>
+                  <AhSelect
+                    aria-label="项目排序"
+                    label=""
+                    value={sort}
+                    onChange={(value) => setSort(value ?? 'updated')}
+                    data={[
+                      { value: 'updated', label: '最新更新' },
+                      { value: 'name', label: '名称 A-Z' },
+                      { value: 'status', label: '状态' },
+                    ]}
+                  />
+                </div>
+                {languageOptions.length ? (
+                  <div className={projectsStyles.toolbarSelect}>
+                    <AhSelect
+                      aria-label="项目语言"
+                      label=""
+                      value={language}
+                      onChange={(value) => setLanguage(value ?? 'all')}
+                      data={[
+                        { value: 'all', label: '全部语言' },
+                        ...languageOptions.map((value) => ({ value, label: value })),
+                      ]}
+                    />
+                  </div>
+                ) : null}
+              </div>
               <span className={projectsStyles.toolbarSpacer} />
               <div
                 className={`${projectsStyles.segmented} segmented-control`}

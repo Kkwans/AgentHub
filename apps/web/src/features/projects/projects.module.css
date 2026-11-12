@@ -1472,3 +1472,39 @@
     transition: none;
   }
 }
+
+/* Projects only: secondary controls stay available on desktop, disclosed on mobile. */
+.projectsToolbar .filterOptions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.projectsToolbar .filterOptions[hidden] {
+  display: none;
+}
+.projectsToolbar .toolbarMore:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .projectsToolbar .filterOptions {
+    flex: 1 1 100%;
+    padding-top: 10px;
+    border-top: 1px solid var(--ah-border-subtle);
+  }
+  .projectsToolbar .toolbarMore {
+    min-height: 44px;
+  }
+  .projectsToolbar .segmented {
+    width: auto;
+    margin-left: auto;
+  }
+  .projectsToolbar .segmentedButton {
+    min-height: 38px;
+  }
+  .projectsToolbar .toolbarCount {
+    flex: 1 1 100%;
+  }
+}
