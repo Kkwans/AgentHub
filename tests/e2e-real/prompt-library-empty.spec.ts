@@ -75,6 +75,36 @@ for (const width of [390, 768, 1024, 1440]) {
       const editor = page.getByRole('region', { name: 'Prompt 编辑器' });
       await expect(editor.getByRole('heading', { name: promptName })).toBeVisible();
       await capture('content');
+      await expect(editor.getByText('9 字符', { exact: true })).toHaveCount(0);
+      await editor.getByRole('button', { name: '创建第一个版本', exact: true }).click();
+      const versionDialog = page.getByRole('dialog', { name: '创建新版本', exact: true });
+      const bodyInput = versionDialog.getByRole('textbox', { name: 'Prompt 内容', exact: true });
+      await expect(bodyInput).toHaveValue('');
+      await expect(
+        versionDialog.getByRole('button', { name: '创建版本', exact: true }),
+      ).toBeDisabled();
+      await capture('first-version-dialog');
+      await versionDialog.getByRole('button', { name: '取消', exact: true }).click();
+      await editor.getByRole('button', { name: '创建第一个版本', exact: true }).click();
+      const actualBody = '只使用用户编写的真实正文，不包含资产说明或界面占位提示。';
+      await bodyInput.fill(actualBody);
+      await versionDialog.getByRole('button', { name: '创建版本', exact: true }).click();
+      await expect(versionDialog).not.toBeVisible();
+      await expect(editor.getByText(actualBody, { exact: true })).toBeVisible();
+      const assetsResponse = await context.request.get('/api/v1/prompts');
+      expect(assetsResponse.ok()).toBe(true);
+      const assets = (await assetsResponse.json()).data as { id: string; key: string }[];
+      const created = assets.find((asset) => asset.key === 'visual/empty-to-content');
+      expect(created).toBeDefined();
+      const versionsResponse = await context.request.get(`/api/v1/prompts/${created!.id}/versions`);
+      expect(versionsResponse.ok()).toBe(true);
+      const versions = (await versionsResponse.json()).data;
+      expect(versions).toHaveLength(1);
+      expect(versions[0].contentJson).toEqual({ text: actualBody });
+      await editor.getByText(actualBody, { exact: true }).scrollIntoViewIfNeeded();
+      await expect(editor.getByText(actualBody, { exact: true })).toBeInViewport({ ratio: 1 });
+      await capture('first-version-saved');
+
       // The asset-creation dialog has no Select. Exercise the real binding dialog,
       // which uses the same FormDialog and a labelled, portaled Radix Select.
       await editor.getByRole('tab', { name: '绑定', exact: true }).click();

@@ -1,4 +1,12 @@
-import { AhButton, AhEmptyState, AhErrorState, AhStatusPill, AhTextarea, Eye } from '@agenthub/ui';
+import {
+  AhButton,
+  AhEmptyState,
+  AhErrorState,
+  AhLoadingState,
+  AhStatusPill,
+  AhTextarea,
+  Eye,
+} from '@agenthub/ui';
 import {
   labelPromptBindingTarget,
   labelPromptKind,
@@ -15,6 +23,7 @@ export function PromptEditor({ model }: { model: PromptLibraryModel }) {
     selected,
     setNewOpen,
     latestVersion,
+    versions,
     refreshPrompt,
     setLifecycleOpen,
     setVersionContent,
@@ -33,6 +42,8 @@ export function PromptEditor({ model }: { model: PromptLibraryModel }) {
     setBindingOpen,
     toggleBinding,
   } = model;
+
+  const noVersion = versions.isSuccess && versions.data.length === 0;
 
   return (
     <section className={promptSettingsStyles.mainPane} aria-label="Prompt 编辑器">
@@ -61,13 +72,14 @@ export function PromptEditor({ model }: { model: PromptLibraryModel }) {
               </AhButton>
               <AhButton
                 size="sm"
+                disabled={versions.isLoading || Boolean(versions.error)}
                 onClick={() => {
                   setVersionContent(contentValue);
                   setVersionVariables(JSON.stringify(latestVersion?.variablesJson ?? {}, null, 2));
                   setVersionOpen(true);
                 }}
               >
-                新建版本
+                {noVersion ? '创建第一个版本' : '新建版本'}
               </AhButton>
             </div>
           </header>
@@ -86,7 +98,17 @@ export function PromptEditor({ model }: { model: PromptLibraryModel }) {
             ))}
           </nav>
           <div className={promptSettingsStyles.tabContent}>
-            {tab === 'content' ? (
+            {tab === 'content' && versions.isLoading ? (
+              <AhLoadingState label="正在读取 Prompt 版本" />
+            ) : tab === 'content' && versions.error ? (
+              <AhErrorState description={versions.error.message} />
+            ) : tab === 'content' && noVersion ? (
+              <AhEmptyState
+                compact
+                title="尚未创建版本"
+                description="资产已建立。选择“创建第一个版本”填写正文；资产说明不会作为 Prompt 内容发送。"
+              />
+            ) : tab === 'content' ? (
               <div className={promptSettingsStyles.contentShell}>
                 <div className={promptSettingsStyles.contentToolbar}>
                   <strong>Prompt 内容</strong>
@@ -102,9 +124,7 @@ export function PromptEditor({ model }: { model: PromptLibraryModel }) {
                   {contentValue.split(/\n{2,}/).map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
-                  {!contentValue.trim() ? (
-                    <AhEmptyState compact title="尚未创建 Prompt 内容" />
-                  ) : null}
+                  {!contentValue.trim() ? <AhEmptyState compact title="此版本的正文为空" /> : null}
                 </article>
               </div>
             ) : null}

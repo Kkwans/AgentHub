@@ -291,12 +291,14 @@ export function usePromptLibrary() {
     enabled: Boolean(selected && diffFrom && diffTo && diffFrom !== diffTo),
   });
   const contentValue =
-    latestVersion?.contentJson &&
-    typeof latestVersion.contentJson === 'object' &&
-    'text' in latestVersion.contentJson &&
-    typeof latestVersion.contentJson.text === 'string'
-      ? latestVersion.contentJson.text
-      : (selected?.description ?? '尚未创建版本内容。');
+    latestVersion && selected?.type === 'CHAT'
+      ? JSON.stringify(latestVersion.contentJson, null, 2)
+      : latestVersion?.contentJson &&
+          typeof latestVersion.contentJson === 'object' &&
+          'text' in latestVersion.contentJson &&
+          typeof latestVersion.contentJson.text === 'string'
+        ? latestVersion.contentJson.text
+        : '';
   const variableEntries = Object.entries(latestVersion?.variablesJson ?? {});
 
   return {
