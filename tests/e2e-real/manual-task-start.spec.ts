@@ -111,7 +111,45 @@ for (const width of [390, 768, 1024, 1440]) {
       title: '恢复被阻塞的工作',
     });
     await apiData(context, 'post', `/tasks/${task.id}/transition`, { status: 'READY' });
-    await apiData(context, 'post', `/tasks/${task.id}/start`, { agentId: agent.id });
+    const first = await apiData<{ session: { id: string }; run: { id: string } }>(
+      context,
+      'post',
+      `/tasks/${task.id}/start`,
+      { agentId: agent.id },
+    );
+    // The ACP fixture requests permission before it can complete its first turn.
+    // Keep a real completed Run/assigned Agent history instead of bypassing it.
+    let approvalId: string | undefined;
+    await expect
+      .poll(
+        async () => {
+          const approvals = await apiData<Array<{ id: string; runId: string; status: string }>>(
+            context,
+            'get',
+            `/approvals?sessionId=${first.session.id}`,
+          );
+          approvalId = approvals.find(
+            (approval) => approval.runId === first.run.id && approval.status === 'PENDING',
+          )?.id;
+          return approvalId;
+        },
+        { timeout: 15_000 },
+      )
+      .toBeTruthy();
+    await apiData(context, 'post', `/approvals/${approvalId!}/resolve`, { optionId: 'allow-once' });
+    await expect
+      .poll(
+        async () => {
+          const runs = await apiData<Array<{ id: string; status: string }>>(
+            context,
+            'get',
+            `/sessions/${first.session.id}/runs`,
+          );
+          return runs.find((run) => run.id === first.run.id)?.status;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe('COMPLETED');
     await expect
       .poll(
         async () => (await apiData<{ status: string }>(context, 'get', `/tasks/${task.id}`)).status,
