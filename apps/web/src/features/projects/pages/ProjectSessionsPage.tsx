@@ -99,6 +99,7 @@ import {
 import projectsStyles from '../projects.module.css';
 import { useProjectContext } from './ProjectContextLayout';
 import { filterProjectSessions } from './project-session-utils';
+import { useSessionCreation } from '../hooks/useSessionCreation';
 
 export function ProjectSessionsPage() {
   const project = useProjectContext();
@@ -117,26 +118,10 @@ export function ProjectSessionsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchParams, setSearchParams] = useSearchParams();
   const newOpen = searchParams.get('new') === '1';
-  const [title, setTitle] = useState('新 Session');
-  const [agentId, setAgentId] = useState('');
-  useEffect(() => {
-    if (!agentId && agents.data?.find((agent) => agent.status === 'READY'))
-      setAgentId(agents.data.find((agent) => agent.status === 'READY')?.id ?? '');
-  }, [agentId, agents.data]);
-  const create = useMutation({
-    mutationFn: () =>
-      api.post<SessionRecord>('/sessions', {
-        projectId: project.id,
-        agentId,
-        title: title.trim(),
-        cwd: project.rootPath,
-      }),
-    onSuccess: (session) => {
-      void client.invalidateQueries({ queryKey: ['sessions', project.id] });
-      navigate(`/workspace/${session.id}`);
-    },
-  });
+  const creation = useSessionCreation(project, newOpen, agents.data);
+  const { title, setTitle, agentId, setAgentId } = creation;
   const setNewOpen = (open: boolean) => {
+    if (!open) creation.abandon();
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       if (open) next.set('new', '1');
@@ -300,11 +285,13 @@ export function ProjectSessionsPage() {
       >
         <AhInput
           label="会话名称"
+          disabled={!creation.ready || Boolean(creation.operation)}
           value={title}
           onChange={(event) => setTitle(event.currentTarget.value)}
         />
         <AhSelect
           label="Agent"
+          disabled={!creation.ready || Boolean(creation.operation)}
           value={agentId}
           onChange={(value) => setAgentId(value ?? '')}
           data={(agents.data ?? [])
@@ -315,14 +302,72 @@ export function ProjectSessionsPage() {
         />
         <div className={layout.actions} style={{ marginTop: 20 }}>
           <AhButton
-            onClick={() => create.mutate()}
-            loading={create.isPending}
-            disabled={!agentId || !title.trim()}
+            onClick={() => void creation.create()}
+            loading={creation.operation?.phase === 'pending'}
+            disabled={!creation.ready || Boolean(creation.operation) || !agentId || !title.trim()}
           >
             创建并进入 Workspace
           </AhButton>
         </div>
-        {create.error ? <AhErrorState description={create.error.message} /> : null}
+        {creation.operation ? (
+          <div role="status">
+            <p>本次请求 Agent ID：{creation.operation.agentId}</p>
+            {creation.operation.failure ? <p>原请求说明：{creation.operation.failure}</p> : null}
+            <p>
+              {creation.operation.phase === 'saved'
+                ? '会话已创建。打开已创建的会话，或明确选择创建另一会话。'
+                : creation.operation.phase === 'pending'
+                  ? '创建请求已发出，正在等待确认。'
+                  : '创建结果尚未确认，可能已创建会话。请先核对原项目会话，不要直接重复创建。'}
+            </p>
+            <p>
+              关闭窗口不会撤回已发出的请求。会话列表暂时没有结果，也不能证明旧请求不会完成。离开此页面或刷新后无法保留此核对状态。会话列表只确认记录，不代表
+              Agent 进程或资源已清理。
+            </p>
+            {creation.operation.phase === 'saved' && creation.operation.session ? (
+              <>
+                <Link to={`/workspace/${creation.operation.session.id}`}>
+                  打开已创建的会话：{creation.operation.title}
+                </Link>
+                <AhButton variant="subtle" onClick={creation.createAnother}>
+                  创建另一会话
+                </AhButton>
+              </>
+            ) : (
+              <AhButton
+                variant="subtle"
+                loading={creation.checking}
+                onClick={() => void creation.check()}
+              >
+                读取原项目会话
+              </AhButton>
+            )}
+            {creation.operation.phase !== 'saved' && creation.operation.checked ? (
+              <>
+                <p>
+                  已读取 {creation.operation.checked.length} 个会话，请核对名称及
+                  Agent；不要重复创建已有会话。
+                </p>
+                <ul>
+                  {creation.operation.checked.map((session) => (
+                    <li key={session.id}>
+                      <Link to={`/workspace/${session.id}`}>{session.title}</Link> · Agent{' '}
+                      {session.agentId}
+                    </li>
+                  ))}
+                </ul>
+                <AhButton
+                  variant="subtle"
+                  disabled={creation.operation.phase === 'pending' || creation.checking}
+                  onClick={creation.resume}
+                >
+                  已核对，重新编辑
+                </AhButton>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        {creation.error ? <AhErrorState description={creation.error} /> : null}
       </AhDialog>
     </div>
   );

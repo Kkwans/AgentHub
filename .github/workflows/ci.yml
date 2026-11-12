@@ -73,6 +73,7 @@ jobs:
           tests/e2e-real/new-work-prompt.spec.ts
           tests/e2e-real/project-filters.spec.ts
           tests/e2e-real/project-state-truth.spec.ts
+          tests/e2e-real/session-creation-ownership.spec.ts
           tests/e2e-real/project-work-empty.spec.ts
           tests/e2e-real/home-populated-visual.spec.ts
           tests/e2e-real/home-project-choice.spec.ts
