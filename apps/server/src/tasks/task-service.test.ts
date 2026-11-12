@@ -7,6 +7,8 @@ import {
   GoalRepository,
   ProjectRepository,
   TaskRepository,
+  SessionRepository,
+  RunRepository,
 } from '@agenthub/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -59,11 +61,25 @@ describe('Goal 与 Task service', () => {
     const fakeSessions: TaskSessionController = {
       create: async (input) => {
         createdSessions.push(input);
-        return { id: randomUUID() };
+        return new SessionRepository(database.db).create({
+          id: randomUUID(),
+          projectId: input.projectId,
+          agentId: input.agentId,
+          taskId: input.taskId,
+          title: input.title ?? '测试',
+          cwd: input.cwd,
+          status: 'READY',
+        });
       },
       startRun: async (sessionId, input) => {
         startedRuns.push({ sessionId, ...input });
-        return { id: randomUUID() };
+        const session = await new SessionRepository(database.db).get(sessionId);
+        return new RunRepository(database.db).create({
+          id: randomUUID(),
+          sessionId,
+          taskId: session!.taskId,
+          status: 'RUNNING',
+        });
       },
     };
     service = new TaskService(
@@ -112,7 +128,8 @@ describe('Goal 与 Task service', () => {
     expect(startedRuns.at(-1)?.text).toContain('验证审阅门禁');
     expect(startedRuns.at(-1)?.text).toContain('执行自动化验证');
 
-    const runId = randomUUID();
+    const runId = started.run.id;
+    await new RunRepository(database.db).patch(runId, { status: 'COMPLETED' });
     await service.onRunCompleted(task.id, runId);
     expect(await service.getTask(task.id)).toMatchObject({
       status: 'WAITING_REVIEW',
@@ -155,6 +172,7 @@ describe('Goal 与 Task service', () => {
     const started = await service.startTask(task.id, { agentId });
     const expected = `短标题\n\n任务说明：\n${description}\n\n验收标准：\n保留验收`;
     expect(startedRuns.at(-1)?.text).toBe(expected);
+    await new RunRepository(database.db).patch(started.run.id, { status: 'COMPLETED' });
     await service.onRunCompleted(task.id, started.run.id);
     await service.reviewTask(task.id, { decision: 'REWORK', feedback: '继续完善' });
     expect(startedRuns.at(-1)?.text).toContain(`原任务：\n${expected}`);
@@ -418,6 +436,7 @@ describe('Goal 与 Task service', () => {
     });
     await service.transitionTask(task.id, 'READY');
     const first = await service.startTask(task.id, { agentId });
+    await new RunRepository(database.db).patch(first.run.id, { status: 'COMPLETED' });
     await service.onRunCompleted(task.id, first.run.id);
 
     await expect(
@@ -440,6 +459,7 @@ describe('Goal 与 Task service', () => {
     expect(startedRuns.at(-1)?.text).toContain('返工闭环');
     expect(startedRuns.at(-1)?.text).toContain('完成可审阅实现');
 
+    await new RunRepository(database.db).patch(rework.run!.id, { status: 'COMPLETED' });
     await service.onRunCompleted(task.id, rework.run!.id);
     expect(await service.getTask(task.id)).toMatchObject({
       status: 'WAITING_REVIEW',
@@ -450,8 +470,9 @@ describe('Goal 与 Task service', () => {
   it('Run 失败时将 Task 标为阻塞，保留结果 Run', async () => {
     const task = await service.createTask({ projectId, title: '失败处理' });
     await service.transitionTask(task.id, 'READY');
-    await service.startTask(task.id, { agentId });
-    const runId = randomUUID();
+    const started = await service.startTask(task.id, { agentId });
+    const runId = started.run.id;
+    await new RunRepository(database.db).patch(runId, { status: 'FAILED' });
     await service.onRunStopped(task.id, runId);
     expect(await service.getTask(task.id)).toMatchObject({ status: 'BLOCKED', finalRunId: runId });
   });

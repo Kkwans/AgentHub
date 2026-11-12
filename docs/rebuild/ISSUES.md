@@ -70,3 +70,5 @@ AH-024 追加：首页空态8张实际图已审阅，主CTA无阻塞问题；有
 ### AH-020 返工与状态交错
 
 已用真实PGlite+受控Session创建复现：两个REWORK创建两个Session；REWORK尚在创建时APPROVE成功；start/rework与手动CANCEL交错。旧源新增五例中四失败、一安全回归通过。修复将start/review/manual transition置于同实例同步准入，重叠操作直接409，不排队过期意图；失败finally释放，生命周期回调不加锁。针对20项通过，完整497项通过/10跳过，lint/typecheck/build通过。跨进程会话创建预留/故障回收、旧Run迟到回调的所有权仍单独处理，不因本修复关闭整体生命周期风险。
+
+- AH-026（P1）：旧Session的Run完成/失败/取消/断连回调只检查Task仍IN_PROGRESS，可覆盖已经进入新返工Session的状态和finalRunId。真实PGlite五项回归在旧代码均失败；修复使用Task行锁下的持久Run/Session所有权和终态验证，拒绝missing/stale/mismatch，专项25项通过，独立CR补齐边界后完整507项通过/10跳过，lint/typecheck/build通过。跨进程回调更新在同一DB事务内校验，但不代表跨进程Session创建预留或同Session最新Run排序已解决。

@@ -138,3 +138,11 @@
 - 旧源四项真实PGlite竞态回归失败（重复返工、返工与批准、start/rework与CANCEL），修复20项TaskService/Prompt专项通过；创建失败释放准入的安全回归也保留。
 - 这只限制同TaskService实例，未提供分布式租约；部分持久化失败回收和旧Run所有权单独实现。
 - 最终lint/typecheck/串行build通过，完整497项测试通过、10项跳过，浏览器行为无变更。CI仍按精确提交继续追踪，不把专项通过等同部署验收。
+
+### M1.2e 旧Run回调所有权与Workspace实际布局契约
+
+- 任务生命周期回调改为数据库事务内锁定当前Task，验证持久Run→Session→Task、项目、assignedAgent、当前sessionId及匹配终态，失配/缺失/迟到回调无副作用；不采用调用方自报Session身份。callbacks不等待启动准入，以免同步执行完成死锁。
+- 旧源5/5真实数据库所有权回归失败；修复后所有权/TaskService/Prompt共25项通过，server/db类型及lint通过。原TaskService测试fixture现在创建真实合法Session/Run，而不是放宽生产校验接受虚假Run。
+- 61176 Workspace实际证据：1024 rail285px、对话left299；768 rail238px、对话left252，符合原medium并列辅助栏设计，d430截图相同，非本轮CSS清理回归。测试改验证宿主/栏间距/对话可用宽度与关闭后的全宽恢复，保留文件交互/重载状态；1440原历史不足仅101px，提供明确长工具输出且仍要求滚动范围>120及真实跳转到底部。
+- Workspace E2E单文件lint/typecheck及48项收集通过；真实浏览器执行待新CI，不以此宣称视觉通过。
+- 独立CR无阻塞，补充Agent错绑与四种终态/回调不匹配无副作用回归；最终89文件、507测试通过、10跳过（183.37秒）。lint/typecheck/串行build通过，补测后类型检查与全量测试再次通过。PGlite证明迟到/错绑与事务行为，不冒充多连接并发压测。

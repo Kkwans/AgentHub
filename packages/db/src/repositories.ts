@@ -1469,6 +1469,61 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
     return updated;
   }
 
+  // Lifecycle events can arrive after a new rework session owns the Task.
+  // Lock and validate ownership in the same transaction as the state update;
+  // a read followed by generic transition() could otherwise update a newer owner.
+  async tryApplyRunOutcome(
+    id: string,
+    runId: string,
+    outcome: 'COMPLETED' | 'STOPPED',
+  ): Promise<boolean> {
+    return this.db.transaction(async (transaction) => {
+      const [task] = await transaction
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, id))
+        .for('update')
+        .limit(1);
+      if (!task || task.status !== 'IN_PROGRESS' || !task.sessionId) return false;
+      const [owned] = await transaction
+        .select({ run: agentRuns, session: agentSessions })
+        .from(agentRuns)
+        .innerJoin(agentSessions, eq(agentSessions.id, agentRuns.sessionId))
+        .where(
+          and(
+            eq(agentRuns.id, runId),
+            eq(agentRuns.taskId, id),
+            eq(agentSessions.taskId, id),
+            eq(agentRuns.sessionId, task.sessionId),
+            eq(agentSessions.projectId, task.projectId),
+          ),
+        )
+        .limit(1);
+      if (!owned || owned.session.agentId !== task.assignedAgentId) return false;
+      const validTerminal =
+        outcome === 'COMPLETED'
+          ? owned.run.status === 'COMPLETED'
+          : ['FAILED', 'CANCELED', 'DISCONNECTED'].includes(owned.run.status);
+      if (!validTerminal) return false;
+      const [updated] = await transaction
+        .update(tasks)
+        .set({
+          status: outcome === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED',
+          finalRunId: runId,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(tasks.id, id),
+            eq(tasks.status, 'IN_PROGRESS'),
+            eq(tasks.sessionId, task.sessionId),
+          ),
+        )
+        .returning();
+      return Boolean(updated);
+    });
+  }
+
   async transition(id: string, to: TaskStatus, patch: Partial<typeof tasks.$inferInsert> = {}) {
     return this.db.transaction(async (transaction) => {
       const [current] = await transaction

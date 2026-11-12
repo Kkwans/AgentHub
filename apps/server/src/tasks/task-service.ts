@@ -346,18 +346,12 @@ export class TaskService implements TaskRunLifecycleObserver {
     }
   }
 
-  async onRunCompleted(taskId: string, runId: string): Promise<void> {
-    const task = await this.tasks.get(taskId);
-    if (task?.status === 'IN_PROGRESS') {
-      await this.tasks.transition(taskId, 'WAITING_REVIEW', { finalRunId: runId });
-    }
+  async onRunCompleted(taskId: string, runId: string): Promise<boolean> {
+    return this.tasks.tryApplyRunOutcome(taskId, runId, 'COMPLETED');
   }
 
-  async onRunStopped(taskId: string, runId: string): Promise<void> {
-    const task = await this.tasks.get(taskId);
-    if (task?.status === 'IN_PROGRESS') {
-      await this.tasks.transition(taskId, 'BLOCKED', { finalRunId: runId });
-    }
+  async onRunStopped(taskId: string, runId: string): Promise<boolean> {
+    return this.tasks.tryApplyRunOutcome(taskId, runId, 'STOPPED');
   }
 
   private async requireProject(id: string) {
