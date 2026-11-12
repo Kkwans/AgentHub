@@ -14,8 +14,8 @@ import {
   X,
 } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState, type KeyboardEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { AgentCandidateRecord, AgentRecord, ExecutionTargetRecord } from '../../../lib/api';
@@ -34,23 +34,40 @@ function providerLabel(adapter: string): string {
   return normalized || '默认 Provider';
 }
 
-function capabilitiesFor(agent: AgentRecord): string[] {
+export function capabilitiesFor(agent: Pick<AgentRecord, 'capabilitiesJson'>): string[] {
   const labels: Record<string, string> = {
     session: 'Session',
-    sessions: 'Sessions',
+    sessions: 'Session',
     run: 'Run',
-    runs: 'Runs',
+    runs: 'Run',
     approval: 'Approval',
     approvals: 'Approval',
     files: '文件',
     terminal: 'Terminal',
     git: 'Git',
   };
-  const keys = Object.keys(agent.capabilitiesJson ?? {})
-    .filter((key) => Boolean(agent.capabilitiesJson[key]))
-    .map((key) => labels[key.toLowerCase()] ?? '')
-    .filter(Boolean);
-  return Array.from(new Set(['Session', 'Run', ...keys])).slice(0, 4);
+  const capabilities = agent.capabilitiesJson ?? {};
+  const confirmed = Object.entries(capabilities)
+    .filter(([, value]) => value === true)
+    .map(([key]) => labels[key.toLowerCase()])
+    .filter((label): label is string => Boolean(label));
+  // Current adapter contract is nested; an object (including all-false fields)
+  // is not evidence of support. Only exact, recognized true flags count.
+  const flag = (group: string, key: string) => {
+    const value = capabilities[group];
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      (value as Record<string, unknown>)[key] === true
+    );
+  };
+  if (flag('sessions', 'create')) confirmed.push('Session');
+  if (flag('prompts', 'text')) confirmed.push('文本输入');
+  if (flag('interaction', 'approvals')) confirmed.push('Approval');
+  if (flag('workspace', 'files')) confirmed.push('文件');
+  if (flag('workspace', 'terminal')) confirmed.push('Terminal');
+  return Array.from(new Set(confirmed));
 }
 
 function statusLabel(status: string, enabled: boolean): string {
@@ -65,27 +82,15 @@ function AgentResourceCard({
   agent: AgentRecord;
   target?: ExecutionTargetRecord;
 }) {
-  const navigate = useNavigate();
   const ready = agent.status === 'READY' && agent.enabled;
   const runtimeLabel = target?.kind === 'DOCKER_CONTAINER' ? 'Docker' : 'Local';
   const capabilities = capabilitiesFor(agent);
-  const activate = () => navigate('/agents/diagnostics');
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    activate();
-  };
 
   return (
     <Card
-      variant="interactive"
-      className="resource-card group relative flex min-h-0 cursor-pointer flex-col overflow-hidden p-0 transition-[border-color,box-shadow,background-color] duration-150 ease-out sm:min-h-[190px]"
-      role="link"
-      tabIndex={0}
+      className="resource-card relative flex min-h-0 flex-col overflow-hidden p-0 sm:min-h-[190px]"
+      role="group"
       aria-label={`${agent.name}，${agentKindLabel(agent.agentKind)}，${ready ? '已就绪' : '需要处理'}`}
-      onClick={activate}
-      onKeyDown={onKeyDown}
     >
       <div className="flex flex-1 flex-col px-4 pb-3 pt-4">
         <div className="mb-3 flex min-h-5 flex-wrap items-center gap-1">
@@ -101,11 +106,11 @@ function AgentResourceCard({
         </div>
 
         <div className="flex min-w-0 items-start gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-full border border-[hsl(var(--primary))]/15 bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))] transition-transform duration-[var(--motion-fast)] ease-[var(--ease-standard)] group-hover:scale-[1.03]">
+          <div className="grid size-10 shrink-0 place-items-center rounded-full border border-[hsl(var(--primary))]/15 bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))] transition-transform duration-[var(--motion-fast)] ease-[var(--ease-standard)]">
             <Bot size={19} weight="duotone" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold tracking-[-0.01em] text-[hsl(var(--foreground))] transition-colors duration-[var(--motion-fast)] group-hover:text-[hsl(var(--primary))]">
+            <h3 className="truncate text-sm font-semibold tracking-[-0.01em] text-[hsl(var(--foreground))] transition-colors duration-[var(--motion-fast)]">
               {agent.name}
             </h3>
             <code className="mt-1 block truncate font-mono text-xs text-[hsl(var(--foreground-faint))]">
@@ -136,6 +141,9 @@ function AgentResourceCard({
         </div>
 
         <div className="mt-3 flex min-h-6 flex-wrap items-center gap-1.5">
+          {!capabilities.length ? (
+            <span className="text-xs text-[hsl(var(--foreground-muted))]">能力待确认</span>
+          ) : null}
           {capabilities.map((capability) => (
             <span
               key={capability}
@@ -156,11 +164,11 @@ function AgentResourceCard({
             </span>
           </div>
           <Link
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[hsl(var(--primary))] transition-colors duration-[var(--motion-fast)] hover:text-[hsl(var(--primary-hover))]"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-soft))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))]"
+            aria-description="当前 AgentHub 服务器，不是此 Agent 专属诊断"
             to="/agents/diagnostics"
-            onClick={(event) => event.stopPropagation()}
           >
-            查看诊断 <ArrowRight size={13} aria-hidden />
+            服务器诊断 <ArrowRight size={13} aria-hidden />
           </Link>
         </div>
         <span className="sr-only">当前状态：{statusLabel(agent.status, agent.enabled)}</span>

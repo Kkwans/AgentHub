@@ -141,13 +141,13 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
       api.post(`/execution-targets/${id}/${action}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['discovery-runtimes'] }),
   });
-  const title = kind === 'runtimes' ? 'Runtime' : kind === 'nodes' ? 'Remote Nodes' : 'Diagnostics';
+  const title = kind === 'runtimes' ? 'Runtime' : kind === 'nodes' ? 'Remote Nodes' : '服务器诊断';
   const description =
     kind === 'runtimes'
       ? '管理本机与 Docker 执行环境，状态反馈与 Agent 可用性保持一致。'
       : kind === 'nodes'
         ? '管理已授权的 Remote Node，注册码只展示一次，撤销需要明确确认。'
-        : '先给出面向用户的结论，再按需展开原始诊断信息。';
+        : '检查当前 AgentHub 服务器的进程与供应商环境，不代表某个 Agent 或远程执行环境的专属诊断。';
   const runtimeRows = runtimes.data ?? [];
   const stoppedRuntimeCount = runtimeRows.filter((runtime) => runtime.state === 'STOPPED').length;
   const visibleRuntimeRows = showStoppedRuntimes
@@ -303,8 +303,8 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
         <AhSurface>
           <div className={layout.surfaceHeader}>
             <div>
-              <h3>主机诊断</h3>
-              <p>高级供应商细节保持在 progressive disclosure 内。</p>
+              <h3>服务器诊断</h3>
+              <p>以下信息来自当前 AgentHub 服务器，详细结果可按需展开。</p>
             </div>
             <AhButton
               variant="default"
