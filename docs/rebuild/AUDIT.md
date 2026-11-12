@@ -25,8 +25,8 @@
 - 仓库干净克隆，未接触 NAS、用户 Agent 凭据或现有容器。
 - Node 24.22.1，pnpm 11.11.0 frozen lockfile 安装成功，供应链检查通过。
 - 初次依赖安装因临时盘空间不足终止；仅迁移本轮生成的缓存后重新安装成功。
-- lint/typecheck/build/unit 正在基线运行，结果以执行台账为准。
-- 新鲜的本地真实 HTTP/浏览器截图、真实 Agent、NAS 均尚未验收。历史截图不作为当前完成证据。
+- 基线 lint/typecheck/build 通过；unit 334 项通过、1 项失败、10 项跳过。完成前两项修复后，全量 337 项通过、10 项跳过。结果以执行台账的最新提交为准。
+- 本地真实 HTTP + PGlite + fixture ACP 已复现核心问题；浏览器 Chromium 启动受 socket 权限限制，真实 Agent 与 NAS 未验收。历史截图不作为当前完成证据。
 
 ## 5. 不变的边界
 
