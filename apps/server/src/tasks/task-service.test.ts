@@ -92,6 +92,20 @@ describe('Goal 与 Task service', () => {
 
   afterAll(async () => database.close());
 
+  it('AH041：手工任务仍需BACKLOG→READY→IN_PROGRESS，不放宽状态机或创建Session', async () => {
+    const task = await service.createTask({ projectId, title: '手工任务' });
+    const beforeSessions = createdSessions.length;
+    const beforeRuns = startedRuns.length;
+    await expect(service.transitionTask(task.id, 'IN_PROGRESS')).rejects.toMatchObject({
+      code: 'INVALID_STATE_TRANSITION',
+    });
+    expect((await service.getTask(task.id)).status).toBe('BACKLOG');
+    await service.transitionTask(task.id, 'READY');
+    expect((await service.transitionTask(task.id, 'IN_PROGRESS')).status).toBe('IN_PROGRESS');
+    expect(createdSessions).toHaveLength(beforeSessions);
+    expect(startedRuns).toHaveLength(beforeRuns);
+  });
+
   it('AH039：进行中Task不能靠状态编辑假取消或绕过保护', async () => {
     for (const hasSession of [true]) {
       const task = await service.createTask({ projectId, title: '正在执行，不可假取消' });

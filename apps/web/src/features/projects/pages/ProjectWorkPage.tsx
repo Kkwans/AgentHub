@@ -1,3 +1,6 @@
+import { useAuthMode, useAuthUser } from '../../../components/AccessGate';
+import { browserCreationScope } from '../lib/task-creation-recovery';
+import { useManualTaskStart } from '../hooks/useManualTaskStart';
 import { TaskCancelAction } from '../components/TaskCancelAction';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
@@ -208,6 +211,10 @@ export function ProjectWorkPage() {
       void client.invalidateQueries({ queryKey: ['sessions', project.id] });
       navigate(`/workspace/${result.session.id}`);
     },
+  });
+  const manualScope = browserCreationScope(useAuthMode(), useAuthUser());
+  const manual = useManualTaskStart(project.id, selected?.id, manualScope, () => {
+    void client.invalidateQueries({ queryKey: ['tasks', project.id] });
   });
   const setWorkView = (nextView: 'list' | 'board') => {
     const next = new URLSearchParams(searchParams);
@@ -497,6 +504,8 @@ export function ProjectWorkPage() {
                         </p>
                       ) : null}
                     </section>
+                    {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
+                    {manual.message ? <p role="status">{manual.message}</p> : null}
                     <div className={projectsStyles.inspectorActions}>
                       <AhButton
                         size="xs"
@@ -504,21 +513,48 @@ export function ProjectWorkPage() {
                         onClick={() =>
                           runAgentId
                             ? start.mutate({ id: selected.id, agentId: runAgentId })
-                            : transition.mutate({ id: selected.id, status: 'IN_PROGRESS' })
+                            : void manual.begin()
                         }
-                        loading={transition.isPending || start.isPending}
+                        loading={transition.isPending || start.isPending || manual.busy}
                         disabled={
                           ['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'].includes(
                             selected.status,
                           ) ||
-                          (!runAgentId && selected.status !== 'BACKLOG')
+                          (!runAgentId && manual.unavailable) ||
+                          manual.busy ||
+                          transition.isPending ||
+                          start.isPending ||
+                          (manual.unknown && (Boolean(runAgentId) || !manual.status)) ||
+                          (!runAgentId && !['BACKLOG', 'READY'].includes(selected.status))
                         }
                       >
-                        <Play size={14} /> {runAgentId ? '启动 Session' : '开始'}
+                        <Play size={14} />{' '}
+                        {runAgentId
+                          ? '启动 Session'
+                          : manual.unknown
+                            ? '继续手工开始'
+                            : '开始手工任务'}
                       </AhButton>
+                      {manual.unknown || manual.message ? (
+                        <AhButton
+                          size="xs"
+                          variant="light"
+                          disabled={
+                            manual.unavailable ||
+                            manual.busy ||
+                            transition.isPending ||
+                            start.isPending
+                          }
+                          onClick={() => void manual.check()}
+                        >
+                          查询原任务状态
+                        </AhButton>
+                      ) : null}
                       <TaskCancelAction
                         task={selected}
-                        pending={transition.isPending}
+                        pending={
+                          transition.isPending || start.isPending || manual.busy || manual.unknown
+                        }
                         onCancel={() => transition.mutate({ id: selected.id, status: 'CANCELED' })}
                       />
                     </div>

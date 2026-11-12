@@ -1,0 +1,104 @@
+import { apiData } from './baseline-support.js';
+import { expect, initializeGitProject, test } from './fixtures.js';
+
+test.use({ authMode: 'local_trusted' });
+test.setTimeout(120_000);
+for (const width of [390, 768, 1024, 1440]) {
+  for (const theme of ['light', 'dark']) {
+    test(`手工任务合法两步开始且不启动Agent ${width} ${theme}`, async ({
+      page,
+      context,
+      app,
+    }, info) => {
+      await initializeGitProject(app.projectRoot);
+      const target = await apiData<{ id: string }>(context, 'post', '/execution-targets', {
+        name: '手工任务环境',
+        kind: 'LOCAL_HOST',
+        hostname: '127.0.0.1',
+        os: process.platform,
+        arch: process.arch,
+      });
+      const project = await apiData<{ id: string }>(context, 'post', '/projects', {
+        name: '手工工作项目',
+        targetId: target.id,
+        rootPath: app.projectRoot,
+        kind: 'STANDARD',
+      });
+      const task = await apiData<{ id: string; status: string }>(context, 'post', '/tasks', {
+        projectId: project.id,
+        title: '人工整理验收清单',
+      });
+      expect(task.status).toBe('BACKLOG');
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      await context.addInitScript(
+        ({ origin, theme }) => {
+          if (location.origin === origin) localStorage.setItem('agenthub-theme', theme);
+        },
+        { origin: app.origin, theme },
+      );
+      const errors: string[] = [];
+      const transitions: unknown[] = [];
+      const runtimeRequests: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+      });
+      page.on('request', (request) => {
+        if (request.method() !== 'POST') return;
+        const path = new URL(request.url()).pathname;
+        if (path === `/api/v1/tasks/${task.id}/transition`)
+          transitions.push(request.postDataJSON());
+        if (path.endsWith('/start') || path.endsWith('/runs') || path === '/api/v1/sessions')
+          runtimeRequests.push(path);
+      });
+      await page.goto(`/projects/${project.id}/work?task=${task.id}`);
+      const begin = page.getByRole('button', { name: '开始手工任务', exact: true });
+      await expect(begin).toBeEnabled();
+      await expect(
+        page.getByText('手工开始仅更新任务进度，不会启动 Agent。', { exact: true }),
+      ).toBeVisible();
+      await begin.scrollIntoViewIfNeeded();
+      await expect(begin).toBeInViewport({ ratio: 1 });
+      await begin.click();
+      await expect(
+        page.getByText('任务已标记为进行中；没有启动 Agent。', { exact: true }),
+      ).toBeVisible();
+      await expect
+        .poll(
+          async () =>
+            (await apiData<{ status: string }>(context, 'get', `/tasks/${task.id}`)).status,
+        )
+        .toBe('IN_PROGRESS');
+      expect(transitions).toEqual([{ status: 'READY' }, { status: 'IN_PROGRESS' }]);
+      expect(runtimeRequests).toEqual([]);
+      const stored = await apiData<{
+        sessionId: string | null;
+        assignedAgentId: string | null;
+        finalRunId: string | null;
+      }>(context, 'get', `/tasks/${task.id}`);
+      expect(stored).toMatchObject({ sessionId: null, assignedAgentId: null, finalRunId: null });
+      const sessions = await apiData<Array<{ id: string }>>(
+        context,
+        'get',
+        `/sessions?projectId=${project.id}`,
+      );
+      expect(sessions).toEqual([]);
+      // Every Run has a required Session FK. Also count any unexpected Session's real Runs.
+      const runs = (
+        await Promise.all(
+          sessions.map((session) =>
+            apiData<unknown[]>(context, 'get', `/sessions/${session.id}/runs`),
+          ),
+        )
+      ).flat();
+      expect(runs).toEqual([]);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+      ).toBeLessThanOrEqual(1);
+      const path = info.outputPath(`manual-task-start-${width}-${theme}.png`);
+      await page.screenshot({ path, fullPage: true });
+      await info.attach('手工任务已开始', { path, contentType: 'image/png' });
+      expect(errors).toEqual([]);
+    });
+  }
+}

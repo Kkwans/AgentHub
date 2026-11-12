@@ -1,14 +1,21 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ProjectContextLayout } from './ProjectContextLayout';
 import { ProjectWorkPage } from './ProjectWorkPage';
 import { api } from '../../../lib/api';
 
-vi.mock('../../../lib/api', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
+vi.mock('../../../lib/api', async () => ({
+  api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
+  authSession: (await import('../../../lib/auth-api')).authSession,
+}));
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthMode: () => 'local_trusted',
+  useAuthUser: () => null,
+}));
 const clients: QueryClient[] = [];
 afterEach(() => {
   cleanup();
@@ -35,6 +42,7 @@ function mount(rows: unknown[] | Promise<unknown[]> = [], query = '') {
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path === `/projects/${project.id}`) return project as T;
     if (path.startsWith('/tasks?')) return (await rows) as T;
+    if (path === '/tasks/task-1') return task as T;
     return [] as T;
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -103,4 +111,19 @@ it('新增任务后自动恢复已有列表与AH039取消组件', async () => {
   expect(await screen.findByRole('textbox', { name: '搜索工作' })).toBeVisible();
   expect(screen.getByRole('button', { name: '前往工作区停止执行' })).toBeVisible();
   expect(screen.queryByText('开始这个项目的第一项工作')).not.toBeInTheDocument();
+});
+
+it('无Agent手工开始从BACKLOG先READY再IN_PROGRESS，不启动Session', async () => {
+  vi.mocked(api.post).mockImplementation(
+    async (_path, body) => ({ ...task, status: (body as { status: string }).status }) as never,
+  );
+  mount([task]);
+  fireEvent.click(await screen.findByRole('button', { name: /^开始(?:手工任务)?$/ }));
+  await waitFor(() =>
+    expect(vi.mocked(api.post).mock.calls).toEqual([
+      ['/tasks/task-1/transition', { status: 'READY' }],
+      ['/tasks/task-1/transition', { status: 'IN_PROGRESS' }],
+    ]),
+  );
+  await screen.findByText('任务已标记为进行中；没有启动 Agent。');
 });
