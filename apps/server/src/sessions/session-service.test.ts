@@ -254,6 +254,77 @@ describe('Session/Run/Approval 持久化闭环', () => {
     },
   );
 
+  it.each(['ABSENT', 'ERROR'] as const)(
+    'Git诊断读数%s：无HEAD正常收敛，真实异常不被吞掉',
+    async (mode) => {
+      let reads = 0;
+      const adapter = new ControlledAdapter('never');
+      const fixture = await createFixture(
+        'idle',
+        undefined,
+        {},
+        {
+          adapter,
+          git: {
+            readHead: async () => {
+              if (++reads > 1 && mode === 'ERROR') throw new Error('git probe failure');
+              return undefined;
+            },
+          },
+        },
+      );
+      const tasks = new TaskRepository(database.db);
+      const taskService = new TaskService(
+        new GoalRepository(database.db),
+        tasks,
+        new ProjectRepository(database.db),
+        fixture.service,
+      );
+      fixture.service.setTaskLifecycleObserver(taskService);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '非Git任务',
+        status: 'IN_PROGRESS',
+        assignedAgentId: fixture.agentId,
+      });
+      try {
+        const session = await fixture.service.create({
+          projectId: fixture.projectId,
+          agentId: fixture.agentId,
+          taskId: task.id,
+          title: '无HEAD会话',
+          cwd: '/tmp',
+        });
+        await tasks.update(task.id, { sessionId: session.id });
+        const run = await fixture.service.startRun(session.id, { text: '正常完成' });
+        adapter.handles[0]!.complete(run.id);
+        if (mode === 'ABSENT') {
+          await waitFor(
+            async () => (await fixture.repositories.sessions.get(session.id))?.status !== 'RUNNING',
+          );
+          expect((await fixture.repositories.sessions.get(session.id))?.status).toBe('READY');
+          await waitFor(async () => (await tasks.get(task.id))?.status === 'WAITING_REVIEW');
+          expect((await tasks.get(task.id))?.finalRunId).toBe(run.id);
+        } else {
+          await waitFor(
+            async () =>
+              (await fixture.repositories.sessions.get(session.id))?.status === 'DISCONNECTED',
+          );
+          expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
+          expect((await tasks.get(task.id))?.finalRunId).toBeNull();
+        }
+        expect(await fixture.repositories.runs.get(run.id)).toMatchObject({
+          status: 'COMPLETED',
+          gitBeforeSha: null,
+          gitAfterSha: null,
+        });
+      } finally {
+        await fixture.service.shutdown();
+      }
+    },
+  );
+
   it('创建 Session 前拒绝 archived Project、disabled/BROKEN Agent 与 target mismatch', async () => {
     const archived = await createFixture('idle', undefined, {}, { projectStatus: 'ARCHIVED' });
     await expect(

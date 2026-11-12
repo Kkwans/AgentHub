@@ -1272,9 +1272,10 @@ export class SessionService {
       );
       if (transitioned.changed) {
         await this.captureGitSnapshot(event.runId, session.projectId, session.cwd, 'AFTER');
-        await this.runs.patch(event.runId, {
-          gitAfterSha: await this.git.readHead(session.cwd),
-        });
+        const gitAfterSha = await this.git.readHead(session.cwd);
+        // Non-Git/empty repositories legitimately have no HEAD. Avoid an empty
+        // SQL UPDATE, but do not suppress an actual probe or persistence error.
+        if (gitAfterSha !== undefined) await this.runs.patch(event.runId, { gitAfterSha });
         this.clearCancellationTimer(event.runId);
         await this.safeSessionTransition(event.sessionId, 'READY');
         if (transitioned.run.taskId)
