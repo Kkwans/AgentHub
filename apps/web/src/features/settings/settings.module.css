@@ -1,5 +1,6 @@
 .page {
   display: grid;
+  align-content: start;
   gap: 26px;
   min-width: 0;
   color: var(--ah-text-primary);
