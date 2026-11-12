@@ -52,7 +52,7 @@ function followStreamingBottom(
   lastScrollHeightRef: { current: number },
   followingRef: { current: boolean },
   markProgrammaticScroll: () => void,
-): void {
+): number | undefined {
   const currentScrollHeight = element.scrollHeight;
   if (currentScrollHeight - lastScrollHeightRef.current < STREAMING_LINE_HEIGHT_PX) return;
 
@@ -73,7 +73,7 @@ function followStreamingBottom(
   // tail first, then let one short smooth segment settle; if the user takes
   // over during the gap, the queued frame is discarded.
   element.scrollTop = Math.max(0, currentScrollHeight - 200);
-  requestAnimationFrame(() => {
+  return requestAnimationFrame(() => {
     if (!followingRef.current) return;
     element.scrollTo({ top: currentScrollHeight, behavior: 'smooth' });
   });
@@ -327,6 +327,11 @@ export const ChatConversationView = memo(function ChatConversationView({
   useEffect(() => {
     if (!followTimelineRef.current) return;
     let trailingFrame: number | undefined;
+    let smoothTailFrame: number | undefined;
+    const cancelPendingScroll = () => {
+      if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
+      if (smoothTailFrame !== undefined) cancelAnimationFrame(smoothTailFrame);
+    };
     const scrollToLatest = () => {
       const element = scrollRef.current;
       if (
@@ -337,7 +342,7 @@ export const ChatConversationView = memo(function ChatConversationView({
       )
         return;
       initialFollowPendingRef.current = false;
-      followStreamingBottom(
+      smoothTailFrame = followStreamingBottom(
         element,
         lastStreamingScrollHeightRef,
         followingRef,
@@ -346,7 +351,7 @@ export const ChatConversationView = memo(function ChatConversationView({
     };
     const scheduleScroll = () => {
       if (!followTimelineRef.current || userScrollIntentRef.current) return;
-      if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
+      cancelPendingScroll();
       trailingFrame = requestAnimationFrame(() => {
         trailingFrame = requestAnimationFrame(scrollToLatest);
       });
@@ -355,7 +360,7 @@ export const ChatConversationView = memo(function ChatConversationView({
     const element = scrollRef.current;
     if (!element || typeof ResizeObserver === 'undefined') {
       return () => {
-        if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
+        cancelPendingScroll();
       };
     }
     const observer = new ResizeObserver(scheduleScroll);
@@ -366,9 +371,9 @@ export const ChatConversationView = memo(function ChatConversationView({
     if (content) observer.observe(content);
     return () => {
       observer.disconnect();
-      if (trailingFrame !== undefined) cancelAnimationFrame(trailingFrame);
+      cancelPendingScroll();
     };
-  }, [displayTurns.length, latestTimelineId, markProgrammaticScroll, viewportMeasured]);
+  }, [displayTurns.length, latestTimelineId, markProgrammaticScroll, session.id, viewportMeasured]);
   const scheduleLatestScroll = () => {
     if (timelineScrollRafRef.current !== null) cancelAnimationFrame(timelineScrollRafRef.current);
     timelineScrollRafRef.current = requestAnimationFrame(() => {

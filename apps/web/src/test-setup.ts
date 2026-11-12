@@ -46,3 +46,22 @@ if (typeof globalThis.ResizeObserver !== 'function') {
     value: TestResizeObserver,
   });
 }
+
+// JSDOM has no layout/animation engine. Model the observable position and scroll
+// event, not smooth timing; lifecycle tests control requestAnimationFrame itself.
+if (typeof Element !== 'undefined' && typeof Element.prototype.scrollTo !== 'function') {
+  Object.defineProperty(Element.prototype, 'scrollTo', {
+    configurable: true,
+    writable: true,
+    value: function (this: Element, optionsOrX: ScrollToOptions | number, y?: number) {
+      const options = typeof optionsOrX === 'number' ? { left: optionsOrX, top: y } : optionsOrX;
+      if (options.top !== undefined) {
+        this.scrollTop = Math.max(0, Math.min(options.top, this.scrollHeight - this.clientHeight));
+      }
+      if (options.left !== undefined) {
+        this.scrollLeft = Math.max(0, Math.min(options.left, this.scrollWidth - this.clientWidth));
+      }
+      this.dispatchEvent(new Event('scroll'));
+    },
+  });
+}
