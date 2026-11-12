@@ -23,3 +23,58 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+
+  real-service:
+    name: Real service and visual evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    env:
+      # These tests create their own loopback server, PGlite database and ACP
+      # fixture process. They never use a deployed NAS or a paid Agent account.
+      AGENTHUB_E2E_LIVE: '0'
+      AGENTHUB_VISUAL_OUTPUT: ${{ github.workspace }}/artifacts/real-service-visual
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test:qa
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Prepare visual artifact parent directory
+        run: mkdir -p "$(dirname "$AGENTHUB_VISUAL_OUTPUT")"
+      - name: Verify current workflows and capture the complete visual matrix
+        id: real-tests
+        env:
+          AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-real-service
+        run: >-
+          pnpm exec playwright test --config=playwright.real.config.ts
+          tests/e2e-real/workbench.spec.ts
+          tests/e2e-real/v1-baseline.spec.ts
+      - name: Check screenshot completeness, console errors and layout measurements
+        if: ${{ !cancelled() && (steps.real-tests.outcome == 'success' || steps.real-tests.outcome == 'failure') }}
+        run: >-
+          pnpm qa:geometry
+          "$AGENTHUB_VISUAL_OUTPUT/audit.json"
+          "$AGENTHUB_VISUAL_OUTPUT/geometry.json"
+      - name: Preserve isolated test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-service-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            real-playwright-report/
+            real-test-results/
+            artifacts/real-service-visual/*.png
+            artifacts/real-service-visual/*.json
+            artifacts/real-service-visual/SHA256SUMS
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6
