@@ -108,3 +108,13 @@
 - 添加项目支持授权根目录、逐级浏览、返回、仓库候选、精确路径预检；禁止任意手写路径。22 项组件回归覆盖切目标、迟到响应、部分失败、认证失效与取消。四视口真实浏览器测试加入 CI，尚待执行证据。
 - 首页移除零值 KPI 与重复大空卡，改为行动优先、待处理事项、最近会话和项目；超过五项可展开，全部归档不误导新建工作，全局 Agent 就绪不冒充项目可用。六项渲染回归通过，新版实际像素尚待 CI。
 - 最终集成：lint/typecheck/串行 build 通过；84 文件、439 项测试通过、10 项跳过；QA 辅助六项通过。CSS budget 仍因原 Workspace 19809 字节、8 个 important 失败，未放宽阈值。首次 pre-build focused 失败来自旧 @agenthub/db dist，不计通过；构建后的完整运行已覆盖新事务方法。
+
+### 项目级 Agent 准入、导航与 Workspace 清理
+
+- 增加项目级只读 Agent 注册资格 API，与运行时复用 enabled/status/工作区映射判定，保留 Docker 跨 target 映射。接口不启动容器、预检或创建 adapter；明确 `REGISTERED_STATE`、`livePreflight:false`。
+- NewWork 仅自动选服务器判定可选择的 Agent，明确启动时还需检查；加载/错误/非法响应不猜测，可保留“稍后选择”。变为不合格的已有选择不会悄悄替换。针对性 61 项通过。
+- 主导航按完整路径分区匹配，Infrastructure 优先；账户入口使用真实用户名/访问模式并进入设置，移动端点击关闭抽屉。针对性 29 项通过。
+- Workspace 清理死局部选择器及无必要 important，未拆文件规避预算，详见 WORKSPACE-CSS-AUDIT.md。分支未知显示“分支未记录”，不推断非 Git。
+- 新增真实 NewWork Prompt 四视口流程及无 Agent 模板绑定流程，验证 Task/Run/固定版本/上下文哈希，已加入 CI 显式文件列表。真实浏览器收集 23 项（含现有 legacy 项），不把收集成功当执行成功。
+- 最终 lint/typecheck/串行 build 通过；86 文件、482 项 unit 通过、10 项跳过。QA 辅助 8 项通过，CSS budget 通过；release manifest 完整性仍开放。
+- CI d430519 的真实服务 job 已通过全部五项及 140 图几何门禁；fixture 为 44/4，已根据截图/trace 修正回到最新交互场景，待新提交实际执行。
