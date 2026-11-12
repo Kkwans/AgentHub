@@ -111,40 +111,52 @@ async function screenshot(page: Page, info: TestInfo, name: string) {
 test.describe('真实创建操作恢复', () => {
   test.use({ authMode: 'local_trusted' });
   for (const width of [390, 768, 1024, 1440]) {
-    test(`提交后丢响应，刷新和关闭重开只读恢复 ${width}`, async ({ page, context, app }, info) => {
-      await page.setViewportSize({ width, height: 900 });
-      const project = await seed(context, app.projectRoot);
-      const observed = await observe(context, app.origin, true);
-      await begin(page, project.id);
-      await expect(page.getByRole('button', { name: '同编号重试创建' })).toBeVisible();
-      const record = await expectIdsOnly(page);
-      expect(record.value.operationId).toBe(observed.bodies[0]!.operationId);
-      await page.reload();
-      await expect(
-        page
-          .getByRole('region', { name: '任务创建恢复' })
-          .getByText('已找到原任务；请手动查看结果。'),
-      ).toBeVisible();
-      await screenshot(page, info, `recovery-${width}-reload`);
-      await page.close();
-      const reopened = await context.newPage();
-      await reopened.setViewportSize({ width, height: 900 });
-      await reopened.goto(`/projects/${project.id}/work/new`);
-      const open = reopened.getByRole('button', { name: '打开原任务', exact: true });
-      await expect(open).toBeVisible();
-      expect((await expectIdsOnly(reopened)).value.operationId).toBe(record.value.operationId);
-      await screenshot(reopened, info, `recovery-${width}-reopened`);
-      await open.focus();
-      await reopened.keyboard.press('Enter');
-      await expect(reopened).toHaveURL(
-        `${app.origin}/projects/${project.id}/work?task=${observed.taskId()}`,
-      );
-      expect(observed.bodies).toHaveLength(1);
-      expect(observed.recoveryGets.length).toBeGreaterThanOrEqual(2);
-      expect(observed.sideEffects).toEqual([]);
-      await expectNoExecution(context, 1);
-      expect(observed.errors).toEqual([]);
-    });
+    for (const theme of ['light', 'dark'] as const) {
+      test(`提交后丢响应，刷新和关闭重开只读恢复 ${width} ${theme}`, async ({
+        page,
+        context,
+        app,
+      }, info) => {
+        await context.addInitScript(
+          ({ theme, origin }) => {
+            if (location.origin === origin) localStorage.setItem('agenthub-theme', theme);
+          },
+          { theme, origin: app.origin },
+        );
+        await page.setViewportSize({ width, height: 900 });
+        const project = await seed(context, app.projectRoot);
+        const observed = await observe(context, app.origin, true);
+        await begin(page, project.id);
+        await expect(page.getByRole('button', { name: '同编号重试创建' })).toBeVisible();
+        const record = await expectIdsOnly(page);
+        expect(record.value.operationId).toBe(observed.bodies[0]!.operationId);
+        await page.reload();
+        await expect(
+          page
+            .getByRole('region', { name: '任务创建恢复' })
+            .getByText('已找到原任务；请手动查看结果。'),
+        ).toBeVisible();
+        await screenshot(page, info, `recovery-${width}-${theme}-reload`);
+        await page.close();
+        const reopened = await context.newPage();
+        await reopened.setViewportSize({ width, height: 900 });
+        await reopened.goto(`/projects/${project.id}/work/new`);
+        const open = reopened.getByRole('button', { name: '打开原任务', exact: true });
+        await expect(open).toBeVisible();
+        expect((await expectIdsOnly(reopened)).value.operationId).toBe(record.value.operationId);
+        await screenshot(reopened, info, `recovery-${width}-${theme}-reopened`);
+        await open.focus();
+        await reopened.keyboard.press('Enter');
+        await expect(reopened).toHaveURL(
+          `${app.origin}/projects/${project.id}/work?task=${observed.taskId()}`,
+        );
+        expect(observed.bodies).toHaveLength(1);
+        expect(observed.recoveryGets.length).toBeGreaterThanOrEqual(2);
+        expect(observed.sideEffects).toEqual([]);
+        await expectNoExecution(context, 1);
+        expect(observed.errors).toEqual([]);
+      });
+    }
   }
   test('同页同编号冻结请求重放成功也不自动启动', async ({ page, context, app }) => {
     const project = await seed(context, app.projectRoot);
