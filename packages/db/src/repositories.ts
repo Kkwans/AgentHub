@@ -2400,11 +2400,17 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
   async updateConfiguration(
     id: string,
     patch: Pick<typeof agentSessions.$inferInsert, 'model' | 'mode' | 'reasoningEffort'>,
+    options?: { expectedFrom: SessionStatus },
   ) {
     const [updated] = await this.db
       .update(agentSessions)
       .set({ ...patch, lastActiveAt: new Date() })
-      .where(eq(agentSessions.id, id))
+      .where(
+        and(
+          eq(agentSessions.id, id),
+          options ? eq(agentSessions.status, options.expectedFrom) : undefined,
+        ),
+      )
       .returning();
     if (!updated) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
     return updated;
@@ -2414,6 +2420,7 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
     id: string,
     to: SessionStatus,
     patch: Partial<typeof agentSessions.$inferInsert> = {},
+    options?: { expectedFrom: SessionStatus },
   ) {
     return this.db.transaction(async (transaction) => {
       const [current] = await transaction
@@ -2423,6 +2430,11 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
         .for('update')
         .limit(1);
       if (!current) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
+      if (options && current.status !== options.expectedFrom)
+        throw new DatabaseInvariantError(
+          'SESSION_CONCURRENT_UPDATE',
+          'Session 状态已被其他请求修改',
+        );
       transitionSession(current.status as SessionStatus, to);
       const [updated] = await transaction
         .update(agentSessions)

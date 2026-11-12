@@ -126,7 +126,10 @@ const errorMessages: Record<string, string> = {
   AGENT_TRANSPORT_FAILED: 'Agent 实时连接失败，请检查网络代理与 Agent 授权后重试。',
   AGENT_SESSION_CREATE_FAILED:
     'Agent Session 创建失败，请先核对现有会话和 Agent 诊断，再决定是否重新创建。',
-  AGENT_SESSION_RESUME_FAILED: 'Agent Session 恢复失败，请重新检查连接。',
+  AGENT_SESSION_RESUME_FAILED: 'Agent Session 恢复失败，请先核对已有会话状态。',
+  SESSION_RESUME_HANDLE_REUSED: 'Agent 返回了已有连接，请先核对会话状态，勿直接重复恢复。',
+  SESSION_LIFECYCLE_BUSY: 'Session 正在恢复或关闭，请等待原操作结束并核对状态。',
+  SESSION_LIFECYCLE_SUPERSEDED: '恢复已被关闭操作撤销，请核对会话状态。',
   AGENT_TARGET_CONFIG_INVALID: 'Agent 的执行环境配置不完整。',
   AGENT_TARGET_KIND_UNSUPPORTED: '当前执行环境不支持该 Agent。',
   AGENT_TARGET_MISSING: 'Agent 绑定的执行环境不存在。',
@@ -261,6 +264,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       } else if (details?.handleCleanup === 'ACTIVE_OWNED') {
         message =
           'Agent Session 创建响应异常，但现有会话仍由系统管理。请先核对现有会话，勿直接重复创建。';
+      }
+    }
+    if (error.code === 'AGENT_SESSION_RESUME_FAILED' && response.status === 502) {
+      if (details?.handleCleanup === 'UNKNOWN' || details?.previousHandleCleanup === 'UNKNOWN') {
+        const resources =
+          details?.previousHandleCleanup === 'UNKNOWN'
+            ? details?.handleCleanup === 'UNKNOWN'
+              ? '旧连接及本次新连接'
+              : '旧连接'
+            : '本次新连接';
+        message = `Agent Session 恢复失败，${resources}资源清理结果未知。请先核对已有会话与 Agent 进程，勿直接重复恢复。`;
+      } else if (details?.handleCleanup === 'ACTIVE_OWNED') {
+        message =
+          'Agent Session 恢复响应异常，但现有会话仍由系统管理。请先核对会话，勿直接重复恢复。';
       }
     }
     throw new ApiError(error.code, message, response.status, details);

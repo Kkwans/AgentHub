@@ -115,3 +115,32 @@ describe('web api error boundary', () => {
     });
   });
 });
+
+it.each([
+  [{ handleCleanup: 'UNKNOWN' }, '本次新连接资源清理结果未知'],
+  [
+    { handleCleanup: 'HANDLE_CLOSE_RETURNED', previousHandleCleanup: 'UNKNOWN' },
+    '旧连接资源清理结果未知',
+  ],
+  [
+    { handleCleanup: 'UNKNOWN', previousHandleCleanup: 'UNKNOWN' },
+    '旧连接及本次新连接资源清理结果未知',
+  ],
+  [{ handleCleanup: 'ACTIVE_OWNED' }, '现有会话仍由系统管理'],
+] as const)('resume清理诊断仅显示安全文案 %j', async (details, message) => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValue(
+        Response.json(
+          { error: { code: 'AGENT_SESSION_RESUME_FAILED', message: 'private raw cause', details } },
+          { status: 502 },
+        ),
+      ),
+  );
+  const failure = await api.post('/sessions/session/resume', {}).catch((error: unknown) => error);
+  expect(failure).toMatchObject({ message: expect.stringContaining(message) });
+  expect((failure as Error).message).not.toContain('private raw cause');
+  expect((failure as Error).message).toContain('勿直接重复恢复');
+});

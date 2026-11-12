@@ -129,6 +129,10 @@ interface CancellationTimer {
 export class SessionService {
   private readonly active = new Map<string, ActiveSession>();
   private readonly preparationFences = new Set<string>();
+  private readonly lifecycleAdmissions = new Map<
+    string,
+    { kind: 'resume' | 'close'; token: symbol }
+  >();
   private readonly runAdmissions = new Set<string>();
   private readonly cancellationTimers = new Map<string, CancellationTimer>();
   private readonly configurationQueues = new Map<string, Promise<void>>();
@@ -422,8 +426,43 @@ export class SessionService {
     }
   }
 
+  private async withLifecycleAdmission<T>(
+    id: string,
+    kind: 'resume' | 'close',
+    action: (owned: () => boolean) => Promise<T>,
+  ): Promise<T> {
+    const current = this.lifecycleAdmissions.get(id);
+    if (current && (kind === 'resume' || current.kind === 'close'))
+      throw new AppError(
+        409,
+        'SESSION_LIFECYCLE_BUSY',
+        'Session 正在恢复或关闭，请等待原操作结束并核对状态',
+      );
+    const entry = { kind, token: Symbol(id) };
+    this.lifecycleAdmissions.set(id, entry); // Close revokes a pending resume without waiting for its adapter.
+    const owned = () => this.lifecycleAdmissions.get(id) === entry;
+    try {
+      return await action(owned);
+    } finally {
+      if (owned()) this.lifecycleAdmissions.delete(id);
+    }
+  }
+
   async resume(id: string) {
+    return this.withLifecycleAdmission(id, 'resume', (owned) => this.resumeAdmitted(id, owned));
+  }
+
+  private async resumeAdmitted(id: string, owned: () => boolean) {
+    const assertOwned = () => {
+      if (!owned())
+        throw new AppError(
+          409,
+          'SESSION_LIFECYCLE_SUPERSEDED',
+          '恢复已被关闭操作撤销，请核对会话状态',
+        );
+    };
     const session = await this.get(id);
+    assertOwned();
     if (session.status !== 'DISCONNECTED') {
       throw new AppError(409, 'SESSION_NOT_DISCONNECTED', '只有断开连接的 Session 可以恢复');
     }
@@ -431,6 +470,7 @@ export class SessionService {
       throw new AppError(409, 'SESSION_NOT_RESUMABLE', '该 Session 没有可恢复的外部标识');
     }
     const project = await this.projects.get(session.projectId);
+    assertOwned();
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
     if (project.status !== 'ACTIVE') {
       throw new AppError(409, 'PROJECT_NOT_ACTIVE', 'Project 当前不可恢复 Session');
@@ -440,6 +480,11 @@ export class SessionService {
       session.cwd,
       project.targetId,
     );
+    assertOwned();
+    const previousActivation = this.active.get(id);
+    let ownedHandle: AgentSessionHandle | undefined;
+    let previousHandleCleanup: 'NOT_PRESENT' | 'NOT_OWNED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' =
+      previousActivation ? 'NOT_OWNED' : 'NOT_PRESENT';
     try {
       const base = {
         sessionId: session.id,
@@ -457,18 +502,77 @@ export class SessionService {
           ? await adapter.loadSession(base)
           : undefined;
       if (!handle) throw new AppError(409, 'SESSION_NOT_RESUMABLE', '该 Agent 不支持恢复 Session');
-      await this.persistEffectiveConfiguration(id, handle);
-      const previous = this.detachActive(id);
-      if (previous) await this.closeHandleSafely(previous.handle);
-      const ready = await this.sessions.transition(id, 'READY');
+      // A reused old handle is not a newly acquired resource, even if close revoked us.
+      if (previousActivation?.handle === handle)
+        throw new AppError(
+          409,
+          'SESSION_RESUME_HANDLE_REUSED',
+          'Agent 返回了已有连接，请核对会话状态',
+        );
+      ownedHandle = handle;
+      assertOwned();
+      await this.persistEffectiveConfiguration(id, handle, { owned, expectedFrom: 'DISCONNECTED' });
+      assertOwned();
+      if (this.active.get(id) && this.active.get(id) !== previousActivation)
+        throw new AppError(409, 'SESSION_CONCURRENT_UPDATE', 'Session 连接已变化，请核对已有会话');
+      const previous = previousActivation
+        ? this.detachActive(id, previousActivation.activationId)
+        : undefined;
+      if (previous) {
+        previousHandleCleanup = 'UNKNOWN';
+        await withTimeout(
+          Promise.resolve().then(() => previous.handle.close()),
+          Math.min(this.cancelConvergenceTimeoutMs, 1_000),
+        );
+        previousHandleCleanup = 'HANDLE_CLOSE_RETURNED';
+        assertOwned();
+      }
+      const ready = await this.sessions.transition(
+        id,
+        'READY',
+        {},
+        { expectedFrom: 'DISCONNECTED' },
+      );
+      assertOwned();
       this.activate(id, session.projectId, adapter, handle);
+      ownedHandle = undefined;
       return ready;
     } catch (error) {
-      if (error instanceof AppError) throw error;
-      await this.sessions.transition(id, 'FAILED');
-      throw new AppError(502, 'AGENT_SESSION_RESUME_FAILED', 'Agent Session 恢复失败', undefined, {
-        cause: error,
-      });
+      if (!ownedHandle && error instanceof AppError) throw error;
+      let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
+        'NOT_ACQUIRED';
+      if (ownedHandle) {
+        if (this.active.get(id)?.handle === ownedHandle) handleCleanup = 'ACTIVE_OWNED';
+        else {
+          try {
+            await withTimeout(
+              Promise.resolve().then(() => ownedHandle!.close()),
+              Math.min(this.cancelConvergenceTimeoutMs, 1_000),
+            );
+            handleCleanup = 'HANDLE_CLOSE_RETURNED';
+          } catch {
+            handleCleanup = 'UNKNOWN';
+          }
+        }
+      }
+      let failureStateRecorded = false;
+      if (owned() && !this.active.has(id)) {
+        try {
+          await this.sessions.transition(id, 'FAILED', {}, { expectedFrom: 'DISCONNECTED' });
+          failureStateRecorded = true;
+        } catch {
+          /* Preserve the original error and any newer durable lifecycle state. */
+        }
+      }
+      throw new AppError(
+        502,
+        'AGENT_SESSION_RESUME_FAILED',
+        handleCleanup === 'UNKNOWN' || previousHandleCleanup === 'UNKNOWN'
+          ? 'Agent Session 恢复失败；资源清理结果未知，请核对已有会话与 Agent 进程。'
+          : 'Agent Session 恢复失败，请核对已有会话状态。',
+        { sessionId: id, handleCleanup, previousHandleCleanup, failureStateRecorded },
+        { cause: error },
+      );
     }
   }
 
@@ -1147,6 +1251,10 @@ export class SessionService {
   }
 
   async close(id: string) {
+    return this.withLifecycleAdmission(id, 'close', () => this.closeAdmitted(id));
+  }
+
+  private async closeAdmitted(id: string) {
     const session = await this.get(id);
     if (['RUNNING', 'WAITING_APPROVAL'].includes(session.status)) {
       throw new AppError(409, 'SESSION_HAS_ACTIVE_RUN', '请先停止当前 Run 再关闭 Session');
@@ -1492,15 +1600,21 @@ export class SessionService {
   private async persistEffectiveConfiguration(
     sessionId: string,
     handle: AgentSessionHandle,
+    ownership?: { owned: () => boolean; expectedFrom: SessionStatus },
   ): Promise<void> {
     if (!handle.getConfiguration) return;
     try {
       const configuration = await handle.getConfiguration();
-      await this.sessions.updateConfiguration(sessionId, {
-        model: configuration.current.model,
-        mode: configuration.current.mode,
-        reasoningEffort: configuration.current.reasoningEffort,
-      });
+      if (ownership && !ownership.owned()) return;
+      await this.sessions.updateConfiguration(
+        sessionId,
+        {
+          model: configuration.current.model,
+          mode: configuration.current.mode,
+          reasoningEffort: configuration.current.reasoningEffort,
+        },
+        ownership ? { expectedFrom: ownership.expectedFrom } : undefined,
+      );
     } catch {
       // Providers without session configuration remain usable. The API will
       // expose the explicit unsupported state for those handles.

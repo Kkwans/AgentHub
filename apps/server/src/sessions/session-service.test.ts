@@ -161,6 +161,438 @@ describe('Session/Run/Approval 持久化闭环', () => {
     };
   }
 
+  it('resume配置读取挂起后close，迟到配置不写CLOSED会话', async () => {
+    let release!: () => void;
+    let reading = false;
+    const adapter = Object.assign(new ControlledAdapter('never'), {
+      async resumeSession(
+        this: ControlledAdapter,
+        input: CreateAgentSessionInput,
+      ): Promise<AgentSessionHandle> {
+        const handle = await this.createSession(input);
+        return Object.assign(handle, {
+          async getConfiguration() {
+            reading = true;
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+            return {
+              supported: true,
+              current: { model: 'late-model', mode: 'late-mode', reasoningEffort: null },
+              options: { models: [], modes: [], reasoningEfforts: [] },
+            };
+          },
+        });
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const source = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '配置归属',
+      cwd: '/tmp',
+    });
+    await adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await f.repositories.sessions.get(source.id))?.status === 'DISCONNECTED',
+    );
+    const pending = f.service.resume(source.id).catch((error: unknown) => error);
+    await waitFor(async () => reading);
+    const update = vi.spyOn(f.repositories.sessions, 'updateConfiguration');
+    try {
+      await f.service.close(source.id);
+      release();
+      expect(await pending).toMatchObject({ code: 'AGENT_SESSION_RESUME_FAILED' });
+      expect(update).not.toHaveBeenCalled();
+      expect(await f.repositories.sessions.get(source.id)).toMatchObject({
+        status: 'CLOSED',
+        model: source.model,
+        mode: source.mode,
+      });
+      await expect(
+        f.repositories.sessions.updateConfiguration(
+          source.id,
+          { model: 'wrong' },
+          { expectedFrom: 'DISCONNECTED' },
+        ),
+      ).rejects.toBeDefined();
+      expect((await f.repositories.sessions.get(source.id))?.model).toBe(source.model);
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
+  it('resume允许捕获的旧activation在断连handler中自然detach', async () => {
+    let releaseResume!: () => void;
+    let releaseDisconnect!: () => void;
+    let resumed = false;
+    let disconnected = false;
+    const adapter = Object.assign(new ControlledAdapter('never'), {
+      async resumeSession(
+        this: ControlledAdapter,
+        input: CreateAgentSessionInput,
+      ): Promise<AgentSessionHandle> {
+        const handle = await this.createSession(input);
+        resumed = true;
+        await new Promise<void>((resolve) => {
+          releaseResume = resolve;
+        });
+        return handle;
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const source = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '断连交错',
+      cwd: '/tmp',
+    });
+    const original = f.repositories.sessions.transition.bind(f.repositories.sessions);
+    const transition = vi
+      .spyOn(f.repositories.sessions, 'transition')
+      .mockImplementation(async (id, to, patch, options) => {
+        const result = await original(id, to, patch, options);
+        if (to === 'DISCONNECTED') {
+          disconnected = true;
+          await new Promise<void>((resolve) => {
+            releaseDisconnect = resolve;
+          });
+        }
+        return result;
+      });
+    await adapter.handles[0]!.close();
+    await waitFor(async () => disconnected);
+    const pending = f.service.resume(source.id);
+    await waitFor(async () => resumed);
+    const newClose = vi.spyOn(adapter.handles[1]!, 'close');
+    try {
+      releaseDisconnect();
+      // Flush the real disconnect handler's post-persistence detach before returning the new handle.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      releaseResume();
+      expect((await pending).status).toBe('READY');
+      expect(newClose).not.toHaveBeenCalled();
+    } finally {
+      releaseDisconnect();
+      releaseResume();
+      transition.mockRestore();
+      await f.service.shutdown();
+    }
+  });
+
+  it('resume拒绝重用旧active对象且不关闭或改FAILED', async () => {
+    const adapter = Object.assign(new ControlledAdapter('never'), {
+      async resumeSession(this: ControlledAdapter): Promise<AgentSessionHandle> {
+        return this.handles[0]!;
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const source = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '复用handle',
+      cwd: '/tmp',
+    });
+    await f.repositories.sessions.transition(source.id, 'DISCONNECTED');
+    const close = vi.spyOn(adapter.handles[0]!, 'close');
+    try {
+      await expect(f.service.resume(source.id)).rejects.toMatchObject({
+        code: 'SESSION_RESUME_HANDLE_REUSED',
+      });
+      expect(close).not.toHaveBeenCalled();
+      expect((await f.repositories.sessions.get(source.id))?.status).toBe('DISCONNECTED');
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('resume迟到finally不释放正在关闭的新token', async () => {
+    let releaseResume!: () => void;
+    let releaseClose!: () => void;
+    let entered = false;
+    let closing = false;
+    const adapter = Object.assign(new ControlledAdapter('never'), {
+      async resumeSession(
+        this: ControlledAdapter,
+        input: CreateAgentSessionInput,
+      ): Promise<AgentSessionHandle> {
+        const handle = await this.createSession(input);
+        entered = true;
+        await new Promise<void>((resolve) => {
+          releaseResume = resolve;
+        });
+        return handle;
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const source = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'token归属',
+      cwd: '/tmp',
+    });
+    await adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await f.repositories.sessions.get(source.id))?.status === 'DISCONNECTED',
+    );
+    const pending = f.service.resume(source.id).catch((error: unknown) => error);
+    await waitFor(async () => entered);
+    const original = f.repositories.sessions.transition.bind(f.repositories.sessions);
+    const transition = vi
+      .spyOn(f.repositories.sessions, 'transition')
+      .mockImplementation(async (id, to, patch, options) => {
+        if (to === 'CLOSED') {
+          closing = true;
+          await new Promise<void>((resolve) => {
+            releaseClose = resolve;
+          });
+        }
+        return original(id, to, patch, options);
+      });
+    const close = f.service.close(source.id);
+    await waitFor(async () => closing);
+    try {
+      releaseResume();
+      expect(await pending).toMatchObject({ code: 'AGENT_SESSION_RESUME_FAILED' });
+      await expect(f.service.close(source.id)).rejects.toMatchObject({
+        code: 'SESSION_LIFECYCLE_BUSY',
+      });
+      await expect(f.service.resume(source.id)).rejects.toMatchObject({
+        code: 'SESSION_LIFECYCLE_BUSY',
+      });
+      expect((await f.repositories.sessions.get(source.id))?.status).toBe('DISCONNECTED');
+      releaseClose();
+      expect((await close).status).toBe('CLOSED');
+    } finally {
+      releaseResume();
+      releaseClose();
+      transition.mockRestore();
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['reject', 'timeout'] as const)(
+    'resume新handle关闭%s明确未知且保留原错',
+    async (kind) => {
+      const adapter = Object.assign(new ControlledAdapter('never'), {
+        resumeSession(
+          this: ControlledAdapter,
+          input: CreateAgentSessionInput,
+        ): Promise<AgentSessionHandle> {
+          return this.createSession(input);
+        },
+      });
+      const f = await createFixture(
+        'idle',
+        undefined,
+        {},
+        { adapter, cancelConvergenceTimeoutMs: 1_000 },
+      );
+      const source = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: '清理测试',
+        cwd: '/tmp',
+      });
+      await adapter.handles[0]!.close();
+      await waitFor(
+        async () => (await f.repositories.sessions.get(source.id))?.status === 'DISCONNECTED',
+      );
+      const failure = new Error('READY failed');
+      const original = f.repositories.sessions.transition.bind(f.repositories.sessions);
+      const transition = vi
+        .spyOn(f.repositories.sessions, 'transition')
+        .mockImplementation(async (id, to, patch, options) => {
+          if (to === 'READY') throw failure;
+          return original(id, to, patch, options);
+        });
+      const close = vi
+        .spyOn(ControlledHandle.prototype, 'close')
+        .mockImplementation(() =>
+          kind === 'reject'
+            ? Promise.reject(new Error('close failed'))
+            : new Promise(() => undefined),
+        );
+      try {
+        await expect(f.service.resume(source.id)).rejects.toMatchObject({
+          cause: failure,
+          details: {
+            handleCleanup: 'UNKNOWN',
+            previousHandleCleanup: 'NOT_PRESENT',
+            failureStateRecorded: true,
+          },
+        });
+        expect(close).toHaveBeenCalledTimes(1);
+      } finally {
+        transition.mockRestore();
+        close.mockRestore();
+        await adapter.handles[1]?.close();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('resume旧连接关闭未知不可激活新handle或声称旧连接已关闭', async () => {
+    const adapter = Object.assign(new ControlledAdapter('never'), {
+      resumeSession(
+        this: ControlledAdapter,
+        input: CreateAgentSessionInput,
+      ): Promise<AgentSessionHandle> {
+        return this.createSession(input);
+      },
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const source = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '旧连接清理',
+      cwd: '/tmp',
+    });
+    // A disconnected durable row can briefly coexist with its old activation.
+    await f.repositories.sessions.transition(source.id, 'DISCONNECTED');
+    const failure = new Error('old close failed');
+    const oldClose = vi.spyOn(adapter.handles[0]!, 'close').mockRejectedValue(failure);
+    const events = vi.spyOn(ControlledHandle.prototype, 'events');
+    const close = vi.spyOn(ControlledHandle.prototype, 'close');
+    try {
+      await expect(f.service.resume(source.id)).rejects.toMatchObject({
+        cause: failure,
+        details: { previousHandleCleanup: 'UNKNOWN', handleCleanup: 'HANDLE_CLOSE_RETURNED' },
+      });
+      expect(oldClose).toHaveBeenCalledTimes(1);
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(events).not.toHaveBeenCalled();
+    } finally {
+      oldClose.mockRestore();
+      await adapter.handles[0]!.close();
+      await f.service.shutdown();
+    }
+  });
+
+  it('resume状态CAS在行锁内拒绝覆盖已CLOSED状态', async () => {
+    const f = await createFixture('idle');
+    const source = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'CAS测试',
+      cwd: '/tmp',
+    });
+    await f.service.close(source.id);
+    for (const target of ['READY', 'FAILED'] as const) {
+      await expect(
+        f.repositories.sessions.transition(source.id, target, {}, { expectedFrom: 'DISCONNECTED' }),
+      ).rejects.toMatchObject({ code: 'SESSION_CONCURRENT_UPDATE' });
+      expect((await f.repositories.sessions.get(source.id))?.status).toBe('CLOSED');
+    }
+    await f.service.shutdown();
+  });
+
+  it.each([false, true])('resume拒绝重入且close可撤销挂起恢复=%s', async (cancel) => {
+    let release!: () => void;
+    let entered = false;
+    const adapter = Object.assign(new ControlledAdapter('never'), {
+      async resumeSession(
+        this: ControlledAdapter,
+        input: CreateAgentSessionInput,
+      ): Promise<AgentSessionHandle> {
+        const handle = await this.createSession(input);
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return handle;
+      },
+    });
+    const fixture = await createFixture('idle', undefined, {}, { adapter });
+    const source = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: '恢复测试',
+      cwd: '/tmp',
+    });
+    await adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await fixture.repositories.sessions.get(source.id))?.status === 'DISCONNECTED',
+    );
+    const first = fixture.service.resume(source.id).catch((error: unknown) => error);
+    await waitFor(async () => entered);
+    const close = vi.spyOn(adapter.handles[1]!, 'close');
+    try {
+      await expect(fixture.service.resume(source.id)).rejects.toMatchObject({
+        code: 'SESSION_LIFECYCLE_BUSY',
+      });
+      if (cancel) expect((await fixture.service.close(source.id)).status).toBe('CLOSED');
+      release();
+      const result = await first;
+      expect(adapter.handles).toHaveLength(2);
+      if (cancel) {
+        expect(result).toMatchObject({
+          code: 'AGENT_SESSION_RESUME_FAILED',
+          details: { failureStateRecorded: false },
+        });
+        expect(close).toHaveBeenCalledTimes(1);
+        expect((await fixture.repositories.sessions.get(source.id))?.status).toBe('CLOSED');
+      } else {
+        expect(result).toMatchObject({ status: 'READY' });
+        expect(close).not.toHaveBeenCalled();
+      }
+    } finally {
+      release();
+      await fixture.service.shutdown();
+    }
+  });
+
+  it.each([false, true])('resume READY失败且FAILED失败=%s仍清理保留原错', async (failFailed) => {
+    const adapter = Object.assign(new ControlledAdapter('never'), {
+      resumeSession(
+        this: ControlledAdapter,
+        input: CreateAgentSessionInput,
+      ): Promise<AgentSessionHandle> {
+        return this.createSession(input);
+      },
+    });
+    const fixture = await createFixture('idle', undefined, {}, { adapter });
+    const source = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: '恢复审计',
+      cwd: '/tmp',
+    });
+    await adapter.handles[0]!.close();
+    await waitFor(
+      async () => (await fixture.repositories.sessions.get(source.id))?.status === 'DISCONNECTED',
+    );
+    const readyFailure = new Error('resume READY write failed');
+    const failedFailure = new Error('resume FAILED write failed');
+    const original = fixture.repositories.sessions.transition.bind(fixture.repositories.sessions);
+    const transition = vi
+      .spyOn(fixture.repositories.sessions, 'transition')
+      .mockImplementation(async (id, to, patch) => {
+        if (to === 'READY') throw readyFailure;
+        if (failFailed && to === 'FAILED') throw failedFailure;
+        return original(id, to, patch);
+      });
+    const close = vi.spyOn(ControlledHandle.prototype, 'close');
+    const events = vi.spyOn(ControlledHandle.prototype, 'events');
+    try {
+      const error = await fixture.service.resume(source.id).catch((failure: unknown) => failure);
+      expect(adapter.handles).toHaveLength(2);
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(events).not.toHaveBeenCalled();
+      expect((await fixture.repositories.sessions.get(source.id))?.status).toBe(
+        failFailed ? 'DISCONNECTED' : 'FAILED',
+      );
+      expect(error).toMatchObject({ code: 'AGENT_SESSION_RESUME_FAILED', cause: readyFailure });
+      await fixture.service.shutdown();
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      transition.mockRestore();
+      await adapter.handles[1]?.close();
+      await fixture.service.shutdown();
+    }
+  });
+
   it.each([false, true])(
     '创建资源回收：READY写失败且FAILED也失败=%s时先关闭owned handle',
     async (failFailed) => {
