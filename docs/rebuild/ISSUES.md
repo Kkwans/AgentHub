@@ -123,6 +123,9 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH-053（P2）：ce6994b真实内容图中已完成会话仍显示“正在确认 Agent 接收状态”。源码将批准POST返回保存为永久反馈字符串，DELIVERED没有独立分支，后续权威查询不更新。已修复投递状态反馈与异步身份归属，33专项及S35完整门禁通过；不得以Run/Session完成推断送达，不新增自动重发。旧源4例红测已复现，修复回归通过；e866真实8场景全部失败，证明仅观察未决列表不足（终态被移出列表），正在补有界单条只读核验；不得把S35单测通过视为浏览器修复完成，不涉及整体视觉方向。
 
-- AH-054（P2，后续范围）：项目页头将所有非DONE/CANCELED任务（含BACKLOG/READY/WAITING_REVIEW）称“运行中”，无Session时Git分支硬回退main。两处源码事实已确认，尚未做新的运行复现；本轮AH050只修项目资格与查询/预检状态，不夹带计数或分支行为变化。
+- AH-054（P2，本地修复待整合验收）：项目页头将所有非DONE/CANCELED任务（含BACKLOG/READY/WAITING_REVIEW）称“运行中”，无Session时Git分支硬回退main。新增10组件在旧源全部红；修复后相关29组件通过。保留计数集合但称“项未结束工作”，未知/刷新/失败不猜0；Session分支明确为历史来源，无记录不猜main。不改CSS/布局或工作链接；真实基线扩展验证BACKLOG不等于活跃Run，待下一CI。
 
 - AH-055（P1，已复现，修复中）：真实SessionService+PGlite+受控adapter证明新handle返回后READY持久化失败，未close且从未进入active，shutdown也无法回收；FAILED写也失败时遮蔽原创建错误。2项审计成功复现坏行为，不是修复通过。已仅回收本次未交接handle，最多1秒等待清理后尽力记失败；已交给active生命周期的handle不关闭也不覆盖FAILED，原始异常保留。96专项通过，API10项通过，S36完整839单测/lint/types/build/QA通过，真实CI待验。close返回仅证明adapter合同返回，不代表进程已终止；UNKNOWN明确提示，未新增清理注册表或自动重试，resume/global shutdown不在此片范围。
+
+
+- AH-056（P1，CI复现，本地修复待新CI）：02eb verify的839测试断言通过，但WorkspacePage销毁jsdom后发生未处理window is not defined，React Virtualizer被已卸载observer的scroll-end debounce再次通知。上游dispose只移除监听，不取消已排timer；已保持官方observer行为、仅隔离已失效订阅回调，不屏蔽未处理异常或伪造全局window。fixture阶段因此未执行，真实矩阵独立继续。负控2红/1绿；修复专项66通过，S38完整856通过，需新exact-head CI确认。
