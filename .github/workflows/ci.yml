@@ -79,7 +79,9 @@ jobs:
           tests/e2e-real/agent-defaults-management.spec.ts
           tests/e2e-real/agent-capability-truth.spec.ts
           tests/e2e-real/prompt-library-empty.spec.ts
+          tests/e2e-real/prompt-version-ownership.spec.ts
           tests/e2e-real/settings-header-visual.spec.ts
+          tests/e2e-real/runtime-status-truth.spec.ts
           tests/e2e-real/v1-baseline.spec.ts
       - name: Check screenshot completeness, console errors and layout measurements
         if: ${{ !cancelled() && (steps.real-tests.outcome == 'success' || steps.real-tests.outcome == 'failure') }}

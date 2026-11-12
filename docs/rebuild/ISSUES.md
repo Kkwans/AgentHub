@@ -100,7 +100,7 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH-039（P1）：普通任务工作列表对IN_PROGRESS执行取消仅转换Task为CANCELED，不调用Session/Run取消；实际TaskService+stub复现Task已取消而Run仍RUNNING、cancelCalls=0。首片阻止进行中直接取消并明确进入所属工作区停止Run，未运行任务仍可取消；不把请求返回当执行已停止，完整权威取消交互后续完善。实现/独立CR完成，最终集成651单测、lint/types/build及QA通过，新真实CI待发布；非真实Agent/NAS测试。Task取消先胜出后的反向直接Session准入仍需独立修复。
 
-- AH-040（P1）：Task取消先提交后，旧READY Session的Run admission仍可能创建关联新Run；不能仅凭Task行锁称双向竞争已解决。需明确CANCELED/DONE与审阅会话直接继续的合同，再在持久准入处核验。已确认源码路径，尚未实施。
+- AH-040（P1）：Task取消先提交后，旧READY Session的Run admission仍可能创建关联新Run；不能仅凭Task行锁称双向竞争已解决。需明确CANCELED/DONE与审阅会话直接继续的合同，再在持久准入处核验。持久准入修复及历史漂移 fixture 修正已完成，86 项专项和所有权文件 10 项通过；完整 S31 726 单测、lint/types/build/QA 全过，按逻辑切片发布；真实 Agent/NAS 与多进程不在本次证明范围。
 - AH-041（P2）：项目工作列表无Agent的“开始”直接请求BACKLOG→IN_PROGRESS，与状态机需先READY不符；需单独核对手工任务入口。AH-039只保留可合法形成的无Session任务取消，未修该旧启动入口。
 
 - AH-042（P2）：Agent管理390首屏被状态说明/技术ID占据，主要编辑入口从y767才开始。局部层级重排已实现，关键警告不折叠、技术区原生键盘可展开；29组件专项通过，初始输入视口断言及实际像素待新CI。
@@ -110,3 +110,6 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 - AH-043（P1/P2）：无版本Prompt将资产description或“尚未创建版本内容。”当正文，假计字符且预填新版本。现已分离真实正文与空态，首版本明确入口；TEXT空串不回退元数据，CHAT优先序列化完整JSON（含额外text字段）。13专项通过，真实八组合创建/取消/正文API核对待新CI。
 - AH-044（P2）：项目Work真空态仍显示大筛选栏及双空面板。仅原始请求成功且任务空数组时保留项目header唯一新建入口，内容改紧凑指引；过滤无结果/错误/加载不冒充空库，已有详情保留。6专项与真实8项收集通过，像素待CI。
 - AH-045（P2）：Settings根网格拉伸造成1440页头约139px留白。仅该页根align-content:start，四宽双主题新增几何门禁；导航末项可发现性仍开放，未改共享header。
+
+- AH-046（P1）：Prompt 新版本草稿未冻结资产归属，Back/切换资产可能将 A 正文提交到 B，A 迟到响应也可能清空 B 新草稿。新增逐次打开的身份/路由/选择归属、不可变提交目标、迟到响应隔离和未知结果只读核对；26 项专项及完整 S31 726 单测、lint/types/build/QA 通过，真实浏览器待新 CI。未知结果只在当前挂载期间保存，不声称跨刷新去重或 exactly-once；标签和绑定的相邻流程不在本片范围。
+- AH-047（P2）：Runtime 行缺少供应商 statusText 时，即使右侧 READY，副文本仍显示“状态待确认”。按明确状态生成一致文案，供应商非空原文保持不变，未知值仍未知，绝不由宿主机就绪推断 Agent 健康。13 项专项通过，真实宿主机四宽双主题待 CI。
