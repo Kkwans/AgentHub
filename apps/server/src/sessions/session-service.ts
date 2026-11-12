@@ -491,36 +491,44 @@ export class SessionService {
       });
     }
     const gitBeforeSha = await this.git.readHead(session.cwd);
-    await this.runs.create({
-      id: runId,
-      sessionId,
-      taskId: session.taskId,
-      status: 'QUEUED',
-      dispatchState: 'PREPARING',
-      model: session.model,
-      mode: session.mode,
-      gitBeforeSha,
-      metadataJson: promptContext
-        ? {
-            promptContext: {
-              finalContextHash: createHash('sha256')
-                .update(promptContext.finalContext)
-                .digest('hex'),
-              items: promptContext.items.map((item) => ({
-                promptId: item.promptId,
-                versionId: item.versionId,
-                version: item.version,
-                label: item.label,
-                contentHash: item.contentHash,
-                bindingId: item.bindingId,
-                slot: item.slot,
-                targetType: item.targetType,
-                targetId: item.targetId,
-              })),
-            },
-          }
-        : {},
-    });
+    try {
+      await this.runs.create({
+        id: runId,
+        sessionId,
+        taskId: session.taskId,
+        status: 'QUEUED',
+        dispatchState: 'PREPARING',
+        model: session.model,
+        mode: session.mode,
+        gitBeforeSha,
+        metadataJson: promptContext
+          ? {
+              promptContext: {
+                finalContextHash: createHash('sha256')
+                  .update(promptContext.finalContext)
+                  .digest('hex'),
+                items: promptContext.items.map((item) => ({
+                  promptId: item.promptId,
+                  versionId: item.versionId,
+                  version: item.version,
+                  label: item.label,
+                  contentHash: item.contentHash,
+                  bindingId: item.bindingId,
+                  slot: item.slot,
+                  targetType: item.targetType,
+                  targetId: item.targetId,
+                })),
+              },
+            }
+          : {},
+      });
+    } catch (error) {
+      if (error instanceof DatabaseInvariantError && error.code === 'TASK_CANCELED')
+        throw new AppError(409, error.code, '任务已取消，不能继续派发；请新建任务');
+      if (error instanceof DatabaseInvariantError && error.code === 'RUN_TASK_MISMATCH')
+        throw new AppError(409, error.code, 'Run 与 Session 的任务归属不一致，未派发');
+      throw error;
+    }
     try {
       await this.captureGitSnapshot(runId, session.projectId, session.cwd, 'BEFORE');
       const userMessage = await this.messages.append({

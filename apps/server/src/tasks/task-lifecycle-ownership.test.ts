@@ -186,7 +186,7 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
         id: randomUUID(),
         projectId: mismatch === 'project' ? other.id : projectId,
         agentId,
-        taskId: mismatch === 'task' ? randomUUID() : task.id,
+        taskId: task.id,
         title: '不匹配',
         cwd: '/tmp/task-ownership',
         status: 'READY',
@@ -197,6 +197,10 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
         taskId: task.id,
         status: 'COMPLETED',
       });
+      // Admission now rejects new mismatched records. Recreate legacy
+      // association drift after a valid Run admission to retain callback defense.
+      if (mismatch === 'task')
+        await sessions.transition(session.id, 'RUNNING', { taskId: randomUUID() });
       await tasks.update(task.id, { sessionId: session.id });
       const before = await tasks.get(task.id);
       const changed = await service.onRunCompleted(task.id, run.id);

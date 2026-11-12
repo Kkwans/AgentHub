@@ -2610,20 +2610,24 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
       // Task callbacks take the same Task -> Session locks. Do not insert first:
       // a callback must see either the previous admission or the complete new one.
       if (input.taskId) {
-        await transaction
-          .select({ id: tasks.id })
+        const [task] = await transaction
+          .select({ id: tasks.id, status: tasks.status })
           .from(tasks)
           .where(eq(tasks.id, input.taskId))
           .for('update')
           .limit(1);
+        if (task?.status === 'CANCELED')
+          throw new DatabaseInvariantError('TASK_CANCELED', '任务已取消，不能继续派发');
       }
       const [session] = await transaction
-        .select({ id: agentSessions.id })
+        .select({ id: agentSessions.id, taskId: agentSessions.taskId })
         .from(agentSessions)
         .where(eq(agentSessions.id, input.sessionId))
         .for('update')
         .limit(1);
       if (!session) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
+      if ((session.taskId ?? null) !== (input.taskId ?? null))
+        throw new DatabaseInvariantError('RUN_TASK_MISMATCH', 'Run 与 Session 的任务归属不一致');
       const [created] = await transaction.insert(agentRuns).values(input).returning();
       if (!created) throw new DatabaseInvariantError('RUN_CREATE_FAILED', 'Run 创建失败');
       await transaction

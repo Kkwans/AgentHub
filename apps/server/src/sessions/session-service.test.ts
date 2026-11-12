@@ -365,6 +365,104 @@ describe('Session/Run/Approval 持久化闭环', () => {
     return { ...fixture, adapter, tasks, taskService, task, session };
   }
 
+  it('取消先于Run持久准入提交：读取旧READY也不派发或移动latestRun', async () => {
+    const f = await preparationFixture();
+    await f.tasks.transition(f.task.id, 'WAITING_REVIEW');
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const original = f.repositories.runs.create.bind(f.repositories.runs);
+    const admission = vi.spyOn(f.repositories.runs, 'create').mockImplementation(async (input) => {
+      entered();
+      await gate;
+      return original(input);
+    });
+    const send = vi.spyOn(ControlledHandle.prototype, 'sendTurn');
+    try {
+      const before = await f.repositories.sessions.get(f.session.id);
+      const pending = f.service.startRun(f.session.id, { text: '旧页面发送' });
+      const rejected = expect(pending).rejects.toMatchObject({
+        status: 409,
+        code: 'TASK_CANCELED',
+      });
+      await reached;
+      await f.taskService.transitionTask(f.task.id, 'CANCELED');
+      release();
+      await rejected;
+      expect((await f.tasks.get(f.task.id))?.status).toBe('CANCELED');
+      expect(await f.repositories.runs.list(f.session.id)).toHaveLength(0);
+      expect(await f.repositories.messages.list(f.session.id)).toHaveLength(0);
+      expect((await f.repositories.sessions.get(f.session.id))?.latestRunId).toBe(
+        before?.latestRunId,
+      );
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      release();
+      admission.mockRestore();
+      await f.service.shutdown();
+    }
+  });
+
+  it('Run先持久准入：手动取消不能覆盖正在运行的旧Session turn', async () => {
+    const f = await preparationFixture();
+    try {
+      await f.tasks.transition(f.task.id, 'WAITING_REVIEW');
+      const run = await f.service.startRun(f.session.id, { text: '直接会话执行' });
+      await expect(f.taskService.transitionTask(f.task.id, 'CANCELED')).rejects.toMatchObject({
+        status: 409,
+        code: 'TASK_RUN_CANCEL_REQUIRED',
+      });
+      expect((await f.tasks.get(f.task.id))?.status).toBe('WAITING_REVIEW');
+      expect((await f.repositories.runs.get(run.id))?.status).toBe('RUNNING');
+      expect((await f.repositories.sessions.get(f.session.id))?.latestRunId).toBe(run.id);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['WAITING_REVIEW', 'DONE'] as const)(
+    '直接Session turn保留%s任务状态，不隐式重启',
+    async (status) => {
+      const f = await preparationFixture();
+      try {
+        await f.tasks.transition(f.task.id, 'WAITING_REVIEW');
+        if (status === 'DONE') await f.tasks.transition(f.task.id, 'DONE');
+        const before = await f.tasks.get(f.task.id);
+        const run = await f.service.startRun(f.session.id, { text: '保留上下文的后续问题' });
+        expect(run.status).toBe('RUNNING');
+        expect(await f.tasks.get(f.task.id)).toEqual(before);
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('已取消任务不能通过继承taskId的continuation绕过派发门禁', async () => {
+    const f = await preparationFixture();
+    const send = vi.spyOn(ControlledHandle.prototype, 'sendTurn');
+    try {
+      await f.tasks.transition(f.task.id, 'WAITING_REVIEW');
+      await f.taskService.transitionTask(f.task.id, 'CANCELED');
+      await f.service.close(f.session.id);
+      const continued = await f.service.continue(f.session.id);
+      expect(continued.session.taskId).toBe(f.task.id);
+      await expect(
+        f.service.startRun(continued.session.id, { text: '新会话也不能继续执行' }),
+      ).rejects.toMatchObject({ status: 409, code: 'TASK_CANCELED' });
+      expect(await f.repositories.runs.list(continued.session.id)).toHaveLength(0);
+      expect(await f.repositories.messages.list(continued.session.id)).toHaveLength(0);
+      expect(send).not.toHaveBeenCalled();
+      expect((await f.tasks.get(f.task.id))?.status).toBe('CANCELED');
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
   it.each(['MESSAGE', 'MESSAGE_LINK', 'STARTING', 'RUNNING', 'SESSION_RUNNING'] as const)(
     '准备失败%s不会派发、删除消息或遗留QUEUED Run',
     async (point) => {

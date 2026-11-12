@@ -74,6 +74,27 @@ describe('同 Session 最新 Run 的持久所有权', () => {
     await tasks.update(task.id, { sessionId: session.id });
     return { tasks, sessions, runs, task, session };
   }
+
+  it.each(['OMITTED', 'OTHER'] as const)('Run不能通过%s任务归属绕过Session绑定', async (mode) => {
+    const { runs, sessions, tasks, task, session } = await fixture();
+    await tasks.transition(task.id, 'CANCELED');
+    const other = await tasks.create({
+      id: randomUUID(),
+      projectId,
+      title: '其他任务',
+      status: 'READY',
+    });
+    await expect(
+      runs.create({
+        id: randomUUID(),
+        sessionId: session.id,
+        status: 'QUEUED',
+        ...(mode === 'OTHER' ? { taskId: other.id } : {}),
+      }),
+    ).rejects.toMatchObject({ code: 'RUN_TASK_MISMATCH' });
+    expect(await runs.list(session.id)).toHaveLength(0);
+    expect((await sessions.get(session.id))?.latestRunId).toBeNull();
+  });
   it.each(['COMPLETED', 'FAILED', 'CANCELED', 'DISCONNECTED'] as const)(
     'R2先提交：R1 %s不得覆盖当前任务，即使Run时间戳相同',
     async (status) => {
