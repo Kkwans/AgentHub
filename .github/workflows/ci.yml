@@ -68,6 +68,7 @@ jobs:
         run: >-
           pnpm exec playwright test --config=playwright.real.config.ts
           tests/e2e-real/workbench.spec.ts
+          tests/e2e-real/project-directory-picker.spec.ts
           tests/e2e-real/v1-baseline.spec.ts
       - name: Check screenshot completeness, console errors and layout measurements
         if: ${{ !cancelled() && (steps.real-tests.outcome == 'success' || steps.real-tests.outcome == 'failure') }}

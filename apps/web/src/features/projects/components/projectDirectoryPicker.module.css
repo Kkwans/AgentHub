@@ -1,0 +1,58 @@
+.picker,
+.section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.section {
+  padding: 12px;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: var(--ah-radius-control);
+}
+.section p {
+  margin: 0;
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.path {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 12px;
+}
+.list {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.entry {
+  justify-content: space-between;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.entry > span:first-child {
+  min-width: 0;
+}
+.entry > span:last-child {
+  flex-shrink: 0;
+}
+.entry small {
+  display: block;
+  color: var(--ah-text-secondary);
+  font-weight: 400;
+}

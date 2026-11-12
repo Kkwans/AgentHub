@@ -99,7 +99,7 @@ test.describe('v1 real performance budget', () => {
 
       await page.goto('/home', { waitUntil: 'load' });
       await expect(
-        page.getByRole('heading', { name: /继续工作|从一个 Project 开始/ }),
+        page.getByRole('heading', { name: /继续工作|从你的项目，开始第一项工作/ }),
       ).toBeVisible();
       await page.waitForTimeout(1_000);
       const homeLcp = await page.evaluate(() => {
@@ -151,7 +151,7 @@ test.describe('v1 real performance budget', () => {
       await page.getByRole('link', { name: '首页', exact: true }).click();
       await expect(page).toHaveURL(/\/home$/);
       await expect(
-        page.getByRole('heading', { name: /继续工作|从一个 Project 开始/ }),
+        page.getByRole('heading', { name: /继续工作|从你的项目，开始第一项工作/ }),
       ).toBeVisible();
 
       const routeSamples: number[] = [];
@@ -178,7 +178,7 @@ test.describe('v1 real performance budget', () => {
         await page.getByRole('link', { name: '首页', exact: true }).click();
         await expect(page).toHaveURL(/\/home$/);
         await expect(
-          page.getByRole('heading', { name: /继续工作|从一个 Project 开始/ }),
+          page.getByRole('heading', { name: /继续工作|从你的项目，开始第一项工作/ }),
         ).toBeVisible();
       }
 

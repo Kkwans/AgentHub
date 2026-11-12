@@ -73,7 +73,7 @@ test('token 登录进入 Home，并能进入设置分区', async ({ page }) => {
   await page.getByRole('button', { name: '创建账号并进入' }).click();
 
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole('heading', { name: '从一个 Project 开始' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '从你的项目，开始第一项工作' })).toBeVisible();
   await page.getByRole('link', { name: '设置' }).click();
   await expect(page).toHaveURL(/\/settings\/appearance$/);
   await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
@@ -94,7 +94,8 @@ test.describe('local_trusted 项目与 Work', () => {
     const dialog = page.getByRole('dialog', { name: '创建项目' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('combobox', { name: '运行环境' })).toBeVisible();
-    await expect(dialog.getByRole('combobox', { name: '允许目录' })).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: '授权根目录' })).toBeVisible();
+    await dialog.getByRole('button', { name: '选择当前目录' }).click();
     await dialog.getByRole('textbox', { name: '项目名称' }).fill('QA UI Project');
     await expect(dialog.getByText('目录可以使用')).toBeVisible({ timeout: 15_000 });
     await dialog.getByRole('button', { name: '预检并创建' }).click();
