@@ -33,6 +33,7 @@ const statusLabels: Record<string, string> = {
   COMPLETED: '已完成',
   DONE: '已完成',
   ACTIVE: '使用中',
+  ARCHIVED: '已归档',
   IN_PROGRESS: '进行中',
   WAITING_REVIEW: '待审阅',
   AWAITING_INPUT: '等待输入',
@@ -60,7 +61,8 @@ function statusColor(status: string): string {
   if (['RUNNING', 'IN_PROGRESS', 'REVIEW', 'WAITING_REVIEW', 'PENDING'].includes(status))
     return 'aurora';
   if (['BLOCKED', 'FAILED', 'BROKEN', 'REVOKED', 'AUTH_REQUIRED'].includes(status)) return 'red';
-  if (['STOPPED', 'OFFLINE', 'DISCONNECTED', 'CANCELED', 'CLOSED'].includes(status)) return 'gray';
+  if (['STOPPED', 'OFFLINE', 'DISCONNECTED', 'CANCELED', 'CLOSED', 'ARCHIVED'].includes(status))
+    return 'gray';
   return 'yellow';
 }
 

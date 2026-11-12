@@ -42,6 +42,18 @@ describe('product components', () => {
     expect(screen.getByRole('status').querySelector('[data-tone="gray"]')).toBeTruthy();
   });
 
+  it.each([AhStatusPill, AhStatusDot])(
+    'labels archived projects with a neutral status',
+    (Status) => {
+      render(<Status status="ARCHIVED" />);
+      const status = screen.getByRole('status');
+      expect(status).toHaveTextContent('已归档');
+      expect(
+        status.matches('[data-tone="gray"]') || status.querySelector('[data-tone="gray"]'),
+      ).toBeTruthy();
+    },
+  );
+
   it('provides actionable empty and error states', () => {
     const retry = () => undefined;
     render(

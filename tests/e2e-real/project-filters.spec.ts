@@ -99,6 +99,9 @@ for (const width of [390, 768, 1024, 1440]) {
       // Changing view exposes the matching test project without conflating it with standard projects.
       await page.getByRole('button', { name: '卡片', exact: true }).click();
       await expect(page.getByRole('link', { name: /归档测试项目/ })).toBeVisible();
+      await expect(page.getByRole('link', { name: /归档测试项目/ }).getByRole('status')).toHaveText(
+        '已归档',
+      );
       await expect(page.getByRole('link', { name: /正式筛选项目/ })).toHaveCount(0);
       await capture(page, testInfo, 'projects-filtered');
       await page.getByRole('button', { name: /清除条件/ }).click();
