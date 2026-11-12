@@ -193,3 +193,91 @@ for (const width of [390, 768, 1024, 1440]) {
     expect(errors).toEqual([]);
   });
 }
+
+for (const width of [390, 768, 1024, 1440]) {
+  test(`工作页拒绝跨环境Agent并允许切换兼容Agent ${width}`, async ({
+    page,
+    context,
+    app,
+  }, info) => {
+    const { project, agent } = await seedWorkspace(context, app);
+    const original = await apiData<{ executable: string; argsJson: string[] }>(
+      context,
+      'get',
+      `/agents/${agent.id}`,
+    );
+    const otherTarget = await apiData<{ id: string }>(context, 'post', '/execution-targets', {
+      name: '另一个登记环境',
+      kind: 'LOCAL_HOST',
+      hostname: 'other-host',
+      os: process.platform,
+      arch: process.arch,
+    });
+    const incompatible = await apiData<{ id: string }>(context, 'post', '/agents', {
+      name: '不兼容的就绪Agent',
+      targetId: otherTarget.id,
+      agentKind: 'CUSTOM_ACP',
+      executable: original.executable,
+      args: original.argsJson,
+    });
+    const preflight = await apiData<{ status: string }>(
+      context,
+      'post',
+      `/agents/${incompatible.id}/preflight`,
+      { cwd: app.projectRoot },
+    );
+    expect(preflight.status).toBe('READY');
+    const eligibility = await apiData<{
+      agents: Array<{ agentId: string; eligible: boolean; reason: string | null }>;
+    }>(context, 'get', `/projects/${project.id}/agent-eligibility`);
+    expect(eligibility.agents.find((entry) => entry.agentId === incompatible.id)).toMatchObject({
+      eligible: false,
+      reason: 'INCOMPATIBLE_WORKSPACE',
+    });
+    const task = await apiData<{ id: string }>(context, 'post', '/tasks', {
+      projectId: project.id,
+      title: '选择能访问项目的Agent',
+    });
+    await apiData(context, 'post', `/tasks/${task.id}/transition`, { status: 'READY' });
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    const starts: unknown[] = [];
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        new URL(request.url()).pathname === `/api/v1/tasks/${task.id}/start`
+      )
+        starts.push(request.postDataJSON());
+    });
+    await page.goto(`/projects/${project.id}/work?task=${task.id}&agentId=${incompatible.id}`);
+    const selector = page.getByRole('combobox', { name: '运行 Agent' });
+    await expect(selector).toContainText('不兼容的就绪Agent');
+    await expect(page.getByText(/无法访问项目工作区/).first()).toBeVisible();
+    const start = page.getByRole('button', { name: '启动 Session', exact: true });
+    await expect(start).toBeDisabled();
+    expect(starts).toEqual([]);
+    await selector.scrollIntoViewIfNeeded();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const screenshot = info.outputPath(`incompatible-agent-blocked-${width}.png`);
+    await page.screenshot({ path: screenshot, fullPage: true });
+    await info.attach('已阻止不可达Agent启动', { path: screenshot, contentType: 'image/png' });
+    await selector.click();
+    await expect(page.getByRole('option', { name: /不兼容的就绪Agent/ })).toBeDisabled();
+    await page.getByRole('option', { name: 'v1 baseline agent', exact: true }).click();
+    await expect(start).toBeEnabled();
+    await start.click();
+    await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+    expect(starts).toEqual([{ agentId: agent.id }]);
+    const stored = await apiData<{ assignedAgentId: string; sessionId: string }>(
+      context,
+      'get',
+      `/tasks/${task.id}`,
+    );
+    expect(stored.assignedAgentId).toBe(agent.id);
+    expect(page.url()).toContain(`/workspace/${stored.sessionId}`);
+    expect(errors).toEqual([]);
+  });
+}

@@ -1,3 +1,5 @@
+import { useProjectEligibility } from '../hooks/useProjectEligibility';
+import { eligibilityReasons } from '../lib/project-eligibility';
 import { TaskPromptVariablesEditor } from '../components/TaskPromptVariablesEditor';
 import { useAuthMode, useAuthUser } from '../../../components/AccessGate';
 import { browserCreationScope } from '../lib/task-creation-recovery';
@@ -179,6 +181,25 @@ export function ProjectWorkPage() {
     setAgentChoice((choice) => (choice?.key === agentChoiceKey ? choice : undefined));
   }, [agentChoiceKey]);
   const selectedAgent = agents.data?.find((agent) => agent.id === runAgentId);
+  const eligibility = useProjectEligibility(project.id);
+  const eligibilityKnown =
+    eligibility.isSuccess && !eligibility.isFetching && agents.isSuccess && !agents.isFetching;
+  const agentReason = (agent: AgentRecord | undefined) => {
+    if (!agent) return 'Agent 不存在或不可读取';
+    if (!agent.enabled) return '已禁用';
+    if (agent.status !== 'READY') return '尚未就绪';
+    if (!eligibilityKnown)
+      return eligibility.isError || agents.isError ? '资格无法确认，请刷新' : '资格待确认';
+    const entry = eligibility.data?.find((item) => item.agentId === agent.id);
+    return entry?.eligible ? '' : entry?.reason ? eligibilityReasons[entry.reason] : '资格未返回';
+  };
+  const selectedAgentReason = agentReason(selectedAgent);
+  const selectedEligible = Boolean(selectedAgent && !selectedAgentReason);
+  const startEligibility = useRef({ eligible: selectedEligible, generation: 0 });
+  if (startEligibility.current.eligible !== selectedEligible) {
+    startEligibility.current.eligible = selectedEligible;
+    startEligibility.current.generation += 1;
+  }
   const selectedPrompt = prompts.data?.find((prompt) => prompt.id === selectedPromptId);
   const selectedWorktree = selected
     ? worktrees.data?.find((item) => item.taskId === selected.id)
@@ -186,9 +207,6 @@ export function ProjectWorkPage() {
   const taskStatuses = useMemo(
     () => Array.from(new Set((tasks.data ?? []).map((task) => task.status))),
     [tasks.data],
-  );
-  const readyAgents = (agents.data ?? []).filter(
-    (agent) => agent.status === 'READY' && agent.enabled,
   );
   const boardColumns: Array<{ status: TaskRecord['status']; label: string }> = [
     { status: 'BACKLOG', label: '待排期' },
@@ -233,19 +251,30 @@ export function ProjectWorkPage() {
       agentId,
       status,
       generation,
+      eligibilityGeneration,
     }: {
       id: string;
       agentId: string;
       status: TaskRecord['status'];
       generation: number;
+      eligibilityGeneration: number;
     }) => {
+      if (!selectedEligible) throw new Error('所选 Agent 的项目资格尚未确认，未启动。');
       if (!['BACKLOG', 'BLOCKED', 'READY'].includes(status))
         throw new Error('当前任务状态不支持启动，请刷新后核对。');
-      if (!currentOperation(generation)) return null;
+      if (
+        !currentOperation(generation) ||
+        startEligibility.current.generation !== eligibilityGeneration
+      )
+        return null;
       if (status === 'BACKLOG' || status === 'BLOCKED')
         await api.post(`/tasks/${id}/transition`, { status: 'READY' });
       // A new selection or navigation must not continue the old multi-step action.
-      if (!currentOperation(generation)) return null;
+      if (
+        !currentOperation(generation) ||
+        startEligibility.current.generation !== eligibilityGeneration
+      )
+        return null;
       return api.post<{ session: { id: string } }>(`/tasks/${id}/start`, { agentId });
     },
     onSuccess: (result, variables) => {
@@ -524,19 +553,54 @@ export function ProjectWorkPage() {
                         }
                         data={[
                           { value: '', label: '不选择 Agent' },
-                          ...readyAgents.map((agent) => ({
+                          ...(agents.data ?? []).map((agent) => ({
                             value: agent.id,
-                            label: agent.name,
+                            label: `${agent.name}${agentReason(agent) ? ` · ${agentReason(agent)}` : ''}`,
+                            disabled: Boolean(agentReason(agent)),
                           })),
+                          ...(runAgentId && !selectedAgent
+                            ? [
+                                {
+                                  value: runAgentId,
+                                  label: '所选 Agent 不存在或不可读取',
+                                  disabled: true,
+                                },
+                              ]
+                            : []),
                         ]}
                         placeholder="选择可用 Agent"
                       />
+                      {runAgentId && !selectedEligible ? (
+                        <p role="status">
+                          所选 Agent 不可用于当前项目：{selectedAgentReason}
+                          。请刷新资格或明确选择其他 Agent。
+                        </p>
+                      ) : null}
+                      <p className={layout.subtle}>
+                        资格仅依据已登记状态和工作区映射，启动时仍会检查实际运行环境。
+                      </p>
+                      <AhButton
+                        size="xs"
+                        variant="default"
+                        disabled={
+                          start.isPending || transition.isPending || manual.busy || variablesSaving
+                        }
+                        onClick={() => {
+                          void agents.refetch();
+                          void eligibility.refetch();
+                        }}
+                      >
+                        刷新 Agent 资格
+                      </AhButton>
                       <div className={projectsStyles.runSummary}>
                         <span className={projectsStyles.agentAvatar} aria-hidden="true">
                           {selectedAgent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
                         </span>
                         <span>
-                          <strong>{selectedAgent?.name ?? '尚未选择 Agent'}</strong>
+                          <strong>
+                            {selectedAgent?.name ??
+                              (runAgentId ? '所选 Agent 不可读取' : '尚未选择 Agent')}
+                          </strong>
                           <small>
                             {selected.branch ?? selectedWorktree?.taskBranch ?? '尚未创建分支'}
                           </small>
@@ -608,6 +672,7 @@ export function ProjectWorkPage() {
                                 agentId: runAgentId,
                                 status: selected.status,
                                 generation: operationContext.current.generation,
+                                eligibilityGeneration: startEligibility.current.generation,
                               })
                             : void manual.begin()
                         }
@@ -616,6 +681,7 @@ export function ProjectWorkPage() {
                           ['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'].includes(
                             selected.status,
                           ) ||
+                          (Boolean(runAgentId) && !selectedEligible) ||
                           (!runAgentId && manual.unavailable) ||
                           manual.busy ||
                           variablesSaving ||

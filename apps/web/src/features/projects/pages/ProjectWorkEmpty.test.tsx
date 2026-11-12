@@ -38,12 +38,32 @@ const task = {
   status: 'BACKLOG',
   updatedAt: '2026-11-12T00:00:00Z',
 };
-function mount(rows: unknown[] | Promise<unknown[]> = [], query = '', agents: unknown[] = []) {
+function registeredEligibility(agents = selectableAgents, projectId = project.id) {
+  return {
+    projectId,
+    basis: 'REGISTERED_STATE',
+    livePreflight: false,
+    agents: agents.map((agent) => ({
+      agentId: agent.id,
+      eligible: true,
+      reason: null as string | null,
+      agentStatus: 'READY',
+      targetStatus: 'READY',
+    })),
+  };
+}
+function mount(
+  rows: unknown[] | Promise<unknown[]> = [],
+  query = '',
+  agents: unknown[] = selectableAgents,
+  eligibility: unknown = registeredEligibility(),
+) {
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path === `/projects/${project.id}`) return project as T;
     if (path.startsWith('/tasks?')) return (await rows) as T;
     if (path === '/tasks/task-1') return task as T;
     if (path === '/agents') return agents as T;
+    if (path.endsWith('/agent-eligibility')) return (await eligibility) as T;
     return [] as T;
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -221,7 +241,11 @@ it('旧任务启动失败不污染后来选中的任务', async () => {
         ? project
         : path.startsWith('/tasks?')
           ? [{ ...task, id: 'task-2', title: '另一项工作', status: 'READY' }]
-          : []) as T,
+          : path === '/agents'
+            ? selectableAgents
+            : path.endsWith('/agent-eligibility')
+              ? registeredEligibility()
+              : []) as T,
   );
   await act(async () =>
     client.setQueryData(
@@ -258,7 +282,11 @@ it('旧任务启动成功迟到后不跳离新选择', async () => {
         ? project
         : path.startsWith('/tasks?')
           ? [{ ...task, id: 'task-2', title: '另一项工作', status: 'READY' }]
-          : []) as T,
+          : path === '/agents'
+            ? selectableAgents
+            : path.endsWith('/agent-eligibility')
+              ? registeredEligibility()
+              : []) as T,
   );
   await act(async () =>
     client.setQueryData(
@@ -417,6 +445,11 @@ it('跨项目切换不保留前项目的本地Agent选择', async () => {
         },
       ] as T;
     if (path === '/agents') return selectableAgents as T;
+    if (path.endsWith('/agent-eligibility'))
+      return registeredEligibility(
+        selectableAgents,
+        path.includes('project-2') ? project2.id : project.id,
+      ) as T;
     return [] as T;
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -615,3 +648,215 @@ it('修复变量后清除旧启动错误但不自动再次启动', async () => {
   expect(screen.queryByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).not.toBeInTheDocument();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
+
+it('S54项目不兼容Agent保留选择原因但不可启动', async () => {
+  const eligibility = registeredEligibility();
+  eligibility.agents[0] = {
+    ...eligibility.agents[0]!,
+    eligible: false,
+    reason: 'INCOMPATIBLE_WORKSPACE',
+  };
+  mount(
+    [{ ...task, status: 'BACKLOG', assignedAgentId: 'agent-1' }],
+    '',
+    selectableAgents,
+    eligibility,
+  );
+  const button = await screen.findByRole('button', { name: '启动 Session' });
+  await screen.findByText(/所选 Agent 不可用于当前项目：无法访问项目工作区/);
+  expect(button).toBeDisabled();
+  fireEvent.click(button);
+  expect(api.post).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('combobox', { name: '运行 Agent' }));
+  expect(
+    await screen.findByRole('option', { name: /执行者一.*无法访问项目工作区/ }),
+  ).toHaveAttribute('aria-disabled', 'true');
+});
+it.each(['loading', 'error'] as const)('S54资格%s仅阻止Agent启动不阻止手工任务', async (mode) => {
+  const eligibility =
+    mode === 'loading' ? new Promise(() => {}) : Promise.reject(new Error('资格服务不可达'));
+  if (mode === 'error') eligibility.catch(() => {});
+  mount([{ ...task, status: 'READY' }], '?agentId=agent-1', selectableAgents, eligibility);
+  const button = await screen.findByRole('button', { name: '启动 Session' });
+  expect(button).toBeDisabled();
+  fireEvent.click(button);
+  expect(api.post).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('combobox', { name: '运行 Agent' }));
+  fireEvent.click(await screen.findByRole('option', { name: '不选择 Agent' }));
+  const manual = await screen.findByRole('button', { name: '开始手工任务' });
+  expect(manual).toBeEnabled();
+  vi.mocked(api.post).mockImplementation(
+    async (_path, body) => ({ ...task, status: (body as { status: string }).status }) as never,
+  );
+  fireEvent.click(manual);
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/transition', { status: 'IN_PROGRESS' }),
+  );
+  expect(vi.mocked(api.post).mock.calls.every(([path]) => path.endsWith('/transition'))).toBe(true);
+});
+it('S54资格刷新期间旧的可用快照不能继续启动', async () => {
+  const client = mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
+  const button = await screen.findByRole('button', { name: '启动 Session' });
+  await waitFor(() => expect(button).toBeEnabled());
+  const original = vi.mocked(api.get).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation((path) =>
+    path.endsWith('/agent-eligibility') ? new Promise(() => {}) : original(path),
+  );
+  await act(async () => {
+    void client.invalidateQueries({ queryKey: ['agent-eligibility', project.id] });
+  });
+  await waitFor(() => expect(button).toBeDisabled());
+});
+
+it.each(['disabled', 'missing', 'not-ready', 'unreported'] as const)(
+  'S54不可用默认Agent %s保持身份且不降级手工启动',
+  async (mode) => {
+    const agents =
+      mode === 'missing'
+        ? []
+        : selectableAgents.map((agent) =>
+            agent.id === 'agent-1'
+              ? {
+                  ...agent,
+                  enabled: mode !== 'disabled',
+                  status: mode === 'not-ready' ? 'UNVERIFIED' : agent.status,
+                }
+              : agent,
+          );
+    const eligibility = registeredEligibility();
+    if (mode === 'unreported')
+      eligibility.agents = eligibility.agents.filter((entry) => entry.agentId !== 'agent-1');
+    mount([{ ...task, status: 'READY', assignedAgentId: 'agent-1' }], '', agents, eligibility);
+    const button = await screen.findByRole('button', { name: '启动 Session' });
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(screen.queryByRole('button', { name: '开始手工任务' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '运行 Agent' })).not.toHaveTextContent(
+      '不选择 Agent',
+    );
+    fireEvent.click(button);
+    expect(api.post).not.toHaveBeenCalled();
+  },
+);
+it('S54资格刷新失败保留旧数据仍不可启动，成功刷新后恢复', async () => {
+  mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
+  const button = await screen.findByRole('button', { name: '启动 Session' });
+  await waitFor(() => expect(button).toBeEnabled());
+  const original = vi.mocked(api.get).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation((path) =>
+    path.endsWith('/agent-eligibility') ? Promise.reject(new Error('网络失败')) : original(path),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '刷新 Agent 资格' }));
+  await screen.findByText(/所选 Agent 不可用于当前项目：资格无法确认/);
+  expect(button).toBeDisabled();
+  vi.mocked(api.get).mockImplementation(original);
+  fireEvent.click(screen.getByRole('button', { name: '刷新 Agent 资格' }));
+  await waitFor(() => expect(button).toBeEnabled());
+});
+
+it('S54READY转换期间资格失效不继续旧Agent启动', async () => {
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  const client = mount([{ ...task, status: 'BACKLOG' }], '?agentId=agent-1');
+  const button = await screen.findByRole('button', { name: '启动 Session' });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/transition', { status: 'READY' }),
+  );
+  const entries = registeredEligibility().agents.map((entry) => ({
+    ...entry,
+    eligible: false,
+    reason: 'INCOMPATIBLE_WORKSPACE',
+  }));
+  await act(async () => client.setQueryData(['agent-eligibility', project.id], entries));
+  await screen.findByText(/所选 Agent 不可用于当前项目：无法访问项目工作区/);
+  await act(async () => finish({ ...task, status: 'READY' }));
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+it('S54取消期间资格刷新不吞掉原任务的取消失败', async () => {
+  let rejectCancel!: (reason: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectCancel = reject;
+      }) as never,
+  );
+  const client = mount([{ ...task, status: 'READY', assignedAgentId: 'agent-1' }]);
+  await waitFor(() => expect(screen.getByRole('button', { name: '启动 Session' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: '取消' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/transition', { status: 'CANCELED' }),
+  );
+  let finishRefresh!: (value: unknown) => void;
+  const original = vi.mocked(api.get).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation((path) =>
+    path.endsWith('/agent-eligibility')
+      ? new Promise((resolve) => {
+          finishRefresh = resolve;
+        })
+      : original(path),
+  );
+  await act(async () => {
+    void client.invalidateQueries({ queryKey: ['agent-eligibility', project.id] });
+  });
+  await screen.findByText(/所选 Agent 不可用于当前项目：资格待确认/);
+  await act(async () => finishRefresh(registeredEligibility()));
+  await waitFor(() =>
+    expect(screen.queryByText(/所选 Agent 不可用于当前项目/)).not.toBeInTheDocument(),
+  );
+  await act(async () => rejectCancel(new Error('取消失败必须可见')));
+  expect(await screen.findByText('取消失败必须可见')).toBeVisible();
+});
+
+it.each(['success', 'failure'] as const)(
+  'S54已发出start的%s不会被随后资格刷新吞掉',
+  async (outcome) => {
+    let finish!: (value: unknown) => void;
+    let fail!: (reason: unknown) => void;
+    vi.mocked(api.post).mockImplementation(
+      () =>
+        new Promise((resolve, reject) => {
+          finish = resolve;
+          fail = reject;
+        }) as never,
+    );
+    const client = mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
+    const button = await screen.findByRole('button', { name: '启动 Session' });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith('/tasks/task-1/start', { agentId: 'agent-1' }),
+    );
+    let finishRefresh!: (value: unknown) => void;
+    const original = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation((path) =>
+      path.endsWith('/agent-eligibility')
+        ? new Promise((resolve) => {
+            finishRefresh = resolve;
+          })
+        : original(path),
+    );
+    await act(async () => {
+      void client.invalidateQueries({ queryKey: ['agent-eligibility', project.id] });
+    });
+    await screen.findByText(/所选 Agent 不可用于当前项目：资格待确认/);
+    await act(async () => finishRefresh(registeredEligibility()));
+    await waitFor(() =>
+      expect(screen.queryByText(/所选 Agent 不可用于当前项目/)).not.toBeInTheDocument(),
+    );
+    await act(async () =>
+      outcome === 'success'
+        ? finish({ session: { id: 'session-1' } })
+        : fail(new Error('已发出的启动失败')),
+    );
+    if (outcome === 'success') expect(await screen.findByText('已进入工作区')).toBeVisible();
+    else expect(await screen.findByText('已发出的启动失败')).toBeVisible();
+    expect(api.post).toHaveBeenCalledTimes(1);
+  },
+);
