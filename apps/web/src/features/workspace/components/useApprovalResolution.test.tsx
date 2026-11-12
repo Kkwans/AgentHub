@@ -367,3 +367,39 @@ it('每次GET耗时9秒也在60秒总预算截止，而非20乘10秒', async () 
   expect(api.get).toHaveBeenCalledTimes(count);
   expect(h.submit).toHaveBeenCalledTimes(1);
 });
+
+it.each(['APPROVED', 'REJECTED'] as const)(
+  '单条GET决定status不得改变已冻结的%s',
+  async (status) => {
+    vi.mocked(api.get).mockResolvedValue({
+      ...decided('DELIVERED'),
+      status: status === 'APPROVED' ? 'REJECTED' : 'APPROVED',
+    });
+    const h = mount(vi.fn(async () => ({ ...decided('QUEUED'), status })));
+    await act(async () => {
+      await h.result.current.resolveApproval(variables);
+    });
+    expect(h.result.current.deliveryReadError).toContain('无法核验');
+    expect(h.result.current.approvalFeedback?.tone).toBe('attention');
+    expect(h.result.current.resolveError).toBeUndefined();
+    expect(h.submit).toHaveBeenCalledTimes(1);
+  },
+);
+it.each(['APPROVED', 'REJECTED'] as const)(
+  '列表观察不得采用与已冻结%s相反的决定status',
+  async (status) => {
+    const h = mount(vi.fn(async () => ({ ...decided('QUEUED'), status })));
+    await act(async () => {
+      await h.result.current.resolveApproval(variables);
+    });
+    h.rerender({
+      sessionId: pending.sessionId,
+      approvals: [
+        { ...decided('DELIVERED'), status: status === 'APPROVED' ? 'REJECTED' : 'APPROVED' },
+      ],
+    });
+    expect(h.result.current.approvalFeedback?.tone).toBe('pending');
+    expect(h.result.current.approvalFeedback?.message).toContain('等待投递');
+    expect(h.submit).toHaveBeenCalledTimes(1);
+  },
+);

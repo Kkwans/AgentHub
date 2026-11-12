@@ -222,7 +222,7 @@ export function useApprovalResolution(
           result.runId !== frozen.runId ||
           result.selectedOptionId !== frozen.selectedOptionId ||
           result.deliveryId !== frozen.deliveryId ||
-          !['APPROVED', 'REJECTED'].includes(result.status) ||
+          result.status !== frozen.status ||
           ![
             null,
             'QUEUED',

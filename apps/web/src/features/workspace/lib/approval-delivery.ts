@@ -52,6 +52,7 @@ export function mergeDeliveryObservation(
   if (
     current.conflict ||
     !['APPROVED', 'REJECTED'].includes(next.status) ||
+    previous.status !== next.status ||
     (next.deliveryState !== null && !next.deliveryId) ||
     previous.id !== next.id ||
     previous.sessionId !== next.sessionId ||
