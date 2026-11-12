@@ -142,3 +142,7 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 - AH059精确证据：旧findActive已取得R1快照后挂起，经合法cancel拒绝断连、resume、权威完成R1再显式R2，旧回调把新RUNNING Session改DISCONNECTED，而R2仍RUNNING、新handle未关闭。另一条旧Task回调挂起时Approval投递失败推进Session断连，resumeREADY后旧回调再改DISCONNECTED。仅cancel拒绝且Run已断连的候选不会推进Session，resume409，为否定对照。生产尚未修，下一片要求归属检查与最终Session写在本实例activation切换边界保持一致，不能只check再盲await。
 
 - AH059整合：两条正例已修、否定对照保留；短提交队列及双方提交顺序/撤销/失败释放共81专项、S40完整880单测/lint/types/build/QA通过。仅本实例此断连消费者与resume/close必要提交；其他事件路径/跨进程不在完成范围，新SHA真实CI待验。
+
+
+- AH-060（P1，已修复且本地门禁通过，待新SHA CI）：Approval投递失败收敛未隔离当前activation与Run归属。真实Service/PGlite/受控adapter四条诊断通过：旧回执拒绝、旧handle.close迟到、旧Task回调迟到可污染恢复后新Session状态；第四条不换activation，R1权威完成后显式R2已WAITING_APPROVAL，旧决定失败实际close同handle一次，而R2仍WAITING_APPROVAL。前三例新handle未被close，不与第四例混淆。第三例额外需要两个合法权限请求。未直接改DB/active，未用真实用户Agent。
+- AH060计划要求UNKNOWN/DEAD历史状态仍持久化，但当前Session/handle副作用必须同时核验activation代际与当前Run，并与新Run准入提交互斥。RunRepository现有Task→Session锁+latestRunId原子写不能代替服务层长await后的重新准入检查；只read latestRun再await不是完整fence。已整合epoch lease、DB条件收敛与Run准入短提交边界，123专项通过，S41 lint/types/build、893单测/10跳过、QA10通过，新SHA CI待验。

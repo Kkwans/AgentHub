@@ -1,6 +1,6 @@
 # 详细技术与产品方案
 
-当前视觉状态：用户已否定原整体界面与第一轮全部三个概念；第二轮候选尚未选定。下列旧布局/样式建议只是历史技术规划，不构成视觉认可或实施授权；功能真实性与生命周期修复独立推进。
+当前视觉状态：用户已否定原整体界面及两轮全部概念；最新要求参考 Codex 的实际 UI，正在基于真实参考重新研究，尚未选定实施稿。下列旧布局/样式建议只是历史技术规划，不构成视觉认可或实施授权；功能真实性与生命周期修复独立推进。
 
 ## 1. 目标与取舍
 
@@ -79,3 +79,12 @@ Agent 停止输出不代表 Run 成功；Run 成功不代表任务完成。任�
 - Task observer、adapter/provider、配置读取、handle.close均留在锁外。close可立即撤销挂起resume，只在最终CLOSED持久化时进入队列。
 - 失败不能毒化后续队列；清理只移除自己仍占有的tail。需用真实DB barrier验证旧提交先赢与新activation先赢两种顺序，而非只测check之后没有并发。
 - 此处不引入跨进程runtime互斥，不覆盖尚未审查的全部persistEvent/Approval收敛，也不倒推已开始的外部Task observer可撤销。下一阶段若统一所有消费者，应先列写入者与顺序不变量，再决定共享提交接口或持久activation代际，不把零散检查冒充全局事务。
+
+
+### 8.1 Approval失败与当前工作的隔离（AH060实施约束）
+
+旧决定的UNKNOWN/DEAD是必须保留的历史事实，但不是断开当前Session或关闭当前handle的授权。同一连接也可能已开始下一Run，故仅activationId不能识别归属。
+
+方案以有引用计数的connection epoch lease跨detach保留代际，释放只回收自身；通过DB锁内核对Session归属、latestRunId及Run状态决定当前副作用是否仍适用。Run准入在同一短提交区重新验证READY/active并持久化latestRun，prompt/git/provider在区外。失败提交与精确detach需受同一边界保护，handle.close和Task observer在区外，后续不再盲写Session。
+
+close可在DB await期间撤销归属，因此必须在DB返回后再验；Run创建已持久后再发现失效，须按本次runId走确定未派发的准备失败收敛，不能直接抛409留下QUEUED，也不能误标派发未知。补偿不得把已关闭或被新activation接管的Session改回READY。未取得明确lease不能借“active为空”授权当前资源副作用。此方案仍不代表跨进程runtime协调已完成。
