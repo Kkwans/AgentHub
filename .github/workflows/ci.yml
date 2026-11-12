@@ -74,6 +74,7 @@ jobs:
           tests/e2e-real/home-populated-visual.spec.ts
           tests/e2e-real/home-project-choice.spec.ts
           tests/e2e-real/task-creation-recovery.spec.ts
+          tests/e2e-real/task-cancel-safety.spec.ts
           tests/e2e-real/agent-defaults-management.spec.ts
           tests/e2e-real/agent-capability-truth.spec.ts
           tests/e2e-real/prompt-library-empty.spec.ts

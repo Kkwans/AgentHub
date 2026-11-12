@@ -271,9 +271,24 @@ export class TaskService implements TaskRunLifecycleObserver {
   async transitionTask(id: string, to: TaskStatus) {
     return this.withTaskAdmission(id, async () => {
       await this.getTask(id);
-      return this.tasks.transition(id, to, {
-        ...(to === 'DONE' ? { completedAt: new Date() } : {}),
-      });
+      try {
+        return await this.tasks.transition(
+          id,
+          to,
+          {
+            ...(to === 'DONE' ? { completedAt: new Date() } : {}),
+          },
+          { guardManualRunState: true },
+        );
+      } catch (error) {
+        if (error instanceof DatabaseInvariantError && error.code === 'TASK_RUN_CANCEL_REQUIRED')
+          throw new AppError(
+            409,
+            error.code,
+            '任务执行结果尚待核对，请前往工作区处理 Run 并确认终态，再修改任务状态',
+          );
+        throw error;
+      }
     });
   }
 

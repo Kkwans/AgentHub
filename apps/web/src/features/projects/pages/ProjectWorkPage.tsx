@@ -1,3 +1,4 @@
+import { TaskCancelAction } from '../components/TaskCancelAction';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   AhButton,
@@ -502,15 +503,11 @@ export function ProjectWorkPage() {
                       >
                         <Play size={14} /> {runAgentId ? '启动 Session' : '开始'}
                       </AhButton>
-                      <AhButton
-                        size="xs"
-                        variant="default"
-                        onClick={() => transition.mutate({ id: selected.id, status: 'CANCELED' })}
-                        loading={transition.isPending}
-                        disabled={selected.status === 'DONE' || selected.status === 'CANCELED'}
-                      >
-                        <CircleStop size={14} /> 取消
-                      </AhButton>
+                      <TaskCancelAction
+                        task={selected}
+                        pending={transition.isPending}
+                        onCancel={() => transition.mutate({ id: selected.id, status: 'CANCELED' })}
+                      />
                     </div>
                   </>
                 ) : (

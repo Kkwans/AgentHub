@@ -92,6 +92,88 @@ describe('Goal 与 Task service', () => {
 
   afterAll(async () => database.close());
 
+  it('AH039：进行中Task不能靠状态编辑假取消或绕过保护', async () => {
+    for (const hasSession of [true]) {
+      const task = await service.createTask({ projectId, title: '正在执行，不可假取消' });
+      await service.transitionTask(task.id, 'READY');
+      if (hasSession) await service.startTask(task.id, { agentId });
+      else await service.transitionTask(task.id, 'IN_PROGRESS');
+      const tasks = new TaskRepository(database.db);
+      const before = await tasks.get(task.id);
+      const runs = new RunRepository(database.db);
+      const beforeRuns = before?.sessionId ? await runs.list(before.sessionId) : [];
+      for (const to of ['CANCELED', 'BLOCKED', 'WAITING_REVIEW'] as const) {
+        await expect(service.transitionTask(task.id, to)).rejects.toMatchObject({
+          status: 409,
+          code: 'TASK_RUN_CANCEL_REQUIRED',
+        });
+      }
+      expect(await tasks.get(task.id)).toEqual(before);
+      if (before?.sessionId) expect(await runs.list(before.sessionId)).toEqual(beforeRuns);
+    }
+  });
+
+  it('AH039：行锁检查当前状态，已READY的旧快照不能放行随后执行中的取消', async () => {
+    const task = await service.createTask({ projectId, title: '过期快照' });
+    await service.transitionTask(task.id, 'READY');
+    const tasks = new TaskRepository(database.db);
+    const stale = await tasks.get(task.id);
+    await service.startTask(task.id, { agentId });
+    expect(stale?.status).toBe('READY');
+    await expect(
+      tasks.transition(task.id, 'CANCELED', {}, { guardManualRunState: true }),
+    ).rejects.toMatchObject({ code: 'TASK_RUN_CANCEL_REQUIRED' });
+    expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
+  });
+
+  it('AH039：未执行任务和确认没有Run的手工进行中任务仍可取消', async () => {
+    for (const status of ['BACKLOG', 'READY', 'BLOCKED'] as const) {
+      const task = await service.createTask({ projectId, title: `可取消 ${status}` });
+      const tasks = new TaskRepository(database.db);
+      if (status !== 'BACKLOG') await service.transitionTask(task.id, 'READY');
+      if (status === 'BLOCKED') await tasks.transition(task.id, 'BLOCKED');
+      expect((await service.transitionTask(task.id, 'CANCELED')).status).toBe('CANCELED');
+    }
+    const task = await service.createTask({ projectId, title: '权威终态' });
+    const tasks = new TaskRepository(database.db);
+    await tasks.transition(task.id, 'READY');
+    await tasks.transition(task.id, 'IN_PROGRESS');
+    expect((await service.transitionTask(task.id, 'CANCELED')).status).toBe('CANCELED');
+  });
+
+  it.each([
+    ['DISCONNECTED', null],
+    ['RUNNING', null],
+    ['FAILED', 'RUN_PREPARATION_RECOVERY_REQUIRED'],
+    ['FAILED', 'SERVER_RESTARTED'],
+    ['CANCELED', 'CANCEL_CONFIRMATION_TIMEOUT'],
+    ['FAILED', 'AGENT_RUN_CANCEL_FAILED'],
+    ['FAILED', 'AGENT_RUN_START_FAILED'],
+  ] as const)('AH039：BLOCKED旧状态不能越过未决Run %s/%s', async (status, errorCode) => {
+    const task = await service.createTask({ projectId, title: '旧状态仍有未决运行' });
+    await service.transitionTask(task.id, 'READY');
+    const started = await service.startTask(task.id, { agentId });
+    const tasks = new TaskRepository(database.db);
+    await tasks.update(task.id, { status: 'BLOCKED' });
+    await new RunRepository(database.db).patch(started.run.id, { status, errorCode });
+    await expect(service.transitionTask(task.id, 'CANCELED')).rejects.toMatchObject({
+      code: 'TASK_RUN_CANCEL_REQUIRED',
+    });
+    expect((await tasks.get(task.id))?.status).toBe('BLOCKED');
+  });
+
+  it('AH039：任务缺少Session关联仍须检查taskId归属的真实Run', async () => {
+    const task = await service.createTask({ projectId, title: '关联缺失不等于无运行' });
+    await service.transitionTask(task.id, 'READY');
+    await service.startTask(task.id, { agentId });
+    const tasks = new TaskRepository(database.db);
+    await tasks.update(task.id, { sessionId: null });
+    await expect(service.transitionTask(task.id, 'CANCELED')).rejects.toMatchObject({
+      code: 'TASK_RUN_CANCEL_REQUIRED',
+    });
+    expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
+  });
+
   it('创建 Goal/Task 并阻止非法状态跳转', async () => {
     const goal = await service.createGoal({ projectId, title: '交付 MVP' });
     expect(goal.status).toBe('DRAFT');

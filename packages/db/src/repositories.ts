@@ -1621,15 +1621,58 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
     });
   }
 
-  async transition(id: string, to: TaskStatus, patch: Partial<typeof tasks.$inferInsert> = {}) {
+  async transition(
+    id: string,
+    to: TaskStatus,
+    patch: Partial<typeof tasks.$inferInsert> = {},
+    options: { guardManualRunState?: boolean } = {},
+  ) {
     return this.db.transaction(async (transaction) => {
       const [current] = await transaction
-        .select({ status: tasks.status })
+        .select({ status: tasks.status, sessionId: tasks.sessionId })
         .from(tasks)
         .where(eq(tasks.id, id))
         .for('update')
         .limit(1);
       if (!current) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+      // Admission also takes the Task lock, so a stale service snapshot cannot
+      // cancel a new Run or bypass this protection via BLOCKED/WAITING_REVIEW.
+      if (options.guardManualRunState) {
+        const [run] = await transaction
+          .select({ id: agentRuns.id })
+          .from(agentRuns)
+          .where(
+            and(
+              or(
+                eq(agentRuns.taskId, id),
+                ...(current.sessionId ? [eq(agentRuns.sessionId, current.sessionId)] : []),
+              ),
+              or(
+                inArray(agentRuns.status, [
+                  'QUEUED',
+                  'STARTING',
+                  'RUNNING',
+                  'WAITING_APPROVAL',
+                  'CANCELING',
+                  'DISCONNECTED',
+                ]),
+                inArray(agentRuns.errorCode, [
+                  'RUN_PREPARATION_RECOVERY_REQUIRED',
+                  'SERVER_RESTARTED',
+                  'CANCEL_CONFIRMATION_TIMEOUT',
+                  'AGENT_RUN_CANCEL_FAILED',
+                  'AGENT_RUN_START_FAILED',
+                ]),
+              ),
+            ),
+          )
+          .limit(1);
+        if (run || (current.status === 'IN_PROGRESS' && current.sessionId))
+          throw new DatabaseInvariantError(
+            'TASK_RUN_CANCEL_REQUIRED',
+            '请先在工作区核对执行终态，再修改任务状态',
+          );
+      }
       transitionTask(current.status as TaskStatus, to);
       const [updated] = await transaction
         .update(tasks)
