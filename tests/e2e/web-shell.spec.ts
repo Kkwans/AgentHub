@@ -360,16 +360,38 @@ test('全局 IA、单一 Sidebar 折叠入口与主题可恢复', async ({ page 
   }
   const navigations = page.getByRole('navigation', { name: '主导航' });
   const navigation = viewportWidth < 768 ? navigations.last() : navigations.first();
-  await expect(navigation.getByRole('link')).toHaveText([
-    '首页',
-    '项目',
-    'Agent 中心',
-    'Prompt 库',
-    '设置',
-  ]);
+  const destinations = [
+    ['首页', '/home'],
+    ['项目', '/projects'],
+    ['Agent 中心', '/agents'],
+    ['Prompt 库', '/prompts'],
+    ['设置', '/settings/appearance'],
+  ] as const;
+  const links = navigation.getByRole('link');
+  await expect(links).toHaveCount(destinations.length);
+  for (const [index, [name, href]] of destinations.entries()) {
+    await expect(links.nth(index)).toHaveAccessibleName(name);
+    await expect(links.nth(index)).toHaveAttribute('href', href);
+  }
+  // Compact desktop keeps icon links accessible; mobile drawer and wide
+  // desktop retain visible labels. Do not confuse absent text with absent IA.
+  await expect(links).toHaveText(
+    viewportWidth >= 768 && viewportWidth < 1320
+      ? destinations.map(() => '')
+      : destinations.map(([name]) => name),
+  );
   await expect(navigation.getByRole('link', { name: 'Workspace' })).toHaveCount(0);
-  if (viewportWidth >= 900) {
-    await expect(page.getByRole('button', { name: '折叠侧边栏' })).toHaveCount(1);
+  if (viewportWidth >= 768) {
+    if (viewportWidth < 1320) {
+      await expect(page.getByRole('button', { name: '展开侧边栏' })).toBeDisabled();
+    } else {
+      const collapse = page.getByRole('button', { name: '折叠侧边栏' });
+      await expect(collapse).toHaveCount(1);
+      await collapse.click();
+      await expect(links).toHaveText(destinations.map(() => ''));
+      await page.getByRole('button', { name: '展开侧边栏' }).click();
+      await expect(links).toHaveText(destinations.map(([name]) => name));
+    }
     await page.getByRole('button', { name: '深色主题' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
     await expect(page.locator('html')).toHaveClass(/\bdark\b/);
@@ -467,8 +489,14 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByRole('navigation', { name: '主导航' })).toHaveCount(0);
-  await expect(page.locator('.tool-execution-group')).toHaveCount(1);
-  await expect(page.locator('.tool-event-group-list li')).toHaveCount(4);
+  // Live PinHarness turns deliberately render ordered independent tool rows.
+  const toolRows = page.locator('.tool-event-row');
+  const toolEvents = conversationEvents.filter((event) => event.type === 'tool.call.completed');
+  await expect(toolRows).toHaveCount(4);
+  for (const [index, event] of toolEvents.entries()) {
+    await expect(toolRows.nth(index)).toHaveAttribute('data-event-id', event.id);
+    await expect(toolRows.nth(index).getByRole('button', { name: /工具调用完成/ })).toBeVisible();
+  }
   await expect(page.locator('.tool-summary')).toHaveCount(0);
   await expect(page.locator('.message.assistant').last().locator('strong')).toHaveText(
     '关键校正已完成：',
@@ -478,19 +506,24 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await expect(contextDisclosure.locator('code')).toBeVisible();
   await expect(contextDisclosure.locator('code')).toHaveText(project.rootPath);
   await contextDisclosure.locator('summary').click();
-  const thought = page.locator('.thought-event-row');
+  const thought = page.locator('.thinking-event-row');
   await expect(thought).toHaveCount(1);
   await expect(thought).not.toHaveAttribute('open', '');
   await expect(thought.getByText('思考了 32 秒')).toBeVisible();
-  await thought.locator('summary').click();
+  await thought.getByRole('button', { name: '展开思考过程' }).click();
   await expect(thought).toHaveAttribute('open', '');
   await expect(thought.getByText(/先对照 Codex 的主舞台宽度/)).toBeVisible();
-  await thought.locator('summary').click();
+  await thought.getByRole('button', { name: '展开思考过程' }).click();
   const firstTool = page.locator('.tool-event-row').first();
-  await expect(firstTool).not.toHaveAttribute('open', '');
-  await firstTool.locator('summary').click();
-  await expect(firstTool).toHaveAttribute('open', '');
-  await firstTool.locator('summary').click();
+  const firstToolTrigger = firstTool.getByRole('button', { name: /工具调用完成/ });
+  await expect(firstToolTrigger).toHaveAttribute('aria-expanded', 'false');
+  await firstToolTrigger.click();
+  await expect(firstToolTrigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(firstTool.locator('.tool-entry-detail-body')).toBeVisible();
+  await expect(firstTool.getByText('Agent 未返回可展开内容。')).toBeVisible();
+  await firstToolTrigger.click();
+  await expect(firstToolTrigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(firstTool.locator('.tool-entry-detail-body')).toBeHidden();
   const userMessageBox = await page.locator('.message.user').last().boundingBox();
   const assistantMessageBox = await page.locator('.message.assistant').last().boundingBox();
   expect(userMessageBox, '用户消息应可见').not.toBeNull();

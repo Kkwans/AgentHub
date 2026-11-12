@@ -140,9 +140,10 @@ test.describe('local_trusted 项目与 Work', () => {
     await expect(page.getByRole('link', { name: /QA E2E Session/ })).toBeVisible();
     await page.goto(`/workspace/${session.id}`);
     await expect(page.locator('.workspace-shell')).toBeVisible();
-    await expect(
-      page.locator('.conversation-title').getByText('对话', { exact: true }),
-    ).toBeVisible();
+    const conversation = page.getByRole('region', { name: 'Agent 对话' });
+    await expect(conversation).toBeVisible();
+    await expect(conversation.getByRole('log')).toBeVisible();
+    await expect(conversation.getByRole('heading', { name: '等待第一条指令' })).toBeVisible();
     await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
   });
 
@@ -195,9 +196,28 @@ test.describe('local_trusted 项目与 Work', () => {
     await fixtureCheckbox.check();
     const commitForm = page.locator('form.git-commit-form');
     await commitForm.getByLabel('提交说明').fill('test: Workspace ACP 输出');
+    const commitResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().endsWith(`/projects/${project.id}/git/commit`),
+    );
     await commitForm.getByRole('button', { name: '提交所选文件 (1)' }).click();
+    const commitResponse = await commitResponsePromise;
+    expect(commitResponse.ok(), await commitResponse.text()).toBe(true);
     await expect(page.locator('.git-commit-receipt')).toContainText('提交完成', {
       timeout: 30_000,
     });
+    const committed = await execFile('/usr/bin/git', [
+      '-C',
+      app.projectRoot,
+      'show',
+      '--format=%s',
+      '--name-only',
+      'HEAD',
+    ]);
+    expect(committed.stdout).toContain('test: Workspace ACP 输出');
+    expect(committed.stdout).toContain('fixture-output.md');
+    const status = await execFile('/usr/bin/git', ['-C', app.projectRoot, 'status', '--porcelain']);
+    expect(status.stdout.trim()).toBe('');
   });
 });

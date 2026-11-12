@@ -1,15 +1,13 @@
-import { execFile as execFileCallback } from 'node:child_process';
-import { mkdtemp, mkdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 import { test as base, expect, type BrowserContext } from '@playwright/test';
 
 import { startServer, type RunningServer } from '../../apps/server/dist/index.js';
 
-const execFile = promisify(execFileCallback);
+export { initializeGitProject } from './git-project.js';
 const tempRootPrefix = 'agenthub-pw-real-';
 
 export type RealAuthMode = 'token' | 'local_trusted';
@@ -101,54 +99,6 @@ export const test = base.extend<TestFixtures>({
 });
 
 export { expect };
-
-export async function initializeGitProject(projectRoot: string): Promise<void> {
-  await writeFile(join(projectRoot, 'README.md'), '# AgentHub real E2E\n', 'utf8');
-  await execFile('/usr/bin/git', ['init', '--initial-branch', 'main', projectRoot], {
-    shell: false,
-    windowsHide: true,
-    env: {
-      PATH: '/usr/bin:/bin',
-      GIT_CONFIG_NOSYSTEM: '1',
-      GIT_CONFIG_GLOBAL: '/dev/null',
-      GIT_TERMINAL_PROMPT: '0',
-    },
-  });
-  await execFile('/usr/bin/git', ['-C', projectRoot, 'add', 'README.md'], {
-    shell: false,
-    windowsHide: true,
-    env: {
-      PATH: '/usr/bin:/bin',
-      GIT_CONFIG_NOSYSTEM: '1',
-      GIT_CONFIG_GLOBAL: '/dev/null',
-      GIT_TERMINAL_PROMPT: '0',
-    },
-  });
-  await execFile(
-    '/usr/bin/git',
-    [
-      '-C',
-      projectRoot,
-      '-c',
-      'user.name=AgentHub E2E',
-      '-c',
-      'user.email=agenthub-e2e@invalid.local',
-      'commit',
-      '-m',
-      'test: 初始化真实浏览器项目',
-    ],
-    {
-      shell: false,
-      windowsHide: true,
-      env: {
-        PATH: '/usr/bin:/bin',
-        GIT_CONFIG_NOSYSTEM: '1',
-        GIT_CONFIG_GLOBAL: '/dev/null',
-        GIT_TERMINAL_PROMPT: '0',
-      },
-    },
-  );
-}
 
 async function removeTempRoot(tempRoot: string, tempBase: string): Promise<void> {
   const canonicalBase = await realpath(tempBase);

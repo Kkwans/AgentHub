@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -24,10 +24,10 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-function renderShell(initialEntries: string[] = ['/projects/p-1/overview']) {
+function renderShell(initialEntries: string[] = ['/projects/p-1/overview'], width = 1440) {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
-    value: 1440,
+    value: width,
   });
   render(
     <AgentHubProvider initialPreference="light">
@@ -44,6 +44,20 @@ function renderShell(initialEntries: string[] = ['/projects/p-1/overview']) {
 }
 
 describe('AppShell', () => {
+  it.each([768, 1024])('compact navigation at %i preserves accessible destinations', (width) => {
+    renderShell(['/projects'], width);
+    const navigation = screen.getByRole('navigation', { name: '主导航' });
+    const links = within(navigation).getAllByRole('link');
+    const names = ['首页', '项目', 'Agent 中心', 'Prompt 库', '设置'];
+    const hrefs = ['/home', '/projects', '/agents', '/prompts', '/settings/appearance'];
+    expect(links).toHaveLength(5);
+    links.forEach((link, index) => {
+      expect(link).toHaveAccessibleName(names[index]);
+      expect(link).toHaveAttribute('href', hrefs[index]);
+      expect(link.textContent).toBe('');
+    });
+    expect(screen.getByRole('button', { name: '展开侧边栏' })).toBeDisabled();
+  });
   it('保留主导航、Infrastructure 子入口和 Project 上下文壳层', () => {
     renderShell();
 
