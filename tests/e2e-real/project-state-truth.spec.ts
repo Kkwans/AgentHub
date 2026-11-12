@@ -23,16 +23,30 @@ test('项目概览与页头遵循登记资格而非全局就绪数', async ({ pa
   await expect(
     page.getByText('登记状态下 1 个可用；运行前仍需预检', { exact: true }),
   ).toBeVisible();
-  const response = await context.request.patch(`/api/v1/agents/${agent.id}`, {
-    data: { enabled: false },
+  // Agent PATCH only edits defaults. Archive this isolated project through its
+  // real API while keeping the global Agent READY, so project eligibility and
+  // global readiness deliberately differ without inventing an enable endpoint.
+  const archived = await apiData<{ status: string }>(
+    context,
+    'post',
+    `/projects/${project.id}/archive`,
+  );
+  expect(archived.status).toBe('ARCHIVED');
+  const agents = await apiData<Array<{ id: string; enabled: boolean; status: string }>>(
+    context,
+    'get',
+    '/agents',
+  );
+  expect(agents.find((entry) => entry.id === agent.id)).toMatchObject({
+    enabled: true,
+    status: 'READY',
   });
-  expect(response.ok()).toBe(true);
-  const disabled = await apiData<{
+  const inactive = await apiData<{
     agents: Array<{ agentId: string; eligible: boolean; reason: string | null }>;
   }>(context, 'get', `/projects/${project.id}/agent-eligibility`);
-  expect(disabled.agents.find((entry) => entry.agentId === agent.id)).toMatchObject({
+  expect(inactive.agents.find((entry) => entry.agentId === agent.id)).toMatchObject({
     eligible: false,
-    reason: 'DISABLED',
+    reason: 'PROJECT_INACTIVE',
   });
   await page.reload();
   await expect(page.getByText('0 个登记可用 Agent', { exact: true })).toBeVisible();

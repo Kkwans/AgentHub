@@ -37,7 +37,12 @@ for (const width of [390, 760, 768, 1024, 1440]) {
           return {
             x: box.x,
             y: box.y,
+            width: box.width,
             height: box.height,
+            top: box.top,
+            right: box.right,
+            bottom: box.bottom,
+            left: box.left,
             inside:
               box.left >= nav.left &&
               box.right <= nav.right + 1 &&
@@ -46,9 +51,17 @@ for (const width of [390, 760, 768, 1024, 1440]) {
           };
         }),
       );
+      await info.attach('settings-navigation-raw-rects', {
+        body: JSON.stringify({ width, theme, boxes }),
+        contentType: 'application/json',
+      });
       expect(boxes.every((box) => box.inside)).toBe(true);
       if (width <= 760) {
-        expect(boxes.every((box) => box.height >= 44)).toBe(true);
+        // e866e28 Chromium trace measured 43.99998474121094 CSS px for a
+        // 44px target. Allow only 0.001px floating-point noise, not a smaller
+        // touch target; preserve raw rectangles above for every future run.
+        const geometryEpsilon = 0.001;
+        expect(boxes.every((box) => box.height + geometryEpsilon >= 44)).toBe(true);
         expect(new Set(boxes.map((box) => Math.round(box.y))).size).toBe(2);
         expect(new Set(boxes.map((box) => Math.round(box.x))).size).toBe(3);
       } else expect(new Set(boxes.map((box) => Math.round(box.x))).size).toBe(1);
