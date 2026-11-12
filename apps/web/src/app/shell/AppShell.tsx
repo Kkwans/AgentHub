@@ -18,11 +18,11 @@ import {
   type IconProps,
 } from '@agenthub/ui';
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { realtime } from '../../lib/realtime';
 import { AgentHubLogo } from '../../components/AgentHubLogo';
-import { useAuthUser } from '../../components/AccessGate';
+import { useAuthMode, useAuthUser } from '../../components/AccessGate';
 
 const CommandPalette = lazy(() =>
   import('./CommandPalette').then((module) => ({ default: module.CommandPalette })),
@@ -39,6 +39,7 @@ type NavigationItem = {
   description: string;
   icon: ComponentType<IconProps>;
   shortcut?: string;
+  section?: string;
 };
 
 const primaryNavigation: NavigationItem[] = [
@@ -48,6 +49,7 @@ const primaryNavigation: NavigationItem[] = [
   { to: '/prompts', label: 'Prompt 库', description: '可复用的 Prompt 资产', icon: Braces },
   {
     to: '/settings/appearance',
+    section: '/settings',
     label: '设置',
     description: '外观、账号与系统设置',
     icon: Settings,
@@ -136,6 +138,14 @@ function Navigation({
   onNavigate?: () => void;
   collapsed?: boolean;
 }) {
+  const { pathname } = useLocation();
+  // Prefer the most specific section. Infrastructure lives below /agents but
+  // has its own entry; segment boundaries avoid matching /projects-other.
+  const activeDestination = [...primaryNavigation, ...secondaryNavigation]
+    .filter(({ to, section = to }) => pathname === section || pathname.startsWith(`${section}/`))
+    .sort(
+      (left, right) => (right.section ?? right.to).length - (left.section ?? left.to).length,
+    )[0]?.to;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <nav
@@ -143,11 +153,11 @@ function Navigation({
         aria-label="主导航"
       >
         {primaryNavigation.map(({ to, label, icon: Icon, shortcut }) => (
-          <NavLink
+          <Link
             key={to}
             to={to}
-            end
-            className={({ isActive }) => sidebarItemClass(isActive, collapsed)}
+            aria-current={activeDestination === to ? 'page' : undefined}
+            className={sidebarItemClass(activeDestination === to, collapsed)}
             onClick={onNavigate}
             aria-label={label}
           >
@@ -158,7 +168,7 @@ function Navigation({
                 {shortcut}
               </kbd>
             ) : null}
-          </NavLink>
+          </Link>
         ))}
       </nav>
       <div className="my-3 h-px w-full bg-[hsl(var(--sidebar-border))]/70" aria-hidden="true" />
@@ -170,17 +180,17 @@ function Navigation({
         )}
         <div className={`mt-1 flex flex-col gap-0.5 ${collapsed ? 'items-center' : ''}`}>
           {secondaryNavigation.map(({ to, label, icon: Icon }) => (
-            <NavLink
+            <Link
               key={to}
               to={to}
-              end
-              className={({ isActive }) => sidebarItemClass(isActive, collapsed)}
+              aria-current={activeDestination === to ? 'page' : undefined}
+              className={sidebarItemClass(activeDestination === to, collapsed)}
               onClick={onNavigate}
               aria-label={label}
             >
               <Icon className="sidebar-icon shrink-0" aria-hidden size={18} weight="regular" />
               {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{label}</span>}
-            </NavLink>
+            </Link>
           ))}
         </div>
       </nav>
@@ -191,17 +201,23 @@ function Navigation({
 function ProfileSurface({
   collapsed = false,
   username,
+  mode,
+  onNavigate,
 }: {
   collapsed?: boolean;
   username?: string | undefined;
+  mode?: 'local_trusted' | 'token' | undefined;
+  onNavigate?: (() => void) | undefined;
 }) {
-  const displayName = username?.trim() || 'Kwan';
-  const initial = displayName.slice(0, 1).toUpperCase() || 'K';
+  const displayName =
+    username?.trim() || (mode === 'local_trusted' ? '本地受信任访问' : '未关联账号');
+  const initial = displayName.slice(0, 1).toUpperCase() || '?';
   return (
-    <button
-      type="button"
+    <Link
+      to="/settings/account"
+      onClick={onNavigate}
       className={`group/profile flex min-h-[52px] w-full items-center gap-2 rounded-[var(--radius-lg)] border border-[hsl(var(--sidebar-border))]/70 bg-[hsl(var(--sidebar-bg))]/50 px-2.5 py-2.5 text-left shadow-[var(--shadow-sm)] transition-[border-color,box-shadow,background-color] duration-[var(--motion-fast)] hover:border-[hsl(var(--border-strong))] hover:bg-[hsl(var(--surface-hover))]/60 hover:shadow-[var(--shadow-md)] ${collapsed ? 'justify-center px-1.5' : ''}`}
-      aria-label={`${displayName}，管理员账户`}
+      aria-label={`${displayName}，账号设置`}
     >
       <span className="avatar-glow relative shrink-0">
         <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[hsl(var(--primary-hover))]/50 bg-[hsl(var(--primary))] text-[10px] font-semibold text-[hsl(var(--primary-foreground))] shadow-[var(--shadow-sm)]">
@@ -213,7 +229,7 @@ function ProfileSurface({
           <strong className="truncate text-[13px] text-[hsl(var(--foreground))]">
             {displayName}
           </strong>
-          <small className="text-[11px] text-[hsl(var(--foreground-faint))]">Admin</small>
+          <small className="text-[11px] text-[hsl(var(--foreground-faint))]">账号设置</small>
         </span>
       )}
       {!collapsed && (
@@ -223,7 +239,7 @@ function ProfileSurface({
           size={15}
         />
       )}
-    </button>
+    </Link>
   );
 }
 
@@ -273,6 +289,7 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const authUser = useAuthUser();
+  const authMode = useAuthMode();
   const { preference, setPreference, sidebarCollapsed, sidebarPreference, setSidebarCollapsed } =
     useAgentHubTheme();
   const [viewportWidth, setViewportWidth] = useState(
@@ -404,7 +421,11 @@ export function AppShell() {
             >
               <div className={`flex items-center ${collapsed ? 'flex-col gap-1.5' : 'gap-2'}`}>
                 <div className="min-w-0 flex-1">
-                  <ProfileSurface collapsed={collapsed} username={authUser?.username} />
+                  <ProfileSurface
+                    collapsed={collapsed}
+                    username={authUser?.username}
+                    mode={authMode}
+                  />
                 </div>
                 <ThemeControls
                   preference={preference}
@@ -467,7 +488,11 @@ export function AppShell() {
       <MobileDrawerPanel open={drawerOpen} onClose={() => setDrawerOpen(false)} ariaLabel="导航">
         <Brand />
         <Navigation onNavigate={() => setDrawerOpen(false)} />
-        <ProfileSurface username={authUser?.username} />
+        <ProfileSurface
+          username={authUser?.username}
+          mode={authMode}
+          onNavigate={() => setDrawerOpen(false)}
+        />
       </MobileDrawerPanel>
 
       {commandOpen ? (

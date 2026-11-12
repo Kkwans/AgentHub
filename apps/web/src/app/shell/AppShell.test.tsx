@@ -3,12 +3,21 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { AgentHubProvider } from '@agenthub/ui';
 
 import { AppShell } from './AppShell';
 import { fuzzyScore } from './CommandPalette';
+
+const auth = vi.hoisted(() => ({
+  user: null as { id: string; username: string; role: 'ADMIN' } | null,
+  mode: 'local_trusted' as 'local_trusted' | 'token' | undefined,
+}));
+vi.mock('../../components/AccessGate', () => ({
+  useAuthUser: () => auth.user,
+  useAuthMode: () => auth.mode,
+}));
 
 vi.mock('../../lib/realtime', () => ({
   realtime: {
@@ -22,7 +31,21 @@ vi.mock('../../lib/realtime', () => ({
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  auth.user = null;
+  auth.mode = 'local_trusted';
 });
+
+function HistoryControls() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <>
+      <button onClick={() => navigate(-1)}>后退测试</button>
+      <button onClick={() => navigate(1)}>前进测试</button>
+      <output data-testid="location">{location.pathname}</output>
+    </>
+  );
+}
 
 function renderShell(initialEntries: string[] = ['/projects/p-1/overview'], width = 1440) {
   Object.defineProperty(window, 'innerWidth', {
@@ -32,6 +55,7 @@ function renderShell(initialEntries: string[] = ['/projects/p-1/overview'], widt
   render(
     <AgentHubProvider initialPreference="light">
       <MemoryRouter initialEntries={initialEntries}>
+        <HistoryControls />
         <Routes>
           <Route element={<AppShell />}>
             <Route path="*" element={<h2>页面内容</h2>} />
@@ -44,6 +68,82 @@ function renderShell(initialEntries: string[] = ['/projects/p-1/overview'], widt
 }
 
 describe('AppShell', () => {
+  it.each([
+    ['/projects/p1/work/new', '项目'],
+    ['/projects/p1/sessions', '项目'],
+    ['/settings/account', '设置'],
+    ['/settings/security', '设置'],
+    ['/prompts/p1/versions', 'Prompt 库'],
+    ['/agents/a1', 'Agent 中心'],
+    ['/agents/runtime/docker', '运行环境'],
+    ['/agents/nodes/node1', '远程节点'],
+  ])('子路由 %s 保持唯一的当前入口 %s', (path, label) => {
+    renderShell([path]);
+    expect(screen.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
+    const currentLinks = [...screen.getAllByRole('link')].filter(
+      (link) => link.getAttribute('aria-current') === 'page',
+    );
+    expect(currentLinks).toHaveLength(1);
+  });
+  it.each(['/projects-old', '/settings-other', '/agents-other'])(
+    '不将相似前缀 %s 视为当前分区',
+    (path) => {
+      renderShell([path]);
+      expect(
+        screen.getAllByRole('link').filter((link) => link.hasAttribute('aria-current')),
+      ).toHaveLength(0);
+    },
+  );
+  it('浏览器后退前进同步分区，不依赖导航点击', () => {
+    renderShell(['/projects/p1/work', '/settings/security']);
+    expect(screen.getByRole('link', { name: '设置' })).toHaveAttribute('aria-current', 'page');
+    fireEvent.click(screen.getByRole('button', { name: '后退测试' }));
+    expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: '设置' })).not.toHaveAttribute('aria-current');
+    fireEvent.click(screen.getByRole('button', { name: '前进测试' }));
+    expect(screen.getByRole('link', { name: '设置' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: '项目' })).not.toHaveAttribute('aria-current');
+  });
+  it.each([1440, 1024])('本地访问身份在 %i 侧栏是可用的账号设置链接', (width) => {
+    renderShell(['/projects'], width);
+    const account = screen.getByRole('link', { name: '本地受信任访问，账号设置' });
+    expect(account).toHaveAttribute('href', '/settings/account');
+    expect(screen.queryByText('Kwan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument();
+    fireEvent.click(account);
+    expect(screen.getByTestId('location')).toHaveTextContent('/settings/account');
+    expect(screen.getByRole('link', { name: '设置' })).toHaveAttribute('aria-current', 'page');
+  });
+  it('展示真实登录用户名，不伪造管理员名称', () => {
+    auth.user = { id: 'user-1', username: '实际用户', role: 'ADMIN' };
+    auth.mode = 'token';
+    renderShell();
+    expect(screen.getByRole('link', { name: '实际用户，账号设置' })).toHaveAttribute(
+      'href',
+      '/settings/account',
+    );
+    expect(screen.queryByText('本地受信任访问')).not.toBeInTheDocument();
+  });
+  it('缺少身份上下文时不假定本地受信任或管理员', () => {
+    auth.mode = undefined;
+    renderShell();
+    expect(screen.getByRole('link', { name: '未关联账号，账号设置' })).toBeInTheDocument();
+  });
+  it('移动导航账号链接打开账号设置并关闭抽屉', async () => {
+    renderShell(['/projects/p1/work'], 390);
+    fireEvent.click(screen.getByRole('button', { name: '打开导航' }));
+    const drawer = await screen.findByRole('dialog', { name: '导航' });
+    expect(within(drawer).getByRole('link', { name: '项目' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    fireEvent.click(within(drawer).getByRole('link', { name: '本地受信任访问，账号设置' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/settings/account');
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '导航' })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: '打开导航' })).toBeInTheDocument();
+  });
   it.each([768, 1024])('compact navigation at %i preserves accessible destinations', (width) => {
     renderShell(['/projects'], width);
     const navigation = screen.getByRole('navigation', { name: '主导航' });

@@ -25,6 +25,11 @@ export type AuthStatus = {
 };
 
 const AuthUserContext = createContext<AuthStatus['user']>(null);
+const AuthModeContext = createContext<AuthStatus['mode'] | undefined>(undefined);
+
+export function useAuthMode(): AuthStatus['mode'] | undefined {
+  return useContext(AuthModeContext);
+}
 
 /** Read the authenticated administrator already resolved by AccessGate. */
 export function useAuthUser(): AuthStatus['user'] {
@@ -100,7 +105,7 @@ export function AccessGate({ children }: PropsWithChildren) {
   ) {
     return (
       <AuthUserContext.Provider value={auth.data?.user ?? null}>
-        {children}
+        <AuthModeContext.Provider value={auth.data.mode}>{children}</AuthModeContext.Provider>
       </AuthUserContext.Provider>
     );
   }
