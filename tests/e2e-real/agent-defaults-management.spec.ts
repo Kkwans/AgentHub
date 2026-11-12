@@ -83,6 +83,19 @@ for (const theme of ['light', 'dark']) {
       await expect(page).toHaveURL(`${app.origin}/agents/${selected.id}`);
       await expect(page.getByRole('heading', { name: selected.name, exact: true })).toBeVisible();
       await expect(page.getByRole('textbox', { name: '默认模型' })).toHaveValue('initial-model');
+      // Primary editing must be available in the initial viewport, not only
+      // after capture() scrolls the settings card into view.
+      const primaryInput = page.getByRole('textbox', { name: '默认模型' });
+      await expect(primaryInput).toBeInViewport({ ratio: 1 });
+      await info.attach(`agent-primary-input-${theme}-${width}`, {
+        body: JSON.stringify(
+          await primaryInput.evaluate((node) => {
+            const rect = node.getBoundingClientRect();
+            return { top: rect.top, bottom: rect.bottom, viewportHeight: innerHeight };
+          }),
+        ),
+        contentType: 'application/json',
+      });
       await capture(page, info, `agent-defaults-${theme}-${width}-initial`);
       const settings = page.getByRole('heading', { name: '默认设置', exact: true }).locator('..');
       await capture(page, info, `agent-defaults-${theme}-${width}-editor`, settings);
@@ -108,6 +121,23 @@ for (const theme of ['light', 'dark']) {
       await expect(page.getByRole('textbox', { name: '默认模型' })).toHaveValue('matrix-model');
       await expect(page.getByRole('textbox', { name: '默认模式' })).toHaveValue('');
       await capture(page, info, `agent-defaults-${theme}-${width}-saved`, settings);
+      const summary = page.locator('summary').filter({ hasText: '技术信息与能力报告' });
+      const details = page.locator('details').filter({ has: summary });
+      await expect(details).not.toHaveAttribute('open', '');
+      await summary.scrollIntoViewIfNeeded();
+      await summary.focus();
+      await page.keyboard.press('Enter');
+      await expect(details).toHaveAttribute('open', '');
+      await expect(details).toContainText(selected.id);
+      await expect(
+        details.getByRole('link', { name: '服务器诊断（不是此 Agent 专属诊断）' }),
+      ).toHaveAttribute('href', '/agents/diagnostics');
+      await capture(page, info, `agent-defaults-${theme}-${width}-technical`, details);
+      await summary.focus();
+      await page.keyboard.press('Space');
+      await expect(details).not.toHaveAttribute('open', '');
+      await expect(page.getByRole('textbox', { name: '默认模型' })).toHaveValue('matrix-model');
+
       expect(await apiData<unknown[]>(context, 'get', '/sessions')).toEqual([]);
       expect(errors).toEqual([]);
     });

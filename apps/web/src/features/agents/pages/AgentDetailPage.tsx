@@ -219,38 +219,23 @@ function AgentDetail({ agentId }: { agentId: string }) {
         </>
       ) : (
         <>
-          <header>
+          <header className={styles.identity}>
             <h1>{agent.name}</h1>
-            <p>
-              {agentKindLabel(agent.agentKind)} · {agent.enabled ? '已启用' : '已停用'}
-            </p>
-          </header>
-          <Card className={styles.panel}>
-            <h2>状态与执行环境</h2>
             <div className={styles.actions}>
               <AhStatusPill
                 status={agent.status}
                 label={stateLabels[agent.status] ?? '状态待确认'}
               />
-              <span>最近检查：{displayDate(agent.lastPreflightAt)}</span>
+              <span>
+                {agentKindLabel(agent.agentKind)} · {agent.enabled ? '已启用' : '已停用'}
+              </span>
             </div>
-            <p>
+            <p className={styles.secondary}>
               {target?.id === agent.targetId ? target.name : '执行环境名称暂不可用'} ·{' '}
               {executionTargetKindLabel(target?.id === agent.targetId ? target.kind : undefined)}
             </p>
-            <code className={styles.wrap}>
-              Agent：{agent.id}
-              <br />
-              执行环境：{agent.targetId}
-            </code>
-            <p>全局状态不代表每个项目都可运行。这里不启动 Agent，也不修改执行环境。</p>
-            <h3>已报告能力</h3>
-            <p>{capabilitiesFor(agent).join(' · ') || '能力待确认'}</p>
-            <p>
-              能力来自已保存的检查报告，不是实时探测。当前检查未就绪时，旧能力可能已过期；最近检查时间不等于最近成功时间。
-            </p>
-            <Link to="/agents/diagnostics">服务器诊断（不是此 Agent 专属诊断）</Link>
-          </Card>
+            <p className={styles.secondary}>全局状态不代表每个项目都可运行。</p>
+          </header>
           <Card className={styles.panel}>
             <h2>默认设置</h2>
             <p>
@@ -340,6 +325,24 @@ function AgentDetail({ agentId }: { agentId: string }) {
               </section>
             ) : null}
           </Card>
+          <details className={styles.technical}>
+            <summary>技术信息与能力报告</summary>
+            <div className={styles.technicalBody}>
+              <p>最近检查：{displayDate(agent.lastPreflightAt)}</p>
+              <code className={styles.wrap}>
+                Agent：{agent.id}
+                <br />
+                执行环境：{agent.targetId}
+              </code>
+              <p>这里不启动 Agent，也不修改执行环境。</p>
+              <h3>已报告能力</h3>
+              <p>{capabilitiesFor(agent).join(' · ') || '能力待确认'}</p>
+              <p>
+                能力来自已保存的检查报告，不是实时探测。当前检查未就绪时，旧能力可能已过期；最近检查时间不等于最近成功时间。
+              </p>
+              <Link to="/agents/diagnostics">服务器诊断（不是此 Agent 专属诊断）</Link>
+            </div>
+          </details>
         </>
       )}
     </div>

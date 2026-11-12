@@ -262,3 +262,27 @@ describe('exact Agent defaults management', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+it('prioritizes editable defaults and keeps technical identity in a native disclosure', async () => {
+  mount();
+  await screen.findByRole('textbox', { name: '默认模型' });
+  const heading = screen.getByRole('heading', { name: '默认设置' });
+  const summary = screen.getByText('技术信息与能力报告', { exact: true });
+  const details = summary.closest('details');
+  expect(details).not.toHaveAttribute('open');
+  expect(heading.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByText('全局状态不代表每个项目都可运行。')).toBeVisible();
+  expect(screen.getByText(/当前服务没有版本冲突保护/)).toBeVisible();
+  expect(screen.getByText(/仅用于后续会话的默认选择/)).toBeVisible();
+  fireEvent.click(summary);
+  expect(details).toHaveAttribute('open');
+  expect(details).toHaveTextContent('Agent：two');
+  expect(details).toHaveTextContent('执行环境：target-two');
+  expect(screen.getByRole('link', { name: '服务器诊断（不是此 Agent 专属诊断）' })).toHaveAttribute(
+    'href',
+    '/agents/diagnostics',
+  );
+  fireEvent.click(summary);
+  expect(details).not.toHaveAttribute('open');
+  expect(api.patch).not.toHaveBeenCalled();
+});

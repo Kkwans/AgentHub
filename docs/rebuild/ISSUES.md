@@ -102,3 +102,5 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH-040（P1）：Task取消先提交后，旧READY Session的Run admission仍可能创建关联新Run；不能仅凭Task行锁称双向竞争已解决。需明确CANCELED/DONE与审阅会话直接继续的合同，再在持久准入处核验。已确认源码路径，尚未实施。
 - AH-041（P2）：项目工作列表无Agent的“开始”直接请求BACKLOG→IN_PROGRESS，与状态机需先READY不符；需单独核对手工任务入口。AH-039只保留可合法形成的无Session任务取消，未修该旧启动入口。
+
+- AH-042（P2）：Agent管理390首屏被状态说明/技术ID占据，主要编辑入口从y767才开始。局部层级重排已实现，关键警告不折叠、技术区原生键盘可展开；29组件专项通过，初始输入视口断言及实际像素待新CI。

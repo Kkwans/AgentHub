@@ -1,6 +1,6 @@
 .page {
   display: grid;
-  gap: 24px;
+  gap: 20px;
   max-width: 1000px;
   width: 100%;
   min-width: 0;
@@ -73,4 +73,38 @@
   .panel {
     padding: 16px;
   }
+}
+
+.identity {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.secondary {
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+}
+.technical {
+  min-width: 0;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 12px;
+  background: var(--ah-surface);
+}
+.technical summary {
+  min-height: 44px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.technical summary:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+.technicalBody {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 0 16px 16px;
 }
