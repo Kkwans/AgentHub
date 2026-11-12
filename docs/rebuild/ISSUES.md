@@ -156,3 +156,6 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH063运行证据与修复：已用真实Service/PGlite确认空快照→新Run准入、历史R1断连遗漏R2两条合法竞争，当前事件普通对照通过。当前Run查询/CAS、Session断连和精确detach已统一同实例短队列，Task锁外；160专项与独立CR通过，全仓S44进行中。事件历史审计和终态保留；跨进程/准备阶段不在关闭声明内。
 - AH063本地验收补充：S44全仓918单测/10跳过，lint/typecheck/build/QA全部通过；状态为待新HEAD远端CI验收，不将同实例队列保护扩大为跨进程保证。
+
+- AH064 / P1：审批请求建row后的第二次Run读取可与取消交错；真实Service/PGlite两条旧源诊断失败：取消先赢仍把Session写为WAITING_APPROVAL，取消拒绝并resume后仍发布已取消旧审批的可操作通知。第二条未污染Session（非法转换被拒绝），不扩大证据。修复将审批资格/latestRun/activation检查、状态与请求建立、可操作通知和取消CAS/撤销pending共享同实例短提交边界；Task回调与供应商取消在锁外。164专项通过，S45完整门禁进行中；保留已决定历史、原始事件，多请求取消与双向顺序有回归。
+- AH064验收更新：S45全仓922单测/10跳过、lint/types/build/QA通过，最终164专项与独立CR通过；待发布后exact CI验证，限同实例审批/取消提交协调。

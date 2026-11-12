@@ -1076,31 +1076,32 @@ export class SessionService {
     }
     if (['CANCELED', 'COMPLETED', 'FAILED'].includes(run.status)) return run;
     if (run.status === 'CANCELING') return run;
-    const active = this.active.get(sessionId);
-    if (!active) {
-      throw new AppError(
-        409,
-        'RUN_DISPATCH_UNRESOLVED',
-        '没有可用连接确认取消，原 Run 可能仍在执行；请显式重连核对',
-      );
-    }
     if (!['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED'].includes(run.status)) {
       throw new AppError(409, 'RUN_NOT_CANCELABLE', 'Run 当前不能取消');
     }
-    const requested = await this.runs.tryTransition(
-      runId,
-      ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED'],
-      'CANCELING',
-    );
-    if (!requested.changed) {
-      if (requested.run.status === 'CANCELING' || requested.run.status === 'CANCELED') {
-        return requested.run;
+    const { requested, active } = await this.withActivationCommit(sessionId, async () => {
+      const active = this.active.get(sessionId);
+      if (!active) {
+        throw new AppError(
+          409,
+          'RUN_DISPATCH_UNRESOLVED',
+          '没有可用连接确认取消，原 Run 可能仍在执行；请显式重连核对',
+        );
       }
-      if (['COMPLETED', 'FAILED'].includes(requested.run.status)) return requested.run;
+      const requested = await this.runs.tryTransition(
+        runId,
+        ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED'],
+        'CANCELING',
+      );
+      if (requested.changed) await this.approvals.cancelPendingForRun(runId, 'USER_CANCELED');
+      return { requested, active };
+    });
+    if (!requested.changed) {
+      if (['CANCELING', 'CANCELED', 'COMPLETED', 'FAILED'].includes(requested.run.status))
+        return requested.run;
       throw new AppError(409, 'RUN_NOT_CANCELABLE', 'Run 当前不能取消');
     }
 
-    await this.approvals.cancelPendingForRun(runId, 'USER_CANCELED');
     this.scheduleCancellationDeadline(sessionId, runId, active?.activationId);
     // Cancellation is deliberately fire-and-forget. A broken adapter must
     // not hold the HTTP response open; the bounded deadline converges the
@@ -1480,26 +1481,37 @@ export class SessionService {
       event.type === 'approval.requested' &&
       event.runId
     ) {
-      const runBeforeApproval = await this.runs.get(event.runId);
-      if (
-        !runBeforeApproval ||
-        ['CANCELING', 'CANCELED', 'COMPLETED', 'FAILED', 'DISCONNECTED'].includes(
-          runBeforeApproval.status,
+      const accepted = await this.withActivationCommit(event.sessionId, async () => {
+        if (!this.isCurrentActivation(event.sessionId, activationId)) return;
+        const session = await this.sessions.get(event.sessionId);
+        const run = await this.runs.get(event.runId!);
+        if (
+          !session ||
+          session.latestRunId !== event.runId ||
+          !run ||
+          run.sessionId !== event.sessionId ||
+          !['STARTING', 'RUNNING', 'WAITING_APPROVAL'].includes(run.status) ||
+          !['RUNNING', 'WAITING_APPROVAL'].includes(session.status)
         )
-      ) {
-        // A permission event can arrive after the user has already won the
-        // cancellation CAS. Persist the raw event below, but never leave a
-        // new PENDING Approval behind that cancellation.
-      } else {
-        const externalId =
-          typeof payload.approvalId === 'string'
-            ? payload.approvalId
-            : String(payload.externalId ?? '');
+          return;
+        if (run.status !== 'WAITING_APPROVAL') {
+          const changed = await this.runs.tryTransition(
+            run.id,
+            ['STARTING', 'RUNNING'],
+            'WAITING_APPROVAL',
+          );
+          if (!changed.changed) return;
+        }
+        if (session.status !== 'WAITING_APPROVAL')
+          await this.sessions.transition(event.sessionId, 'WAITING_APPROVAL');
         const approval = await this.approvals.create({
           id: randomUUID(),
           sessionId: event.sessionId,
-          runId: event.runId,
-          externalId,
+          runId: run.id,
+          externalId:
+            typeof payload.approvalId === 'string'
+              ? payload.approvalId
+              : String(payload.externalId ?? ''),
           kind: 'TOOL_PERMISSION',
           status: 'PENDING',
           title: typeof payload.title === 'string' ? payload.title : 'Agent 请求权限',
@@ -1508,26 +1520,20 @@ export class SessionService {
             : [],
           requestJson: payload,
         });
-        payload = { ...payload, approvalRequestId: approval.id };
-        const run = await this.runs.get(event.runId);
-        if (
-          !run ||
-          ['CANCELING', 'CANCELED', 'COMPLETED', 'FAILED', 'DISCONNECTED'].includes(run.status)
-        ) {
-          await this.approvals.cancelPendingForRun(event.runId, 'RUN_NOT_ACTIVE');
-        } else {
-          await this.safeRunTransition(event.runId, 'WAITING_APPROVAL');
-          await this.safeSessionTransition(event.sessionId, 'WAITING_APPROVAL');
-          if (run.taskId) {
-            await this.taskLifecycle?.onRunWaitingForInput?.(run.taskId, event.runId);
-          }
-          this.publisher.publish('approvals', {
-            type: 'approval.requested',
-            approvalId: approval.id,
-            sessionId: event.sessionId,
-            runId: event.runId,
-          });
-        }
+        // Publish while the request still owns the cancellation commit boundary,
+        // rather than after a potentially slow Task observer.
+        this.publisher.publish('approvals', {
+          type: 'approval.requested',
+          approvalId: approval.id,
+          sessionId: event.sessionId,
+          runId: run.id,
+        });
+        return { approval, run };
+      });
+      if (accepted) {
+        payload = { ...payload, approvalRequestId: accepted.approval.id };
+        if (accepted.run.taskId)
+          await this.taskLifecycle?.onRunWaitingForInput?.(accepted.run.taskId, accepted.run.id);
       }
     }
 

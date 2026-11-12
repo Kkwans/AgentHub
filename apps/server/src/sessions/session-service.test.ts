@@ -1955,6 +1955,170 @@ describe('Session/Run/Approval 持久化闭环', () => {
     }
   });
 
+  it.each(['cancel', 'resume'] as const)(
+    'AH064权限读取后%s胜出不得发布旧权限或覆盖Session',
+    async (action) => {
+      const adapter = Object.assign(
+        new ControlledAdapter(action === 'cancel' ? 'never' : 'reject'),
+        {
+          resumeSession(this: ControlledAdapter, input: CreateAgentSessionInput) {
+            return this.createSession(input);
+          },
+        },
+      );
+      const f = await createFixture('idle', undefined, {}, { adapter });
+      const session = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: '权限竞争',
+        cwd: '/tmp',
+      });
+      const run = await f.service.startRun(session.id, { text: '请求权限' });
+      let entered = false;
+      let release = () => undefined as void;
+      const get = f.repositories.runs.get.bind(f.repositories.runs);
+      vi.spyOn(f.repositories.runs, 'get').mockImplementation(async (id) => {
+        const result = await get(id);
+        if (!entered) {
+          entered = true;
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        }
+        return result;
+      });
+      const consumer = f.service as unknown as {
+        persistEvent: (...args: unknown[]) => Promise<void>;
+      };
+      const event = vi.spyOn(consumer, 'persistEvent');
+      try {
+        adapter.handles[0]!.requestApproval('permission-race');
+        await waitFor(async () => entered);
+        await f.service.cancelRun(session.id, run.id);
+        if (action === 'resume') {
+          await waitFor(
+            async () => (await f.repositories.sessions.get(session.id))?.status === 'DISCONNECTED',
+          );
+          await f.service.resume(session.id);
+        }
+        release();
+        await event.mock.results[0]!.value;
+        expect((await f.repositories.sessions.get(session.id))?.status).toBe(
+          action === 'cancel' ? 'RUNNING' : 'READY',
+        );
+        expect(await f.repositories.approvals.listPending(session.id)).toHaveLength(0);
+        expect(
+          f.published.filter(
+            ({ topic, event }) =>
+              topic === `session:${session.id}` && event.type === 'approval.requested',
+          ),
+        ).toHaveLength(1);
+        expect(
+          f.published.filter(
+            ({ topic, event }) => topic === 'approvals' && event.type === 'approval.requested',
+          ),
+        ).toHaveLength(0);
+      } finally {
+        release();
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('AH064取消只撤销未决权限并保留已记录决定', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '权限历史',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: '权限历史' });
+    vi.spyOn(adapter.handles[0]!, 'resolveApproval').mockResolvedValue();
+    try {
+      adapter.handles[0]!.requestApproval('decided');
+      await waitFor(
+        async () => (await f.repositories.approvals.listPending(session.id)).length === 1,
+      );
+      const first = (await f.repositories.approvals.listPending(session.id))[0]!;
+      await f.service.resolveApproval(first.id, 'allow');
+      await waitFor(async () => (await f.repositories.runs.get(run.id))?.status === 'RUNNING');
+      adapter.handles[0]!.requestApproval('pending');
+      await waitFor(
+        async () => (await f.repositories.approvals.listPending(session.id)).length === 1,
+      );
+      const second = (await f.repositories.approvals.listPending(session.id))[0]!;
+      await f.service.cancelRun(session.id, run.id);
+      expect(await f.repositories.approvals.get(first.id)).toMatchObject({
+        status: 'APPROVED',
+        selectedOptionId: 'allow',
+      });
+      expect(await f.repositories.approvals.get(second.id)).toMatchObject({ status: 'CANCELED' });
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('AH064权限提交先赢时cancel等待短提交并撤销两个PENDING', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '权限提交',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: '请求多权限' });
+    let release = () => undefined as void;
+    let entered = false;
+    try {
+      adapter.handles[0]!.requestApproval('first');
+      await waitFor(
+        async () => (await f.repositories.approvals.listPending(session.id)).length === 1,
+      );
+      const create = f.repositories.approvals.create.bind(f.repositories.approvals);
+      vi.spyOn(f.repositories.approvals, 'create').mockImplementationOnce(async (input) => {
+        const result = await create(input);
+        entered = true;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return result;
+      });
+      adapter.handles[0]!.requestApproval('second');
+      await waitFor(async () => entered);
+      expect(await f.repositories.approvals.listPending(session.id)).toHaveLength(2);
+      const commits = f.service as unknown as {
+        withActivationCommit: (id: string, action: () => Promise<unknown>) => Promise<unknown>;
+      };
+      const commit = commits.withActivationCommit.bind(f.service);
+      let cancellationQueued = false;
+      vi.spyOn(commits, 'withActivationCommit').mockImplementation((id, action) => {
+        cancellationQueued = true;
+        return commit(id, action);
+      });
+      let canceled = false;
+      const canceling = f.service.cancelRun(session.id, run.id).then((result) => {
+        canceled = true;
+        return result;
+      });
+      await waitFor(async () => cancellationQueued);
+      expect(canceled).toBe(false);
+      release();
+      expect(await canceling).toMatchObject({ status: 'CANCELING' });
+      expect(await f.repositories.approvals.listPending(session.id)).toHaveLength(0);
+      expect(
+        f.published.filter(
+          ({ topic, event }) => topic === 'approvals' && event.type === 'approval.requested',
+        ),
+      ).toHaveLength(2);
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
   it('AH063断连读取空闲快照后显式新Run准入不能留下RUNNING孤儿', async () => {
     const adapter = new ControlledAdapter('never');
     const f = await createFixture('idle', undefined, {}, { adapter });
