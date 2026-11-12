@@ -109,6 +109,8 @@ describe('Goal 与 Task service', () => {
     expect(started.task).toMatchObject({ status: 'IN_PROGRESS', assignedAgentId: agentId });
     expect(createdSessions.at(-1)).toMatchObject({ taskId: task.id, projectId, agentId });
     expect(startedRuns.at(-1)?.text).toContain('用户确认后完成');
+    expect(startedRuns.at(-1)?.text).toContain('验证审阅门禁');
+    expect(startedRuns.at(-1)?.text).toContain('执行自动化验证');
 
     const runId = randomUUID();
     await service.onRunCompleted(task.id, runId);
@@ -118,6 +120,27 @@ describe('Goal 与 Task service', () => {
     });
     await service.reviewTask(task.id, { decision: 'APPROVE' });
     expect(await service.getTask(task.id)).toMatchObject({ status: 'DONE' });
+  });
+
+  it('没有补充说明时保留完整目标且不产生空白上下文段', async () => {
+    const task = await service.createTask({ projectId, title: '只执行这个目标' });
+    await service.transitionTask(task.id, 'READY');
+    await service.startTask(task.id, { agentId });
+    expect(startedRuns.at(-1)?.text).toBe('只执行这个目标');
+  });
+
+  it('多行目标、说明与验收标准按原顺序保留', async () => {
+    const task = await service.createTask({
+      projectId,
+      title: '修复任务创建',
+      description: '第一行上下文\n第二行上下文',
+      acceptanceCriteria: '第一条验收\n第二条验收',
+    });
+    await service.transitionTask(task.id, 'READY');
+    await service.startTask(task.id, { agentId });
+    expect(startedRuns.at(-1)?.text).toBe(
+      '修复任务创建\n\n补充说明：\n第一行上下文\n第二行上下文\n\n验收标准：\n第一条验收\n第二条验收',
+    );
   });
 
   it('继续修改必须填写反馈，并创建新的 Session/Run 形成下一轮', async () => {
@@ -148,6 +171,8 @@ describe('Goal 与 Task service', () => {
     });
     expect(startedRuns.at(-1)?.text).toContain('补充取消与 Approval 竞争测试');
     expect(startedRuns.at(-1)?.text).toContain('补充边界测试后再次审阅');
+    expect(startedRuns.at(-1)?.text).toContain('返工闭环');
+    expect(startedRuns.at(-1)?.text).toContain('完成可审阅实现');
 
     await service.onRunCompleted(task.id, rework.run!.id);
     expect(await service.getTask(task.id)).toMatchObject({

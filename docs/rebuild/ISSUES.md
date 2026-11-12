@@ -28,3 +28,5 @@
 - AH-015 / P1：Run 创建后的前置持久化错误未统一回收，QUEUED 不在重启恢复列表；需故障注入确认。
 
 2026-11-13 独立运行证据：真实本地服务+PGlite+fixture ACP 中，带补充说明的任务 USER 消息丢失主目标；重复模拟新建→转 READY→启动失败得到两个任务；目录候选接口返回父根下两个仓库。这里没有调用用户的真实 Agent 或 NAS。
+
+- AH-016 / P2：基线 presentation architecture 测试失败，FileInspector 从 API 模块导入 ApiError，违反显示面板依赖边界。先判断正确抽象位置，再修复而非删除断言。

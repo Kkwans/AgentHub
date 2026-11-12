@@ -17,6 +17,20 @@ import type {
 
 type GoalStatus = 'DRAFT' | 'ACTIVE' | 'ACHIEVED' | 'CANCELED';
 
+function buildTaskInstructions(task: {
+  title: string;
+  description: string | null;
+  acceptanceCriteria: string | null;
+}): string {
+  return [
+    task.title.trim(),
+    task.description?.trim() ? `补充说明：\n${task.description.trim()}` : '',
+    task.acceptanceCriteria?.trim() ? `验收标准：\n${task.acceptanceCriteria.trim()}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 export interface TaskSessionController {
   create(input: CreateSessionInput): Promise<{ id: string }>;
   startRun(sessionId: string, input: StartRunInput): Promise<{ id: string }>;
@@ -193,12 +207,7 @@ export class TaskService implements TaskRunLifecycleObserver {
       assignedAgentId: input.agentId,
       sessionId: session.id,
     });
-    const text = [
-      task.description || task.title,
-      task.acceptanceCriteria ? `\n验收标准：\n${task.acceptanceCriteria}` : '',
-    ]
-      .join('')
-      .trim();
+    const text = buildTaskInstructions(task);
     try {
       const run = await this.sessions.startRun(session.id, {
         text,
@@ -246,8 +255,7 @@ export class TaskService implements TaskRunLifecycleObserver {
       '请根据以下审阅反馈继续修改：',
       feedback,
       '',
-      `原任务：${task.description || task.title}`,
-      task.acceptanceCriteria ? `验收标准：${task.acceptanceCriteria}` : '',
+      `原任务：\n${buildTaskInstructions(task)}`,
     ]
       .filter(Boolean)
       .join('\n');
