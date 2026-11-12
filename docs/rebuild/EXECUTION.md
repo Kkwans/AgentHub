@@ -4,10 +4,10 @@
 
 ## 当前状态
 
-- Doing：M0.1 文档与独立代码审查收敛；M0.2 基线 lint/typecheck/build/test、本地真实服务准备。
-- Done：干净克隆、阅读仓库合同和历史架构；Node/pnpm版本确认；frozen lockfile 安装与供应链检查通过；第一批可追踪问题与方案落盘。
-- Next：完成运行基线和截图；先用回归证实 AH-003，再修复任务输入丢失；同时制定创建恢复和 Prompt 绑定切片。
-- Blocker：真实 NAS/用户 Agent 尚未访问或验证；不能宣布完整可用。初次临时盘不足已通过迁移本轮生成缓存解决。
+- Done：M0.1 初始审查与七份工作文档已发布；M1.1 完整任务目标修复；AH-016 依赖边界修复；M1.2a Session 并发准入修复通过验证。
+- Doing：最新提交 CI 验证；AH-003 修复后真实 HTTP 复测；M1.2b 新建工作部分成功恢复设计。
+- Next：认证连接撤销真实复现与修复；创建恢复/Prompt版本链路；真实浏览器可用后推进视觉样板，不等待所有后端重构完成才做 UI。
+- Blocker：本地 Chromium socket 权限限制；真实 NAS/用户 Agent 未验证。远程开发分支发布已获得明确授权，未授权合并 main 或实际部署。
 
 ## 运行记录
 
@@ -47,3 +47,11 @@
 - 当前全量 76 文件、337 项测试通过，10 项跳过；lint/typecheck/build 通过。跳过项不是已验收。
 - 仓库 real Playwright workbench 四项均在 Chromium 启动阶段遇到 socket Operation not permitted，页面断言未执行；不能按产品失败或视觉通过计数。
 - AH-012 已以真实 PGlite 复现两个并发 Run 留孤儿记录；隔离修复准备中，尚未集成。
+
+### M1.2a 并发 Run 准入
+
+- 真实 PGlite 回归复现旧代码并发发送持久化两个 Run、仅一个实际发送、另一个成为 RUNNING 孤儿。
+- 修复在首个 await 前按 Session 获取准入，finally 释放；重复请求明确拒绝，不排队重放，不阻塞其他 Session。
+- 23 项 Session 测试通过，包括重复拒绝、启动前失败后显式重试、不同 Session 并发。
+- 集成后全量 340 项通过、10 项跳过，lint/typecheck/build 全通过；独立后端审查和集成差异复核完成。
+- 这是单服务实例准入，不是跨进程幂等；QUEUED 部分持久化、close/resume 竞争仍保留为独立问题。

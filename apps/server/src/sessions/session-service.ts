@@ -127,6 +127,7 @@ interface CancellationTimer {
 
 export class SessionService {
   private readonly active = new Map<string, ActiveSession>();
+  private readonly runAdmissions = new Set<string>();
   private readonly cancellationTimers = new Map<string, CancellationTimer>();
   private readonly configurationQueues = new Map<string, Promise<void>>();
   private readonly cancelConvergenceTimeoutMs: number;
@@ -432,6 +433,20 @@ export class SessionService {
   }
 
   async startRun(sessionId: string, input: StartRunInput) {
+    // Reserve admission before the first await. Do not queue duplicate sends:
+    // they could otherwise become an unintended new turn after completion.
+    if (this.runAdmissions.has(sessionId)) {
+      throw new AppError(409, 'SESSION_NOT_READY', 'Session 正在启动 Run，请等待当前请求完成');
+    }
+    this.runAdmissions.add(sessionId);
+    try {
+      return await this.startAdmittedRun(sessionId, input);
+    } finally {
+      this.runAdmissions.delete(sessionId);
+    }
+  }
+
+  private async startAdmittedRun(sessionId: string, input: StartRunInput) {
     let session = await this.get(sessionId);
     if (
       session.status !== 'READY' &&

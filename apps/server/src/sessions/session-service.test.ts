@@ -275,6 +275,146 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await rm(managedRoot, { recursive: true, force: true });
   });
 
+  it('同一 Session 的并发 Run 请求只持久化并发送一个 Run', async () => {
+    let releaseGit!: () => void;
+    let firstEntered!: () => void;
+    let secondEntered!: () => void;
+    const gitGate = new Promise<void>((resolve) => {
+      releaseGit = resolve;
+    });
+    const firstProbe = new Promise<void>((resolve) => {
+      firstEntered = resolve;
+    });
+    const secondProbe = new Promise<void>((resolve) => {
+      secondEntered = resolve;
+    });
+    let reads = 0;
+    const fixture = await createFixture(
+      'idle',
+      undefined,
+      {},
+      {
+        git: {
+          readHead: async () => {
+            reads += 1;
+            if (reads === 1) firstEntered();
+            if (reads === 2) secondEntered();
+            await gitGate;
+            return 'before-sha';
+          },
+        },
+      },
+    );
+    const session = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: '并发发送',
+      cwd: '/tmp',
+    });
+    const first = fixture.service.startRun(session.id, { text: '第一个请求' });
+    await firstProbe;
+    const second = fixture.service.startRun(session.id, { text: '重复请求' });
+    const secondResult = second.then(
+      (value) => ({ value, error: undefined }),
+      (error: unknown) => ({ value: undefined, error }),
+    );
+    await Promise.race([secondProbe, secondResult]);
+    releaseGit();
+    try {
+      await first;
+      const rejected = await secondResult;
+      const runs = await fixture.repositories.runs.list(session.id);
+      expect(runs).toHaveLength(1);
+      expect(rejected.error).toMatchObject({ code: 'SESSION_NOT_READY' });
+      expect(runs[0]?.status).toBe('RUNNING');
+      const messages = await fixture.repositories.messages.list(session.id);
+      expect(messages.filter((message) => message.role === 'USER')).toHaveLength(1);
+      expect(messages.find((message) => message.role === 'USER')?.text).toBe('第一个请求');
+    } finally {
+      await fixture.service.shutdown();
+    }
+  });
+
+  it('Run 启动前失败释放准入，允许用户显式重试', async () => {
+    let reads = 0;
+    const fixture = await createFixture(
+      'idle',
+      undefined,
+      {},
+      {
+        git: {
+          readHead: async () => {
+            if (++reads === 1) throw new Error('git probe unavailable');
+            return 'before-sha';
+          },
+        },
+      },
+    );
+    const session = await fixture.service.create({
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: '显式重试',
+      cwd: '/tmp',
+    });
+    try {
+      await expect(fixture.service.startRun(session.id, { text: '第一次' })).rejects.toThrow(
+        'git probe unavailable',
+      );
+      expect(await fixture.repositories.runs.list(session.id)).toHaveLength(0);
+      const run = await fixture.service.startRun(session.id, { text: '明确重试' });
+      expect(run.status).toBe('RUNNING');
+      expect(await fixture.repositories.runs.list(session.id)).toHaveLength(1);
+    } finally {
+      await fixture.service.shutdown();
+    }
+  });
+
+  it('不同 Session 的 Run 准入互不阻塞', async () => {
+    let releaseGit!: () => void;
+    let entered!: () => void;
+    const gitGate = new Promise<void>((resolve) => {
+      releaseGit = resolve;
+    });
+    const firstProbe = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let reads = 0;
+    const fixture = await createFixture(
+      'idle',
+      undefined,
+      {},
+      {
+        git: {
+          readHead: async () => {
+            if (++reads === 1) {
+              entered();
+              await gitGate;
+            }
+            return 'before-sha';
+          },
+        },
+      },
+    );
+    const input = {
+      projectId: fixture.projectId,
+      agentId: fixture.agentId,
+      title: '独立会话',
+      cwd: '/tmp',
+    };
+    const firstSession = await fixture.service.create(input);
+    const secondSession = await fixture.service.create(input);
+    const first = fixture.service.startRun(firstSession.id, { text: '阻塞的请求' });
+    await firstProbe;
+    try {
+      const second = await fixture.service.startRun(secondSession.id, { text: '独立请求' });
+      expect(second.status).toBe('RUNNING');
+    } finally {
+      releaseGit();
+      await first;
+      await fixture.service.shutdown();
+    }
+  });
+
   it('Session 配置读取、动态切换与 Run 快照保持一致', async () => {
     const fixture = await createFixture('idle');
     const session = await fixture.service.create({
