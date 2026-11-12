@@ -1,3 +1,4 @@
+import { approvalDeliveryPresentation } from '../lib/approval-delivery';
 /**
  * ChatEntryRenderer — direct source split from PinHarness
  * components/run/chat/ChatEntryRenderer.tsx.
@@ -527,16 +528,7 @@ function ApprovalEventRow({
   const selectedOption = approval.optionsJson.find(
     (option) => option.id === approval.selectedOptionId,
   );
-  const deliveryStateLabel =
-    approval.deliveryState === 'UNKNOWN'
-      ? '状态无法确认'
-      : approval.deliveryState === 'DEAD'
-        ? '未发送给 Agent'
-        : approval.deliveryState === 'DELIVERED'
-          ? 'Agent 已接收'
-          : approval.deliveryState
-            ? '正在处理'
-            : '尚未发送';
+  const deliveryStateLabel = approvalDeliveryPresentation(approval.deliveryState).label;
   const deliveryFailureCopy =
     approval.deliveryState === 'UNKNOWN'
       ? 'Agent 没有在限定时间内确认，系统不会自动重发，避免同一权限操作执行两次。'

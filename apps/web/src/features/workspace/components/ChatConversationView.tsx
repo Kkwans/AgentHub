@@ -1,3 +1,4 @@
+import { useApprovalResolution } from './useApprovalResolution';
 /**
  * ChatConversationView — direct AgentHub port of
  * /volume2/Project/PinHarness/web/src/components/run/chat/ChatConversationView.tsx.
@@ -129,30 +130,8 @@ export const ChatConversationView = memo(function ChatConversationView({
   /** PinHarness keeps the CommandBar adjacent to the conversation in this source shell. */
   composer?: ReactNode;
 }) {
-  const [approvalFeedback, setApprovalFeedback] = useState<string>();
-  const [resolving, setResolving] = useState<string>();
-  const [resolveError, setResolveError] = useState<Error>();
-  const [resolveVariables, setResolveVariables] = useState<{ id: string; optionId: string }>();
-  const resolveApproval = async (variables: { id: string; optionId: string }) => {
-    setApprovalFeedback(undefined);
-    setResolveError(undefined);
-    setResolveVariables(variables);
-    setResolving(variables.id);
-    try {
-      const approval = await onResolveApproval(variables.id, variables.optionId);
-      setApprovalFeedback(
-        approval.deliveryState === 'UNKNOWN'
-          ? '决定已保存，但 Agent 是否收到仍无法确认。'
-          : approval.deliveryState === 'DEAD'
-            ? '决定已保存，但没有发送给 Agent。'
-            : '决定已安全保存，正在确认 Agent 接收状态。',
-      );
-    } catch (error) {
-      setResolveError(error instanceof Error ? error : new Error('Approval 提交失败。'));
-    } finally {
-      setResolving(undefined);
-    }
-  };
+  const { approvalFeedback, resolving, resolveError, resolveVariables, resolveApproval } =
+    useApprovalResolution(session.id, approvals.data, onResolveApproval);
   const turns = buildConversationTurns(
     buildConversationTimeline(messages.data ?? [], events.data ?? [], approvals.data ?? []),
   );
@@ -570,8 +549,18 @@ export const ChatConversationView = memo(function ChatConversationView({
             <ErrorState error={approvals.error} retry={() => approvals.refetch()} />
           )}
           {approvalFeedback && (
-            <div className="workspace-query-status" role="status" aria-live="polite">
-              {approvalFeedback}
+            <div
+              className={
+                approvalFeedback.tone === 'attention'
+                  ? 'workspace-query-error'
+                  : approvalFeedback.tone === 'confirmed'
+                    ? 'workspace-query-status'
+                    : 'approval-delivery-status'
+              }
+              role={approvalFeedback.tone === 'attention' ? 'alert' : 'status'}
+              aria-live="polite"
+            >
+              {approvalFeedback.message}
             </div>
           )}
           {messages.isLoading && <LoadingState label="正在读取消息" />}

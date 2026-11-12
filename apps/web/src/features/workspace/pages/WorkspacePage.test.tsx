@@ -8,6 +8,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { fetchSessionEventPages, mergeSessionEvents, WorkspacePage } from './WorkspacePage';
 
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthMode: () => 'local_trusted',
+  useAuthUser: () => null,
+}));
+
 vi.mock('../../../lib/realtime', () => ({
   realtime: {
     subscribe: () => () => undefined,
@@ -440,7 +445,16 @@ describe('WorkspacePage 数据分区可靠性', () => {
       if (path === `/api/v1/approvals?sessionId=${session.id}`) return jsonResponse([approval]);
       if (path === '/api/v1/approvals/approval-1/resolve' && init?.method === 'POST') {
         attempts += 1;
-        return attempts === 1 ? pendingApproval : jsonResponse({});
+        return attempts === 1
+          ? pendingApproval
+          : jsonResponse({
+              ...approval,
+              status: 'APPROVED',
+              selectedOptionId: 'allow',
+              deliveryId: 'delivery-1',
+              deliveryState: 'QUEUED',
+              deliveryAttemptCount: 0,
+            });
       }
       return baseFetch(path, init?.method);
     });
@@ -471,6 +485,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '重试此选项' }));
     await waitFor(() => expect(attempts).toBe(2));
+    expect(
+      await screen.findByText('决定已保存，正在等待投递；尚未确认 Agent 接收。'),
+    ).toBeInTheDocument();
   });
 
   it('Approval 投递未知时不再显示决定按钮或盲目重试，并给出普通用户下一步', async () => {

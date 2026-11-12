@@ -131,7 +131,33 @@ for (const width of [390, 768, 1024, 1440]) {
       const approve = page.getByRole('button', { name: '允许一次', exact: true });
       await expect(approve).toBeVisible({ timeout: 30_000 });
       await capture(page, info, 'approval', approve, page.locator('.approval-card'));
+      const requestedApprovals = await apiData<Array<{ id: string; status: string }>>(
+        context,
+        'get',
+        '/approvals?sessionId=' + session.id,
+      );
+      const requestedApproval = requestedApprovals.find(
+        (approval) => approval.status === 'PENDING',
+      );
+      expect(requestedApproval).toBeDefined();
       await approve.click();
+      await expect
+        .poll(
+          async () =>
+            (
+              await apiData<{ deliveryState: string }>(
+                context,
+                'get',
+                '/approvals/' + requestedApproval!.id,
+              )
+            ).deliveryState,
+        )
+        .toBe('DELIVERED');
+      await expect(page.getByText('决定已保存，Agent 已确认接收。', { exact: true })).toBeVisible();
+      await expect(
+        page.getByText('决定已安全保存，正在确认 Agent 接收状态。', { exact: true }),
+      ).toHaveCount(0);
+
       const completed = page.getByText('Fixture 已完成', { exact: true });
       await expect(completed).toBeVisible({ timeout: 30_000 });
       await expect(page.locator('.tool-event-row')).toHaveCount(1);

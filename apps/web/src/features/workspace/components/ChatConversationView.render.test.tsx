@@ -2,11 +2,16 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import type { EventRecord } from '../../../lib/api';
+import type { ApprovalRecord, EventRecord } from '../../../lib/api';
 import type { ComponentProps } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 
 import { ChatConversationView } from './ChatConversationView';
+
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthMode: () => 'local_trusted',
+  useAuthUser: () => null,
+}));
 
 const props: ComponentProps<typeof ChatConversationView> = {
   session: {
@@ -108,3 +113,62 @@ it('renders the four ordered live tool rows and exposes tool/thought disclosures
   fireEvent.click(screen.getByRole('button', { name: '展开思考过程' }));
   expect(thought).not.toHaveAttribute('open');
 });
+
+it.each(['DELIVERED', 'UNKNOWN', 'DEAD', 'QUEUED'] as const)(
+  'Approval反馈随权威%s变化，不由完成Run推断',
+  async (state) => {
+    const approval: ApprovalRecord = {
+      id: 'approval-feedback',
+      sessionId: props.session.id,
+      runId: 'run-feedback',
+      title: '权限决定',
+      description: null,
+      status: 'PENDING',
+      optionsJson: [{ id: 'allow', label: '允许一次', kind: 'allow_once' }],
+      selectedOptionId: null,
+      deliveryId: null,
+      deliveryState: null,
+      deliveryAttemptCount: null,
+      deliveryErrorCode: null,
+      deliveryErrorMessage: null,
+    };
+    const saved: ApprovalRecord = {
+      ...approval,
+      status: 'APPROVED',
+      selectedOptionId: 'allow',
+      deliveryId: 'delivery-feedback',
+      deliveryState: 'QUEUED',
+      deliveryAttemptCount: 1,
+    };
+    const submit = vi.fn(async () => saved);
+    const view = (data: ApprovalRecord[]) => (
+      <MemoryRouter>
+        <ChatConversationView
+          {...props}
+          latestRunStatus="COMPLETED"
+          approvals={{ ...props.approvals, data }}
+          onResolveApproval={submit}
+        />
+      </MemoryRouter>
+    );
+    const rendered = render(view([approval]));
+    fireEvent.click(screen.getByRole('button', { name: '允许一次' }));
+    await screen.findByText(/决定已.*保存/);
+    rendered.rerender(view([{ ...saved, deliveryState: state }]));
+    const expected =
+      state === 'DELIVERED'
+        ? '决定已保存，Agent 已确认接收。'
+        : state === 'UNKNOWN'
+          ? '决定已保存，但 Agent 是否收到仍无法确认。系统不会自动重发。'
+          : state === 'DEAD'
+            ? '决定已保存，但没有发送给 Agent。'
+            : '决定已保存，正在等待投递；尚未确认 Agent 接收。';
+    const feedback = await screen.findByText(expected, { exact: true });
+    expect(feedback).toHaveAttribute(
+      'role',
+      state === 'UNKNOWN' || state === 'DEAD' ? 'alert' : 'status',
+    );
+    if (state !== 'DELIVERED') expect(feedback).not.toHaveClass('workspace-query-status');
+    expect(submit).toHaveBeenCalledTimes(1);
+  },
+);
