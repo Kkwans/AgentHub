@@ -23,51 +23,13 @@ import { api } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';
 import { NavigationPageHeader, displayDate } from '../../shared/page-primitives';
 
-type AgentFilter = 'all' | 'ready' | 'attention';
+import { agentKindLabel, capabilitiesFor, executionTargetKindLabel } from '../agent-presentation';
 
-export function agentKindLabel(kind: string): string {
-  return { CODEX: 'Codex', CLAUDE_CODE: 'Claude Code', OPENCLAW: 'OpenClaw' }[kind] ?? 'Agent';
-}
+type AgentFilter = 'all' | 'ready' | 'attention';
 
 function providerLabel(adapter: string): string {
   const normalized = adapter.replace(/^ACP[_-]?/, '').replace(/[_-]+/g, ' ');
   return normalized || '默认 Provider';
-}
-
-export function capabilitiesFor(agent: Pick<AgentRecord, 'capabilitiesJson'>): string[] {
-  const labels: Record<string, string> = {
-    session: 'Session',
-    sessions: 'Session',
-    run: 'Run',
-    runs: 'Run',
-    approval: 'Approval',
-    approvals: 'Approval',
-    files: '文件',
-    terminal: 'Terminal',
-    git: 'Git',
-  };
-  const capabilities = agent.capabilitiesJson ?? {};
-  const confirmed = Object.entries(capabilities)
-    .filter(([, value]) => value === true)
-    .map(([key]) => labels[key.toLowerCase()])
-    .filter((label): label is string => Boolean(label));
-  // Current adapter contract is nested; an object (including all-false fields)
-  // is not evidence of support. Only exact, recognized true flags count.
-  const flag = (group: string, key: string) => {
-    const value = capabilities[group];
-    return (
-      typeof value === 'object' &&
-      value !== null &&
-      !Array.isArray(value) &&
-      (value as Record<string, unknown>)[key] === true
-    );
-  };
-  if (flag('sessions', 'create')) confirmed.push('Session');
-  if (flag('prompts', 'text')) confirmed.push('文本输入');
-  if (flag('interaction', 'approvals')) confirmed.push('Approval');
-  if (flag('workspace', 'files')) confirmed.push('文件');
-  if (flag('workspace', 'terminal')) confirmed.push('Terminal');
-  return Array.from(new Set(confirmed));
 }
 
 function statusLabel(status: string, enabled: boolean): string {
@@ -83,7 +45,7 @@ function AgentResourceCard({
   target?: ExecutionTargetRecord;
 }) {
   const ready = agent.status === 'READY' && agent.enabled;
-  const runtimeLabel = target?.kind === 'DOCKER_CONTAINER' ? 'Docker' : 'Local';
+  const runtimeLabel = executionTargetKindLabel(target?.kind);
   const capabilities = capabilitiesFor(agent);
 
   return (
@@ -120,19 +82,19 @@ function AgentResourceCard({
         </div>
 
         <div className="mt-4 grid min-w-0 gap-2 text-xs text-[hsl(var(--foreground-muted))]">
-          <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <span className="shrink-0 text-[hsl(var(--foreground-faint))]">Runtime</span>
             <span className="min-w-0 truncate font-medium text-[hsl(var(--foreground-subtle))]">
               {target?.name ?? '运行环境待确认'} · {runtimeLabel}
             </span>
           </div>
-          <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <span className="shrink-0 text-[hsl(var(--foreground-faint))]">Provider</span>
             <span className="min-w-0 truncate font-medium text-[hsl(var(--foreground-subtle))]">
               {providerLabel(agent.adapterKind)}
             </span>
           </div>
-          <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <span className="shrink-0 text-[hsl(var(--foreground-faint))]">Model</span>
             <span className="min-w-0 truncate font-medium text-[hsl(var(--foreground-subtle))]">
               {agent.defaultModel ?? 'Session 中选择'}
@@ -156,13 +118,19 @@ function AgentResourceCard({
       </div>
 
       <div className="border-t border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-muted))]/25 px-4 py-2.5">
-        <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 text-xs text-[hsl(var(--foreground-faint))]">
             <span className="mr-1.5">最近检查</span>
             <span className="font-mono tabular-nums text-[hsl(var(--foreground-subtle))]">
               {displayDate(agent.lastPreflightAt)}
             </span>
           </div>
+          <Link
+            to={`/agents/${encodeURIComponent(agent.id)}`}
+            className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-soft))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))]"
+          >
+            管理 Agent
+          </Link>
           <Link
             className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-soft))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))]"
             aria-description="当前 AgentHub 服务器，不是此 Agent 专属诊断"

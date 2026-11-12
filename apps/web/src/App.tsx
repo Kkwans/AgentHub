@@ -48,6 +48,11 @@ const AgentCenterPage = lazy(() =>
     default: module.AgentCenterPage,
   })),
 );
+const AgentDetailPage = lazy(() =>
+  import('./features/agents/pages/AgentDetailPage').then((module) => ({
+    default: module.AgentDetailPage,
+  })),
+);
 const DiscoverAgentsPage = lazy(() =>
   import('./features/agents/pages/DiscoverAgentsPage').then((module) => ({
     default: module.DiscoverAgentsPage,
@@ -269,6 +274,14 @@ export function App() {
             element={
               <DeferredPage>
                 <DiscoverAgentsPage />
+              </DeferredPage>
+            }
+          />
+          <Route
+            path="agents/:agentId"
+            element={
+              <DeferredPage>
+                <AgentDetailPage />
               </DeferredPage>
             }
           />

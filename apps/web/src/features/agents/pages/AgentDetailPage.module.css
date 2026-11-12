@@ -1,0 +1,76 @@
+.page {
+  display: grid;
+  gap: 24px;
+  max-width: 1000px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.page h1,
+.page h2,
+.page h3,
+.page p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.page h1 {
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 650;
+}
+.page h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.page h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.page p {
+  line-height: 1.6;
+}
+.panel {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.fields {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  border: 0;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.recovery {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--ah-border-default);
+  padding-top: 16px;
+  min-width: 0;
+}
+.page a {
+  color: var(--ah-accent-primary);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+.page a:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .panel {
+    padding: 16px;
+  }
+}

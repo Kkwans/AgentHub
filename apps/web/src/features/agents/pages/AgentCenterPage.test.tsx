@@ -4,11 +4,22 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
-import { AgentCenterPage, capabilitiesFor } from './AgentCenterPage';
+import { AgentCenterPage } from './AgentCenterPage';
+import { capabilitiesFor, executionTargetKindLabel } from '../agent-presentation';
 
 afterEach(cleanup);
 const labels = (capabilitiesJson: Record<string, unknown>) => capabilitiesFor({ capabilitiesJson });
 describe('Agent capability truthfulness', () => {
+  it.each([
+    ['LOCAL_HOST', '本机'],
+    ['DOCKER_CONTAINER', 'Docker'],
+    ['REMOTE_NODE', '远程节点'],
+    ['FUTURE_TARGET', '类型待确认'],
+    [undefined, '类型待确认'],
+  ])('labels target kind %s without assuming Local', (kind, label) => {
+    expect(executionTargetKindLabel(kind)).toBe(label);
+  });
+
   it('does not invent capabilities for empty or unknown reports', () => {
     expect(labels({})).toEqual([]);
     expect(labels({ futureCapability: true, sessions: {}, run: 'true' })).toEqual([]);
@@ -78,6 +89,11 @@ describe('Agent capability truthfulness', () => {
     );
     const card = await screen.findByRole('group', { name: /待核对 Agent/ });
     expect(within(card).getByText('能力待确认')).toBeInTheDocument();
+    expect(within(card).getByText('运行环境待确认 · 类型待确认')).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: '管理 Agent' })).toHaveAttribute(
+      'href',
+      '/agents/a1',
+    );
     expect(card).not.toHaveAttribute('tabindex');
     fireEvent.click(card);
     fireEvent.keyDown(card, { key: 'Enter' });
