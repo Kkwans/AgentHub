@@ -1,4 +1,4 @@
-import { AhButton, Braces, Card, NavigationPageHeader, Plus } from '@agenthub/ui';
+import { AhButton, AhEmptyState, Braces, Card, NavigationPageHeader, Plus } from '@agenthub/ui';
 
 import { QueryMessage } from '../../shared/page-primitives';
 import promptSettingsStyles from '../promptSettings.module.css';
@@ -11,6 +11,8 @@ import { PromptLifecycleDrawer } from './PromptLifecycleDrawer';
 
 export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
   const { prompts, setNewOpen } = model;
+  // Raw successful data distinguishes an empty library from filtered no-results.
+  const emptyLibrary = !prompts.isLoading && !prompts.error && prompts.data?.length === 0;
 
   return (
     <div className={`${promptSettingsStyles.promptPage} workspace-page min-h-full`}>
@@ -24,9 +26,11 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
           </span>
         }
         actions={
-          <AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>
-            新建 Prompt
-          </AhButton>
+          emptyLibrary ? null : (
+            <AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>
+              新建 Prompt
+            </AhButton>
+          )
         }
       />
       <div className="page-content page-shell min-h-full">
@@ -36,7 +40,15 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
           retry={() => void prompts.refetch()}
           label="正在加载 Prompt 资产"
         />
-        {!prompts.isLoading && !prompts.error ? (
+        {emptyLibrary ? (
+          <Card className={promptSettingsStyles.emptyLibrary}>
+            <AhEmptyState
+              title="还没有 Prompt"
+              description="建立第一个模板，再添加版本、变量和绑定。"
+              action={<AhButton onClick={() => setNewOpen(true)}>新建 Prompt</AhButton>}
+            />
+          </Card>
+        ) : !prompts.isLoading && !prompts.error ? (
           <Card
             className={`${promptSettingsStyles.promptLayout} two-pane min-h-[680px] overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)]`}
           >

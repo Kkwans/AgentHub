@@ -1,0 +1,141 @@
+import { test, expect } from './fixtures.js';
+
+test.use({ authMode: 'local_trusted' });
+test.setTimeout(120_000);
+for (const width of [390, 768, 1024, 1440]) {
+  for (const theme of ['light', 'dark']) {
+    test(`Prompt 空库到内容与筛选 ${width} ${theme}`, async ({ page, context, app }, info) => {
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+      });
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      await context.addInitScript(
+        ({ theme, origin }) => {
+          if (location.origin === origin) localStorage.setItem('agenthub-theme', theme);
+        },
+        { theme, origin: app.origin },
+      );
+      const capture = async (state: string) => {
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+        ).toBeLessThanOrEqual(1);
+        const path = info.outputPath(`prompt-library-${state}-${width}-${theme}.png`);
+        await page.screenshot({ path, fullPage: true });
+        await info.attach(state, { path, contentType: 'image/png' });
+      };
+      await page.goto('/prompts');
+      await expect(page.getByText('还没有 Prompt', { exact: true })).toBeVisible();
+      const create = page.getByRole('button', { name: '新建 Prompt', exact: true });
+      await expect(create).toHaveCount(1);
+      await expect(create).toBeInViewport();
+      await expect(page.getByRole('complementary', { name: 'Prompt 目录' })).toHaveCount(0);
+      await expect(page.getByRole('region', { name: 'Prompt 编辑器' })).toHaveCount(0);
+      await capture('empty');
+      await create.focus();
+      await page.keyboard.press('Enter');
+      const dialog = page.getByRole('dialog', { name: '新建 Prompt' });
+      await expect(dialog).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(dialog).not.toBeVisible();
+      await expect(create).toBeFocused();
+      const emptyResponse = await context.request.get('/api/v1/prompts');
+      expect(emptyResponse.ok()).toBe(true);
+      expect((await emptyResponse.json()).data).toEqual([]);
+      await create.click();
+      await dialog
+        .getByRole('textbox', { name: '名称', exact: true })
+        .fill('移动端可编辑的正式模板');
+      await dialog
+        .getByRole('textbox', { name: 'Key', exact: true })
+        .fill('visual/empty-to-content');
+      await dialog.getByRole('button', { name: '创建', exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      const editor = page.getByRole('region', { name: 'Prompt 编辑器' });
+      await expect(editor.getByRole('heading', { name: '移动端可编辑的正式模板' })).toBeVisible();
+      await capture('content');
+      // The asset-creation dialog has no Select. Exercise the real binding dialog,
+      // which uses the same FormDialog and a labelled, portaled Radix Select.
+      await editor.getByRole('tab', { name: '绑定', exact: true }).click();
+      const bindingTrigger = editor.getByRole('button', { name: '新增绑定', exact: true });
+      await bindingTrigger.click();
+      const bindingDialog = page.getByRole('dialog', { name: '新建 Prompt 绑定', exact: true });
+      await expect(bindingDialog).toBeVisible();
+      const targetType = bindingDialog.getByRole('combobox', { name: '绑定目标类型', exact: true });
+      await expect(targetType).toHaveText('Project');
+      await targetType.click();
+      const agentOption = page.getByRole('option', { name: 'Agent', exact: true });
+      await expect(agentOption).toBeVisible();
+      // Visibility alone does not detect a menu painted behind the modal backdrop.
+      // Check the actual hit target, then use an ordinary (never forced) pointer click.
+      await expect
+        .poll(() =>
+          agentOption.evaluate((option) => {
+            const rect = option.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+              rect.x + rect.width / 2,
+              rect.y + rect.height / 2,
+            );
+            return hit !== null && option.contains(hit);
+          }),
+        )
+        .toBe(true);
+      await capture('binding-select-open');
+      await agentOption.click();
+      await expect(targetType).toHaveText('Agent');
+      await expect(page.getByRole('listbox')).toHaveCount(0);
+      await targetType.click();
+      await expect(page.getByRole('option', { name: 'Project', exact: true })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('listbox')).toHaveCount(0);
+      await expect(bindingDialog).toBeVisible();
+      await expect(targetType).toBeFocused();
+      // Both boundary directions must loop within the modal, not reach the shell.
+      const closeBinding = bindingDialog.getByRole('button', { name: '关闭', exact: true });
+      const cancelBinding = bindingDialog.getByRole('button', { name: '取消', exact: true });
+      await cancelBinding.focus();
+      await page.keyboard.press('Tab');
+      await expect(closeBinding).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(cancelBinding).toBeFocused();
+      await capture('binding-dialog-keyboard');
+      await page.keyboard.press('Escape');
+      await expect(bindingDialog).not.toBeVisible();
+      await expect(bindingTrigger).toBeFocused();
+      // Reopen through the real trigger immediately after dismissal. Delayed
+      // restoration from the old instance must not steal the new modal's focus.
+      await bindingTrigger.click();
+      await bindingDialog.getByRole('button', { name: '关闭', exact: true }).click();
+      await bindingTrigger.click();
+      await expect(bindingDialog).toBeVisible();
+      await expect
+        .poll(() => bindingDialog.evaluate((node) => node.contains(document.activeElement)))
+        .toBe(true);
+      await page.keyboard.press('Tab');
+      await expect
+        .poll(() => bindingDialog.evaluate((node) => node.contains(document.activeElement)))
+        .toBe(true);
+      await page.keyboard.press('Escape');
+      await expect(bindingDialog).not.toBeVisible();
+      await expect(bindingTrigger).toBeFocused();
+      await editor.getByRole('tab', { name: '内容', exact: true }).click();
+      const search = page.getByRole('textbox', { name: '搜索 Prompt' });
+      await search.fill('完全不匹配的关键词');
+      await expect(page.getByText('没有匹配的 Prompt', { exact: true })).toBeVisible();
+      await expect(editor.getByRole('heading', { name: '移动端可编辑的正式模板' })).toBeVisible();
+      await expect(page.getByText('还没有 Prompt', { exact: true })).toHaveCount(0);
+      await capture('filtered');
+      await search.fill('');
+      await expect(
+        page
+          .getByRole('complementary', { name: 'Prompt 目录' })
+          .getByRole('button', { name: /移动端可编辑的正式模板/ }),
+      ).toBeVisible();
+      await page.goto('/home');
+      await page.goBack();
+      await expect(editor.getByRole('heading', { name: '移动端可编辑的正式模板' })).toBeVisible();
+      expect(errors).toEqual([]);
+    });
+  }
+}
