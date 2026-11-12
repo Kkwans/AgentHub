@@ -430,11 +430,26 @@ test('Home 深色主题同步 PinHarness 画布与文字层级', async ({ page }
 test('Home 以工作续接为主舞台', async ({ page }, testInfo) => {
   await page.goto('/home');
   await expect(page.getByRole('heading', { name: '继续工作' })).toBeVisible();
-  await expect(page.getByRole('link', { name: '继续最近会话' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: '新建工作', exact: true })).toHaveAttribute(
     'href',
-    `/workspace/${session.id}`,
+    `/projects/${project.id}/work/new`,
   );
-  await expect(page.getByText('需要处理', { exact: true }).first()).toBeVisible();
+  const recentWork = page.getByRole('region', { name: '继续最近工作' });
+  await expect(recentWork).toBeVisible();
+  const recentLinks = recentWork.getByRole('link');
+  await expect(recentLinks).toHaveCount(sessionHistory.length);
+  for (const [index, recentSession] of sessionHistory.entries()) {
+    await expect(recentLinks.nth(index)).toContainText(recentSession.title);
+    await expect(recentLinks.nth(index)).toHaveAttribute('href', `/workspace/${recentSession.id}`);
+  }
+  const attention = page.getByRole('region', { name: '需要你处理 1' });
+  await expect(attention).toBeVisible();
+  const reviewLink = attention.getByRole('link');
+  await expect(reviewLink).toHaveCount(1);
+  await expect(reviewLink).toContainText(task.title);
+  await expect(reviewLink).toContainText(task.description);
+  await expect(reviewLink).toContainText('审阅');
+  await expect(reviewLink).toHaveAttribute('href', `/workspace/${task.sessionId}`);
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'home');
 });

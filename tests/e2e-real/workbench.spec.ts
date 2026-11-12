@@ -74,7 +74,7 @@ test('token 登录进入 Home，并能进入设置分区', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/home$/);
   await expect(page.getByRole('heading', { name: '从你的项目，开始第一项工作' })).toBeVisible();
-  await page.getByRole('link', { name: '设置' }).click();
+  await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page).toHaveURL(/\/settings\/appearance$/);
   await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '外观偏好', exact: true })).toBeVisible();
