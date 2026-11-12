@@ -51,6 +51,7 @@ import {
   skillBindings,
   skills,
   tasks,
+  taskCreationOperations,
   worktreeExecutions,
 } from './schema.js';
 
@@ -1433,6 +1434,92 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
     const [created] = await this.db.insert(tasks).values(input).returning();
     if (!created) throw new DatabaseInvariantError('TASK_CREATE_FAILED', 'Task 创建失败');
     return created;
+  }
+
+  async getCreationOperation(ownerScope: string, operationId: string) {
+    const [operation] = await this.db
+      .select()
+      .from(taskCreationOperations)
+      .where(
+        and(
+          eq(taskCreationOperations.ownerScope, ownerScope),
+          eq(taskCreationOperations.operationId, operationId),
+        ),
+      )
+      .limit(1);
+    return operation;
+  }
+
+  async createIdempotent(
+    input: typeof tasks.$inferInsert,
+    operation: { ownerScope: string; operationId: string; requestHash: string },
+    selectedPrompt?: { promptId: string; versionId: string },
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [claimed] = await transaction
+        .insert(taskCreationOperations)
+        .values({
+          ...operation,
+          projectId: input.projectId,
+        })
+        .onConflictDoNothing({
+          target: [taskCreationOperations.ownerScope, taskCreationOperations.operationId],
+        })
+        .returning();
+      if (!claimed) {
+        const [existing] = await transaction
+          .select()
+          .from(taskCreationOperations)
+          .where(
+            and(
+              eq(taskCreationOperations.ownerScope, operation.ownerScope),
+              eq(taskCreationOperations.operationId, operation.operationId),
+            ),
+          )
+          .limit(1);
+        if (!existing || !existing.taskId)
+          throw new DatabaseInvariantError('TASK_OPERATION_INCOMPLETE', '创建操作结果暂不可确认');
+        if (existing.requestHash !== operation.requestHash)
+          throw new DatabaseInvariantError(
+            'TASK_OPERATION_PAYLOAD_MISMATCH',
+            '同一创建操作不能更改请求内容',
+          );
+        const [task] = await transaction
+          .select()
+          .from(tasks)
+          .where(eq(tasks.id, existing.taskId))
+          .limit(1);
+        if (!task)
+          throw new DatabaseInvariantError('TASK_OPERATION_INCOMPLETE', '创建操作结果暂不可确认');
+        return task;
+      }
+      const [created] = await transaction.insert(tasks).values(input).returning();
+      if (!created) throw new DatabaseInvariantError('TASK_CREATE_FAILED', 'Task 创建失败');
+      if (selectedPrompt)
+        await transaction
+          .insert(promptBindings)
+          .values({
+            id: randomUUID(),
+            targetType: 'TASK',
+            targetId: created.id,
+            slot: 'TASK_PRIMER',
+            promptId: selectedPrompt.promptId,
+            selectorType: 'VERSION',
+            versionId: selectedPrompt.versionId,
+            priority: 0,
+            enabled: true,
+          });
+      await transaction
+        .update(taskCreationOperations)
+        .set({ taskId: created.id })
+        .where(
+          and(
+            eq(taskCreationOperations.ownerScope, operation.ownerScope),
+            eq(taskCreationOperations.operationId, operation.operationId),
+          ),
+        );
+      return created;
+    });
   }
 
   async createWithPromptBinding(

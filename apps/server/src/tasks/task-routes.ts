@@ -1,3 +1,4 @@
+import { creationOwnerScope } from './task-creation-operation.js';
 import { Router } from 'express';
 import { z } from 'zod';
 
@@ -37,6 +38,7 @@ const taskListQuery = z.object({
   status: taskStatus.optional(),
 });
 const taskCreate = z.object({
+  operationId: z.string().uuid().optional(),
   projectId: z.string().uuid(),
   selectedPrompt: z
     .object({ promptId: z.string().uuid(), versionId: z.string().uuid().optional() })
@@ -152,6 +154,25 @@ export function createGoalRouter(service: TaskService): Router {
 
 export function createTaskRouter(service: TaskService): Router {
   const router = Router();
+  router.get(
+    '/creation-operations/:operationId',
+    validate({ params: z.object({ operationId: z.string().uuid() }) }),
+    async (request, response, next) => {
+      response.setHeader('Cache-Control', 'no-store');
+      try {
+        response.json({
+          data: await service.getCreationOperation(
+            creationOwnerScope(response.locals.authPrincipal),
+            String(request.params.operationId),
+          ),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   router.get('/', validate({ query: taskListQuery }), async (request, response, next) => {
     try {
       response.json({
@@ -165,7 +186,10 @@ export function createTaskRouter(service: TaskService): Router {
   router.post('/', validate({ body: taskCreate }), async (request, response, next) => {
     try {
       response.status(201).json({
-        data: await service.createTask(taskCreate.parse(request.body)),
+        data: await service.createTask(
+          taskCreate.parse(request.body),
+          request.body.operationId ? creationOwnerScope(response.locals.authPrincipal) : undefined,
+        ),
         requestId: String(request.id),
       });
     } catch (error) {

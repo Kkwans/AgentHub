@@ -62,6 +62,7 @@ const projectScopedTables = [
   'git_snapshots',
   'goals',
   'tasks',
+  'task_creation_operations',
   'worktree_executions',
   'session_continuations',
   'prompts',
@@ -123,6 +124,7 @@ async function main(): Promise<void> {
       warnings: [
         '执行前必须停止 AgentHub service；脚本不会停止或重启任何服务。',
         '脚本不会读取、移动或删除 Project root 中的源码仓库。',
+        '清空会删除目标项目的任务创建操作账本并撤销其幂等历史；之后重放旧操作编号不再保证返回原任务。',
         ...(DATA_DIR === 'memory://' && execute
           ? ['memory:// 数据库没有可持久化备份，禁止执行生产清空。']
           : []),
@@ -219,6 +221,7 @@ async function databaseTransaction(database: unknown, projectIds: string[]): Pro
     `delete from prompt_versions where prompt_id in (select id from prompts where project_id in ${list})`,
     `delete from prompts where project_id in ${list}`,
     `delete from skills where project_id in ${list}`,
+    `delete from task_creation_operations where project_id in ${list}`,
     `delete from tasks where project_id in ${list}`,
     `delete from goals where project_id in ${list}`,
     `delete from agent_sessions where project_id in ${list}`,

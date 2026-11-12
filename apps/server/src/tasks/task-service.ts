@@ -1,3 +1,5 @@
+import { DatabaseInvariantError } from '@agenthub/db';
+import { taskCreationHash, type CreateTaskInput } from './task-creation-operation.js';
 import { randomUUID } from 'node:crypto';
 
 import type { TaskStatus } from '@agenthub/agent-core';
@@ -136,18 +138,80 @@ export class TaskService implements TaskRunLifecycleObserver {
     return task;
   }
 
-  async createTask(input: {
-    projectId: string;
-    goalId?: string | undefined;
-    parentId?: string | undefined;
-    title: string;
-    description?: string | undefined;
-    acceptanceCriteria?: string | undefined;
-    priority?: number | undefined;
-    branch?: string | undefined;
-    position?: string | undefined;
-    selectedPrompt?: { promptId: string; versionId?: string | undefined } | undefined;
-  }) {
+  async getCreationOperation(ownerScope: string, operationId: string) {
+    const operation = await this.tasks.getCreationOperation(ownerScope, operationId);
+    if (!operation)
+      throw new AppError(
+        404,
+        'TASK_CREATION_OPERATION_NOT_FOUND',
+        '当前没有已提交的创建结果；不代表原请求未执行',
+      );
+    if (!operation.taskId)
+      throw new AppError(503, 'TASK_OPERATION_INCOMPLETE', '创建结果暂不可确认，请查询原操作');
+    const task = await this.getTask(operation.taskId);
+    return {
+      operationId,
+      projectId: operation.projectId,
+      taskId: task.id,
+      status: task.status,
+      sessionId: task.sessionId,
+    };
+  }
+
+  async createTask(input: CreateTaskInput, ownerScope?: string) {
+    const { operationId, ...rawCreation } = input;
+    const creation = {
+      ...rawCreation,
+      projectId: rawCreation.projectId.toLowerCase(),
+      goalId: rawCreation.goalId?.toLowerCase(),
+      parentId: rawCreation.parentId?.toLowerCase(),
+      selectedPrompt: rawCreation.selectedPrompt
+        ? {
+            promptId: rawCreation.selectedPrompt.promptId.toLowerCase(),
+            versionId: rawCreation.selectedPrompt.versionId?.toLowerCase(),
+          }
+        : undefined,
+    };
+    if (!operationId) return this.createNewTask(creation);
+    if (!ownerScope) throw new AppError(401, 'AUTH_REQUIRED', '创建操作需要认证身份');
+    const requestHash = taskCreationHash(creation);
+    const operation = { ownerScope, operationId, requestHash };
+    const replay = async () => {
+      const existing = await this.tasks.getCreationOperation(ownerScope, operationId);
+      if (!existing) return undefined;
+      if (existing.requestHash !== requestHash)
+        throw new AppError(409, 'TASK_OPERATION_PAYLOAD_MISMATCH', '同一创建操作不能更改请求内容');
+      if (!existing.taskId)
+        throw new AppError(503, 'TASK_OPERATION_INCOMPLETE', '创建结果暂不可确认，请查询原操作');
+      return this.getTask(existing.taskId);
+    };
+    try {
+      const existing = await replay();
+      if (existing) return existing;
+      return await this.createNewTask({ ...creation, title: creation.title.trim() }, operation);
+    } catch (error) {
+      // Another request may have committed while validation was awaiting data.
+      const existing = await replay();
+      if (existing) return existing;
+      if (error instanceof AppError) throw error;
+      if (
+        error instanceof DatabaseInvariantError &&
+        error.code === 'TASK_OPERATION_PAYLOAD_MISMATCH'
+      )
+        throw new AppError(409, error.code, '同一创建操作不能更改请求内容');
+      // SQL errors can include bound task text. Do not propagate them to request logging.
+      throw new AppError(
+        500,
+        'TASK_CREATION_FAILED',
+        '创建结果暂不可确认，请使用原操作编号查询或重试',
+      );
+    }
+  }
+
+  private async createNewTask(
+    input: Omit<CreateTaskInput, 'operationId'>,
+    operation?: { ownerScope: string; operationId: string; requestHash: string },
+  ) {
     await this.requireProject(input.projectId);
     if (input.goalId) await this.requireGoalProject(input.goalId, input.projectId);
     if (input.parentId) {
@@ -156,12 +220,20 @@ export class TaskService implements TaskRunLifecycleObserver {
         throw new AppError(409, 'TASK_PARENT_PROJECT_MISMATCH', '父 Task 不属于当前 Project');
     }
     const { selectedPrompt, ...taskInput } = input;
-    if (!selectedPrompt)
-      return this.tasks.create({ id: randomUUID(), status: 'BACKLOG', ...taskInput });
+    if (!selectedPrompt) {
+      const record = { id: randomUUID(), status: 'BACKLOG', ...taskInput };
+      return operation ? this.tasks.createIdempotent(record, operation) : this.tasks.create(record);
+    }
     if (!this.promptos) {
       throw new AppError(503, 'PROMPT_SELECTION_UNAVAILABLE', '当前服务未启用 PromptOS 任务绑定');
     }
     const pinned = await this.promptos.resolveTaskSelection(input.projectId, selectedPrompt);
+    if (operation)
+      return this.tasks.createIdempotent(
+        { id: randomUUID(), status: 'BACKLOG', ...taskInput },
+        operation,
+        pinned,
+      );
     return this.tasks.createWithPromptBinding(
       { id: randomUUID(), status: 'BACKLOG', ...taskInput },
       pinned,

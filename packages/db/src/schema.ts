@@ -552,6 +552,25 @@ export const tasks = pgTable(
   ],
 );
 
+export const taskCreationOperations = pgTable(
+  'task_creation_operations',
+  {
+    ownerScope: text('owner_scope').notNull(),
+    operationId: uuid('operation_id').notNull(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id),
+    requestHash: text('request_hash').notNull(),
+    // Nullable only while the owning transaction creates Task + optional binding.
+    taskId: uuid('task_id').references(() => tasks.id),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerScope, table.operationId] }),
+    index('task_creation_operations_project_idx').on(table.projectId, table.createdAt),
+  ],
+);
+
 export const worktreeExecutions = pgTable(
   'worktree_executions',
   {
