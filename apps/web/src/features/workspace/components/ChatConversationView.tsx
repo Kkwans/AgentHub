@@ -11,6 +11,7 @@ import { useApprovalResolution } from './useApprovalResolution';
 import { Bot, ChevronDown } from '@agenthub/ui';
 import { Fragment, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { observeTimelineOffset } from '../lib/observe-timeline-offset';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
@@ -197,6 +198,7 @@ export const ChatConversationView = memo(function ChatConversationView({
   // not collapse the live Session view into a generic summary row.
   const displayTurns = visibleTurns.map((turn) => ({ ...turn }));
   const timelineVirtualizer = useVirtualizer({
+    observeElementOffset: observeTimelineOffset,
     count: displayTurns.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 160,
