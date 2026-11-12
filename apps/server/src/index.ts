@@ -275,7 +275,13 @@ export async function startServer(
     { cancelConvergenceTimeoutMs, approvalDeliveryTimeoutMs },
     sessionContinuationRepository,
   );
-  const tasks = new TaskService(goalRepository, taskRepository, projectRepository, sessions);
+  const tasks = new TaskService(
+    goalRepository,
+    taskRepository,
+    projectRepository,
+    sessions,
+    promptos,
+  );
   const dataPath = environment.AGENTHUB_DATA_DIR
     ? resolve(environment.AGENTHUB_DATA_DIR)
     : resolve(process.cwd(), '.agenthub/data/pgdata');

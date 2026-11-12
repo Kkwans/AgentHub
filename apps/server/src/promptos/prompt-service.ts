@@ -212,6 +212,20 @@ export class PromptService {
     };
   }
 
+  async resolveTaskSelection(
+    projectId: string,
+    selection: { promptId: string; versionId?: string | undefined },
+  ): Promise<{ promptId: string; versionId: string }> {
+    const prompt = await this.get(selection.promptId);
+    if (prompt.projectId !== null && prompt.projectId !== projectId) {
+      throw new AppError(409, 'TASK_PROMPT_PROJECT_MISMATCH', '所选 Prompt 不属于当前 Project');
+    }
+    const version = selection.versionId
+      ? await this.requireVersionById(prompt.id, selection.versionId)
+      : (await this.resolveVersion(prompt.id, {})).version;
+    return { promptId: prompt.id, versionId: version.id };
+  }
+
   listBindings(filters: {
     targetType?: string | undefined;
     targetId?: string | undefined;

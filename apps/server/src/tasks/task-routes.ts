@@ -38,6 +38,10 @@ const taskListQuery = z.object({
 });
 const taskCreate = z.object({
   projectId: z.string().uuid(),
+  selectedPrompt: z
+    .object({ promptId: z.string().uuid(), versionId: z.string().uuid().optional() })
+    .strict()
+    .optional(),
   goalId: z.string().uuid().optional(),
   parentId: z.string().uuid().optional(),
   title: z.string().trim().min(1).max(240),

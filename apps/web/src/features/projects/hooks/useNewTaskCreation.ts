@@ -11,6 +11,8 @@ export type NewTaskDraft = {
   goalId: string;
   agentId: string;
   promptId: string;
+  promptVersionId?: string | undefined;
+  promptVariables?: Record<string, unknown> | undefined;
 };
 type TaskIdentity = Pick<TaskRecord, 'id' | 'projectId' | 'status' | 'sessionId'>;
 type Stage = 'create' | 'transition' | 'start' | 'check';
@@ -34,6 +36,10 @@ const createRejections = new Set([
   'GOAL_NOT_FOUND',
   'GOAL_PARENT_PROJECT_MISMATCH',
   'TASK_PARENT_PROJECT_MISMATCH',
+  'TASK_PROMPT_PROJECT_MISMATCH',
+  'PROMPT_NOT_FOUND',
+  'PROMPT_VERSION_NOT_FOUND',
+  'PROMPT_LABEL_NOT_FOUND',
 ]);
 const startRejections = new Set([
   'VALIDATION_FAILED',
@@ -42,6 +48,8 @@ const startRejections = new Set([
   'AGENT_NOT_FOUND',
   'AGENT_NOT_READY',
   'AGENT_PROJECT_TARGET_MISMATCH',
+  'TASK_PROMPT_VARIABLES_MISSING',
+  'TASK_PROMPT_RESOLUTION_FAILED',
 ]);
 function rejectedBeforeWrite(error: unknown, codes: Set<string>): boolean {
   return (
@@ -100,7 +108,7 @@ export function useNewTaskCreation(
     if (!input && (!previous.draft || !previous.task)) return;
     if (input && previous.draft) return;
     if (!input && !checkOnly && !previous.retryable) return;
-    const draft = input ? { ...input } : previous.draft!;
+    const draft = input ? structuredClone(input) : previous.draft!;
     let task = previous.task;
     let stage: Stage = input ? 'create' : 'check';
     busy.current = true;
@@ -114,6 +122,9 @@ export function useNewTaskCreation(
             title: draft.title.trim(),
             description: draft.description.trim() || undefined,
             priority: 2,
+            selectedPrompt: draft.promptId
+              ? { promptId: draft.promptId, versionId: draft.promptVersionId }
+              : undefined,
           }),
           draft.projectId,
         );
@@ -176,7 +187,10 @@ export function useNewTaskCreation(
       const result = await api.post<{
         task?: unknown;
         session?: { id?: unknown; projectId?: unknown; taskId?: unknown; agentId?: unknown };
-      }>(`/tasks/${encodeURIComponent(task.id)}/start`, { agentId: draft.agentId });
+      }>(`/tasks/${encodeURIComponent(task.id)}/start`, {
+        agentId: draft.agentId,
+        promptVariables: draft.promptVariables,
+      });
       const startedTask = taskIdentity(result?.task, draft.projectId, task.id);
       if (
         typeof result?.session?.id !== 'string' ||

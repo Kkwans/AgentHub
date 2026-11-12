@@ -1435,6 +1435,30 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
     return created;
   }
 
+  async createWithPromptBinding(
+    input: typeof tasks.$inferInsert,
+    selectedPrompt: { promptId: string; versionId: string },
+  ) {
+    // A created Task must never lose its explicitly selected Prompt because
+    // a second request or a later binding write failed.
+    return this.db.transaction(async (transaction) => {
+      const [created] = await transaction.insert(tasks).values(input).returning();
+      if (!created) throw new DatabaseInvariantError('TASK_CREATE_FAILED', 'Task 创建失败');
+      await transaction.insert(promptBindings).values({
+        id: randomUUID(),
+        targetType: 'TASK',
+        targetId: created.id,
+        slot: 'TASK_PRIMER',
+        promptId: selectedPrompt.promptId,
+        selectorType: 'VERSION',
+        versionId: selectedPrompt.versionId,
+        priority: 0,
+        enabled: true,
+      });
+      return created;
+    });
+  }
+
   async update(id: string, patch: Partial<typeof tasks.$inferInsert>) {
     const [updated] = await this.db
       .update(tasks)

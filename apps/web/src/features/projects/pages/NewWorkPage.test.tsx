@@ -434,3 +434,249 @@ describe('新建工作部分成功恢复', () => {
     expect(calls.create).toBe(1);
   });
 });
+
+describe('新建 Task 的明确 Prompt 选择', () => {
+  const asset = { id: 'prompt-1', name: '测试资产', kind: 'TASK', type: 'TEXT' };
+  const rendered = {
+    promptId: asset.id,
+    versionId: 'version-7',
+    version: 7,
+    text: '固定模板内容',
+    missingVariables: [] as string[],
+  };
+  function promptWorkflow(
+    options: {
+      noAgent?: boolean;
+      missing?: boolean;
+      failPreview?: boolean;
+      startCode?: string;
+    } = {},
+  ) {
+    const bodies: { path: string; body: Record<string, unknown> }[] = [];
+    let starts = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+      if (init?.method === 'POST') bodies.push({ path, body });
+      if (path.startsWith('/api/v1/prompts?')) return json([asset]);
+      if (path.endsWith('/render')) {
+        if (options.failPreview) return failure('PROMPT_NOT_FOUND', 404);
+        return json({
+          ...rendered,
+          missingVariables:
+            options.missing && !(body.variables as Record<string, unknown>)?.subject
+              ? ['subject']
+              : [],
+        });
+      }
+      if (path === '/api/v1/agents') return json(options.noAgent ? [] : [agent]);
+      if (path === '/api/v1/tasks' && init?.method === 'POST') return json(task);
+      if (path.endsWith('/transition')) return json({ ...task, status: 'READY' });
+      if (path.endsWith('/start')) {
+        starts++;
+        if (options.startCode && starts === 1) return failure(options.startCode);
+        return json(started());
+      }
+      return base(path);
+    });
+    return { fetchMock, bodies };
+  }
+  async function selectPrompt() {
+    fireEvent.click(screen.getByText('高级设置'));
+    fireEvent.click(screen.getByLabelText('PromptOS 资产（可选）'));
+    fireEvent.click(await screen.findByRole('option', { name: /测试资产/ }));
+    fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '主目标保留' } });
+  }
+  async function previewPrompt() {
+    fireEvent.click(screen.getByRole('button', { name: '预览并固定版本' }));
+    await screen.findByText(/已固定版本 v7/);
+  }
+  it.each([
+    null,
+    { ...rendered, promptId: 'another-prompt' },
+    { ...rendered, versionId: {} },
+    { ...rendered, versionId: '   ' },
+    { ...rendered, version: 0 },
+    { ...rendered, version: -1 },
+    { ...rendered, version: 7.5 },
+    { ...rendered, text: { invalid: true } },
+    { ...rendered, missingVariables: [null] },
+    { ...rendered, missingVariables: {} },
+  ])('拒绝不完整或错误资产的预览响应 %#', async (response) => {
+    const f = promptWorkflow();
+    show((input, init) =>
+      String(input).endsWith('/render')
+        ? Promise.resolve(json(response))
+        : f.fetchMock(input, init),
+    );
+    await selectPrompt();
+    fireEvent.click(screen.getByRole('button', { name: '预览并固定版本' }));
+    await screen.findByText('Prompt 预览失败');
+    expect(screen.queryByRole('region', { name: 'Prompt 预览' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(false);
+  });
+  it('补全变量后不接受与已固定版本不同的响应', async () => {
+    const f = promptWorkflow({ missing: true });
+    let previews = 0;
+    show((input, init) => {
+      if (String(input).endsWith('/render') && ++previews === 2) {
+        expect(JSON.parse(String(init?.body))).toMatchObject({ version: 7 });
+        return Promise.resolve(json({ ...rendered, version: 8, versionId: 'version-8' }));
+      }
+      return f.fetchMock(input, init);
+    });
+    await selectPrompt();
+    await previewPrompt();
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{"subject":"补充输入"}' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '预览并固定版本' }));
+    await screen.findByText('Prompt 预览失败');
+    expect(screen.queryByText(/已固定版本 v8/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(false);
+  });
+  it('认证失效后忽略已在途的 Prompt 预览', async () => {
+    const pending = deferred<Response>();
+    const f = promptWorkflow();
+    show((input, init) =>
+      String(input).endsWith('/render') ? pending.promise : f.fetchMock(input, init),
+    );
+    await selectPrompt();
+    fireEvent.click(screen.getByRole('button', { name: '预览并固定版本' }));
+    act(() => authSession.notifyAuthorizationRequired());
+    await act(async () => pending.resolve(json(rendered)));
+    expect(screen.queryByText(/已固定版本/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(false);
+  });
+  it('没有 Agent 时不静默丢弃变量，清空变量才允许仅保存模板绑定', async () => {
+    const f = promptWorkflow({ noAgent: true });
+    show(f.fetchMock);
+    await selectPrompt();
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{"subject":"本次变量"}' },
+    });
+    await previewPrompt();
+    expect(
+      screen.getByText('变量仅用于本次启动；请选择 Agent 后创建并开始，或清空变量仅保存模板绑定。'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
+    expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(false);
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{}' },
+    });
+    await previewPrompt();
+    expect(screen.getByText('仅保存模板版本绑定，不保存本次预览变量。')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
+    await waitFor(() =>
+      expect(f.bodies.some((request) => request.path === '/api/v1/tasks')).toBe(true),
+    );
+    expect(f.bodies.some((request) => request.path.endsWith('/start'))).toBe(false);
+  });
+  it('未选 Agent 仍在创建时发送固定版本绑定，预览前不允许提交', async () => {
+    const f = promptWorkflow({ noAgent: true });
+    show(f.fetchMock);
+    await selectPrompt();
+    expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
+    await previewPrompt();
+    fireEvent.click(screen.getByRole('button', { name: '创建任务' }));
+    await waitFor(() => expect(f.bodies.some((x) => x.path === '/api/v1/tasks')).toBe(true));
+    expect(f.bodies.find((x) => x.path === '/api/v1/tasks')?.body).toMatchObject({
+      title: '主目标保留',
+      selectedPrompt: { promptId: 'prompt-1', versionId: 'version-7' },
+    });
+    expect(f.bodies.some((x) => x.path.endsWith('/start'))).toBe(false);
+  });
+  it('必填变量补全后重新预览同一版本，安全启动失败重试保留变量与原任务', async () => {
+    const f = promptWorkflow({ missing: true, startCode: 'TASK_PROMPT_VARIABLES_MISSING' });
+    show(f.fetchMock);
+    await selectPrompt();
+    await previewPrompt();
+    expect(screen.getByText('缺少变量：subject')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{"subject":"已确认输入"}' },
+    });
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    await previewPrompt();
+    expect(f.bodies.filter((x) => x.path.endsWith('/render'))[1]?.body).toEqual({
+      version: 7,
+      variables: { subject: '已确认输入' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
+    fireEvent.click(await screen.findByRole('button', { name: '重试启动' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent('/workspace/session-1'),
+    );
+    expect(f.bodies.filter((x) => x.path === '/api/v1/tasks')).toHaveLength(1);
+    expect(f.bodies.filter((x) => x.path.endsWith('/start')).map((x) => x.body)).toEqual([
+      { agentId: 'agent-1', promptVariables: { subject: '已确认输入' } },
+      { agentId: 'agent-1', promptVariables: { subject: '已确认输入' } },
+    ]);
+  });
+  it('资产失效或预览失败不创建任务，Goal 明确不应用选择', async () => {
+    const f = promptWorkflow({ failPreview: true });
+    show(f.fetchMock);
+    await selectPrompt();
+    fireEvent.click(screen.getByRole('button', { name: '预览并固定版本' }));
+    await screen.findByText('Prompt 预览失败');
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    expect(f.bodies.some((x) => x.path === '/api/v1/tasks')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Goal' }));
+    expect(
+      screen.getByText('Goal 创建不会绑定 Prompt；请在具体 Task 上选择。'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('PromptOS 资产（可选）')).toBeDisabled();
+  });
+  it.each(['TASK_PROMPT_RESOLUTION_FAILED', 'PROMPT_VARIABLES_MISSING'])(
+    '仅将预运行专用错误作为安全重试：%s',
+    async (code) => {
+      const f = promptWorkflow({ startCode: code });
+      show(f.fetchMock);
+      await selectPrompt();
+      await previewPrompt();
+      fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
+      await screen.findByText('后续结果需要处理');
+      if (code.startsWith('TASK_'))
+        expect(screen.getByRole('button', { name: '重试启动' })).toBeInTheDocument();
+      else expect(screen.queryByRole('button', { name: '重试启动' })).not.toBeInTheDocument();
+    },
+  );
+  it('编辑变量后忽略旧预览响应，不允许凭过期预览提交', async () => {
+    const pending = deferred<Response>();
+    const f = promptWorkflow();
+    show(async (input, init) =>
+      String(input).endsWith('/render') ? pending.promise : f.fetchMock(input, init),
+    );
+    await selectPrompt();
+    fireEvent.click(screen.getByRole('button', { name: '预览并固定版本' }));
+    fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+      target: { value: '{"subject":"新的输入"}' },
+    });
+    await act(async () => pending.resolve(json(rendered)));
+    expect(screen.queryByText(/已固定版本/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+  });
+  it.each([
+    'TASK_PROMPT_PROJECT_MISMATCH',
+    'PROMPT_NOT_FOUND',
+    'PROMPT_VERSION_NOT_FOUND',
+    'PROMPT_LABEL_NOT_FOUND',
+  ])('选择在持久化前被拒绝时允许修改：%s', async (code) => {
+    const f = promptWorkflow();
+    show(async (input, init) =>
+      String(input) === '/api/v1/tasks' && init?.method === 'POST'
+        ? failure(code, 404)
+        : f.fetchMock(input, init),
+    );
+    await selectPrompt();
+    await previewPrompt();
+    fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
+    await screen.findByText('创建被拒绝');
+    expect(screen.getByLabelText('你想完成什么？')).not.toBeDisabled();
+    expect(screen.queryByRole('button', { name: '重试启动' })).not.toBeInTheDocument();
+  });
+});

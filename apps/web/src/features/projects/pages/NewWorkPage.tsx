@@ -3,8 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { AgentRecord, GoalRecord, ProjectRecord, PromptRecord } from '../../../lib/api';
-import { api } from '../../../lib/api';
+import type {
+  AgentRecord,
+  GoalRecord,
+  ProjectRecord,
+  PromptRecord,
+  RenderedPromptRecord,
+} from '../../../lib/api';
+import { api, authSession } from '../../../lib/api';
 import { labelPromptKind, labelPromptType } from '../../../presentation/domain-labels';
 import layout from '../../shared/layout.module.css';
 import { domainStatusLabel, useCompactViewport } from '../../shared/page-primitives';
@@ -23,8 +29,13 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
   const live = useRef(true);
   useEffect(() => {
     live.current = true;
-    return () => {
+    const abandon = () => {
       live.current = false;
+    };
+    const unsubscribe = authSession.onAuthorizationRequired(abandon);
+    return () => {
+      abandon();
+      unsubscribe();
     };
   }, []);
   const compact = useCompactViewport();
@@ -35,6 +46,78 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
   const [goalId, setGoalId] = useState('');
   const [agentId, setAgentId] = useState('');
   const [promptId, setPromptId] = useState('');
+  const [variableText, setVariableText] = useState('{}');
+  const [preview, setPreview] = useState<RenderedPromptRecord>();
+  const [pinnedVersion, setPinnedVersion] = useState<number>();
+  const [previewError, setPreviewError] = useState('');
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const previewGeneration = useRef(0);
+  let promptVariables: Record<string, unknown> = {};
+  let variablesValid = true;
+  try {
+    const parsed: unknown = JSON.parse(variableText);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) variablesValid = false;
+    else promptVariables = parsed as Record<string, unknown>;
+  } catch {
+    variablesValid = false;
+  }
+  const invalidatePreview = () => {
+    previewGeneration.current += 1;
+    setPreview(undefined);
+    setPreviewBusy(false);
+    setPreviewError('');
+  };
+  const previewPrompt = async () => {
+    if (!live.current || !promptId || !variablesValid || previewBusy) return;
+    const generation = ++previewGeneration.current;
+    setPreviewBusy(true);
+    setPreviewError('');
+    try {
+      const rendered = await api.post<RenderedPromptRecord>(
+        `/prompts/${encodeURIComponent(promptId)}/render`,
+        {
+          version: pinnedVersion,
+          variables: promptVariables,
+        },
+      );
+      if (!live.current || generation !== previewGeneration.current) return;
+      if (
+        !rendered ||
+        typeof rendered !== 'object' ||
+        rendered.promptId !== promptId ||
+        typeof rendered.versionId !== 'string' ||
+        !rendered.versionId.trim() ||
+        !Number.isInteger(rendered.version) ||
+        rendered.version <= 0 ||
+        (pinnedVersion !== undefined && rendered.version !== pinnedVersion) ||
+        typeof rendered.text !== 'string' ||
+        !Array.isArray(rendered.missingVariables) ||
+        !rendered.missingVariables.every((variable) => typeof variable === 'string')
+      )
+        throw new Error('Prompt 预览响应无法确认，请重新选择资产。');
+      setPinnedVersion(rendered.version);
+      setPreview(rendered);
+    } catch (error) {
+      if (live.current && generation === previewGeneration.current) {
+        setPreview(undefined);
+        setPreviewError(error instanceof Error ? error.message : 'Prompt 预览失败');
+      }
+    } finally {
+      if (live.current && generation === previewGeneration.current) setPreviewBusy(false);
+    }
+  };
+  const variablesRequireAgent = Boolean(
+    promptId && !agentId && Object.keys(promptVariables).length,
+  );
+  const promptReady =
+    !promptId ||
+    Boolean(
+      preview &&
+      !previewBusy &&
+      variablesValid &&
+      !preview.missingVariables.length &&
+      !variablesRequireAgent,
+    );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const goals = useQuery({
     queryKey: ['goals', project.id],
@@ -53,7 +136,6 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
   const contextQuery = () =>
     new URLSearchParams({
       ...(agentId ? { agentId } : {}),
-      ...(promptId ? { promptId } : {}),
     }).toString();
   const createGoal = useMutation({
     mutationFn: () =>
@@ -101,10 +183,19 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
     navigate(`/workspace/${encodeURIComponent(taskCreation.sessionId)}`);
   };
   const submit = () => {
-    if (locked || !title.trim()) return;
+    if (!live.current || locked || !title.trim() || (kind === 'task' && !promptReady)) return;
     if (kind === 'goal') createGoal.mutate();
     else
-      taskCreation.submit({ projectId: project.id, title, description, goalId, agentId, promptId });
+      taskCreation.submit({
+        projectId: project.id,
+        title,
+        description,
+        goalId,
+        agentId,
+        promptId,
+        promptVersionId: preview?.versionId,
+        promptVariables: promptId ? promptVariables : undefined,
+      });
   };
   const quickIntents = ['Bug', 'Feature', 'Refactor', 'Research'];
   return (
@@ -145,7 +236,11 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
                 ) : null}
               </>
             ) : (
-              <AhButton onClick={submit} loading={busy} disabled={!title.trim()}>
+              <AhButton
+                onClick={submit}
+                loading={busy}
+                disabled={!title.trim() || (kind === 'task' && !promptReady)}
+              >
                 {kind === 'goal' ? '创建 Goal' : agentId ? '创建并开始' : '创建任务'}
               </AhButton>
             )}
@@ -254,9 +349,13 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
                 ) : null}
                 <AhSelect
                   label="PromptOS 资产（可选）"
-                  disabled={locked}
-                  value={promptId}
-                  onChange={(value) => setPromptId(value ?? '')}
+                  disabled={locked || kind === 'goal'}
+                  value={kind === 'task' ? promptId : ''}
+                  onChange={(value) => {
+                    invalidatePreview();
+                    setPinnedVersion(undefined);
+                    setPromptId(value ?? '');
+                  }}
                   data={(prompts.data ?? []).map((prompt) => ({
                     value: prompt.id,
                     label: `${prompt.name} · ${labelPromptKind(prompt.kind)}`,
@@ -265,10 +364,56 @@ function NewWorkForm({ project }: { project: ProjectRecord }) {
                   mt="md"
                 />
                 <p className={layout.subtle}>
-                  {selectedPrompt
-                    ? `已选择 ${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）。`
-                    : '未选择时按当前 Project / Task Binding 解析 Prompt。'}
+                  {kind === 'goal'
+                    ? 'Goal 创建不会绑定 Prompt；请在具体 Task 上选择。'
+                    : selectedPrompt
+                      ? `待预览 ${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）；确认版本后才会绑定任务。`
+                      : '未选择时按当前 Project / Task Binding 解析 Prompt。'}
                 </p>
+                {kind === 'task' && promptId ? (
+                  <>
+                    <AhTextarea
+                      label="Prompt 变量（JSON 对象）"
+                      value={variableText}
+                      onChange={(event) => {
+                        invalidatePreview();
+                        setVariableText(event.currentTarget.value);
+                      }}
+                      minRows={3}
+                    />
+                    {!variablesValid ? <p role="alert">请输入有效的 JSON 对象。</p> : null}
+                    {variablesRequireAgent ? (
+                      <p role="alert">
+                        变量仅用于本次启动；请选择 Agent 后创建并开始，或清空变量仅保存模板绑定。
+                      </p>
+                    ) : null}
+                    <AhButton
+                      variant="default"
+                      onClick={() => {
+                        void previewPrompt();
+                      }}
+                      disabled={!variablesValid || locked}
+                      loading={previewBusy}
+                    >
+                      预览并固定版本
+                    </AhButton>
+                    {preview ? (
+                      <section aria-label="Prompt 预览">
+                        <p>已固定版本 v{preview.version}；作为任务补充上下文，主目标保持不变。</p>
+                        {!agentId ? <p>仅保存模板版本绑定，不保存本次预览变量。</p> : null}
+                        {preview.missingVariables.length ? (
+                          <p role="alert">缺少变量：{preview.missingVariables.join('、')}</p>
+                        ) : null}
+                        <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                          {preview.text}
+                        </pre>
+                      </section>
+                    ) : null}
+                    {previewError ? (
+                      <AhErrorState title="Prompt 预览失败" description={previewError} />
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             </details>
           </fieldset>

@@ -9,6 +9,7 @@ import type {
 } from '@agenthub/db';
 
 import { AppError } from '../errors.js';
+import type { PromptService } from '../promptos/prompt-service.js';
 import type {
   CreateSessionInput,
   StartRunInput,
@@ -58,6 +59,7 @@ export class TaskService implements TaskRunLifecycleObserver {
     private readonly tasks: TaskRepository<AgentHubDatabase>,
     private readonly projects: ProjectRepository<AgentHubDatabase>,
     private readonly sessions: TaskSessionController,
+    private readonly promptos?: Pick<PromptService, 'resolveTaskSelection' | 'resolveForRun'>,
   ) {}
 
   listGoals(projectId?: string) {
@@ -144,6 +146,7 @@ export class TaskService implements TaskRunLifecycleObserver {
     priority?: number | undefined;
     branch?: string | undefined;
     position?: string | undefined;
+    selectedPrompt?: { promptId: string; versionId?: string | undefined } | undefined;
   }) {
     await this.requireProject(input.projectId);
     if (input.goalId) await this.requireGoalProject(input.goalId, input.projectId);
@@ -152,7 +155,17 @@ export class TaskService implements TaskRunLifecycleObserver {
       if (parent.projectId !== input.projectId)
         throw new AppError(409, 'TASK_PARENT_PROJECT_MISMATCH', '父 Task 不属于当前 Project');
     }
-    return this.tasks.create({ id: randomUUID(), status: 'BACKLOG', ...input });
+    const { selectedPrompt, ...taskInput } = input;
+    if (!selectedPrompt)
+      return this.tasks.create({ id: randomUUID(), status: 'BACKLOG', ...taskInput });
+    if (!this.promptos) {
+      throw new AppError(503, 'PROMPT_SELECTION_UNAVAILABLE', '当前服务未启用 PromptOS 任务绑定');
+    }
+    const pinned = await this.promptos.resolveTaskSelection(input.projectId, selectedPrompt);
+    return this.tasks.createWithPromptBinding(
+      { id: randomUUID(), status: 'BACKLOG', ...taskInput },
+      pinned,
+    );
   }
 
   async updateTask(
@@ -208,6 +221,37 @@ export class TaskService implements TaskRunLifecycleObserver {
     if (task.status !== 'READY')
       throw new AppError(409, 'TASK_NOT_READY', '只有就绪的 Task 可以交给 Agent');
     const project = await this.requireProject(task.projectId);
+    if (this.promptos) {
+      let context;
+      try {
+        context = await this.promptos.resolveForRun({
+          projectId: task.projectId,
+          agentId: input.agentId,
+          taskId: task.id,
+          variables: input.promptVariables ?? {},
+        });
+      } catch (error) {
+        if (!(error instanceof AppError) || error.status >= 500) throw error;
+        throw new AppError(
+          409,
+          'TASK_PROMPT_RESOLUTION_FAILED',
+          '任务 Prompt 无法解析，请核对绑定与版本',
+          {
+            reasonCode: error.code,
+          },
+        );
+      }
+      if (!context.ready) {
+        throw new AppError(
+          409,
+          'TASK_PROMPT_VARIABLES_MISSING',
+          '任务 Prompt 缺少必填变量，尚未启动 Agent',
+          {
+            missingVariables: context.missingVariables,
+          },
+        );
+      }
+    }
     const session = await this.sessions.create({
       projectId: task.projectId,
       agentId: input.agentId,
