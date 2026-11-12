@@ -24,11 +24,14 @@ import {
   MessageRepository,
   ProjectRepository,
   RunRepository,
+  TaskRepository,
+  GoalRepository,
   SessionRepository,
   SessionContinuationRepository,
 } from '@agenthub/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { TaskService } from '../tasks/task-service.js';
 import { AgentService } from '../agents/agent-service.js';
 import type { AcpProcessLauncher } from '@agenthub/adapter-acp';
 import {
@@ -155,6 +158,101 @@ describe('Session/Run/Approval 持久化闭环', () => {
       published,
     };
   }
+
+  it.each(['RUN_FIRST', 'CALLBACK_FIRST'] as const)(
+    '真实事件READY与Task观察器之间的同会话下一轮：%s',
+    async (order) => {
+      const adapter = new ControlledAdapter('never');
+      const fixture = await createFixture(
+        'idle',
+        undefined,
+        {},
+        {
+          adapter,
+          git: new SequenceGitProbe(['r1-before', 'r1-after', 'r2-before', 'r2-after']),
+        },
+      );
+      const tasks = new TaskRepository(database.db);
+      const taskService = new TaskService(
+        new GoalRepository(database.db),
+        tasks,
+        new ProjectRepository(database.db),
+        fixture.service,
+      );
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '同会话所有权',
+        status: 'IN_PROGRESS',
+        assignedAgentId: fixture.agentId,
+      });
+      let release!: () => void;
+      const barrier = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let firstId: string | undefined;
+      let entered = false;
+      const outcomes = new Map<string, boolean>();
+      fixture.service.setTaskLifecycleObserver({
+        onRunCompleted: async (taskId, runId) => {
+          if (runId === firstId) {
+            entered = true;
+            await barrier;
+          }
+          const applied = await taskService.onRunCompleted(taskId, runId);
+          outcomes.set(runId, applied);
+          return applied;
+        },
+      });
+      try {
+        const session = await fixture.service.create({
+          projectId: fixture.projectId,
+          agentId: fixture.agentId,
+          taskId: task.id,
+          title: '受控终态窗口',
+          cwd: '/tmp',
+        });
+        await tasks.update(task.id, { sessionId: session.id });
+        const first = await fixture.service.startRun(session.id, { text: '第一轮' });
+        firstId = first.id;
+        adapter.handles[0]!.complete(first.id);
+        await waitFor(async () => entered);
+        // This is the actual public SessionService admission window, not a
+        // manually patched READY state or direct repository callback simulation.
+        expect((await fixture.repositories.sessions.get(session.id))?.status).toBe('READY');
+        expect((await fixture.repositories.runs.get(first.id))?.status).toBe('COMPLETED');
+        expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
+        if (order === 'CALLBACK_FIRST') {
+          release();
+          await waitFor(async () => outcomes.has(first.id));
+          expect(outcomes.get(first.id)).toBe(true);
+        }
+        const second = await fixture.service.startRun(session.id, { text: '第二轮' });
+        expect((await fixture.repositories.runs.get(second.id))?.status).toBe('RUNNING');
+        if (order === 'RUN_FIRST') {
+          release();
+          await waitFor(async () => outcomes.has(first.id));
+          expect(outcomes.get(first.id)).toBe(false);
+          expect((await tasks.get(task.id))?.status).toBe('IN_PROGRESS');
+          expect((await tasks.get(task.id))?.finalRunId).toBeNull();
+        } else {
+          // Preserve existing direct Session turn semantics: no implicit Task restart.
+          expect((await tasks.get(task.id))?.status).toBe('WAITING_REVIEW');
+          expect((await tasks.get(task.id))?.finalRunId).toBe(first.id);
+        }
+        adapter.handles[0]!.complete(second.id);
+        await waitFor(async () => outcomes.has(second.id));
+        expect(outcomes.get(second.id)).toBe(order === 'RUN_FIRST');
+        expect((await tasks.get(task.id))?.status).toBe('WAITING_REVIEW');
+        expect((await tasks.get(task.id))?.finalRunId).toBe(
+          order === 'RUN_FIRST' ? second.id : first.id,
+        );
+      } finally {
+        release();
+        await fixture.service.shutdown();
+      }
+    },
+  );
 
   it('创建 Session 前拒绝 archived Project、disabled/BROKEN Agent 与 target mismatch', async () => {
     const archived = await createFixture('idle', undefined, {}, { projectStatus: 'ARCHIVED' });
@@ -1000,6 +1098,7 @@ type ControlledScenario =
 
 class ControlledAdapter implements AgentRuntimeAdapter {
   readonly kind = 'CONTROLLED';
+  readonly handles: ControlledHandle[] = [];
 
   constructor(private readonly scenario: ControlledScenario) {}
 
@@ -1029,7 +1128,9 @@ class ControlledAdapter implements AgentRuntimeAdapter {
   }
 
   async createSession(input: CreateAgentSessionInput): Promise<AgentSessionHandle> {
-    return new ControlledHandle(input, this.scenario);
+    const handle = new ControlledHandle(input, this.scenario);
+    this.handles.push(handle);
+    return handle;
   }
 }
 
@@ -1106,6 +1207,10 @@ class ControlledHandle implements AgentSessionHandle {
   async close(): Promise<void> {
     this.closed = true;
     for (const resolve of this.waiters.splice(0)) resolve({ value: undefined, done: true });
+  }
+
+  complete(runId: string): void {
+    this.emit('run.completed', {}, runId);
   }
 
   private emit(

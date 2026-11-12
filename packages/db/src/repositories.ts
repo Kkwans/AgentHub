@@ -1572,6 +1572,16 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
         .for('update')
         .limit(1);
       if (!task || task.status !== 'IN_PROGRESS' || !task.sessionId) return false;
+      // Same lock order as RunRepository.create: Task, then Session.
+      // This serializes a new admission against an older terminal callback.
+      const [session] = await transaction
+        .select()
+        .from(agentSessions)
+        .where(eq(agentSessions.id, task.sessionId))
+        .for('update')
+        .limit(1);
+      if (!session || session.latestRunId !== runId) return false;
+
       const [owned] = await transaction
         .select({ run: agentRuns, session: agentSessions })
         .from(agentRuns)
@@ -2137,9 +2147,34 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
   }
 
   async create(input: typeof agentRuns.$inferInsert) {
-    const [created] = await this.db.insert(agentRuns).values(input).returning();
-    if (!created) throw new DatabaseInvariantError('RUN_CREATE_FAILED', 'Run 创建失败');
-    return created;
+    return this.db.transaction(async (transaction) => {
+      // Task callbacks take the same Task -> Session locks. Do not insert first:
+      // a callback must see either the previous admission or the complete new one.
+      if (input.taskId) {
+        await transaction
+          .select({ id: tasks.id })
+          .from(tasks)
+          .where(eq(tasks.id, input.taskId))
+          .for('update')
+          .limit(1);
+      }
+      const [session] = await transaction
+        .select({ id: agentSessions.id })
+        .from(agentSessions)
+        .where(eq(agentSessions.id, input.sessionId))
+        .for('update')
+        .limit(1);
+      if (!session) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
+      const [created] = await transaction.insert(agentRuns).values(input).returning();
+      if (!created) throw new DatabaseInvariantError('RUN_CREATE_FAILED', 'Run 创建失败');
+      await transaction
+        .update(agentSessions)
+        .set({ latestRunId: created.id })
+        .where(eq(agentSessions.id, input.sessionId));
+      // Direct Session turns preserve existing Task status; claiming the latest
+      // Run never implicitly restarts a reviewed, blocked, or completed Task.
+      return created;
+    });
   }
 
   async patch(id: string, patch: Partial<typeof agentRuns.$inferInsert>) {

@@ -251,6 +251,8 @@ export const agentSessions = pgTable(
       .notNull()
       .references(() => agents.id),
     taskId: uuid('task_id'),
+    // Latest committed admission, not a timestamp-derived ordering.
+    latestRunId: uuid('latest_run_id'),
     externalSessionId: text('external_session_id'),
     title: text('title').notNull(),
     cwd: text('cwd').notNull(),
