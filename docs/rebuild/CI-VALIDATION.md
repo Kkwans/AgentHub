@@ -44,3 +44,8 @@
 - `2e633474` verify job `131140375865` 完整成功：497 unit通过/10跳过，lint/typecheck/build通过，48 fixture浏览器全部通过（2.1分钟）。该提交real-service仍运行，不能把不同提交的绿色job拼成最新HEAD全绿。
 
 - `2c326df` / run `43206234705` 两个job均完整成功：verify `131141970588` 和 real-service `131141970205`。这是同一提交的双绿，包含Run所有权修复、48 fixture、真实控制面核心/内容态/目录/Prompt和140图几何；后续badge/字体提交仍需各自新CI。
+
+- `abbe5663` / run `43207801362` 两个job均成功；真实Geist英文glyph、中文fallback与归档徽章断言通过，人工复核未见字体切换新增溢出。最新创建幂等/移动详情提交 `fe878f3` 的CI仍单独等待，不能复用旧绿灯作为新HEAD验收。
+
+- `fe878f3d34a2bc4c5e3bfb60a6d7244dc94066d3` / run `43208909811` 同一HEAD双绿：verify `131151060643`、real-service `131151061160`。523单测、48 fixture浏览器、23真实服务测试和140图几何通过。独立下载的real artifact 13941041192校验ZIP digest一致；390/768双主题内容态错误列表为空、documentWidth等于viewport。
+- 新增 `task-creation-recovery.spec.ts`：真实POST成功后丢弃响应、刷新/关闭重开仅GET、同编号冻结重放不start、真实404保留记录、写存储失败不POST、同账户重新登录恢复。新增 `home-project-choice.spec.ts`：四宽双主题名称/目录选择、排除TEST/归档、Esc焦点返回、单项目目标。故障诊断仅允许精确注入请求对应的错误，不整体忽略console。

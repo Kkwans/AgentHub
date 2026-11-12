@@ -72,6 +72,8 @@ jobs:
           tests/e2e-real/new-work-prompt.spec.ts
           tests/e2e-real/project-filters.spec.ts
           tests/e2e-real/home-populated-visual.spec.ts
+          tests/e2e-real/home-project-choice.spec.ts
+          tests/e2e-real/task-creation-recovery.spec.ts
           tests/e2e-real/v1-baseline.spec.ts
       - name: Check screenshot completeness, console errors and layout measurements
         if: ${{ !cancelled() && (steps.real-tests.outcome == 'success' || steps.real-tests.outcome == 'failure') }}

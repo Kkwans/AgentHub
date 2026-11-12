@@ -41,3 +41,13 @@
 `a0ac4ee` / run `43204228039` real-service job `131135186122` 成功。新增内容态正式项目、7事项、3会话与四宽双主题展开/折叠和Projects三状态全部实际执行；也保留原140图几何通过。人工已查看Projects390初始、Home390深色及1440浅色内容态：筛选工具栏不再挤压首屏，但手机长事项描述占用较多纵向空间，下一切片收敛摘要层级。
 
 中文字体以CDP实际glyph而非外观推断为准：八个宽度/主题组合的中文标题与说明全部命中 `WenQuanYi Zen Hei`（系统字体），不是宋体。标题/正文computed栈被pinharness覆盖为system-ui；Geist字体face未加载。后续应统一已有字体token并验证实际命中，不通过只给CI安装字体伪装产品可移植性。
+
+## 字体统一后的实拍复核
+
+`abbe5663` 精确CI两个job均成功；8组真实glyph中英文Agent命中 `Geist-Regular` custom字体（6 glyph），中文标题/说明仍为系统 `WenQuanYi Zen Hei`（4/15 glyph）。人工抽查Home390/768/1440、Projects390/1024、Prompt1440及Workspace390，未发现新增正文横溢出或标题裁切，归档徽章“已归档”与中性色实拍通过。140项几何0 violations，但releaseReady仍false。
+
+Home标题computed650不证明存在中文650原生字形，系统fallback的实际笔画仍偏常规。下个仅Home h1的小切片允许weight合成，正文/mono保持禁止合成；这是可逆的浏览器能力开关，不是安装中文字体。最终视觉效果仍须对照新截图，不以computed值替代审美验收。
+
+### fe878f3 移动事项实际复核
+
+精确run 43208909811 real artifact的ZIP digest核对一致。390双主题单行从约187px降至142px（按分隔线差值），首屏约2.8条增至3.6条；展开恢复全文、独立收起按钮焦点环可见，查看动作保持右上，未见遮挡或横向溢出。768标题/说明本来均适配两行，无多余展开控件，密度不变符合实测裁切规则。CI覆盖Enter展开/Space收起及原href、5/7数量；此次新增收起后焦点断言仍待新CI，不把旧截图视为完整Tab顺序验收。

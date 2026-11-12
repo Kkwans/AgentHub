@@ -317,6 +317,7 @@ test.describe('Home populated real-service visual acceptance', () => {
               await collapseDetails.focus();
               await page.keyboard.press('Space');
               await expect(attention.getByRole('button', { name: /^收起详情：/ })).toHaveCount(0);
+              await expect(detailButton).toBeFocused();
               await expect(rowLink).toHaveAttribute('href', destination!);
               await expect(attention.getByRole('link')).toHaveCount(5);
             }
