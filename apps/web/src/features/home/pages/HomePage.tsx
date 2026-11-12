@@ -1,7 +1,15 @@
-import { AhStatusPill, AlertTriangle, ArrowRight, Bot, CircleStop } from '@agenthub/ui';
+import {
+  AhButton,
+  AhDialog,
+  AhStatusPill,
+  AlertTriangle,
+  ArrowRight,
+  Bot,
+  CircleStop,
+} from '@agenthub/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import type {
   AgentRecord,
@@ -23,6 +31,8 @@ type HomeData = {
 
 export function HomePage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [choosingProject, setChoosingProject] = useState(false);
   const bootstrapWindow =
     typeof window !== 'undefined'
       ? (window as Window & {
@@ -81,7 +91,22 @@ export function HomePage() {
     () => (projects.data ?? []).filter((project) => project.kind === 'TEST'),
     [projects.data],
   );
-  const activeProject = standardProjects.find((project) => project.status === 'ACTIVE');
+  const activeProjects = standardProjects.filter((project) => project.status === 'ACTIVE');
+  const activeProject = activeProjects.length === 1 ? activeProjects[0] : undefined;
+  const chooseProject = (id: string) => {
+    // Read current cache, not the item captured before a background refresh.
+    const current = queryClient
+      .getQueryData<ProjectRecord[]>(['projects'])
+      ?.find(
+        (project) =>
+          project.id === id &&
+          project.status === 'ACTIVE' &&
+          (project.kind ?? 'STANDARD') === 'STANDARD',
+      );
+    if (!current || projects.isFetching || projects.error) return;
+    setChoosingProject(false);
+    navigate(`/projects/${encodeURIComponent(current.id)}/work/new`);
+  };
   const dashboardRunning = dashboard.data?.runningSessions ?? [];
   const dashboardApprovals = dashboard.data?.pendingApprovals ?? [];
   const dashboardTasks = dashboard.data?.attentionTasks ?? [];
@@ -214,12 +239,26 @@ export function HomePage() {
                   : '连接工作目录，让 Agent 在清晰的项目上下文中协作。'}
               </p>
             </div>
-            <Link
-              className={homeStyles.primaryAction}
-              to={activeProject ? `/projects/${activeProject.id}/work/new` : '/projects/new'}
-            >
-              {activeProject ? '新建工作' : '创建项目'} <ArrowRight size={16} aria-hidden="true" />
-            </Link>
+            <div className={homeStyles.newWorkTarget}>
+              {activeProjects.length > 1 ? (
+                <button
+                  type="button"
+                  className={homeStyles.primaryAction}
+                  onClick={() => setChoosingProject(true)}
+                >
+                  新建工作 <ArrowRight size={16} aria-hidden="true" />
+                </button>
+              ) : (
+                <Link
+                  className={homeStyles.primaryAction}
+                  to={activeProject ? `/projects/${activeProject.id}/work/new` : '/projects/new'}
+                >
+                  {activeProject ? '新建工作' : '创建项目'}{' '}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              )}
+              {activeProject ? <span>目标项目：{activeProject.name}</span> : null}
+            </div>
           </header>
           {detailsReady ? (
             <>
@@ -369,6 +408,37 @@ export function HomePage() {
           ) : null}
         </>
       ) : null}
+      <AhDialog
+        open={choosingProject}
+        title="选择工作所属项目"
+        description="先确认目录，再填写工作内容。这里只显示活跃的正式项目。"
+        onClose={() => setChoosingProject(false)}
+        actions={
+          <AhButton variant="default" onClick={() => setChoosingProject(false)}>
+            取消
+          </AhButton>
+        }
+      >
+        <div className={homeStyles.projectChoices}>
+          {activeProjects.map((project) => (
+            <button
+              type="button"
+              key={project.id}
+              className={homeStyles.projectChoice}
+              disabled={projects.isFetching || Boolean(projects.error)}
+              onClick={() => chooseProject(project.id)}
+            >
+              <strong>{project.name}</strong>
+              <code>{project.rootPath}</code>
+            </button>
+          ))}
+          {activeProjects.length === 0 ? (
+            <p role="status">暂无活跃正式项目，请返回创建项目。</p>
+          ) : null}
+          {projects.isFetching ? <p role="status">正在更新项目，请稍候。</p> : null}
+          {projects.error ? <p role="alert">项目列表无法确认，请关闭后重试。</p> : null}
+        </div>
+      </AhDialog>
     </div>
   );
 }

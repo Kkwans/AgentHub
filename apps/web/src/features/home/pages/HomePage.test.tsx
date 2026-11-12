@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HomePage } from './HomePage';
 
@@ -17,6 +17,9 @@ afterEach(() => {
   if (originalFonts) Object.defineProperty(document, 'fonts', originalFonts);
   else Reflect.deleteProperty(document, 'fonts');
 });
+function RouteProbe() {
+  return <output data-testid="route">{useLocation().pathname}</output>;
+}
 function mount(overrides: Record<string, unknown> = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
@@ -34,6 +37,7 @@ function mount(overrides: Record<string, unknown> = {}) {
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <HomePage />
+        <RouteProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -41,6 +45,51 @@ function mount(overrides: Record<string, unknown> = {}) {
 const project = { id: 'p1', name: '真实项目', kind: 'STANDARD', status: 'ACTIVE', repoKind: 'GIT' };
 
 describe('首页行动优先', () => {
+  it('多个正式活跃项目先选择目录，不默认第一个', async () => {
+    mount({
+      projects: [
+        { ...project, rootPath: '/repo/one' },
+        { ...project, id: 'p2', rootPath: '/repo/two' },
+        { ...project, id: 'test', name: '不应选择测试', kind: 'TEST' },
+        { ...project, id: 'archived', name: '不应选择归档', status: 'ARCHIVED' },
+      ],
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '新建工作' }));
+    const dialog = screen.getByRole('dialog', { name: '选择工作所属项目' });
+    expect(within(dialog).queryByText('不应选择测试')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('不应选择归档')).not.toBeInTheDocument();
+    expect(screen.getByTestId('route')).toHaveTextContent(/^\/$/);
+    fireEvent.click(within(dialog).getByRole('button', { name: /repo\/two/ }));
+    expect(screen.getByTestId('route')).toHaveTextContent('/projects/p2/work/new');
+  });
+  it('取消选择不导航，刷新归档项目后旧选项不能导航', async () => {
+    mount({ projects: [project, { ...project, id: 'p2', rootPath: '/repo/two' }] });
+    fireEvent.click(await screen.findByRole('button', { name: '新建工作' }));
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    expect(screen.getByTestId('route')).toHaveTextContent(/^\/$/);
+    fireEvent.click(screen.getByRole('button', { name: '新建工作' }));
+    const stale = screen.getByRole('button', { name: /repo\/two/ });
+    await act(async () => {
+      clients[0]!.setQueryData(
+        ['projects'],
+        [project, { ...project, id: 'p2', status: 'ARCHIVED', rootPath: '/repo/two' }],
+      );
+    });
+    fireEvent.click(stale);
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /repo\/two/ })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('route')).toHaveTextContent(/^\/$/);
+  });
+  it('单个活跃项目旁明确注明目标', async () => {
+    mount({ projects: [project] });
+    expect(await screen.findByText('目标项目：真实项目')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '新建工作' })).toHaveAttribute(
+      'href',
+      '/projects/p1/work/new',
+    );
+  });
+
   it('首次进入只提供一个创建入口与紧凑指南，不渲染重复空卡', async () => {
     mount();
     expect(await screen.findByRole('heading', { name: '让工作有一个落脚点' })).toBeInTheDocument();

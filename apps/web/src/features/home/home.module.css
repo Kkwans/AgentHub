@@ -368,3 +368,57 @@
     outline-offset: 2px;
   }
 }
+
+.newWorkTarget {
+  max-width: 320px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.newWorkTarget > span {
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.newWorkTarget > button {
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.projectChoices {
+  display: grid;
+  gap: 12px;
+}
+.projectChoice {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--ah-border-default);
+  border-radius: 8px;
+  background: var(--ah-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.projectChoice code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.projectChoice:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+.projectChoice:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+  .newWorkTarget {
+    width: 100%;
+    max-width: none;
+  }
+}
