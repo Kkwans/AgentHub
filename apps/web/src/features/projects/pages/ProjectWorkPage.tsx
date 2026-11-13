@@ -360,10 +360,12 @@ export function ProjectWorkPage() {
     else next.delete('view');
     setSearchParams(next);
   };
-  const selectTask = (task: TaskRecord) => {
+  const selectTask = (task: TaskRecord, fromBoard = false) => {
     setSelectedId(task.id);
     const next = new URLSearchParams(searchParams);
     next.set('task', task.id);
+    // Commit selection and board exit together; two URL writes can lose task/agentId.
+    if (fromBoard) next.delete('view');
     if (task.id !== selected?.id) {
       next.delete('agentId');
       setAgentChoice(undefined);
@@ -512,10 +514,7 @@ export function ProjectWorkPage() {
                             type="button"
                             className={projectsStyles.boardCard}
                             key={task.id}
-                            onClick={() => {
-                              selectTask(task);
-                              setWorkView('list');
-                            }}
+                            onClick={() => selectTask(task, true)}
                           >
                             <strong>{task.title}</strong>
                             <small>

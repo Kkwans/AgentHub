@@ -866,6 +866,8 @@ test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, te
     await summary.focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('link', { name: '编辑类型' })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await attachViewportScreenshot(page, testInfo, 'project-header-expanded');
   }
   await expect(page.getByText('1 个登记可用 Agent', { exact: true })).toBeVisible();
   if (compactHeader) {
@@ -894,6 +896,23 @@ test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, te
   });
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'project-overview');
+  if (compactHeader) {
+    await page.route(`**/api/v1/projects/${project.id}/agent-eligibility`, async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: '资格服务暂时不可用' } }),
+      });
+    });
+    await page.reload();
+    await expect(page.getByText('Agent 资格读取失败', { exact: true })).toBeVisible({
+      timeout: SHELL_READY_TIMEOUT,
+    });
+    await expect(page.getByRole('link', { name: '编辑类型' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: '新建工作', exact: true }).first()).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await attachViewportScreenshot(page, testInfo, 'project-header-warning');
+  }
 });
 
 test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', async ({ page }, testInfo) => {

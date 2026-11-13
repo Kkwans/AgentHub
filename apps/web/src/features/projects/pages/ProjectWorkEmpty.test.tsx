@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ProjectContextLayout } from './ProjectContextLayout';
 import { ProjectWorkPage } from './ProjectWorkPage';
@@ -53,6 +53,9 @@ function registeredEligibility(agents = selectableAgents, projectId = project.id
     })),
   };
 }
+function LocationProbe() {
+  return <output data-testid="work-location">{useLocation().search}</output>;
+}
 function mount(
   rows: unknown[] | Promise<unknown[]> = [],
   query = '',
@@ -60,6 +63,7 @@ function mount(
   eligibility: unknown = registeredEligibility(),
   worktrees: unknown[] | Promise<unknown[]> = [],
   targets: unknown[] = [],
+  observeLocation = false,
 ) {
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path === `/projects/${project.id}`) return project as T;
@@ -76,6 +80,7 @@ function mount(
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/projects/${project.id}/work${query}`]}>
+        {observeLocation ? <LocationProbe /> : null}
         <Routes>
           <Route path="/workspace/:sessionId" element={<h2>已进入工作区</h2>} />
           <Route path="/projects/:projectId" element={<ProjectContextLayout />}>
@@ -1546,4 +1551,27 @@ it('桌面工作状态和Agent筛选保持可见，不增加折叠按钮', async
   expect(await screen.findByRole('combobox', { name: '工作状态' })).toBeVisible();
   expect(screen.getByRole('combobox', { name: '工作 Agent' })).toBeVisible();
   expect(screen.queryByRole('button', { name: /^筛选/ })).not.toBeInTheDocument();
+});
+
+it('看板选择一次写入task与列表视图，保留其他参数并清除旧Agent选择', async () => {
+  const second = { ...task, id: 'task-2', title: '第二项工作', status: 'READY' };
+  mount(
+    [task, second],
+    '?view=board&status=READY&agentId=old-agent&promptId=prompt-1',
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    true,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: /第二项工作/ }));
+  const params = new URLSearchParams(screen.getByTestId('work-location').textContent ?? '');
+  expect(params.get('task')).toBe('task-2');
+  expect(params.has('view')).toBe(false);
+  expect(params.get('status')).toBe('READY');
+  expect(params.get('promptId')).toBe('prompt-1');
+  expect(params.has('agentId')).toBe(false);
+  expect(screen.getByRole('complementary', { name: '工作 Inspector' })).toHaveTextContent(
+    '第二项工作',
+  );
 });
