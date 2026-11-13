@@ -775,21 +775,24 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       [],
     );
   };
-  await assertWorkspaceTabRelations();
-  await attachViewportScreenshot(page, testInfo, 'workspace-initial');
-
-  if (viewportWidth >= 1_180) {
-    await expect(page.getByRole('button', { name: '隐藏检查器' })).toBeVisible();
-    const inspector = page.getByRole('tablist', { name: '检查器视图' });
-    await expect(inspector.getByRole('tab', { name: '变更' })).toBeVisible();
-    await expect(inspector.getByRole('tab', { name: '文件' })).toBeVisible();
-    await expect(inspector.getByRole('tab', { name: '活动' })).toBeVisible();
-    await expect(inspector.getByRole('tab', { name: 'Run' })).toBeVisible();
-    await attachViewportScreenshot(page, testInfo, 'workspace-three-column');
-    await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+  const captureReviewHierarchy = async () => {
+    await page
+      .getByRole('tablist', { name: '检查器视图' })
+      .getByRole('tab', { name: '变更', exact: true })
+      .click();
+    const metadata = page.locator('.git-metadata');
+    await expect(metadata).not.toHaveAttribute('open', '');
+    await expect(page.locator('.git-summary strong')).toHaveText('feature/agent-discovery');
+    await expect(page.getByText('有未提交变更', { exact: true })).toBeVisible();
+    await metadata.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(metadata).toHaveAttribute('open', '');
+    await expect(metadata.getByText('abcdef1234567890', { exact: true })).toBeVisible();
+    await expect(
+      metadata.getByText('origin/feature/agent-discovery', { exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(metadata).not.toHaveAttribute('open', '');
     await page
       .getByRole('button', {
         name: '查看 apps/web/src/features/workspace/workspace.module.css Diff',
@@ -807,10 +810,47 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     const diffHeader = await page.locator('.git-selected-diff-heading').boundingBox();
     const diffControls = await page.locator('.git-selected-diff > .git-diff-toolbar').boundingBox();
     const diffEditor = await page.locator('.git-selected-diff > .git-diff-editor').boundingBox();
-    expect(diffHeader!.height).toBeLessThanOrEqual(64);
-    expect(diffControls!.height).toBeLessThanOrEqual(56);
-    expect(diffEditor!.height).toBeGreaterThanOrEqual(260);
+    if (viewportWidth >= 1180) {
+      expect(diffHeader!.height).toBeLessThanOrEqual(64);
+      expect(diffControls!.height).toBeLessThanOrEqual(56);
+      expect(diffEditor!.height).toBeGreaterThanOrEqual(260);
+    }
+
+    const summary = await page.locator('.git-summary').boundingBox();
+    const viewbar = await page.locator('.git-viewbar').boundingBox();
+    const source = await modifiedLines.boundingBox();
+    expect(source?.height).toBeGreaterThan(0);
+    await testInfo.attach(`review-hierarchy-${testInfo.project.name}`, {
+      body: JSON.stringify({
+        viewportWidth,
+        summary,
+        viewbar,
+        diffHeader,
+        diffControls,
+        diffEditor,
+        source,
+      }),
+      contentType: 'application/json',
+    });
+    await expectNoHorizontalOverflow(page);
     await attachViewportScreenshot(page, testInfo, 'workspace-review-diff');
+  };
+  await assertWorkspaceTabRelations();
+  await attachViewportScreenshot(page, testInfo, 'workspace-initial');
+
+  if (viewportWidth >= 1_180) {
+    await expect(page.getByRole('button', { name: '隐藏检查器' })).toBeVisible();
+    const inspector = page.getByRole('tablist', { name: '检查器视图' });
+    await expect(inspector.getByRole('tab', { name: '变更' })).toBeVisible();
+    await expect(inspector.getByRole('tab', { name: '文件' })).toBeVisible();
+    await expect(inspector.getByRole('tab', { name: '活动' })).toBeVisible();
+    await expect(inspector.getByRole('tab', { name: 'Run' })).toBeVisible();
+    await attachViewportScreenshot(page, testInfo, 'workspace-three-column');
+    await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await captureReviewHierarchy();
     await page.getByRole('button', { name: '按目录显示变更' }).click();
     await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(
       'aria-pressed',
@@ -872,6 +912,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await auxiliary.getByRole('tab', { name: '检查器' }).click();
     await expect(page.getByRole('button', { name: '关闭检查器' })).toBeVisible();
     await assertMediumOpenGeometry();
+    await captureReviewHierarchy();
     await page
       .getByRole('tablist', { name: '检查器视图' })
       .getByRole('tab', { name: '文件' })
@@ -891,6 +932,8 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(views).toBeHidden();
     const inspectorViews = page.getByRole('tablist', { name: '检查器视图' });
     await expect(inspectorViews).toBeVisible();
+    await captureReviewHierarchy();
+    await inspectorViews.getByRole('tab', { name: '文件', exact: true }).click();
     // Use the Inspector's keyboard-accessible tabs inside its focus trap.
     await inspectorViews.getByRole('tab', { name: '文件', exact: true }).focus();
     await page.keyboard.press('ArrowRight');

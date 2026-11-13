@@ -62,6 +62,9 @@ export function GitChangesTree({
   const [commitPending, setCommitPending] = useState(false);
   const [commitError, setCommitError] = useState<Error>();
   const [commitDockOpen, setCommitDockOpen] = useState(false);
+  const [retainCommitDraft, setRetainCommitDraft] = useState(false);
+  const commitFormOpen =
+    commitPending || (commitDockOpen && (selectedPaths.length > 0 || retainCommitDraft));
   const changeTree = useMemo(
     () => buildGitChangeTree(status.data?.entries ?? []),
     [status.data?.entries],
@@ -72,11 +75,13 @@ export function GitChangesTree({
     setCommitPending(true);
     void onCommit({ paths: selectedPaths, message: commitMessage.trim() })
       .then((receipt) => {
+        setRetainCommitDraft(false);
         setSelectedPaths([]);
         setCommitMessage('');
         setCommitReceipt(receipt.sha ? `提交完成：${receipt.sha.slice(0, 12)}` : '提交完成');
       })
       .catch((error: unknown) => {
+        setRetainCommitDraft(true);
         setCommitError(error instanceof Error ? error : new Error('Git 提交失败。'));
       })
       .finally(() => setCommitPending(false));
@@ -126,14 +131,21 @@ export function GitChangesTree({
         <GitBranch size={16} />
         <div>
           <strong>{status.data?.branch ?? 'Git'}</strong>
-          <code>{status.data?.headSha?.slice(0, 12) ?? '无 HEAD'}</code>
-          {status.data?.upstream && (
-            <small>
-              {status.data.upstream}
-              {status.data.ahead ? `，ahead ${status.data.ahead}` : ''}
-              {status.data.behind ? `，behind ${status.data.behind}` : ''}
+          {status.data && !status.data.headSha ? <small>无 HEAD</small> : null}
+          {status.data?.ahead || status.data?.behind ? (
+            <small className="git-sync-state">
+              {status.data?.ahead ? `ahead ${status.data.ahead}` : ''}
+              {status.data?.ahead && status.data?.behind ? ' · ' : ''}
+              {status.data?.behind ? `behind ${status.data.behind}` : ''}
             </small>
-          )}
+          ) : null}
+          {status.data?.headSha || status.data?.upstream ? (
+            <details className="git-metadata">
+              <summary>Git 详情</summary>
+              {status.data.headSha ? <code>{status.data.headSha}</code> : null}
+              {status.data.upstream ? <small>{status.data.upstream}</small> : null}
+            </details>
+          ) : null}
         </div>
         {status.data && (
           <span className={`git-clean-state ${status.data.clean ? 'clean' : 'dirty'}`}>
@@ -142,8 +154,58 @@ export function GitChangesTree({
         )}
       </div>
 
-      <div className="git-viewbar">
-        <strong>{viewLabels[view]}</strong>
+      <div className="git-viewbar git-review-toolbar">
+        <div className="git-review-count">
+          {' '}
+          <strong>
+            {view === 'changes' && status.data && !status.isLoading && !status.error
+              ? `${status.data.entries.length} 个变更`
+              : viewLabels[view]}
+          </strong>
+          {view === 'changes' &&
+          status.data &&
+          !status.data.clean &&
+          !status.isLoading &&
+          !status.error &&
+          !selectedPaths.length &&
+          !commitError &&
+          !commitReceipt &&
+          !commitPending &&
+          !retainCommitDraft ? (
+            <small className="git-selection-hint">勾选文件后提交</small>
+          ) : null}
+        </div>
+        {view === 'changes' &&
+        status.data &&
+        !status.data.clean &&
+        !status.isLoading &&
+        !status.error ? (
+          <div className="git-change-actions">
+            <button
+              type="button"
+              aria-label="按目录显示变更"
+              aria-pressed={treeLayout}
+              onClick={() => setTreeLayout((value) => !value)}
+            >
+              {treeLayout ? '目录' : '列表'}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                (() => {
+                  const next =
+                    selectedPaths.length === status.data?.entries.length
+                      ? []
+                      : (status.data?.entries.map((entry) => entry.path) ?? []);
+                  setSelectedPaths(next);
+                  setCommitDockOpen(next.length > 0);
+                })()
+              }
+            >
+              {selectedPaths.length === status.data?.entries.length ? '取消全选' : '全选'}
+            </button>
+          </div>
+        ) : null}
         <div className="git-view-actions">
           <details className="git-more-menu">
             <summary>更多 Git</summary>
@@ -178,6 +240,18 @@ export function GitChangesTree({
         </p>
       )}
 
+      {commitError && (
+        <div className="workspace-query-error" role="alert">
+          <span>{commitError.message}</span>
+          <button
+            type="button"
+            onClick={commit}
+            disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
+          >
+            重试提交
+          </button>
+        </div>
+      )}
       {view === 'changes' &&
         (status.isLoading ? (
           <LoadingState label="正在读取 Git 状态" />
@@ -187,32 +261,6 @@ export function GitChangesTree({
           <EmptyState title="工作区干净" description="没有 staged、unstaged 或 untracked 文件。" />
         ) : (
           <>
-            <div className="git-selection-heading">
-              <span>{status.data?.entries.length ?? 0} 个变更</span>
-              <button
-                type="button"
-                aria-label="按目录显示变更"
-                aria-pressed={treeLayout}
-                onClick={() => setTreeLayout((value) => !value)}
-              >
-                {treeLayout ? '目录' : '列表'}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  (() => {
-                    const next =
-                      selectedPaths.length === status.data?.entries.length
-                        ? []
-                        : (status.data?.entries.map((entry) => entry.path) ?? []);
-                    setSelectedPaths(next);
-                    setCommitDockOpen(next.length > 0);
-                  })()
-                }
-              >
-                {selectedPaths.length === status.data?.entries.length ? '取消全选' : '全选'}
-              </button>
-            </div>
             <div
               className="change-list git-change-list"
               role="tree"
@@ -232,76 +280,73 @@ export function GitChangesTree({
                 />
               ))}
             </div>
-            <div className={`git-commit-dock${selectedPaths.length ? ' has-selection' : ''}`}>
-              <div className="git-commit-dock-summary">
-                <span>
-                  {selectedPaths.length
-                    ? `已选择 ${selectedPaths.length} 个文件`
-                    : '勾选文件后提交'}
-                </span>
-                {selectedPaths.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setCommitDockOpen((value) => !value)}
-                    aria-expanded={commitDockOpen}
+            {selectedPaths.length > 0 ||
+            commitError ||
+            commitReceipt ||
+            commitPending ||
+            retainCommitDraft ? (
+              <div className={`git-commit-dock${selectedPaths.length ? ' has-selection' : ''}`}>
+                <div className="git-commit-dock-summary">
+                  <span>
+                    {selectedPaths.length
+                      ? `已选择 ${selectedPaths.length} 个文件`
+                      : '勾选文件后提交'}
+                  </span>
+                  {(selectedPaths.length > 0 || retainCommitDraft) && (
+                    <button
+                      type="button"
+                      onClick={() => setCommitDockOpen((value) => !value)}
+                      aria-expanded={commitFormOpen}
+                      disabled={commitPending}
+                    >
+                      {commitFormOpen ? '收起' : '填写提交说明'}
+                    </button>
+                  )}
+                </div>
+                {commitFormOpen && (
+                  <form
+                    className="git-commit-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (selectedPaths.length && commitMessage.trim()) commit();
+                    }}
                   >
-                    {commitDockOpen ? '收起' : '填写提交说明'}
-                  </button>
+                    <label>
+                      <span>提交说明</span>
+                      <textarea
+                        value={commitMessage}
+                        maxLength={10_000}
+                        rows={2}
+                        placeholder="说明这次变更解决了什么"
+                        onChange={(event) => {
+                          setCommitReceipt(undefined);
+                          setCommitError(undefined);
+                          setCommitMessage(event.target.value);
+                        }}
+                      />
+                    </label>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
+                      loading={commitPending}
+                    >
+                      <GitCompareArrows size={16} />
+                      {commitPending ? '正在提交…' : `提交所选文件 (${selectedPaths.length})`}
+                    </Button>
+                    <small>只提交勾选文件，不会混入其他已暂存变更。</small>
+                  </form>
                 )}
               </div>
-              {selectedPaths.length > 0 && commitDockOpen && (
-                <form
-                  className="git-commit-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (selectedPaths.length && commitMessage.trim()) commit();
-                  }}
-                >
-                  <label>
-                    <span>提交说明</span>
-                    <textarea
-                      value={commitMessage}
-                      maxLength={10_000}
-                      rows={2}
-                      placeholder="说明这次变更解决了什么"
-                      onChange={(event) => {
-                        setCommitReceipt(undefined);
-                        setCommitError(undefined);
-                        setCommitMessage(event.target.value);
-                      }}
-                    />
-                  </label>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
-                    loading={commitPending}
-                  >
-                    <GitCompareArrows size={16} />
-                    {commitPending ? '正在提交…' : `提交所选文件 (${selectedPaths.length})`}
-                  </Button>
-                  <small>只提交勾选文件，不会混入其他已暂存变更。</small>
-                  {commitError && (
-                    <div className="workspace-query-error" role="alert">
-                      <span>{commitError.message}</span>
-                      <button type="button" onClick={commit}>
-                        重试提交
-                      </button>
-                    </div>
-                  )}
-                </form>
-              )}
-            </div>
+            ) : null}
             {selectedPath && (
               <section className="git-selected-diff" aria-label={`已选择 ${selectedPath} 的 Diff`}>
                 <div className="git-selected-diff-heading">
                   <div>
-                    <span>选中文件</span>
                     <code title={selectedPath} aria-label={selectedPath}>
                       {selectedPath.split('/').at(-1)}
                     </code>
                   </div>
-                  <span>Diff</span>
                 </div>
                 <div className="git-diff-toolbar">
                   <label className="git-diff-toggle">

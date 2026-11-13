@@ -311,3 +311,46 @@
 .workspace :global(.git-summary > div) {
   flex: 1 1 auto;
 }
+
+/* Review hierarchy: keep branch/risk identity, disclose technical metadata. */
+.workspace :global(.git-metadata summary) {
+  width: fit-content;
+  min-height: 24px;
+  color: var(--workspace-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.workspace :global(.git-metadata summary:focus-visible) {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+.workspace :global(.git-metadata code),
+.workspace :global(.git-metadata small) {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.workspace :global(.git-review-toolbar) {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.workspace :global(.git-change-actions) {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.workspace :global(.git-review-toolbar .git-view-actions) {
+  margin-left: 0;
+}
+.workspace :global(.git-selection-hint) {
+  margin: 0;
+  display: block;
+  color: var(--workspace-muted);
+  font-size: 11px;
+  line-height: 18px;
+}
+.workspace :global(.git-selected-diff-heading) {
+  min-height: 36px;
+  padding-block: 6px;
+}
