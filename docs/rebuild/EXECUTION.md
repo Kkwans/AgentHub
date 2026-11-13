@@ -1143,3 +1143,7 @@ CR/类型检查发现并修复rework误插setup catch；startup回归又发现�
 21:23 UTC 候选定向验收：domain35项、runtime8项、前端5文件103项、普通Git/环境/资源3文件13项、最终Worktree3文件59项分别通过；全仓types/lint、Web build通过。最终组合曾2项失败，原因测试在上一案例遗留UNKNOWN后再次调用strict初始化，已改为真实boot-before-work共享runtime，未删隔离证据或放宽gate，Worktree重跑59项通过。独立前端CR修复畸形POST SHA先清marker导致无法恢复的问题；恢复generation fence与真实存储失败说明已补。E2E新增reload+404仍仅一次POST断言，尚未本地浏览器执行。新精确全量/CI待验收，不宣称整体验收完成。
 
 21:31 UTC 首个生产接线冻结候选tree83dc7e2全量结束：165文件通过/1失败/4跳过，1654测试通过/3失败/10跳过，401.40s。3失败全部来自WorkspacePage旧fixture：非法project UUID、旧POST协议/缺少持久GET、忽略新增恢复marker。已按真实契约修复测试（不是生产代码放宽）；整个WorkspacePage30项通过，types/lint/独立CR通过，布局/草稿/一次POST断言保留，非恢复storage精确保持不变。此前fba231e只创建Git对象，未更新开发分支。新完整冻结验收进行后再决定发布。
+
+21:38 UTC 修复后精确tree6cb26e6冻结全量完成：166文件通过/4跳过，1657测试通过/10跳过，407.50s；此前三个旧fixture失败全部闭环。通过后才发布6e1346c到开发分支，未合并main。精确远端CI/真实浏览器仍待结果。
+
+审查另外修订optional live Codex测试直调commit的旧请求协议：现在附protocolVersion/UUID operationId及status中的expectedHead。该live用例需要真实外部Codex环境，本次未运行；只验证类型/lint/format，不能把静态验收称为真实Codex执行通过。

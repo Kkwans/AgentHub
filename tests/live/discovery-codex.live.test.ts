@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { execFile as execFileCallback } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -380,10 +381,11 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
 
       const fileContent = await readFile(join(repoRoot, 'approval-live.txt'), 'utf8');
       expect(fileContent).toBe('AgentHub real Codex approval workflow\n');
-      const status = await apiRequest<{ clean: boolean; entries: Array<{ path: string }> }>(
-        apiRoot,
-        `/projects/${project.id}/git/status`,
-      );
+      const status = await apiRequest<{
+        clean: boolean;
+        headSha?: string;
+        entries: Array<{ path: string }>;
+      }>(apiRoot, `/projects/${project.id}/git/status`);
       expect(status.entries.map((entry) => entry.path)).toContain('approval-live.txt');
       // Git does not include an untracked file in `git diff` until it receives
       // an intent-to-add index entry; this mirrors the Workspace file picker
@@ -395,6 +397,9 @@ liveDescribe('真实 Server discovery → Codex adopt 闭环', () => {
       await apiRequest(apiRoot, `/projects/${project.id}/git/commit`, {
         method: 'POST',
         body: {
+          protocolVersion: 1,
+          operationId: randomUUID(),
+          expectedHead: status.headSha ?? null,
           message: 'test: 提交真实 Codex Approval 输出',
           mode: 'SELECTED',
           paths: ['approval-live.txt'],
