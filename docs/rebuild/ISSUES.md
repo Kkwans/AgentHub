@@ -339,3 +339,7 @@ AH-082最终本地验收：1133完整覆盖/10原有skip、79专项、lint/types
 
 - 独立PGlite及两个TaskService barrier确认，两请求在Task绑定前已各创建Session；第二请求随后INVALID_STATE_TRANSITION，但保留READY孤立Session。该Session通过真实RunRepository仍能新建RUNNING，普通预留和旧Session准入必须共同修复。
 - 只用fake runtime；实际createSession/sendTurn双派发尚未实测。新专项方案TASK-START-ADMISSION.md仍为设计，AH-001跨实例预留保持开放。
+
+AH-082当前验收：7b05581精确CI43367292783双绿，关闭错误释放槽位/迟到失败覆盖的当前切片；不是专用调用者独占。
+
+AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CAS，21专项、1154完整覆盖/10原有skip及独立CR通过。问题仍开放；S66必须完整接入创建未知恢复、Run当前归属/原子移交、旧数据保守处理和最小核对接口，不能只启用reserve。

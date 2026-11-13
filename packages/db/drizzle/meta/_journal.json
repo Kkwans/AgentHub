@@ -71,6 +71,13 @@
       "when": 1794517300000,
       "tag": "0009_task_prompt_variables",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794546012956,
+      "tag": "0010_task_start_attempts",
+      "breakpoints": true
     }
   ]
 }

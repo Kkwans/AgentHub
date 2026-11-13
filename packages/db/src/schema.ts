@@ -804,7 +804,48 @@ export const gitSnapshots = pgTable(
   ],
 );
 
+// Dormant foundation for recoverable ordinary Task start admission. Historical
+// Sessions are deliberately not backfilled with guessed external-call evidence.
+export const taskStartAttempts = pgTable(
+  'task_start_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    taskId: uuid('task_id')
+      .notNull()
+      .references(() => tasks.id),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => agentSessions.id),
+    expectedOldSessionId: uuid('expected_old_session_id'),
+    kind: text('kind').notNull(),
+    phase: text('phase').notNull(),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id),
+    inputHash: text('input_hash').notNull(),
+    runId: uuid('run_id'),
+    errorCode: text('error_code'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex('task_start_attempts_session_unique').on(table.sessionId),
+    uniqueIndex('task_start_attempts_active_task_unique')
+      .on(table.taskId)
+      .where(sql`${table.phase} in ('RESERVED', 'CREATE_ATTEMPTED', 'SESSION_READY', 'UNKNOWN')`),
+    check('task_start_attempts_kind_check', sql`${table.kind} in ('START', 'REWORK')`),
+    check(
+      'task_start_attempts_phase_check',
+      sql`${table.phase} in ('RESERVED', 'CREATE_ATTEMPTED', 'SESSION_READY', 'RUN_ADMITTED', 'FAILED_KNOWN', 'UNKNOWN')`,
+    ),
+  ],
+);
+
 export const schema = {
+  taskStartAttempts,
   appSettings,
   apiTokens,
   executionTargets,
