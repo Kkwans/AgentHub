@@ -300,7 +300,7 @@ it('手机列表进入单详情并返回保留反馈输入与筛选', async () =
     const field = await screen.findByRole('textbox', { name: '继续修改说明' });
     fireEvent.change(field, { target: { value: '保留我的反馈' } });
     expect(screen.queryByRole('region', { name: '工作列表' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
     expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: /待审阅任务/ }));
     expect(screen.getByRole('textbox', { name: '继续修改说明' })).toBe(field);
@@ -316,7 +316,7 @@ it('手机unknown返回列表仍保留原Inspector并阻止选其他工作', asy
     vi.mocked(api.post).mockRejectedValue(new Error('unknown network'));
     await rework();
     await screen.findByText('工作操作结果待核对');
-    fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
     fireEvent.click(screen.getByRole('button', { name: /第二项工作/ }));
     expect(screen.getByText('原工作仍在提交或等待核对，请先处理原操作。')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '返回原工作' }));
@@ -338,7 +338,7 @@ it.each(['?task=missing', '?task=missing&view=board'])(
         screen.queryByRole('complementary', { name: '工作 Inspector' }),
       ).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: '提交继续修改' })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+      fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
       expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
     } finally {
       media.mockRestore();
@@ -368,7 +368,7 @@ it.each(['task', 'worktree'] as const)(
         });
         fireEvent.click(screen.getByRole('button', { name: '提交隔离工作区返工' }));
       }
-      fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+      fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
       expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
       fireEvent.click(screen.getByRole('button', { name: /待审阅任务/ }));
       const response =
@@ -399,7 +399,7 @@ it('手机当前筛选排除选中工作，返回将焦点放到列表容器', a
   try {
     mount('task', false, '?task=t1&status=DONE');
     await screen.findByRole('textbox', { name: '继续修改说明' });
-    fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
     expect(screen.getByRole('region', { name: '工作列表' })).toHaveFocus();
   } finally {
     media.mockRestore();

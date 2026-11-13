@@ -950,7 +950,7 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
       .getByRole('region', { name: '工作列表' })
       .getByRole('button', { name: new RegExp(task.title) })
       .click();
-    await expect(page.getByRole('button', { name: '← 返回工作列表' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '返回工作列表' })).toBeVisible();
     await expect(page.getByRole('region', { name: '工作列表' })).toBeHidden();
   }
   await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();

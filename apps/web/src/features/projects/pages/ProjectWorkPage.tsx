@@ -490,7 +490,8 @@ export function ProjectWorkPage() {
           disabled={start.isPending}
           onClick={backToList}
         >
-          ← 返回工作列表
+          <ChevronLeft size={16} aria-hidden="true" />
+          返回工作列表
         </button>
       ) : null}
       {invalidDetail ? (

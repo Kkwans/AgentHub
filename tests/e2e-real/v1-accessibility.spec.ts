@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from './fixtures.js';
-import { seedWorkspace } from './baseline-support.js';
+import { apiData, seedWorkspace } from './baseline-support.js';
 
 const execFile = promisify(execFileCallback);
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -72,6 +72,13 @@ test.describe('v1 isolated real accessibility gate', () => {
   }) => {
     test.slow();
     const fixture = await seedWorkspace(context, app);
+    const detailTask = await apiData<{ id: string }>(context, 'post', '/tasks', {
+      projectId: fixture.project.id,
+      title: '真实工作详情无障碍检查',
+      description: '覆盖手机单详情中的执行配置与操作区域',
+      acceptanceCriteria: '详情中的可交互元素通过 axe 严重级检查',
+    });
+    const detailRoute = `/projects/${fixture.project.id}/work?task=${detailTask.id}`;
     const { stdout } = await execFile(
       '/usr/bin/git',
       ['-c', `safe.directory=${repositoryRoot}`, 'rev-parse', 'HEAD'],
@@ -97,6 +104,7 @@ test.describe('v1 isolated real accessibility gate', () => {
       '/agents/runtime',
       `/projects/${fixture.project.id}/overview`,
       `/projects/${fixture.project.id}/work`,
+      detailRoute,
       `/projects/${fixture.project.id}/sessions`,
       `/workspace/${fixture.session.id}`,
     ];
@@ -145,6 +153,14 @@ test.describe('v1 isolated real accessibility gate', () => {
                 await expect(page.locator('main, .workspace-shell').first()).toBeVisible({
                   timeout: 30_000,
                 });
+                if (route === detailRoute) {
+                  await expect(
+                    page.getByRole('complementary', { name: '工作 Inspector' }),
+                  ).toBeVisible({ timeout: 30_000 });
+                  await expect(
+                    page.getByRole('heading', { name: '真实工作详情无障碍检查' }),
+                  ).toBeVisible();
+                }
                 // Avoid sampling a control while the shell or route transition is still settling.
                 await page.waitForTimeout(250);
                 const result = await new AxeBuilder({ page })

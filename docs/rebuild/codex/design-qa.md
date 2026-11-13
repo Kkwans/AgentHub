@@ -167,3 +167,10 @@ a503精确CI43396836789现verify/real均成功；本轮新接线仍需发布后�
 - Return uses existing replace semantics and retains the selected Inspector, drafts and feedback. Pending review late results stay in the authenticated owner and do not navigate after leaving/re-entering detail. Local operation locks prevent selecting another task; Agent start pending disables the new return path. Invalid task URLs, including board combinations, never expose fallback writable actions.
 - Integrated focused tests: 95 passed; worker final expanded regression: 165 passed. Web TypeScript and CSS budget passed after conflict resolution. Independent static CR approved the integrated source; no new important declarations.
 - This is implementation, NOT visual acceptance. Exact published CI and new 390px list/detail/back screenshots are still required. Browser history push/Back restoration and generalized non-review cross-route persistence are not claimed.
+
+## 2026-11-13 09:38 UTC · Browser evidence coverage follow-up
+
+- Published mobile implementation is 8db535b / CI 43402016110; its new screenshots are pending, not accepted.
+- Added a real task detail route to the accessibility matrix, retaining the list route, with explicit Inspector/title readiness. This closes the gap introduced when mobile hides the Inspector on list entry.
+- Added a real 390px review test that fetches an actual service response, delays only its browser delivery, returns to the list and verifies focus, re-enters the same task, then releases the response. It requires one POST, unchanged task URL, preserved input and the server-confirmed session result link, with pending/result screenshots. Cleanup releases the gate; no synthetic success JSON.
+- Unified the back control with the existing ChevronLeft icon and a plain accessible name. Integrated 95 tests, types/lint/formatting passed. The two real E2E files collect 6 tests; actual browser execution remains CI-only. Independent static CR passed, including review of the current query lifecycle that preserves the form before delayed response delivery.

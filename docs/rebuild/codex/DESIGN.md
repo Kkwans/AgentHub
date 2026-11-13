@@ -22,7 +22,7 @@
 | C03  | 平铺文件与真实Diff                          | 0de fixture+real通过，实际Diff拉伸修复确认；e884继承文件名身份修正                               |
 | C04  | 全业务页统一布局                            | 455/e884业务页实图已看；ff/5c手机页头展开和异常图确认，a503警告可辨识性实图已验                  |
 | C05  | 四宽双主题实际浏览器与交互                  | 持续进行，455/e884 fixture成功；455/e884 real均已成功，持续发现并修复390细节，不作为最终视觉完成 |
-| C06  | 手机独立任务详情与安全导航                  | 4f20b57父owner/审阅保护已发布；显式返回的手机单Inspector切片测试中，尚未上线                     |
+| C06  | 手机独立任务详情与安全导航                  | 8db535b已发布单Inspector列表/详情；95项整合及156项追加回归通过，CI43402016110视觉待验                     |
 
 ## 问题台账
 
@@ -64,3 +64,9 @@
 ### 2026-11-13 09:30 UTC checkpoint
 
 Mobile work now has a real list/detail visible-state slice, not only a shorter header: same Inspector remains mounted, explicit return retains feedback, warnings stay outside the hidden header, invalid task URLs cannot expose another task's actions. Integrated 95 tests and independent CR passed; expanded worker regression 165 passed. Publication and exact CI visual gate remain pending. Existing replace-history semantics are retained intentionally.
+
+## 2026-11-13 09:35 UTC 发布后检查
+
+- 8db535b 已 fetch 核验源码树，手机列表/详情已发布到开发分支，未合并 main 或部署。精确 CI 43402016110 仍运行，暂无该版本新实图验收。
+- 发布源码追加7文件156项回归通过；读取旧4f20工作桌面与Workspace Diff截图并重看选定概念，只作对比基线。
+- 独立E2E审查发现原手机/work axe现在只覆盖列表，不能再代表详情；正补真实任务深链axe及真实review延迟响应返回/重入浏览器验证。

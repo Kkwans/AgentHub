@@ -188,3 +188,117 @@ for (const width of [390, 768, 1024, 1440]) {
     expect(errors).toEqual([]);
   });
 }
+
+test('真实390审阅pending返回并重入后晚成功保留结果且不自动导航', async ({
+  page,
+  context,
+  app,
+}, info) => {
+  const { project, agent } = await seedWorkspace(context, app);
+  const title = '手机延迟审阅结果保持原任务归属';
+  const task = await apiData<Task>(context, 'post', '/tasks', {
+    projectId: project.id,
+    title,
+    description: '返回列表不会丢失原操作结果',
+    acceptanceCriteria: '只提交一次，成功结果可显式打开',
+  });
+  await apiData(context, 'post', `/tasks/${task.id}/transition`, { status: 'READY' });
+  const first = await apiData<Started>(context, 'post', `/tasks/${task.id}/start`, {
+    agentId: agent.id,
+  });
+  await finishFixtureTurn(context, task.id, first);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const workPath = `/projects/${project.id}/work`;
+  const reviewPath = `/api/v1/tasks/${task.id}/review`;
+  const reviewURL = new URL(reviewPath, app.origin).href;
+  let postCount = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === reviewPath)
+      postCount += 1;
+  });
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let finishHandler!: () => void;
+  const handlerDone = new Promise<void>((resolve) => {
+    finishHandler = resolve;
+  });
+  let handlerStarted = false;
+  let fetched = false;
+  let handlerError: unknown;
+  let second: Started | undefined;
+  await page.route(reviewURL, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    handlerStarted = true;
+    try {
+      // The real server performs the operation. Only browser delivery is delayed.
+      const response = await route.fetch({ timeout: 15_000 });
+      expect(response.ok()).toBe(true);
+      second = ((await response.json()) as { data: Started }).data;
+      expect(second.session.id).not.toBe(first.session.id);
+      expect(second.run.id).not.toBe(first.run.id);
+      fetched = true;
+      await gate;
+      await route.fulfill({ response });
+    } catch (error) {
+      handlerError = error;
+      fetched = true;
+      await route.abort().catch(() => {});
+    } finally {
+      finishHandler();
+    }
+  });
+  const capture = async (state: string) => {
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const path = info.outputPath(`task-review-mobile-${state}-390.png`);
+    await page.screenshot({ path, fullPage: true });
+    await info.attach(`真实手机审阅 ${state}`, { path, contentType: 'image/png' });
+  };
+  try {
+    await page.goto(`${workPath}?task=${task.id}`);
+    await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
+    await page
+      .getByRole('textbox', { name: '继续修改说明' })
+      .fill('保留原反馈，完成后由我打开结果');
+    await page.getByRole('button', { name: '提交继续修改', exact: true }).click();
+    await expect.poll(() => fetched, { timeout: 20_000 }).toBe(true);
+    if (handlerError) throw handlerError;
+    expect(second).toBeDefined();
+    await expect(page.getByText('工作操作正在提交', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '返回工作列表' }).click();
+    await expect(page.getByRole('region', { name: '工作列表' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeHidden();
+    const originalRow = page
+      .getByRole('region', { name: '工作列表' })
+      .getByRole('button', { name: new RegExp(title) });
+    await expect(originalRow).toBeFocused();
+    await capture('pending-list');
+    await originalRow.click();
+    await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '继续修改说明' })).toHaveValue(
+      '保留原反馈，完成后由我打开结果',
+    );
+    await expect(page.getByRole('button', { name: '提交继续修改', exact: true })).toBeDisabled();
+    release();
+    await handlerDone;
+    if (handlerError) throw handlerError;
+    const result = page.getByRole('link', { name: '打开已确认结果', exact: true });
+    await expect(result).toHaveAttribute('href', `/workspace/${second!.session.id}`);
+    await expect(page).toHaveURL(new URL(`${workPath}?task=${task.id}`, app.origin).href);
+    expect(postCount).toBe(1);
+    await capture('reentered-result');
+    const persisted = await apiData<Task>(context, 'get', `/tasks/${task.id}`);
+    expect(persisted.sessionId).toBe(second!.session.id);
+    expect(errors).toEqual([]);
+  } finally {
+    // Failure before release must not leave an intercepted request hanging in teardown.
+    release();
+    if (handlerStarted) await handlerDone;
+    await page.unroute(reviewURL);
+  }
+});

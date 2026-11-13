@@ -1706,6 +1706,9 @@
   display: none;
 }
 .detailBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   justify-self: start;
   min-height: 44px;
   padding: 8px 0;

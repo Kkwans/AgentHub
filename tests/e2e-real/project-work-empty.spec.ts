@@ -75,7 +75,7 @@ for (const width of [390, 768, 1024, 1440]) {
       });
       await expect(inspector).toContainText('完成当前项目的第一项工作');
       if (width === 390) {
-        const back = page.getByRole('button', { name: '← 返回工作列表' });
+        const back = page.getByRole('button', { name: '返回工作列表' });
         if (!(await back.isVisible()))
           await page
             .getByRole('region', { name: '工作列表' })
