@@ -131,4 +131,26 @@ describe('review-specific syntax contrast', () => {
     for (const bg of ['171717', '292929'])
       expect(contrast('ff7d83', rgb(bg))).toBeGreaterThanOrEqual(4.5);
   });
+  it('keeps the Diff preview action readable on selected rows without changing global tertiary', () => {
+    const css = readFileSync(
+      new URL('../features/workspace/inspector.module.css', import.meta.url),
+      'utf8',
+    );
+    const rule = css.match(
+      /:global\(\.workspace\) :global\(\.git-change-preview\)\s*\{([^}]+)\}/,
+    )![1]!;
+    expect(rule).toContain('color: var(--ah-text-secondary)');
+    expect(rule).toContain('background: transparent');
+    const theme = readFileSync(new URL('../app/codex-theme.css', import.meta.url), 'utf8');
+    const colors = [...theme.matchAll(/--ah-text-secondary:\s*(#[a-f0-9]+);/g)].map(
+      (match) => match[1]!,
+    );
+    // ba8f625 real axe: selected preview #6e6e6e on #ededed was 4.35.
+    expect(contrast('6e6e6e', rgb('ededed'))).toBeLessThan(4.5);
+    for (const bg of ['ffffff', 'f5f5f5', 'ededed'])
+      expect(contrast(colors[0]!, rgb(bg))).toBeGreaterThanOrEqual(4.5);
+    for (const bg of ['171717', '292929', '383838'])
+      expect(contrast(colors[1]!, rgb(bg))).toBeGreaterThanOrEqual(4.5);
+    expect(theme).toContain('--ah-text-tertiary: #6e6e6e;');
+  });
 });

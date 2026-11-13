@@ -593,6 +593,22 @@ C36 test-only work now checks opt-in focus with actual textarea/Monaco node sent
 
 The shared rightFocused prop defaults false and is opted into only by Workspace. Wide layout expands the existing right grid slot while retaining hidden/inert left/middle wrappers; medium reuses the same dialog/Inspector; phone offers no ineffective expansion. No ratios/collapse preferences are written. Native header controls expose pressed state; first Escape exits focus without simultaneously closing the medium drawer, consumed Escape is respected, and explicit exit returns focus to the same control. Session/phone/left-panel/closed-inspector changes invalidate the temporary mode.
 
-The independent candidate passed39 relevant tests, including actual deferred Git submission remaining single-owner/single-POST, unchanged draft/Monaco/chat nodes, no layout-storage writes and boundary invalidation. UI build/types/lint/build/budget/static CR passed. Main integration rebuilt the shared UI and passed an initial8-file54-test run; the complete related suite is running. The new fixture uses actual node sentinels, expanded pane geometry and full axe without submitting Git. Existing cross-layout remount behavior is explicitly not claimed fixed.
+The independent candidate passed39 relevant tests, including the real Workspace component with a deferred fetch-mocked Git request remaining single-owner/single-POST, unchanged draft/Monaco/chat nodes, no layout-storage writes and boundary invalidation. UI build/types/lint/build/budget/static CR passed. Main integration rebuilt the shared UI and passed an initial8-file54-test run; the complete related suite is running. The new fixture uses actual node sentinels, expanded pane geometry and full axe without submitting Git. Existing cross-layout remount behavior is explicitly not claimed fixed.
 
 C36 final integrated validation completed16:40:39 UTC:10 files/59 tests passed in15.08s, rebuilt shared UI and web types/lint/production build/CSS budget/diff-check passed, and four-project fixture collection passed. Product and E2E static CR are both approved. New actual focus width/readability, state continuity and axe remain pending publication/CI.
+
+### 2026-11-13 16:46 UTC — Stable baseline fully green; focus candidate pending
+
+At16:45:48 UTC exact8eb run43461841943 finished all three jobs successfully:fixture73 passed/3 planned skips,real-service153 passed in22.6m/140 geometry checks,and154-state accessibility success. The11 supplemental CSS/TSX/medium axe files and corresponding actual images had already been inspected. This is a fully verified baseline, not evidence that the subsequent focus feature passes.
+
+C36 was published and fetched16:44:44 UTC asba8f625b572e0e30db3e2317dcd1a6a6a4b8128b, tree293c90e56348c7a24c0b842fce52a783db2182af matching the reviewed local candidate. One prior tree-object timeout did not move the branch; the incremental retry completed before the branch update. Exactrun43465773377 is now pending, and a fresh full local run started16:46:08. Product source remains frozen during that run.
+
+### 2026-11-13 16:53 UTC — Complete focus-candidate local regression
+
+Fullba8 product regression exited0 at16:52:17 UTC:147 files/1398 tests passed,4 files/10 skipped,368.79s. No product files changed while it ran; only documentation was reconciled. This verifies the full local suite, not the pending new browser focus journey or its wide-code readability. Clarification: the pending-Git continuity test uses the actual Workspace component with a deferred fetch mock, not a real repository commit; the browser focus journey intentionally checks zero Git writes.
+
+### 2026-11-13 17:01 UTC — C37 focused selected-action contrast
+
+Exactba8 fixture archived74 passed/3 failed. The new1440/1024/768 focus journeys reached their final axe assertion after node/draft preservation, expanded real pane geometry, restore/Escape/preferences and zero-write checks. All three failures are the selected-row Diff preview button:6e6e6e onededed at4.35. The selected state and full axe remain; this is not reported as a fully passing focus journey.
+
+C37 changes only the scoped Git preview action foreground from tertiary to secondary, reading the actual Codex light/dark tokens in its contrast regression. No background/global token/Git behavior is changed. Independent static CR passed. Integrated validation completed17:00:23 UTC:7 files/33 tests passed, web types/lint/build3.81s/CSS budget/diff-check passed. New exact focused axe results remain pending publication and CI; prior fullba8 counts are not reused as a full new-product run.
