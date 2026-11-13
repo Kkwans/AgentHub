@@ -622,10 +622,21 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await expect(thought).toHaveCount(1);
   await expect(thought).not.toHaveAttribute('open', '');
   await expect(thought.getByText('思考了 32 秒')).toBeVisible();
-  await thought.getByRole('button', { name: '展开思考过程' }).click();
+  const thoughtSummary = thought.locator('summary');
+  await expect(
+    thoughtSummary.locator('button, a, input, select, textarea, [tabindex]'),
+  ).toHaveCount(0);
+  await expect(thoughtSummary).toHaveAttribute('aria-expanded', 'false');
+  await thoughtSummary.focus();
+  await page.keyboard.press('Enter');
   await expect(thought).toHaveAttribute('open', '');
+  await expect(thoughtSummary).toHaveAttribute('aria-expanded', 'true');
+  await expect(thoughtSummary).toHaveAttribute('aria-label', /收起思考过程/);
   await expect(thought.getByText(/先对照 Codex 的主舞台宽度/)).toBeVisible();
-  await thought.getByRole('button', { name: '展开思考过程' }).click();
+  await page.keyboard.press('Space');
+  await expect(thought).not.toHaveAttribute('open', '');
+  await expect(thoughtSummary).toBeFocused();
+  await expect(thoughtSummary).toHaveAttribute('aria-label', /展开思考过程/);
   const firstTool = page.locator('.tool-event-row').first();
   const firstToolTrigger = firstTool.getByRole('button', { name: /工具调用完成/ });
   await expect(firstToolTrigger).toHaveAttribute('aria-expanded', 'false');
@@ -1112,6 +1123,21 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
         'aria-pressed',
         'true',
       );
+      const originalPane = page.locator('.git-diff-editor .editor.original');
+      const modifiedPane = page.locator('.git-diff-editor .editor.modified');
+      await expect
+        .poll(async () => (await originalPane.boundingBox())?.width ?? 0)
+        .toBeGreaterThanOrEqual(100);
+      await expect
+        .poll(async () => (await modifiedPane.boundingBox())?.width ?? 0)
+        .toBeGreaterThanOrEqual(100);
+      const originalBox = (await originalPane.boundingBox())!;
+      const modifiedBox = (await modifiedPane.boundingBox())!;
+      expect(originalBox.x + originalBox.width).toBeLessThanOrEqual(modifiedBox.x + 1);
+      await expect(originalPane.locator('.view-lines[role="presentation"]')).toBeVisible();
+      await expect(originalPane.locator('.view-lines[role="presentation"]')).toContainText(
+        /display:\s*block/,
+      );
     }
     await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
     await expect
@@ -1129,8 +1155,7 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
     await expect(modifiedLines).toContainText(/display:\s*grid/);
     await expectNoHorizontalOverflow(page);
     await attachViewportScreenshot(page, testInfo, `workspace-diff-dark-${mode}`);
-    // Monaco can retain inline presentation below its own width threshold even
-    // when split is requested. Record actual panes, not an invented split claim.
+    // Keep actual pane evidence: explicit split must not silently become inline.
     const paneGeometry = await page
       .locator('.git-diff-editor .editor.original, .git-diff-editor .editor.modified')
       .evaluateAll((nodes) =>
@@ -1164,6 +1189,17 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
     // The same strict failure gate applies to every collected serious/critical node.
     if (violations.length) modeViolations.push({ mode, violations });
   }
+  await page.getByRole('button', { name: '切换为统一 Diff' }).click();
+  await expect(page.getByRole('button', { name: '切换为分栏 Diff' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect
+    .poll(
+      async () =>
+        (await page.locator('.git-diff-editor .editor.original').boundingBox())?.width ?? Infinity,
+    )
+    .toBeLessThanOrEqual(40);
   expect(gitWrites).toBe(0);
   expect(errors).toEqual([]);
   expect(modeViolations).toEqual([]);

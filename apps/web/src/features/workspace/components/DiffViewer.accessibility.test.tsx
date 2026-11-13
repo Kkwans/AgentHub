@@ -28,6 +28,7 @@ it('names both real Monaco editors and keeps their identities across split and f
       originalAriaLabel: '更改前：src/app.css',
       modifiedAriaLabel: '更改后：src/app.css',
       renderSideBySide: false,
+      useInlineViewWhenSpaceIsLimited: false,
     }),
   );
   fireEvent.click(screen.getByRole('button', { name: '切换为分栏 Diff' }));
@@ -36,7 +37,12 @@ it('names both real Monaco editors and keeps their identities across split and f
       originalAriaLabel: '更改前：src/app.css',
       modifiedAriaLabel: '更改后：src/app.css',
       renderSideBySide: true,
+      useInlineViewWhenSpaceIsLimited: false,
     }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '切换为统一 Diff' }));
+  expect(captured).toHaveBeenLastCalledWith(
+    expect.objectContaining({ renderSideBySide: false, useInlineViewWhenSpaceIsLimited: false }),
   );
   view.rerender(<DiffViewer patch={patch} truncated={false} path="README.md" />);
   expect(captured).toHaveBeenLastCalledWith(

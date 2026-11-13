@@ -79,6 +79,8 @@ export function DiffViewer({
           modifiedAriaLabel: `更改后：${path || '文件'}`,
           minimap: { enabled: false },
           renderSideBySide: sideBySide,
+          // The user explicitly chose this mode; do not silently override it below 900px.
+          useInlineViewWhenSpaceIsLimited: false,
           scrollBeyondLastLine: false,
           renderOverviewRuler: false,
           lineNumbersMinChars: 3,

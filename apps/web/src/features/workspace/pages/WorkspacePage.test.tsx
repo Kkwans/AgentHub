@@ -662,7 +662,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(
       await screen.findByRole('region', { name: '当前运行状态：Agent 正在执行' }),
     ).toBeInTheDocument();
-    expect(await screen.findByLabelText('正在思考，展开思考过程')).toBeInTheDocument();
+    expect(await screen.findByLabelText(/思考中.*收起思考过程/)).toBeInTheDocument();
     expect(screen.getByText('正在思考').closest('details')).toHaveClass('running');
     const stop = await screen.findByRole('button', { name: '停止 Run' });
     fireEvent.click(stop);

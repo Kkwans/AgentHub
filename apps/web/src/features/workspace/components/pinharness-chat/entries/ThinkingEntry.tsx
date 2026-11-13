@@ -47,17 +47,18 @@ export const ThinkingBlock = memo(function ThinkingBlock({
 
   return (
     <details className={cn('thinking-event-row', streaming && 'running')} open={expanded}>
-      <summary className="list-none [&::-webkit-details-marker]:hidden">
-        <div className="my-1 overflow-hidden rounded-lg border border-violet-200/60 bg-gradient-to-r from-violet-500/[0.04] to-indigo-500/[0.02] animate-[hci-entry_220ms_ease-out_both] dark:border-violet-500/20 dark:from-violet-500/[0.08] dark:to-indigo-500/[0.04]">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              setExpanded((v) => !v);
-            }}
-            aria-label={streaming ? '正在思考，展开思考过程' : '展开思考过程'}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-all duration-150 hover:bg-violet-500/[0.06] active:scale-[0.995] dark:hover:bg-violet-400/[0.08]"
-          >
+      <summary
+        role="button"
+        className="list-none rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 [&::-webkit-details-marker]:hidden"
+        onClick={(event) => {
+          event.preventDefault();
+          setExpanded((value) => !value);
+        }}
+        aria-expanded={expanded}
+        aria-label={`${label}，${expanded ? '收起' : '展开'}思考过程`}
+      >
+        <span className="block my-1 overflow-hidden rounded-lg border border-violet-200/60 bg-gradient-to-r from-violet-500/[0.04] to-indigo-500/[0.02] animate-[hci-entry_220ms_ease-out_both] dark:border-violet-500/20 dark:from-violet-500/[0.08] dark:to-indigo-500/[0.04]">
+          <span className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-all duration-150 hover:bg-violet-500/[0.06] active:scale-[0.995] dark:hover:bg-violet-400/[0.08]">
             {/* 图标区域 */}
             <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-800/50 dark:to-indigo-800/40">
               {streaming ? (
@@ -79,8 +80,8 @@ export const ThinkingBlock = memo(function ThinkingBlock({
                 <ChevronRight className="h-3 w-3 text-violet-400/50 dark:text-violet-500/40" />
               )}
             </span>
-          </button>
-        </div>
+          </span>
+        </span>
       </summary>
 
       {/* 展开内容：grid 行高过渡实现平滑动画 */}
