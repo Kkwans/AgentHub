@@ -1721,3 +1721,20 @@
   outline: 2px solid var(--ah-accent-primary);
   outline-offset: 3px;
 }
+
+/* Mobile task detail is a reading canvas, not a card pressed against the screen. */
+@media (max-width: 767px) {
+  .projectContext {
+    padding-inline: 16px;
+  }
+  .workToolbar {
+    padding-inline: 16px;
+  }
+  .detailBack {
+    margin-inline: 16px;
+  }
+  .workInspector {
+    border: 0;
+    border-radius: 0;
+  }
+}

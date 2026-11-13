@@ -25,7 +25,9 @@ const viewports = [
 const themes = ['light', 'dark'] as const;
 
 type AxeNode = {
-  target: string[];
+  target: Awaited<
+    ReturnType<AxeBuilder['analyze']>
+  >['violations'][number]['nodes'][number]['target'];
   html: string;
   failureSummary?: string;
 };
@@ -173,7 +175,7 @@ test.describe('v1 isolated real accessibility gate', () => {
                   )
                   .map((violation) => ({
                     id: violation.id,
-                    impact: violation.impact,
+                    impact: violation.impact ?? null,
                     help: violation.help,
                     helpUrl: violation.helpUrl,
                     nodes: violation.nodes.map((node) => ({

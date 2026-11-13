@@ -956,6 +956,48 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
   await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'project-work');
+  if (compactWork) {
+    const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
+    const back = page.getByRole('button', { name: '返回工作列表' });
+    const backBox = await back.boundingBox();
+    expect(backBox).not.toBeNull();
+    expect(backBox!.x).toBeGreaterThanOrEqual(16);
+    await expect(inspector).toHaveCSS('border-left-width', '0px');
+    await back.click();
+    await expect(page.getByRole('region', { name: '工作列表' })).toBeVisible();
+    await expect(inspector).toBeHidden();
+    const returnedURL = new URL(page.url());
+    expect(returnedURL.searchParams.has('task')).toBe(false);
+    expect(returnedURL.searchParams.get('status')).toBe('WAITING_REVIEW');
+    await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
+    const selectedRow = page
+      .getByRole('region', { name: '工作列表' })
+      .getByRole('button', { name: new RegExp(task.title) });
+    await expect(selectedRow).toBeVisible();
+    await expect(selectedRow).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+    await attachViewportScreenshot(page, testInfo, 'project-work-back-list');
+
+    await selectedRow.click();
+    await expect(inspector).toBeVisible();
+    await page.route(`**/api/v1/projects/${project.id}/agent-eligibility`, async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: '资格服务暂时不可用' } }),
+      });
+    });
+    await page.reload();
+    await expect(inspector).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
+    await expect(page.getByText('Agent 资格读取失败', { exact: true })).toBeVisible({
+      timeout: SHELL_READY_TIMEOUT,
+    });
+    await expect(page.getByRole('navigation', { name: '项目上下文' })).toBeHidden();
+    await expect(back).toBeVisible();
+    // Warnings must remain accessible in detail, but may legitimately increase page height.
+    await expectNoHorizontalOverflow(page);
+    await attachViewportScreenshot(page, testInfo, 'project-work-detail-warning');
+  }
 });
 
 test('Sessions 按时间组织并可恢复 Workspace', async ({ page }, testInfo) => {
