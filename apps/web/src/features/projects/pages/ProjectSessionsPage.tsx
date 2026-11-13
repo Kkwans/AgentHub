@@ -204,15 +204,17 @@ export function ProjectSessionsPage() {
                   {context || '暂无上下文说明'}
                 </span>
               </span>
-              <AhStatusPill status={session.status} />
-              <span className={projectsStyles.sessionUpdated}>
-                {session.lastActiveAt && !Number.isNaN(Date.parse(session.lastActiveAt)) ? (
-                  <time dateTime={session.lastActiveAt}>
-                    最近活动 {displayDate(session.lastActiveAt)}
-                  </time>
-                ) : (
-                  '暂无活动时间'
-                )}
+              <span className={projectsStyles.sessionMetadata}>
+                <AhStatusPill status={session.status} />
+                <span className={projectsStyles.sessionUpdated}>
+                  {session.lastActiveAt && !Number.isNaN(Date.parse(session.lastActiveAt)) ? (
+                    <time dateTime={session.lastActiveAt}>
+                      最近活动 {displayDate(session.lastActiveAt)}
+                    </time>
+                  ) : (
+                    '暂无活动时间'
+                  )}
+                </span>
               </span>
               <ArrowRight className={projectsStyles.sessionArrow} size={14} />
             </Link>

@@ -268,3 +268,9 @@ The independent real-accessibility job is now implemented locally. It preserves 
 ### 11:33 UTC — Initial workflow admission failure
 
 Exact dd9511a / CI43417817374 was rejected before any job started: GitHub annotation reports `Unrecognized named-value: runner` in job-level env. Generic YAML parsing did not validate Actions context availability. Moved the temporary directory expression to the scan step's env, matching the existing real-service pattern. No matrix execution occurred in that run; the old failure remains recorded. The next run must first prove all three jobs actually start before claiming the new gate is active.
+
+## 2026-11-13 11:38 UTC — Sessions screenshot-driven correction
+
+Exact e5 fixture archived five failures: four old Settings locator failures and one new phone Sessions locator failure. The filter's accessible name changes from 筛选 to 筛选（1）, so an exact initial-name locator stopped matching. Use an anchored name pattern while retaining exact count, keyboard, clearing and focus assertions.
+
+The actual failed screenshot also exposed a production layout defect: status badge and activity time overlap. AhStatusPill emits role=status without the old module .ah-status class, so its automatic placement fell into the 30px avatar column while the restored time occupied column2. Added an explicit metadata wrapper with 8px wrapping gap; narrow metadata occupies row2 after the avatar, desktop uses one metadata column. Removed the ineffective selector. New four-viewport geometry asserts that status/date rectangles have at least6px horizontal or vertical separation, alongside the original visible time and no-overflow checks. Integrated21 tests and static CR pass; new actual screenshots remain the final gate.

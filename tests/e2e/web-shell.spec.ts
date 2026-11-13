@@ -1087,9 +1087,18 @@ test('Sessions 按时间组织并可恢复 Workspace', async ({ page }, testInfo
   await expectNoHorizontalOverflow(page);
   await expect(sessionLink.locator('time')).toBeVisible();
   await expect(sessionLink.locator('time')).toHaveAttribute('datetime', session.lastActiveAt);
+  const sessionStatus = await sessionLink.getByRole('status').boundingBox();
+  const sessionDate = await sessionLink.locator('time').boundingBox();
+  expect(sessionStatus).not.toBeNull();
+  expect(sessionDate).not.toBeNull();
+  expect(
+    sessionDate!.x >= sessionStatus!.x + sessionStatus!.width + 6 ||
+      sessionDate!.y >= sessionStatus!.y + sessionStatus!.height + 6,
+    'session status and activity time must not overlap',
+  ).toBe(true);
   await attachViewportScreenshot(page, testInfo, 'project-sessions');
   if ((page.viewportSize()?.width ?? 1440) < 768) {
-    const toggle = page.getByRole('button', { name: '筛选', exact: true });
+    const toggle = page.getByRole('button', { name: /^筛选(?:（\d+）)?$/ });
     const status = page.getByRole('combobox', { name: '会话状态', exact: true });
     await expect(status).toBeHidden();
     await expect(page.getByRole('button', { name: '新建会话', exact: true })).toBeVisible();
