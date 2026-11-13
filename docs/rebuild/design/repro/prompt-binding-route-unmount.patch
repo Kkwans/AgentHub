@@ -1,0 +1,81 @@
+diff --git a/apps/web/src/features/promptos/hooks/usePromptBindingDraft.test.tsx b/apps/web/src/features/promptos/hooks/usePromptBindingDraft.test.tsx
+index e8aa9f3..2a767a2 100644
+--- a/apps/web/src/features/promptos/hooks/usePromptBindingDraft.test.tsx
++++ b/apps/web/src/features/promptos/hooks/usePromptBindingDraft.test.tsx
+@@ -2,8 +2,8 @@
+ import '@testing-library/jest-dom/vitest';
+ import { StrictMode, type ReactNode } from 'react';
+ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+-import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+-import { MemoryRouter, useNavigate } from 'react-router-dom';
++import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react';
++import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
+ import { afterEach, expect, it, vi } from 'vitest';
+ import { api, type PromptRecord } from '../../../lib/api';
+ import { ApiError } from '../../../lib/api-error';
+@@ -259,3 +259,65 @@ it('切换身份的首render不展示旧身份操作信息', async () => {
+   });
+   expect(state.invalidate).not.toHaveBeenCalled();
+ });
++
++it.each(['pending', 'unknown'] as const)(
++  '真实Routes卸载后%s原操作仍应阻止重复绑定',
++  async (phase) => {
++    const client = new QueryClient();
++    let draft!: ReturnType<typeof usePromptBindingDraft>;
++    let navigate!: ReturnType<typeof useNavigate>;
++    let resolve!: (value: unknown) => void;
++    let reject!: (error: Error) => void;
++    vi.mocked(api.post).mockImplementation(
++      () =>
++        new Promise((yes, no) => {
++          resolve = yes;
++          reject = no;
++        }),
++    );
++    function Probe() {
++      draft = usePromptBindingDraft(prompt, [prompt], 'all', () => payload);
++      return null;
++    }
++    function RouteHarness() {
++      navigate = useNavigate();
++      return (
++        <Routes>
++          <Route path="/prompts" element={<Probe />} />
++          <Route path="/other" element={<p>另一页</p>} />
++        </Routes>
++      );
++    }
++    render(
++      <QueryClientProvider client={client}>
++        <MemoryRouter initialEntries={['/prompts']}>
++          <RouteHarness />
++        </MemoryRouter>
++      </QueryClientProvider>,
++    );
++    act(() => draft.setBindingOpen(true));
++    let settled!: Promise<unknown>;
++    act(() => {
++      settled = draft.createBinding.mutateAsync().catch((error) => error);
++    });
++    await waitFor(() => expect(draft.bindingBlocked).toBe(true));
++    try {
++      if (phase === 'unknown')
++        await act(async () => {
++          reject(new Error('connection lost'));
++          await settled;
++        });
++      expect(draft.bindingOperations[0]?.phase).toBe(phase);
++      act(() => navigate('/other'));
++      act(() => navigate('/prompts'));
++      expect(draft.bindingBlocked).toBe(true);
++      expect(draft.bindingOperations[0]?.phase).toBe(phase);
++    } finally {
++      await act(async () => {
++        resolve(saved());
++        await settled;
++      });
++      client.clear();
++    }
++  },
++);

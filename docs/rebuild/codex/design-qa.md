@@ -386,3 +386,17 @@ Exact37324e5 real archive reports149 passed and two failed: the inherited NewWor
 Source diagnosis: shared PinSelect maps an empty clearable value to a sentinel even when no empty option is present. Radix has neither an item label nor an actual empty value to show the placeholder. A bounded shared-control correction is being validated; retain the original placeholder assertion and explicit-empty-option labels. Do not replace this failure with a weaker blank-text assertion.
 
 At13:27 UTC the bounded shared Select correction was integrated: only explicit empty options map to the sentinel, while an ordinary controlled empty string stays empty for Radix placeholder rendering. Three direct-source tests cover initial empty, select→clear and explicit-empty label preservation; UI types/build/lint and independent static CR pass. The exact original positive-flow placeholder assertion remains unchanged. Combined shared-control and Prompt regression completed: nine files /67 tests passed, followed by web/UI types and production build. Browser completion remains pending the new publication.
+
+## 2026-11-13 13:31 UTC — Exact c7e real fullscreen closure
+
+Exactc7e35e3 real archive reports150 passed and one failure, solely the inherited positive binding placeholder assertion. The original NewWork390 shared-scroll case passed in3.8s and the saved-variable correction case passed in4.3s. Personally inspected the real390×600 short-height screenshot: title/close and cancel/create remain visible while the fixed Prompt preview and bottom fields are reachable. Geometry records outer body scrollTop1263/client421/content1684, NewWork wrapper scrollTop0/height1644/content1644 and fieldset scrollTop0/height1539/content1539. Together with the two fixture callers, this closes the bounded fullscreen single-scroll-owner repair. It does not claim real-phone keyboard testing or turn the overall run green.
+
+Exact7bc23e8 contains the subsequent placeholder correction and C21 lifecycle work. Its fresh complete local unit invocation started13:28:48 UTC and remains running at this checkpoint; new CI/browser outcomes remain independent.
+
+### 2026-11-13 13:35 UTC — Exact7bc complete local regression
+
+The fresh complete Vitest invocation on7bc source ended with exit0:136 files/1338 tests passed,4 files/10 tests skipped, duration358.95s. Only documentation commits were added while it ran; product/test source stayed at the published tree. This is one full invocation, not aggregated focused runs. It does not establish the new real-browser positive and delayed-response cases, which still require exact CI evidence.
+
+## 2026-11-13 13:38 UTC — Cross-route binding boundary reproduced, not fixed
+
+Implemented and ran an isolated regression using actual Routes unmount/remount, rather than a hook that stays mounted while location changes. Both pending and network-unknown operations lose their record/lock after /prompts→/other→/prompts; the new expected-lock assertions fail (15 original tests pass,2 added tests fail). No second POST was sent. Restored the default test source and retained the red patch outside discovery alongside the reviewed route-owner contract. The full1338 pass above remains the published7bc baseline, not a claim that this documented boundary is solved. A duplicate unused owner implementation was rejected; the next product slice should extract one authoritative owner and wire it once after current real-browser gates are verified.
