@@ -57,7 +57,7 @@ async function showInspector(page: Page, width: number, tab: 'files' | 'changes'
       .click();
     return;
   }
-  if (width < 1180) {
+  if (width >= 768 && width < 1180) {
     const open = page.getByRole('button', { name: '打开辅助栏', exact: true });
     if (await open.isVisible()) await open.click();
     await page
