@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { buildGitChangeTree } from './GitChangesTree';
@@ -47,4 +48,18 @@ describe('Git changes tree', () => {
     expect(tree).toHaveLength(1);
     expect(tree[0]).toMatchObject({ kind: 'directory', path: 'safe' });
   });
+});
+
+it('bounds only the focused file index without clipping the whole Inspector or changing default list height', () => {
+  const css = readFileSync(new URL('../inspector.module.css', import.meta.url), 'utf8');
+  const rule = css.match(
+    /:global\(\.workspace\) :global\(\[data-right-focused='true'\] \.git-change-list\)\s*\{([^}]+)\}/,
+  )![1]!;
+  expect(rule).toContain('max-height: min(240px, 24dvh)');
+  expect(rule).toContain('min-height: 0');
+  expect(rule).toContain('overflow-y: auto');
+  expect(rule).toContain('align-content: start');
+  expect(rule).not.toContain('overflow: hidden');
+  const normal = css.match(/:global\(\.workspace\) :global\(\.change-list\)\s*\{([^}]+)\}/)![1]!;
+  expect(normal).not.toMatch(/(?:max-)?height|overflow/);
 });

@@ -692,6 +692,14 @@
   padding: 6px 8px;
 }
 
+/* Focused reading bounds the file index, not warnings, commit drafts or Diff. */
+:global(.workspace) :global([data-right-focused='true'] .git-change-list) {
+  max-height: min(240px, 24dvh);
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+
 :global(.workspace) :global(.git-change-directory) {
   min-width: 0;
 }

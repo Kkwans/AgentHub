@@ -1577,8 +1577,8 @@ test('只读预览的专注审阅保留默认统一模式并提供真实分栏�
   ]);
 });
 
-test('大量变更文件的自然专注阅读几何调查', async ({ page }, testInfo) => {
-  test.skip(page.viewportSize()!.width < 768, '手机无专注入口，规模调查限三非手机视口');
+test('大量变更文件在专注态保留代码首屏与末项键盘可达', async ({ page }, testInfo) => {
+  test.skip(page.viewportSize()!.width < 768, '手机无专注入口，规模验证限三非手机视口');
   test.setTimeout(120_000);
   const path = 'apps/web/src/features/workspace/workspace.module.css';
   const paths = [
@@ -1628,6 +1628,20 @@ test('大量变更文件的自然专注阅读几何调查', async ({ page }, tes
   await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
   const code = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
   await expect(code).toContainText(/display:\s*grid/);
+  const preferences = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        Object.entries(localStorage)
+          .filter(([key]) => key.startsWith('agenthub.workspace.layout-'))
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+  const previousPreferences = await preferences();
+  const inspector = page.locator('.inspector-panel');
+  const initialWidth = (await inspector.boundingBox())!.width;
+  const initialListHeight = (await page
+    .getByRole('tree', { name: 'Git 文件变更树', exact: true })
+    .boundingBox())!.height;
   await page.getByRole('button', { name: '专注审阅', exact: true }).click();
   await expect(page.locator('.three-column-split')).toHaveAttribute('data-right-focused', 'true');
   await expect
@@ -1637,12 +1651,30 @@ test('大量变更文件的自然专注阅读几何调查', async ({ page }, tes
   await expect(tree.getByRole('checkbox')).toHaveCount(40);
   await expect(page.getByRole('textbox', { name: '提交说明', exact: true })).toBeHidden();
   await expectNoHorizontalOverflow(page);
-  // Deliberately diagnostic: record natural geometry before any scrolling or layout fix.
-  // A passing test is NOT a claim that the code is above the fold or that this UX is acceptable.
+  // The 959 baseline put code at y2279/2369. Require real first-screen reading now,
+  // before any scrolling, rather than deleting the 40-file sample or moving the viewport.
+  await expect
+    .poll(() => tree.evaluate((node) => node.scrollHeight > node.clientHeight))
+    .toBe(true);
+  await expect.poll(async () => (await tree.boundingBox())!.height).toBeLessThanOrEqual(241);
+  const visibleReadingHeight = () =>
+    page.locator('.git-diff-editor .editor.modified').evaluate((node) => {
+      const editorBox = node.getBoundingClientRect();
+      const clipBox = node.closest('.inspector-body')!.getBoundingClientRect();
+      return Math.max(
+        0,
+        Math.min(editorBox.bottom, clipBox.bottom, window.innerHeight) -
+          Math.max(editorBox.top, clipBox.top, 0),
+      );
+    });
+  await expect.poll(visibleReadingHeight).toBeGreaterThanOrEqual(180);
+  expect((await code.boundingBox())!.y).toBeGreaterThanOrEqual(0);
+  expect(await page.locator('.inspector-body').evaluate((node) => node.scrollTop)).toBe(0);
   await testInfo.attach(`workspace-large-reading-geometry-${testInfo.project.name}`, {
     body: JSON.stringify({
       viewport: page.viewportSize(),
       fileCount: paths.length,
+      visibleReadingHeight: await visibleReadingHeight(),
       list: await tree.boundingBox(),
       code: await code.boundingBox(),
       inspectorScroll: await page.locator('.inspector-body').evaluate((node) => ({
@@ -1669,6 +1701,45 @@ test('大量变更文件的自然专注阅读几何调查', async ({ page }, tes
     body: JSON.stringify(violations),
     contentType: 'application/json',
   });
+  // Real Tab progression traverses all 40 rows; no focusing/scrolling straight to the last item.
+  const choices = tree.getByRole('checkbox');
+  await choices.first().focus();
+  for (let index = 0; index < paths.length * 2 - 1; index += 1) await page.keyboard.press('Tab');
+  const lastPath = paths.at(-1)!;
+  const lastPreview = page.getByRole('button', { name: `查看 ${lastPath} Diff`, exact: true });
+  await expect(lastPreview).toBeFocused();
+  const listBox = (await tree.boundingBox())!;
+  const lastBox = (await lastPreview.boundingBox())!;
+  expect(lastBox.y).toBeGreaterThanOrEqual(listBox.y - 1);
+  expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(listBox.y + listBox.height + 1);
+  expect(await tree.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  await page.keyboard.press('Shift+Tab');
+  const lastChoice = page.getByRole('checkbox', { name: `选择 ${lastPath}`, exact: true });
+  await expect(lastChoice).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(lastChoice).toBeChecked();
+  const directory = page.getByRole('button', { name: '按目录显示变更', exact: true });
+  await directory.click();
+  await expect(tree).toHaveAttribute('data-layout', 'tree');
+  await expect(lastChoice).toBeChecked();
+  await directory.click();
+  await expect(tree).toHaveAttribute('data-layout', 'list');
+  await expect(lastChoice).toBeChecked();
+  await page.getByRole('button', { name: '全选', exact: true }).click();
+  await expect(tree.locator('input:checked')).toHaveCount(40);
+  await page.getByRole('button', { name: '取消全选', exact: true }).click();
+  await expect(tree.locator('input:checked')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: '提交说明', exact: true })).toBeHidden();
+  await expect(page.locator('.git-selected-diff-heading code')).toHaveAttribute('aria-label', path);
+  await page.getByRole('button', { name: '退出专注审阅', exact: true }).click();
+  await expect(page.getByRole('button', { name: '专注审阅', exact: true })).toBeFocused();
+  await expect
+    .poll(async () => Math.abs((await inspector.boundingBox())!.width - initialWidth))
+    .toBeLessThanOrEqual(2);
+  await expect
+    .poll(async () => Math.abs((await tree.boundingBox())!.height - initialListHeight))
+    .toBeLessThanOrEqual(2);
+  expect(await preferences()).toEqual(previousPreferences);
   expect(gitWrites).toBe(0);
   expect(errors).toEqual([]);
   expect(violations).toEqual([]);

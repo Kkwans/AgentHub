@@ -240,3 +240,53 @@ it.each(['error', 'loading'] as const)('缓存clean后%s不再把旧badge当成�
   expect(screen.getByText(phase === 'error' ? '状态未确认' : '状态读取中')).toBeVisible();
   if (phase === 'error') expect(screen.getByRole('alert')).toBeVisible();
 });
+
+it('40个文件在专注切换及目录折叠中保留全部选择、预览身份和草稿', () => {
+  const props = reviewProps();
+  const entries = Array.from({ length: 40 }, (_, index) => ({
+    index: ' ',
+    worktree: 'M',
+    path: `src/file-${String(index).padStart(2, '0')}.ts`,
+  }));
+  props.status = query({ ...props.status.data!, entries });
+  const content = (focused: boolean) => (
+    <div data-right-focused={focused ? 'true' : undefined}>
+      <GitChangesTree {...props} />
+    </div>
+  );
+  const view = render(content(false));
+  const choices = () => screen.getAllByRole('checkbox', { name: /^选择 / });
+  expect(choices()).toHaveLength(40);
+  const last = screen.getByRole('checkbox', { name: '选择 src/file-39.ts' });
+  fireEvent.click(last);
+  const draft = screen.getByRole('textbox', { name: '提交说明' });
+  fireEvent.change(draft, { target: { value: '保持未提交草稿' } });
+  last.focus();
+  view.rerender(content(true));
+  expect(last).toHaveFocus();
+  expect(screen.getByRole('textbox', { name: '提交说明' })).toBe(draft);
+  expect(draft).toHaveValue('保持未提交草稿');
+  expect(screen.getByRole('checkbox', { name: '选择 src/file-39.ts' })).toBe(last);
+  expect(last).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: '按目录显示变更' }));
+  expect(choices()).toHaveLength(40);
+  const directory = screen.getByRole('button', { name: /src.*40/ });
+  fireEvent.click(directory);
+  expect(screen.queryAllByRole('checkbox', { name: /^选择 / })).toHaveLength(0);
+  fireEvent.click(directory);
+  expect(choices()).toHaveLength(40);
+  expect(screen.getByRole('checkbox', { name: '选择 src/file-39.ts' })).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: '查看 src/file-39.ts Diff' }));
+  expect(props.onSelectPath).toHaveBeenLastCalledWith('src/file-39.ts', 'diff');
+  fireEvent.click(screen.getByRole('button', { name: /^全选$/ }));
+  for (const choice of choices()) expect(choice).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: '按目录显示变更' }));
+  expect(choices()).toHaveLength(40);
+  view.rerender(content(false));
+  for (const choice of choices()) expect(choice).toBeChecked();
+  expect(screen.getByRole('textbox', { name: '提交说明' })).toBe(draft);
+  expect(draft).toHaveValue('保持未提交草稿');
+  fireEvent.click(screen.getByRole('button', { name: '取消全选' }));
+  for (const choice of choices()) expect(choice).not.toBeChecked();
+  expect(props.onCommit).not.toHaveBeenCalled();
+});
