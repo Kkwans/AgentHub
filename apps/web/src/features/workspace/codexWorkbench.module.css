@@ -171,6 +171,10 @@
 }
 
 .workspace :global(.git-selected-diff) {
+  grid-template-rows: auto auto minmax(260px, 1fr);
+  gap: 0;
+  padding: 0;
+  background: var(--workspace-panel);
   margin: 12px;
   overflow: hidden;
   border: 1px solid var(--workspace-line);
@@ -178,6 +182,9 @@
 }
 
 .workspace :global(.git-selected-diff-heading) {
+  min-height: 48px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--workspace-line);
   background: hsl(var(--surface-muted));
 }
 
@@ -274,4 +281,13 @@
   flex-shrink: 0;
   padding: 10px 12px max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--workspace-line);
+}
+
+.workspace :global(.git-selected-diff > .git-diff-toolbar) {
+  min-height: 40px;
+  padding: 6px 12px;
+}
+.workspace :global(.git-selected-diff > .git-diff-editor) {
+  min-height: 260px;
+  padding: 0 10px 10px;
 }

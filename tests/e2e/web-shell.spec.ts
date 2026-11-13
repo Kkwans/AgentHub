@@ -718,7 +718,19 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       })
       .click();
     await expect(page.getByRole('button', { name: '切换为分栏 Diff' })).toBeVisible();
-    await expect(page.locator('.git-diff-editor .monaco-editor').first()).toBeVisible();
+    // Unified Monaco keeps a hidden gutter with class monaco-editor before
+    // the actual modified editor. Assert visible source, not DOM order.
+    const modifiedLines = page.locator(
+      '.git-diff-editor .editor.modified .view-lines[role="presentation"]',
+    );
+    await expect(modifiedLines).toBeVisible();
+    await expect(modifiedLines).toContainText(/display:\s*grid/);
+    const diffHeader = await page.locator('.git-selected-diff-heading').boundingBox();
+    const diffControls = await page.locator('.git-selected-diff > .git-diff-toolbar').boundingBox();
+    const diffEditor = await page.locator('.git-selected-diff > .git-diff-editor').boundingBox();
+    expect(diffHeader!.height).toBeLessThanOrEqual(64);
+    expect(diffControls!.height).toBeLessThanOrEqual(56);
+    expect(diffEditor!.height).toBeGreaterThanOrEqual(260);
     await attachViewportScreenshot(page, testInfo, 'workspace-review-diff');
     await page.getByRole('button', { name: '按目录显示变更' }).click();
     await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(

@@ -50,3 +50,11 @@ C01 真实服务 dark390 图也已查看，双主题中性映射生效；发现 
 同 SHA 的 Home1440、Projects1440 也已查看：Projects 筛选项内部断成2+1，Home 实际仍约1153px而非计划960px。修复为桌面筛选整组单行、平板整组第二行；Home用限定page root的max-width抵抗旧全局覆盖，不修改全局布局。另统一工作区品牌图标，并将设置入口移至侧栏底部以匹配所选参考，保留原路由与抽屉关闭回调。
 
 独立静态审查通过。495 的已查看图仅证明此前修复，不作为本段新增调整验收；新SHA需再查看1024筛选行、390侧栏footer与用户正文、Home居中宽度。
+
+## 03aa10a fixture 红灯及真实 Diff 缺陷
+
+CI 43382919595 的 lint/typecheck/单测/build 通过，fixture E2E 在新增 Diff 断言失败。保留原红灯，不重跑旧 SHA 当修复。
+
+Trace 确认 `.monaco-editor.first()` 命中 display:none 的 gutter；真正的 `.editor.modified .view-lines[role="presentation"]` 已渲染 `display: grid;`。修正定位器为该明确修改文档，并检查真实代码文本，不删除可见性验证。
+
+同时实际查看失败截图发现产品缺陷：`.git-selected-diff` 没有显式 grid 行，header 与工具栏被拉高约160px，代码区只剩124px。修正为 `auto auto minmax(260px, 1fr)`，去额外容器padding/gap，header与controls保持内容高度，剩余高度分给代码。新增几何断言：header≤64、controls≤56、editor≥260。新源码仍须真实浏览器图验证，不把定位器修复当布局验收。
