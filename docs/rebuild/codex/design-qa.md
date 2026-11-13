@@ -258,3 +258,9 @@ A source-confirmed keyboard defect remained after the single-navigation slice: c
 ## 2026-11-13 11:25 UTC — Settings fixture locator correction
 
 While the d892 browser job remained running, source inspection found that its new Settings error-state check incorrectly requested a heading. AhErrorState renders an alert containing strong text, not a heading. The test now locates that real alert for error visibility and recovery removal; all empty-state, read-only retry and overflow assertions remain. This is a source-confirmed test defect, not a claim that CI logs have already established every failure. No production semantics were changed to satisfy a test.
+
+## 2026-11-13 11:30 UTC — d892 partial visual evidence and full axe gate
+
+Personally inspected d892's phone single-navigation Workspace screenshot and 768 warning screenshot: the inner Inspector tabs remain, duplicate outer strip is gone, and the tablet return focus is fully inside the content edge. Its automatic failed Settings screenshot shows the correct error alert, retry and explicit warning that failed reads do not mean no tokens. Recovery was blocked by the bad heading locator, so it is not verified. Exact old fixture remains failed with four locator failures; 7cabc25 corrects the locator and awaits its own CI.
+
+The independent real-accessibility job is now implemented locally. It preserves the full 154 combinations and severity threshold, initializes partial reporting before seed/git, requires real route content, records unique coverage and passed separately, saves axe results before screenshot attempts, and uploads partial evidence. Three report logic tests and explicit types/lint/YAML checks pass. No claim of completed full axe execution; see ../design/real-accessibility-ci.md for lifecycle and unverified boundaries.

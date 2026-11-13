@@ -113,3 +113,41 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
           compression-level: 6
+
+  real-accessibility:
+    name: Real accessibility matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      # Isolated loopback/PGlite and local ACP fixture only. No NAS or paid Agent account.
+      AGENTHUB_E2E_LIVE: '0'
+      AGENTHUB_ACCESSIBILITY_OUTPUT: ${{ github.workspace }}/artifacts/real-accessibility/audit.json
+      AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-accessibility
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Scan 154 real page states with one report writer
+        run: pnpm exec playwright test --config=playwright.real.config.ts --workers=1 tests/e2e-real/v1-accessibility.spec.ts
+      - name: Preserve complete or partial accessibility evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-accessibility-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            real-playwright-report/
+            real-test-results/
+            artifacts/real-accessibility/
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6
