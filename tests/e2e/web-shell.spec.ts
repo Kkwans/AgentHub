@@ -1445,6 +1445,138 @@ test('专注审阅保留未提交草稿和编辑器并恢复原布局', async ({
   expect(violations).toEqual([]);
 });
 
+test('只读预览的专注审阅保留默认统一模式并提供真实分栏阅读证据', async ({ page }, testInfo) => {
+  test.skip(page.viewportSize()!.width < 768, '手机已有全宽阅读，不提供专注入口');
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  let gitWrites = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.includes('/git/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      gitWrites += 1;
+  });
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  const path = 'apps/web/src/features/workspace/workspace.module.css';
+  await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
+  const lines = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
+  await expect(lines).toContainText(/display:\s*grid/);
+  const choices = page.getByRole('checkbox', { name: /^选择 / });
+  expect(await choices.count()).toBeGreaterThan(0);
+  const assertReadingOnly = async () => {
+    for (const choice of await choices.all()) await expect(choice).not.toBeChecked();
+    await expect(page.getByRole('textbox', { name: '提交说明', exact: true })).toBeHidden();
+  };
+  await assertReadingOnly();
+  await expect(page.getByRole('button', { name: '切换为分栏 Diff', exact: true })).toBeVisible();
+  const preferences = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        Object.entries(localStorage)
+          .filter(([key]) => key.startsWith('agenthub.workspace.layout-'))
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+  const beforePreferences = await preferences();
+  const inspector = page.locator('.inspector-panel');
+  const initialWidth = (await inspector.boundingBox())!.width;
+  const layout = page.locator('.three-column-split');
+  await page.getByRole('button', { name: '专注审阅', exact: true }).click();
+  await expect(layout).toHaveAttribute('data-right-focused', 'true');
+  await expect
+    .poll(async () => (await inspector.boundingBox())!.width)
+    .toBeGreaterThanOrEqual(page.viewportSize()!.width - 34);
+  const original = page.locator('.git-diff-editor .editor.original');
+  const modified = page.locator('.git-diff-editor .editor.modified');
+  const audits: Array<{ mode: string; violations: unknown[] }> = [];
+  for (const mode of ['unified', 'split'] as const) {
+    if (mode === 'split') {
+      await page.getByRole('button', { name: '切换为分栏 Diff', exact: true }).click();
+      await expect(
+        page.getByRole('button', { name: '切换为统一 Diff', exact: true }),
+      ).toBeVisible();
+      for (const pane of [original, modified]) {
+        await expect
+          .poll(async () => (await pane.boundingBox())?.width ?? 0)
+          .toBeGreaterThanOrEqual((page.viewportSize()!.width - 32) * 0.4);
+      }
+      const originalBox = (await original.boundingBox())!;
+      const modifiedBox = (await modified.boundingBox())!;
+      expect(originalBox.x + originalBox.width).toBeLessThanOrEqual(modifiedBox.x + 1);
+      await expect(original.locator('.view-lines[role="presentation"]')).toBeVisible();
+      await expect(original.locator('.view-lines[role="presentation"]')).toContainText(
+        /display:\s*block/,
+      );
+    } else {
+      // A real geometry assertion, not just a label: unified does not allocate half the width to original.
+      await expect.poll(async () => (await original.boundingBox())?.width ?? 0).toBeLessThan(40);
+      await expect
+        .poll(async () => (await modified.boundingBox())!.width)
+        .toBeGreaterThan(page.viewportSize()!.width * 0.75);
+    }
+    const inputs = page.locator('.git-diff-editor [role="textbox"]');
+    await expect(inputs).toHaveCount(2);
+    await expect
+      .poll(() =>
+        inputs.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') ?? '')),
+      )
+      .toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(`更改前：${path}`),
+          expect.stringContaining(`更改后：${path}`),
+        ]),
+      );
+    await assertReadingOnly();
+    await expectNoHorizontalOverflow(page);
+    await testInfo.attach(`workspace-reading-${mode}-geometry-${testInfo.project.name}`, {
+      body: JSON.stringify({
+        viewport: page.viewportSize(),
+        initialWidth,
+        inspector: await inspector.boundingBox(),
+        original: await original.boundingBox(),
+        modified: await modified.boundingBox(),
+        code: await lines.boundingBox(),
+      }),
+      contentType: 'application/json',
+    });
+    // No scroll, content removal, or draft expansion: capture the natural preview-only reading state.
+    await attachViewportScreenshot(page, testInfo, `workspace-reading-focused-${mode}`);
+    const audit = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    const violations = audit.violations.filter((entry) =>
+      ['serious', 'critical'].includes(entry.impact ?? ''),
+    );
+    audits.push({ mode, violations });
+    await testInfo.attach(`workspace-reading-${mode}-axe-${testInfo.project.name}`, {
+      body: JSON.stringify(violations),
+      contentType: 'application/json',
+    });
+  }
+  await page.getByRole('button', { name: '退出专注审阅', exact: true }).click();
+  await expect(layout).not.toHaveAttribute('data-right-focused', 'true');
+  await expect(page.getByRole('button', { name: '专注审阅', exact: true })).toBeFocused();
+  await expect
+    .poll(async () => Math.abs((await inspector.boundingBox())!.width - initialWidth))
+    .toBeLessThanOrEqual(2);
+  await assertReadingOnly();
+  expect(await preferences()).toEqual(beforePreferences);
+  expect(gitWrites).toBe(0);
+  expect(errors).toEqual([]);
+  expect(audits).toEqual([
+    { mode: 'unified', violations: [] },
+    { mode: 'split', violations: [] },
+  ]);
+});
+
 test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {
   let failing = false;
   let reads = 0;
