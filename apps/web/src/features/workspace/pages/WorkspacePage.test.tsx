@@ -837,7 +837,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
       ),
     ).toHaveLength(1);
     await act(async () => {
-      finish(jsonResponse({ sha: 'abcdef0123456789' }));
+      finish(jsonResponse({ sha: 'abcdef0123456789abcdef0123456789abcdef01' }));
     });
     expect(await screen.findByText('提交完成：abcdef012345')).toBeInTheDocument();
     if (width === 1024) {
@@ -926,7 +926,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
       if (path === `/api/v1/projects/${project.id}/git/commits?limit=30`) {
         return jsonResponse([
           {
-            sha: 'abcdef0123456789',
+            sha: 'abcdef0123456789abcdef0123456789abcdef01',
             shortSha: 'abcdef0',
             authorName: 'Kkwans',
             authoredAt: '2026-08-11T01:02:03.000Z',
@@ -938,7 +938,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
         return jsonResponse([
           {
             name: 'main',
-            sha: 'abcdef0123456789',
+            sha: 'abcdef0123456789abcdef0123456789abcdef01',
             current: true,
             upstream: 'origin/main',
             committedAt: '2026-08-11T01:02:03.000Z',
@@ -946,7 +946,11 @@ describe('WorkspacePage 数据分区可靠性', () => {
         ]);
       }
       if (path === `/api/v1/projects/${project.id}/git/commit` && init?.method === 'POST') {
-        return jsonResponse({ beforeSha: '1234567', sha: 'abcdef0123456789', output: '[main] ok' });
+        return jsonResponse({
+          beforeSha: '1234567',
+          sha: 'abcdef0123456789abcdef0123456789abcdef01',
+          output: '[main] ok',
+        });
       }
       return baseFetch(path, init?.method);
     });

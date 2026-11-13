@@ -8,7 +8,7 @@ import {
   RefreshCw,
   Select,
 } from '@agenthub/ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
   GitBranchRecord,
@@ -17,6 +17,7 @@ import type {
   GitStatusRecord,
   QueryState,
 } from '../workspace-types';
+import { ApiError } from '../../../lib/api-error';
 import { DiffViewer } from './DiffViewer';
 import {
   buildGitChangeTree,
@@ -61,6 +62,9 @@ export function GitChangesTree({
   const [commitReceipt, setCommitReceipt] = useState<string>();
   const [commitPending, setCommitPending] = useState(false);
   const [commitError, setCommitError] = useState<Error>();
+  const commitLock = useRef(false);
+  const [commitUnknown, setCommitUnknown] = useState(false);
+  const [commitAttempt, setCommitAttempt] = useState<{ paths: string[]; message: string }>();
   const [commitDockOpen, setCommitDockOpen] = useState(false);
   const [retainCommitDraft, setRetainCommitDraft] = useState(false);
   const commitFormOpen =
@@ -71,16 +75,39 @@ export function GitChangesTree({
   );
 
   const commit = () => {
+    if (commitLock.current || !selectedPaths.length || !commitMessage.trim()) return;
+    commitLock.current = true;
+    const attempt = { paths: [...selectedPaths], message: commitMessage.trim() };
+    setCommitAttempt(attempt);
+    setCommitReceipt(undefined);
     setCommitError(undefined);
     setCommitPending(true);
-    void onCommit({ paths: selectedPaths, message: commitMessage.trim() })
+    // The synchronous lock also covers re-entrant/same-tick form submissions.
+    void Promise.resolve()
+      .then(() => onCommit(attempt))
       .then((receipt) => {
+        if (
+          !receipt ||
+          typeof receipt.sha !== 'string' ||
+          !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(receipt.sha)
+        ) {
+          throw new Error('提交响应缺少有效的完整 Git SHA。');
+        }
+        commitLock.current = false;
         setRetainCommitDraft(false);
         setSelectedPaths([]);
         setCommitMessage('');
         setCommitReceipt(receipt.sha ? `提交完成：${receipt.sha.slice(0, 12)}` : '提交完成');
       })
       .catch((error: unknown) => {
+        // Only this audited pre-write service rejection is safe to retry.
+        // Generic 4xx, hook failures, transport errors and malformed success are unknown.
+        const safeRejection =
+          error instanceof ApiError &&
+          error.status === 400 &&
+          error.code === 'GIT_COMMIT_PATHS_REQUIRED';
+        commitLock.current = !safeRejection;
+        setCommitUnknown(!safeRejection);
         setRetainCommitDraft(true);
         setCommitError(error instanceof Error ? error : new Error('Git 提交失败。'));
       })
@@ -250,11 +277,33 @@ export function GitChangesTree({
 
       {commitError && (
         <div className="workspace-query-error" role="alert">
-          <span>{commitError.message}</span>
+          <span>
+            {commitUnknown
+              ? '提交结果未知，可能已经提交成功。请先核对提交历史和 Git 状态，不要重复提交。'
+              : commitError.message}
+          </span>
+          {commitUnknown && commitAttempt && (
+            <details className="min-w-0 basis-full [overflow-wrap:anywhere]">
+              <summary>本次提交记录与保护范围</summary>
+              <p>{commitAttempt.message}</p>
+              <ul>
+                {commitAttempt.paths.map((path) => (
+                  <li key={path}>
+                    <code className="whitespace-normal">{path}</code>
+                  </li>
+                ))}
+              </ul>
+              <p>
+                当前面板已锁定提交。此保护不跨面板关闭、路由离开或页面刷新保留；重新打开前仍需人工核对。
+              </p>
+            </details>
+          )}
           <button
             type="button"
             onClick={commit}
-            disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
+            disabled={
+              !selectedPaths.length || !commitMessage.trim() || commitPending || commitUnknown
+            }
           >
             重试提交
           </button>
@@ -328,7 +377,7 @@ export function GitChangesTree({
                         placeholder="说明这次变更解决了什么"
                         onChange={(event) => {
                           setCommitReceipt(undefined);
-                          setCommitError(undefined);
+                          if (!commitUnknown) setCommitError(undefined);
                           setCommitMessage(event.target.value);
                         }}
                       />
@@ -336,7 +385,12 @@ export function GitChangesTree({
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={!selectedPaths.length || !commitMessage.trim() || commitPending}
+                      disabled={
+                        !selectedPaths.length ||
+                        !commitMessage.trim() ||
+                        commitPending ||
+                        commitUnknown
+                      }
                       loading={commitPending}
                     >
                       <GitCompareArrows size={16} />

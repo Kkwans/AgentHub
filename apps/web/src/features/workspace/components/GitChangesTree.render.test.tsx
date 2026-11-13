@@ -2,6 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { ApiError } from '../../../lib/api-error';
 import type { QueryState } from '../workspace-types';
 import { GitChangesTree } from './GitChangesTree';
 
@@ -68,7 +69,7 @@ function reviewProps() {
     diff: query({ patch: '', truncated: false, staged: false }),
     commits: query([]),
     branches: query([]),
-    onCommit: vi.fn(async () => ({ sha: 'new-commit-sha' })),
+    onCommit: vi.fn(async () => ({ sha: 'a'.repeat(40) })),
     stagedDiff: false,
     onStagedDiffChange: vi.fn(),
     selectedPath: 'src/one.ts',
@@ -139,7 +140,8 @@ it('提交pending/错误保留说明，清空勾选或切视图不吞错误且�
   expect(screen.getByRole('textbox', { name: '提交说明' })).toHaveValue('保留说明');
   expect(screen.getByRole('button', { name: /正在提交/ })).toBeDisabled();
   await act(async () => {
-    reject(new Error('提交未完成'));
+    await Promise.resolve();
+    reject(new ApiError('GIT_COMMIT_PATHS_REQUIRED', '提交未完成', 400));
   });
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交未完成'));
   const retry = screen.getByRole('button', { name: '重试提交' });
@@ -148,7 +150,8 @@ it('提交pending/错误保留说明，清空勾选或切视图不吞错误且�
   expect(screen.queryByRole('button', { name: '重试提交' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /正在提交/ })).toBeDisabled();
   await act(async () => {
-    reject(new Error('提交未完成'));
+    await Promise.resolve();
+    reject(new ApiError('GIT_COMMIT_PATHS_REQUIRED', '提交未完成', 400));
   });
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交未完成'));
   fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
@@ -172,7 +175,7 @@ it('成功回执在清空选择后常显，合并工具栏全选仍可用', asyn
   });
   fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
   await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent('提交完成：new-commit-s'),
+    expect(screen.getByRole('status')).toHaveTextContent('提交完成：aaaaaaaaaaaa'),
   );
   expect(screen.getByRole('checkbox', { name: '选择 src/one.ts' })).not.toBeChecked();
   expect(screen.getByRole('status')).toBeVisible();
@@ -180,7 +183,7 @@ it('成功回执在清空选择后常显，合并工具栏全选仍可用', asyn
 
 it('错误后清空说明不会保留可触发的重试入口', async () => {
   const props = reviewProps();
-  props.onCommit.mockRejectedValue(new Error('未完成'));
+  props.onCommit.mockRejectedValue(new ApiError('GIT_COMMIT_PATHS_REQUIRED', '未完成', 400));
   render(<GitChangesTree {...props} />);
   fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
   fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
@@ -196,7 +199,7 @@ it('错误后清空说明不会保留可触发的重试入口', async () => {
 
 it('失败后取消选择再编辑直到空说明仍保留表单，显式收起语义真实', async () => {
   const props = reviewProps();
-  props.onCommit.mockRejectedValue(new Error('未完成'));
+  props.onCommit.mockRejectedValue(new ApiError('GIT_COMMIT_PATHS_REQUIRED', '未完成', 400));
   render(<GitChangesTree {...props} />);
   fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
   fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
@@ -298,3 +301,91 @@ it.each(['focused', 'phone'] as const)(
     expect(props.onCommit).not.toHaveBeenCalled();
   },
 );
+
+it.each([
+  new ApiError('HTTP_ERROR', '断线', 0),
+  new ApiError('HTTP_ERROR', '代理失败', 502),
+  new ApiError('GIT_COMMIT_FAILED', 'hook 失败', 400),
+  new ApiError('OTHER_REJECTION', '未知拒绝', 400),
+  new Error('未知错误'),
+])('未知结果保持锁，修改说明/选择、只读刷新不能重试：%s', async (error) => {
+  const props = reviewProps();
+  props.onCommit.mockRejectedValue(error);
+  const view = render(<GitChangesTree {...props} />);
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
+  fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
+    target: { value: '原始说明' },
+  });
+  const form = view.container.querySelector('form')!;
+  fireEvent.submit(form);
+  fireEvent.submit(form);
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知'));
+  expect(screen.getByRole('button', { name: '重试提交' })).toBeDisabled();
+  fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
+    target: { value: '新的说明' },
+  });
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
+  fireEvent.submit(form);
+  expect(screen.getByRole('button', { name: '提交所选文件 (1)' })).toBeDisabled();
+  expect(screen.getByRole('alert')).toHaveTextContent('原始说明');
+  fireEvent.click(screen.getByText('更多 Git'));
+  fireEvent.click(screen.getByRole('menuitem', { name: '提交历史' }));
+  expect(props.commits.refetch).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '刷新 Git 数据' }));
+  expect(screen.getByRole('button', { name: '重试提交' })).toBeDisabled();
+  expect(props.onCommit).toHaveBeenCalledTimes(1);
+  expect(props.onCommit).toHaveBeenCalledWith({ paths: ['src/one.ts'], message: '原始说明' });
+});
+
+it.each([undefined, null, {}, { sha: '' }, { sha: 'fake-sha' }])(
+  '缺失或畸形回执不是提交成功：%s',
+  async (receipt) => {
+    const props = reviewProps();
+    props.onCommit.mockResolvedValue(receipt as { sha: string });
+    render(<GitChangesTree {...props} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
+      target: { value: '说明' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知'));
+    expect(screen.queryByText(/提交完成/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '重试提交' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: '提交说明' })).toHaveValue('说明');
+  },
+);
+
+it('同步抛错也进入未知结果而不是遗留 pending', async () => {
+  const props = reviewProps();
+  props.onCommit.mockImplementation(() => {
+    throw new Error('同步失败');
+  });
+  render(<GitChangesTree {...props} />);
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
+  fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
+    target: { value: '说明' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知'));
+  expect(screen.queryByRole('button', { name: /正在提交/ })).not.toBeInTheDocument();
+});
+
+it('新提交未知时不能继续展示上一次成功回执', async () => {
+  const props = reviewProps();
+  props.onCommit
+    .mockResolvedValueOnce({ sha: 'a'.repeat(40) })
+    .mockRejectedValueOnce(new Error('断线'));
+  render(<GitChangesTree {...props} />);
+  for (const message of ['第一次', '第二次']) {
+    fireEvent.click(screen.getByRole('button', { name: /^全选$/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
+      target: { value: message },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
+    if (message === '第一次') await screen.findByText('提交完成：aaaaaaaaaaaa');
+    else await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知'));
+  }
+  expect(screen.queryByText(/提交完成/)).not.toBeInTheDocument();
+  expect(props.onCommit).toHaveBeenCalledTimes(2);
+});

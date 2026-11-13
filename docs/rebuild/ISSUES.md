@@ -350,3 +350,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 - 闭合创建close/shutdown撤销、reserve响应丢失、确定未调用释放与未知创建隔离。真实持久重开完整startup验证四阶段且零adapter重放；只读attempt接口可定位原尝试。
 - 1186完整覆盖/10原有skip、lint/types/build/QA10与独立CR通过；真实ACP双实例START/REWORK分别只有一个赢家与一次合法创建，专用闭环到DONE，旧会话拒绝无副作用。浏览器待新exact CI。
 - 不整体关闭AH-001：UNKNOWN人工核对/显式恢复体验、启动operationId幂等、跨进程runtime路由与独立Postgres多连接仍未完成。UNKNOWN被隔离不是“所有失败都能自动恢复”。
+
+### Git 提交结果未知（2026-11-13 18:49 UTC）
+
+状态：同挂载止损候选；完整操作级保护仍开放。真实隔离复现与边界见 `repros/git-commit-unknown.md`。当前 GitChangesTree 无 project/auth 操作身份，不跨卸载/路由/硬刷新持久；SHA 格式验证不等于操作归属。后续需持久操作键、并发/身份隔离及只读核对协议。不得通过 HEAD/message 相似就自动判定成功并解锁。

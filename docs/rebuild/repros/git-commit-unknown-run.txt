@@ -1,0 +1,31 @@
+
+ RUN  v4.1.10 /workspace/shared/agenthub-codex-business
+
+ ❯ apps/web/src/features/workspace/components/git-commit-unknown-ui.repro.tsx (2 tests | 1 failed) 323ms
+   × desired safety contract: unknown transport outcome must not expose an enabled retry [EXPECTED RED] 63ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/features/workspace/components/git-commit-unknown-ui.repro.tsx > desired safety contract: unknown transport outcome must not expose an enabled retry [EXPECTED RED]
+Error: expect(element).toBeDisabled()
+
+Received element is not disabled:
+  <button
+  type="button"
+/>
+ ❯ apps/web/src/features/workspace/components/git-commit-unknown-ui.repro.tsx:48:56
+     46|   setup();
+     47|   await waitFor(() => expect(screen.getByRole('alert')).toBeVisible());
+     48|   expect(screen.getByRole('button', { name: '重试提交' })).toBeDisabled();
+       |                                                        ^
+     49| });
+     50|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 2 passed (3)
+   Start at  03:27:53
+   Duration  2.61s (transform 405ms, setup 36ms, import 908ms, tests 427ms, environment 640ms)
+

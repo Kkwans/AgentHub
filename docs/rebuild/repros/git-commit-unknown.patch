@@ -1,0 +1,139 @@
+diff --git a/apps/server/src/git/git-commit-lost-response.repro.ts b/apps/server/src/git/git-commit-lost-response.repro.ts
+new file mode 100644
+index 0000000..e35e17d
+--- /dev/null
++++ b/apps/server/src/git/git-commit-lost-response.repro.ts
+@@ -0,0 +1,78 @@
++import { mkdtemp, rm, writeFile } from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { runProcess } from '@agenthub/agent-core';
++import { expect, it, vi } from 'vitest';
++import { GitService } from './git-service.js';
++
++it('real temporary Git commit succeeds before simulated response loss, and a later changed path can be committed by retry', async () => {
++  const root = await mkdtemp(join(tmpdir(), 'agenthub-commit-response-repro-'));
++  const git = async (...args: string[]) => {
++    const result = await runProcess({
++      executable: '/usr/bin/git',
++      args: ['-C', root, ...args],
++      timeoutMs: 5000,
++      maxOutputBytes: 10000,
++    });
++    expect(result.exitCode).toBe(0);
++    return result.stdout.trim();
++  };
++  try {
++    await git('init');
++    await git('config', 'user.name', 'Isolated Repro');
++    await git('config', 'user.email', 'repro@example.invalid');
++    await writeFile(join(root, 'one.txt'), 'baseline\n');
++    await git('add', '--', 'one.txt');
++    await git('commit', '-m', 'baseline');
++    const before = await git('rev-parse', 'HEAD');
++    const service = new GitService(
++      {
++        get: vi.fn(async () => ({
++          id: 'fixture',
++          repoKind: 'GIT',
++          targetId: 'local',
++          realRootPath: root,
++        })),
++      } as unknown as ConstructorParameters<typeof GitService>[0],
++      { create: vi.fn() } as unknown as ConstructorParameters<typeof GitService>[1],
++    );
++    const payload = {
++      mode: 'SELECTED' as const,
++      paths: ['one.txt'],
++      message: 'same requested message',
++    };
++    await writeFile(join(root, 'one.txt'), 'first edit\n');
++    let completed: Awaited<ReturnType<GitService['commit']>> | undefined;
++    const lostResponse = async () => {
++      completed = await service.commit('fixture', payload);
++      throw new Error('simulated transport response loss after service completion');
++    };
++    await expect(lostResponse()).rejects.toThrow('simulated transport response loss');
++    const first = await git('rev-parse', 'HEAD');
++    expect(first).not.toBe(before);
++    expect(completed).toMatchObject({ beforeSha: before, sha: first });
++    expect((await service.status('fixture')).clean).toBe(true);
++    // No change would normally be rejected by Git. This second edit is intentional,
++    // representing another actor changing the same selected path before manual retry.
++    await writeFile(join(root, 'one.txt'), 'later independent edit\n');
++    const retried = await service.commit('fixture', payload);
++    expect(retried.beforeSha).toBe(first);
++    expect(retried.sha).not.toBe(first);
++    expect(await git('rev-list', '--count', 'HEAD')).toBe('3');
++    expect(await git('show', 'HEAD:one.txt')).toBe('later independent edit');
++    await writeFile(
++      '/tmp/agenthub-commit-response-evidence.json',
++      JSON.stringify({
++        before,
++        first,
++        second: retried.sha,
++        samePayload: payload,
++        commits: 3,
++        transport: 'simulated after real service success',
++        database: 'project repository stub only; real git commands',
++      }),
++    );
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
+diff --git a/apps/web/src/features/workspace/components/git-commit-unknown-ui.repro.tsx b/apps/web/src/features/workspace/components/git-commit-unknown-ui.repro.tsx
+new file mode 100644
+index 0000000..42c75d5
+--- /dev/null
++++ b/apps/web/src/features/workspace/components/git-commit-unknown-ui.repro.tsx
+@@ -0,0 +1,49 @@
++// @vitest-environment jsdom
++import '@testing-library/jest-dom/vitest';
++import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
++import { afterEach, expect, it, vi } from 'vitest';
++import { GitChangesTree } from './GitChangesTree';
++import { ApiError } from '../../../lib/api';
++const query = <T,>(data: T) => ({ data, error: null, isLoading: false, refetch: vi.fn() });
++afterEach(cleanup);
++function setup() {
++  const onCommit = vi.fn(async () => {
++    throw new ApiError('HTTP_ERROR', '请求失败，请稍后重试。', 0);
++  });
++  render(
++    <GitChangesTree
++      status={query({
++        clean: false,
++        branch: 'main',
++        entries: [{ index: ' ', worktree: 'M', path: 'one.txt' }],
++      })}
++      diff={query({ patch: '', truncated: false, staged: false })}
++      commits={query([])}
++      branches={query([])}
++      onCommit={onCommit}
++      stagedDiff={false}
++      onStagedDiffChange={vi.fn()}
++      whitespace="default"
++      onWhitespaceChange={vi.fn()}
++    />,
++  );
++  fireEvent.click(screen.getByRole('checkbox', { name: '选择 one.txt' }));
++  fireEvent.change(screen.getByRole('textbox', { name: '提交说明' }), {
++    target: { value: 'same requested message' },
++  });
++  fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
++  return onCommit;
++}
++it('current UI permits a second manual call after transport uncertainty (characterization, not safe behavior)', async () => {
++  const onCommit = setup();
++  await waitFor(() => expect(screen.getByRole('button', { name: '重试提交' })).toBeEnabled());
++  expect(screen.getByRole('alert')).toHaveTextContent('请求失败，请稍后重试');
++  fireEvent.click(screen.getByRole('button', { name: '重试提交' }));
++  await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(2));
++  expect(onCommit.mock.calls[0]).toEqual(onCommit.mock.calls[1]);
++});
++it('desired safety contract: unknown transport outcome must not expose an enabled retry [EXPECTED RED]', async () => {
++  setup();
++  await waitFor(() => expect(screen.getByRole('alert')).toBeVisible());
++  expect(screen.getByRole('button', { name: '重试提交' })).toBeDisabled();
++});

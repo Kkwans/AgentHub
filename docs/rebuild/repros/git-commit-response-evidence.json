@@ -1,0 +1,9 @@
+{
+  "before": "2abd6dbed4fe3be5f2e53c4357ae4063a5c6b44c",
+  "first": "ed4a2778d33ee63a0b8a1f726b030f381110e10b",
+  "second": "3ade104317c5193d145dbdfe1d0d2236f301bdb4",
+  "samePayload": { "mode": "SELECTED", "paths": ["one.txt"], "message": "same requested message" },
+  "commits": 3,
+  "transport": "simulated after real service success",
+  "database": "project repository stub only; real git commands"
+}
