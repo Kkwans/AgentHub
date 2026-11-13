@@ -189,3 +189,5 @@
 19:03 UTC Git owner 核心可执行设计已落地并通过25单测；Provider、项目身份显示与UI状态接入仍待下一片。详细合同、撤权/StrictMode/路由/刷新范围和门禁见 `repros/git-commit-owner-design.md`，当前用户界面保护范围不扩大。
 
 19:20 UTC Git Provider/UI接入候选已完成，认证epoch与项目隔离测试已补；下一步精确浏览器截图/CI、冻结树全量，并设计跨认证界面重现与硬刷新服务端持久操作协议。不得把前端内存owner称为服务端幂等。
+
+19:33 UTC 服务端Git权威恢复ADR已完成：优先migration/claim与查询→隔离Git崩溃注入→统一旧写入口→前端恢复。不得将Git与SQL事务称exactly-once；SHA归属仍开放。文档：repros/git-authoritative-recovery-design.md。

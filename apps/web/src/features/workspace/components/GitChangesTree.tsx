@@ -17,7 +17,6 @@ import type {
   GitStatusRecord,
   QueryState,
 } from '../workspace-types';
-import { api } from '../../../lib/api';
 import { useGitCommitOperations } from './GitCommitOperationProvider';
 import { ApiError } from '../../../lib/api-error';
 import { DiffViewer } from './DiffViewer';
@@ -60,7 +59,7 @@ export function GitChangesTree({
     value: 'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines',
   ) => void;
 }) {
-  const { owner, operations, client: queryClient } = useGitCommitOperations();
+  const { owner, operations, submit } = useGitCommitOperations();
   const alive = useRef(false);
   const uiAttempt = useRef(0);
   const draftRevision = useRef(0);
@@ -116,37 +115,23 @@ export function GitChangesTree({
       setRefreshError(false);
       const attempt = { projectId, paths: [...selectedPaths], message: commitMessage.trim() };
       setCommitError(undefined);
-      void owner
-        .submit(
-          attempt,
-          (original) =>
-            api.post<unknown>(`/projects/${original.projectId}/git/commit`, {
-              mode: 'SELECTED',
-              paths: original.paths,
-              message: original.message,
-            }),
-          async (original) => {
-            if (
-              alive.current &&
-              uiAttempt.current === attemptToken &&
-              draftRevision.current === submittedRevision
-            ) {
-              setRetainCommitDraft(false);
-              setSelectedPaths([]);
-              setCommitMessage('');
-            }
-            // Refetch failures are distinct from the already validated commit receipt.
-            try {
-              await Promise.all(
-                ['git-status', 'git-diff', 'git-commits', 'git-branches'].map((key) =>
-                  queryClient!.invalidateQueries({ queryKey: [key, original.projectId] }),
-                ),
-              );
-            } catch {
-              if (alive.current && uiAttempt.current === attemptToken) setRefreshError(true);
-            }
-          },
-        )
+      void submit(
+        attempt,
+        () => {
+          if (
+            alive.current &&
+            uiAttempt.current === attemptToken &&
+            draftRevision.current === submittedRevision
+          ) {
+            setRetainCommitDraft(false);
+            setSelectedPaths([]);
+            setCommitMessage('');
+          }
+        },
+        () => {
+          if (alive.current && uiAttempt.current === attemptToken) setRefreshError(true);
+        },
+      )
         .then((result) => {
           if (!alive.current || !result) return;
           if (result.phase !== 'committed') setRetainCommitDraft(true);

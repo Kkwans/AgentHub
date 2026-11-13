@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { api } from '../../../lib/api';
 import { authSession } from '../../../lib/auth-api';
 import { GitCommitOperationProvider, useGitCommitOperations } from './GitCommitOperationProvider';
 import type { createGitCommitOwner } from '../lib/git-commit-owner';
@@ -23,6 +24,7 @@ const clients: QueryClient[] = [];
 afterEach(() => {
   cleanup();
   clients.splice(0).forEach((client) => client.clear());
+  vi.restoreAllMocks();
   identity.id = accountA;
   identity.mode = 'token';
 });
@@ -43,6 +45,7 @@ function mount(send: (input: unknown) => Promise<unknown>, strict = false) {
   });
   clients.push(client);
   let owner: Owner | null = null;
+  let latest!: ReturnType<typeof useGitCommitOperations>;
   let navigate!: ReturnType<typeof useNavigate>;
   const errors: unknown[] = [];
   const results: unknown[] = [];
@@ -50,6 +53,7 @@ function mount(send: (input: unknown) => Promise<unknown>, strict = false) {
     const projectId = useParams().projectId!;
     const operations = useGitCommitOperations();
     owner = operations.owner;
+    latest = operations;
     return (
       <>
         <button
@@ -100,6 +104,8 @@ function mount(send: (input: unknown) => Promise<unknown>, strict = false) {
   const view = render(tree());
   return {
     getOwner: () => owner!,
+    getOperations: () => latest,
+    client,
     go: (path: string) => act(() => navigate(path)),
     refresh: () => view.rerender(tree()),
     errors,
@@ -211,4 +217,50 @@ it('无认证 scope 不能调用 transport', async () => {
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '提交' })));
   expect(send).not.toHaveBeenCalled();
   expect(app.errors).toHaveLength(1);
+});
+
+it('adapter刷新等待期间撤权/ABA后不发出旧UI错误回调', async () => {
+  const refresh = deferred();
+  const app = mount(vi.fn());
+  vi.spyOn(api, 'post').mockResolvedValue(success);
+  vi.spyOn(app.client, 'invalidateQueries').mockImplementation(async () => {
+    await refresh.promise;
+  });
+  const committed = vi.fn();
+  const failed = vi.fn();
+  let pending!: Promise<unknown>;
+  await act(async () => {
+    pending = app
+      .getOperations()
+      .submit({ projectId: 'a', paths: ['one.ts'], message: '原提交' }, committed, failed);
+    await Promise.resolve();
+  });
+  expect(committed).toHaveBeenCalledTimes(1);
+  act(() => {
+    app.getOwner().revoke();
+    app.getOwner().activate();
+  });
+  await act(async () => {
+    refresh.reject(new Error('旧刷新失败'));
+    await pending;
+  });
+  expect(failed).not.toHaveBeenCalled();
+  expect(app.getOwner().getSnapshot()).toEqual([]);
+});
+it('adapter成功UI回调同步撤权后不再刷新原缓存', async () => {
+  const app = mount(vi.fn());
+  vi.spyOn(api, 'post').mockResolvedValue(success);
+  const invalidate = vi.spyOn(app.client, 'invalidateQueries');
+  const failed = vi.fn();
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: 'a', paths: ['one.ts'], message: '原提交' },
+        () => app.getOwner().revoke(),
+        failed,
+      );
+  });
+  expect(invalidate).not.toHaveBeenCalled();
+  expect(failed).not.toHaveBeenCalled();
 });

@@ -1077,3 +1077,11 @@ d19于17:58:31完成完整147文件1401测试/10skip，属于前一报告窗口�
 保护不跨AccessGate卸载、认证界面重现、硬刷新或重新登录；保留认证错误failclosed策略，UI/设计明确限制，不称持久去重。19:13的本地全量因同工作树随后改动影响而中止exit130，不能算524d3d3精确结果。后续全量在冻结/隔离树跑。本轮最终主整合/浏览器结果待后记。
 
 19:21 UTC 最终主整合5文件92项通过；App/AccessGate/AppShell另3文件38项通过；全仓types、改动文件lint、E2E单文件类型、4项目收集、build3.43s/CSS预算/diffcheck及独立CR通过。新浏览器case未本地实跑；旧524d3d3 CI无障碍已成功、verify和real仍进行，不借用为本候选验收。
+
+### 2026-11-13 19:33 UTC 冻结全量缺陷与服务端恢复设计
+
+冻结866b64f全量363.31s结束，1456通过/10跳过/1失败（149文件过、1失败、4跳过），失败为presentation-architecture禁止展示组件直接api。按既有合同修复，不放宽断言：transport和缓存刷新移到Provider adapter，Tree仅展示/草稿回调。独立CR又补late refresh revoke/ABA fence与回归，最终结果待后记。
+
+并行只读审计GitService/Task账本/认证/资源别名，形成git-authoritative-recovery-design.md：持久至多一次派发、UNKNOWN不超时重领、同key绑定hash、资源claim、跨重启/认证查询、崩溃窗口及SHA观测归属限制。**尚无生产migration/API/执行接入**，未运行用户仓库Git写操作。
+
+19:35 UTC adapter最终architecture+Provider+Tree20测试通过（含新增2项撤权/ABA刷新回调测试），此前含WorkspacePage的48回归亦过；types/lint/build3.81s/CSS预算/diffcheck、独立CR通过。866精确CI verify也确认为相同架构门失败，无障碍success、real仍运行。下一SHA全量将在新冻结树验证，未提前宣称成功。

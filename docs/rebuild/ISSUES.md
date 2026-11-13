@@ -356,3 +356,5 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 状态：同挂载止损候选；完整操作级保护仍开放。真实隔离复现与边界见 `repros/git-commit-unknown.md`。当前 GitChangesTree 无 project/auth 操作身份，不跨卸载/路由/硬刷新持久；SHA 格式验证不等于操作归属。后续需持久操作键、并发/身份隔离及只读核对协议。不得通过 HEAD/message 相似就自动判定成功并解锁。
 
 19:20 UTC Git未知结果：Provider/生产Tree跨面板与内部路由保护已进入候选；认证界面重现（包含auth-status读错误）、刷新/重新登录仍丢失内存记录，服务端幂等仍开放。已修复CR发现的提交成功但invalidate失败误提供retryPOST路径，错误仅允许只读刷新。详见git-commit-owner-design.md。
+
+19:33 UTC 冻结全量查出GitChangesTree直接API违背展示架构合同，已迁回Provider adapter并保留原门禁。服务端持久恢复待实现，新增风险：readHead仅观测并发HEAD，不足以认证本操作精确SHA；详见git-authoritative-recovery-design.md。
