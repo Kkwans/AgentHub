@@ -1,3 +1,4 @@
+import { AppError } from '../errors.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -4386,6 +4387,41 @@ describe('Session/Run/Approval 持久化闭环', () => {
     expect((await fixture.repositories.runs.get(run.id))?.status).toBe('DISCONNECTED');
     expect(await fixture.repositories.approvals.listPending(session.id)).toHaveLength(0);
     await fixture.service.shutdown();
+  });
+
+  it('Git诊断快照读取失败不把正常Run改为失败', async () => {
+    const capture = vi.fn(
+      async (
+        _run: string,
+        _project: string,
+        _cwd: string,
+        _type: 'BEFORE' | 'AFTER' | 'REVIEW',
+      ) => {
+        throw new AppError(409, 'GIT_STATUS_FAILED', 'Git 状态读取失败');
+      },
+    );
+    const fixture = await createFixture(
+      'complete',
+      undefined,
+      {},
+      { git: { readHead: async () => undefined, capture } },
+    );
+    try {
+      const session = await fixture.service.create({
+        projectId: fixture.projectId,
+        agentId: fixture.agentId,
+        title: '诊断读取失败',
+        cwd: '/tmp',
+      });
+      const run = await fixture.service.startRun(session.id, { text: '继续正常执行' });
+      await waitFor(
+        async () => (await fixture.repositories.sessions.get(session.id))?.status === 'READY',
+      );
+      expect(await fixture.repositories.runs.get(run.id)).toMatchObject({ status: 'COMPLETED' });
+      expect(capture.mock.calls.map((call) => call[3])).toEqual(['BEFORE', 'AFTER']);
+    } finally {
+      await fixture.service.shutdown();
+    }
   });
 
   it('ACP 未返回 externalRunId 且 usage 只有 context 数据时仍完成 Run', async () => {

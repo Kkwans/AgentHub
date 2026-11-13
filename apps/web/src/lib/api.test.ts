@@ -270,3 +270,22 @@ it.each([
   expect((failure as Error).message).not.toContain('/private/path');
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+
+it('Git状态失败显示可操作说明而不是clean或底层错误', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValue(
+        Response.json(
+          { error: { code: 'GIT_STATUS_FAILED', message: 'internal path must not render' } },
+          { status: 409 },
+        ),
+      ),
+  );
+  await expect(api.get('/projects/p/git/status')).rejects.toMatchObject({
+    code: 'GIT_STATUS_FAILED',
+    status: 409,
+    message: 'Git 状态读取失败，是否干净尚未确认。请检查仓库是否可访问后重新读取。',
+  });
+});

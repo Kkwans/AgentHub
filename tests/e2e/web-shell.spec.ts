@@ -963,6 +963,64 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await attachViewportScreenshot(page, testInfo, 'workspace');
 });
 
+test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {
+  let failing = false;
+  let reads = 0;
+  let writes = 0;
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  page.on('console', (message) => {
+    if (
+      message.type() === 'error' &&
+      !(
+        message.location().url.endsWith(`/api/v1/projects/${project.id}/git/status`) &&
+        message.text().includes('409')
+      )
+    )
+      pageErrors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.includes('/git/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      writes += 1;
+  });
+  await page.route(`**/api/v1/projects/${project.id}/git/status`, async (route) => {
+    reads += 1;
+    await route.fulfill({
+      status: failing ? 409 : 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        failing
+          ? { error: { code: 'GIT_STATUS_FAILED', message: 'Git 状态读取失败' } }
+          : { data: { branch: 'main', headSha: 'abcdef1234567890', clean: true, entries: [] } },
+      ),
+    });
+  });
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await expect(page.locator('.git-clean-state')).toHaveText('工作区干净');
+  failing = true;
+  await page.getByRole('button', { name: '刷新 Git 数据', exact: true }).click();
+  await expect(page.getByText(/是否干净尚未确认/)).toBeVisible();
+  await expect(page.getByText('工作区干净', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.git-clean-state')).not.toHaveClass(/\bclean\b/);
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'workspace-git-status-error');
+  failing = false;
+  await page.getByRole('button', { name: '刷新 Git 数据', exact: true }).click();
+  await expect(page.locator('.git-clean-state')).toHaveText('工作区干净');
+  await expect(page.getByText(/是否干净尚未确认/)).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'workspace-git-status-recovered');
+  expect(reads).toBeGreaterThanOrEqual(3);
+  expect(writes).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
 test('Projects 辅助来源失败不伪装为空且可以只读恢复', async ({ page }, testInfo) => {
   let failing = true;
   let writes = 0;

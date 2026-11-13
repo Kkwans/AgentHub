@@ -966,3 +966,9 @@
 - 独立CR发现恢复编辑失焦及折叠aria不一致，已回修retainDraft/effectiveOpen；pending不能假收起。新增retry资格保护明确记录，不将其冒称CSS-only。
 - 主树4文件37项回归、types/lint/build/CSS预算通过，四视口E2E保留原桌面门并加metadata键盘/代码顶部几何，收集和静态CR通过；新图/CI仍待验。
 - 21ece完整本地回归本窗口前已结束1350通过、10跳过；不把旧全量当新C24全量或浏览器验收。仍仅开发分支。
+
+### 2026-11-13 14:22 UTC Codex C25 Git读取真值
+
+- 真实临时Git仓库复现失败被伪装clean、capture持久化假快照；最小改为409/GIT_STATUS_FAILED且不泄露stderr，合法无HEAD空库仍成功。未改Git写动作、不修用户仓库/历史快照。
+- 前端读取失败不沿用缓存“工作区干净”；新四宽fixture门验证clean→未知→只读恢复、Git写次数0。
+- 主树5文件177项通过，包含全部134项Session服务回归；server/web类型、lint、构建和CR通过。实际新增浏览器门/截图待CI，旧7bc/bf绿不代替此片。

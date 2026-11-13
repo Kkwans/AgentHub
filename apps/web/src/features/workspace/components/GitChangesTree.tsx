@@ -147,11 +147,19 @@ export function GitChangesTree({
             </details>
           ) : null}
         </div>
-        {status.data && (
-          <span className={`git-clean-state ${status.data.clean ? 'clean' : 'dirty'}`}>
-            {status.data.clean ? '工作区干净' : '有未提交变更'}
+        {status.error || status.isLoading || status.data ? (
+          <span
+            className={`git-clean-state ${status.error || status.isLoading ? 'unknown' : status.data?.clean ? 'clean' : 'dirty'}`}
+          >
+            {status.error
+              ? '状态未确认'
+              : status.isLoading
+                ? '状态读取中'
+                : status.data?.clean
+                  ? '工作区干净'
+                  : '有未提交变更'}
           </span>
-        )}
+        ) : null}
       </div>
 
       <div className="git-viewbar git-review-toolbar">

@@ -50,6 +50,7 @@ const errorMessages: Record<string, string> = {
   GIT_COMMIT_PATHS_REQUIRED: '请至少勾选一个需要提交的文件。',
   GIT_ADD_SELECTED_FAILED: '所选文件暂存失败，请刷新 Git 状态后重试。',
   GIT_COMMIT_FAILED: 'Git 提交失败，请检查提交说明、文件状态和 Git 配置。',
+  GIT_STATUS_FAILED: 'Git 状态读取失败，是否干净尚未确认。请检查仓库是否可访问后重新读取。',
   GIT_DIFF_FAILED: 'Git Diff 读取失败，请刷新后重试。',
   GIT_LOG_FAILED: 'Git 提交历史读取失败，请刷新后重试。',
   GIT_BRANCHES_FAILED: 'Git 分支读取失败，请刷新后重试。',

@@ -222,3 +222,21 @@ it('失败后取消选择再编辑直到空说明仍保留表单，显式收起�
 
   expect(props.onCommit).toHaveBeenCalledTimes(1);
 });
+
+it.each(['error', 'loading'] as const)('缓存clean后%s不再把旧badge当成当前干净事实', (phase) => {
+  const props = reviewProps();
+  render(
+    <GitChangesTree
+      {...props}
+      status={{
+        ...props.status,
+        data: { ...props.status.data!, clean: true, entries: [] },
+        error: phase === 'error' ? new Error('读取失败') : null,
+        isLoading: phase === 'loading',
+      }}
+    />,
+  );
+  expect(screen.queryByText('工作区干净')).not.toBeInTheDocument();
+  expect(screen.getByText(phase === 'error' ? '状态未确认' : '状态读取中')).toBeVisible();
+  if (phase === 'error') expect(screen.getByRole('alert')).toBeVisible();
+});

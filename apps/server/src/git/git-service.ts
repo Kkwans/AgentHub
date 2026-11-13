@@ -195,7 +195,7 @@ export class GitService implements GitHeadProbe {
       '-z',
       '--untracked-files=all',
     ]);
-    if (result.exitCode !== 0) return { clean: true, entries: [] };
+    requireSuccess(result, 'GIT_STATUS_FAILED', 'Git 状态读取失败');
     const chunks = result.stdout.split('\0').filter(Boolean);
     const header = chunks[0]?.startsWith('## ') ? chunks.shift()?.slice(3) : undefined;
     const entries: GitStatusEntry[] = [];
