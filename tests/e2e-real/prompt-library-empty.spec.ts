@@ -1,3 +1,4 @@
+import { apiData, seedWorkspace } from './baseline-support.js';
 import { test, expect } from './fixtures.js';
 
 test.use({ authMode: 'local_trusted' });
@@ -254,3 +255,120 @@ for (const width of [390, 768, 1024, 1440]) {
     });
   }
 }
+
+// Separate from the eight empty/error cases: all three writes below go through
+// the real UI and isolated loopback service, never a fulfilled success fixture.
+test('Prompt 显式选择三类目标并保存真实绑定 390 light', async ({ page, context, app }, info) => {
+  const errors: string[] = [];
+  const writes: Array<Record<string, unknown>> = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/prompt-bindings'
+    )
+      writes.push(request.postDataJSON() as Record<string, unknown>);
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await context.addInitScript((origin) => {
+    if (location.origin === origin) localStorage.setItem('agenthub-theme', 'light');
+  }, app.origin);
+  const { project, agent } = await seedWorkspace(context, app);
+  const task = await apiData<{ id: string }>(context, 'post', '/tasks', {
+    projectId: project.id,
+    title: '绑定正向验证工作',
+  });
+  const prompt = await apiData<{ id: string }>(context, 'post', '/prompts', {
+    projectId: project.id,
+    key: 'e2e/binding-positive',
+    name: '真实绑定验证模板',
+    kind: 'TASK',
+    type: 'TEXT',
+  });
+  const version = await apiData<{ id: string }>(context, 'post', `/prompts/${prompt.id}/versions`, {
+    content: { text: '只绑定显式选择的真实目标。' },
+  });
+  await page.goto('/prompts');
+  const editor = page.getByRole('region', { name: 'Prompt 编辑器' });
+  await expect(editor.getByRole('heading', { name: '真实绑定验证模板' })).toBeVisible();
+  await editor.getByRole('tab', { name: '绑定', exact: true }).click();
+  const targets = [
+    { type: 'PROJECT', label: 'Project', id: project.id, name: 'v1 baseline project' },
+    { type: 'AGENT', label: 'Agent', id: agent.id, name: 'v1 baseline agent' },
+    { type: 'TASK', label: 'Task', id: task.id, name: '绑定正向验证工作' },
+  ];
+  for (const [index, target] of targets.entries()) {
+    await editor.getByRole('button', { name: '新增绑定', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '新建 Prompt 绑定', exact: true });
+    const targetType = dialog.getByRole('combobox', { name: '绑定目标类型', exact: true });
+    if ((await targetType.innerText()) !== target.label) {
+      await targetType.click();
+      await page.getByRole('option', { name: target.label, exact: true }).click();
+    }
+    const submit = dialog.getByRole('button', { name: '创建绑定', exact: true });
+    await expect(submit).toBeDisabled();
+    const targetSelect = dialog.getByRole('combobox', { name: target.label, exact: true });
+    await expect(targetSelect).toHaveText('请选择绑定目标');
+    await targetSelect.click();
+    await page.getByRole('option', { name: target.name, exact: true }).click();
+    const selector = dialog.getByRole('combobox', { name: '选择方式', exact: true });
+    if ((await selector.innerText()) !== '固定版本') {
+      await selector.click();
+      await page.getByRole('option', { name: '固定版本', exact: true }).click();
+    }
+    await dialog.getByRole('combobox', { name: '固定版本', exact: true }).click();
+    await page.getByRole('option', { name: /^v1 ·/ }).click();
+    await expect(targetSelect).toHaveText(target.name);
+    await expect(dialog.getByRole('combobox', { name: '固定版本', exact: true })).toHaveText(
+      /^v1 ·/,
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    await expect(submit).toBeEnabled();
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/api/v1/prompt-bindings',
+    );
+    await submit.click();
+    const response = await responsePromise;
+    expect(response.ok(), await response.text()).toBe(true);
+    const saved = (await response.json()).data as { id: string };
+    const expected = {
+      targetType: target.type,
+      targetId: target.id,
+      promptId: prompt.id,
+      selectorType: 'VERSION',
+      versionId: version.id,
+      slot: 'SYSTEM',
+      priority: 0,
+    };
+    expect(saved).toMatchObject({ ...expected, enabled: true });
+    expect(writes).toHaveLength(index + 1);
+    expect(writes[index]).toEqual(expected);
+    await expect(dialog).not.toBeVisible();
+    await expect(editor.getByText(target.name, { exact: true })).toBeVisible();
+    const persisted = await apiData<Array<{ id: string }>>(
+      context,
+      'get',
+      `/prompt-bindings?targetType=${target.type}&targetId=${target.id}`,
+    );
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({ ...expected, id: saved.id, enabled: true });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const path = info.outputPath(`binding-saved-${target.type.toLowerCase()}-390-light.png`);
+    await page.screenshot({ path, fullPage: true, animations: 'disabled' });
+    await info.attach(`binding-saved-${target.type}`, { path, contentType: 'image/png' });
+  }
+  const all = await apiData<unknown[]>(context, 'get', `/prompt-bindings?promptId=${prompt.id}`);
+  expect(all).toHaveLength(3);
+  expect(writes).toHaveLength(3);
+  expect(errors).toEqual([]);
+});
