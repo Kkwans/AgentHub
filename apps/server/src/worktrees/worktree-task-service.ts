@@ -205,7 +205,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         if (uncertain.phase === 'DISPATCH_UNKNOWN') await this.bindUnknownRun(id, uncertain);
         throw uncertain;
       }
-      await this.block(id, error);
+      await this.failRunStart(id, execution.sessionId, execution.runId, error);
       throw asAppError(error, 'WORKTREE_REWORK_FAILED', 'Worktree 继续修改失败');
     }
   }
@@ -472,9 +472,31 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         if (uncertain.phase === 'DISPATCH_UNKNOWN') await this.bindUnknownRun(id, uncertain);
         return uncertain.phase !== 'PREPARATION_FAILED';
       }
+      if (startedSessionId) {
+        await this.failRunStart(id, startedSessionId, execution.runId, error);
+        // A competing callback may already have released the slot while drain
+        // was active; let claimNext continue rather than losing that wake-up.
+        return !['BLOCKED', 'CANCELED', 'DONE'].includes((await this.get(id)).status);
+      }
       await this.block(id, error);
       return false;
     }
+  }
+
+  private async failRunStart(
+    id: string,
+    sessionId: string,
+    priorRunId: string | null,
+    error: unknown,
+  ) {
+    const normalized = asAppError(error, 'WORKTREE_EXECUTION_FAILED', 'Worktree Execution 失败');
+    const result = await this.executions.failRunStart(id, { sessionId, priorRunId }, normalized);
+    if (result.execution)
+      this.publish(
+        result.blocked ? 'worktree.execution.blocked' : 'worktree.execution.recovery_unresolved',
+        result.execution,
+      );
+    return result.blocked;
   }
 
   private async bindUnknownRun(id: string, error: RunStartError): Promise<void> {

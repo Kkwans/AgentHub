@@ -1878,6 +1878,113 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
     });
   }
 
+  // Resolve a failed start under the same lock order as lifecycle callbacks.
+  // Run admission takes Task -> Session, so no Run can slip between the evidence
+  // check and a terminal transition that releases the project queue slot.
+  async failRunStart(
+    id: string,
+    expected: { sessionId: string; priorRunId: string | null },
+    error: { code: string; message: string },
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [execution] = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(eq(worktreeExecutions.id, id))
+        .for('update')
+        .limit(1);
+      const unchanged = { blocked: false, execution: undefined };
+      if (
+        !execution ||
+        execution.status !== 'RUNNING' ||
+        execution.sessionId !== expected.sessionId ||
+        execution.runId !== expected.priorRunId
+      )
+        return unchanged;
+      const [task] = await transaction
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, execution.taskId))
+        .for('update')
+        .limit(1);
+      if (
+        !task ||
+        task.status !== 'IN_PROGRESS' ||
+        task.sessionId !== expected.sessionId ||
+        task.assignedAgentId !== execution.agentId ||
+        task.projectId !== execution.projectId
+      )
+        return unchanged;
+      const [session] = await transaction
+        .select()
+        .from(agentSessions)
+        .where(eq(agentSessions.id, expected.sessionId))
+        .for('update')
+        .limit(1);
+      if (
+        !session ||
+        session.taskId !== task.id ||
+        session.agentId !== execution.agentId ||
+        session.projectId !== task.projectId
+      )
+        return unchanged;
+      const runs = await transaction
+        .select()
+        .from(agentRuns)
+        .where(eq(agentRuns.sessionId, session.id));
+      const latest = runs.find((run) => run.id === session.latestRunId);
+      const competing = session.latestRunId !== expected.priorRunId;
+      const unresolved = runs.some(
+        (run) =>
+          [
+            'QUEUED',
+            'STARTING',
+            'RUNNING',
+            'WAITING_APPROVAL',
+            'CANCELING',
+            'DISCONNECTED',
+          ].includes(run.status) ||
+          isLegacyUncertainRun(run) ||
+          run.errorCode === 'RUN_PREPARATION_RECOVERY_REQUIRED',
+      );
+      // Busy may precede durable Run creation (in-process admission). Its lack of
+      // a row is not proof that no caller owns dispatch. Keep unknown state active.
+      const busy = [
+        'SESSION_NOT_READY',
+        'SESSION_RUN_UNRESOLVED',
+        'WORKTREE_RUN_ADMISSION_REJECTED',
+      ].includes(error.code);
+      if (competing || unresolved || busy) {
+        const [held] = await transaction
+          .update(worktreeExecutions)
+          .set({
+            ...(latest && latest.taskId === task.id ? { runId: latest.id } : {}),
+            errorCode: 'WORKTREE_RECOVERY_UNRESOLVED',
+            errorMessage: '启动请求失败但当前派发归属未结束，保留执行槽位等待核对',
+            updatedAt: new Date(),
+          })
+          .where(eq(worktreeExecutions.id, id))
+          .returning();
+        return { blocked: false, execution: held };
+      }
+      const [blocked] = await transaction
+        .update(worktreeExecutions)
+        .set({
+          status: 'BLOCKED',
+          errorCode: error.code,
+          errorMessage: error.message,
+          updatedAt: new Date(),
+        })
+        .where(eq(worktreeExecutions.id, id))
+        .returning();
+      await transaction
+        .update(tasks)
+        .set({ status: 'BLOCKED', finalRunId: execution.runId, updatedAt: new Date() })
+        .where(eq(tasks.id, task.id));
+      return { blocked: true, execution: blocked };
+    });
+  }
+
   async applyRunOutcome(
     taskId: string,
     runId: string,

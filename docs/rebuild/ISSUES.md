@@ -324,3 +324,13 @@ AH-079当前验收：d5325e7精确CI43355699706双绿，1089单测/48 fixture、
 AH-080当前验收：f6fcc53精确CI43357553824的verify与真实服务/视觉证据双绿，关闭当前旧merge代际护栏切片；不可变审阅token及claim后新写入仍在独立范围。
 
 AH-081最终本地验收：1111完整覆盖/10原有skip、lint/types/build/QA10与独立CR通过；真实Git/PGlite/ACP证明REVIEW/MERGING直接Run均409且无业务/Git副作用，合法专用返工与合并正常。断连仍占槽时新增拒绝回归，旧回调不能释放当前Run。四宽浏览器待新exact CI，不提前关闭。
+
+## AH-082 / P1：专属启动失败覆盖竞争Run并错误释放隔离槽位
+
+- S63两条PGlite barrier红测确认初次启动/返工均可被先落库的Direct Run抢先，原请求SESSION_RUN_UNRESOLVED进入无条件block，活动Run仍在而Execution/Task误变BLOCKED。
+- 修复以Execution→Task→Session锁内检查启动前Session/Run代际、竞争Run及活动/未知证据；忙碌但未落库也不认定无派发。新REVIEW/终态回调赢家不得覆盖，终态赢家允许排队继续。
+- 只解决错误释放与迟到失败覆盖，不实现专用调用者独占令牌、不补普通启动原子Session预留；更改不涉及视觉。79专项及独立CR通过，待完整门禁/烟测/新exact CI。
+
+AH-081当前验收：e2e044a精确CI43364136994双绿，关闭阶段/身份/重复Run准入当前切片；RUNNING调用者独占未包含，AH-082仅修其错误释放后果。
+
+AH-082最终本地验收：1133完整覆盖/10原有skip、79专项、lint/types/build/QA10及独立CR通过；最终真实Git/PGlite/ACP初次/返工barrier烟测均保持活动槽位和排队边界，权威REVIEW及fresh合并成功。新exact CI待验收；不将PGlite串行合同测试冒称独立Postgres并发锁实测。

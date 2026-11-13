@@ -143,6 +143,114 @@ describe('Worktree Task Runner 编排', () => {
     },
   );
 
+  it.each(
+    (['start', 'rework'] as const).flatMap((mode) =>
+      (
+        [
+          'RUNNING',
+          'QUEUED',
+          'DISCONNECTED',
+          'FAILED_UNKNOWN',
+          'COMPLETED',
+          'CALLBACK',
+          'CANCELED_CALLBACK',
+        ] as const
+      ).map((state) => ({ mode, state })),
+    ),
+  )('竞争Run抢先$mode/$state后原请求失败不得释放隔离槽位', async ({ mode, state }) => {
+    const fixture = await seedFixture(`start-race-${mode}-${state}`);
+    let nextId: string | undefined;
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '竞争启动',
+      status: 'READY',
+    });
+    const nextTask = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '下一项',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+    let proceed!: () => void;
+    let reached!: (id: string) => void;
+    const entered = new Promise<string>((resolve) => {
+      reached = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      proceed = resolve;
+    });
+    const original = runtime.sessions.startRun;
+    if (mode === 'rework') {
+      await service.processQueue(fixture.projectId);
+      const running = await waitForStatus(queued.execution.id, 'RUNNING');
+      await complete(service, task.id, running.runId!);
+    }
+    const paused = vi
+      .spyOn(runtime.sessions, 'startRun')
+      .mockImplementationOnce(async (sessionId) => {
+        reached(sessionId);
+        await barrier;
+        throw new AppError(409, 'SESSION_RUN_UNRESOLVED', '另一个Run已占槽');
+      });
+    const operation =
+      mode === 'start'
+        ? service.processQueue(fixture.projectId)
+        : service.rework(queued.execution.id, '继续');
+    const handled = operation.catch(() => undefined);
+    try {
+      const sessionId = await entered;
+      const winner = await original(sessionId, { text: '竞争请求' });
+      const runs = new RunRepository(database.db);
+      if (state === 'CALLBACK') await complete(service, task.id, winner.id);
+      else if (state === 'CANCELED_CALLBACK') await stop(service, task.id, winner.id, 'CANCELED');
+      else if (state === 'FAILED_UNKNOWN')
+        await runs.patch(winner.id, {
+          status: 'FAILED',
+          dispatchState: 'LEGACY_UNKNOWN',
+          errorCode: 'SERVER_RESTARTED',
+        });
+      else await runs.patch(winner.id, { status: state });
+      const next = await service.queueTask(nextTask.id, { agentId: fixture.agentId });
+      nextId = next.execution.id;
+      proceed();
+      await handled;
+      if (state === 'CANCELED_CALLBACK') {
+        expect((await executions.get(queued.execution.id))?.status).toBe('CANCELED');
+        if (mode === 'rework') await service.processQueue(fixture.projectId);
+        const nextRunning = await waitForStatus(next.execution.id, 'RUNNING');
+        await stop(service, nextTask.id, nextRunning.runId!, 'CANCELED');
+        return;
+      }
+      expect((await executions.get(queued.execution.id))?.status).toBe(
+        state === 'CALLBACK' ? 'REVIEW' : 'RUNNING',
+      );
+      expect((await tasks.get(task.id))?.status).toBe(
+        state === 'CALLBACK' ? 'WAITING_REVIEW' : 'IN_PROGRESS',
+      );
+      expect(await executions.claimNext(fixture.projectId)).toBeUndefined();
+      expect((await executions.get(next.execution.id))?.status).toBe('QUEUED');
+      await runs.patch(winner.id, {
+        status: 'COMPLETED',
+        dispatchState: 'ATTEMPTED',
+        errorCode: null,
+      });
+      await service.onRunCompleted(task.id, winner.id);
+      expect((await executions.get(queued.execution.id))?.status).toBe('REVIEW');
+    } finally {
+      proceed();
+      await handled;
+      paused.mockRestore();
+      await service.shutdown();
+      for (const id of [nextId, queued.execution.id])
+        if (id && !['CANCELED', 'DONE'].includes((await executions.get(id))!.status))
+          await service.cancel(id);
+    }
+  });
+
   it('AH002隔离执行保存Task默认变量且显式值覆盖，返工沿用执行快照', async () => {
     const fixture = await seedFixture('Prompt variables');
     const defaults = { subject: 'saved', suffix: 'retained', flag: true, count: 7 };

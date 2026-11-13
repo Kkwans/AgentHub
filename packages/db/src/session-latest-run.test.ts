@@ -77,6 +77,93 @@ describe('同 Session 最新 Run 的持久所有权', () => {
   }
 
   it.each([
+    'NO_RUN',
+    'BUSY_NO_ROW',
+    'NEW_COMPLETED',
+    'OLD_QUEUED',
+    'OLD_DISCONNECTED',
+    'OLD_UNKNOWN',
+    'OLD_FENCE',
+    'KNOWN_OLD_COMPLETED',
+  ] as const)('启动失败事务独立核对%s，不用忙碌错误掩盖Run证据', async (mode) => {
+    const { tasks, runs, task, session } = await fixture();
+    const executions = new WorktreeExecutionRepository(database.db);
+    const old =
+      mode.startsWith('OLD_') || mode === 'KNOWN_OLD_COMPLETED'
+        ? await runs.create({
+            id: randomUUID(),
+            sessionId: session.id,
+            taskId: task.id,
+            status:
+              mode === 'OLD_QUEUED'
+                ? 'QUEUED'
+                : mode === 'OLD_DISCONNECTED'
+                  ? 'DISCONNECTED'
+                  : mode === 'KNOWN_OLD_COMPLETED'
+                    ? 'COMPLETED'
+                    : 'FAILED',
+            dispatchState: mode === 'OLD_UNKNOWN' ? 'LEGACY_UNKNOWN' : 'ATTEMPTED',
+            errorCode:
+              mode === 'OLD_UNKNOWN'
+                ? 'SERVER_RESTARTED'
+                : mode === 'OLD_FENCE'
+                  ? 'RUN_PREPARATION_RECOVERY_REQUIRED'
+                  : null,
+          })
+        : undefined;
+    const execution = await executions.create({
+      id: randomUUID(),
+      taskId: task.id,
+      projectId,
+      agentId,
+      sessionId: session.id,
+      runId: old?.id ?? null,
+      status: 'RUNNING',
+      worktreePath: `/tmp/managed-${task.id}`,
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `managed-${task.id}`,
+    });
+    try {
+      const newer =
+        mode === 'NEW_COMPLETED'
+          ? await runs.create({
+              id: randomUUID(),
+              sessionId: session.id,
+              taskId: task.id,
+              status: 'COMPLETED',
+            })
+          : undefined;
+      const blocked = mode === 'NO_RUN' || mode === 'KNOWN_OLD_COMPLETED';
+      const result = await executions.failRunStart(
+        execution.id,
+        { sessionId: session.id, priorRunId: old?.id ?? null },
+        {
+          code: mode === 'BUSY_NO_ROW' ? 'SESSION_NOT_READY' : 'PROMPT_VARIABLES_MISSING',
+          message: '准备未成功',
+        },
+      );
+      expect(result.blocked).toBe(blocked);
+      expect((await executions.get(execution.id))?.status).toBe(blocked ? 'BLOCKED' : 'RUNNING');
+      expect((await tasks.get(task.id))?.status).toBe(blocked ? 'BLOCKED' : 'IN_PROGRESS');
+      if (newer) expect((await executions.get(execution.id))?.runId).toBe(newer.id);
+      // Failure-resolution first: admission after the committed terminal guard
+      // must fail, just as admission-first cases above retain the owning Run.
+      if (blocked)
+        await expect(
+          runs.create({
+            id: randomUUID(),
+            sessionId: session.id,
+            taskId: task.id,
+            status: 'RUNNING',
+          }),
+        ).rejects.toMatchObject({ code: 'WORKTREE_RUN_ADMISSION_REJECTED' });
+    } finally {
+      await executions.patch(execution.id, { status: 'CANCELED' });
+    }
+  });
+
+  it.each([
     'QUEUED',
     'SETTING_UP',
     'AWAITING_INPUT',
