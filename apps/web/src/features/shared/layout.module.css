@@ -733,3 +733,12 @@
 .workStateDotFailed {
   background: var(--ah-danger);
 }
+
+/* Fullscreen forms have one workflow scroll owner: the shared dialog body.
+ * Keep ordinary dialogs' bounded feature panes and textarea/editor scrolling. */
+:global(.ah-dialog-fullscreen) .dialogBody,
+:global(.ah-dialog-fullscreen) .discoveryDialog {
+  min-width: 0;
+  max-height: none;
+  overflow: visible;
+}
