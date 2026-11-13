@@ -131,6 +131,21 @@ for (const width of [390, 768, 1024, 1440]) {
       // the run settling, which is not evidence of keyboard-focus treatment.
       await expect(composer).toBeFocused();
       await expect(composer).toBeEnabled();
+      const inputGeometry = await composer.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return {
+          scrollTop: node.scrollTop,
+          clientHeight: node.clientHeight,
+          lineHeight: parseFloat(style.lineHeight),
+          paddingTop: parseFloat(style.paddingTop),
+          paddingBottom: parseFloat(style.paddingBottom),
+        };
+      });
+      expect(inputGeometry.paddingTop).toBeGreaterThanOrEqual(12);
+      expect(inputGeometry.scrollTop).toBeLessThanOrEqual(1);
+      expect(inputGeometry.clientHeight).toBeGreaterThanOrEqual(
+        inputGeometry.lineHeight * 2 + inputGeometry.paddingTop + inputGeometry.paddingBottom - 1,
+      );
       await capture(page, info, 'composer-focused', composer, page.locator('.chat-command-card'));
       await page.getByRole('button', { name: '发送', exact: true }).click();
       const approve = page.getByRole('button', { name: '允许一次', exact: true });

@@ -251,3 +251,31 @@ it('S56 StrictMode首次挂载保留已有会话草稿', async () => {
   await waitFor(() => expect(input).toHaveValue('开发模式也不能丢失的草稿'));
   expect(window.sessionStorage.getItem(key)).toBe('开发模式也不能丢失的草稿');
 });
+
+it('starts manual resizing from the rendered minimum height without a first-drag jump', async () => {
+  renderComposer();
+  const input = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
+  vi.spyOn(input, 'getBoundingClientRect').mockReturnValue({ height: 80 } as DOMRect);
+  const handle = screen.getByRole('separator', { name: '调整输入框高度' });
+  Object.defineProperties(handle, {
+    setPointerCapture: { value: vi.fn() },
+    hasPointerCapture: { value: () => true },
+    releasePointerCapture: { value: vi.fn() },
+  });
+  const pointer = (type: string, clientY: number) => {
+    const event = new Event(type, { bubbles: true });
+    Object.defineProperties(event, {
+      isPrimary: { value: true },
+      button: { value: 0 },
+      pointerId: { value: 1 },
+      clientY: { value: clientY },
+    });
+    fireEvent(handle, event);
+  };
+  pointer('pointerdown', 100);
+  pointer('pointermove', 80);
+  expect(input).toHaveStyle({ height: '100px' });
+  pointer('pointerup', 80);
+  pointer('pointermove', 50);
+  expect(input).toHaveStyle({ height: '100px' });
+});

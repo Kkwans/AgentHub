@@ -103,6 +103,8 @@
 }
 
 .workspace :global(.composer-input-surface textarea) {
+  box-sizing: border-box;
+  min-height: calc(2lh + 26px);
   padding: 16px 18px 10px;
   font-size: 15px;
   line-height: 1.7;

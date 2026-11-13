@@ -165,7 +165,10 @@ export function ChatCommandBar({
       if (!event.isPrimary || event.button !== 0) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      resizeStateRef.current = { startY: event.clientY, startHeight: inputHeight };
+      resizeStateRef.current = {
+        startY: event.clientY,
+        startHeight: inputRef.current?.getBoundingClientRect().height ?? inputHeight,
+      };
     },
     [inputHeight],
   );
