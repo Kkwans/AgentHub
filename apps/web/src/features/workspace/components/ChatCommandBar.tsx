@@ -115,7 +115,13 @@ export function ChatCommandBar({
   /** Portal target for the workspace Terminal trigger inside the PinHarness toolbar. */
   terminalLauncherSlotRef?: RefObject<HTMLElement | null>;
 }) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => {
+    try {
+      return window.sessionStorage.getItem(`agenthub.workspace.composer.${session.id}`) ?? '';
+    } catch {
+      return '';
+    }
+  });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composingRef = useRef(false);
   const [inputHeight, setInputHeight] = useState(40);

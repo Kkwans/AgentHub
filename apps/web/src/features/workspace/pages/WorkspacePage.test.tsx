@@ -2,8 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { fetchSessionEventPages, mergeSessionEvents, WorkspacePage } from './WorkspacePage';
@@ -81,7 +81,12 @@ function errorResponse(message = '测试服务失败', status = 503) {
   );
 }
 
-function renderWorkspace(fetchMock: typeof fetch, initialEntry = `/sessions/${session.id}`) {
+function renderWorkspace(
+  fetchMock: typeof fetch,
+  initialEntry = `/sessions/${session.id}`,
+  cachedSession?: typeof session,
+  precache = true,
+) {
   vi.stubGlobal(
     'ResizeObserver',
     class ResizeObserver {
@@ -92,11 +97,14 @@ function renderWorkspace(fetchMock: typeof fetch, initialEntry = `/sessions/${se
   );
   vi.stubGlobal('fetch', fetchMock);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (cachedSession && precache) client.setQueryData(['session', cachedSession.id], cachedSession);
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[initialEntry]}>
+        {cachedSession ? <Link to={`/workspace/${cachedSession.id}`}>切换已缓存会话</Link> : null}
         <Routes>
           <Route path="/sessions/:id" element={<WorkspacePage />} />
+          <Route path="/workspace/:id" element={<WorkspacePage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -907,4 +915,67 @@ describe('WorkspacePage 数据分区可靠性', () => {
     fireEvent.click(exit);
     await waitFor(() => expect(document.body).not.toHaveClass('mobile-chat-immersive'));
   });
+});
+
+it.each([
+  ['success', true],
+  ['error', true],
+  ['success', false],
+  ['error', false],
+] as const)('S56会话切换后旧发送%s不清空新草稿或串入错误，cached=%s', async (outcome, precache) => {
+  window.sessionStorage.clear();
+  const second = { ...session, id: 'session-2', title: '已缓存第二会话' };
+  const firstDraftKey = `agenthub.workspace.composer.${session.id}`;
+  const secondDraftKey = `agenthub.workspace.composer.${second.id}`;
+  window.sessionStorage.setItem(firstDraftKey, '发送给第一会话');
+  window.sessionStorage.setItem(secondDraftKey, '第二会话未发送的重要草稿');
+  let finish!: (value: Response) => void;
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input);
+    if (path === `/api/v1/sessions/${session.id}/runs` && init?.method === 'POST')
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    if (path === `/api/v1/sessions/${second.id}`) return jsonResponse(second);
+    if (path === '/api/v1/sessions') return jsonResponse([session, second]);
+    return baseFetch(path.replaceAll(second.id, session.id), init?.method);
+  });
+  const client = renderWorkspace(fetchMock, `/workspace/${session.id}`, second, precache);
+  const input = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
+  await waitFor(() => expect(input).toHaveValue('发送给第一会话'));
+  fireEvent.keyDown(input, { key: 'Enter' });
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.some(
+        ([path, init]) =>
+          String(path).endsWith(`/sessions/${session.id}/runs`) && init?.method === 'POST',
+      ),
+    ).toBe(true),
+  );
+  // Native readonly disproves the separate same-session "edit while sending" candidate.
+  expect(input).toHaveAttribute('readonly');
+  expect(client.getQueryData(['session', second.id])).toEqual(precache ? second : undefined);
+  fireEvent.click(screen.getByRole('link', { name: '切换已缓存会话' }));
+  const secondInput = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
+  await waitFor(() => expect(secondInput).toHaveValue('第二会话未发送的重要草稿'));
+  expect(secondInput).not.toHaveAttribute('readonly');
+  fireEvent.change(secondInput, { target: { value: '第二会话草稿，切回后继续补充' } });
+  await act(async () =>
+    finish(
+      outcome === 'success'
+        ? jsonResponse({ id: 'old-run' })
+        : errorResponse('旧会话发送失败', 400),
+    ),
+  );
+  await waitFor(() => expect(secondInput).not.toHaveAttribute('readonly'));
+  expect(secondInput).toHaveValue('第二会话草稿，切回后继续补充');
+  expect(window.sessionStorage.getItem(secondDraftKey)).toBe('第二会话草稿，切回后继续补充');
+  expect(screen.queryByText('请求失败，请稍后重试。')).not.toBeInTheDocument();
+  expect(
+    fetchMock.mock.calls.filter(
+      ([path, init]) => String(path).includes('/runs') && init?.method === 'POST',
+    ),
+  ).toHaveLength(1);
+  client.clear();
+  window.sessionStorage.clear();
 });

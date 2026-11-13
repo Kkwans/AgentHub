@@ -321,6 +321,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                   onLoadPreviousMessages={messages.fetchPrevious}
                   composer={
                     <ChatCommandBar
+                      key={currentSession.id}
                       session={currentSession}
                       agent={agent}
                       events={events}

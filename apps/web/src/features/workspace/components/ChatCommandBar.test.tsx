@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest';
+import { StrictMode } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -93,7 +94,10 @@ const baseRun: RunRecord = {
   errorCode: null,
 };
 
-function renderComposer(overrides: Partial<React.ComponentProps<typeof ChatCommandBar>> = {}) {
+function renderComposer(
+  overrides: Partial<React.ComponentProps<typeof ChatCommandBar>> = {},
+  strict = false,
+) {
   const onSend = vi.fn(async () => ({ id: 'run-created' }));
   const onStop = vi.fn(async () => ({ id: 'run-stopped' }));
   const onUpdateConfiguration = vi.fn(async () => configuration);
@@ -117,7 +121,15 @@ function renderComposer(overrides: Partial<React.ComponentProps<typeof ChatComma
     onUpdateConfiguration,
     ...overrides,
   };
-  render(<ChatCommandBar {...props} />);
+  render(
+    strict ? (
+      <StrictMode>
+        <ChatCommandBar {...props} />
+      </StrictMode>
+    ) : (
+      <ChatCommandBar {...props} />
+    ),
+  );
   return { onSend, onStop, onUpdateConfiguration };
 }
 
@@ -229,4 +241,13 @@ describe('ChatCommandBar PinHarness composer interactions', () => {
     await waitFor(() => expect(onUpdateConfiguration).toHaveBeenCalledWith({ model: 'gpt-5.6' }));
     expect(textarea).toHaveValue('/model gpt-5.6');
   });
+});
+
+it('S56 StrictMode首次挂载保留已有会话草稿', async () => {
+  const key = `agenthub.workspace.composer.${session.id}`;
+  window.sessionStorage.setItem(key, '开发模式也不能丢失的草稿');
+  renderComposer({}, true);
+  const input = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
+  await waitFor(() => expect(input).toHaveValue('开发模式也不能丢失的草稿'));
+  expect(window.sessionStorage.getItem(key)).toBe('开发模式也不能丢失的草稿');
 });
