@@ -191,3 +191,5 @@
 19:20 UTC Git Provider/UI接入候选已完成，认证epoch与项目隔离测试已补；下一步精确浏览器截图/CI、冻结树全量，并设计跨认证界面重现与硬刷新服务端持久操作协议。不得把前端内存owner称为服务端幂等。
 
 19:33 UTC 服务端Git权威恢复ADR已完成：优先migration/claim与查询→隔离Git崩溃注入→统一旧写入口→前端恢复。不得将Git与SQL事务称exactly-once；SHA归属仍开放。文档：repros/git-authoritative-recovery-design.md。
+
+19:49 UTC 休眠DB基础候选已加入：0011双表、原子claim和终态CAS；待针对性测试及精确CI。下一片受权只读查询/协议hash与canonical repo解析，再隔离执行器和所有写入口迁移；当前不得把持久表存在称为用户可用恢复。

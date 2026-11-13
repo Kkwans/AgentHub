@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -844,7 +845,84 @@ export const taskStartAttempts = pgTable(
   ],
 );
 
+// Dormant durable Git ledger. SQL cannot atomically roll back an external Git
+// process. Unknown/dispatched claims must never be cascaded away or lease-stolen.
+export const gitCommitOperations = pgTable(
+  'git_commit_operations',
+  {
+    ownerScope: text('owner_scope').notNull(),
+    operationId: uuid('operation_id').notNull(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id),
+    protocolVersion: integer('protocol_version').notNull().default(1),
+    requestHash: text('request_hash').notNull(),
+    payloadJson: jsonb('payload_json').$type<Record<string, unknown>>().notNull(),
+    targetId: uuid('target_id')
+      .notNull()
+      .references(() => executionTargets.id),
+    executionDeviceId: text('execution_device_id').notNull(),
+    repositoryKey: text('repository_key').notNull(),
+    canonicalCommonDir: text('canonical_common_dir').notNull(),
+    worktreeIdentity: text('worktree_identity').notNull(),
+    expectedHead: text('expected_head'),
+    phase: text('phase').notNull(),
+    dispatchToken: uuid('dispatch_token').notNull(),
+    workerId: text('worker_id').notNull(),
+    beforeHead: text('before_head'),
+    observedAfterHead: text('observed_after_head'),
+    commandExit: integer('command_exit'),
+    resultEvidenceJson: jsonb('result_evidence_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(emptyObject),
+    errorCode: text('error_code'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    dispatchedAt: timestamp('dispatched_at', { withTimezone: true }),
+    settledAt: timestamp('settled_at', { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerScope, table.operationId] }),
+    index('git_commit_operations_project_idx').on(table.projectId),
+    index('git_commit_operations_worker_phase_idx').on(table.workerId, table.phase),
+    check('git_commit_operations_protocol_check', sql`${table.protocolVersion} = 1`),
+    check(
+      'git_commit_operations_phase_check',
+      sql`${table.phase} in ('RECEIVED', 'DISPATCHED', 'COMMAND_SUCCEEDED', 'REJECTED_PREWRITE', 'UNKNOWN')`,
+    ),
+  ],
+);
+
+export const gitWriteClaims = pgTable(
+  'git_write_claims',
+  {
+    repositoryKey: text('repository_key').primaryKey(),
+    ownerScope: text('owner_scope').notNull(),
+    operationId: uuid('operation_id').notNull(),
+    dispatchToken: uuid('dispatch_token').notNull(),
+    workerId: text('worker_id').notNull(),
+    phase: text('phase').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.ownerScope, table.operationId],
+      foreignColumns: [gitCommitOperations.ownerScope, gitCommitOperations.operationId],
+      name: 'git_write_claims_operation_fk',
+    }),
+    uniqueIndex('git_write_claims_operation_unique').on(table.ownerScope, table.operationId),
+    check(
+      'git_write_claims_phase_check',
+      sql`${table.phase} in ('RECEIVED', 'DISPATCHED', 'UNKNOWN')`,
+    ),
+  ],
+);
+
 export const schema = {
+  gitCommitOperations,
+  gitWriteClaims,
   taskStartAttempts,
   appSettings,
   apiTokens,

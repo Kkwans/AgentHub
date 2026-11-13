@@ -1085,3 +1085,11 @@ d19于17:58:31完成完整147文件1401测试/10skip，属于前一报告窗口�
 并行只读审计GitService/Task账本/认证/资源别名，形成git-authoritative-recovery-design.md：持久至多一次派发、UNKNOWN不超时重领、同key绑定hash、资源claim、跨重启/认证查询、崩溃窗口及SHA观测归属限制。**尚无生产migration/API/执行接入**，未运行用户仓库Git写操作。
 
 19:35 UTC adapter最终architecture+Provider+Tree20测试通过（含新增2项撤权/ABA刷新回调测试），此前含WorkspacePage的48回归亦过；types/lint/build3.81s/CSS预算/diffcheck、独立CR通过。866精确CI verify也确认为相同架构门失败，无障碍success、real仍运行。下一SHA全量将在新冻结树验证，未提前宣称成功。
+
+### 2026-11-13 19:46–19:49 UTC Git持久DB基础候选
+
+开始实现ADR第1片：0011操作/资源claim两表与Repository，原子reserve、请求键重放/冲突、单次派发CAS、UNKNOWN保锁、终态原子释放。未接API或Git执行器；没有运行用户生产仓库写操作。独立静态CR未发现阻塞，强调未来服务层可信hash/资源身份与真实PostgreSQL并发仍待验。新DB/升级重开测试与现有DB回归进行中，最终结果待后记。
+
+补记上一精确d6d9b9c冻结全量于19:43:38完成：150文件通过/4跳过，1459测试通过/10跳过，360.72s。不是本次DB候选验收。19:47核对该SHA CI无障碍原始报告154状态/0违规，其他浏览器矩阵尚运行。
+
+19:49 UTC 主整合新增DB两文件15项通过（含迁移升级/重开），既有Task DB三文件31项通过；全仓types、改动TS lint、Drizzle check与diffcheck通过。独立CR未发现阻塞。PGlite并发不替代真实PostgreSQL多连接；生产接口和Git调用仍完全未接入。下一精确提交全量将用冻结树验证。

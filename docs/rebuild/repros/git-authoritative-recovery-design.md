@@ -1,6 +1,6 @@
 # ADR：Git 提交的持久派发与结果恢复
 
-2026-11-13 19:33 UTC。状态：**源码审计与方案，不是已实现的服务端功能**。前端 owner 已接入，但本方案尚无 migration、生产API或Git派发接入。
+2026-11-13 19:33 UTC。状态：**DB基础层已实现候选，完整恢复仍是方案**。前端 owner 已接入；0011 migration、操作/claim repository已加入，尚无生产API或Git派发接入。
 
 ## 目标与不承诺
 
@@ -84,4 +84,10 @@ expectedHead须在获得资源claim并复核资源身份后、第一条写命令
 3. 隔离/tmp Git执行器：注入每个崩溃点、真实add/commit/hooks超时、并发重复请求；记录子进程调用次数和HEAD/index变化。任何测试均不得操作实际用户仓库。
 4. 所有AgentHub Git写入口统一claim，包括legacy commit与worktree动作的互斥关系；再切生产API。不允许旧端点绕过未知锁。
 5. 前端持久marker与恢复查询：刷新/认证界面失败/重新登录/多tab、旧响应ABA、无consumer完成、只读恢复结果；390/1440截图和axe。
-6. 服务重启后的UNKNOWN保持禁写、人工解除协议及SHA归属证据另行验收。当前未实现上述服务端功能。
+6. 服务重启后的UNKNOWN保持禁写、人工解除协议及SHA归属证据另行验收。当前仅第1项休眠DB基础层已加入；后续服务端API/执行/恢复与前端持久接入均未实现。
+
+## 19:49 UTC DB基础层实现范围
+
+`0011_git_commit_operations` 增加操作记录和canonical repository claim；Repository原子预留/重放、派发前CAS、UNKNOWN保锁、成功或可证无写拒绝与释放同事务。无TTL、无抢占、无UNKNOWN出边；无实际Git调用。claim冲突会回滚新操作行，旧请求只返回已存记录。
+
+**可信边界**：Repository信任未来服务层从认证principal导出的owner、实际设备/canonical common-dir身份和规范请求hash；当前不独立证明payload/hash一致性。派发token不是客户端输入或访问凭据。PGlite并发测试只验证该适配器，不能替代真实PostgreSQL多连接测试。

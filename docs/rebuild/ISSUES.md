@@ -358,3 +358,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 19:20 UTC Git未知结果：Provider/生产Tree跨面板与内部路由保护已进入候选；认证界面重现（包含auth-status读错误）、刷新/重新登录仍丢失内存记录，服务端幂等仍开放。已修复CR发现的提交成功但invalidate失败误提供retryPOST路径，错误仅允许只读刷新。详见git-commit-owner-design.md。
 
 19:33 UTC 冻结全量查出GitChangesTree直接API违背展示架构合同，已迁回Provider adapter并保留原门禁。服务端持久恢复待实现，新增风险：readHead仅观测并发HEAD，不足以认证本操作精确SHA；详见git-authoritative-recovery-design.md。
+
+### 2026-11-13 19:49 UTC Git持久性缺口进展
+
+操作/资源claim休眠DB层已加入候选，完整保护仍未上线：缺认证查询/协议hash与资源身份派生、执行器崩溃点、legacy/worktree统一锁、前端marker恢复及真实PostgreSQL多连接验证。UNKNOWN锁无自动到期/释放，不能以重启或新key绕过；手工解除协议尚未设计完，不提供按钮。
