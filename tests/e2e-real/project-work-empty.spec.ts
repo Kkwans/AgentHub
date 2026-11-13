@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { apiData } from './baseline-support.js';
 import { expect, initializeGitProject, test } from './fixtures.js';
 
@@ -25,6 +26,7 @@ for (const width of [390, 768, 1024, 1440]) {
         kind: 'STANDARD',
       });
       await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      await page.emulateMedia({ reducedMotion: 'reduce' });
       await context.addInitScript(
         ({ origin, theme }) => {
           if (location.origin === origin) localStorage.setItem('agenthub-theme', theme);
@@ -41,7 +43,7 @@ for (const width of [390, 768, 1024, 1440]) {
           await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
         ).toBeLessThanOrEqual(1);
         const path = info.outputPath(`project-work-${state}-${width}-${theme}.png`);
-        await page.screenshot({ path, fullPage: true });
+        await page.screenshot({ path, fullPage: true, animations: 'disabled' });
         await info.attach(state, { path, contentType: 'image/png' });
       };
       await page.goto(`/projects/${project.id}/work`);
@@ -82,6 +84,28 @@ for (const width of [390, 768, 1024, 1440]) {
             .getByRole('button', { name: /完成当前项目的第一项工作/ })
             .click();
         await expect(inspector).toBeVisible();
+        // This existing CI-listed test covers the actual mobile detail in both themes.
+        // The separate full v1-accessibility matrix remains a candidate audit, not
+        // evidence of CI execution: it is not included in the current CI whitelist.
+        const axe = await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze();
+        const violations = axe.violations
+          .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
+          .map((violation) => ({
+            id: violation.id,
+            impact: violation.impact,
+            help: violation.help,
+            targets: violation.nodes.map((node) => node.target),
+          }));
+        await info.attach(`mobile-detail-axe-390-${theme}`, {
+          body: JSON.stringify({ viewport: width, theme, violations }, null, 2),
+          contentType: 'application/json',
+        });
+        expect(
+          violations,
+          `Mobile detail ${theme}: ${JSON.stringify(violations, null, 2)}`,
+        ).toEqual([]);
         await capture('detail');
         await back.click();
         await expect(inspector).toBeHidden();

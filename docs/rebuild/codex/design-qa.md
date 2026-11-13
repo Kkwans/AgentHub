@@ -196,3 +196,13 @@ Explicit E2E typing also exposed pre-existing axe report schema drift: axe impac
 ## 2026-11-13 09:57 UTC · 9e4c1fd fixture inspection
 
 Verify succeeded. Personally inspected its exact mobile detail, qualification-failure detail and returned filtered list: 16px inset and unboxed detail are correct; amber warning survives, and the returned list retains status filtering. The failure capture exposed a double focus treatment on the back button (module outline plus inherited global shadow). The small follow-up keeps a visible 2px outline but removes the duplicate shadow and uses a 6px radius; screenshot assertions will check the focused state. Necessary warnings legitimately push some form content lower; they will not be hidden to force every action above the fold. Real-service results are still pending.
+
+## 2026-11-13 10:05 UTC · Verified real late-result path and accessibility gap
+
+b5fb80c's real job succeeded, and the exact log explicitly reports the new 390px late-response review test passing (5.8s). Personally inspected its pending-list and reentered-result screenshots: operation status is retained above the list, the confirmed result links to the real session, the app remains in the original task detail, and the unverified-branch warning remains visible. This is b5 evidence, not newer gutter/focus screenshots.
+
+Important correction: `.github/workflows/ci.yml` explicitly enumerates real tests and does NOT include `v1-accessibility.spec.ts`. Its updated full matrix is therefore still a runnable candidate, not CI execution proof. A targeted 390px light/dark detail axe scan is being inserted into the existing CI-covered `project-work-empty.spec.ts`, rather than claiming the full matrix ran or silently doubling the CI workload.
+
+The targeted scan candidate now runs within both existing 390px theme cases, with no viewport/theme cases removed. It attaches actionable id/impact/target diagnostics and fails on serious or critical WCAG issues. This visual/axe flow uses reduced-motion media and disabled screenshot animations for stable captures, without changing product styling or disabling rules. Four E2E files pass explicit TypeScript; lint and the original eight-case collection pass. Browser results remain pending publication/CI.
+
+10:09 UTC: b9d3faa verify succeeded. Personally inspected its exact detail-warning mobile screenshot: the duplicate focus shadow is gone and the single rounded visible outline remains; warning and detail layout are intact. This small focus polish is closed for fixture visuals, not a reason to continue cosmetic churn while real-service checks are pending.
