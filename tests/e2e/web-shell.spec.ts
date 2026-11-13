@@ -741,6 +741,26 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(page.locator('.composer-select-reasoning')).toBeHidden();
     await expect(page.locator('.composer-permission')).toBeHidden();
   }
+  const assertWorkspaceTabRelations = async () => {
+    const invalid = await page.getByRole('tab').evaluateAll((tabs) =>
+      tabs
+        .filter((tab) => {
+          if (!tab.getClientRects().length) return false;
+          const panel = document.getElementById(tab.getAttribute('aria-controls') ?? '');
+          return (
+            !panel ||
+            panel.getAttribute('role') !== 'tabpanel' ||
+            (tab.getAttribute('aria-selected') === 'true' &&
+              panel.getAttribute('aria-labelledby') !== tab.id)
+          );
+        })
+        .map((tab) => ({ id: tab.id, controls: tab.getAttribute('aria-controls') })),
+    );
+    expect(invalid, 'visible Workspace tabs must control real, correctly labelled panels').toEqual(
+      [],
+    );
+  };
+  await assertWorkspaceTabRelations();
   await attachViewportScreenshot(page, testInfo, 'workspace-initial');
 
   if (viewportWidth >= 1_180) {
@@ -881,6 +901,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   }
 
   await expectNoHorizontalOverflow(page);
+  await assertWorkspaceTabRelations();
   await attachViewportScreenshot(page, testInfo, 'workspace');
 });
 

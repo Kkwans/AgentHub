@@ -107,3 +107,11 @@ Mobile work now has a real list/detail visible-state slice, not only a shorter h
 - 先初始化partial报告并记录真实SHA、准备阶段、缺失组合；每页等待种子业务内容而非加载壳；完整度按154唯一组合核验，与通过状态分离。先持久化axe结果再保存失败截图，报告/API错误不冒充零违规。
 - test30min/job35min明确预算，取消slow隐含倍增；独立loopback/PGlite/ACP fixture，不访问NAS或付费Agent。进入测试正文之前的fixture/build/browser失败只有CI报告，不保证存在audit.json。
 - 已整合3报告逻辑测试、类型/lint/YAML解析；最终CR与首次精确CI执行仍为发布门。键盘全流程/弹层/错误态/登录模式/200%缩放仍不是这154扫的覆盖范围。
+
+## 2026-11-13 11:48 UTC — C15 修复真实154扫发现的问题
+
+- 首轮精确cdaa报告扫描154/154、missing=[]、pageFailures=[]，但passed=false：36条serious文字对比度、10条critical面板ARIA引用。不是扫描准备失败，也不是无障碍通过。
+- 对比度仅定点改两处：SessionRail code使用secondary，暗色sidebar section-label为65%中性灰。实际token/已观察背景计算值5.36和7.36，通过2项回归；不将理论值替代浏览器级联结果。
+- Workspace内/外Tabs显式引用现存动态panel，唯一trigger ID和随active变化的labelledby；不移动组件、不虚构空面板、不改操作/挂载生命周期。手机与桌面DOM关联回归和四宽浏览器关系断言覆盖全部可见tab，不只单个被报告节点。
+- 整合37项回归无未处理错误，web/E2E类型、lint/build/预算与静态CR通过。首轮联合测试暴露原FileInspector状态测试异步Monaco导入晚于jsdom销毁，已仅在该loading/error测试隔离浏览器初始化；真实editor8组浏览器矩阵保持。
+- 新精确154扫仍待发布后执行，阈值/规则/路由/视口/主题无减少，不提前声称46条清零。

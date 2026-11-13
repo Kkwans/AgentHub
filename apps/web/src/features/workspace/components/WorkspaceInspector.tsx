@@ -1,4 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from '@agenthub/ui';
+import { useId } from 'react';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
@@ -76,6 +77,8 @@ export function WorkspaceInspector({
   stagedDiff: boolean;
   onStagedDiffChange: (value: boolean) => void;
 }) {
+  const panelId = useId();
+  const triggerId = (value: InspectorTab) => `${panelId}-tab-${value}`;
   const tabs: Array<{ id: InspectorTab; label: string }> = [
     { id: 'changes', label: '变更' },
     { id: 'files', label: '文件' },
@@ -104,13 +107,25 @@ export function WorkspaceInspector({
           aria-label="检查器视图"
         >
           {tabs.map((item) => (
-            <TabsTrigger key={item.id} value={item.id} aria-label={item.label}>
+            <TabsTrigger
+              key={item.id}
+              value={item.id}
+              id={triggerId(item.id)}
+              aria-controls={panelId}
+              aria-label={item.label}
+            >
               {item.label}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
-      <div className="inspector-body min-h-0 flex-1 overflow-auto bg-[hsl(var(--surface))]">
+      <div
+        id={panelId}
+        role="tabpanel"
+        aria-labelledby={triggerId(tab)}
+        tabIndex={0}
+        className="inspector-body min-h-0 flex-1 overflow-auto bg-[hsl(var(--surface))]"
+      >
         {projects.isLoading ? (
           <LoadingState label="正在读取 Project" />
         ) : projects.error ? (

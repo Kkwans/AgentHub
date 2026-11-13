@@ -202,7 +202,7 @@
   display: block;
   min-width: 0;
   overflow: hidden;
-  color: var(--ah-text-tertiary);
+  color: var(--ah-text-secondary);
   font-family: var(--ah-font-mono, 'SFMono-Regular', Consolas, monospace);
   font-size: 12px;
   line-height: 1.35;

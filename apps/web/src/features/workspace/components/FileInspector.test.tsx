@@ -10,6 +10,11 @@ import type { FileEntry } from '../../../lib/api';
 import type { QueryState } from '../workspace-types';
 import { FileInspector } from './FileInspector';
 
+// These tests cover loading/error layout only; real editor boot is covered by
+// the browser content matrix. Do not leave Monaco's asynchronous module graph
+// loading after jsdom teardown.
+vi.mock('../../../lib/monaco', () => ({}));
+
 afterEach(cleanup);
 
 function queryState<T>(overrides: Partial<QueryState<T>> = {}): QueryState<T> {

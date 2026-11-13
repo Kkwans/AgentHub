@@ -278,3 +278,9 @@ The actual failed screenshot also exposed a production layout defect: status bad
 ## 2026-11-13 11:39 UTC — Real phone file/Diff helper correction
 
 Archived d892 real logs show two failures, both 390 light/dark file→Diff navigation timing out on the medium-only auxiliary tablist. The phone-already-open path skipped its first open branch but then fell through to `width <1180`. Restrict the medium branch to768–1179 so an already-open phone Inspector goes directly to its inner tabs. All eight real content cases and assertions remain; this fixes test control flow, not the production feature. Also, exact7c fixture logs confirm all four Settings recovery cases passed; its remaining single failure is the old Sessions dynamic-name locator fixed in4b54ce9. Subsequent exact CI remains required for both corrections.
+
+## 2026-11-13 11:48 UTC — Actual axe violations remediation
+
+The extracted cdaa audit is complete with154 pages, zero missing combinations and zero pageFailures, but46 violations:36 serious color-contrast,10 critical aria-valid-attr-value. Targeted fixes cover SessionRail code text and dark sidebar group labels, plus real Workspace tab→panel references. Shared dynamic panels keep existing component lifetimes; explicit IDs override Radix's orphan generated references, and active panel labels track selected tabs. New DOM tests check every trigger target and active label at390/1440; browser checks cover all visible Workspace tabs before/after navigation.
+
+The first combined unit run had37 passed assertions but3 unhandled asynchronous Monaco-import teardown errors, so it was not accepted. The existing FileInspector loading/error-only test now isolates Monaco startup; its assertions are unchanged and real editor behavior remains in the eight-case browser matrix. The final combined run passed37 tests with no unhandled errors. New exact browser/axe results remain pending; no rule or severity gate was relaxed.

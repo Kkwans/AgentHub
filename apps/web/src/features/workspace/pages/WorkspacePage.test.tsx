@@ -886,6 +886,39 @@ describe('WorkspacePage 数据分区可靠性', () => {
     );
   });
 
+  it.each([390, 1440])('Workspace %ipx tabs引用真实动态面板', async (width) => {
+    vi.stubGlobal('innerWidth', width);
+    renderWorkspace(
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        baseFetch(String(input), init?.method),
+      ),
+    );
+    const assertPanel = (list: HTMLElement) => {
+      const tabs = within(list).getAllByRole('tab');
+      for (const trigger of tabs) {
+        const panel = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
+        expect(panel).not.toBeNull();
+        expect(panel).toHaveAttribute('role', 'tabpanel');
+        if (trigger.getAttribute('aria-selected') === 'true') {
+          expect(panel).toHaveAttribute('aria-labelledby', trigger.id);
+        }
+      }
+    };
+    if (width === 390) {
+      const views = await screen.findByRole('tablist', { name: 'Workspace 视图' });
+      assertPanel(views);
+      fireEvent.click(within(views).getByRole('tab', { name: 'Git' }));
+    } else {
+      fireEvent.click(await screen.findByRole('button', { name: '审阅更改' }));
+    }
+    const inspector = await screen.findByRole('tablist', { name: '检查器视图' });
+    assertPanel(inspector);
+    const fileTab = within(inspector).getByRole('tab', { name: '文件' });
+    fireEvent.mouseDown(fileTab, { button: 0, ctrlKey: false });
+    await waitFor(() => expect(fileTab).toHaveAttribute('aria-selected', 'true'));
+    assertPanel(inspector);
+  });
+
   it('手机检查器保留内部导航，关闭后恢复外层视图导航', async () => {
     vi.stubGlobal('innerWidth', 390);
     renderWorkspace(

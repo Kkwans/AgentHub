@@ -12,7 +12,7 @@ import {
   X,
   type CompactPanel,
 } from '@agenthub/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PanelLeft, PanelRight } from 'lucide-react';
 import { StatusBadge } from '../../../components/Feedback';
@@ -29,6 +29,8 @@ import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
 export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const [immersive, setImmersive] = useState(false);
+  const navigationId = useId();
+  const mobileTriggerId = (value: string) => `${navigationId}-tab-${value}`;
   // Keep the Terminal trigger in the CommandBar, where the PinHarness source
   // places workspace actions. The dock itself remains a sibling only while
   // expanded, so a closed Terminal never creates an extra grid row.
@@ -264,10 +266,22 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
             hidden={isMobileViewport && (inspectorDrawerOpen || mobileInspectorOpen)}
             aria-label="Workspace 视图"
           >
-            <TabsTrigger value="sessions" aria-label="会话" onClick={openSessionDrawer}>
+            <TabsTrigger
+              value="sessions"
+              id={mobileTriggerId('sessions')}
+              aria-controls="workspace-panels"
+              aria-label="会话"
+              onClick={openSessionDrawer}
+            >
               会话
             </TabsTrigger>
-            <TabsTrigger value="conversation" aria-label="对话" onClick={closeMobileInspector}>
+            <TabsTrigger
+              value="conversation"
+              id={mobileTriggerId('conversation')}
+              aria-controls="workspace-panels"
+              aria-label="对话"
+              onClick={closeMobileInspector}
+            >
               对话
             </TabsTrigger>
             {(
@@ -281,6 +295,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
               <TabsTrigger
                 key={item}
                 value={item}
+                id={mobileTriggerId(item)}
+                aria-controls="workspace-panels"
                 aria-label={label}
                 onClick={() => openInspectorDrawer(item)}
               >
@@ -292,6 +308,9 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
       )}
       <div
         id="workspace-panels"
+        role={isMobileViewport ? 'tabpanel' : undefined}
+        aria-labelledby={isMobileViewport ? mobileTriggerId(mobileViewValue) : undefined}
+        tabIndex={isMobileViewport ? 0 : undefined}
         className="workspace-panels relative flex h-full min-h-0 min-w-0 flex-1 bg-[hsl(var(--surface))]"
       >
         <ThreeColumnSplit
