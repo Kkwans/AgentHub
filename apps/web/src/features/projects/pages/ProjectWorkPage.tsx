@@ -1,3 +1,4 @@
+import { TaskWorktreeQueueAction } from '../components/TaskWorktreeQueueAction';
 import { WorktreeReviewActions } from '../components/WorktreeReviewActions';
 import { TaskReviewActions } from '../components/TaskReviewActions';
 import { useProjectEligibility } from '../hooks/useProjectEligibility';
@@ -135,6 +136,11 @@ export function ProjectWorkPage() {
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
   });
+  const queueTargets = useQuery({
+    queryKey: ['execution-targets'],
+    queryFn: () => api.get<ExecutionTargetRecord[]>('/execution-targets'),
+    enabled: project.repoKind === 'GIT',
+  });
   const prompts = useQuery({
     queryKey: ['prompts', project.id],
     queryFn: () => api.get<PromptRecord[]>(`/prompts?projectId=${project.id}`),
@@ -223,6 +229,25 @@ export function ProjectWorkPage() {
   const variablesSaving = variableSaveKey !== null;
   const [reviewPendingKey, setReviewPendingKey] = useState<string | null>(null);
   const reviewPending = reviewPendingKey === `${project.id}:${selected?.id}`;
+  const [queuePendingKeys, setQueuePendingKeys] = useState<Record<string, boolean>>({});
+  const [queueUnknownKeys, setQueueUnknownKeys] = useState<Record<string, boolean>>({});
+  const queueKey = `${project.id}:${selected?.id}`;
+  const [queueAcceptedKeys, setQueueAcceptedKeys] = useState<Record<string, boolean>>({});
+  const queueAccepted = Boolean(queueAcceptedKeys[queueKey]);
+  const queuePending = Boolean(queuePendingKeys[queueKey]);
+  const queueUnknown = Boolean(queueUnknownKeys[queueKey]);
+  const queueLocked = queuePending || queueUnknown || (queueAccepted && !selectedWorktree);
+  const queueTarget = queueTargets.data?.find((item) => item.id === project.targetId);
+  const queueEligible =
+    selectedEligible &&
+    worktrees.isSuccess &&
+    !worktrees.isFetching &&
+    !selectedWorktree &&
+    queueTargets.isSuccess &&
+    !queueTargets.isFetching &&
+    Boolean(queueTarget && queueTarget.kind !== 'REMOTE_NODE') &&
+    project.status === 'ACTIVE' &&
+    project.repoKind === 'GIT';
   const operationContext = useRef({ identity: '', generation: 0, mounted: true });
   const selectionIdentity = JSON.stringify([project.id, selected?.id, runAgentId]);
   if (operationContext.current.identity !== selectionIdentity) {
@@ -552,7 +577,8 @@ export function ProjectWorkPage() {
                           transition.isPending ||
                           manual.busy ||
                           variablesSaving ||
-                          reviewPending
+                          reviewPending ||
+                          queueLocked
                         }
                         label=""
                         value={runAgentId}
@@ -595,7 +621,8 @@ export function ProjectWorkPage() {
                           transition.isPending ||
                           manual.busy ||
                           variablesSaving ||
-                          reviewPending
+                          reviewPending ||
+                          queueLocked
                         }
                         onClick={() => {
                           void agents.refetch();
@@ -658,7 +685,8 @@ export function ProjectWorkPage() {
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||
-                            reviewPending
+                            reviewPending ||
+                            queueLocked
                           }
                           onSaved={() => start.reset()}
                           onSavingChange={(key, saving) =>
@@ -667,6 +695,63 @@ export function ProjectWorkPage() {
                             )
                           }
                         />
+                      </section>
+                    ) : null}
+                    {queuePending ||
+                    queueUnknown ||
+                    (project.repoKind === 'GIT' &&
+                      ['BACKLOG', 'READY'].includes(selected.status) &&
+                      selected.sessionId === null &&
+                      !selectedWorktree) ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>隔离执行</h4>
+                        <TaskWorktreeQueueAction
+                          key={`${project.id}:${selected.id}`}
+                          task={selected}
+                          agentId={runAgentId}
+                          eligible={queueEligible}
+                          disabled={
+                            start.isPending ||
+                            transition.isPending ||
+                            manual.busy ||
+                            manual.unknown ||
+                            variablesSaving ||
+                            reviewPending
+                          }
+                          uncertain={queueUnknown}
+                          inFlight={queuePending}
+                          accepted={queueAccepted}
+                          onAccepted={(key) =>
+                            setQueueAcceptedKeys((current) => ({ ...current, [key]: true }))
+                          }
+                          onPendingChange={(key, pending) =>
+                            setQueuePendingKeys((current) => ({ ...current, [key]: pending }))
+                          }
+                          onUncertainChange={(key, value) =>
+                            setQueueUnknownKeys((current) => ({ ...current, [key]: value }))
+                          }
+                        />
+                        {!queueEligible ? (
+                          <>
+                            <AhButton
+                              size="xs"
+                              variant="light"
+                              disabled={queuePending}
+                              onClick={() => {
+                                void queueTargets.refetch();
+                                void worktrees.refetch();
+                                void agents.refetch();
+                                void eligibility.refetch();
+                              }}
+                            >
+                              刷新隔离执行条件
+                            </AhButton>
+                            <p>
+                              隔离执行需要已确认可用的 Agent、活动 Git 项目和非 Remote Node
+                              执行环境；请先等待或刷新相关状态。
+                            </p>
+                          </>
+                        ) : null}
                       </section>
                     ) : null}
                     {(reviewPending && !selectedWorktree) ||
@@ -685,7 +770,8 @@ export function ProjectWorkPage() {
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||
-                            reviewPending
+                            reviewPending ||
+                            queueLocked
                           }
                           onPendingChange={(key, pending) =>
                             setReviewPendingKey((current) =>
@@ -707,7 +793,8 @@ export function ProjectWorkPage() {
                             transition.isPending ||
                             manual.busy ||
                             variablesSaving ||
-                            reviewPending
+                            reviewPending ||
+                            queueLocked
                           }
                           onPendingChange={(key, pending) =>
                             setReviewPendingKey((current) =>
@@ -751,6 +838,7 @@ export function ProjectWorkPage() {
                           manual.busy ||
                           variablesSaving ||
                           reviewPending ||
+                          queueLocked ||
                           transition.isPending ||
                           start.isPending ||
                           (manual.unknown && (Boolean(runAgentId) || !manual.status)) ||
@@ -788,7 +876,8 @@ export function ProjectWorkPage() {
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||
-                            reviewPending
+                            reviewPending ||
+                            queueLocked
                           }
                           onCancel={() =>
                             transition.mutate({

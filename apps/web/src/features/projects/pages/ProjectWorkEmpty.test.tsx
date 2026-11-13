@@ -59,12 +59,14 @@ function mount(
   agents: unknown[] = selectableAgents,
   eligibility: unknown = registeredEligibility(),
   worktrees: unknown[] | Promise<unknown[]> = [],
+  targets: unknown[] = [],
 ) {
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path === `/projects/${project.id}`) return project as T;
     if (path.startsWith('/tasks?')) return (await rows) as T;
     if (path === '/tasks/task-1') return task as T;
     if (path === '/agents') return agents as T;
+    if (path === '/execution-targets') return targets as T;
     if (path.startsWith('/worktree-executions?')) return (await worktrees) as T;
     if (path.endsWith('/agent-eligibility')) return (await eligibility) as T;
     return [] as T;
@@ -1167,4 +1169,155 @@ it('隔离REVIEW只开放专属审阅，不走普通任务完成或取消入口'
   expect(screen.queryByRole('button', { name: '取消' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '启动 Session' })).toBeDisabled();
   expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+});
+it.each(['REMOTE_NODE', 'missing'])('隔离条件%s只禁隔离入队，不影响普通Agent启动', async (kind) => {
+  Object.assign(project, { repoKind: 'GIT', targetId: 'target-a' });
+  try {
+    mount(
+      [{ ...task, status: 'READY', sessionId: null }],
+      '?agentId=agent-1',
+      selectableAgents,
+      registeredEligibility(),
+      [],
+      kind === 'missing' ? [] : [{ id: 'target-a', kind }],
+    );
+    expect(await screen.findByRole('button', { name: '加入隔离执行队列' })).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: '启动 Session' })).toBeEnabled());
+    expect(screen.getByRole('button', { name: '刷新隔离执行条件' })).toBeEnabled();
+  } finally {
+    project.repoKind = 'NONE';
+    Reflect.deleteProperty(project, 'targetId');
+  }
+});
+it('本机Git任务可入队，pending锁普通start/cancel/Agent和变量保存', async () => {
+  Object.assign(project, { repoKind: 'GIT', targetId: 'target-a' });
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post)
+    .mockResolvedValueOnce({ ...task, status: 'READY' } as never)
+    .mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }) as never,
+    );
+  try {
+    mount(
+      [{ ...task, status: 'BACKLOG', sessionId: null }],
+      '?agentId=agent-1',
+      selectableAgents,
+      registeredEligibility(),
+      [],
+      [{ id: 'target-a', kind: 'LOCAL_HOST' }],
+    );
+    const queue = await screen.findByRole('button', { name: '加入隔离执行队列' });
+    await waitFor(() => expect(queue).toBeEnabled());
+    fireEvent.click(queue);
+    expect(screen.getByRole('button', { name: '启动 Session' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '取消' })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: '运行 Agent' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '刷新 Agent 资格' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' })).toBeDisabled();
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
+    const originalGet = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation((path) =>
+      path.startsWith('/worktree-executions?') ? new Promise(() => {}) : originalGet(path),
+    );
+    await act(async () =>
+      finish({
+        execution: {
+          id: 'exec-a',
+          taskId: task.id,
+          projectId: project.id,
+          agentId: 'agent-1',
+          status: 'QUEUED',
+        },
+        task: { ...task, status: 'IN_PROGRESS', assignedAgentId: 'agent-1' },
+      }),
+    );
+    expect(await screen.findByText(/隔离执行队列已接收/)).toBeVisible();
+    expect(screen.getByRole('button', { name: '加入隔离执行队列' })).toBeDisabled();
+    expect(api.post).toHaveBeenNthCalledWith(1, '/tasks/task-1/transition', { status: 'READY' });
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/worktree/queue', { agentId: 'agent-1' });
+  } finally {
+    project.repoKind = 'NONE';
+    Reflect.deleteProperty(project, 'targetId');
+  }
+});
+it('切换并返回原任务仍锁住每项未完成入队，不因其他任务pending覆盖而重放', async () => {
+  Object.assign(project, { repoKind: 'GIT', targetId: 'target-a' });
+  const first = { ...task, status: 'READY', sessionId: null, assignedAgentId: 'agent-1' };
+  const second = { ...first, id: 'task-2', title: '第二个隔离任务' };
+  const finishers: Array<(value: unknown) => void> = [];
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishers.push(resolve);
+      }) as never,
+  );
+  try {
+    mount(
+      [first, second],
+      '?agentId=agent-1',
+      selectableAgents,
+      registeredEligibility(),
+      [],
+      [{ id: 'target-a', kind: 'LOCAL_HOST' }],
+    );
+    const queue = await screen.findByRole('button', { name: '加入隔离执行队列' });
+    await waitFor(() => expect(queue).toBeEnabled());
+    fireEvent.click(queue);
+    fireEvent.click(
+      within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+        name: /第二个隔离任务/,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '加入隔离执行队列' })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '加入隔离执行队列' }));
+    fireEvent.click(
+      within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+        name: /真实任务/,
+      }),
+    );
+    expect(screen.getByRole('button', { name: '加入隔离执行队列' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '启动 Session' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '加入隔离执行队列' }));
+    expect(api.post).toHaveBeenCalledTimes(2);
+    const originalGet = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation((path) =>
+      path.startsWith('/worktree-executions?') ? new Promise(() => {}) : originalGet(path),
+    );
+    await act(async () =>
+      finishers[1]!({
+        execution: {
+          id: 'exec-b',
+          taskId: second.id,
+          projectId: project.id,
+          agentId: 'agent-1',
+          status: 'QUEUED',
+        },
+        task: { ...second, status: 'IN_PROGRESS' },
+      }),
+    );
+    expect(screen.getByRole('button', { name: '加入隔离执行队列' })).toBeDisabled();
+    await act(async () =>
+      finishers[0]!({
+        execution: {
+          id: 'exec-a',
+          taskId: first.id,
+          projectId: project.id,
+          agentId: 'agent-1',
+          status: 'QUEUED',
+        },
+        task: { ...first, status: 'IN_PROGRESS' },
+      }),
+    );
+    expect(screen.getByRole('button', { name: '加入隔离执行队列' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '启动 Session' })).toBeDisabled();
+    expect(api.post).toHaveBeenCalledTimes(2);
+  } finally {
+    project.repoKind = 'NONE';
+    Reflect.deleteProperty(project, 'targetId');
+  }
 });
