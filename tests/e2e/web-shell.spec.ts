@@ -414,6 +414,9 @@ test('Home 深色主题同步 PinHarness 画布与文字层级', async ({ page }
     await page.getByRole('button', { name: '深色主题' }).click();
   }
   await expect(page.getByRole('heading', { name: '继续工作' })).toBeVisible();
+  const homeCanvas = await page.locator('.page-content').boundingBox();
+  expect(homeCanvas).not.toBeNull();
+  expect(homeCanvas!.width).toBeLessThanOrEqual(961);
 
   await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
   await expect(page.locator('html')).toHaveClass(/\bdark\b/);

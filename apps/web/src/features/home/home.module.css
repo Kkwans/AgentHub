@@ -1,10 +1,14 @@
 .homePage {
   display: grid;
   gap: 36px;
-  width: min(100%, 960px);
   margin-inline: auto;
   min-width: 0;
   color: var(--ah-text-primary);
+}
+/* Outrank legacy page width only; keep mobile spacing overrides effective. */
+.homePage:global(.page-content) {
+  width: 100%;
+  max-width: 960px;
 }
 .header {
   display: flex;

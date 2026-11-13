@@ -1486,6 +1486,36 @@
   outline: 2px solid var(--ah-accent-primary);
   outline-offset: 2px;
 }
+/* Keep the filter group intrinsic on desktop: a shrinking flex item otherwise
+ * wraps only the final select, leaving a tall, half-empty toolbar. */
+@media (min-width: 768px) {
+  .projectsToolbar .filterOptions {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  .projectsToolbar .toolbarSelect {
+    flex: 0 0 130px;
+    width: 130px;
+    min-width: 0;
+  }
+  .projectsToolbar .toolbarSpacer {
+    display: none;
+  }
+  .projectsToolbar .toolbarSearch {
+    flex: 1 1 240px;
+    min-width: 220px;
+  }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .projectsToolbar .filterOptions {
+    order: 1;
+    flex: 1 0 100%;
+    padding-top: 2px;
+  }
+  .projectsToolbar .toolbarSelect {
+    flex: 1 1 0;
+  }
+}
 @media (max-width: 767px) {
   .projectsToolbar .filterOptions {
     flex: 1 1 100%;

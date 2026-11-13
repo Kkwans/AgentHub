@@ -39,7 +39,8 @@
   padding: 0 12px 16px;
 }
 
-.workspace :global(.codex-rail-navigation a) {
+.workspace :global(.codex-rail-navigation a),
+.workspace :global(.codex-rail-footer a) {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -49,7 +50,8 @@
   font-size: 13px;
 }
 
-.workspace :global(.codex-rail-navigation a:hover) {
+.workspace :global(.codex-rail-navigation a:hover),
+.workspace :global(.codex-rail-footer a:hover) {
   background: var(--workspace-hover);
 }
 
@@ -69,6 +71,8 @@
 }
 
 .workspace :global(.message-user) {
+  --conversation-prose-size: 15px;
+  --conversation-prose-color: hsl(var(--foreground));
   padding: 12px 18px;
   background: hsl(var(--surface-muted));
   border: 0;
@@ -264,4 +268,10 @@
 .workspace :global(.chat-command-card textarea:focus-visible) {
   outline: none;
   box-shadow: none;
+}
+
+.workspace :global(.codex-rail-footer) {
+  flex-shrink: 0;
+  padding: 10px 12px max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--workspace-line);
 }

@@ -1,7 +1,8 @@
 import { ChevronDown, Plus, Search, WorkbenchPanelHeader } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Folder, Settings, BookOpen, Bot } from 'lucide-react';
+import { Folder, Settings, BookOpen } from 'lucide-react';
+import { AgentHubLogo } from '../../../components/AgentHubLogo';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import type { ProjectRecord, SessionRecord } from '../../../lib/api';
 import { labelSessionBranch, resolveWorkspaceRunState } from '../../../presentation/domain-labels';
@@ -106,7 +107,7 @@ export function SessionRail({
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
       <Link to="/home" className="codex-rail-brand" onClick={onSelect}>
-        <Bot size={22} aria-hidden="true" />
+        <AgentHubLogo className="h-7 w-7 shrink-0 rounded-[9px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" />
         <span>AgentHub</span>
       </Link>
       <nav className="codex-rail-navigation" aria-label="工作区导航">
@@ -117,10 +118,6 @@ export function SessionRail({
         <Link to="/prompts" onClick={onSelect}>
           <BookOpen size={17} aria-hidden="true" />
           Prompt 库
-        </Link>
-        <Link to="/settings/appearance" onClick={onSelect}>
-          <Settings size={17} aria-hidden="true" />
-          设置
         </Link>
       </nav>
       <WorkbenchPanelHeader
@@ -203,6 +200,12 @@ export function SessionRail({
           <p className="session-list-empty">{query.trim() ? '没有匹配的会话' : '还没有会话'}</p>
         )}
       </div>
+      <footer className="codex-rail-footer">
+        <Link to="/settings/appearance" onClick={onSelect}>
+          <Settings size={17} aria-hidden="true" />
+          设置
+        </Link>
+      </footer>
     </div>
   );
 }
