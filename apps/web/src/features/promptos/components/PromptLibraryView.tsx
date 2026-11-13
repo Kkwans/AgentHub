@@ -1,6 +1,7 @@
 import { AhButton, AhEmptyState, Braces, Card, NavigationPageHeader, Plus } from '@agenthub/ui';
 
-import { labelPromptBindingTarget } from '../../../presentation/domain-labels';
+import { useRef } from 'react';
+import { BindingOperationResults } from './BindingOperationResults';
 import { QueryMessage } from '../../shared/page-primitives';
 import promptSettingsStyles from '../promptSettings.module.css';
 
@@ -12,11 +13,12 @@ import { PromptLifecycleDrawer } from './PromptLifecycleDrawer';
 
 export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
   const { prompts, setNewOpen } = model;
+  const pageRef = useRef<HTMLDivElement>(null);
   // Raw successful data distinguishes an empty library from filtered no-results.
   const emptyLibrary = !prompts.isLoading && !prompts.error && prompts.data?.length === 0;
 
   return (
-    <div className={`${promptSettingsStyles.promptPage} workspace-page min-h-full`}>
+    <div ref={pageRef} className={`${promptSettingsStyles.promptPage} workspace-page min-h-full`}>
       <NavigationPageHeader
         icon={Braces}
         title="Prompt 库"
@@ -35,34 +37,17 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
         }
       />
       <div className="page-content page-shell min-h-full">
-        {model.bindingOperations.map((operation) => (
-          <section
-            key={operation.id}
-            role={
-              operation.phase === 'unknown' || operation.phase === 'rejected' ? 'alert' : 'status'
+        <BindingOperationResults
+          operations={model.bindingOperations}
+          dismiss={model.dismissBindingOperation}
+          onEmptyFocus={() => {
+            const heading = pageRef.current?.querySelector<HTMLElement>('h1');
+            if (heading) {
+              heading.tabIndex = -1;
+              heading.focus();
             }
-            aria-label="绑定操作结果"
-            className="rounded-md border p-3 text-sm [overflow-wrap:anywhere]"
-          >
-            <p>
-              Prompt：{operation.promptName}（{operation.payload.promptId}）
-            </p>
-            <p>
-              目标：{labelPromptBindingTarget(operation.payload.targetType)} ·{' '}
-              {operation.targetName}（{operation.payload.targetId}）
-            </p>
-            <p>{operation.message}</p>
-            {operation.bindingId ? <p>绑定编号：{operation.bindingId}</p> : null}
-            {operation.phase === 'saved' || operation.phase === 'rejected' ? (
-              <AhButton
-                variant="subtle"
-                onClick={() => model.dismissBindingOperation(operation.id)}
-              >
-                关闭此结果提示
-              </AhButton>
-            ) : null}
-          </section>
-        ))}
+          }}
+        />
         <QueryMessage
           loading={prompts.isLoading}
           error={prompts.error}

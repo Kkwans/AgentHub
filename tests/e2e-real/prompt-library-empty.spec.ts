@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { apiData, seedWorkspace } from './baseline-support.js';
 import { test, expect } from './fixtures.js';
 
@@ -363,10 +364,63 @@ test('Prompt 显式选择三类目标并保存真实绑定 390 light', async ({ 
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);
+    await page.locator('#main-content').evaluate((main) => main.scrollTo(0, 0));
+    const feedbackGeometry = await page
+      .getByRole('status', { name: '绑定操作结果' })
+      .evaluateAll((records) =>
+        records.map((record) => {
+          const rect = record.getBoundingClientRect();
+          return {
+            top: rect.top,
+            height: rect.height,
+            width: rect.width,
+            buttons: Array.from(record.querySelectorAll('button')).map((button) => ({
+              text: button.textContent,
+              height: button.getBoundingClientRect().height,
+            })),
+          };
+        }),
+      );
+    expect(feedbackGeometry).toHaveLength(index + 1);
+    await info.attach(`binding-feedback-layout-${target.type}`, {
+      body: JSON.stringify(feedbackGeometry),
+      contentType: 'application/json',
+    });
     const path = info.outputPath(`binding-saved-${target.type.toLowerCase()}-390-light.png`);
     await page.screenshot({ path, fullPage: true, animations: 'disabled' });
     await info.attach(`binding-saved-${target.type}`, { path, contentType: 'image/png' });
+    const result = page.getByRole('status', { name: '绑定操作结果' }).nth(index);
+    const details = result.locator('details');
+    const summary = details.locator('summary');
+    await expect(details).not.toHaveAttribute('open', '');
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await expect(details).toHaveAttribute('open', '');
+    await expect(result.getByText(saved.id, { exact: true })).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(details).not.toHaveAttribute('open', '');
+    const closeBox = await result.getByRole('button', { name: '关闭此结果提示' }).boundingBox();
+    expect(closeBox?.height).toBeGreaterThanOrEqual(44);
+    expect(closeBox?.width).toBeGreaterThanOrEqual(44);
   }
+  // Dynamic operation feedback is not present in the read-only 154-route audit.
+  const feedbackAxe = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const feedbackViolations = feedbackAxe.violations.filter(
+    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+  );
+  await info.attach('binding-feedback-axe-390-light', {
+    body: JSON.stringify(feedbackViolations),
+    contentType: 'application/json',
+  });
+  expect(feedbackViolations).toEqual([]);
+  const firstClose = page.getByRole('button', { name: '关闭此结果提示' }).first();
+  await firstClose.click();
+  await expect(page.getByRole('status', { name: '绑定操作结果' })).toHaveCount(2);
+  await expect(
+    page.getByRole('status', { name: '绑定操作结果' }).first().locator('summary'),
+  ).toBeFocused();
   const all = await apiData<unknown[]>(context, 'get', `/prompt-bindings?promptId=${prompt.id}`);
   expect(all).toHaveLength(3);
   expect(writes).toHaveLength(3);
