@@ -4,6 +4,7 @@
 :root {
   --background: 0 0% 100%;
   --surface: 0 0% 100%;
+  --surface-elevated: 0 0% 100%;
   --surface-muted: 0 0% 96%;
   --surface-hover: 0 0% 92%;
   --foreground: 0 0% 13%;
@@ -42,6 +43,7 @@
 :root[data-agenthub-theme='dark'] {
   --background: 0 0% 12%;
   --surface: 0 0% 12%;
+  --surface-elevated: 0 0% 16%;
   --surface-muted: 0 0% 16%;
   --surface-hover: 0 0% 21%;
   --foreground: 0 0% 93%;

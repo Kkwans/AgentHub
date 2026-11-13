@@ -101,6 +101,7 @@ import projectsStyles from '../projects.module.css';
 
 export function ProjectContextLayout() {
   const { projectId } = useParams();
+  const compact = useCompactViewport();
   const queryClient = useQueryClient();
   const project = useQuery({
     queryKey: ['project', projectId],
@@ -164,6 +165,51 @@ export function ProjectContextLayout() {
     eligibility.isSuccess && !eligibility.isFetching
       ? eligibility.data.filter((entry) => entry.eligible).length
       : undefined;
+  const branchNeedsAttention =
+    sessions.isError ||
+    !sessions.isSuccess ||
+    sessions.isFetching ||
+    (project.data.repoKind === 'GIT' && !recordedSessionBranch);
+  const hasHeaderWarning =
+    branchNeedsAttention ||
+    eligibleAgentCount === undefined ||
+    eligibleAgentCount === 0 ||
+    unfinishedWorkCount === undefined;
+  const renderFacts = (mode: 'all' | 'warnings' | 'secondary') => {
+    const show = (attention: boolean) =>
+      mode === 'all' || (mode === 'warnings' ? attention : !attention);
+    return (
+      <div className={projectsStyles.identityFacts}>
+        {show(branchNeedsAttention) ? (
+          <span title={branchLabel}>
+            <GitBranch size={13} aria-hidden="true" />
+            {branchLabel}
+          </span>
+        ) : null}
+        {projectType && mode !== 'warnings' ? (
+          <span title={project.data.rootPath}>{projectType}</span>
+        ) : null}
+        {show(eligibleAgentCount === undefined || eligibleAgentCount === 0) ? (
+          <span title="仅登记状态下的项目资格，运行前仍需预检。">
+            {eligibleAgentCount !== undefined
+              ? `${eligibleAgentCount} 个登记可用 Agent`
+              : eligibility.isError
+                ? 'Agent 资格读取失败'
+                : 'Agent 资格确认中'}
+          </span>
+        ) : null}
+        {show(unfinishedWorkCount === undefined) ? (
+          <span title="按任务状态统计未结束工作，不代表正在执行的 Run 数量。">
+            {unfinishedWorkCount !== undefined
+              ? `${unfinishedWorkCount} 项未结束工作`
+              : tasks.isError
+                ? '工作数量读取失败'
+                : '工作数量确认中'}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
   const tabs = [
     { to: `${base}/overview`, label: '概览' },
     { to: `${base}/work`, label: '工作' },
@@ -185,47 +231,51 @@ export function ProjectContextLayout() {
             <div className={projectsStyles.identityTitle}>
               <h1>{project.data.name}</h1>
               <AhStatusPill status={project.data.status} />
-              <span className={projectsStyles.projectKindBadge}>
-                {project.data.kind === 'TEST' ? '测试 Project' : '正式 Project'}
-              </span>
+              {!compact ? (
+                <span className={projectsStyles.projectKindBadge}>
+                  {project.data.kind === 'TEST' ? '测试 Project' : '正式 Project'}
+                </span>
+              ) : null}
             </div>
-            {project.data.description ? (
+            {!compact && project.data.description ? (
               <p className={projectsStyles.identityDescription}>{project.data.description}</p>
             ) : null}
-            <div className={projectsStyles.identityFacts}>
-              <span title={branchLabel}>
-                <GitBranch size={13} aria-hidden="true" />
-                {branchLabel}
-              </span>
-              {projectType ? <span title={project.data.rootPath}>{projectType}</span> : null}
-              <span title="仅登记状态下的项目资格，运行前仍需预检。">
-                {eligibleAgentCount !== undefined
-                  ? `${eligibleAgentCount} 个登记可用 Agent`
-                  : eligibility.isError
-                    ? 'Agent 资格读取失败'
-                    : 'Agent 资格确认中'}
-              </span>
-              <span title="按任务状态统计未结束工作，不代表正在执行的 Run 数量。">
-                {unfinishedWorkCount !== undefined
-                  ? `${unfinishedWorkCount} 项未结束工作`
-                  : tasks.isError
-                    ? '工作数量读取失败'
-                    : '工作数量确认中'}
-              </span>
-            </div>
+            {!compact ? renderFacts('all') : null}
           </div>
           <div className={projectsStyles.identityActions}>
-            <Link to={`${base}/overview?edit=kind`}>
-              <AhButton variant="default">编辑类型</AhButton>
-            </Link>
-            <Link to={latestSession ? `/workspace/${latestSession.id}` : `${base}/work`}>
-              <AhButton variant="default">{latestSession ? '继续会话' : '进入 Work'}</AhButton>
-            </Link>
+            {!compact ? (
+              <Link to={`${base}/overview?edit=kind`}>
+                <AhButton variant="default">编辑类型</AhButton>
+              </Link>
+            ) : null}
+            {!compact || latestSession ? (
+              <Link to={latestSession ? `/workspace/${latestSession.id}` : `${base}/work`}>
+                <AhButton variant="default">{latestSession ? '继续会话' : '进入 Work'}</AhButton>
+              </Link>
+            ) : null}
             <Link to={`${base}/work/new`}>
               <AhButton leftSection={<Plus size={16} />}>新建工作</AhButton>
             </Link>
           </div>
         </div>
+        {compact ? (
+          <>
+            {hasHeaderWarning ? (
+              <div className={projectsStyles.headerWarnings} role="status">
+                {renderFacts('warnings')}
+              </div>
+            ) : null}
+            <details className={projectsStyles.projectDetails}>
+              <summary>项目详情</summary>
+              <p>{project.data.kind === 'TEST' ? '测试 Project' : '正式 Project'}</p>
+              {project.data.description ? <p>{project.data.description}</p> : null}
+              {renderFacts('secondary')}
+              <Link to={`${base}/overview?edit=kind`}>
+                <AhButton variant="default">编辑类型</AhButton>
+              </Link>
+            </details>
+          </>
+        ) : null}
         <nav className={projectsStyles.contextTabs} aria-label="项目上下文">
           {tabs.map((tab) => (
             <NavLink

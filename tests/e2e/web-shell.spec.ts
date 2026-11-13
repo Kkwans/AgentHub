@@ -858,7 +858,25 @@ test('Projects 使用高密度实体列表并打开路由弹层', async ({ page 
 
 test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, testInfo) => {
   await page.goto(`/projects/${project.id}/overview`);
+  const compactHeader = (page.viewportSize()?.width ?? 1_000) < 768;
+  if (compactHeader) {
+    const summary = page.locator('summary').filter({ hasText: '项目详情' });
+    await expect(summary).toBeVisible();
+    await expect(page.getByRole('link', { name: '编辑类型' })).toHaveCount(0);
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('link', { name: '编辑类型' })).toBeVisible();
+  }
   await expect(page.getByText('1 个登记可用 Agent', { exact: true })).toBeVisible();
+  if (compactHeader) {
+    const summary = page.locator('summary').filter({ hasText: '项目详情' });
+    await summary.focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByText('1 个登记可用 Agent', { exact: true })).toBeHidden();
+    const tabs = await page.getByRole('navigation', { name: '项目上下文' }).boundingBox();
+    expect(tabs).not.toBeNull();
+    expect(tabs!.y + tabs!.height).toBeLessThan(270);
+  }
   await expect(
     page.getByText('登记状态下 1 个可用；运行前仍需预检', { exact: true }),
   ).toBeVisible();
@@ -868,7 +886,7 @@ test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, te
   });
   await expect(context.getByRole('link', { name: 'Prompt' })).toHaveCount(0);
   await expect(context.getByRole('link', { name: '设置' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Review Queue' })).toBeVisible({
+  await expect(page.getByRole('heading', { name: '待审阅' })).toBeVisible({
     timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByRole('link', { name: /feature\/agent-discovery/ })).toBeVisible({
@@ -947,6 +965,8 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
   await page.getByRole('button', { name: '版本与标签' }).click();
   const lifecycle = page.getByRole('dialog', { name: '版本与标签' });
   await expect(lifecycle.getByRole('heading', { name: '版本历史' })).toBeVisible();
+  await expect(lifecycle).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(lifecycle).toHaveCSS('opacity', '1');
   await expect(lifecycle.getByText('production', { exact: true })).toBeVisible();
   await expect(lifecycle.getByRole('heading', { name: '版本比较' })).toBeVisible();
   await expect(lifecycle.getByText('+请优先识别安全、数据一致性和回归风险。')).toBeVisible();

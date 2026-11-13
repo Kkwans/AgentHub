@@ -216,7 +216,7 @@ export function ProjectOverviewPage() {
         <section className={projectsStyles.overviewPanel}>
           <div className={projectsStyles.panelHeader}>
             <div>
-              <h3>Review Queue</h3>
+              <h3>待审阅</h3>
               <p>需要你做决策的工作结果。</p>
             </div>
             <Link to={`/projects/${project.id}/work?status=WAITING_REVIEW`}>全部审阅 →</Link>
@@ -303,8 +303,8 @@ export function ProjectOverviewPage() {
             {tasks.isSuccess && !tasks.isFetching && !activeTasks.length ? (
               <div className={projectsStyles.overviewEmpty}>
                 <div>
-                  <h4>没有进行中的 Work</h4>
-                  <p>从 Work 创建并开始一项工作。</p>
+                  <h4>没有进行中的工作</h4>
+                  <p>创建并开始一项工作。</p>
                 </div>
                 <Link to={`/projects/${project.id}/work/new`}>
                   <AhButton size="sm" variant="default">
@@ -361,7 +361,7 @@ export function ProjectOverviewPage() {
               <div className={projectsStyles.overviewEmpty}>
                 <div>
                   <h4>还没有 Session</h4>
-                  <p>从 Work 创建第一项工作，再选择 Agent 运行。</p>
+                  <p>创建第一项工作，再选择 Agent 运行。</p>
                 </div>
               </div>
             ) : null}

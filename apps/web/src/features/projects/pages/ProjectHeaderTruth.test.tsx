@@ -121,3 +121,67 @@ it('cached count/branch are not presented as current after refetch error', async
   expect(screen.queryByText('1 项未结束工作')).not.toBeInTheDocument();
   expect(screen.queryByText('最近会话分支：cached')).not.toBeInTheDocument();
 });
+
+it('mobile keeps title, next action and warnings visible while secondary metadata uses native disclosure', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+  try {
+    mount({
+      sessions: [{ id: 'new', branch: 'feature/mobile', lastActiveAt: '2026-11-12T00:00:00Z' }],
+    });
+    expect(await screen.findByRole('heading', { name: '页头审计' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '新建工作' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '继续会话' })).toHaveAttribute(
+      'href',
+      '/workspace/new',
+    );
+    const summary = screen.getByText('项目详情');
+    const details = summary.closest('details')!;
+    expect(summary.tagName).toBe('SUMMARY');
+    expect(details).not.toHaveAttribute('open');
+    expect(screen.getByText('最近会话分支：feature/mobile').closest('details')).toBe(details);
+    expect(screen.getByText('编辑类型').closest('details')).toBe(details);
+    expect(screen.getByText('0 个登记可用 Agent').closest('details')).toBeNull();
+    expect(screen.getByText('0 个登记可用 Agent')).toBeVisible();
+  } finally {
+    media.mockRestore();
+  }
+});
+it.each(['pending', 'error'] as const)(
+  'mobile never puts %s metadata behind closed details',
+  async (state) => {
+    const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: query === '(max-width: 767px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    try {
+      const client = mount({ state });
+      await screen.findByText('概览内容');
+      await waitFor(() => expect(client.getQueryState(['tasks', 'p1'])?.status).toBe(state));
+      for (const text of state === 'error'
+        ? ['会话分支读取失败', '工作数量读取失败']
+        : ['会话分支确认中', '工作数量确认中']) {
+        expect(screen.getByText(text)).toBeVisible();
+        expect(screen.getByText(text).closest('details')).toBeNull();
+      }
+      expect(screen.queryByRole('link', { name: '进入 Work' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '新建工作' })).toBeVisible();
+    } finally {
+      media.mockRestore();
+    }
+  },
+);

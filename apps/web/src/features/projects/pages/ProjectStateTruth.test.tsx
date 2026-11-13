@@ -128,7 +128,7 @@ it.each(['error', 'pending'] as const)(
     const client = mount({ lists });
     await screen.findByText('项目 Agent 资格');
     await waitFor(() => expect(client.getQueryState(['tasks', 'p1'])?.status).toBe(lists));
-    for (const text of ['没有进行中的 Work', '没有待审阅结果', '还没有 Session'])
+    for (const text of ['没有进行中的工作', '没有待审阅结果', '还没有 Session'])
       expect(screen.queryByText(text)).not.toBeInTheDocument();
     if (lists === 'error') expect(screen.getAllByText('工作或会话读取失败').length).toBe(3);
   },
@@ -185,7 +185,7 @@ it('does not present retained cached success as current success after refetch fa
   await waitFor(() => expect(screen.queryByText('1 个登记可用 Agent')).not.toBeInTheDocument());
   expect(client.getQueryData(['tasks', 'p1'])).toHaveLength(1);
   expect(screen.queryByText('旧缓存工作')).not.toBeInTheDocument();
-  expect(screen.queryByText('没有进行中的 Work')).not.toBeInTheDocument();
+  expect(screen.queryByText('没有进行中的工作')).not.toBeInTheDocument();
   expect(screen.queryByText('0 个登记可用 Agent')).not.toBeInTheDocument();
   expect(screen.getByText('项目 Agent 资格').parentElement!.parentElement!).not.toHaveTextContent(
     '✓',
@@ -197,7 +197,7 @@ it('does not present retained cached success as current success after refetch fa
 
 it('keeps review and work in one reading flow before recent sessions and environment details', async () => {
   mount();
-  const review = await screen.findByRole('heading', { name: 'Review Queue' });
+  const review = await screen.findByRole('heading', { name: '待审阅' });
   const active = screen.getByRole('heading', { name: '正在进行' });
   const sessions = screen.getByRole('heading', { name: '最近会话' });
   const health = screen.getByRole('complementary', { name: '项目环境状态' });
