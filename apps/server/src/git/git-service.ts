@@ -384,7 +384,8 @@ function summarizeStatus(entries: GitStatusEntry[]): Record<string, unknown> {
 async function runGit(args: string[], maxOutputBytes = 2 * 1024 * 1024) {
   return runProcess({
     executable: '/usr/bin/git',
-    args,
+    // `--` stops option parsing, not Git pathspec magic/glob expansion.
+    args: ['--literal-pathspecs', ...args],
     timeoutMs: 30_000,
     maxOutputBytes,
   });

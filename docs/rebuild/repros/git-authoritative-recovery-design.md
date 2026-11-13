@@ -113,3 +113,11 @@ expectedHead须在获得资源claim并复核资源身份后、第一条写命令
 编排层未知create保SETTING_UP，未知merge或Git已成功但完成落盘失败保MERGING；已持久DONE不会因publish异常降回REVIEW。重启恢复也保留SETTING_UP/MERGING活动槽位：“尚无Session”不是“Git没运行”的证据。取消/rework/再次merge与后续同project队列不能绕过该槽位；身份错配不覆盖当前Task。
 
 这是**实际生产worktree路径止损**，不是跨project别名互斥：普通commit和canonical repository claim尚未统一接入，其他project别名仍可能绕过project队列；用户终端/Agent也不受此锁约束。未知隔离目前不自动释放，无人工解锁API。
+
+## 20:36 UTC 统一调用与客户端请求身份契约
+
+`ManagedGitWrites.run<T>` 把COMMIT/WORKTREE_CREATE/WORKTREE_MERGE统一到同一coordinator；仅首次callback返回且成功持久化后交付临时T。重放不能凭持久状态重造worktree路径等返回值，更不能回退raw Git；结果未知/落盘响应丢失一律隔离。前置错误仅在协调器明确证明callback未进入时分类，不用任意异常猜测未写。**包装器尚未安装到三条生产写路径**。
+
+客户端 `git-commit-recovery.ts` 只保存version/scope/project/op四字段，每op独立key；首次写入及读回成功才允许调用方考虑派发。原同op、损坏状态、存储不可用均要求恢复而非新提交。404/未知/网络错误不清marker；仅匹配当前认证scope/project/op且严格字符串终态的proof清单个marker。GET不返回scope，因此未来调用方必须将proof绑定发起查询的当前认证scope，不信任响应中伪造scope。跨标签页并发可能都通过前读，此模块不是互斥锁，必须依赖服务端claim。**尚未接Provider/UI/POST**。
+
+新提交协议强制version=1、客户端UUID operationId和显式expectedHead（完整SHA或明确null），规范message/UUID/SHA但保留path顺序/大小写/重复。严格拒绝owner/device/dispatch等客户端伪造字段，STAGED不接受被忽略的paths。当前仅GET复用参数规范，旧POST仍未切换。禁止仅服务端每次给旧无key请求生成新key后宣称幂等：回执丢失后新key仍可能提交后来的改动。

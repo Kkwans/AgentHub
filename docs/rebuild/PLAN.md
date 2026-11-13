@@ -197,3 +197,5 @@
 20:05 UTC canonical resolver/coordinator可执行基础、受权DB-only GET已加入。启用写保护前必须统一普通commit、worktree create、commitAndMerge，持久队列owner/操作身份且UNKNOWN不回REVIEW；不能用只查claim代替原子抢占。设备身份配置、执行器环境绑定、frontend marker和恢复UI仍待落地。
 
 20:19 UTC 已补worktree持久owner/create-operationId和生产未知写入隔离（含重启）；下一片统一canonical claim的真实执行器/三个入口，明确历史ownerless阻断、merge每阶段操作身份及结果持久投影。保守活动槽位目前不能人工解除，不能以BLOCKED/cancel绕过。
+
+20:36 UTC 三写kind共享wrapper、最小客户端marker和strict请求协议已实现基础；尚须生产统一接线/客户端恢复查询、可信设备命名空间、历史ownerless处理及结果投影。必须同时封住旧无operationId提交入口，不允许安全层失败时回退raw Git。

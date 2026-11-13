@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { validate } from '../validation.js';
 import type { GitService } from './git-service.js';
+import { gitCommitOperationParams } from './git-commit-protocol.js';
 
 const projectParams = z.object({ id: z.string().uuid() });
 const diffQuery = z.object({
@@ -33,12 +34,10 @@ export function createGitRouter(service: GitService): Router {
 
   router.get(
     '/commit-operations/:operationId',
-    validate({ params: z.object({ id: z.string().uuid(), operationId: z.string().uuid() }) }),
+    validate({ params: gitCommitOperationParams }),
     async (request, response, next) => {
       try {
-        const { id, operationId } = z
-          .object({ id: z.string().uuid(), operationId: z.string().uuid() })
-          .parse(request.params);
+        const { id, operationId } = gitCommitOperationParams.parse(request.params);
         response.json({
           data: await service.commitOperation(id, operationId, response.locals.authPrincipal),
           requestId: String(request.id),

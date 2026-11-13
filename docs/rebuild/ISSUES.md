@@ -370,3 +370,9 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 20:19 UTC Worktree失败可能已写入
 
 真实hook测试确认失败后已创建branch/worktree或修改index。已修复分类及编排：首写后UNKNOWN保持活动槽位，重启同样不能凭无Session放行。新queue持久owner/createop，历史null保留。未解决的是统一claim跨project别名、普通commit入口、旧ownerless行及人工确认解除流程；不要把本片project槽位防重试称全仓排他。
+
+### 2026-11-13 20:36 UTC 请求身份与路径语义
+
+已加未启用的client marker/三类写wrapper/strict协议基础，跨刷新闭环仍待接线。单纯服务端给legacy每次生成新key不解决回执丢失后重复提交；必须客户端持久key。额外发现Git pathspec magic/glob可扩大显式选择，正在修复literal-pathspecs并用真实Git验收，不放宽路径隔离。
+
+20:37 UTC pathspec扩大选择已修复并通过4项真实Git回归；仅此路径修复已在生产调用代码生效，wrapper/marker完整闭环仍未接入。

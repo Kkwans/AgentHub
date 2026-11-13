@@ -1113,3 +1113,11 @@ CR/类型检查发现并修复rework误插setup catch；startup回归又发现�
 20:20:45 UTC 最终组合startup/worktree/迁移6文件80测试全过（42.70s）；全仓types、相关lint/format、diffcheck、独立CR通过。首次组合读到修复前编译产物，重建DB后完整重跑通过，未放宽归属错配断言。上一8e54ca7精确CI verify与无障碍绿、真实服务矩阵仍运行；新片全量使用冻结源码及独立本树依赖链接。
 
 20:25 UTC 53239ad冻结全量进行中已发现旧AH002 Prompt集成fixture两项失败：queue新增认证归属要求后，fixture没有principal而被401拒绝。仅修复测试fixture，明确注入local_trusted ADMIN后挂载原应用，不放宽生产认证/业务断言。完整Prompt20测试重跑通过（36.16s），lint/format/server types/diffcheck通过。新测试修复提交仍需精确全量/CI；不能把进行中的旧失败run记为通过。
+
+### 2026-11-13 20:29–20:36 UTC 托管写包装器与持久请求标记
+
+实现同coordinator三类写wrapper、31测试客户端marker基础、严格提交协议；主整合Git+marker8文件90项通过。CR补严格字符串phase、防伪toString终态，并修复存储故障mock动态length与测试类型。仍未切换生产POST/Provider，不宣称跨刷新恢复启用。另发现live GitService的--不阻止glob/pathspec magic，正在补literal路径修复与真实Git测试，最终结果待后记。
+
+20:34:21 UTC上一938209b精确冻结全量全过：157文件通过/4跳过，1523测试通过/10跳过，372.25s，旧两项fixture失败已闭环。上一8e54ca7精确CI此刻三绿；938209b无障碍绿，verify浏览器与real矩阵仍运行。
+
+20:37:28 UTC 最终Git+marker9文件94项通过（13.39s），全仓types、lint/format/diffcheck与独立CR通过。生产GitService已加入全局literal-pathspecs；4个真实Git测试确认字面wildcard/magic仅提交所选、不动其他已暂存内容，不存在magic不改变HEAD/index。新增协调wrapper/marker/POST协议仍未启用。新精确提交全量/CI待运行。
