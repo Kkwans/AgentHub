@@ -49,7 +49,7 @@ describe('review-specific syntax contrast', () => {
       }
       expect(theme.inherit).toBe(true);
       expect(theme.colors).toEqual({}); // Never remove insertion/deletion highlights.
-      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 1 : 2);
+      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 1 : 3);
     },
   );
   it('keeps CSS identifier values readable on actual dark CI inserted/deleted character backgrounds', () => {
@@ -77,7 +77,36 @@ describe('review-specific syntax contrast', () => {
     expect(theme.rules.map((rule) => rule.token)).toEqual([
       'attribute.name',
       'attribute.value.css',
+      'keyword.ts',
     ]);
+    expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
+      'attribute.name',
+    ]);
+  });
+  it('fixes the actual TSX const contrast without broadening to JS, strings or numbers', () => {
+    const theme = diffEditorThemes[AGENTHUB_DIFF_DARK]!;
+    const color = theme.rules.find((rule) => rule.token === 'keyword.ts')!.foreground!;
+    const base = rgb('1e1e1e');
+    const added = over(base, '9bb955', 0.2);
+    const removed = over(base, 'ff0000', 0.2);
+    // c8d1ab2 390dark actual const node: #569cd6 on #373d29, ratio ~3.82.
+    expect(contrast('569CD6', rgb('373d29'))).toBeLessThan(4.5);
+    for (const background of [
+      rgb('373d29'),
+      base,
+      added,
+      removed,
+      over(added, '9ccc2c', 0.2),
+      over(removed, 'ff0000', 0.2),
+    ]) {
+      expect(contrast(color, background)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(
+      theme.rules.some((rule) =>
+        ['keyword', 'keyword.js', 'string.ts', 'number.ts'].includes(rule.token),
+      ),
+    ).toBe(false);
+    expect(theme.colors).toEqual({});
     expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
       'attribute.name',
     ]);

@@ -20,6 +20,8 @@ export const diffEditorThemes: Record<string, editor.IStandaloneThemeData> = {
       // CSS identifier values (e.g. display: block/grid) retain their warm hue
       // but need more luminance on Monaco's stacked inserted-text background.
       { token: 'attribute.value.css', foreground: 'F4C7AF' },
+      // TS/TSX keywords need a lighter blue on inserted lines and characters.
+      { token: 'keyword.ts', foreground: 'B1D3FF' },
     ],
     colors: {},
   },

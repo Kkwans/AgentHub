@@ -562,3 +562,17 @@ Exactac79 fixture archived71 passed/1 failed. Four-width dark CSS samples no lon
 Personally viewed ac79 dark390 unified and1440 split-requested images at16:07 UTC. CSS values are visibly lighter, but the split button still displays one code column. All four actual requested-split layouts retained an original25px gutter. C34 disables Monaco's automatic inline fallback only in this DiffViewer; default remains unified and explicit user choice requests two panes. The four-width fixture now requires both panes≥100px, non-overlap and visible original source, then switches back to the original small-gutter unified view. This is a real behavior correction backed by prior geometry, not a renamed screenshot or smaller threshold. Narrow split comfort still requires new images; pane width alone does not prove readability.
 
 Integrated validation finished16:08:41 UTC:7 files/49 tests passed, web types/lint/build, explicit E2E types and eight-case collection passed; independent static CR covered both the summary semantics and explicit split/return contract. Actual new keyboard, all-width pane geometry and full-page axe remain exact-CI gates.
+
+### 2026-11-13 16:12 UTC — C33/C34 publication
+
+Publishedbb107c1195649ca79cf79238123cad9b041b5e2c was fetched and its tree77aeab284eba1674d778ddbc9968d6b20c1272de verified16:11:38 UTC, matching the reviewed local candidate. The branch remains dot/agenthub-rebuild, not main. A fresh complete local regression started16:11:59. The actual new summary keyboard/axe and narrow two-pane comfort remain CI-pending; no source-test count is used as screenshot evidence.
+
+### 2026-11-13 16:17 UTC — Actual TSX keyword finding, not a broad palette rewrite
+
+Exactc8 fixture archived71 passed/2 failed plus3 explicitly skipped TSX widths. Besides the already-known desktop nested disclosure, the new390 TSX audit found one serious const token:569cd6 on373d29 at3.82, with the same node in initial and retry evidence. At16:16:54 personally viewed the actual TSX screenshot; at16:17:18 personally read its final JSON confirming exactly that node. Long return text scrolls within the editor without page overflow.
+
+The next bounded candidate changes only dark keyword.ts after confirming Monaco's TypeScript token postfix. This audit did not report string or number nodes, so they and JavaScript are not being changed based only on numerical predictions. The original legal patch, staged request, full-page axe and4.5 threshold remain. The bb107 complete regression is still running with product source unchanged; no new browser success is implied.
+
+At16:18:13 UTC fullbb107 product regression exited0:146 files/1392 tests passed,4 files/10 skipped,373.42s. Product was unchanged during this run. Only afterward was the two-file C35 candidate integrated: dark keyword.ts=B1D3FF, with the exact373d29 and composite line/character backgrounds tested while preserving light, backgrounds and other tokens. Candidate6 color tests/types/lint/build/static CR passed; main integrated validation is in progress. This fullbb107 count is not claimed for the new C35 product.
+
+C35 main integrated validation completed16:18:40 UTC:5 files/20 tests passed, web types/lint/production build and diff-check passed. Publication is pending; the exact new TSX axe result is still required and not inferred from these numerical/source tests.

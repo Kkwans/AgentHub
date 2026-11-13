@@ -183,3 +183,7 @@ C30实际闭环更新（15:54 UTC）：209四宽Workspace主旅程通过，真�
 
 - C33：ac79全页axe真实发现summary/button嵌套；summary成为唯一交互控件，动态名称含耗时与展开/收起，保streaming行为，新增真实键盘门，不缩axe范围。
 - C34：ac79四宽实际点击分栏仍仅25px原文槽，确认自动回退覆盖显式选择；仅当前DiffViewer关闭自动回退，默认统一不变。新几何门要求双栏实宽与原文可见、回统一仍可用，最终舒适性待图。
+
+## C35 深色 TypeScript 关键字对比度（候选）
+
+c8真实390 TSX仅报const关键字3.82，精确dark keyword.ts调整浅蓝B1D3FF；不扩JS/string/number或改增删背景。保原样本和4.5门，真实新节点仍待CI。
