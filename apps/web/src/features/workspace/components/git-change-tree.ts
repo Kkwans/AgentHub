@@ -81,3 +81,12 @@ export function buildGitChangeTree(entries: GitChangeEntry[]): GitChangeTreeNode
   sortNodes(root.children);
   return root.children;
 }
+
+/** Compact review keeps validated paths while avoiding a screen of directory rows. */
+export function flattenGitChangeTree(
+  nodes: GitChangeTreeNode[],
+): Extract<GitChangeTreeNode, { kind: 'file' }>[] {
+  return nodes.flatMap((node) =>
+    node.kind === 'file' ? [node] : flattenGitChangeTree(node.children),
+  );
+}

@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildGitChangeTree } from './GitChangesTree';
+import { flattenGitChangeTree } from './git-change-tree';
 
 describe('Git changes tree', () => {
+  it('compact review flattens validated files without dropping full-path identity', () => {
+    const files = flattenGitChangeTree(
+      buildGitChangeTree([
+        { index: ' ', worktree: 'M', path: 'src/deep/one.ts' },
+        { index: ' ', worktree: 'M', path: 'src/other/one.ts' },
+        { index: ' ', worktree: 'M', path: '../secret' },
+      ]),
+    );
+    expect(files.map((file) => file.path)).toEqual(['src/deep/one.ts', 'src/other/one.ts']);
+    expect(files.every((file) => file.kind === 'file')).toBe(true);
+  });
   it('groups repository-relative entries into directories before files', () => {
     const tree = buildGitChangeTree([
       { index: ' ', worktree: 'M', path: 'src/zeta.ts' },

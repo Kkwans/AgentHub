@@ -18,7 +18,11 @@ import type {
   QueryState,
 } from '../workspace-types';
 import { DiffViewer } from './DiffViewer';
-import { buildGitChangeTree, type GitChangeTreeNode } from './git-change-tree';
+import {
+  buildGitChangeTree,
+  flattenGitChangeTree,
+  type GitChangeTreeNode,
+} from './git-change-tree';
 
 export { buildGitChangeTree, type GitChangeTreeNode } from './git-change-tree';
 
@@ -51,6 +55,7 @@ export function GitChangesTree({
 }) {
   type GitView = 'changes' | 'history' | 'branches';
   const [view, setView] = useState<GitView>('changes');
+  const [treeLayout, setTreeLayout] = useState(false);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [commitMessage, setCommitMessage] = useState('');
   const [commitReceipt, setCommitReceipt] = useState<string>();
@@ -186,6 +191,14 @@ export function GitChangesTree({
               <span>{status.data?.entries.length ?? 0} 个变更</span>
               <button
                 type="button"
+                aria-label="按目录显示变更"
+                aria-pressed={treeLayout}
+                onClick={() => setTreeLayout((value) => !value)}
+              >
+                {treeLayout ? '目录' : '列表'}
+              </button>
+              <button
+                type="button"
                 onClick={() =>
                   (() => {
                     const next =
@@ -200,8 +213,13 @@ export function GitChangesTree({
                 {selectedPaths.length === status.data?.entries.length ? '取消全选' : '全选'}
               </button>
             </div>
-            <div className="change-list git-change-list" role="tree" aria-label="Git 文件变更树">
-              {changeTree.map((node) => (
+            <div
+              className="change-list git-change-list"
+              role="tree"
+              aria-label="Git 文件变更树"
+              data-layout={treeLayout ? 'tree' : 'list'}
+            >
+              {(treeLayout ? changeTree : flattenGitChangeTree(changeTree)).map((node) => (
                 <GitChangeTreeNode
                   key={node.path}
                   node={node}
@@ -473,6 +491,11 @@ function GitChangeTreeNode({
         </span>
         <span className="git-change-path" title={entry.path}>
           {node.name}
+          {depth === 0 && entry.path.includes('/') ? (
+            <small className="codex-change-parent">
+              {entry.path.slice(0, entry.path.lastIndexOf('/'))}
+            </small>
+          ) : null}
           {entry.originalPath ? (
             <small className="git-change-origin">从 {entry.originalPath}</small>
           ) : null}

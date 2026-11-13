@@ -130,8 +130,8 @@
 }
 
 .workspace :global(.session-group-items) {
-  margin-left: 12px;
-  padding-left: 8px;
+  margin-left: 4px;
+  padding-left: 4px;
   border-left: 1px solid var(--workspace-line);
 }
 
@@ -235,4 +235,33 @@
   .workspace :global(.conversation-turn) {
     margin-inline: 0;
   }
+}
+
+.workspace :global(.git-change-list[data-layout='list'] .git-change-row) {
+  min-height: 48px;
+  padding-inline: 6px;
+}
+.workspace :global(.git-change-list[data-layout='list'] .git-change-row.selected) {
+  background: var(--workspace-selected);
+}
+.workspace :global(.codex-change-parent) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--workspace-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The text field uses the composer's rounded boundary as its focus indicator,
+   not a second rectangular frame inside the surface. Buttons keep their rings. */
+.workspace :global(.chat-command-card:has(textarea:focus-visible)) {
+  outline: 2px solid hsl(var(--foreground-muted));
+  outline-offset: 2px;
+}
+.workspace :global(.chat-command-card textarea:focus-visible) {
+  outline: none;
+  box-shadow: none;
 }

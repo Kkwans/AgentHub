@@ -704,6 +704,25 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(inspector.getByRole('tab', { name: '活动' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: 'Run' })).toBeVisible();
     await attachViewportScreenshot(page, testInfo, 'workspace-three-column');
+    await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await page
+      .getByRole('button', {
+        name: '查看 apps/web/src/features/workspace/workspace.module.css Diff',
+        exact: true,
+      })
+      .click();
+    await expect(page.getByRole('button', { name: '切换为分栏 Diff' })).toBeVisible();
+    await expect(page.locator('.git-diff-editor .monaco-editor').first()).toBeVisible();
+    await attachViewportScreenshot(page, testInfo, 'workspace-review-diff');
+    await page.getByRole('button', { name: '按目录显示变更' }).click();
+    await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await page.getByRole('button', { name: '按目录显示变更' }).click();
     await inspector.getByRole('tab', { name: '文件' }).click();
     const appsDirectory = page.getByRole('button', { name: 'apps', exact: true });
     await expect(appsDirectory).toHaveAttribute('aria-expanded', 'true');
@@ -1058,6 +1077,13 @@ async function fulfillFixture(route: Route) {
           worktreeStats: { additions: 42, deletions: 8 },
         },
       ],
+    };
+  else if (path.endsWith(`/projects/${project.id}/git/diff`))
+    data = {
+      patch:
+        'diff --git a/workspace.module.css b/workspace.module.css\n--- a/workspace.module.css\n+++ b/workspace.module.css\n@@ -1,3 +1,4 @@\n .workspace {\n-  display: block;\n+  display: grid;\n+  min-width: 0;\n }\n',
+      truncated: false,
+      staged: url.searchParams.get('staged') === 'true',
     };
   else if (path.endsWith(`/projects/${project.id}/files/content`))
     data = {
