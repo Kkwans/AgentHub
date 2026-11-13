@@ -7,10 +7,13 @@ import type {
   AgentHubDatabase,
   ExecutionTargetRepository,
   GitSnapshotRepository,
+  GitCommitOperationRepository,
   ProjectRepository,
 } from '@agenthub/db';
 
 import { AppError } from '../errors.js';
+import type { AuthPrincipal } from '../auth/auth-service.js';
+import { creationOwnerScope } from '../tasks/task-creation-operation.js';
 import { assertContained, validateRelativePath } from '../projects/path-security.js';
 import type { GitHeadProbe } from '../sessions/session-service.js';
 
@@ -43,7 +46,48 @@ export class GitService implements GitHeadProbe {
     private readonly projects: ProjectRepository<AgentHubDatabase>,
     private readonly snapshots: GitSnapshotRepository<AgentHubDatabase>,
     private readonly targets?: ExecutionTargetRepository<AgentHubDatabase>,
+    private readonly operations?: Pick<GitCommitOperationRepository<AgentHubDatabase>, 'get'>,
   ) {}
+
+  // DB-only recovery lookup: never probes HEAD, invokes Git, renews a claim,
+  // retries a write, or interprets a missing record as proof of non-execution.
+  async commitOperation(
+    projectId: string,
+    operationId: string,
+    principal: AuthPrincipal | undefined,
+  ) {
+    const ownerScope = creationOwnerScope(principal);
+    if (!this.operations)
+      throw new AppError(503, 'GIT_OPERATION_QUERY_UNAVAILABLE', 'Git 操作查询暂不可用');
+    const record = await this.operations.get(
+      ownerScope,
+      operationId.toLowerCase(),
+      projectId.toLowerCase(),
+    );
+    if (!record)
+      throw new AppError(
+        404,
+        'GIT_OPERATION_NOT_FOUND',
+        '未找到可访问的 Git 操作；这不证明提交未执行',
+      );
+    // Explicit projection excludes executor paths, device/worker IDs and dispatch
+    // tokens. operationId is an identifier, never an authorization credential.
+    return {
+      operationId: record.operationId,
+      projectId: record.projectId,
+      protocolVersion: record.protocolVersion,
+      phase: record.phase,
+      requestHash: record.requestHash,
+      payload: record.payloadJson,
+      expectedHead: record.expectedHead,
+      observedAfterHead: record.observedAfterHead,
+      commandExit: record.commandExit,
+      resultEvidence: record.resultEvidenceJson,
+      errorCode: record.errorCode,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+  }
 
   async status(projectId: string): Promise<GitStatusReport> {
     const project = await this.requireGitProject(projectId);

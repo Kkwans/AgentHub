@@ -362,3 +362,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 19:49 UTC Git持久性缺口进展
 
 操作/资源claim休眠DB层已加入候选，完整保护仍未上线：缺认证查询/协议hash与资源身份派生、执行器崩溃点、legacy/worktree统一锁、前端marker恢复及真实PostgreSQL多连接验证。UNKNOWN锁无自动到期/释放，不能以重启或新key绕过；手工解除协议尚未设计完，不提供按钮。
+
+### 2026-11-13 20:05 UTC 全写入口接入门
+
+已完成休眠canonical resolver/coordinator及只读受权查询；真实生产写入仍未迁移。发现worktree merge catch任意失败还原REVIEW，接入UNKNOWN必须改为不可重试隔离；merge-tree --write-tree也需claim。队列缺持久owner、现有Docker目标语义和设备身份配置须明确。Agent/PTY外部Git为锁外并发，不能宣称全仓排他。

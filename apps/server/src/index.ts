@@ -13,6 +13,7 @@ import {
   EventRepository,
   ExecutionTargetRepository,
   GitSnapshotRepository,
+  GitCommitOperationRepository,
   GoalRepository,
   LocalAuthRepository,
   MessageRepository,
@@ -199,7 +200,12 @@ export async function startServer(
     workspaceRoots,
     remoteNodeOperations,
   );
-  const git = new GitService(projectRepository, gitSnapshotRepository, executionTargetRepository);
+  const git = new GitService(
+    projectRepository,
+    gitSnapshotRepository,
+    executionTargetRepository,
+    new GitCommitOperationRepository(database.db),
+  );
   const terminal = new TerminalService(projectRepository, {
     publish: (topic, event) => brokerRef.current?.publish(topic, event),
   });

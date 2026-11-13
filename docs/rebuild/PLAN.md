@@ -193,3 +193,5 @@
 19:33 UTC 服务端Git权威恢复ADR已完成：优先migration/claim与查询→隔离Git崩溃注入→统一旧写入口→前端恢复。不得将Git与SQL事务称exactly-once；SHA归属仍开放。文档：repros/git-authoritative-recovery-design.md。
 
 19:49 UTC 休眠DB基础候选已加入：0011双表、原子claim和终态CAS；待针对性测试及精确CI。下一片受权只读查询/协议hash与canonical repo解析，再隔离执行器和所有写入口迁移；当前不得把持久表存在称为用户可用恢复。
+
+20:05 UTC canonical resolver/coordinator可执行基础、受权DB-only GET已加入。启用写保护前必须统一普通commit、worktree create、commitAndMerge，持久队列owner/操作身份且UNKNOWN不回REVIEW；不能用只查claim代替原子抢占。设备身份配置、执行器环境绑定、frontend marker和恢复UI仍待落地。

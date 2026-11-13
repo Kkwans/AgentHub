@@ -31,6 +31,24 @@ const commitSchema = z
 export function createGitRouter(service: GitService): Router {
   const router = Router({ mergeParams: true });
 
+  router.get(
+    '/commit-operations/:operationId',
+    validate({ params: z.object({ id: z.string().uuid(), operationId: z.string().uuid() }) }),
+    async (request, response, next) => {
+      try {
+        const { id, operationId } = z
+          .object({ id: z.string().uuid(), operationId: z.string().uuid() })
+          .parse(request.params);
+        response.json({
+          data: await service.commitOperation(id, operationId, response.locals.authPrincipal),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   router.get('/status', validate({ params: projectParams }), async (request, response, next) => {
     try {
       const { id } = projectParams.parse(request.params);
