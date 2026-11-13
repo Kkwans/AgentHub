@@ -477,7 +477,17 @@ export function useWorkspaceViewModel() {
       const closeButton = openedSession ? sessionCloseRef.current : inspectorCloseRef.current;
       closeButton?.focus();
     } else if (closedSession || closedInspector) {
-      const opener = sessionToggleRef.current;
+      const support = sessionToggleRef.current;
+      const shell = support?.closest('.workspace-page');
+      // The support toggle is hidden on phones. Restore focus to a visible
+      // conversation control instead of leaving it in an unmounted drawer.
+      const opener = isMobileViewport
+        ? shell?.querySelector<HTMLElement>(
+            document.body.classList.contains('mobile-chat-immersive')
+              ? '.workspace-immersive-toggle'
+              : '.workspace-mobile-tabs [role="tab"][aria-selected="true"]',
+          )
+        : support;
       if (opener?.isConnected) opener.focus();
     }
     drawerStateRef.current = nextState;
@@ -515,7 +525,7 @@ export function useWorkspaceViewModel() {
     };
     window.addEventListener('keydown', closeOnEscapeAndTrapFocus);
     return () => window.removeEventListener('keydown', closeOnEscapeAndTrapFocus);
-  }, [closeMobileInspector, inspectorDrawerOpen, sessionDrawerOpen]);
+  }, [closeMobileInspector, inspectorDrawerOpen, isMobileViewport, sessionDrawerOpen]);
 
   return {
     id,

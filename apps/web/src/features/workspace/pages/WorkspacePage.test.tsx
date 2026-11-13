@@ -915,9 +915,19 @@ describe('WorkspacePage 数据分区可靠性', () => {
       'aria-selected',
       'true',
     );
+    expect(within(views).getByRole('tab', { name: '对话' })).toHaveFocus();
+    fireEvent.click(within(views).getByRole('tab', { name: '会话' }));
+    fireEvent.click(await screen.findByRole('button', { name: '关闭会话列表' }));
+    await waitFor(() => expect(within(views).getByRole('tab', { name: '对话' })).toHaveFocus());
+    fireEvent.click(within(views).getByRole('tab', { name: '文件' }));
+    await screen.findByRole('button', { name: '关闭检查器' });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(within(views).getByRole('tab', { name: '对话' })).toHaveFocus());
     fireEvent.click(screen.getByRole('button', { name: '进入沉浸对话' }));
     fireEvent.click(screen.getByRole('button', { name: '审阅更改' }));
     expect(await screen.findByRole('tablist', { name: '检查器视图' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '关闭检查器' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '退出沉浸对话' })).toHaveFocus());
   });
 
   it('移动端可切换沉浸对话并在退出时清理 body 状态', async () => {
