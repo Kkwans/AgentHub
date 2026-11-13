@@ -4,7 +4,15 @@ import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Link, MemoryRouter, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  Link,
+  MemoryRouter,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import { api } from '../../../lib/api';
 import { ProjectWorkPage } from '../pages/ProjectWorkPage';
 import { ReviewOperationProvider, useReviewOperations } from './ReviewOperationProvider';
@@ -41,13 +49,22 @@ const success = {
   session: { id: 'new-session' },
   run: { id: 'new-run' },
 };
-function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task=t1') {
+function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task=t1', count = 2) {
   let observedOwner: ReviewOperationOwner | undefined;
+  let go: ((path: string) => void) | undefined;
   function OwnerProbe() {
     observedOwner = useReviewOperations()?.owner;
     return null;
   }
-  let rows = [task, { ...task, id: 't2', title: '第二项工作' }];
+  let rows = [
+    task,
+    { ...task, id: 't2', title: '第二项工作' },
+    ...Array.from({ length: Math.max(0, count - 2) }, (_, index) => ({
+      ...task,
+      id: `t${index + 3}`,
+      title: `工作 ${index + 3}`,
+    })),
+  ];
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path.startsWith('/tasks?')) return rows as T;
     if (path.startsWith('/worktree-executions?'))
@@ -106,6 +123,7 @@ function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task
   }
   clients.push(client);
   function Location() {
+    go = useNavigate();
     return <output data-testid="integration-location">{useLocation().pathname}</output>;
   }
   const tree = () => (
@@ -134,6 +152,8 @@ function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task
   return {
     ...h,
     updateAuth: () => h.rerender(tree()),
+    go: (path: string) => go?.(path),
+    refreshTasks: () => client.invalidateQueries({ queryKey: ['tasks', 'p1'] }),
     getOperations: () => observedOwner?.getSnapshot(),
     setRows: (next: typeof rows) => {
       rows = next;
@@ -278,9 +298,9 @@ it('StrictMode warm cache首render已有选中任务，首操作仍可正常导�
   expect(await screen.findByRole('heading', { name: '工作区已打开' })).toBeVisible();
 });
 
-function mobile() {
+function mobile(width = 390) {
   return vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
-    matches: query === '(max-width: 767px)',
+    matches: width <= Number(query.match(/max-width: (\d+)px/)?.[1] ?? 0),
     media: query,
     onchange: null,
     addListener: vi.fn(),
@@ -309,23 +329,26 @@ it('手机列表进入单详情并返回保留反馈输入与筛选', async () =
     media.mockRestore();
   }
 });
-it('手机unknown返回列表仍保留原Inspector并阻止选其他工作', async () => {
-  const media = mobile();
-  try {
-    mount();
-    vi.mocked(api.post).mockRejectedValue(new Error('unknown network'));
-    await rework();
-    await screen.findByText('工作操作结果待核对');
-    fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
-    fireEvent.click(screen.getByRole('button', { name: /第二项工作/ }));
-    expect(screen.getByText('原工作仍在提交或等待核对，请先处理原操作。')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '返回原工作' }));
-    expect(screen.getByRole('textbox', { name: '继续修改说明' })).toHaveValue('修正边界');
-    expect(api.post).toHaveBeenCalledTimes(1);
-  } finally {
-    media.mockRestore();
-  }
-});
+it.each([390, 768, 1023])(
+  '%spx unknown返回列表仍保留原Inspector并阻止选其他工作',
+  async (width) => {
+    const media = mobile(width);
+    try {
+      mount();
+      vi.mocked(api.post).mockRejectedValue(new Error('unknown network'));
+      await rework();
+      await screen.findByText('工作操作结果待核对');
+      fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
+      fireEvent.click(screen.getByRole('button', { name: /第二项工作/ }));
+      expect(screen.getByText('原工作仍在提交或等待核对，请先处理原操作。')).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: '返回原工作' }));
+      expect(screen.getByRole('textbox', { name: '继续修改说明' })).toHaveValue('修正边界');
+      expect(api.post).toHaveBeenCalledTimes(1);
+    } finally {
+      media.mockRestore();
+    }
+  },
+);
 it.each(['?task=missing', '?task=missing&view=board'])(
   '手机非法task显示不存在，不暴露fallback任务动作 %s',
   async (query) => {
@@ -403,5 +426,203 @@ it('手机当前筛选排除选中工作，返回将焦点放到列表容器', a
     expect(screen.getByRole('region', { name: '工作列表' })).toHaveFocus();
   } finally {
     media.mockRestore();
+  }
+});
+
+function responsiveViewport(initial: number) {
+  let width = initial;
+  const lists: Array<{ media: string; listeners: Set<() => void> }> = [];
+  const spy = vi.spyOn(window, 'matchMedia').mockImplementation((media) => {
+    const item = { media, listeners: new Set<() => void>() };
+    lists.push(item);
+    return {
+      get matches() {
+        return width <= Number(media.match(/max-width: (\d+)px/)?.[1] ?? 0);
+      },
+      media,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_event: string, handler: EventListenerOrEventListenerObject) =>
+        item.listeners.add(handler as () => void),
+      removeEventListener: (_event: string, handler: EventListenerOrEventListenerObject) =>
+        item.listeners.delete(handler as () => void),
+      dispatchEvent: () => false,
+    };
+  });
+  return {
+    restore: () => spy.mockRestore(),
+    resize: (next: number) =>
+      act(() => {
+        width = next;
+        lists.forEach((item) => item.listeners.forEach((fn) => fn()));
+      }),
+  };
+}
+it.each([768, 1023])('%spx多任务列表与详情互斥，平板筛选不折叠', async (width) => {
+  const viewport = responsiveViewport(width);
+  try {
+    mount('task', false, '', 30);
+    const list = await screen.findByRole('region', { name: '工作列表' });
+    expect(list.querySelectorAll('button')).toHaveLength(30);
+    expect(screen.queryByRole('complementary', { name: '工作 Inspector' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '工作状态' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '筛选' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /工作 30/ }));
+    expect(await screen.findByRole('heading', { name: '工作 30' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: '工作列表' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
+    expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
+  } finally {
+    viewport.restore();
+  }
+});
+it('1024px仍显示双栏，不引入详情返回按钮', async () => {
+  const viewport = responsiveViewport(1024);
+  try {
+    mount();
+    expect(await screen.findByRole('region', { name: '工作列表' })).toBeVisible();
+    expect(screen.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '返回工作列表' })).not.toBeInTheDocument();
+  } finally {
+    viewport.restore();
+  }
+});
+it('编辑框在390→768→1024→768保持同一节点及焦点', async () => {
+  const viewport = responsiveViewport(390);
+  try {
+    mount();
+    const field = await screen.findByRole('textbox', { name: '继续修改说明' });
+    field.focus();
+    fireEvent.change(field, { target: { value: '跨断点保留输入' } });
+    for (const width of [768, 1024, 768]) {
+      viewport.resize(width);
+      expect(screen.getByRole('textbox', { name: '继续修改说明' })).toBe(field);
+      expect(field).toHaveFocus();
+      expect(field).toHaveValue('跨断点保留输入');
+    }
+  } finally {
+    viewport.restore();
+  }
+});
+it.each(['task', 'worktree'] as const)(
+  '%s pending跨phone/tablet/wide/tablet不卸载且晚成功不导航',
+  async (kind) => {
+    const viewport = responsiveViewport(390);
+    try {
+      mount(kind);
+      let finish!: (value: unknown) => void;
+      vi.mocked(api.post).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }) as never,
+      );
+      if (kind === 'task') await rework();
+      else {
+        fireEvent.click(await screen.findByRole('button', { name: '读取隔离工作区审阅' }));
+        await screen.findByText('已读取差异');
+        fireEvent.change(screen.getByRole('textbox', { name: '隔离工作区修改说明' }), {
+          target: { value: '跨断点修改' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: '提交隔离工作区返工' }));
+      }
+      const field = screen.getByRole('textbox', {
+        name: kind === 'task' ? '继续修改说明' : '隔离工作区修改说明',
+      });
+      for (const width of [768, 1024, 768]) {
+        viewport.resize(width);
+        expect(field).toBeInTheDocument();
+      }
+      await act(async () =>
+        finish(
+          kind === 'task'
+            ? success
+            : {
+                id: 'execution-a',
+                projectId: 'p1',
+                taskId: 't1',
+                sessionId: 'old-session',
+                runId: 'new-run',
+                status: 'RUNNING',
+              },
+        ),
+      );
+      expect(screen.queryByRole('heading', { name: '工作区已打开' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '打开已确认结果' })).toHaveAttribute(
+        'href',
+        kind === 'task' ? '/workspace/new-session' : '/workspace/old-session',
+      );
+      expect(api.post).toHaveBeenCalledTimes(1);
+    } finally {
+      viewport.restore();
+    }
+  },
+);
+
+it('无task桌面编辑区缩到平板列表，将隐藏编辑器焦点移回选中行', async () => {
+  const viewport = responsiveViewport(1024);
+  try {
+    mount('task', false, '');
+    const field = await screen.findByRole('textbox', { name: '继续修改说明' });
+    field.focus();
+    viewport.resize(768);
+    expect(field).toBeInTheDocument();
+    expect(field).not.toBeVisible();
+    expect(screen.getByRole('button', { name: /待审阅任务/ })).toHaveFocus();
+  } finally {
+    viewport.restore();
+  }
+});
+it.each([767, 768, 1023, 1024])(
+  '%spx warm cache首次合法返工不会被布局初始化错误阻止',
+  async (width) => {
+    const viewport = responsiveViewport(width);
+    try {
+      mount('task', true);
+      vi.mocked(api.post).mockResolvedValue(success as never);
+      await rework();
+      expect(await screen.findByRole('heading', { name: '工作区已打开' })).toBeVisible();
+    } finally {
+      viewport.restore();
+    }
+  },
+);
+
+it.each(['editor', 'outside'] as const)(
+  '平板详情任务被删除后仅迁移隐藏焦点（原焦点%s）',
+  async (focus) => {
+    const viewport = responsiveViewport(768);
+    try {
+      const h = mount();
+      const field = await screen.findByRole('textbox', { name: '继续修改说明' });
+      const outside = screen.getByRole('link', { name: '离开工作页' });
+      (focus === 'editor' ? field : outside).focus();
+      h.setRows([{ ...task, id: 't2', title: '剩余工作' }]);
+      await act(async () => {
+        await h.refreshTasks();
+      });
+      expect(await screen.findByText('找不到这项工作')).toBeVisible();
+      const back = screen.getByRole('button', { name: '返回工作列表' });
+      expect(focus === 'editor' ? back : outside).toHaveFocus();
+      expect(screen.queryByRole('region', { name: '工作列表' })).not.toBeInTheDocument();
+    } finally {
+      viewport.restore();
+    }
+  },
+);
+it('平板同页URL切到看板后隐藏编辑器焦点移到可见列表切换按钮', async () => {
+  const viewport = responsiveViewport(768);
+  try {
+    const h = mount();
+    const field = await screen.findByRole('textbox', { name: '继续修改说明' });
+    field.focus();
+    act(() => h.go('/projects/p1/work?task=t1&view=board'));
+    expect(screen.getByLabelText('工作看板')).toBeVisible();
+    expect(screen.getByRole('button', { name: '列表' })).toHaveFocus();
+    expect(screen.queryByRole('region', { name: '工作列表' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: '工作 Inspector' })).not.toBeInTheDocument();
+  } finally {
+    viewport.restore();
   }
 });

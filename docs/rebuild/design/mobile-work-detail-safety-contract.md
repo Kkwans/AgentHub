@@ -134,3 +134,11 @@ AppShell 提供操作状态、原任务入口及已验证结果链接；unknown 
 选择不同工作或转看板前聚合现有 start/transition/manual.busy+unknown/variables/review/queue/cancel 锁；原任务仍可进入核对。审阅 pending 返回再进入后旧成功不可自动导航，但已验证结果保留。Agent start 仍是原有多步 mutation，pending 时暂禁用新返回按钮，避免引入隐藏后自动导航路径；不宣称已解决全部操作跨内部路由/完整刷新恢复。浏览器返回依旧是旧路由行为，本片没有加入新详情 history。
 
 键盘进入详情聚焦返回按钮；返回聚焦原任务行，若筛选已排除该行则聚焦列表容器。新增测试覆盖输入实例保留、unknown 改选受阻、非法 task 无写操作、Task/Worktree pending 返回再入与晚响应、筛选排除时焦点 fallback、真实项目头隐藏/恢复和参数保留。Fixture E2E 增加列表与详情两张手机截图；real-service E2E 增加新建后手机详情截图并返回再验证筛选。尚需 CI 对本次 SHA 的390实际图确认首屏主操作与警告布局，不能使用旧图作为验收。
+
+## 平板单栏详情扩展（2026-11-13，待精确提交 CI 视觉验收）
+
+工作导航与手机筛选断点分离：phoneFilter <=767，singlePaneWork <=1023，1024+ 保留双栏。局部 useWorkViewport 供 Work/ProjectContext 使用，不改变全局 compact hook。手机/平板沿用 replace URL 与同一 Inspector 的 hidden 模式、原选择锁和返回限制；没有新增写操作、history push 或跨整页重载恢复保证。
+
+owner viewport 使用 phone/tablet/wide 三档，跨767或1023后再返回不能恢复旧导航门。Context 的详情警告从 phone-only 分支移出；平板隐藏身份栏时仍显示资格/分支/任务统计未知或失败，并避免重复渲染已隐藏 identity 中的相同事实。焦点只在原节点隐藏或失去焦点、列表选择进入详情时迁移；仍可见的 textarea 跨断点保持焦点与同一节点。无 task 的桌面默认 Inspector 缩至平板列表时，隐藏编辑器的焦点转回选中任务行或列表容器。
+
+测试覆盖768/1023的30任务列表互斥详情、1024双栏、767/768/1023/1024 warm-cache 首次合法返工、两类审阅 pending 390→768→1024→768晚成功不跳转且结果入口保留、三个窄宽度unknown选择锁、编辑焦点与字段实例保留、平板资格错误警告。fixture E2E 拆分手机筛选与单栏详情断言，tablet截图按实际选择/返回/警告流程采集；真实空态流程768进入详情后返回再筛选，axe仍仅390明暗两次。单元/类型检查不是新布局截图验收，精确SHA的768/1024图仍必须检查。

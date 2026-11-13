@@ -963,6 +963,7 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
   );
   await expect(page.getByRole('button', { name: '列表' })).toHaveAttribute('aria-pressed', 'true');
   const compactWork = (page.viewportSize()?.width ?? 1_000) < 768;
+  const singlePaneWork = (page.viewportSize()?.width ?? 1_000) < 1024;
   const workFilters = page.getByRole('button', { name: '筛选（1）', exact: true });
   if (compactWork) {
     await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
@@ -977,7 +978,7 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
     await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
   }
   await expect(page.getByRole('region', { name: '工作列表' })).toContainText(task.title);
-  if (compactWork) {
+  if (singlePaneWork) {
     await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeHidden();
     await attachViewportScreenshot(page, testInfo, 'project-work-list');
     await page
@@ -990,20 +991,23 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
   await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'project-work');
-  if (compactWork) {
+  if (singlePaneWork) {
     const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
     const back = page.getByRole('button', { name: '返回工作列表' });
-    const backBox = await back.boundingBox();
-    expect(backBox).not.toBeNull();
-    expect(backBox!.x).toBeGreaterThanOrEqual(16);
-    await expect(inspector).toHaveCSS('border-left-width', '0px');
+    if (compactWork) {
+      const backBox = await back.boundingBox();
+      expect(backBox).not.toBeNull();
+      expect(backBox!.x).toBeGreaterThanOrEqual(16);
+      await expect(inspector).toHaveCSS('border-left-width', '0px');
+    }
     await back.click();
     await expect(page.getByRole('region', { name: '工作列表' })).toBeVisible();
     await expect(inspector).toBeHidden();
     const returnedURL = new URL(page.url());
     expect(returnedURL.searchParams.has('task')).toBe(false);
     expect(returnedURL.searchParams.get('status')).toBe('WAITING_REVIEW');
-    await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
+    if (compactWork) await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
+    else await expect(page.getByRole('combobox', { name: '工作状态' })).toContainText('待审阅');
     const selectedRow = page
       .getByRole('region', { name: '工作列表' })
       .getByRole('button', { name: new RegExp(task.title) });

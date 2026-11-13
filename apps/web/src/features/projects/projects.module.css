@@ -1740,3 +1740,14 @@
     border-radius: 0;
   }
 }
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .headerWarnings .identityFacts {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .headerWarnings .identityFacts span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

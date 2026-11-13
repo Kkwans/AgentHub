@@ -9,7 +9,7 @@ const identity = { projectId: 'p1', taskId: 't1' };
 const view: ReviewOwnerView = {
   ...identity,
   routeKey: '/projects/p1/work?task=t1',
-  viewport: 'compact',
+  viewport: 'phone',
   visible: true,
 };
 const snapshot = (
@@ -144,4 +144,18 @@ it('dismisses only terminal results and tombstones old tokens without releasing 
   contract.onOperationChange(snapshot('old', 'resolved', { resultHref: '/workspace/old' }));
   expect(owner.getSnapshot().map((record) => record.operationId)).toEqual(['new']);
   expect(hasReviewOperationLock(owner.getSnapshot())).toBe(true);
+});
+
+it.each([
+  ['phone', 'tablet'],
+  ['tablet', 'wide'],
+] as const)('跨%s→%s再返回不会恢复原导航门', (from, to) => {
+  const owner = setup();
+  owner.setView({ ...view, viewport: from });
+  const original = owner.bind(identity);
+  expect(original.canAutoNavigate()).toBe(true);
+  owner.setView({ ...view, viewport: to });
+  owner.setView({ ...view, viewport: from });
+  expect(original.canAutoNavigate()).toBe(false);
+  expect(owner.bind(identity).canAutoNavigate()).toBe(true);
 });

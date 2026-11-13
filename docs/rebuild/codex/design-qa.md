@@ -220,3 +220,21 @@ Final integration: main Agent source failures also display unknown totals/readin
 Personally inspected mobile Prompt collapsed/open and Agent source-error/recovered screenshots. Agent errors are explicit with separate retries and unknown discovery count; recovery restores a legitimate zero and retains registered identity. Both error messages remain visible rather than being hidden to move the row higher. This closes the pictured error/recovery presentation, not every real Agent capability.
 
 Prompt actual content improved but the collapsed directory is still 151px tall with about 90px empty gray space. The 680px minimum-height layout's automatic single-column grid rows distribute extra space. The follow-up sets `align-content: start` only in the single-column breakpoint and adds a direct closed-directory height gate (<=100px), instead of trusting the previously permissive tabs-position assertion. The open search screenshot also shows nested global focus shadow inside the existing field focus-within ring; only the inner duplicate is removed, keeping the enclosing focus indicator and asserting both in the browser. Product selection, mutation and state logic are unchanged.
+
+## 2026-11-13 10:46 UTC · 平板窄屏安全切片（候选）
+
+b9的768px实际图只有一项任务，详情也从约y454开始。源码在<=1023宽度改为单列、列表全量渲染而无高度上限，因此多任务会继续把详情向下推；这属于代码与单任务实图支持的风险，不是已完成多任务视觉验收。
+
+候选将phoneFilter<=767与singlePaneWork<=1023分离，保持1024以上双栏；警告不再依赖手机专属分支，owner按phone/tablet/wide记录两断点，沿用replace历史与单Inspector。初轮测试覆盖30任务及晚响应，但独立CR发现桌面无task默认详情缩至平板列表会隐藏仍聚焦的Inspector，需要先修焦点迁移再放行。没有以初轮测试通过宣称候选完成。
+
+另已亲读8362的真实报告附件：390 light和dark各自`violations: []`，对应精确CI双绿。只关闭当前两扫覆盖缺口，不代表完整无障碍矩阵已运行。
+
+## 2026-11-13 10:48 UTC · dd3e0f3真实fixture图复核
+
+亲自查看精确`prompts-mobile-390.png`与`prompts-directory-open-mobile-390.png`：收起目录从151px降至约73px（y239–312），绑定tabs从y565移至y485；展开搜索只保留父级圆角焦点。此灰块/重复焦点切片已完成fixture视觉复核，不继续无意义抛光。27faa已双绿，dd3 verify成功、real仍运行。平板工作详情候选仍独立验证，不能混用本次图作为其验收。
+
+## 2026-11-13 10:55 UTC · 平板候选最终整合验证
+
+本片分离phone/tablet/wide，一次读取两个媒体查询并更新统一band，避免独立状态不同步；筛选仍按767断点，单面板工作详情按1023断点。初版182项扩大回归通过。独立CR随后发现并修复两类焦点边界：桌面无task的Inspector缩小被隐藏；详情任务被删除刷新后或进入看板时旧列表同样隐藏。现在仅迁移失效/隐藏/body或显式返回的焦点，分别到返回按钮、可见列表切换按钮、选中行/列表；外部仍可见链接与编辑器textarea不被抢焦点。
+
+最终整合125项聚焦测试通过，覆盖30任务768/1023、1024双栏、两断点晚结果、警告与焦点迁移；另三项动态回归覆盖删除/refetch及看板转换。Web与显式E2E类型、lint、CSS预算和生产build通过，独立CR无剩余静态阻塞。52 fixture与8 real项目工作用例保留，真实axe仍只在390浅深两扫，不扩称平板已扫。新的768图和真实流程需该发布SHA的CI；原desktop看板卸载策略与无锁看板草稿恢复未扩scope。

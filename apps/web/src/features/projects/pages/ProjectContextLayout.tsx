@@ -1,3 +1,4 @@
+import { useWorkViewport } from '../hooks/useWorkViewport';
 import { useProjectEligibility } from '../hooks/useProjectEligibility';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
@@ -91,7 +92,6 @@ import {
   Screen,
   QueryMessage,
   displayDate,
-  useCompactViewport,
   projectLanguage,
   projectTimestamp,
   domainStatusLabel,
@@ -102,10 +102,10 @@ import projectsStyles from '../projects.module.css';
 
 export function ProjectContextLayout() {
   const { projectId } = useParams();
-  const compact = useCompactViewport();
+  const { phone: compact, singlePane } = useWorkViewport();
   const location = useLocation();
   const compactWorkDetail =
-    compact &&
+    singlePane &&
     /\/work$/.test(location.pathname) &&
     new URLSearchParams(location.search).get('view') !== 'board' &&
     Boolean(new URLSearchParams(location.search).get('task'));
@@ -252,7 +252,7 @@ export function ProjectContextLayout() {
             {!compact && project.data.description ? (
               <p className={projectsStyles.identityDescription}>{project.data.description}</p>
             ) : null}
-            {!compact ? renderFacts('all') : null}
+            {!compact && !compactWorkDetail ? renderFacts('all') : null}
           </div>
           <div className={projectsStyles.identityActions}>
             {!compact ? (
@@ -270,18 +270,18 @@ export function ProjectContextLayout() {
             </Link>
           </div>
         </div>
+        {(compact || compactWorkDetail) && hasHeaderWarning ? (
+          <div
+            className={projectsStyles.headerWarnings}
+            role="status"
+            data-severity={headerFailure ? 'warning' : 'pending'}
+          >
+            {headerFailure ? <AlertTriangle size={14} aria-hidden="true" /> : null}
+            {renderFacts('warnings')}
+          </div>
+        ) : null}
         {compact ? (
           <>
-            {hasHeaderWarning ? (
-              <div
-                className={projectsStyles.headerWarnings}
-                role="status"
-                data-severity={headerFailure ? 'warning' : 'pending'}
-              >
-                {headerFailure ? <AlertTriangle size={14} aria-hidden="true" /> : null}
-                {renderFacts('warnings')}
-              </div>
-            ) : null}
             <details className={projectsStyles.projectDetails} hidden={compactWorkDetail}>
               <summary>项目详情</summary>
               <p>{project.data.kind === 'TEST' ? '测试 Project' : '正式 Project'}</p>

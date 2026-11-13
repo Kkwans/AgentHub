@@ -76,7 +76,7 @@ for (const width of [390, 768, 1024, 1440]) {
         includeHidden: true,
       });
       await expect(inspector).toContainText('完成当前项目的第一项工作');
-      if (width === 390) {
+      if (width < 1024) {
         const back = page.getByRole('button', { name: '返回工作列表' });
         if (!(await back.isVisible()))
           await page
@@ -84,28 +84,32 @@ for (const width of [390, 768, 1024, 1440]) {
             .getByRole('button', { name: /完成当前项目的第一项工作/ })
             .click();
         await expect(inspector).toBeVisible();
-        // This existing CI-listed test covers the actual mobile detail in both themes.
-        // The separate full v1-accessibility matrix remains a candidate audit, not
-        // evidence of CI execution: it is not included in the current CI whitelist.
-        const axe = await new AxeBuilder({ page })
-          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-          .analyze();
-        const violations = axe.violations
-          .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
-          .map((violation) => ({
-            id: violation.id,
-            impact: violation.impact,
-            help: violation.help,
-            targets: violation.nodes.map((node) => node.target),
-          }));
-        await info.attach(`mobile-detail-axe-390-${theme}`, {
-          body: JSON.stringify({ viewport: width, theme, violations }, null, 2),
-          contentType: 'application/json',
-        });
-        expect(
-          violations,
-          `Mobile detail ${theme}: ${JSON.stringify(violations, null, 2)}`,
-        ).toEqual([]);
+        if (width === 390) {
+          // This existing CI-listed test covers the actual mobile detail in both themes.
+          // The separate full v1-accessibility matrix remains a candidate audit, not
+          // evidence of CI execution: it is not included in the current CI whitelist.
+          const axe = await new AxeBuilder({ page })
+            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+            .analyze();
+          const violations = axe.violations
+            .filter(
+              (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+            )
+            .map((violation) => ({
+              id: violation.id,
+              impact: violation.impact,
+              help: violation.help,
+              targets: violation.nodes.map((node) => node.target),
+            }));
+          await info.attach(`mobile-detail-axe-390-${theme}`, {
+            body: JSON.stringify({ viewport: width, theme, violations }, null, 2),
+            contentType: 'application/json',
+          });
+          expect(
+            violations,
+            `Mobile detail ${theme}: ${JSON.stringify(violations, null, 2)}`,
+          ).toEqual([]);
+        }
         await capture('detail');
         await back.click();
         await expect(inspector).toBeHidden();

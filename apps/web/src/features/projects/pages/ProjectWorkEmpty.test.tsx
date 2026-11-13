@@ -1634,3 +1634,33 @@ it('手机Agent启动pending暂禁返回列表，避免旧启动自动导航隐�
     media.mockRestore();
   }
 });
+
+it.each([768, 1023])('%spx详情保留资格失败警告，不藏在phone专用分支', async (width) => {
+  const media = vi
+    .spyOn(window, 'matchMedia')
+    .mockImplementation((query) => ({
+      matches: width <= Number(query.match(/max-width: (\d+)px/)?.[1] ?? 0),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+  try {
+    let fail!: (error: unknown) => void;
+    const pending = new Promise((_resolve, reject) => {
+      fail = reject;
+    });
+    mount([task], '?task=task-1', undefined, pending);
+    await screen.findByRole('complementary', { name: '工作 Inspector' });
+    await act(async () => fail(new Error('eligibility unavailable')));
+    expect(await screen.findByText('Agent 资格读取失败', { exact: true })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: '当前项目' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '项目上下文' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '返回工作列表' })).toBeVisible();
+  } finally {
+    media.mockRestore();
+  }
+});

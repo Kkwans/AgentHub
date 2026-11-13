@@ -5,7 +5,7 @@ export type ReviewOwnerView = {
   projectId: string;
   taskId: string;
   routeKey: string;
-  viewport: 'compact' | 'wide';
+  viewport: 'phone' | 'tablet' | 'wide';
   visible: boolean;
 };
 export type OwnedReviewOperation = Readonly<ReviewOperationSnapshot>;
