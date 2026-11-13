@@ -177,7 +177,7 @@ export function SessionRail({
                 >
                   <span className="codex-project-label">
                     <Folder size={15} aria-hidden="true" />
-                    {group.name}
+                    <span title={group.name}>{group.name}</span>
                   </span>
                   <small>{group.sessions.length}</small>
                   <ChevronDown

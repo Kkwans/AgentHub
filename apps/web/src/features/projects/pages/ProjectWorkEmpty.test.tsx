@@ -1490,3 +1490,50 @@ it('核对请求跨A→B→A保持只读pending，不并发旧GET覆盖终态', 
   await act(async () => finish({ ...execution, status: 'CANCELED' }));
   await screen.findByText(/隔离执行已取消/);
 });
+
+it('手机工作筛选默认折叠，保留状态计数、搜索和清除反馈', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+  try {
+    mount([task], '?status=DONE');
+    const toggle = await screen.findByRole('button', { name: '筛选（1）' });
+    const options = document.getElementById(toggle.getAttribute('aria-controls')!);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(options).toHaveAttribute('hidden');
+    expect(screen.queryByRole('combobox', { name: '工作状态' })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '搜索工作' })).toBeVisible();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(options).not.toHaveAttribute('hidden');
+    expect(screen.getByRole('combobox', { name: '工作状态' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '工作 Agent' })).toBeVisible();
+    fireEvent.click(toggle);
+    expect(options).toHaveAttribute('hidden');
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索工作' }), {
+      target: { value: '不匹配' },
+    });
+    expect(screen.getByRole('button', { name: '筛选（2）' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '清除条件' }));
+    expect(screen.getByRole('textbox', { name: '搜索工作' })).toHaveValue('');
+    expect(screen.getByRole('button', { name: '筛选' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('没有匹配的工作')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '清除条件' })).not.toBeInTheDocument();
+  } finally {
+    media.mockRestore();
+  }
+});
+
+it('桌面工作状态和Agent筛选保持可见，不增加折叠按钮', async () => {
+  mount([task]);
+  expect(await screen.findByRole('combobox', { name: '工作状态' })).toBeVisible();
+  expect(screen.getByRole('combobox', { name: '工作 Agent' })).toBeVisible();
+  expect(screen.queryByRole('button', { name: /^筛选/ })).not.toBeInTheDocument();
+});

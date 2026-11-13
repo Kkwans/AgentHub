@@ -28,6 +28,7 @@ import { FormDialog } from './components/index.js';
 import { useAgentHubTheme } from './provider.js';
 
 const statusLabels: Record<string, string> = {
+  BACKLOG: '待规划',
   READY: '就绪',
   RUNNING: '执行中',
   COMPLETED: '已完成',
@@ -61,7 +62,11 @@ function statusColor(status: string): string {
   if (['RUNNING', 'IN_PROGRESS', 'REVIEW', 'WAITING_REVIEW', 'PENDING'].includes(status))
     return 'aurora';
   if (['BLOCKED', 'FAILED', 'BROKEN', 'REVOKED', 'AUTH_REQUIRED'].includes(status)) return 'red';
-  if (['STOPPED', 'OFFLINE', 'DISCONNECTED', 'CANCELED', 'CLOSED', 'ARCHIVED'].includes(status))
+  if (
+    ['BACKLOG', 'STOPPED', 'OFFLINE', 'DISCONNECTED', 'CANCELED', 'CLOSED', 'ARCHIVED'].includes(
+      status,
+    )
+  )
     return 'gray';
   return 'yellow';
 }

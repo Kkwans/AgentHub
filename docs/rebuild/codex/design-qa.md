@@ -58,3 +58,11 @@ CI 43382919595 的 lint/typecheck/单测/build 通过，fixture E2E 在新增 Di
 Trace 确认 `.monaco-editor.first()` 命中 display:none 的 gutter；真正的 `.editor.modified .view-lines[role="presentation"]` 已渲染 `display: grid;`。修正定位器为该明确修改文档，并检查真实代码文本，不删除可见性验证。
 
 同时实际查看失败截图发现产品缺陷：`.git-selected-diff` 没有显式 grid 行，header 与工具栏被拉高约160px，代码区只剩124px。修正为 `auto auto minmax(260px, 1fr)`，去额外容器padding/gap，header与controls保持内容高度，剩余高度分给代码。新增几何断言：header≤64、controls≤56、editor≥260。新源码仍须真实浏览器图验证，不把定位器修复当布局验收。
+
+## 0de8d1 截图复核与任务入口修正
+
+CI 43384706087 的 fixture verify 已成功；实际查看 `workspace-review-diff-desktop-1440.png`，此前拉伸的标题/控件空白消失，修改侧红绿代码可读。此证据只覆盖 fixture，real-service 矩阵及可输入 composer 的暗色焦点仍待独立复核。
+
+继续根据 495 的真实服务截图修正：新任务 BACKLOG 原来显示泛化“状态”，现在明确为中性灰色“待规划”，不修改状态机；手机工作页保留搜索，把状态/Agent 次要筛选折叠，显示激活条件计数和清除入口，桌面仍常驻。原生按钮提供 aria-expanded/controls，隐藏控件不进入键盘导航。真实390 light/dark E2E新增 Enter/Space 切换、计数和清除验证，新增展开图；新图仍待此次精确 SHA CI。
+
+暗色真实图还显示长项目名把 Folder 图标挤缩，现为图标保留尺寸、仅名称省略，完整名称仍保留于 DOM 和 title。以上修正须继续以新截图验收，不把本地单测、静态审查当视觉完成。

@@ -74,12 +74,32 @@ for (const width of [390, 768, 1024, 1440]) {
       const search = page.getByRole('textbox', { name: '搜索工作' });
       await expect(search).toBeVisible();
       await capture('created');
+      if (width === 390) {
+        const filterToggle = page.getByRole('button', { name: '筛选', exact: true });
+        await expect(filterToggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(page.getByRole('combobox', { name: '工作状态' })).toHaveCount(0);
+        await filterToggle.focus();
+        await page.keyboard.press('Enter');
+        await expect(filterToggle).toHaveAttribute('aria-expanded', 'true');
+        await expect(page.getByRole('combobox', { name: '工作状态' })).toBeVisible();
+        await expect(page.getByRole('combobox', { name: '工作 Agent' })).toBeVisible();
+        await capture('filters-open');
+        await filterToggle.focus();
+        await page.keyboard.press('Space');
+        await expect(filterToggle).toHaveAttribute('aria-expanded', 'false');
+      }
       await search.fill('无匹配结果关键词');
       await expect(page.getByText('没有匹配的工作', { exact: true })).toBeVisible();
       await expect(inspector).toContainText('完成当前项目的第一项工作');
       await expect(page.getByText('开始这个项目的第一项工作', { exact: true })).toHaveCount(0);
       await capture('filtered');
-      await search.fill('');
+      if (width === 390) {
+        await expect(page.getByRole('button', { name: '筛选（1）', exact: true })).toBeVisible();
+        await page.getByRole('button', { name: '清除条件', exact: true }).click();
+        await expect(search).toHaveValue('');
+      } else {
+        await search.fill('');
+      }
       await page.getByRole('button', { name: '看板', exact: true }).click();
       await expect(page.getByLabel('工作看板')).toContainText('完成当前项目的第一项工作');
       await page.getByRole('button', { name: '列表', exact: true }).click();

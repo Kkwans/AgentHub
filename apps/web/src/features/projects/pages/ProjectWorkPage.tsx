@@ -49,7 +49,7 @@ import {
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Link,
   NavLink,
@@ -149,6 +149,19 @@ export function ProjectWorkPage() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState(statusFromQuery ?? 'all');
   const [agentFilter, setAgentFilter] = useState('all');
+  const compact = useCompactViewport();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterOptionsId = useId();
+  const activeFilterCount = [
+    query.trim() !== '',
+    statusFilter !== 'all',
+    agentFilter !== 'all',
+  ].filter(Boolean).length;
+  const clearFilters = () => {
+    setQuery('');
+    setStatusFilter('all');
+    setAgentFilter('all');
+  };
   const [selectedId, setSelectedId] = useState(selectedFromQuery ?? '');
   const [agentChoice, setAgentChoice] = useState<{ key: string; value: string }>();
   useEffect(() => {
@@ -423,29 +436,52 @@ export function ProjectWorkPage() {
                 leftSection={<Search size={15} />}
               />
             </div>
-            <div className={projectsStyles.toolbarSelect}>
-              <AhSelect
-                aria-label="工作状态"
-                label=""
-                value={statusFilter}
-                onChange={(value) => setStatusFilter(value ?? 'all')}
-                data={[
-                  { value: 'all', label: '全部状态' },
-                  ...taskStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
-                ]}
-              />
-            </div>
-            <div className={projectsStyles.toolbarSelect}>
-              <AhSelect
-                aria-label="工作 Agent"
-                label=""
-                value={agentFilter}
-                onChange={(value) => setAgentFilter(value ?? 'all')}
-                data={[
-                  { value: 'all', label: '全部 Agent' },
-                  ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
-                ]}
-              />
+            {compact ? (
+              <button
+                type="button"
+                className={projectsStyles.toolbarMore}
+                aria-expanded={filtersOpen}
+                aria-controls={filterOptionsId}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                <ScanSearch size={14} aria-hidden="true" />
+                筛选{activeFilterCount ? `（${activeFilterCount}）` : ''}
+              </button>
+            ) : null}
+            {compact && activeFilterCount ? (
+              <button type="button" className={projectsStyles.toolbarMore} onClick={clearFilters}>
+                清除条件
+              </button>
+            ) : null}
+            <div
+              id={filterOptionsId}
+              className={projectsStyles.workFilterOptions}
+              hidden={compact && !filtersOpen}
+            >
+              <div className={projectsStyles.toolbarSelect}>
+                <AhSelect
+                  aria-label="工作状态"
+                  label=""
+                  value={statusFilter}
+                  onChange={(value) => setStatusFilter(value ?? 'all')}
+                  data={[
+                    { value: 'all', label: '全部状态' },
+                    ...taskStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
+                  ]}
+                />
+              </div>
+              <div className={projectsStyles.toolbarSelect}>
+                <AhSelect
+                  aria-label="工作 Agent"
+                  label=""
+                  value={agentFilter}
+                  onChange={(value) => setAgentFilter(value ?? 'all')}
+                  data={[
+                    { value: 'all', label: '全部 Agent' },
+                    ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
+                  ]}
+                />
+              </div>
             </div>
             <span className={projectsStyles.toolbarSpacer} />
             <span className={projectsStyles.toolbarCount}>

@@ -17,12 +17,35 @@ import {
   AhStatusDot,
   AhThemeSelect,
   AhTextarea,
+  humanizeStatus,
 } from './product.js';
 import { AgentHubProvider } from './provider.js';
 
 afterEach(cleanup);
 
 describe('product components', () => {
+  it.each([AhStatusPill, AhStatusDot])('labels unplanned tasks with a neutral status', (Status) => {
+    render(<Status status="BACKLOG" />);
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('待规划');
+    expect(
+      status.matches('[data-tone="gray"]') || status.querySelector('[data-tone="gray"]'),
+    ).toBeTruthy();
+    expect(status.querySelector('[data-tone="yellow"]')).toBeNull();
+  });
+
+  it.each([
+    ['BACKLOG', '待规划'],
+    ['READY', '就绪'],
+    ['IN_PROGRESS', '进行中'],
+    ['WAITING_REVIEW', '待审阅'],
+    ['DONE', '已完成'],
+    ['BLOCKED', '已阻塞'],
+    ['CANCELED', '已取消'],
+  ])('labels the known task state %s', (state, label) => {
+    expect(humanizeStatus(state)).toBe(label);
+  });
+
   it('translates unknown domain status without leaking the enum', () => {
     render(<AhStatusPill status="SOME_INTERNAL_STATE" />);
     const status = screen.getByRole('status');

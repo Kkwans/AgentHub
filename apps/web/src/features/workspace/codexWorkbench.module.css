@@ -291,3 +291,13 @@
   min-height: 260px;
   padding: 0 10px 10px;
 }
+
+.workspace :global(.codex-project-label > svg) {
+  flex-shrink: 0;
+}
+.workspace :global(.codex-project-label > span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

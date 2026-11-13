@@ -1566,3 +1566,30 @@
     padding: 20px 16px;
   }
 }
+
+/* Work filters keep their original desktop flex positions via display: contents. */
+.workFilterOptions {
+  display: contents;
+}
+.workFilterOptions[hidden] {
+  display: none;
+}
+.workToolbar .toolbarMore:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .workFilterOptions:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    flex: 1 1 100%;
+    gap: 10px;
+  }
+  .workToolbar .toolbarMore {
+    min-height: 44px;
+  }
+  .workToolbar .toolbarCount {
+    margin-left: auto;
+    align-self: center;
+  }
+}
