@@ -15,7 +15,8 @@ export function DiffViewer({
 }) {
   const theme = useContext(AgentHubThemeContext);
   const [monacoReady, setMonacoReady] = useState(false);
-  const [sideBySide, setSideBySide] = useState(true);
+  // The narrow review pane starts with a readable unified diff; split remains available.
+  const [sideBySide, setSideBySide] = useState(false);
   const parsed = useMemo(() => parseUnifiedPatch(patch), [patch]);
   const language = languageForPath(path);
   const binary = isBinaryPatch(patch);

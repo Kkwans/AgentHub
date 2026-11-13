@@ -87,6 +87,17 @@ export function WorkspaceInspector({
       className={`${inspectorStyles.owner} inspector flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
+      <header className="codex-inspector-heading">
+        <h2>
+          {tab === 'changes'
+            ? '审阅更改'
+            : tab === 'files'
+              ? '项目文件'
+              : tab === 'activity'
+                ? '会话活动'
+                : '运行详情'}
+        </h2>
+      </header>
       <Tabs value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
         <TabsList
           className="inspector-tabs flex min-h-12 items-center gap-5 overflow-x-auto border-b border-[hsl(var(--border))] px-4"

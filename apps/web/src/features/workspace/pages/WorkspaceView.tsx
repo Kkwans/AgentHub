@@ -134,6 +134,120 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   if (!session.data) return null;
   const currentSession = session.data;
 
+  const contextBar = (
+    <div className="workspace-contextbar relative z-10 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] px-3 sm:px-4 lg:px-5">
+      <button
+        type="button"
+        className="workspace-support-toggle"
+        ref={sessionToggleRef}
+        aria-label={compactAuxiliaryOpen ? '关闭辅助栏' : '打开辅助栏'}
+        aria-expanded={compactAuxiliaryOpen}
+        onClick={() => {
+          if (compactAuxiliaryOpen) {
+            if (inspectorActsAsDrawer && !isMobileViewport) {
+              if (!workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
+              closeMobileInspector();
+            } else {
+              closeMobileInspector();
+            }
+          } else if (inspectorActsAsDrawer && !isMobileViewport) {
+            if (workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
+            openSessionDrawer();
+          } else {
+            openSessionDrawer();
+          }
+        }}
+      >
+        <Menu size={17} />
+        <span>辅助栏</span>
+      </button>
+      <div className="codex-session-title flex min-w-0 items-center gap-2">
+        <Link
+          className="whitespace-nowrap text-[12px] font-medium text-[hsl(var(--foreground-muted))] transition-colors hover:text-[hsl(var(--foreground))]"
+          to="/sessions"
+        >
+          会话
+        </Link>
+        <ChevronRight className="shrink-0 text-[hsl(var(--foreground-faint))]" size={14} />
+        <strong className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.02em] text-[hsl(var(--foreground))]">
+          {currentSession.title}
+        </strong>
+        <span className={`${workspaceStyles.sessionStatus} inline-flex items-center gap-1.5`}>
+          <StatusBadge status={currentSession.status} />
+        </span>
+      </div>
+      <WorkbenchDisclosure
+        className="workspace-context-disclosure"
+        summary={
+          <span className="workspace-context-disclosure-summary">
+            <Bot size={14} aria-hidden="true" />
+            <span>Agent</span>
+            <small>{agent?.name ?? 'Agent 未绑定'}</small>
+          </span>
+        }
+      >
+        <div className="flex min-w-0 items-center gap-2 text-[12px] text-[hsl(var(--foreground-faint))]">
+          <span>
+            <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
+          </span>
+          <span>
+            <GitBranch size={14} /> {labelSessionBranch(currentSession.branch)}
+          </span>
+          <code title={currentSession.cwd}>{currentSession.cwd}</code>
+        </div>
+      </WorkbenchDisclosure>
+      <button
+        type="button"
+        className="workspace-immersive-toggle"
+        aria-label={immersive ? '退出沉浸对话' : '进入沉浸对话'}
+        aria-pressed={immersive}
+        title={immersive ? '退出沉浸对话' : '进入沉浸对话'}
+        onClick={() => setImmersive((value) => !value)}
+      >
+        <ScanSearch size={16} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="codex-review-button"
+        aria-label="审阅更改"
+        onClick={() => {
+          setTab('changes');
+          if (inspectorActsAsDrawer) openInspectorDrawer('changes');
+          else if (workspaceLayout.rightCollapsed) toggleWorkspacePanel('right');
+        }}
+      >
+        <GitBranch size={15} aria-hidden="true" />
+        <span>审阅更改</span>
+      </button>
+      <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
+        <button
+          type="button"
+          aria-label={workspaceLayout.leftCollapsed ? '显示会话列表' : '隐藏会话列表'}
+          title={workspaceLayout.leftCollapsed ? '显示会话列表' : '隐藏会话列表'}
+          onClick={() => toggleWorkspacePanel('left')}
+        >
+          <PanelLeft size={15} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label={workspaceLayout.rightCollapsed ? '显示检查器' : '隐藏检查器'}
+          title={workspaceLayout.rightCollapsed ? '显示检查器' : '隐藏检查器'}
+          onClick={() => toggleWorkspacePanel('right')}
+        >
+          <PanelRight size={15} aria-hidden="true" />
+        </button>
+      </div>
+      {agents.error && (
+        <div className="workspace-query-error-inline" role="alert">
+          <span>Agent 信息加载失败：{agents.error.message}</span>
+          <button type="button" onClick={() => agents.refetch()}>
+            重试
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div
       className={`${workspaceStyles.workspace} ${codexStyles.workspace} workspace workspace-page workspace-shell relative isolate flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]`}
@@ -142,117 +256,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
       data-session-drawer-open={sessionDrawerOpen || undefined}
       data-inspector-drawer-open={inspectorDrawerOpen || undefined}
     >
-      <div className="workspace-contextbar relative z-10 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] px-3 sm:px-4 lg:px-5">
-        <button
-          type="button"
-          className="workspace-support-toggle"
-          ref={sessionToggleRef}
-          aria-label={compactAuxiliaryOpen ? '关闭辅助栏' : '打开辅助栏'}
-          aria-expanded={compactAuxiliaryOpen}
-          onClick={() => {
-            if (compactAuxiliaryOpen) {
-              if (inspectorActsAsDrawer && !isMobileViewport) {
-                if (!workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
-                closeMobileInspector();
-              } else {
-                closeMobileInspector();
-              }
-            } else if (inspectorActsAsDrawer && !isMobileViewport) {
-              if (workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
-              openSessionDrawer();
-            } else {
-              openSessionDrawer();
-            }
-          }}
-        >
-          <Menu size={17} />
-          <span>辅助栏</span>
-        </button>
-        <div className="flex min-w-0 items-center gap-2">
-          <Link
-            className="whitespace-nowrap text-[12px] font-medium text-[hsl(var(--foreground-muted))] transition-colors hover:text-[hsl(var(--foreground))]"
-            to="/sessions"
-          >
-            会话
-          </Link>
-          <ChevronRight className="shrink-0 text-[hsl(var(--foreground-faint))]" size={14} />
-          <strong className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.02em] text-[hsl(var(--foreground))]">
-            {currentSession.title}
-          </strong>
-          <span className={`${workspaceStyles.sessionStatus} inline-flex items-center gap-1.5`}>
-            <StatusBadge status={currentSession.status} />
-          </span>
-        </div>
-        <WorkbenchDisclosure
-          className="workspace-context-disclosure"
-          summary={
-            <span className="workspace-context-disclosure-summary">
-              <Bot size={14} aria-hidden="true" />
-              <span>Agent</span>
-              <small>{agent?.name ?? 'Agent 未绑定'}</small>
-            </span>
-          }
-        >
-          <div className="flex min-w-0 items-center gap-2 text-[12px] text-[hsl(var(--foreground-faint))]">
-            <span>
-              <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
-            </span>
-            <span>
-              <GitBranch size={14} /> {labelSessionBranch(currentSession.branch)}
-            </span>
-            <code title={currentSession.cwd}>{currentSession.cwd}</code>
-          </div>
-        </WorkbenchDisclosure>
-        <button
-          type="button"
-          className="workspace-immersive-toggle"
-          aria-label={immersive ? '退出沉浸对话' : '进入沉浸对话'}
-          aria-pressed={immersive}
-          title={immersive ? '退出沉浸对话' : '进入沉浸对话'}
-          onClick={() => setImmersive((value) => !value)}
-        >
-          <ScanSearch size={16} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="codex-review-button"
-          aria-label="审阅更改"
-          onClick={() => {
-            setTab('changes');
-            if (inspectorActsAsDrawer) openInspectorDrawer('changes');
-            else if (workspaceLayout.rightCollapsed) toggleWorkspacePanel('right');
-          }}
-        >
-          <GitBranch size={15} aria-hidden="true" />
-          <span>审阅更改</span>
-        </button>
-        <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
-          <button
-            type="button"
-            aria-label={workspaceLayout.leftCollapsed ? '显示会话列表' : '隐藏会话列表'}
-            title={workspaceLayout.leftCollapsed ? '显示会话列表' : '隐藏会话列表'}
-            onClick={() => toggleWorkspacePanel('left')}
-          >
-            <PanelLeft size={15} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-label={workspaceLayout.rightCollapsed ? '显示检查器' : '隐藏检查器'}
-            title={workspaceLayout.rightCollapsed ? '显示检查器' : '隐藏检查器'}
-            onClick={() => toggleWorkspacePanel('right')}
-          >
-            <PanelRight size={15} aria-hidden="true" />
-          </button>
-        </div>
-        {agents.error && (
-          <div className="workspace-query-error-inline" role="alert">
-            <span>Agent 信息加载失败：{agents.error.message}</span>
-            <button type="button" onClick={() => agents.refetch()}>
-              重试
-            </button>
-          </div>
-        )}
-      </div>
+      {inspectorActsAsDrawer && contextBar}
       {inspectorActsAsDrawer && (
         <PinTabs value={mobileViewValue}>
           <TabsList
@@ -307,13 +311,15 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                 sessions={sessions}
                 currentId={id}
                 projectId={project?.id}
+                projects={projects.data}
                 onSelect={closeSessionDrawer}
               />
             </section>
           }
           middle={
-            <section className="workspace-panel workbench-panel conversation-panel h-full min-h-0 min-w-0 overflow-hidden">
-              <div className="relative grid h-full min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[hsl(var(--surface))]">
+            <section className="workspace-panel workbench-panel conversation-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+              {!inspectorActsAsDrawer && contextBar}
+              <div className="relative grid flex-1 min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[hsl(var(--surface))]">
                 <ChatConversationView
                   session={currentSession}
                   messages={messages}

@@ -3,10 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Folder, Settings, BookOpen, Bot } from 'lucide-react';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
-import type { SessionRecord } from '../../../lib/api';
+import type { ProjectRecord, SessionRecord } from '../../../lib/api';
 import { labelSessionBranch, resolveWorkspaceRunState } from '../../../presentation/domain-labels';
 import type { QueryState } from '../workspace-types';
-import { sessionGroupKey } from '../../shared/page-primitives';
 import sessionRailStyles from '../sessionRail.module.css';
 
 export const SESSION_VIRTUALIZATION_THRESHOLD = 120;
@@ -38,8 +37,8 @@ export function getSessionWindow<T extends { id: string }>(
   const end = Math.min(items.length, start + size);
   return {
     items: items.slice(start, end),
-    hiddenCount: items.length - end,
-    hasEarlier: end < items.length,
+    hiddenCount: items.length - (end - start),
+    hasEarlier: end - start < items.length,
   };
 }
 
@@ -48,26 +47,22 @@ export function SessionRail({
   currentId,
   onSelect,
   projectId,
+  projects = [],
 }: {
   sessions: QueryState<SessionRecord[]>;
   currentId: string;
   onSelect?: () => void;
   projectId?: string | undefined;
+  projects?: ProjectRecord[] | undefined;
 }) {
   const [query, setQuery] = useState('');
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<SessionGroup, boolean>>({
-    today: false,
-    yesterday: false,
-    // A long-lived workspace can contain dozens of closed sessions. Keep the
-    // historical tail quiet until the user asks for it; search always opens it.
-    earlier: true,
-  });
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [visibleSessionCount, setVisibleSessionCount] = useState(SESSION_WINDOW_SIZE);
   const filteredSessions = useMemo(() => {
     const value = query.trim().toLocaleLowerCase();
     const result = value
       ? (sessions.data ?? []).filter((session) =>
-          `${session.title} ${session.model ?? ''} ${session.mode ?? ''} ${session.branch ?? ''} ${session.cwd}`
+          `${projects.find((project) => project.id === session.projectId)?.name ?? ''} ${session.title} ${session.model ?? ''} ${session.mode ?? ''} ${session.branch ?? ''} ${session.cwd}`
             .toLocaleLowerCase()
             .includes(value),
         )
@@ -77,20 +72,11 @@ export function SessionRail({
       const leftTime = Date.parse(left.lastActiveAt);
       return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
     });
-  }, [query, sessions.data]);
-  const grouped = {
-    today: filteredSessions.filter((session) => sessionGroupKey(session.lastActiveAt) === 'today'),
-    yesterday: filteredSessions.filter(
-      (session) => sessionGroupKey(session.lastActiveAt) === 'yesterday',
-    ),
-    earlier: filteredSessions.filter(
-      (session) => sessionGroupKey(session.lastActiveAt) === 'earlier',
-    ),
-  };
-  const groupLabels = { today: '今天', yesterday: '昨天', earlier: '更早' } as const;
-  const groupOrder = ['today', 'yesterday', 'earlier'] as const;
-  const toggleGroup = (group: SessionGroup) =>
-    setCollapsedGroups((current) => ({ ...current, [group]: !current[group] }));
+  }, [query, sessions.data, projects]);
+  const sessionWindow = getSessionWindow(filteredSessions, visibleSessionCount, currentId);
+  const groups = groupSessionsByProject(sessionWindow.items, projects, projectId);
+  const toggleGroup = (group: string, collapsed: boolean) =>
+    setCollapsedGroups((current) => ({ ...current, [group]: !collapsed }));
   useEffect(() => {
     setVisibleSessionCount(SESSION_WINDOW_SIZE);
   }, [query]);
@@ -138,7 +124,7 @@ export function SessionRail({
         </Link>
       </nav>
       <WorkbenchPanelHeader
-        title="会话列表"
+        title="项目与会话"
         description={`${sessions.data?.length ?? 0} 个会话`}
         className="panel-title"
       />
@@ -162,29 +148,41 @@ export function SessionRail({
           <span>新建</span>
         </Link>
       </div>
+      {sessionWindow.hasEarlier && (
+        <button
+          type="button"
+          className="session-list-load-more"
+          onClick={() => setVisibleSessionCount((count) => count + SESSION_WINDOW_STEP)}
+        >
+          {`加载更多会话（还有 ${sessionWindow.hiddenCount} 个）`}
+        </button>
+      )}
       <div className="session-list flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 pb-5 pt-1">
         {sessions.isLoading ? (
           <LoadingState label="正在读取会话" />
         ) : sessions.error ? (
           <ErrorState error={sessions.error} retry={() => sessions.refetch()} />
         ) : filteredSessions.length ? (
-          groupOrder.map((group) => {
-            if (!grouped[group].length) return null;
-            const containsCurrent = grouped[group].some((session) => session.id === currentId);
-            const collapsed = query.trim() ? false : collapsedGroups[group] && !containsCurrent;
-            const groupId = `session-group-${group}`;
-            const window = getSessionWindow(grouped[group], visibleSessionCount, currentId);
+          groups.map((group) => {
+            const containsCurrent = group.sessions.some((session) => session.id === currentId);
+            const collapsed = query.trim()
+              ? false
+              : (collapsedGroups[group.id] ?? (!containsCurrent && group.id !== projectId));
+            const groupId = `session-group-${group.id}`;
             return (
-              <section className="session-group" key={group} aria-label={groupLabels[group]}>
+              <section className="session-group" key={group.id} aria-label={group.name}>
                 <button
                   type="button"
                   className="session-group-toggle grid min-h-8 grid-cols-[minmax(0,1fr)_auto_14px] items-center gap-1.5 rounded-md px-1 text-left text-[12px] font-semibold text-[hsl(var(--foreground-faint))] transition-colors hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/45"
                   aria-expanded={!collapsed}
                   aria-controls={groupId}
-                  onClick={() => toggleGroup(group)}
+                  onClick={() => toggleGroup(group.id, collapsed)}
                 >
-                  <span>{groupLabels[group]}</span>
-                  <small>{grouped[group].length}</small>
+                  <span className="codex-project-label">
+                    <Folder size={15} aria-hidden="true" />
+                    {group.name}
+                  </span>
+                  <small>{group.sessions.length}</small>
                   <ChevronDown
                     size={13}
                     aria-hidden="true"
@@ -193,19 +191,8 @@ export function SessionRail({
                 </button>
                 {!collapsed && (
                   <>
-                    {window.hasEarlier ? (
-                      <button
-                        type="button"
-                        className="session-list-load-more"
-                        onClick={() =>
-                          setVisibleSessionCount((count) => count + SESSION_WINDOW_STEP)
-                        }
-                      >
-                        {`加载更早会话（还有 ${window.hiddenCount} 个）`}
-                      </button>
-                    ) : null}
                     <div id={groupId} className="session-group-items">
-                      {window.items.map(sessionLink)}
+                      {group.sessions.map(sessionLink)}
                     </div>
                   </>
                 )}
@@ -220,4 +207,27 @@ export function SessionRail({
   );
 }
 
-type SessionGroup = 'today' | 'yesterday' | 'earlier';
+/** Stable project grouping, including orphaned sessions while project data loads. */
+export function groupSessionsByProject(
+  sessions: SessionRecord[],
+  projects: ProjectRecord[],
+  currentProjectId?: string,
+) {
+  const groups = new Map<string, { id: string; name: string; sessions: SessionRecord[] }>();
+  for (const session of sessions) {
+    const existing = groups.get(session.projectId);
+    if (existing) existing.sessions.push(session);
+    else
+      groups.set(session.projectId, {
+        id: session.projectId,
+        name:
+          projects.find((project) => project.id === session.projectId)?.name ??
+          session.cwd.split('/').filter(Boolean).at(-1) ??
+          '未命名项目',
+        sessions: [session],
+      });
+  }
+  return [...groups.values()].sort((left, right) =>
+    left.id === currentProjectId ? -1 : right.id === currentProjectId ? 1 : 0,
+  );
+}

@@ -115,3 +115,99 @@
     padding: 8px 10px max(10px, env(safe-area-inset-bottom), var(--mobile-keyboard-inset, 0px));
   }
 }
+
+.workspace :global(.codex-project-label) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace :global(.session-group-items) {
+  margin-left: 12px;
+  padding-left: 8px;
+  border-left: 1px solid var(--workspace-line);
+}
+
+.workspace :global(.session-group-items a) {
+  min-height: 44px;
+  border-radius: 8px;
+}
+
+.workspace :global(.session-group-items a.current) {
+  background: hsl(var(--sidebar-item-active-bg));
+  box-shadow: none;
+}
+
+.workspace :global(.codex-inspector-heading) {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--workspace-line);
+}
+
+.workspace :global(.codex-inspector-heading h2) {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.workspace :global(.git-summary) {
+  min-height: 52px;
+  padding: 12px 18px;
+  border-bottom: 0;
+}
+
+.workspace :global(.git-selected-diff) {
+  margin: 12px;
+  overflow: hidden;
+  border: 1px solid var(--workspace-line);
+  border-radius: 10px;
+}
+
+.workspace :global(.git-selected-diff-heading) {
+  background: hsl(var(--surface-muted));
+}
+
+.workspace :global(.codex-session-title) {
+  flex: 1 1 auto;
+}
+
+@media (min-width: 1180px) {
+  .workspace :global(.conversation-panel > .workspace-contextbar) {
+    min-height: 56px;
+    gap: 6px;
+    padding-inline: 16px;
+  }
+  .workspace :global(.conversation-panel .workspace-context-disclosure-summary small) {
+    display: none;
+  }
+  .workspace :global(.conversation-panel .workspace-layout-actions) {
+    margin-left: 0;
+    padding-left: 4px;
+  }
+}
+
+@media (min-width: 1180px) {
+  /* Anchor context to the whole middle header, not its narrow trigger. This
+     keeps the popover inside the clipped/resizable conversation column. */
+  .workspace :global(.conversation-panel .workspace-context-disclosure) {
+    position: static;
+  }
+  .workspace
+    :global(.conversation-panel .workspace-context-disclosure .ah-workbench-disclosure-content) {
+    top: calc(100% + 4px);
+    right: 16px;
+    width: calc(100% - 32px);
+    max-width: 420px;
+  }
+  .workspace :global(.conversation-panel .ah-workbench-disclosure-content > div) {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+}
