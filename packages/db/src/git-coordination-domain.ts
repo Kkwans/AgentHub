@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
 import type { AgentHubDatabase } from './client.js';
 import { DatabaseInvariantError } from './repositories.js';
-import { appSettings, gitCommitOperations, gitWriteClaims } from './schema.js';
+import { appSettings, gitCommitOperations, gitWriteClaims, worktreeExecutions } from './schema.js';
 
 export const GIT_COORDINATION_DOMAIN_SETTING_KEY = 'git.coordination-domain.v1';
 export interface GitCoordinationDomain {
@@ -46,8 +46,28 @@ export async function getOrCreateGitCoordinationDomain(
     // missing-domain check and insertion. PostgreSQL transaction-scoped locks
     // also serialize independent processes; ON CONFLICT preserves the winner.
     await tx.execute(
-      sql`LOCK TABLE app_settings, git_commit_operations, git_write_claims IN SHARE ROW EXCLUSIVE MODE`,
+      sql`LOCK TABLE app_settings, git_commit_operations, git_write_claims, worktree_executions IN SHARE ROW EXCLUSIVE MODE`,
     );
+    // Legacy worktree quarantine predates the durable Git ledger. An empty
+    // ledger cannot prove that these writes did not execute. Check before even
+    // minting a domain, and never synthesize a claim or guessed ownership.
+    // Conservatively also refuse a second factory during new in-flight work;
+    // distinguishing it requires a separately verified durable correspondence.
+    const [unresolvedWorktree] = await tx
+      .select({ id: worktreeExecutions.id })
+      .from(worktreeExecutions)
+      .where(
+        or(
+          inArray(worktreeExecutions.status, ['SETTING_UP', 'MERGING']),
+          eq(worktreeExecutions.errorCode, 'WORKTREE_GIT_OUTCOME_UNKNOWN'),
+        ),
+      )
+      .limit(1);
+    if (unresolvedWorktree)
+      throw new DatabaseInvariantError(
+        'GIT_LEGACY_WORKTREE_UNRESOLVED',
+        '存在未确认的 Worktree Git 写入，禁止初始化协调域或放行写入',
+      );
     let [setting] = await tx
       .select()
       .from(appSettings)

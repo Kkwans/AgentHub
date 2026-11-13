@@ -2,19 +2,19 @@
 
 状态：待复现 → 已确认 → 实施中 → 待验收 → 已关闭。源码证据与运行复现分开记录。P0 为数据/权限高风险；P1 为核心旅程阻塞；P2 为明显体验或维护缺陷。
 
-| ID     | 优先级 | 问题与证据                                                                                                     | 状态                                  | 关闭条件                                                                    |
-| ------ | ------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------- |
-| AH-001 | P1 | 创建、READY、start 串行 mutation，后步失败后重试可能重复创建 | 当前页/刷新恢复与服务端创建幂等已发布，12项真实恢复通过；整体未关闭 | 四宽双主题恢复已通过；创建幂等不覆盖start，持久启动预留/故障恢复仍待实现 |
-| AH-002 | P1 | 所选 Prompt 未进入成功启动链路 | c7bd5b4真实CI通过：固定版本、延后变量、继承输入已验收 | S54精确CI43330610456已验收原任务变量修复四宽；该次整体CI因新增资格测试前置404仍红 |
-| AH-003 | P1 | TaskService 优先 description 导致主目标 title 丢失 | 已修复；初始/返工回归及真实 HTTP 通过 | 共享构造器保留主目标、补充说明和验收；后续 Prompt 改动必须保持 |
-| AH-004 | P1 | 仅 roots 下拉，无法选授权父目录下嵌套仓库 | 已关闭（控制面目录选择路径）；22 项组件回归及 f49468f/a0ac4ee 四宽真实浏览器通过 | 授权边界、嵌套选择与真实创建已验证；目标 NAS/真实 Agent 仍未验收 |
-| AH-005 | P0 | TopicBroker 仅 WS upgrade 认证；AuthService 撤销未通知已连接客户端 | 单实例连接授权修复，8 项真实 HTTP/WS/PGlite 回归通过 | 注销、改密、撤销、过期关闭旧流；跨进程失效传播仍待实现；不终止底层 PTY |
-| AH-006 | P2 | Agent 只按 READY 筛选，忽略禁用和项目可达性 | 服务端注册资格只读 API 与前端过滤已实现；61 项针对回归通过 | 核心创建旅程真实CI已通过；注册状态准入不承诺真实认证/容器健康 |
-| AH-007 | P2 | 无 Agent 时按钮仍叫“创建并开始”，实际仅创建任务 | 已修正名称；无Agent模板保存真实浏览器通过 | 实际只创建Task，不冒称启动 |
-| AH-008 | P2 | 子路由丢高亮；账户按钮无动作且默认伪造身份 | 修复分区高亮、实际账户/访问模式及账户设置入口；29 项针对测试通过 | 实际核心导航/设置入口及fixture48已通过；共享Dialog已在7bbead8及后续真实CI验收 |
-| AH-009 | P1     | 多套设计系统与全局覆盖并行，页面密度与交互层次不统一                                                           | 用户否定现有视觉，整体方向重选中                  | 单一 token/组件体系；迁移后删除旧层；四视口浅深色截图验收                   |
-| AH-010 | P1 | CI 主要依赖 fixture，真实服务主线测试有 legacy skip | 真实服务与140图门禁已接入；77bc747精确双绿 | 141真实项及140几何；历史失败保留，真实Agent/NAS未测 |
-| AH-011 | P2     | SessionService 混合多项职责，发现/诊断可能重复昂贵扫描                                                         | 待性能基线                            | 记录耗时与调用次数，职责拆分不改变契约，缓存失效规则经验证                  |
+| ID     | 优先级 | 问题与证据                                                         | 状态                                                                             | 关闭条件                                                                          |
+| ------ | ------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| AH-001 | P1     | 创建、READY、start 串行 mutation，后步失败后重试可能重复创建       | 当前页/刷新恢复与服务端创建幂等已发布，12项真实恢复通过；整体未关闭              | 四宽双主题恢复已通过；创建幂等不覆盖start，持久启动预留/故障恢复仍待实现          |
+| AH-002 | P1     | 所选 Prompt 未进入成功启动链路                                     | c7bd5b4真实CI通过：固定版本、延后变量、继承输入已验收                            | S54精确CI43330610456已验收原任务变量修复四宽；该次整体CI因新增资格测试前置404仍红 |
+| AH-003 | P1     | TaskService 优先 description 导致主目标 title 丢失                 | 已修复；初始/返工回归及真实 HTTP 通过                                            | 共享构造器保留主目标、补充说明和验收；后续 Prompt 改动必须保持                    |
+| AH-004 | P1     | 仅 roots 下拉，无法选授权父目录下嵌套仓库                          | 已关闭（控制面目录选择路径）；22 项组件回归及 f49468f/a0ac4ee 四宽真实浏览器通过 | 授权边界、嵌套选择与真实创建已验证；目标 NAS/真实 Agent 仍未验收                  |
+| AH-005 | P0     | TopicBroker 仅 WS upgrade 认证；AuthService 撤销未通知已连接客户端 | 单实例连接授权修复，8 项真实 HTTP/WS/PGlite 回归通过                             | 注销、改密、撤销、过期关闭旧流；跨进程失效传播仍待实现；不终止底层 PTY            |
+| AH-006 | P2     | Agent 只按 READY 筛选，忽略禁用和项目可达性                        | 服务端注册资格只读 API 与前端过滤已实现；61 项针对回归通过                       | 核心创建旅程真实CI已通过；注册状态准入不承诺真实认证/容器健康                     |
+| AH-007 | P2     | 无 Agent 时按钮仍叫“创建并开始”，实际仅创建任务                    | 已修正名称；无Agent模板保存真实浏览器通过                                        | 实际只创建Task，不冒称启动                                                        |
+| AH-008 | P2     | 子路由丢高亮；账户按钮无动作且默认伪造身份                         | 修复分区高亮、实际账户/访问模式及账户设置入口；29 项针对测试通过                 | 实际核心导航/设置入口及fixture48已通过；共享Dialog已在7bbead8及后续真实CI验收     |
+| AH-009 | P1     | 多套设计系统与全局覆盖并行，页面密度与交互层次不统一               | 用户否定现有视觉，整体方向重选中                                                 | 单一 token/组件体系；迁移后删除旧层；四视口浅深色截图验收                         |
+| AH-010 | P1     | CI 主要依赖 fixture，真实服务主线测试有 legacy skip                | 真实服务与140图门禁已接入；77bc747精确双绿                                       | 141真实项及140几何；历史失败保留，真实Agent/NAS未测                               |
+| AH-011 | P2     | SessionService 混合多项职责，发现/诊断可能重复昂贵扫描             | 待性能基线                                                                       | 记录耗时与调用次数，职责拆分不改变契约，缓存失效规则经验证                        |
 
 ## 关闭规则
 
@@ -127,13 +127,10 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 
 - AH-055（P1，已复现，修复中）：真实SessionService+PGlite+受控adapter证明新handle返回后READY持久化失败，未close且从未进入active，shutdown也无法回收；FAILED写也失败时遮蔽原创建错误。2项审计成功复现坏行为，不是修复通过。已仅回收本次未交接handle，最多1秒等待清理后尽力记失败；已交给active生命周期的handle不关闭也不覆盖FAILED，原始异常保留。96专项通过，API10项通过，S36完整839单测/lint/types/build/QA通过，真实CI待验。close返回仅证明adapter合同返回，不代表进程已终止；UNKNOWN明确提示，未新增清理注册表或自动重试，resume/global shutdown不在此片范围。
 
-
 - AH-056（P1，CI复现，本地修复待新CI）：02eb verify的839测试断言通过，但WorkspacePage销毁jsdom后发生未处理window is not defined，React Virtualizer被已卸载observer的scroll-end debounce再次通知。上游dispose只移除监听，不取消已排timer；已保持官方observer行为、仅隔离已失效订阅回调，不屏蔽未处理异常或伪造全局window。fixture阶段因此未执行，真实矩阵独立继续。负控2红/1绿；修复专项66通过，S38完整856通过，需新exact-head CI确认。
-
 
 - AH-057（P1，本地修复，待真实CI）：Session resume拿到新handle后READY持久化失败，未close/未activate，shutdown找不到；FAILED二次写失败还遮蔽原异常。真实Service+PGlite/受控adapter已复现，不是从create类推，不涉及用户真实Agent。需有界回收本次尚未交接handle并保留原错误；旧active关闭失败与新handle清理不能混为已全部释放。
 - AH-058（P1，本地修复，待真实CI）：两个resume同时通过DISCONNECTED读取，R1先READY并激活后，R2的无归属detachActive关闭R1赢家，READY→READY失败后将Session写FAILED，且泄漏R2 handle。受控并发诊断已复现。计划首await前同Session同步拒绝重入、按捕获activation身份替换旧连接，失败写入不能覆盖并发close/新赢家；不承诺跨进程完整生命周期隔离。
-
 
 - AH-059（P1，本实例消费者修复，待新CI）：旧handleActivationDisconnected仅入口检查activation，后续findActiveForSession/Run写/Task回调/Session写跨await未重新核对；safeSessionTransition仅排除CLOSED。若旧回调挂起期间另一条路径已使Session可恢复，迟到回调可能作用新Run/新Session状态。最初只确认既有源码结构；现已用真实Service/PGlite/受控adapter沿合法cancel/Approval失败与resume路径完成2条正例barrier复现，另1条cancel候选不可达已否定。不能说正常单次断连必现。AH057/058只保证resume自身归属，不宣称所有consumer副作用或跨进程隔离；完整原子生命周期fence另行评估。
 
@@ -142,7 +139,6 @@ AH-015最新源码复核：现有restart recovery已把QUEUED改FAILED、其他�
 - AH059精确证据：旧findActive已取得R1快照后挂起，经合法cancel拒绝断连、resume、权威完成R1再显式R2，旧回调把新RUNNING Session改DISCONNECTED，而R2仍RUNNING、新handle未关闭。另一条旧Task回调挂起时Approval投递失败推进Session断连，resumeREADY后旧回调再改DISCONNECTED。仅cancel拒绝且Run已断连的候选不会推进Session，resume409，为否定对照。生产尚未修，下一片要求归属检查与最终Session写在本实例activation切换边界保持一致，不能只check再盲await。
 
 - AH059整合：两条正例已修、否定对照保留；短提交队列及双方提交顺序/撤销/失败释放共81专项、S40完整880单测/lint/types/build/QA通过。仅本实例此断连消费者与resume/close必要提交；其他事件路径/跨进程不在完成范围，新SHA真实CI待验。
-
 
 - AH-060（P1，已修复且本地门禁通过，待新SHA CI）：Approval投递失败收敛未隔离当前activation与Run归属。真实Service/PGlite/受控adapter四条诊断通过：旧回执拒绝、旧handle.close迟到、旧Task回调迟到可污染恢复后新Session状态；第四条不换activation，R1权威完成后显式R2已WAITING_APPROVAL，旧决定失败实际close同handle一次，而R2仍WAITING_APPROVAL。前三例新handle未被close，不与第四例混淆。第三例额外需要两个合法权限请求。未直接改DB/active，未用真实用户Agent。
 - AH060计划要求UNKNOWN/DEAD历史状态仍持久化，但当前Session/handle副作用必须同时核验activation代际与当前Run，并与新Run准入提交互斥。RunRepository现有Task→Session锁+latestRunId原子写不能代替服务层长await后的重新准入检查；只read latestRun再await不是完整fence。已整合epoch lease、DB条件收敛与Run准入短提交边界，123专项通过，S41 lint/types/build、893单测/10跳过、QA10通过，新SHA CI待验。
@@ -303,6 +299,7 @@ AH-078最终本地验收：1078完整资源隔离覆盖/10原有skip、90前端�
 AH-079最终本地验收：1089完整覆盖/10原有skip、68专项、lint/types/build/QA10及CR通过；最终构建后两轮10次真实HTTP拒绝且完整快照不变，专用返工/合并照常完成。四宽待新exact CI；跨实例孤立Session与DirectSession所有权仍开放。
 
 AH-080运行证据：S61隔离PGlite barrier红测已复现旧merge错误成功DONE，Execution.runId=run2而Task.finalRunId=run1。旧请求在初读run1后停住，真实service返工run2完成回REVIEW，再放行，不是单纯手动改DB状态。
+
 - S61范围：Git之前原子核对原REVIEW的Session/Run代际，拒绝旧请求；同时核对当前Task/Session/latestRun及COMPLETED，不允许发现较新活跃Run仍执行merge。专用claim遵循Execution→Task→Session锁序，使用claim快照归属。
 - 仍不保证UI读取Diff与请求之间的不可变审阅快照，也不拦所有外部文件写入；DirectSession入口及跨实例普通启动预留独立保留。
 
@@ -317,6 +314,7 @@ AH-080最终本地验收：1098完整覆盖/10原有skip、25后端/12UI专项�
 - 关闭审阅/合并中另开Run与managed孤立Session派发窗口，不等于清理遗留Session或实现普通启动的原子Session预留；RUNNING阶段仍无专用调用者令牌，完整派发预留另行设计。
 
 AH-081追加独立证据：f6fcc53的同managed Session两个RunRepository实例并发create均成功，留下2个RUNNING；S62仅对managed会话在事务中检查活动/未知Run以拒绝重复准入。执行已绑定Session但Session.taskId丢失的持久不一致也须fail closed，不因缺Task绕过ownership；普通未绑定Session不受影响。
+
 - RUNNING阶段直接调用抢先于专用startRun的调用者竞争仍无独占令牌；可能导致runner将忙碌错误误判BLOCKED的源码候选另留后续barrier复现，未在本片声称解决。
 
 AH-079当前验收：d5325e7精确CI43355699706双绿，1089单测/48 fixture、149真实项/140几何；当前普通Task入口护栏关闭，DirectSession及原子Session预留各按独立问题跟进。
@@ -380,3 +378,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 20:52 UTC 协调域不能伪装物理设备
 
 没有可信硬件身份时用持久DB逻辑域并全DB串行，避免同仓bind mount不同路径绕锁；独立DB与外部Git仍不覆盖。已实现factory但未启用。域缺失/损坏或operation/claim不完整拒绝启用，不能生成新UUID解除未知锁。client恢复状态仅证明原operation，不证明当前草稿；GET新增认证scope绑定辅助校验。
+
+### 2026-11-13 21:20 UTC 生产接线CR补缺
+
+历史Worktree SETTING_UP/MERGING或明确UNKNOWN可能没有Git ledger。不能因为新表为空而生成新域后放行；启动检查同事务锁旧execution表，保守拒绝托管写，不修复/合成旧记录。已有合法in-flight时第二实例也可能拒写，接受保守可用性代价。正常Git global身份/hooks不应因隔离失效；共享环境只过滤ambient GIT_*重定向，保留正常用户配置。

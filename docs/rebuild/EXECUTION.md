@@ -1133,3 +1133,13 @@ CR/类型检查发现并修复rework误插setup catch；startup回归又发现�
 恢复时 HEAD/远端均为9968732，无活跃测试进程；保留并审阅全部未提交修改。重新构建DB后，domain/runtime/query/driver共4文件57项通过（17.04s）；全仓types、全仓lint、相关format、diffcheck通过，Web生产构建通过（既有大chunk警告）。独立只读CR未发现domain/runtime阻断项。此前corepack因本机缓存目录不可用未启动，改用仓库已安装的同版本CLI完成验证，未安装新依赖。
 
 验证边界：factory与恢复driver仍未生产启用；alias测试使用注入resolver，不是真实bind mount；PostgreSQL多连接未实测。新切片完整全量与精确CI尚待运行，不借用9968732全量结果。
+
+### 2026-11-13 21:15 UTC 精确全量与生产接线候选
+
+确认 f771312 精确冻结全量：164文件通过/4跳过，1626测试通过/10跳过，389.13s。开始三写入口与客户端持久恢复的统一生产接线，尚未发布。
+
+21:20 UTC 普通Git真实回归13项通过；共享环境修复后Worktree三文件59项通过。CR发现历史Worktree UNKNOWN无新operation/claim可绕锁，已补启动同事务历史隔离检查35项通过；不猜测claim/归属。另修复禁global config破坏identity/hooks的候选问题：resolver/executor共享过滤GIT_*的环境快照，保留HOME和正常global config/credential transport，新增真实global-only作者身份+恶意GIT_DIR/config override回归。外部修改配置/外部Git不在本协调器覆盖内。
+
+21:23 UTC 候选定向验收：domain35项、runtime8项、前端5文件103项、普通Git/环境/资源3文件13项、最终Worktree3文件59项分别通过；全仓types/lint、Web build通过。最终组合曾2项失败，原因测试在上一案例遗留UNKNOWN后再次调用strict初始化，已改为真实boot-before-work共享runtime，未删隔离证据或放宽gate，Worktree重跑59项通过。独立前端CR修复畸形POST SHA先清marker导致无法恢复的问题；恢复generation fence与真实存储失败说明已补。E2E新增reload+404仍仅一次POST断言，尚未本地浏览器执行。新精确全量/CI待验收，不宣称整体验收完成。
+
+21:31 UTC 首个生产接线冻结候选tree83dc7e2全量结束：165文件通过/1失败/4跳过，1654测试通过/3失败/10跳过，401.40s。3失败全部来自WorkspacePage旧fixture：非法project UUID、旧POST协议/缺少持久GET、忽略新增恢复marker。已按真实契约修复测试（不是生产代码放宽）；整个WorkspacePage30项通过，types/lint/独立CR通过，布局/草稿/一次POST断言保留，非恢复storage精确保持不变。此前fba231e只创建Git对象，未更新开发分支。新完整冻结验收进行后再决定发布。

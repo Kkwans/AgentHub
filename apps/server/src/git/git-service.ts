@@ -1,3 +1,6 @@
+import { isolatedGitEnvironment } from './git-write-resource.js';
+import { gitCommitOperationBody, gitCommitOperationPayload } from './git-commit-protocol.js';
+import type { createManagedGitRuntime } from './managed-git-runtime.js';
 import { randomUUID } from 'node:crypto';
 import { access, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -47,6 +50,7 @@ export class GitService implements GitHeadProbe {
     private readonly snapshots: GitSnapshotRepository<AgentHubDatabase>,
     private readonly targets?: ExecutionTargetRepository<AgentHubDatabase>,
     private readonly operations?: Pick<GitCommitOperationRepository<AgentHubDatabase>, 'get'>,
+    private readonly managed?: Pick<Awaited<ReturnType<typeof createManagedGitRuntime>>, 'writes'>,
   ) {}
 
   // DB-only recovery lookup: never probes HEAD, invokes Git, renews a claim,
@@ -175,24 +179,58 @@ export class GitService implements GitHeadProbe {
 
   async commit(
     projectId: string,
-    input: { message: string; mode: 'STAGED' | 'SELECTED'; paths?: string[] },
+    input: {
+      message: string;
+      mode: 'STAGED' | 'SELECTED';
+      paths?: string[] | undefined;
+      protocolVersion?: 1 | undefined;
+      operationId?: string | undefined;
+      expectedHead?: string | null | undefined;
+    },
+    principal?: AuthPrincipal,
   ) {
+    if (this.managed) {
+      const ownerScope = creationOwnerScope(principal);
+      const request = gitCommitOperationBody.parse(input);
+      return this.managed.writes.run(
+        {
+          kind: 'COMMIT',
+          ownerScope,
+          operationId: request.operationId,
+          projectId,
+          expectedHead: request.expectedHead,
+          payload: gitCommitOperationPayload(request),
+        },
+        async (resource, payload) =>
+          this.commitAt(resource.worktreeIdentity, {
+            message: payload.message as string,
+            mode: payload.mode as 'STAGED' | 'SELECTED',
+            ...(Array.isArray(payload.paths) ? { paths: payload.paths as string[] } : {}),
+          }),
+        (result) => result.sha ?? null,
+      );
+    }
     const project = await this.requireGitProject(projectId);
+    return this.commitAt(project.realRootPath, input);
+  }
+
+  private async commitAt(
+    root: string,
+    input: { message: string; mode: 'STAGED' | 'SELECTED'; paths?: string[] | undefined },
+  ) {
     let paths: string[] = [];
     if (input.mode === 'SELECTED') {
       if (!input.paths?.length) {
         throw new AppError(400, 'GIT_COMMIT_PATHS_REQUIRED', 'selected-files commit 必须选择文件');
       }
-      paths = await Promise.all(
-        input.paths.map((path) => validateGitPath(project.realRootPath, path, false)),
-      );
-      const add = await runGit(['-C', project.realRootPath, 'add', '--', ...paths]);
+      paths = await Promise.all(input.paths.map((path) => validateGitPath(root, path, false)));
+      const add = await runGit(['-C', root, 'add', '--', ...paths]);
       requireSuccess(add, 'GIT_ADD_SELECTED_FAILED', '所选文件暂存失败');
     }
-    const before = await this.readHead(project.realRootPath);
+    const before = await this.readHead(root);
     const result = await runGit([
       '-C',
-      project.realRootPath,
+      root,
       'commit',
       ...(input.mode === 'SELECTED' ? ['--only'] : []),
       '-m',
@@ -200,7 +238,7 @@ export class GitService implements GitHeadProbe {
       ...(paths.length ? ['--', ...paths] : []),
     ]);
     requireSuccess(result, 'GIT_COMMIT_FAILED', 'Git 提交失败');
-    const after = await this.readHead(project.realRootPath);
+    const after = await this.readHead(root);
     return { beforeSha: before, sha: after, output: result.stdout.trim() };
   }
 
@@ -388,11 +426,20 @@ async function runGit(args: string[], maxOutputBytes = 2 * 1024 * 1024) {
     executable: '/usr/bin/git',
     // `--` stops option parsing, not Git pathspec magic/glob expansion.
     args: ['--literal-pathspecs', ...args],
+    inheritEnv: false,
+    env: isolatedGitEnvironment,
     timeoutMs: 30_000,
     maxOutputBytes,
   });
 }
 
 function requireSuccess(result: ProcessResult, code: string, message: string): void {
-  if (result.exitCode !== 0) throw new AppError(409, code, message);
+  if (
+    result.exitCode !== 0 ||
+    result.timedOut ||
+    result.canceled ||
+    result.truncated ||
+    result.signal
+  )
+    throw new AppError(409, code, message);
 }

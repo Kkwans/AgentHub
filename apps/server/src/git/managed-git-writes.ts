@@ -12,8 +12,8 @@ export interface ManagedGitWriteContext {
   payload: Record<string, unknown>;
 }
 
-// Integration wrapper only. Dormant until ALL managed writers use the same
-// coordinator/resource identity. Does not serialize arbitrary callback results,
+// Shared production wrapper for all three managed Git writers.
+// Does not serialize arbitrary callback results,
 // infer commit ownership from HEAD, or protect against external Git processes.
 export class ManagedGitWrites {
   constructor(private readonly coordinator: Pick<GitWriteCoordinator, 'execute'>) {}

@@ -1,3 +1,4 @@
+import { initializeManagedGitRuntime } from './git/managed-git-runtime.js';
 import { recoverRuntimeAfterRestart } from './startup-recovery.js';
 import { logRedaction } from './log-redaction.js';
 import { createServer, type Server } from 'node:http';
@@ -200,11 +201,20 @@ export async function startServer(
     workspaceRoots,
     remoteNodeOperations,
   );
+  const managedGitRuntime = await initializeManagedGitRuntime(
+    {
+      db: database.db,
+      projects: projectRepository,
+      targets: executionTargetRepository,
+    },
+    (code) => logger.warn({ code }, '托管 Git 写入已隔离，只读恢复仍可用'),
+  );
   const git = new GitService(
     projectRepository,
     gitSnapshotRepository,
     executionTargetRepository,
     new GitCommitOperationRepository(database.db),
+    managedGitRuntime,
   );
   const terminal = new TerminalService(projectRepository, {
     publish: (topic, event) => brokerRef.current?.publish(topic, event),
@@ -308,6 +318,7 @@ export async function startServer(
     sessions,
     new WorktreeGitService(worktreeRoot),
     { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
+    managedGitRuntime,
   );
   sessions.setTaskLifecycleObserver({
     onRunCompleted: async (taskId, runId) => {

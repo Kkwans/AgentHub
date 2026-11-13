@@ -21,6 +21,20 @@ export type GitWriteResource = Readonly<{
   worktreeIdentity: string;
   head: string | null;
 }>;
+// Snapshot normal user configuration/credential transports for both probe and
+// executor, but discard ambient Git routing/config overrides. Disabling HOME or
+// global config would break existing author identity, signing and hooks.
+export function isolateGitEnvironment(environment: NodeJS.ProcessEnv) {
+  return Object.freeze({
+    ...Object.fromEntries(
+      Object.entries(environment).filter(
+        ([key, value]) => !key.toUpperCase().startsWith('GIT_') && value !== undefined,
+      ),
+    ),
+    GIT_TERMINAL_PROMPT: '0',
+  });
+}
+export const isolatedGitEnvironment = isolateGitEnvironment(process.env);
 const sha = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 function fail(code = 'GIT_RESOURCE_READ_FAILED'): never {
   throw new AppError(409, code, '无法权威核对本地 Git 资源，未允许写入。');
@@ -29,14 +43,9 @@ async function probe(root: string, args: string[]): Promise<ProcessResult> {
   const result = await runProcess({
     executable: '/usr/bin/git',
     args: ['--no-optional-locks', '-C', root, ...args],
-    // Never allow ambient GIT_DIR/GIT_WORK_TREE/config to redirect resource identity.
+    // Never allow ambient GIT_DIR/GIT_WORK_TREE/config overrides to redirect identity.
     inheritEnv: false,
-    env: {
-      PATH: '/usr/bin:/bin',
-      GIT_CONFIG_NOSYSTEM: '1',
-      GIT_CONFIG_GLOBAL: '/dev/null',
-      GIT_TERMINAL_PROMPT: '0',
-    },
+    env: isolatedGitEnvironment,
     timeoutMs: 10_000,
     maxOutputBytes: 64_000,
   });

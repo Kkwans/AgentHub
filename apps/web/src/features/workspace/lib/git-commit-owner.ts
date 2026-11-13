@@ -4,6 +4,7 @@ export type GitCommitInput = Readonly<{
   projectId: string;
   paths: readonly string[];
   message: string;
+  expectedHead?: string | null;
 }>;
 export type GitCommitOperation = Readonly<{
   id: number;
@@ -42,6 +43,39 @@ export function createGitCommitOwner() {
     },
     revoke,
     getSnapshot: () => records,
+    authorization() {
+      const captured = epoch;
+      return () => authorized && epoch === captured;
+    },
+    recovery(projectId: string, error: string | null) {
+      if (
+        !authorized ||
+        records.some((r) => r.input.projectId === projectId && r.phase === 'pending')
+      )
+        return;
+      const prior = records.find((r) => r.input.projectId === projectId && r.phase === 'unknown');
+      records = records.filter((r) => r.input.projectId !== projectId || r.phase !== 'unknown');
+      if (error)
+        records = [
+          ...records,
+          Object.freeze(
+            prior
+              ? { ...prior, error }
+              : {
+                  id: ++sequence,
+                  epoch,
+                  phase: 'unknown' as const,
+                  input: Object.freeze({
+                    projectId,
+                    paths: Object.freeze([]),
+                    message: '原操作恢复核对',
+                  }),
+                  error,
+                },
+          ),
+        ];
+      publish();
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
@@ -74,6 +108,7 @@ export function createGitCommitOwner() {
         projectId: input.projectId,
         paths: Object.freeze([...input.paths]),
         message: input.message.trim(),
+        ...(input.expectedHead !== undefined ? { expectedHead: input.expectedHead } : {}),
       });
       const operation: GitCommitOperation = Object.freeze({
         id: ++sequence,

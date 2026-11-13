@@ -13,11 +13,12 @@ vi.mock('../../../components/AccessGate', () => ({
   useAuthMode: () => 'local_trusted',
   useAuthUser: () => null,
 }));
-vi.mock('../../../lib/api', () => ({ api: { post: vi.fn() } }));
+vi.mock('../../../lib/api', () => ({ api: { post: vi.fn(), get: vi.fn() } }));
 vi.mock('./DiffViewer', () => ({ DiffViewer: () => <div>Diff</div> }));
 const clients: QueryClient[] = [];
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   clients.splice(0).forEach((client) => client.clear());
   vi.clearAllMocks();
 });
@@ -37,7 +38,23 @@ const query = <T,>(data: T): QueryState<T> => ({
   refetch: vi.fn(),
 });
 const receipt = { sha: 'a'.repeat(40) };
+const projectA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const projectB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 function mount(withProvider = true) {
+  vi.mocked(api.get).mockImplementation(
+    async (path) =>
+      ({
+        scope: 'local-trusted',
+        projectId: path.split('/')[2],
+        operationId: path.split('/').at(-1),
+        protocolVersion: 1,
+        requestHash: 'a'.repeat(64),
+        phase: 'COMMAND_SUCCEEDED',
+        commandExit: 0,
+        observedAfterHead: receipt.sha,
+        resultEvidence: { kind: 'COMMAND_EXIT_ZERO', headAttribution: 'OBSERVED_ONLY' },
+      }) as never,
+  );
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -46,17 +63,19 @@ function mount(withProvider = true) {
   const fallback = vi.fn(async () => receipt);
   function Consumer() {
     const [open, setOpen] = useState(true);
-    const [project, setProject] = useState('a');
+    const [project, setProject] = useState(projectA);
     return (
       <>
         <button onClick={() => setOpen((value) => !value)}>{open ? '关闭面板' : '打开面板'}</button>
-        <button onClick={() => setProject((value) => (value === 'a' ? 'b' : 'a'))}>切换项目</button>
+        <button onClick={() => setProject((value) => (value === projectA ? projectB : projectA))}>
+          切换项目
+        </button>
         <div aria-label="当前项目">{project}</div>
         {open && (
           <GitChangesTree
             key={project}
             projectId={project}
-            projectName={`项目${project}`}
+            projectName={project === projectA ? '项目a' : '项目b'}
             status={query({
               clean: false,
               branch: 'main',
@@ -99,7 +118,10 @@ it('关闭重开保留 pending，返回回执不重发且仅刷新原项目缓�
   const app = mount();
   fill('原说明');
   submit();
-  expect(api.post).toHaveBeenCalledWith('/projects/a/git/commit', {
+  expect(api.post).toHaveBeenCalledWith(`/projects/${projectA}/git/commit`, {
+    protocolVersion: 1,
+    operationId: expect.any(String),
+    expectedHead: null,
     mode: 'SELECTED',
     paths: ['one.ts'],
     message: '原说明',
@@ -113,10 +135,10 @@ it('关闭重开保留 pending，返回回执不重发且仅刷新原项目缓�
   expect(api.post).toHaveBeenCalledTimes(1);
   expect(app.fallback).not.toHaveBeenCalled();
   expect(app.invalidate.mock.calls.map(([options]) => options?.queryKey)).toEqual([
-    ['git-status', 'a'],
-    ['git-diff', 'a'],
-    ['git-commits', 'a'],
-    ['git-branches', 'a'],
+    ['git-status', projectA],
+    ['git-diff', projectA],
+    ['git-commits', projectA],
+    ['git-branches', projectA],
   ]);
 });
 
@@ -128,10 +150,11 @@ it('关闭时丢失响应，重开保留原项目记录与 unknown 锁', async (
   submit();
   fireEvent.click(screen.getByRole('button', { name: '关闭面板' }));
   await act(async () => pending.reject(new Error('断线')));
+  vi.mocked(api.get).mockRejectedValue(new Error('404'));
   fireEvent.click(screen.getByRole('button', { name: '打开面板' }));
   expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知');
   expect(screen.getByRole('alert')).toHaveTextContent('原始说明');
-  expect(screen.getByRole('alert')).toHaveTextContent('原 Project：项目a（a）');
+  expect(screen.getByRole('alert')).toHaveTextContent(`原 Project：项目a（${projectA}）`);
   fill('修改后的说明');
   fireEvent.submit(app.view.container.querySelector('form')!);
   expect(screen.getByRole('button', { name: '提交所选文件 (1)' })).toBeDisabled();

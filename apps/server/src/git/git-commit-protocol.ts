@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// Admission contract for the future coordinated write endpoint. Deliberately
-// separate from the legacy route until every managed writer shares the claim.
+// Admission contract for coordinated writes. Legacy keyless requests are rejected
+// before dispatch; every production managed writer uses the shared claim.
 // Client identifiers are never ownership or executor/resource credentials.
 export const gitCommitOperationParams = z.object({
   id: z

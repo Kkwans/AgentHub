@@ -39,13 +39,13 @@ local target别名不能绕过锁：同一执行进程上的多个LOCAL_HOST tar
 
 ## 状态与派发权限
 
-| 状态 | 本操作还能派发Git吗 | 重放/查询行为 |
-|---|---|---|
-| RECEIVED | 仅原子claim胜者、尚无任何写命令时 | 返回状态；竞争者不得启动第二进程 |
-| DISPATCHED | 否 | 返回运行/待确认状态 |
-| COMMAND_SUCCEEDED | 否 | 返回持久命令成功证据，不重新执行 |
-| REJECTED_PREWRITE | 否 | 返回原拒绝；改内容需新操作键 |
-| UNKNOWN | 否 | 保留资源禁写并要求核对 |
+| 状态              | 本操作还能派发Git吗               | 重放/查询行为                    |
+| ----------------- | --------------------------------- | -------------------------------- |
+| RECEIVED          | 仅原子claim胜者、尚无任何写命令时 | 返回状态；竞争者不得启动第二进程 |
+| DISPATCHED        | 否                                | 返回运行/待确认状态              |
+| COMMAND_SUCCEEDED | 否                                | 返回持久命令成功证据，不重新执行 |
+| REJECTED_PREWRITE | 否                                | 返回原拒绝；改内容需新操作键     |
+| UNKNOWN           | 否                                | 保留资源禁写并要求核对           |
 
 创建operation+抢repository claim在同一短事务中完成，hash不符409。同操作键不能靠改payload重用；新键也不能绕过UNKNOWN资源claim。**先提交DISPATCHED记录，再调用第一条写命令git add**。不能持有长SQL事务运行Git并用回滚假装去重。
 
@@ -129,3 +129,13 @@ expectedHead须在获得资源claim并复核资源身份后、第一条写命令
 `createManagedGitRuntime` 将所有本地Project/target/mount路径强制映射该数据库单一claim key。它是逻辑协调域，绝不是物理设备证明；不同DB/外部Git不覆盖。保守代价：一个UNKNOWN将阻断该DB其他托管Git写。Factory未接index，生产三入口尚未启用它。worktree自定义base branch的baseSha不等于当前primary HEAD，接线时必须冻结正确expectedHead，而不是混用。
 
 恢复GET现在额外返回认证lookup绑定的 `scope`（身份标识不是访问凭据），仍排除内部派发token和路径。新client只读driver按marker发GET，校验scope/project/op/version/hash格式与命令退出证据；已撤权/响应在途撤权不清marker或返回旧结果，404/未知/异常继续禁写。只有同scope精确终态才清单个marker，之后重读全部状态。**状态只属于marker原操作，不证明当前草稿已提交，不据此清当前草稿；未接UI或POST。**
+
+## 21:22 UTC 三入口生产接线候选
+
+index统一初始化runtime并注入普通commit、worktree create、worktree merge；HTTP commit拒绝无客户端key旧协议。普通commit使用冻结payload与协调器规范根。worktree create复用持久create key；merge用execution/run派生稳定UUID，同review改变参数不会生成新派发身份。expectedHead来自primary worktree而非baseSha。原子派发只覆盖本服务三个托管入口，不覆盖Agent/PTY/其他进程或独立DB。多版本服务同时运行不支持，不能让旧版本继续raw Git。
+
+启动同事务检查历史Worktree歧义；未知/域损坏时返回明确denied runtime，整个服务仍可只读启动，不回退raw Git，不自动repair。新实例若发现合法in-flight也保守拒写，需以后有充分证据才能优化这个可用性限制。
+
+浏览器持久marker先写读回再POST，刷新仅认证GET恢复。正常POST也需完整SHA回执和持久命令终态；marker原操作恢复不清新草稿。404、存储损坏或不可用继续禁写；缺marker不是“未执行”证明。前端存储完全丢失不能发现其他设备原operation，但后端UNKNOWN claim仍阻断新派发；已成功终态释放claim后新key表示新意图，不承诺跨设备推断原提交归属。
+
+resolver/executor共享冻结的正常环境快照，仅剔除全部ambient GIT_*变量并固定非交互提示；保留HOME、global config和credential transport以兼容现有身份/hooks。外部配置修改/外部Git并发仍不受保护。真实临时仓回归验证global-only作者身份与注入GIT_DIR/config overrides隔离。

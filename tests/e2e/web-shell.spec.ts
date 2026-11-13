@@ -1972,12 +1972,17 @@ test('Git 提交响应丢失保留未知记录且修改或只读刷新不能重�
   const errors: string[] = [];
   let posts = 0;
   let reads = 0;
+  let recoveryReads = 0;
+  let operationId = '';
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (entry) => {
     // The sole injected transport failure is expected; no other console errors are ignored.
     if (
       entry.type() === 'error' &&
-      !(entry.location().url.endsWith(commitEndpoint) && entry.text().includes('net::ERR_FAILED'))
+      !(
+        entry.location().url.endsWith(commitEndpoint) && entry.text().includes('net::ERR_FAILED')
+      ) &&
+      !(entry.location().url.includes('/git/commit-operations/') && entry.text().includes('404'))
     )
       errors.push(entry.text());
   });
@@ -2001,8 +2006,31 @@ test('Git 提交响应丢失保留未知记录且修改或只读刷新不能重�
   await page.route(`**${commitEndpoint}`, async (route) => {
     expect(route.request().method()).toBe('POST');
     posts += 1;
-    expect(route.request().postDataJSON()).toEqual({ mode: 'SELECTED', paths: [path], message });
+    const payload = route.request().postDataJSON();
+    expect(payload).toEqual({
+      mode: 'SELECTED',
+      paths: [path],
+      message,
+      protocolVersion: 1,
+      operationId: expect.any(String),
+      expectedHead: 'a'.repeat(40),
+    });
+    operationId = payload.operationId;
+    expect(operationId).toMatch(/^[a-f0-9-]{36}$/);
     await route.abort('failed');
+  });
+  await page.route(`**/api/v1/projects/${project.id}/git/commit-operations/*`, async (route) => {
+    expect(route.request().method()).toBe('GET');
+    expect(route.request().url()).toContain(operationId);
+    recoveryReads += 1;
+    // No server saw the intercepted POST; 404 is NOT safe-to-retry proof.
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: { code: 'GIT_OPERATION_NOT_FOUND', message: '操作未找到，不证明未执行' },
+      }),
+    });
   });
   await page.goto(`/workspace/${session.id}?view=changes`);
   await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
@@ -2020,7 +2048,7 @@ test('Git 提交响应丢失保留未知记录且修改或只读刷新不能重�
   await alert.getByText('本次提交记录与保护范围', { exact: true }).click();
   await expect(alert.locator('code')).toHaveText(path);
   await expect(alert).toContainText(message);
-  await expect(alert).toContainText('关闭面板或内部跳转保留提交保护');
+  await expect(alert).toContainText('提交仅在浏览器恢复记录写入成功后发送');
   await expectNoHorizontalOverflow(page);
   const geometry = await alert.evaluate((node) => {
     const panel = node.closest('.inspector-body')!;
@@ -2070,6 +2098,17 @@ test('Git 提交响应丢失保留未知记录且修改或只读刷新不能重�
   await expect(alert.locator('code')).toHaveText(path);
   await expect(alert).toContainText(project.id);
   await attachViewportScreenshot(page, testInfo, 'workspace-git-unknown-reopened');
+  await page.reload();
+  await expect(alert).toBeVisible();
+  await expect(retry).toBeDisabled();
+  await expect.poll(() => recoveryReads).toBeGreaterThanOrEqual(1);
+  const markers = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('agenthub:git-commit:v1:'))
+      .map((key) => localStorage.getItem(key)),
+  );
+  expect(markers).toHaveLength(1);
+  expect(JSON.parse(markers[0]!)).toMatchObject({ operationId, projectId: project.id });
   expect(posts).toBe(1);
   expect(errors).toEqual([]);
 });

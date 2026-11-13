@@ -4,9 +4,15 @@ import {
   ExecutionTargetRepository,
   ProjectRepository,
   GitCommitOperationRepository,
+  AgentRepository,
+  TaskRepository,
+  worktreeExecutions,
+  appSettings,
+  gitCommitOperations,
+  gitWriteClaims,
 } from '@agenthub/db';
 import { expect, it, vi } from 'vitest';
-import { createManagedGitRuntime } from './managed-git-runtime.js';
+import { initializeManagedGitRuntime, createManagedGitRuntime } from './managed-git-runtime.js';
 import type { ManagedGitWriteContext, ManagedGitWriteKind } from './managed-git-writes.js';
 
 async function fixture() {
@@ -153,3 +159,92 @@ it.each(['REMOTE_NODE', 'DOCKER_CONTAINER'])(
     }
   },
 );
+
+it('legacy ambiguous worktree yields denied runtime without creating domain or executing raw writes', async () => {
+  const f = await fixture();
+  try {
+    const project = (await f.projects.get(f.projectIds[0]!))!;
+    const agent = await new AgentRepository(f.database.db).create({
+      id: randomUUID(),
+      targetId: project.targetId,
+      name: 'legacy',
+      agentKind: 'CUSTOM_ACP',
+      adapterKind: 'ACP_STDIO',
+      executable: '/bin/false',
+      status: 'READY',
+    });
+    const task = await new TaskRepository(f.database.db).create({
+      id: randomUUID(),
+      projectId: project.id,
+      title: 'legacy',
+      status: 'READY',
+    });
+    const [execution] = await f.database.db
+      .insert(worktreeExecutions)
+      .values({
+        id: randomUUID(),
+        projectId: project.id,
+        taskId: task.id,
+        agentId: agent.id,
+        status: 'SETTING_UP',
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: 'legacy',
+      })
+      .returning();
+    const diagnostic = vi.fn();
+    const runtime = await initializeManagedGitRuntime(f.input, diagnostic);
+    expect(diagnostic).toHaveBeenCalledExactlyOnceWith('GIT_LEGACY_WORKTREE_UNRESOLVED');
+    const write = vi.fn(async () => 'must never run');
+    for (const kind of kinds) {
+      await expect(runtime.writes.run(f.context(kind), write)).rejects.toMatchObject({
+        code: kind === 'COMMIT' ? 'GIT_WRITE_OUTCOME_UNKNOWN' : 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+      });
+    }
+    await expect(runtime.resolve(project.id)).rejects.toMatchObject({
+      code: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+    });
+    expect(write).not.toHaveBeenCalled();
+    expect(await f.database.db.select().from(appSettings)).toEqual([]);
+    expect(await f.database.db.select().from(gitCommitOperations)).toEqual([]);
+    expect(await f.database.db.select().from(gitWriteClaims)).toEqual([]);
+    // Existing read-only evidence remains accessible and unmodified.
+    expect(await f.database.db.select().from(worktreeExecutions)).toEqual([execution]);
+    expect(await f.projects.get(project.id)).toEqual(project);
+  } finally {
+    await f.database.close();
+  }
+});
+it('unknown initialization failure is redacted and diagnostic failure cannot enable writes or break read-only boot', async () => {
+  const diagnostic = vi.fn(() => {
+    throw new Error('logger failed');
+  });
+  const runtime = await initializeManagedGitRuntime(
+    {
+      db: {
+        transaction: async () => {
+          throw new Error('secret database URL');
+        },
+      } as never,
+      projects: { get: async () => undefined },
+      targets: { get: async () => undefined },
+    },
+    diagnostic,
+  );
+  expect(diagnostic).toHaveBeenCalledExactlyOnceWith('GIT_COORDINATION_UNAVAILABLE');
+  const write = vi.fn(async () => null);
+  await expect(
+    runtime.writes.run(
+      {
+        kind: 'COMMIT',
+        ownerScope: 'local-trusted',
+        operationId: randomUUID(),
+        projectId: randomUUID(),
+        expectedHead: null,
+        payload: {},
+      },
+      write,
+    ),
+  ).rejects.toMatchObject({ code: 'GIT_WRITE_OUTCOME_UNKNOWN' });
+  expect(write).not.toHaveBeenCalled();
+});

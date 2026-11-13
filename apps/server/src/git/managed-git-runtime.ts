@@ -1,5 +1,6 @@
 import {
   getOrCreateGitCoordinationDomain,
+  DatabaseInvariantError,
   GitCommitOperationRepository,
   type AgentHubDatabase,
 } from '@agenthub/db';
@@ -8,6 +9,7 @@ import {
   createLocalGitWriteResourceResolver,
   type GitWriteResource,
 } from './git-write-resource.js';
+import { AppError } from '../errors.js';
 import { ManagedGitWrites } from './managed-git-writes.js';
 
 type ResolverInput = Parameters<typeof createLocalGitWriteResourceResolver>[0];
@@ -55,4 +57,45 @@ export async function createManagedGitRuntime(
   // the primary worktree. Callers must derive/freeze actual primary expectedHead.
   // A retry must reuse that original context, never refresh it into new intent.
   return { writes, resolve, domain };
+}
+
+/** Keep read-only application/recovery routes available when durable admission
+ * cannot initialize. This is an explicit denied runtime, never an absent
+ * dependency that would select legacy uncoordinated writers. No repair/retry. */
+export async function initializeManagedGitRuntime(
+  input: ManagedGitRuntimeInput,
+  onUnavailable?: (code: string) => void,
+): Promise<Pick<Awaited<ReturnType<typeof createManagedGitRuntime>>, 'writes' | 'resolve'>> {
+  try {
+    return await createManagedGitRuntime(input);
+  } catch (error) {
+    const knownCodes = new Set([
+      'GIT_DOMAIN_INVALID',
+      'GIT_DOMAIN_MISSING',
+      'GIT_DOMAIN_MISMATCH',
+      'GIT_LEGACY_WORKTREE_UNRESOLVED',
+    ]);
+    const code =
+      error instanceof DatabaseInvariantError && knownCodes.has(error.code)
+        ? error.code
+        : 'GIT_COORDINATION_UNAVAILABLE';
+    // Never pass the raw error (which may contain SQL, paths or credentials).
+    // A logging failure must not disable read-only recovery either.
+    try {
+      onUnavailable?.(code);
+    } catch {
+      /* best-effort diagnostic only */
+    }
+    const deny = async (): Promise<never> => {
+      throw new AppError(
+        409,
+        'WORKTREE_GIT_OUTCOME_UNKNOWN',
+        'Git 协调状态尚未确认，已禁止写入；只读查询仍可使用',
+      );
+    };
+    return Object.freeze({
+      writes: new ManagedGitWrites({ execute: deny }),
+      resolve: deny,
+    });
+  }
 }

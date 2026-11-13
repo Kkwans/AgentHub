@@ -59,7 +59,16 @@ export function GitChangesTree({
     value: 'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines',
   ) => void;
 }) {
-  const { owner, operations, submit } = useGitCommitOperations();
+  const { owner, operations, submit, recover } = useGitCommitOperations();
+  useEffect(() => {
+    if (!projectId) return;
+    void recover(projectId);
+    const changed = () => {
+      void recover(projectId);
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, [projectId, recover]);
   const alive = useRef(false);
   const uiAttempt = useRef(0);
   const draftRevision = useRef(0);
@@ -108,12 +117,25 @@ export function GitChangesTree({
 
   const commit = () => {
     if (projectId) {
-      if (!owner || !selectedPaths.length || !commitMessage.trim() || owner.isLocked(projectId))
+      if (
+        !owner ||
+        !status.data ||
+        status.isLoading ||
+        status.error ||
+        !selectedPaths.length ||
+        !commitMessage.trim() ||
+        owner.isLocked(projectId)
+      )
         return;
       const attemptToken = ++uiAttempt.current;
       const submittedRevision = draftRevision.current;
       setRefreshError(false);
-      const attempt = { projectId, paths: [...selectedPaths], message: commitMessage.trim() };
+      const attempt = {
+        projectId,
+        paths: [...selectedPaths],
+        message: commitMessage.trim(),
+        expectedHead: status.data?.headSha ?? null,
+      };
       setCommitError(undefined);
       void submit(
         attempt,
@@ -199,6 +221,7 @@ export function GitChangesTree({
   };
 
   const refetchCurrentView = () => {
+    if (projectId) void recover(projectId);
     if (view === 'history') void commits.refetch();
     else if (view === 'branches') void branches.refetch();
     else {
@@ -385,10 +408,20 @@ export function GitChangesTree({
               </ul>
               <p>
                 {projectId
-                  ? '关闭面板或内部跳转保留提交保护；刷新页面、认证界面重新出现或重新登录会丢失保护，届时请先人工核对。'
+                  ? '提交仅在浏览器恢复记录写入成功后发送；刷新页面或重新登录后仅只读查询，不会自动重发。无法读取记录时继续禁写。恢复原操作不代表当前草稿已提交；请勿删除浏览器数据绕过保护。'
                   : '当前面板已锁定提交。此保护不跨面板关闭、路由离开或页面刷新保留；重新打开前仍需人工核对。'}
               </p>
             </details>
+          )}
+          {projectId && commitUnknown && (
+            <button
+              type="button"
+              onClick={() => {
+                void recover(projectId);
+              }}
+            >
+              只读核对原操作
+            </button>
           )}
           <button
             type="button"

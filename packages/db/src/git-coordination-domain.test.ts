@@ -9,12 +9,19 @@ import {
   GIT_COORDINATION_DOMAIN_SETTING_KEY as key,
   getOrCreateGitCoordinationDomain,
 } from './git-coordination-domain.js';
-import { ExecutionTargetRepository, ProjectRepository } from './repositories.js';
-import { appSettings, gitCommitOperations, gitWriteClaims } from './schema.js';
+import {
+  AgentRepository,
+  TaskRepository,
+  ExecutionTargetRepository,
+  ProjectRepository,
+} from './repositories.js';
+import { appSettings, gitCommitOperations, gitWriteClaims, worktreeExecutions } from './schema.js';
 
 let database: Awaited<ReturnType<typeof createPgliteDatabase>>;
 let projectId: string;
 let targetId: string;
+let agentId: string;
+let taskId: string;
 beforeAll(async () => {
   database = await createPgliteDatabase({ dataDir: 'memory://' });
   targetId = (
@@ -40,8 +47,30 @@ beforeAll(async () => {
     })
   ).id;
 });
+beforeAll(async () => {
+  agentId = (
+    await new AgentRepository(database.db).create({
+      id: randomUUID(),
+      targetId,
+      name: 'domain-test',
+      agentKind: 'CUSTOM_ACP',
+      adapterKind: 'ACP_STDIO',
+      executable: '/bin/false',
+      status: 'READY',
+    })
+  ).id;
+  taskId = (
+    await new TaskRepository(database.db).create({
+      id: randomUUID(),
+      projectId,
+      title: 'domain-test',
+      status: 'READY',
+    })
+  ).id;
+});
 afterAll(async () => database?.close());
 beforeEach(async () => {
+  await database.db.delete(worktreeExecutions);
   await database.db.delete(gitWriteClaims);
   await database.db.delete(gitCommitOperations);
   await database.db.delete(appSettings).where(eq(appSettings.key, key));
@@ -239,5 +268,79 @@ it.each(['dispatchToken', 'workerId', 'phase', 'terminal'])(
       code: 'GIT_DOMAIN_MISMATCH',
     });
     expect(await database.db.select().from(gitWriteClaims)).toHaveLength(1);
+  },
+);
+
+it.each([
+  ['SETTING_UP', null],
+  ['MERGING', null],
+  ['SETTING_UP', 'WORKTREE_RECOVERY_UNRESOLVED'],
+  ['MERGING', 'WORKTREE_RECOVERY_UNRESOLVED'],
+  ['BLOCKED', 'WORKTREE_GIT_OUTCOME_UNKNOWN'],
+])(
+  'legacy %s / %s refuses initialization with no ledger, preserving evidence',
+  async (status, errorCode) => {
+    const [execution] = await database.db
+      .insert(worktreeExecutions)
+      .values({
+        id: randomUUID(),
+        projectId,
+        taskId,
+        agentId,
+        status: status!,
+        errorCode,
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: 'test-legacy',
+      })
+      .returning();
+    await expect(getOrCreateGitCoordinationDomain(database.db)).rejects.toMatchObject({
+      code: 'GIT_LEGACY_WORKTREE_UNRESOLVED',
+    });
+    expect(await database.db.select().from(appSettings).where(eq(appSettings.key, key))).toEqual(
+      [],
+    );
+    expect(await database.db.select().from(gitCommitOperations)).toEqual([]);
+    expect(await database.db.select().from(gitWriteClaims)).toEqual([]);
+    expect(await database.db.select().from(worktreeExecutions)).toEqual([execution]);
+  },
+);
+it('existing domain also refuses factory reconstruction during ambiguous worktree activity', async () => {
+  const domain = await getOrCreateGitCoordinationDomain(database.db);
+  await database.db.insert(worktreeExecutions).values({
+    id: randomUUID(),
+    projectId,
+    taskId,
+    agentId,
+    status: 'MERGING',
+    gitOwnerScope: 'local-trusted',
+    gitCreateOperationId: randomUUID(),
+    baseBranch: 'main',
+    baseSha: 'a'.repeat(40),
+    taskBranch: 'test-current',
+  });
+  await expect(getOrCreateGitCoordinationDomain(database.db)).rejects.toMatchObject({
+    code: 'GIT_LEGACY_WORKTREE_UNRESOLVED',
+  });
+  expect(
+    (await database.db.select().from(appSettings).where(eq(appSettings.key, key)))[0]!.valueJson,
+  ).toEqual({ version: 1, id: domain.id });
+});
+it.each(['QUEUED', 'RUNNING', 'REVIEW', 'DONE', 'BLOCKED', 'CANCELED'])(
+  '%s without ambiguous Git evidence does not block domain initialization',
+  async (status) => {
+    await database.db.insert(worktreeExecutions).values({
+      id: randomUUID(),
+      projectId,
+      taskId,
+      agentId,
+      status,
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: 'test-safe',
+    });
+    await expect(getOrCreateGitCoordinationDomain(database.db)).resolves.toMatchObject({
+      id: expect.any(String),
+    });
   },
 );

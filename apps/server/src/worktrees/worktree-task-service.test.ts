@@ -15,6 +15,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AppError } from '../errors.js';
+import { createManagedGitRuntime } from '../git/managed-git-runtime.js';
 import type { CreateSessionInput, StartRunInput } from '../sessions/session-service.js';
 import type { WorktreeGitService } from './worktree-git-service.js';
 import {
@@ -35,6 +36,7 @@ describe('Worktree Task Runner 编排', () => {
   let agents: AgentRepository<(typeof database)['db']>;
   let tasks: TaskRepository<(typeof database)['db']>;
   let executions: WorktreeExecutionRepository<(typeof database)['db']>;
+  const bootRuntimes: Awaited<ReturnType<typeof createManagedGitRuntime>>[] = [];
 
   beforeAll(async () => {
     database = await createPgliteDatabase({ dataDir: 'memory://' });
@@ -43,6 +45,29 @@ describe('Worktree Task Runner 编排', () => {
     agents = new AgentRepository(database.db);
     tasks = new TaskRepository(database.db);
     executions = new WorktreeExecutionRepository(database.db);
+    // These services share one application boot, before any task starts. Building
+    // another runtime after the UNKNOWN cases below would correctly deny startup.
+    for (let index = 0; index < 4; index++) {
+      bootRuntimes.push(
+        await createManagedGitRuntime(
+          { db: database.db, projects, targets },
+          {
+            createResourceResolver: () => async (projectId) => {
+              const project = (await projects.get(projectId))!;
+              return {
+                projectId,
+                targetId: project.targetId,
+                executionDeviceId: 'ignored',
+                repositoryKey: 'ignored',
+                canonicalCommonDir: '/canonical/.git',
+                worktreeIdentity: '/canonical',
+                head: 'c'.repeat(40),
+              };
+            },
+          },
+        ),
+      );
+    }
   });
 
   afterAll(async () => database.close());
@@ -86,6 +111,133 @@ describe('Worktree Task Runner 编排', () => {
       lookup.mockRestore();
       await service.shutdown();
     }
+  });
+
+  it('生产 runtime 让创建和合并共用持久协调器，使用 primary HEAD 和规范资源根', async () => {
+    const fixture = await seedFixture('managed-writes');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: 'managed',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const managed = bootRuntimes.shift()!;
+    const run = vi.spyOn(managed.writes, 'run');
+    const create = vi.spyOn(runtime.git, 'create');
+    const merge = vi.spyOn(runtime.git, 'commitAndMerge');
+    const service = createService(runtime, managed);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId }, 'local-trusted');
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    expect(run.mock.calls[0]?.[0]).toMatchObject({
+      kind: 'WORKTREE_CREATE',
+      expectedHead: 'c'.repeat(40),
+      operationId: queued.execution.gitCreateOperationId,
+      payload: { baseSha: 'a'.repeat(40) },
+    });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ projectRoot: '/canonical' }));
+    await complete(service, task.id, running.runId!);
+    const result = await service.merge(queued.execution.id);
+    expect(result.execution.status).toBe('DONE');
+    expect(run.mock.calls[1]?.[0]).toMatchObject({
+      kind: 'WORKTREE_MERGE',
+      ownerScope: 'local-trusted',
+      expectedHead: 'c'.repeat(40),
+    });
+    expect(run.mock.calls[1]?.[0].operationId).not.toBe(queued.execution.gitCreateOperationId);
+    expect(merge).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ projectRoot: '/canonical' }),
+    );
+    await service.shutdown();
+  });
+
+  it('同审阅 merge 重试保持同 operationId；协调器 UNKNOWN 不回退 raw Git 或 REVIEW', async () => {
+    const fixture = await seedFixture('managed-merge-replay');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: 'replay',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const managed = bootRuntimes.shift()!;
+    const service = createService(runtime, managed);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId }, 'local-trusted');
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    await complete(service, task.id, running.runId!);
+    const merge = vi.spyOn(runtime.git, 'commitAndMerge');
+    const run = vi
+      .spyOn(managed.writes, 'run')
+      .mockRejectedValue(new AppError(409, 'WORKTREE_GIT_PREWRITE_REJECTED', 'rejected'));
+    for (const message of ['first', 'changed'])
+      await expect(service.merge(queued.execution.id, message)).rejects.toMatchObject({
+        code: 'WORKTREE_GIT_PREWRITE_REJECTED',
+      });
+    expect(run.mock.calls[0]?.[0].operationId).toBe(run.mock.calls[1]?.[0].operationId);
+    run.mockRejectedValue(new AppError(409, 'WORKTREE_GIT_OUTCOME_UNKNOWN', 'unknown'));
+    await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+      code: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+    });
+    expect((await service.get(queued.execution.id)).status).toBe('MERGING');
+    expect(merge).not.toHaveBeenCalled();
+    await expect(service.cancel(queued.execution.id)).rejects.toMatchObject({
+      code: 'WORKTREE_EXECUTION_BUSY',
+    });
+    await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+      code: 'WORKTREE_EXECUTION_NOT_IN_REVIEW',
+    });
+    await service.shutdown();
+  });
+
+  it('创建被协调器隔离后保留 SETTING_UP 槽位且绝不 raw fallback', async () => {
+    const fixture = await seedFixture('managed-create-unknown');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: 'unknown',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const managed = bootRuntimes.shift()!;
+    vi.spyOn(managed.writes, 'run').mockRejectedValue(
+      new AppError(409, 'WORKTREE_GIT_OUTCOME_UNKNOWN', 'unknown'),
+    );
+    const create = vi.spyOn(runtime.git, 'create');
+    const service = createService(runtime, managed);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId }, 'local-trusted');
+    await service.processQueue(fixture.projectId);
+    const isolated = await service.get(queued.execution.id);
+    expect(isolated.status).toBe('SETTING_UP');
+    expect(isolated.errorCode).toBe('WORKTREE_GIT_OUTCOME_UNKNOWN');
+    expect(create).not.toHaveBeenCalled();
+    await expect(service.cancel(isolated.id)).rejects.toMatchObject({
+      code: 'WORKTREE_EXECUTION_BUSY',
+    });
+    await service.shutdown();
+  });
+
+  it('启用 runtime 后历史 ownerless 队列不回退 raw Git', async () => {
+    const fixture = await seedFixture('managed-ownerless');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: 'legacy',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const managed = bootRuntimes.shift()!;
+    const create = vi.spyOn(runtime.git, 'create');
+    const resolve = vi.spyOn(managed, 'resolve');
+    const service = createService(runtime, managed);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+    await service.processQueue(fixture.projectId);
+    const blocked = await waitForStatus(queued.execution.id, 'BLOCKED');
+    expect(blocked.errorCode).toBe('WORKTREE_GIT_OWNER_MISSING');
+    expect(create).not.toHaveBeenCalled();
+    expect(resolve).not.toHaveBeenCalled();
+    await service.shutdown();
   });
 
   it.each(['SETTING_UP', 'RUNNING', 'MERGING'] as const)(
@@ -1049,7 +1201,10 @@ describe('Worktree Task Runner 编排', () => {
     return { targetId, projectId, agentId };
   }
 
-  function createService(runtime: ReturnType<typeof createRuntime>) {
+  function createService(
+    runtime: ReturnType<typeof createRuntime>,
+    managedGit?: Awaited<ReturnType<typeof createManagedGitRuntime>>,
+  ) {
     return new WorktreeTaskService(
       executions,
       tasks,
@@ -1059,6 +1214,7 @@ describe('Worktree Task Runner 编排', () => {
       runtime.sessions,
       runtime.git,
       runtime.publisher,
+      managedGit,
     );
   }
 

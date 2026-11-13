@@ -22,7 +22,7 @@ vi.mock('../../../lib/realtime', () => ({
 
 const session = {
   id: 'session-1',
-  projectId: 'project-1',
+  projectId: '11111111-1111-4111-8111-111111111111',
   agentId: 'agent-1',
   taskId: null,
   externalSessionId: 'external-session',
@@ -70,6 +70,26 @@ function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify({ data, requestId: 'workspace-page-test' }), {
     status,
     headers: { 'content-type': 'application/json' },
+  });
+}
+
+// Only the UUID actually observed on a mocked POST can obtain a durable receipt.
+function gitTerminalResponse(path: string, operationId: string | undefined) {
+  if (
+    !operationId ||
+    path !== `/api/v1/projects/${project.id}/git/commit-operations/${operationId}`
+  )
+    return undefined;
+  return jsonResponse({
+    scope: 'local-trusted',
+    projectId: project.id,
+    operationId,
+    protocolVersion: 1,
+    requestHash: 'a'.repeat(64),
+    phase: 'COMMAND_SUCCEEDED',
+    commandExit: 0,
+    observedAfterHead: 'abcdef0123456789abcdef0123456789abcdef01',
+    resultEvidence: { kind: 'COMMAND_EXIT_ZERO', headAttribution: 'OBSERVED_ONLY' },
   });
 }
 
@@ -152,6 +172,7 @@ function baseFetch(path: string, method?: string) {
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -788,6 +809,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     const pending = new Promise<Response>((resolve) => {
       finish = resolve;
     });
+    let operationId: string | undefined;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path === `/api/v1/projects/${project.id}/git/status`)
@@ -796,9 +818,20 @@ describe('WorkspacePage 数据分区可靠性', () => {
           clean: false,
           entries: [{ index: ' ', worktree: 'M', path: 'a.ts' }],
         });
-      if (path === `/api/v1/projects/${project.id}/git/commit` && init?.method === 'POST')
+      if (path === `/api/v1/projects/${project.id}/git/commit` && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body));
+        operationId = body.operationId;
+        expect(body).toEqual({
+          protocolVersion: 1,
+          operationId: expect.any(String),
+          expectedHead: null,
+          mode: 'SELECTED',
+          paths: ['a.ts'],
+          message: '保留草稿',
+        });
         return pending;
-      return baseFetch(path, init?.method);
+      }
+      return gitTerminalResponse(path, operationId) ?? baseFetch(path, init?.method);
     });
     const savedStorage = JSON.stringify({ ...localStorage });
     renderWorkspace(fetchMock, `/workspace/${session.id}?view=changes`);
@@ -833,7 +866,18 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(screen.getByPlaceholderText('说明这次变更解决了什么')).toBe(draft);
     fireEvent.click(focus);
     fireEvent.click(focus);
-    expect(JSON.stringify({ ...localStorage })).toBe(savedStorage);
+    const recoveryKeys = Object.keys(localStorage).filter((key) =>
+      key.startsWith('agenthub:git-commit:v1:'),
+    );
+    expect(recoveryKeys).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem(recoveryKeys[0]!)!)).toMatchObject({
+      operationId,
+      projectId: project.id,
+    });
+    const nonRecovery = Object.fromEntries(
+      Object.entries({ ...localStorage }).filter(([key]) => !recoveryKeys.includes(key)),
+    );
+    expect(JSON.stringify(nonRecovery)).toBe(savedStorage);
     expect(
       fetchMock.mock.calls.filter(
         ([path, init]) => String(path).endsWith('/git/commit') && init?.method === 'POST',
@@ -911,6 +955,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
   });
 
   it('Git 工作区提供可发现的历史、分支与 selected-files commit', async () => {
+    let operationId: string | undefined;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);
       if (path === `/api/v1/projects/${project.id}/git/status`) {
@@ -918,7 +963,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
           branch: 'main',
           upstream: 'origin/main',
           ahead: 1,
-          headSha: '1234567890abcdef',
+          headSha: '1'.repeat(40),
           clean: false,
           entries: [
             { index: ' ', worktree: 'M', path: 'apps/web/src/App.tsx' },
@@ -949,13 +994,14 @@ describe('WorkspacePage 数据分区可靠性', () => {
         ]);
       }
       if (path === `/api/v1/projects/${project.id}/git/commit` && init?.method === 'POST') {
+        operationId = JSON.parse(String(init.body)).operationId;
         return jsonResponse({
           beforeSha: '1234567',
           sha: 'abcdef0123456789abcdef0123456789abcdef01',
           output: '[main] ok',
         });
       }
-      return baseFetch(path, init?.method);
+      return gitTerminalResponse(path, operationId) ?? baseFetch(path, init?.method);
     });
     renderWorkspace(fetchMock, `/sessions/${session.id}?view=git`);
 
@@ -990,6 +1036,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({
+            protocolVersion: 1,
+            operationId,
+            expectedHead: '1'.repeat(40),
             mode: 'SELECTED',
             paths: ['apps/web/src/App.tsx'],
             message: 'feat(workspace): 提交选择的文件',

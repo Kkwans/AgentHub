@@ -23,6 +23,7 @@ vi.mock('../../../components/AccessGate', () => ({
 const clients: QueryClient[] = [];
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   clients.splice(0).forEach((client) => client.clear());
   vi.restoreAllMocks();
   identity.id = accountA;
@@ -38,6 +39,23 @@ const deferred = () => {
   return { resolve, reject, promise };
 };
 const success = { sha: 'a'.repeat(40) };
+const project = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+function terminalQuery() {
+  vi.spyOn(api, 'get').mockImplementation(
+    async (path) =>
+      ({
+        scope: `account:${accountA}`,
+        projectId: project,
+        operationId: path.split('/').at(-1),
+        protocolVersion: 1,
+        requestHash: 'a'.repeat(64),
+        phase: 'COMMAND_SUCCEEDED',
+        commandExit: 0,
+        observedAfterHead: success.sha,
+        resultEvidence: { kind: 'COMMAND_EXIT_ZERO', headAttribution: 'OBSERVED_ONLY' },
+      }) as never,
+  );
+}
 type Owner = ReturnType<typeof createGitCommitOwner>;
 function mount(send: (input: unknown) => Promise<unknown>, strict = false) {
   const client = new QueryClient({
@@ -223,6 +241,7 @@ it('adapter刷新等待期间撤权/ABA后不发出旧UI错误回调', async () 
   const refresh = deferred();
   const app = mount(vi.fn());
   vi.spyOn(api, 'post').mockResolvedValue(success);
+  terminalQuery();
   vi.spyOn(app.client, 'invalidateQueries').mockImplementation(async () => {
     await refresh.promise;
   });
@@ -232,7 +251,11 @@ it('adapter刷新等待期间撤权/ABA后不发出旧UI错误回调', async () 
   await act(async () => {
     pending = app
       .getOperations()
-      .submit({ projectId: 'a', paths: ['one.ts'], message: '原提交' }, committed, failed);
+      .submit(
+        { projectId: project, paths: ['one.ts'], message: '原提交', expectedHead: null },
+        committed,
+        failed,
+      );
     await Promise.resolve();
   });
   expect(committed).toHaveBeenCalledTimes(1);
@@ -250,17 +273,248 @@ it('adapter刷新等待期间撤权/ABA后不发出旧UI错误回调', async () 
 it('adapter成功UI回调同步撤权后不再刷新原缓存', async () => {
   const app = mount(vi.fn());
   vi.spyOn(api, 'post').mockResolvedValue(success);
+  terminalQuery();
   const invalidate = vi.spyOn(app.client, 'invalidateQueries');
   const failed = vi.fn();
   await act(async () => {
     await app
       .getOperations()
       .submit(
-        { projectId: 'a', paths: ['one.ts'], message: '原提交' },
+        { projectId: project, paths: ['one.ts'], message: '原提交', expectedHead: null },
         () => app.getOwner().revoke(),
         failed,
       );
   });
   expect(invalidate).not.toHaveBeenCalled();
   expect(failed).not.toHaveBeenCalled();
+});
+
+it('持久marker写入读回后才POST，绑定UUID和原HEAD，完整回执才清marker', async () => {
+  const app = mount(vi.fn());
+  terminalQuery();
+  const post = vi.spyOn(api, 'post').mockImplementation(async (_path, body) => {
+    const input = body as { operationId: string; expectedHead: string; protocolVersion: number };
+    expect(input.protocolVersion).toBe(1);
+    expect(input.expectedHead).toBe(success.sha);
+    expect(localStorage.length).toBe(1);
+    expect(localStorage.getItem(localStorage.key(0)!)).toContain(input.operationId);
+    return success as never;
+  });
+  const committed = vi.fn();
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '提交', expectedHead: success.sha },
+        committed,
+        vi.fn(),
+      );
+  });
+  expect(post).toHaveBeenCalledTimes(1);
+  expect(committed).toHaveBeenCalledTimes(1);
+  expect(localStorage.length).toBe(0);
+});
+
+it('网络回执丢失、卸载重开后只GET，404继续锁定且不重发POST', async () => {
+  const first = mount(vi.fn());
+  const post = vi.spyOn(api, 'post').mockRejectedValue(new Error('response lost'));
+  await act(async () => {
+    await first
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '提交', expectedHead: null },
+        vi.fn(),
+        vi.fn(),
+      );
+  });
+  expect(localStorage.length).toBe(1);
+  first.view.unmount();
+  const second = mount(vi.fn());
+  const get = vi.spyOn(api, 'get').mockRejectedValue(new Error('404'));
+  await act(async () => {
+    await second.getOperations().recover(project);
+  });
+  expect(second.getOwner().isLocked(project)).toBe(true);
+  expect(get).toHaveBeenCalledTimes(1);
+  expect(post).toHaveBeenCalledTimes(1);
+  expect(localStorage.length).toBe(1);
+  await act(async () => {
+    await expect(
+      second
+        .getOperations()
+        .submit(
+          { projectId: project, paths: ['two'], message: '新草稿', expectedHead: null },
+          vi.fn(),
+          vi.fn(),
+        ),
+    ).rejects.toThrow();
+  });
+  expect(post).toHaveBeenCalledTimes(1);
+});
+
+it('原操作只读恢复成功仅解恢复锁，不调用当前草稿完成回调', async () => {
+  const first = mount(vi.fn());
+  const post = vi.spyOn(api, 'post').mockRejectedValue(new Error('response lost'));
+  const committed = vi.fn();
+  await act(async () => {
+    await first
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '旧提交', expectedHead: null },
+        committed,
+        vi.fn(),
+      );
+  });
+  terminalQuery();
+  await act(async () => {
+    await first.getOperations().recover(project);
+  });
+  expect(first.getOwner().isLocked(project)).toBe(false);
+  expect(localStorage.length).toBe(0);
+  expect(committed).not.toHaveBeenCalled();
+  expect(post).toHaveBeenCalledTimes(1);
+});
+
+it('存储不可写拒绝POST；缺少原HEAD不生成marker或POST', async () => {
+  const app = mount(vi.fn());
+  const post = vi.spyOn(api, 'post');
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('blocked');
+  });
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '提交', expectedHead: null },
+        vi.fn(),
+        vi.fn(),
+      );
+  });
+  expect(post).not.toHaveBeenCalled();
+  expect(app.getOwner().isLocked(project)).toBe(true);
+});
+
+it('恢复GET在途撤权不移除marker，不显示旧结果', async () => {
+  const app = mount(vi.fn());
+  vi.spyOn(api, 'post').mockRejectedValue(new Error('lost'));
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '旧提交', expectedHead: null },
+        vi.fn(),
+        vi.fn(),
+      );
+  });
+  const read = deferred();
+  vi.spyOn(api, 'get').mockReturnValue(read.promise as never);
+  let pending!: Promise<void>;
+  await act(async () => {
+    pending = app.getOperations().recover(project);
+  });
+  act(() => authSession.notifyAuthorizationRequired());
+  await act(async () => {
+    read.resolve({});
+    await pending;
+  });
+  expect(localStorage.length).toBe(1);
+  expect(app.getOwner().getSnapshot()).toEqual([]);
+});
+
+it('POST有效SHA但持久GET无回执时仍保留marker，不清当前草稿', async () => {
+  const app = mount(vi.fn());
+  vi.spyOn(api, 'post').mockResolvedValue(success);
+  vi.spyOn(api, 'get').mockRejectedValue(new Error('404'));
+  const committed = vi.fn();
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '提交', expectedHead: null },
+        committed,
+        vi.fn(),
+      );
+  });
+  expect(committed).not.toHaveBeenCalled();
+  expect(localStorage.length).toBe(1);
+  expect(app.getOwner().isLocked(project)).toBe(true);
+});
+
+it('错误项目恢复记录无法解析时禁止POST，不删除坏记录', async () => {
+  const app = mount(vi.fn());
+  const key = `agenthub:git-commit:v1:${encodeURIComponent(`account:${accountA}`)}:${project}:dddddddd-dddd-4ddd-8ddd-dddddddddddd`;
+  localStorage.setItem(key, '{broken');
+  const post = vi.spyOn(api, 'post');
+  await act(async () => {
+    await app.getOperations().recover(project);
+  });
+  expect(app.getOwner().isLocked(project)).toBe(true);
+  expect(localStorage.getItem(key)).toBe('{broken');
+  await act(async () => {
+    await expect(
+      app
+        .getOperations()
+        .submit(
+          { projectId: project, paths: ['one'], message: '提交', expectedHead: null },
+          vi.fn(),
+          vi.fn(),
+        ),
+    ).rejects.toThrow();
+  });
+  expect(post).not.toHaveBeenCalled();
+});
+
+it('POST畸形SHA不清marker；随后持久终态恢复解锁但不清草稿', async () => {
+  const app = mount(vi.fn());
+  vi.spyOn(api, 'post').mockResolvedValue({ sha: 'short' });
+  terminalQuery();
+  const committed = vi.fn();
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '提交', expectedHead: null },
+        committed,
+        vi.fn(),
+      );
+  });
+  expect(localStorage.length).toBe(1);
+  expect(api.get).not.toHaveBeenCalled();
+  expect(app.getOwner().isLocked(project)).toBe(true);
+  await act(async () => {
+    await app.getOperations().recover(project);
+  });
+  expect(localStorage.length).toBe(0);
+  expect(app.getOwner().isLocked(project)).toBe(false);
+  expect(committed).not.toHaveBeenCalled();
+});
+
+it('并发旧恢复GET晚到失败不能重新锁定已确认操作', async () => {
+  const app = mount(vi.fn());
+  vi.spyOn(api, 'post').mockRejectedValue(new Error('lost'));
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '旧提交', expectedHead: null },
+        vi.fn(),
+        vi.fn(),
+      );
+  });
+  const old = deferred();
+  terminalQuery();
+  vi.mocked(api.get).mockImplementationOnce(() => old.promise as never);
+  let first!: Promise<void>;
+  await act(async () => {
+    first = app.getOperations().recover(project);
+  });
+  await act(async () => {
+    await app.getOperations().recover(project);
+  });
+  expect(app.getOwner().isLocked(project)).toBe(false);
+  await act(async () => {
+    old.reject(new Error('old response'));
+    await first;
+  });
+  expect(app.getOwner().isLocked(project)).toBe(false);
 });

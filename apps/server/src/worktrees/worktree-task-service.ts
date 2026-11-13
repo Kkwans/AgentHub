@@ -1,5 +1,6 @@
 import { RunStartError } from '../sessions/run-start-error.js';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import type { createManagedGitRuntime } from '../git/managed-git-runtime.js';
 
 import type { WorktreeExecutionStatus } from '@agenthub/agent-core';
 import {
@@ -39,6 +40,11 @@ export interface QueueWorktreeTaskInput {
   promptVariables?: Record<string, unknown> | undefined;
 }
 
+export type WorktreeGitRuntime = Pick<
+  Awaited<ReturnType<typeof createManagedGitRuntime>>,
+  'writes' | 'resolve'
+>;
+
 export class WorktreeTaskService implements TaskRunLifecycleObserver {
   private readonly draining = new Map<string, Promise<void>>();
   private accepting = true;
@@ -55,6 +61,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       'inspectBase' | 'taskBranch' | 'create' | 'review' | 'commitAndMerge'
     >,
     private readonly publisher: WorktreeEventPublisher,
+    private readonly managedGit?: WorktreeGitRuntime,
   ) {}
 
   list(filters: {
@@ -247,14 +254,34 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       });
     let gitCompleted = false;
     try {
-      const result = await this.git.commitAndMerge({
+      const mergeInput = {
         projectRoot: project.realRootPath,
         worktreePath: claimed.execution.worktreePath,
         baseBranch: claimed.execution.baseBranch,
         baseSha: claimed.execution.baseSha,
         taskBranch: claimed.execution.taskBranch,
         commitMessage: commitMessage || `feat(task): ${claimed.task.title}`,
-      });
+      };
+      const result = this.managedGit
+        ? await this.managedGit.writes.run(
+            {
+              kind: 'WORKTREE_MERGE',
+              ownerScope: requireGitOwner(claimed.execution),
+              // Stable for this exact review generation. Neither changed message
+              // nor a lost reply can mint a fresh identity to dispatch again.
+              operationId: mergeOperationId(claimed.execution.id, claimed.execution.runId),
+              projectId: execution.projectId,
+              expectedHead: (await this.managedGit.resolve(execution.projectId)).head,
+              payload: mergeInput,
+            },
+            (resource, payload) =>
+              this.git.commitAndMerge({
+                ...(payload as unknown as typeof mergeInput),
+                projectRoot: resource.worktreeIdentity,
+              }),
+            (value) => value.mergeCommitSha,
+          )
+        : await this.git.commitAndMerge(mergeInput);
       gitCompleted = true;
       const completed = await this.executions.transitionWithTask(
         id,
@@ -446,13 +473,31 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         this.requireProject(execution.projectId),
         this.requireTask(execution.taskId),
       ]);
-      const worktreePath = await this.git.create({
+      const createInput = {
         projectRoot: project.realRootPath,
         projectId: execution.projectId,
         executionId: execution.id,
         taskBranch: execution.taskBranch,
         baseSha: execution.baseSha,
-      });
+      };
+      const worktreePath = this.managedGit
+        ? await this.managedGit.writes.run(
+            {
+              kind: 'WORKTREE_CREATE',
+              ownerScope: requireGitOwner(execution),
+              operationId: execution.gitCreateOperationId!,
+              projectId: execution.projectId,
+              // The selected branch baseSha need not be primary worktree HEAD.
+              expectedHead: (await this.managedGit.resolve(execution.projectId)).head,
+              payload: createInput,
+            },
+            (resource, payload) =>
+              this.git.create({
+                ...(payload as unknown as typeof createInput),
+                projectRoot: resource.worktreeIdentity,
+              }),
+          )
+        : await this.git.create(createInput);
       gitCreated = true;
       await this.executions.patch(id, { worktreePath });
       const config = execution.configJson;
@@ -629,4 +674,27 @@ function asAppError(error: unknown, code: string, message: string): AppError {
     }
   }
   return new AppError(500, code, message, undefined, { cause: error });
+}
+
+function requireGitOwner(execution: {
+  gitOwnerScope: string | null;
+  gitCreateOperationId: string | null;
+}): string {
+  if (!execution.gitOwnerScope || !execution.gitCreateOperationId)
+    throw new AppError(
+      409,
+      'WORKTREE_GIT_OWNER_MISSING',
+      '历史隔离执行缺少可信 Git 操作归属，已禁止写入；请核对后创建新执行',
+    );
+  return execution.gitOwnerScope;
+}
+
+function mergeOperationId(executionId: string, runId: string | null): string {
+  if (!runId)
+    throw new AppError(409, 'WORKTREE_GIT_REVIEW_MISSING', '缺少可信审阅 Run，已禁止合并');
+  const hex = createHash('sha256')
+    .update(JSON.stringify(['agenthub.worktree-merge.v1', executionId, runId]))
+    .digest('hex');
+  // RFC variant UUIDv8 derived from the immutable execution/review identity.
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }

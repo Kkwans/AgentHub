@@ -4,6 +4,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { runProcess, type ProcessResult } from '@agenthub/agent-core';
 
 import { AppError } from '../errors.js';
+import { isolatedGitEnvironment } from '../git/git-write-resource.js';
 
 const GIT_EXECUTABLE = '/usr/bin/git';
 const SAFE_PATH_SEGMENT = /^[0-9a-f-]{1,64}$/i;
@@ -449,6 +450,9 @@ async function git(args: string[], maxOutputBytes = 1024 * 1024): Promise<Proces
   return runProcess({
     executable: GIT_EXECUTABLE,
     args,
+    // Match the managed resolver: ambient Git variables must not redirect writes.
+    inheritEnv: false,
+    env: isolatedGitEnvironment,
     timeoutMs: 30_000,
     maxOutputBytes,
   });
