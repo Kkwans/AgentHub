@@ -1725,3 +1725,36 @@ body {
     min-height: 44px;
   }
 }
+
+/* Fullscreen forms keep context and actions visible; ordinary dialogs retain their scroll model. */
+.ah-dialog.ah-dialog-fullscreen {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+.ah-dialog-fullscreen > .ah-dialog-body {
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.ah-dialog-fullscreen > .ah-dialog-footer {
+  flex-wrap: wrap;
+}
+
+.ah-dialog-fullscreen .ah-dialog-close {
+  flex-shrink: 0;
+  width: 44px;
+  min-height: 44px;
+}
+.ah-dialog-fullscreen > .ah-dialog-footer button {
+  min-height: 44px;
+}

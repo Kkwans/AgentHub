@@ -1,3 +1,4 @@
+import { assertFullscreenScroll } from '../e2e-support/fullscreen-dialog.js';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type Route, type TestInfo } from '@playwright/test';
 
@@ -515,6 +516,20 @@ test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }
   await page.getByRole('link', { name: '发现 Agent' }).click();
   await expect(page).toHaveURL('/agents/agents/discover');
   await expect(page.getByRole('dialog', { name: '发现 Agent' })).toContainText('Codex Local');
+  if (page.viewportSize()?.width === 390) {
+    const originalViewport = page.viewportSize()!;
+    await page.setViewportSize({ width: 390, height: 600 });
+    const geometry = await assertFullscreenScroll(
+      page,
+      page.getByRole('dialog', { name: '发现 Agent' }),
+    );
+    await testInfo.attach('agent-discovery-fullscreen-short-geometry', {
+      body: JSON.stringify(geometry),
+      contentType: 'application/json',
+    });
+    await attachViewportScreenshot(page, testInfo, 'agent-discovery-fullscreen-short');
+    await page.setViewportSize(originalViewport);
+  }
   await page.goBack();
   await expect(page.getByRole('dialog', { name: '发现 Agent' })).toBeHidden();
 
@@ -996,6 +1011,20 @@ test('Projects 使用高密度实体列表并打开路由弹层', async ({ page 
     .click();
   await expect(page).toHaveURL('/projects/new');
   await expect(page.getByRole('dialog', { name: '创建项目' })).toBeVisible();
+  if (page.viewportSize()?.width === 390) {
+    const originalViewport = page.viewportSize()!;
+    await page.setViewportSize({ width: 390, height: 600 });
+    const geometry = await assertFullscreenScroll(
+      page,
+      page.getByRole('dialog', { name: '创建项目' }),
+    );
+    await testInfo.attach('project-create-fullscreen-short-geometry', {
+      body: JSON.stringify(geometry),
+      contentType: 'application/json',
+    });
+    await attachViewportScreenshot(page, testInfo, 'project-create-fullscreen-short');
+    await page.setViewportSize(originalViewport);
+  }
   await page.goBack();
   await expect(page.getByRole('dialog', { name: '创建项目' })).toBeHidden();
   await attachViewportScreenshot(page, testInfo, 'projects');

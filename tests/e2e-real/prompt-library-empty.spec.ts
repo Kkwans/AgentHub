@@ -83,6 +83,13 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(
         versionDialog.getByRole('button', { name: '创建版本', exact: true }),
       ).toBeDisabled();
+      await expect(versionDialog).not.toHaveClass(/ah-dialog-fullscreen/);
+      if (width === 390) {
+        const bounds = await versionDialog.boundingBox();
+        expect(bounds).not.toBeNull();
+        expect(bounds!.x).toBeGreaterThan(0);
+        expect(bounds!.width).toBeLessThan(width);
+      }
       await capture('first-version-dialog');
       await versionDialog.getByRole('button', { name: '取消', exact: true }).click();
       await editor.getByRole('button', { name: '创建第一个版本', exact: true }).click();

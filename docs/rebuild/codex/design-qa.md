@@ -318,3 +318,15 @@ At12:19 UTC the integratedOverview andProjects regression passed30 tests, includ
 The actualad732da phone failure capture confirms that three independent full-width notice rows plus parent grid gaps consume about309px. The bounded candidate groups onlyProjects notices, retains every source error and GET retry, uses a two-column text/action row and44px targets, and connects each alert to one shared explanation that failure does not mean no records. Overview styling is unchanged. Static review caught a visible-label/accessibility-name mismatch in the initially abbreviated retry button and corrected it before publication. New browser assertions preserve visible alerts, exact accessible descriptions, visible-label inclusion,44px targets and no overflow, while requiring the group to occupy less than30% of viewport height; screenshots and measured JSON will establish the actual improvement, not a theoretical pixel claim.
 
 Integrated31 tests and static CR passed for the source-group slice; web/E2E types, lint and production build passed. Actual compact-group height remains a new-SHA browser gate.
+
+## 2026-11-13 12:35 UTC — Fullscreen long-form workflow
+
+Personally inspecteddf73 realNewWork390 Prompt-preview capture: after scrolling the long form, title/close and final actions are outside the viewport. CurrentCSS confirms the fullscreen width/max-height are also overridden by later ordinary/mobile dialog rules. OnlyNewWork,CreateProject andDiscoverAgents request fullscreen on phone. The candidate fixes only that variant with higher-specificity viewport sizing, a bounded independently scrolling body and retained header/footer; normalPrompt dialogs keep their existing model. Body content aligns to start to avoid stretched grid rows, footer wraps and controls retain44px targets. No close/focus/operation handlers are changed.
+
+New actual-browser gates exercise all three fullscreen forms at390×600 and realNewWork content scrolling, recording geometry and a separate short-height screenshot before restoring the original viewport. OrdinaryPrompt non-fullscreen behavior is explicitly checked. These are browser layout tests, not evidence of a physical soft keyboard or safe-area device. New exact screenshots remain pending.
+
+### 12:36 UTC — Earlier slices' exact evidence
+
+Exactad732da now has all three jobs successful. Exacteee3791 verify and accessibility are successful; personally inspected its390 Overview Agent error/recovery screenshots, which preserve a useful unknown label for assigned work and restore Codex after GET recovery without horizontal clipping. Its real-service job is still pending at this checkpoint. CompactProjects and fullscreen candidates require their own exact images; older green runs do not approve those layouts.
+
+At12:37 UTC integrated validation completed in two scoped runs:85 FormDialog/NewWork/CSS-contract tests and24 CreateProject/Agent tests passed. The candidate worker's combined109 tests also passed. Web and explicit E2E types, lint, CSS budget, production build and independent static CR passed; none substitutes for the new fullscreen browser geometry gate.

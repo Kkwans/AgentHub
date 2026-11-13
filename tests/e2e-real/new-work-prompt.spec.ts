@@ -1,3 +1,4 @@
+import { assertFullscreenScroll } from '../e2e-support/fullscreen-dialog.js';
 import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,6 +75,23 @@ for (const width of [1440, 1024, 768, 390]) {
       content: { text: '错误的新版本内容' },
     });
     await expect(create).toBeEnabled();
+    if (width === 390) {
+      const originalViewport = page.viewportSize()!;
+      await page.setViewportSize({ width, height: 600 });
+      await preview.scrollIntoViewIfNeeded();
+      await expect(preview).toContainText('已固定版本 v1');
+      const geometry = await assertFullscreenScroll(page, dialog, true);
+      await expect(create).toBeInViewport();
+      await testInfo.attach('new-work-fullscreen-geometry', {
+        body: JSON.stringify(geometry),
+        contentType: 'application/json',
+      });
+      await page.screenshot({
+        path: testInfo.outputPath('new-work-fullscreen-short-390.png'),
+        fullPage: true,
+      });
+      await page.setViewportSize(originalViewport);
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
