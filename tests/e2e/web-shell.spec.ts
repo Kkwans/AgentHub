@@ -905,6 +905,45 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await attachViewportScreenshot(page, testInfo, 'workspace');
 });
 
+test('Projects 辅助来源失败不伪装为空且可以只读恢复', async ({ page }, testInfo) => {
+  let failing = true;
+  let writes = 0;
+  await page.route(/\/api\/v1\/(tasks|sessions|agents)$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      writes += 1;
+      await route.fallback();
+      return;
+    }
+    if (failing)
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: '辅助来源暂时不可用' } }),
+      });
+    else await route.fallback();
+  });
+  await page.goto('/projects');
+  const status = page.getByRole('alert', { name: '工作统计读取状态' });
+  await expect(status).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
+  await expect(page.getByRole('link').filter({ hasText: project.name }).first()).toBeVisible();
+  if ((page.viewportSize()?.width ?? 1440) >= 1024)
+    await expect(
+      page.getByRole('region', { name: '项目列表' }).getByText('未知').first(),
+    ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'projects-source-error');
+  failing = false;
+  for (const label of ['工作统计', '会话记录', 'Agent 登记']) {
+    await page.getByRole('button', { name: `重新读取${label}`, exact: true }).click();
+    await expect(page.getByRole('alert', { name: `${label}读取状态` })).toHaveCount(0);
+  }
+  if ((page.viewportSize()?.width ?? 1440) >= 1024)
+    await expect(page.getByText('全局登记就绪', { exact: true })).toBeVisible();
+  expect(writes).toBe(0);
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'projects-source-recovered');
+});
+
 test('Projects 使用高密度实体列表并打开路由弹层', async ({ page }, testInfo) => {
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: '项目' })).toBeVisible({
@@ -913,7 +952,7 @@ test('Projects 使用高密度实体列表并打开路由弹层', async ({ page 
   const list = page.getByRole('region', { name: '项目列表' });
   await expect(list).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
   if ((page.viewportSize()?.width ?? 1_000) >= 768) {
-    await expect(list.getByText('分支')).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
+    await expect(list.getByText('最近会话分支')).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
     await expect(list.getByText('工作')).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
     await expect(list.getByText('最近活动', { exact: true }).first()).toBeVisible({
       timeout: SHELL_READY_TIMEOUT,

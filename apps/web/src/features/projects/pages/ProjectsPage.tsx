@@ -37,7 +37,7 @@ import {
   useAgentHubTheme,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Link,
   NavLink,
@@ -74,7 +74,7 @@ import type {
   TaskRecord,
   WorktreeExecutionRecord,
 } from '../../../lib/api';
-import { api } from '../../../lib/api';
+import { ApiError, api } from '../../../lib/api';
 import { realtime } from '../../../lib/realtime';
 import {
   labelPromptBindingTarget,
@@ -126,6 +126,14 @@ export function ProjectsPage() {
   const [view, setView] = useState<'list' | 'grid'>('list');
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const compact = useCompactViewport();
+  const filterOptionsRef = useRef<HTMLDivElement>(null);
+  const filterToggleRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (compact && !moreFiltersOpen && filterOptionsRef.current?.contains(document.activeElement)) {
+      filterToggleRef.current?.focus();
+    }
+  }, [compact, moreFiltersOpen]);
   const activeFilterCount = [
     query.trim() !== '',
     status !== 'all',
@@ -139,6 +147,8 @@ export function ProjectsPage() {
     setKind('all');
     setLanguage('all');
     setSort('updated');
+    if (compact) filterToggleRef.current?.focus();
+    else searchRef.current?.querySelector('input')?.focus();
   };
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -198,20 +208,27 @@ export function ProjectsPage() {
   const visibleProjects = filtered.slice((page - 1) * pageSize, page * pageSize);
   const projectInitial = (project: ProjectRecord) =>
     project.name.trim().slice(0, 1).toUpperCase() || 'P';
-  const readyAgentCount = agents.data
-    ? agents.data.filter((agent) => agent.enabled && agent.status === 'READY').length
-    : null;
+  const readyAgentCount =
+    agents.isSuccess && agents.data
+      ? agents.data.filter((agent) => agent.enabled && agent.status === 'READY').length
+      : null;
   const renderProjectRow = (project: ProjectRecord, index: number) => {
     const languageValue = projectLanguage(project);
     const timestamp = projectTimestamp(project);
     const repoLabel = project.repoKind === 'GIT' ? 'Git' : project.repoKind ? '目录' : undefined;
-    const activeWorkCount = tasks.data
-      ? tasks.data.filter(
-          (task) => task.projectId === project.id && !['DONE', 'CANCELED'].includes(task.status),
-        ).length
-      : null;
-    const latestSession = (sessions.data ?? [])
-      .filter((session) => session.projectId === project.id)
+    const activeWorkCount =
+      tasks.isSuccess && tasks.data
+        ? tasks.data.filter(
+            (task) => task.projectId === project.id && !['DONE', 'CANCELED'].includes(task.status),
+          ).length
+        : null;
+    const projectSessions = (sessions.isSuccess ? sessions.data : []).filter(
+      (session) => session.projectId === project.id,
+    );
+    const latestSession = projectSessions
+      .filter(
+        (session) => session.lastActiveAt && Number.isFinite(Date.parse(session.lastActiveAt)),
+      )
       .sort((left, right) => Date.parse(right.lastActiveAt) - Date.parse(left.lastActiveAt))[0];
     return (
       <div className={projectsStyles.projectRow} key={project.id}>
@@ -234,19 +251,36 @@ export function ProjectsPage() {
           </span>
         </Link>
         <span className={projectsStyles.projectBranch} title={latestSession?.branch ?? undefined}>
-          {latestSession?.branch ?? (sessions.data && project.repoKind === 'GIT' ? 'main' : '—')}
+          {sessions.isError
+            ? '未知'
+            : sessions.isPending
+              ? '加载中'
+              : latestSession?.branch?.trim() ||
+                (projectSessions.length && !latestSession ? '最近会话未知' : '分支未记录')}
         </span>
         <span className={projectsStyles.projectMetric}>
-          <strong>{activeWorkCount ?? '—'}</strong>
+          <strong>{tasks.isError ? '未知' : tasks.isPending ? '加载中' : activeWorkCount}</strong>
           <small>进行中</small>
         </span>
         <span className={projectsStyles.projectMetric}>
-          <strong>{readyAgentCount ?? '—'}</strong>
-          <small>可用</small>
+          <strong>{agents.isError ? '未知' : agents.isPending ? '加载中' : readyAgentCount}</strong>
+          <small title="全局登记就绪数量，不代表当前项目具备执行资格">全局登记就绪</small>
         </span>
         <span className={projectsStyles.projectActivity}>
-          <strong>{displayDate(latestSession?.lastActiveAt ?? timestamp)}</strong>
-          <small>最近活动</small>
+          <strong>
+            {sessions.isError
+              ? '未知'
+              : sessions.isPending
+                ? '加载中'
+                : displayDate(latestSession?.lastActiveAt ?? timestamp)}
+          </strong>
+          <small>
+            {!sessions.isSuccess
+              ? '最近活动'
+              : latestSession?.lastActiveAt
+                ? '会话活动'
+                : '项目更新'}
+          </small>
         </span>
         <Link
           className={projectsStyles.projectEdit}
@@ -320,11 +354,46 @@ export function ProjectsPage() {
         />
         {!projects.isLoading && !projects.error ? (
           <>
+            {[
+              { key: 'tasks', label: '工作统计', source: tasks },
+              { key: 'sessions', label: '会话记录', source: sessions },
+              { key: 'agents', label: 'Agent 登记', source: agents },
+            ].map(({ key, label, source }) =>
+              source.isError || source.isPending || source.isFetching ? (
+                <div
+                  key={key}
+                  className={projectsStyles.projectSourceStatus}
+                  role={source.isError ? 'alert' : 'status'}
+                  aria-label={`${label}读取状态`}
+                >
+                  <span>
+                    <strong>{label}：</strong>
+                    {source.isError
+                      ? source.error instanceof ApiError && source.error.code === 'AUTH_REQUIRED'
+                        ? '登录已失效，无法确认当前数据。'
+                        : '读取失败，相关数据未知，不代表没有记录。'
+                      : source.isPending
+                        ? '正在加载。'
+                        : '正在更新，暂显示上次读取结果。'}
+                  </span>
+                  {source.isError ? (
+                    <AhButton
+                      size="sm"
+                      variant="subtle"
+                      disabled={source.isFetching}
+                      onClick={() => void source.refetch()}
+                    >
+                      重新读取{label}
+                    </AhButton>
+                  ) : null}
+                </div>
+              ) : null,
+            )}
             <div
               className={`${projectsStyles.projectsToolbar} page-toolbar projects-dashboard-toolbar`}
               aria-label="项目筛选"
             >
-              <div className={`${projectsStyles.toolbarSearch} toolbar-search`}>
+              <div ref={searchRef} className={`${projectsStyles.toolbarSearch} toolbar-search`}>
                 <AhInput
                   label=""
                   aria-label="搜索项目"
@@ -338,6 +407,7 @@ export function ProjectsPage() {
                 <button
                   type="button"
                   className={`${projectsStyles.toolbarMore} ${moreFiltersOpen ? projectsStyles.toolbarMoreActive : ''}`}
+                  ref={filterToggleRef}
                   aria-expanded={moreFiltersOpen}
                   aria-controls="project-filter-options"
                   onClick={() => setMoreFiltersOpen((open) => !open)}
@@ -356,6 +426,7 @@ export function ProjectsPage() {
               ) : null}
               <div
                 id="project-filter-options"
+                ref={filterOptionsRef}
                 className={projectsStyles.filterOptions}
                 hidden={compact && !moreFiltersOpen}
               >
@@ -441,7 +512,7 @@ export function ProjectsPage() {
                 >
                   <div className={projectsStyles.projectListHeader} aria-hidden="true">
                     <span>项目</span>
-                    <span>分支</span>
+                    <span>最近会话分支</span>
                     <span>工作</span>
                     <span>Agent</span>
                     <span>最近活动</span>

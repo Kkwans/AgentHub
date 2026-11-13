@@ -115,3 +115,14 @@ Mobile work now has a real list/detail visible-state slice, not only a shorter h
 - Workspace内/外Tabs显式引用现存动态panel，唯一trigger ID和随active变化的labelledby；不移动组件、不虚构空面板、不改操作/挂载生命周期。手机与桌面DOM关联回归和四宽浏览器关系断言覆盖全部可见tab，不只单个被报告节点。
 - 整合37项回归无未处理错误，web/E2E类型、lint/build/预算与静态CR通过。首轮联合测试暴露原FileInspector状态测试异步Monaco导入晚于jsdom销毁，已仅在该loading/error测试隔离浏览器初始化；真实editor8组浏览器矩阵保持。
 - 新精确154扫仍待发布后执行，阈值/规则/路由/视口/主题无减少，不提前声称46条清零。
+
+### 2026-11-13 12:03 UTC — C14/C15 精确结果补记
+
+`df73eb4` 真实154组合报告已核验：complete=true、passed=true、violations=0、pageFailures=0、missing=0；此前cdaa的46项已清零，未减少规则或覆盖。verify也已成功，real-service业务矩阵仍运行，不能称三门全绿或全产品视觉验收。新fixture已亲看Workspace1440文件/Diff、390 Inspector/会话目录/Agent和Settings错误态。具体边界见design-qa.md，保留此前失败历史。
+
+## 2026-11-13 12:09 UTC — C16 / UI-C13 Projects 数据来源与焦点
+
+- 实际df73 Projects图中的Agent列用全局登记READY计数却标“可用”，不代表当前项目资格。改成全局登记就绪，明确不是执行许可；不增加预检请求。
+- 最近会话分支不再缺省为main；只排序有效活动时间，全无有效时间明确最近会话未知。项目更新时间与会话活动分开标注。工作/会话/Agent源loading、更新、失败未知与成功空值区分；旧缓存读取失败不冒充当前事实，重试仅GET。
+- 桌面筛选缩至手机时，仅将已隐藏筛选的焦点移到可见入口；清除后手机回筛选、桌面回搜索。已打开Radix portal跨断点未作完整验证。
+- 独立CR通过，整合15定向回归、web类型/lint通过；新增四视口source-error/recovered截图流程，实际新SHA截图仍待CI，不以静态测试冒充视觉验收。
