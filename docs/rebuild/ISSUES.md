@@ -334,3 +334,8 @@ AH-081最终本地验收：1111完整覆盖/10原有skip、lint/types/build/QA10
 AH-081当前验收：e2e044a精确CI43364136994双绿，关闭阶段/身份/重复Run准入当前切片；RUNNING调用者独占未包含，AH-082仅修其错误释放后果。
 
 AH-082最终本地验收：1133完整覆盖/10原有skip、79专项、lint/types/build/QA10及独立CR通过；最终真实Git/PGlite/ACP初次/返工barrier烟测均保持活动槽位和排队边界，权威REVIEW及fresh合并成功。新exact CI待验收；不将PGlite串行合同测试冒称独立Postgres并发锁实测。
+
+### AH-001 / S64 两实例普通启动追加证据
+
+- 独立PGlite及两个TaskService barrier确认，两请求在Task绑定前已各创建Session；第二请求随后INVALID_STATE_TRANSITION，但保留READY孤立Session。该Session通过真实RunRepository仍能新建RUNNING，普通预留和旧Session准入必须共同修复。
+- 只用fake runtime；实际createSession/sendTurn双派发尚未实测。新专项方案TASK-START-ADMISSION.md仍为设计，AH-001跨实例预留保持开放。

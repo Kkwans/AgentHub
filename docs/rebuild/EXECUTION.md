@@ -853,3 +853,12 @@
 - 冻结源码严格串行lint/types/build/QA10、120文件1107项＋另2文件13批26项，合计1133通过/10原有skip，所有进程退出0；79专项与独立CR通过。
 - 门禁全部结束后，最终build独立真实临时Git/PGlite/ACP烟测成功：初次启动/返工分别暂停专属请求，真实竞争ACP Run抢先派发后专属请求拒绝，但保留活动槽位、后续任务不启动；权威审批完成进入REVIEW，fresh合并成功且finalRunId对应第二个竞争Run。精确临时目录清理。
 - S62 e2e044a精确CI43364136994的verify与真实服务/视觉证据已双绿；S63浏览器全量待新exact CI。没有新增视觉方案、没有操作真实用户Agent/NAS、没有独立Postgres多连接验证。
+
+### S64 / M1.2 持久启动专项设计与复现
+
+- 基线7b05581干净后核验S63 exact CI43367292783，两项仍运行；本片不改产品代码，不借S63本地1133门禁冒称新预留已实现。
+- 两个TaskService实例的确定性PGlite/fake runtime barrier proof：Task仍READY/sessionId=null时2次create和2条Session；首请求成功，次请求INVALID_STATE_TRANSITION遗留READY Session。真实RunRepository又接受该孤立Session新Run，持久出现2个RUNNING，但fake runtime startRun仅1次，不冒称实际双派发。
+- 完成TASK-START-ADMISSION.md专项方案：持久attempt阶段、Task/Session原子预留、旧会话准入边界、CREATED/未知创建恢复、手工状态互锁、迁移、精确锁序与验收。拒绝只提前IN_PROGRESS或用FAILED猜无副作用的半修复。
+- 方案明确设计未实施。下一实现片须一起闭环预留和失败恢复，再独立补用户核对/幂等体验，不因15分钟周期草率发布不可恢复实现。
+
+- S64独立设计CR后补明：Run插入/latestRunId/attempt移交同事务；FAILED_KNOWN证据白名单；RESERVED释放与CREATE_ATTEMPTED竞争CAS；首实现片最小可读取attempt核对出口。文档相对链接、格式与diff检查，隔离复现脚本语法及最终断言通过；无产品源码变化，不重复声称新全量门禁。
