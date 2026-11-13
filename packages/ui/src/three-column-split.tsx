@@ -90,6 +90,8 @@ export interface ThreeColumnSplitProps {
   compactPanelOrder?: CompactPanel[];
   /** 是否由外层宿主提供 compact tabs（移动端保留完整业务 tab bar）。 */
   compactTabsVisible?: boolean;
+  /** Opt-in modal presentation for hosts that own focus and background isolation. */
+  mediumPresentation?: 'inline' | 'drawer';
   /** 实际容器宽度对应的布局模式变化 */
   onLayoutModeChange?: (mode: ThreeColumnLayoutMode) => void;
   /** localStorage key：左栏宽度比例 */
@@ -173,6 +175,7 @@ function CompactThreeColumnLayout({
 
 function MediumThreeColumnLayout({
   sideWidth,
+  presentation,
   sidePanel,
   sideOpen,
   tabs,
@@ -183,6 +186,7 @@ function MediumThreeColumnLayout({
   onKeyDown,
 }: {
   sideWidth: number;
+  presentation: 'inline' | 'drawer';
   sidePanel: 'left' | 'right';
   sideOpen: boolean;
   tabs: CompactTabs;
@@ -192,7 +196,8 @@ function MediumThreeColumnLayout({
   onOpen: (panel: CompactPanel) => void;
   onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 }) {
-  if (!sideOpen) {
+  const drawer = presentation === 'drawer';
+  if (!sideOpen && !drawer) {
     return (
       <>
         <div className="h-full min-w-0 overflow-hidden">{middle}</div>
@@ -210,10 +215,33 @@ function MediumThreeColumnLayout({
   }
   return (
     <div
-      className="grid h-full min-h-0 gap-3"
-      style={{ gridTemplateColumns: `${sideWidth}px minmax(0, 1fr)` }}
+      className={cn('relative h-full min-h-0', !drawer && 'grid gap-3')}
+      style={drawer ? undefined : { gridTemplateColumns: `${sideWidth}px minmax(0, 1fr)` }}
     >
-      <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[14px] border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))]">
+      {drawer && sideOpen && (
+        <button
+          type="button"
+          aria-label="关闭辅助栏遮罩"
+          tabIndex={-1}
+          className="absolute inset-0 z-20 bg-black/20"
+          onClick={() => onOpen('middle')}
+        />
+      )}
+      <aside
+        role={drawer ? 'dialog' : undefined}
+        aria-modal={drawer && sideOpen ? true : undefined}
+        aria-label={drawer ? '工作区辅助栏' : undefined}
+        hidden={drawer && !sideOpen}
+        style={
+          drawer
+            ? { display: sideOpen ? 'flex' : 'none', width: 'min(420px, calc(100% - 32px))' }
+            : undefined
+        }
+        className={cn(
+          'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[14px] border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))]',
+          drawer && 'absolute inset-y-0 right-0 z-30 shadow-xl',
+        )}
+      >
         <div
           role="tablist"
           aria-label="辅助栏视图"
@@ -264,7 +292,9 @@ function MediumThreeColumnLayout({
           {right}
         </div>
       </aside>
-      <div className="h-full min-w-0 overflow-hidden">{middle}</div>
+      <div inert={drawer && sideOpen ? true : undefined} className="h-full min-w-0 overflow-hidden">
+        {middle}
+      </div>
     </div>
   );
 }
@@ -287,6 +317,7 @@ export function ThreeColumnSplit({
   onCompactPanelChange,
   compactPanelOrder = ['middle', 'left', 'right'],
   compactTabsVisible = true,
+  mediumPresentation = 'inline',
   onLayoutModeChange,
   leftRatioKey,
   rightRatioKey,
@@ -466,7 +497,11 @@ export function ThreeColumnSplit({
     previousLayoutModeRef.current = layoutMode;
     previousDefaultPanelRef.current = defaultCompactPanel;
 
-    if (layoutMode === 'single' && (previousMode !== 'single' || defaultPanelChanged)) {
+    if (
+      controlledCompactPanel === undefined &&
+      layoutMode === 'single' &&
+      (previousMode !== 'single' || defaultPanelChanged)
+    ) {
       setActiveCompactPanel(defaultCompactPanel);
       return;
     }
@@ -623,6 +658,7 @@ export function ThreeColumnSplit({
       ) : layoutMode === 'medium' ? (
         <MediumThreeColumnLayout
           sideWidth={mediumSideWidth}
+          presentation={mediumPresentation}
           sidePanel={mediumPanel}
           sideOpen={activeCompactPanel !== 'middle'}
           tabs={compactTabs}

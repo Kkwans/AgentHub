@@ -153,6 +153,44 @@ afterEach(() => {
 });
 
 describe('WorkspacePage 数据分区可靠性', () => {
+  it.each([false, true])(
+    '手机首次直达变更深链保留检查器并在就绪后聚焦（warm=%s）',
+    async (warm) => {
+      vi.stubGlobal('innerWidth', 390);
+      const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        baseFetch(String(input), init?.method),
+      );
+      const client = renderWorkspace(
+        fetchMock,
+        `/workspace/${session.id}?view=changes`,
+        warm ? session : undefined,
+      );
+      await screen.findByRole('heading', { name: '审阅更改' });
+      await waitFor(() => expect(screen.getByRole('button', { name: '关闭检查器' })).toHaveFocus());
+      expect(screen.getByRole('heading', { name: '审阅更改' })).toBeInTheDocument();
+      await act(async () => {
+        client
+          .getQueryCache()
+          .find({ queryKey: ['session', session.id] })
+          ?.setState({ status: 'error', error: new Error('读取会话失败') });
+      });
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: '关闭检查器' })).not.toBeInTheDocument(),
+      );
+      const escape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(escape);
+      expect(escape.defaultPrevented).toBe(false);
+      await act(async () => {
+        client.setQueryData(['session', session.id], session);
+      });
+      await waitFor(() => expect(screen.getByRole('button', { name: '关闭检查器' })).toHaveFocus());
+    },
+  );
+
   it('共享辅助栏关闭后把焦点还给对应触发按钮', async () => {
     vi.stubGlobal(
       'matchMedia',
@@ -172,37 +210,28 @@ describe('WorkspacePage 数据分区可靠性', () => {
     );
     renderWorkspace(fetchMock);
 
-    const supportToggle = await screen.findByRole('button', { name: '关闭辅助栏' });
+    const supportToggle = await screen.findByRole('button', { name: '打开辅助栏' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     fireEvent.click(supportToggle);
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: '打开辅助栏' })).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole('button', { name: '打开辅助栏' }));
-    const sessionClose = await screen.findByRole('button', { name: '关闭会话列表' });
-    await waitFor(() => expect(document.activeElement).toBe(sessionClose));
-    fireEvent.click(sessionClose);
-    await waitFor(() => expect(document.activeElement).toBe(supportToggle));
-
+    const dialog = await screen.findByRole('dialog', { name: '工作区辅助栏' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(supportToggle.closest('.workspace-contextbar')).toHaveAttribute('inert');
+    const sessionClose = within(dialog).getByRole('button', { name: '关闭会话列表' });
+    await waitFor(() => expect(sessionClose).toHaveFocus());
+    const tabs = within(dialog).getByRole('tablist', { name: '辅助栏视图' });
+    const inspectorTab = within(tabs).getByRole('tab', { name: '检查器' });
+    inspectorTab.focus();
+    fireEvent.click(inspectorTab);
+    await screen.findByRole('button', { name: '关闭检查器' });
+    expect(inspectorTab).toHaveFocus();
+    fireEvent.keyDown(inspectorTab, { key: 'Escape' });
+    await waitFor(() => expect(supportToggle).toHaveFocus());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(supportToggle.closest('.workspace-contextbar')).not.toHaveAttribute('inert');
     fireEvent.click(supportToggle);
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: '打开辅助栏' })).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole('button', { name: '打开辅助栏' }));
-    const auxiliaryTabs = await screen.findByRole('tablist', { name: '辅助栏视图' });
-    fireEvent.click(within(auxiliaryTabs).getByRole('tab', { name: '检查器' }));
-    const inspectorClose = await screen.findByRole('button', { name: '关闭检查器' });
-    await waitFor(() => expect(document.activeElement).toBe(inspectorClose));
-    fireEvent.click(inspectorClose);
-    await waitFor(() => expect(document.activeElement).toBe(supportToggle));
-
-    fireEvent.click(supportToggle);
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: '打开辅助栏' })).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole('button', { name: '打开辅助栏' }));
-    const sessionCloseAgain = await screen.findByRole('button', { name: '关闭会话列表' });
-    fireEvent.keyDown(sessionCloseAgain, { key: 'Escape' });
-    await waitFor(() => expect(document.activeElement).toBe(supportToggle));
+    fireEvent.click(await screen.findByRole('button', { name: '关闭辅助栏遮罩' }));
+    await waitFor(() => expect(supportToggle).toHaveFocus());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('按 seq 分页拉取长 Session 事件并合并去重', async () => {
@@ -661,7 +690,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(stateBanner.querySelector('strong')).toHaveClass('block');
     expect(stateBanner.querySelector('span:not(.run-state-marker)')).toHaveClass('mt-1');
     expect(
-      screen.getByRole('link', { name: /可靠性回归/ }).querySelector('.session-state-dot'),
+      screen
+        .getByRole('link', { name: /可靠性回归/, hidden: true })
+        .querySelector('.session-state-dot'),
     ).toHaveClass('session-state-closed');
     expect(
       screen.queryByRole('textbox', { name: '给 Agent 发送工程指令' }),

@@ -145,6 +145,16 @@ export function useWorkspaceViewModel() {
   const [workspaceLayout, setWorkspaceLayout] = useState(readWorkspaceLayout);
   const sessionCloseRef = useRef<HTMLButtonElement>(null);
   const inspectorCloseRef = useRef<HTMLButtonElement>(null);
+  const [sessionCloseNode, setSessionCloseNode] = useState<HTMLButtonElement | null>(null);
+  const [inspectorCloseNode, setInspectorCloseNode] = useState<HTMLButtonElement | null>(null);
+  const registerSessionClose = useCallback((node: HTMLButtonElement | null) => {
+    sessionCloseRef.current = node;
+    setSessionCloseNode(node);
+  }, []);
+  const registerInspectorClose = useCallback((node: HTMLButtonElement | null) => {
+    inspectorCloseRef.current = node;
+    setInspectorCloseNode(node);
+  }, []);
   const sessionToggleRef = useRef<HTMLButtonElement>(null);
   const drawerStateRef = useRef({ session: false, inspector: false });
 
@@ -461,7 +471,12 @@ export function useWorkspaceViewModel() {
     );
   }, [client, events.data, id]);
 
+  const workspaceViewReady = !session.isLoading && !session.error && Boolean(session.data);
   useEffect(() => {
+    if (!workspaceViewReady) {
+      drawerStateRef.current = { session: false, inspector: false };
+      return;
+    }
     const inspectorDrawerIsOpen = inspectorDrawerOpen;
     const previousState = drawerStateRef.current;
     const nextState = {
@@ -473,10 +488,10 @@ export function useWorkspaceViewModel() {
     const closedSession = !nextState.session && previousState.session;
     const closedInspector = !nextState.inspector && previousState.inspector;
 
-    if (openedSession || openedInspector) {
+    if ((openedSession || openedInspector) && !(previousState.session || previousState.inspector)) {
       const closeButton = openedSession ? sessionCloseRef.current : inspectorCloseRef.current;
       closeButton?.focus();
-    } else if (closedSession || closedInspector) {
+    } else if ((closedSession || closedInspector) && !nextState.session && !nextState.inspector) {
       const support = sessionToggleRef.current;
       const shell = support?.closest('.workspace-page');
       // The support toggle is hidden on phones. Restore focus to a visible
@@ -487,7 +502,9 @@ export function useWorkspaceViewModel() {
               ? '.workspace-immersive-toggle'
               : '.workspace-mobile-tabs [role="tab"][aria-selected="true"]',
           )
-        : support;
+        : inspectorActsAsDrawer
+          ? support
+          : shell?.querySelector<HTMLElement>('.workspace-layout-actions button');
       if (opener?.isConnected) opener.focus();
     }
     drawerStateRef.current = nextState;
@@ -497,9 +514,15 @@ export function useWorkspaceViewModel() {
     const closeButton = nextState.session ? sessionCloseRef.current : inspectorCloseRef.current;
     // Opening above owns initial focus. A tab/URL change updates the Escape
     // handler, but must not steal focus from the Inspector's active control.
-    const drawer = closeButton?.closest<HTMLElement>(
-      '.session-rail-panel, .inspector-panel, .workbench-panel',
-    );
+    const drawer =
+      closeButton?.closest<HTMLElement>('[role="dialog"]') ??
+      closeButton?.closest<HTMLElement>('.session-rail-panel, .inspector-panel, .workbench-panel');
+    if (
+      drawer &&
+      (!drawer.contains(document.activeElement) ||
+        document.activeElement?.closest('[hidden], [inert]'))
+    )
+      closeButton?.focus();
     const closeOnEscapeAndTrapFocus = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -509,9 +532,9 @@ export function useWorkspaceViewModel() {
       if (event.key !== 'Tab' || !drawer) return;
       const focusable = Array.from(
         drawer.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          'a[href], summary, button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
         ),
-      ).filter((element) => element.offsetParent !== null);
+      ).filter((element) => element.offsetParent !== null && !element.closest('[hidden], [inert]'));
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable.at(-1);
@@ -525,7 +548,16 @@ export function useWorkspaceViewModel() {
     };
     window.addEventListener('keydown', closeOnEscapeAndTrapFocus);
     return () => window.removeEventListener('keydown', closeOnEscapeAndTrapFocus);
-  }, [closeMobileInspector, inspectorDrawerOpen, isMobileViewport, sessionDrawerOpen]);
+  }, [
+    closeMobileInspector,
+    inspectorDrawerOpen,
+    inspectorActsAsDrawer,
+    isMobileViewport,
+    sessionDrawerOpen,
+    workspaceViewReady,
+    sessionCloseNode,
+    inspectorCloseNode,
+  ]);
 
   return {
     id,
@@ -554,6 +586,8 @@ export function useWorkspaceViewModel() {
     workspaceLayout,
     sessionCloseRef,
     inspectorCloseRef,
+    registerSessionClose,
+    registerInspectorClose,
     sessionToggleRef,
     toggleWorkspacePanel,
     setSelectedFile,

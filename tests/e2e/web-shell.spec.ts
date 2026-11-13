@@ -731,18 +731,33 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     expect(host).not.toBeNull();
     expect(side).not.toBeNull();
     expect(conversation).not.toBeNull();
-    // Medium mode is a column beside Conversation, not an overlay. Validate
-    // containment, a real separation gap and usable remaining conversation.
+    // Workspace opts into a readable modal auxiliary panel on medium widths.
+    // Keep the underlying conversation full-width instead of compressing code
+    // into the old 240px side column. This changes the layout contract, not
+    // merely the threshold of the old inline-column assertion.
+    expect(side!.width).toBeGreaterThanOrEqual(360);
+    expect(side!.width).toBeLessThanOrEqual(420);
     expect(side!.x).toBeGreaterThanOrEqual(host!.x - 1);
-    expect(conversation!.x - side!.x - side!.width).toBeGreaterThanOrEqual(8);
-    expect(conversation!.x - side!.x - side!.width).toBeLessThanOrEqual(16);
-    expect(conversation!.width).toBeGreaterThanOrEqual(host!.width * 0.6);
-    expect(
-      Math.abs(conversation!.x + conversation!.width - host!.x - host!.width),
-    ).toBeLessThanOrEqual(2);
+    expect(side!.x + side!.width).toBeLessThanOrEqual(host!.x + host!.width + 1);
+    expect(Math.abs(conversation!.x - host!.x)).toBeLessThanOrEqual(2);
+    expect(Math.abs(conversation!.width - host!.width)).toBeLessThanOrEqual(2);
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    const close = dialog.getByRole('button', { name: /关闭会话列表|关闭检查器/ });
+    const closeBox = await close.boundingBox();
+    expect(closeBox).not.toBeNull();
+    expect(closeBox!.x).toBeGreaterThanOrEqual(side!.x);
+    expect(closeBox!.x + closeBox!.width).toBeLessThanOrEqual(side!.x + side!.width + 1);
+    expect(closeBox!.width).toBeGreaterThanOrEqual(44);
+    expect(closeBox!.height).toBeGreaterThanOrEqual(44);
+    await expect
+      .poll(() => conversationPanel.evaluate((node) => Boolean(node.closest('[inert]'))))
+      .toBe(true);
     return { host, side, conversation };
   };
   if (viewportWidth >= 768 && viewportWidth < 1_180) {
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('button', { name: '打开辅助栏' }).click();
     const mediumGeometry = await assertMediumOpenGeometry();
     await testInfo.attach(`workspace-medium-open-${testInfo.project.name}.json`, {
       body: Buffer.from(JSON.stringify(mediumGeometry, null, 2)),
@@ -888,9 +903,9 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       .poll(async () => (await conversationPanel.boundingBox())?.width ?? Infinity)
       .toBeLessThanOrEqual(beforeCollapse!.width + 2);
   } else if (viewportWidth >= 768) {
-    const closeAuxiliary = page.getByRole('button', { name: '关闭辅助栏' });
-    await expect(closeAuxiliary).toHaveAttribute('aria-expanded', 'true');
-    await closeAuxiliary.click();
+    // The background toolbar is inert while the modal is open. Close from
+    // inside the actual auxiliary dialog, not through a background control.
+    await page.getByRole('dialog').getByRole('button', { name: '关闭会话列表' }).click();
     await expect(page.getByRole('button', { name: '打开辅助栏' })).toBeVisible();
     await expect
       .poll(
@@ -913,11 +928,83 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(page.getByRole('button', { name: '关闭检查器' })).toBeVisible();
     await assertMediumOpenGeometry();
     await captureReviewHierarchy();
+    const drawerAudit = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    const drawerViolations = drawerAudit.violations.filter((entry) =>
+      ['serious', 'critical'].includes(entry.impact ?? ''),
+    );
+    await testInfo.attach(`workspace-medium-drawer-axe-${testInfo.project.name}`, {
+      body: JSON.stringify(drawerViolations),
+      contentType: 'application/json',
+    });
+    expect(drawerViolations).toEqual([]);
+    if (viewportWidth === 1024) {
+      const originalViewport = page.viewportSize()!;
+      const staged = page.getByRole('checkbox', { name: 'staged', exact: true });
+      await staged.check();
+      await page.setViewportSize({ ...originalViewport, width: 1179 });
+      await assertMediumOpenGeometry();
+      await expect(staged).toBeChecked();
+      await attachViewportScreenshot(page, testInfo, 'workspace-review-medium-1179');
+      await page.setViewportSize({ ...originalViewport, width: 1180 });
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect
+        .poll(() => conversationPanel.evaluate((node) => Boolean(node.closest('[inert]'))))
+        .toBe(false);
+      await expect(staged).toBeChecked();
+      await page.setViewportSize(originalViewport);
+      await assertMediumOpenGeometry();
+      await expect(staged).toBeChecked();
+      await staged.uncheck();
+    }
     await page
       .getByRole('tablist', { name: '检查器视图' })
       .getByRole('tab', { name: '文件' })
       .click();
     await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
+    const drawer = page.getByRole('dialog');
+    const drawerClose = drawer.getByRole('button', { name: '关闭检查器' });
+    await drawerClose.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect
+      .poll(() => drawer.evaluate((node) => node.contains(document.activeElement)))
+      .toBe(true);
+    // Walk through the auxiliary tabs, native disclosures and file controls,
+    // including wrapping at the end, rather than proving only one adjacent Tab.
+    for (let step = 0; step < 24; step += 1) {
+      await page.keyboard.press('Tab');
+      await expect
+        .poll(() => drawer.evaluate((node) => node.contains(document.activeElement)))
+        .toBe(true);
+    }
+    await page.keyboard.press('Escape');
+    await expect(drawer).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '打开辅助栏' })).toBeFocused();
+    await expect
+      .poll(() => conversationPanel.evaluate((node) => Boolean(node.closest('[inert]'))))
+      .toBe(false);
+    await page.getByRole('button', { name: '打开辅助栏' }).click();
+    await expect(page.getByRole('dialog', { name: '工作区辅助栏' })).toBeVisible();
+    // The scrim spans the host behind the right-hand dialog; on768 its center
+    // is covered. Click the genuinely exposed left strip, never force-click.
+    const scrim = page.getByRole('button', { name: '关闭辅助栏遮罩' });
+    const scrimBox = await scrim.boundingBox();
+    expect(scrimBox).not.toBeNull();
+    await scrim.click({ position: { x: 8, y: scrimBox!.height / 2 } });
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '打开辅助栏' })).toBeFocused();
+    await page.getByRole('button', { name: '打开辅助栏' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    // Leave the known Files view active for the remainder of the journey.
+    await page
+      .getByRole('tablist', { name: '辅助栏视图' })
+      .getByRole('tab', { name: '检查器' })
+      .click();
+    await page
+      .getByRole('tablist', { name: '检查器视图' })
+      .getByRole('tab', { name: '文件' })
+      .click();
   } else {
     const views = page.getByRole('tablist', { name: 'Workspace 视图' });
     await expect(views.getByRole('tab', { name: '会话' })).toBeVisible();
@@ -1002,12 +1089,20 @@ test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page
   await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
     timeout: SHELL_READY_TIMEOUT,
   });
+  await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=changes$`));
+  if ((page.viewportSize()?.width ?? 0) < 1180) {
+    await expect(page.getByRole('button', { name: '关闭检查器' })).toBeFocused();
+  }
   await expect(page.locator('.git-clean-state')).toHaveText('工作区干净');
   failing = true;
   await page.getByRole('button', { name: '刷新 Git 数据', exact: true }).click();
   await expect(page.getByText(/是否干净尚未确认/)).toBeVisible();
   await expect(page.getByText('工作区干净', { exact: true })).toHaveCount(0);
-  await expect(page.locator('.git-clean-state')).not.toHaveClass(/\bclean\b/);
+  await expect
+    .poll(() =>
+      page.locator('.git-clean-state').evaluate((node) => node.classList.contains('clean')),
+    )
+    .toBe(false);
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'workspace-git-status-error');
   failing = false;

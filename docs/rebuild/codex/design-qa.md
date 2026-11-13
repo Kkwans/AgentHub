@@ -448,3 +448,45 @@ A source audit found statusAt returningclean:true/entries:[] on a failed git sta
 Front-end error mapping explicitly says cleanliness is unknown; an error/loading state takes precedence over cached clean badges. This does not broadly redefine readHead/readLineStats failures or repair prior persisted snapshots. Merged validation passed177 tests across five files, including the complete134-test SessionService suite, real/tmp Git and loopback API checks, plus server/web types, web production build,lint and independent CR.
 
 A new four-viewport fixture journey first establishes a clean cache, injects a narrowly scoped409, requires the old clean text/class to disappear, then restores via GET and requires zero Git writes. Only the exact injected endpoint's409 console message is exempted; page errors are never ignored. Four cases collect and explicit E2E types/lint/static CR pass. It is cache-error UI evidence, not a substitute for the real Git corruption tests; browser screenshots remain pending exact CI.
+
+### 2026-11-13 14:26 UTC — Route-owner and compact-feedback exact gate status
+
+Exactbf3ec2b run43437795831 completed all three jobs successfully:153 real tests and140 geometry checks. Its new internal-route binding journey passed in7.0s, while the prior reopen and three-target flows remained passing. This closes the bounded internal-route browser gate, not hard-refresh persistence.
+
+Exact21ece76 run43439142096 is now independently confirmed successful in all three jobs. Its compact-result screenshots and measurements are being materialized for direct screenshot inspection; CI success alone is not yet a claim that the density issue looks resolved. The newest3794 full local test run started14:25:15 UTC and remains running.
+
+### 2026-11-13 14:32 UTC — Actual C23 closure, C24 medium-width finding and full regression
+
+Personally viewed exact21ece saved-task390 screenshot: three flat collapsed operation summaries occupy190.55px in total (first76.08px, other two57.23px), versus the previous single181px result card. The directory begins aroundy452 and the editor title aroundy554. Original names/status remain visible, technical IDs stay available through native disclosure, and44px close controls are retained. Exact CI verifies keyboard expansion/collapse, dismissal focus, persisted three bindings and zero serious/critical violations in the supplemental390-light saved-result axe scan. This closes the bounded density issue, not all dynamic/error/dark states.
+
+Personally viewed exacte8dc1440 and768 Diff captures. Desktop code begins aroundy512 compared with the earlier7bc y610, about98px reclaimed without changing column width/font. The768 image exposes a separate inherited defect: the Inspector is approximately240px wide, the whitespace label splits vertically and code has only about120px of text space. This is recorded as C26 for a scoped medium-width layout investigation, not hidden by declaring the hierarchy slice fully sufficient. No new layout has been implemented yet.
+
+Fresh complete local Vitest on3794 product source finished with139 files/1366 tests passed,4 files/10 tests skipped,356.69s. Started14:25:15 UTC; completion was first observed14:31:40, so it is not reported as completed in the preceding22:14–22:29 local-time window. Only documentation changed during this run. Exact3794 run43442460319 remains the browser/CI authority for C25.
+
+### 2026-11-13 14:40 UTC — C24 exact gate closure and C26 implementation in progress
+
+Exacte8dc run43441170048 completed all three jobs:153 real tests and140 geometry checks. Its visual finding is bounded: desktop vertical hierarchy improved, while medium-width readability remains the separate C26 issue. Exact3794 currently has the accessibility job green; fixture and real-service jobs remain in progress.
+
+C26 product implementation began in a separate tree at14:36:56 UTC. Workspace opts into a420px medium auxiliary dialog with a conversation-first closed default; shared inline consumers and desktop layout preferences remain unchanged. The candidate is being reviewed for background inert, tabs inside the focus scope, closing/resize focus and keeping the same medium Inspector mounted. Cross-layout breakpoint changes still use the existing different layout components; no commit-draft persistence across those remounts is claimed.
+
+The main browser candidate changes the old inline geometry contract explicitly, requires360–420px containment and a full-width inert conversation behind the modal,44px internal close controls,Escape/scrim focus recovery and24 keyboard Tab steps kept inside. The1024 case additionally captures1179 then checks1180 inert release and preserved parent-owned staged state. Four cases collect and explicit E2E types/lint pass; there is no browser result for C26 yet.
+
+### 2026-11-13 14:43 UTC — C26 integrated candidate validated
+
+The opt-in product candidate is integrated. One freshly built local shared UI package was used for47 tests across seven files (Workspace, shared layouts, Git render/tree, Diff and layout preferences); all passed in12.61s. UI/web types,lint,production build3.50s,CSS budget and independent static CR passed. The default shared inline presentation is unchanged. Within medium mode the conversation/Inspector nodes stay mounted while closing or switching auxiliary tabs; cross-layout remount limits remain explicit.
+
+CR found that clicking the full-size scrim's center is covered by the420px drawer at768; the test now clicks the genuinely exposed left strip, without force. A supplemental full-page serious/critical axe scan is added for open medium Inspector at768/1024. Explicit E2E types/lint pass; no actual C26 browser geometry or axe result is claimed before the new exact-SHA CI.
+
+### 2026-11-13 14:45 UTC — Exact3794 fixture failures, publication held
+
+Exact3794 verify failed in four newly added C25 fixture cases while64 others passed. At1440/1024/768 the actual badge was `git-clean-state unknown`, but the test's word-boundary regex matched `clean` within the base class `git-clean-state`. This is corrected to an explicit classList token check; the absence of the clean label and presence of unknown/error remain required.
+
+The390 failure is a genuine controlled-layout initialization defect, not dismissed as a selector failure: the initial single-mode effect calls the default-middle setter even when the parent supplies controlled-right, invoking the Workspace callback that closes the deep-linked Inspector. Source investigation is being confirmed with an isolated failing regression before a minimal correction. The browser journey retains direct `?view=changes` navigation and additionally requires the query to remain, rather than clicking Git to bypass the defect. C26 publication is held until this fix is reviewed and integrated.
+
+### 2026-11-13 14:49 UTC — Deep-link and actual-node focus corrections integrated
+
+The controlled-single initialization reproduction failed before the fix and now passes: only uncontrolled layout may emit its default panel, while controlled initial/right and medium-to-phone transitions preserve the host selection. The actual mobile Workspace integration also exposed a separate focus lifecycle defect. Session-ready alone was tested and remained red because the shared layout initially has no measured mode and no close button. Stable callback refs now register actual close nodes; the effect waits for the real visible Workspace and rebuilds against the current node, without a timeout.
+
+Cold and warm direct-link tests require the real heading and close-button focus. Additional session-error unmount checks require the old Escape trap to stop preventing default, then require focus recovery when the view returns. The sibling candidate passed34 tests,UI build,types/lint/build and static review; the main tree is running a fresh broader regression before publication. The original390 browser direct URL remains unchanged, with query preservation and close-focus assertions added.
+
+Final integrated validation completed14:49:56 UTC:8 files/52 tests passed in13.00s against the newly rebuilt shared UI source. UI/web types,lint,production build3.67s,CSS budget and exact19eeeb7 static CR passed. Explicit E2E types/lint and eight-case collection passed. The combined C26/C27 candidate is ready for publication; actual new overlay/deep-link/axe evidence remains pending CI.

@@ -58,8 +58,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     closeTerminal,
     subscribeTerminal,
     workspaceLayout,
-    sessionCloseRef,
-    inspectorCloseRef,
+    registerSessionClose,
+    registerInspectorClose,
     sessionToggleRef,
     toggleWorkspacePanel,
     agents,
@@ -99,7 +99,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   } = model;
 
   const mediumAuxiliaryOpen =
-    inspectorActsAsDrawer && !isMobileViewport && !workspaceLayout.leftCollapsed;
+    inspectorActsAsDrawer && !isMobileViewport && (sessionDrawerOpen || inspectorDrawerOpen);
   const compactAuxiliaryOpen = sessionDrawerOpen || inspectorDrawerOpen || mediumAuxiliaryOpen;
   const compactPanel: CompactPanel = sessionDrawerOpen
     ? 'left'
@@ -137,7 +137,10 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const currentSession = session.data;
 
   const contextBar = (
-    <div className="workspace-contextbar relative z-10 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] px-3 sm:px-4 lg:px-5">
+    <div
+      inert={mediumAuxiliaryOpen ? true : undefined}
+      className="workspace-contextbar relative z-10 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] px-3 sm:px-4 lg:px-5"
+    >
       <button
         type="button"
         className="workspace-support-toggle"
@@ -145,19 +148,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         aria-label={compactAuxiliaryOpen ? '关闭辅助栏' : '打开辅助栏'}
         aria-expanded={compactAuxiliaryOpen}
         onClick={() => {
-          if (compactAuxiliaryOpen) {
-            if (inspectorActsAsDrawer && !isMobileViewport) {
-              if (!workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
-              closeMobileInspector();
-            } else {
-              closeMobileInspector();
-            }
-          } else if (inspectorActsAsDrawer && !isMobileViewport) {
-            if (workspaceLayout.leftCollapsed) toggleWorkspacePanel('left');
-            openSessionDrawer();
-          } else {
-            openSessionDrawer();
-          }
+          if (compactAuxiliaryOpen) closeMobileInspector();
+          else openSessionDrawer();
         }}
       >
         <Menu size={17} />
@@ -314,6 +306,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         className="workspace-panels relative flex h-full min-h-0 min-w-0 flex-1 bg-[hsl(var(--surface))]"
       >
         <ThreeColumnSplit
+          mediumPresentation="drawer"
           left={
             <section className="workspace-panel workbench-panel session-rail-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
               {sessionDrawerOpen && (
@@ -321,7 +314,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                   type="button"
                   className="workspace-drawer-close"
                   aria-label="关闭会话列表"
-                  ref={sessionCloseRef}
+                  ref={registerSessionClose}
                   onClick={closeSessionDrawer}
                 >
                   <X size={18} />
@@ -409,7 +402,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                   type="button"
                   className="workspace-drawer-close"
                   aria-label="关闭检查器"
-                  ref={inspectorCloseRef}
+                  ref={registerInspectorClose}
                   onClick={closeMobileInspector}
                 >
                   <X size={18} />
