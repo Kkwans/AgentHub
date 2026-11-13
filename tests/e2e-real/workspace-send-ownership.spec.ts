@@ -9,7 +9,13 @@ async function selectSession(page: Page, id: string) {
   const link = page.locator(`.session-rail a[href="/workspace/${id}"]`);
   // Mobile drawers do not mount the rail until opened; desktop list loading
   // must not be mistaken for a collapsed drawer with a nonexistent toggle.
-  if ((page.viewportSize()?.width ?? 1440) < 1180 && !(await link.isVisible())) {
+  const width = page.viewportSize()?.width ?? 1440;
+  if (width < 768) {
+    await page
+      .getByRole('tablist', { name: 'Workspace 视图' })
+      .getByRole('tab', { name: '会话', exact: true })
+      .click();
+  } else if (width < 1180 && !(await link.isVisible())) {
     const open = page.getByRole('button', { name: '打开辅助栏', exact: true });
     if (await open.isVisible()) await open.click();
   }
