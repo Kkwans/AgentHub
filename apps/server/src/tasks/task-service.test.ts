@@ -9,8 +9,9 @@ import {
   TaskRepository,
   SessionRepository,
   RunRepository,
+  WorktreeExecutionRepository,
 } from '@agenthub/db';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { CreateSessionInput, StartRunInput } from '../sessions/session-service.js';
 import { TaskService, type TaskSessionController } from './task-service.js';
@@ -91,6 +92,109 @@ describe('Goal 与 Task service', () => {
   });
 
   afterAll(async () => database.close());
+
+  it.each([
+    'QUEUED',
+    'SETTING_UP',
+    'RUNNING',
+    'AWAITING_INPUT',
+    'REVIEW',
+    'MERGING',
+    'DONE',
+    'BLOCKED',
+    'CANCELED',
+  ])('Worktree %s 所有权阻止普通审批、返工、启动与手工状态修改', async (executionStatus) => {
+    const taskRepository = new TaskRepository(database.db);
+    const task = await taskRepository.create({
+      id: randomUUID(),
+      projectId,
+      title: '隔离任务禁止普通入口',
+      status: 'WAITING_REVIEW',
+      assignedAgentId: agentId,
+    });
+    const executionRepository = new WorktreeExecutionRepository(database.db);
+    const execution = await executionRepository.create({
+      id: randomUUID(),
+      taskId: task.id,
+      projectId,
+      agentId,
+      status: executionStatus,
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `managed-${task.id}`,
+    });
+    const beforeSessions = createdSessions.length;
+    const beforeRuns = startedRuns.length;
+    try {
+      for (const action of [
+        () => service.reviewTask(task.id, { decision: 'APPROVE' }),
+        () => service.reviewTask(task.id, { decision: 'REWORK', feedback: '不能从根目录返工' }),
+        () => service.transitionTask(task.id, 'DONE'),
+        () => service.transitionTask(task.id, 'CANCELED'),
+        () => service.startTask(task.id, { agentId }),
+      ]) {
+        await expect(action()).rejects.toMatchObject({
+          status: 409,
+          code: 'TASK_WORKTREE_MANAGED',
+        });
+        expect(await taskRepository.get(task.id)).toEqual(task);
+        expect(await executionRepository.get(execution.id)).toEqual(execution);
+        expect(createdSessions).toHaveLength(beforeSessions);
+        expect(startedRuns).toHaveLength(beforeRuns);
+      }
+    } finally {
+      // These parametrized records share a project, so release the active unique slot.
+      await executionRepository.patch(execution.id, { status: 'CANCELED' });
+    }
+  });
+
+  it('Worktree 入队赢得竞争后，普通手工变更的事务再次核对所有权', async () => {
+    const repository = new TaskRepository(database.db);
+    const controlled = new TaskService(
+      new GoalRepository(database.db),
+      repository,
+      new ProjectRepository(database.db),
+      {
+        create: async () => {
+          throw new Error('不应创建 Session');
+        },
+        startRun: async () => {
+          throw new Error('不应创建 Run');
+        },
+      },
+    );
+    const task = await repository.create({
+      id: randomUUID(),
+      projectId,
+      title: '旧状态竞争',
+      status: 'READY',
+    });
+    const executionRepository = new WorktreeExecutionRepository(database.db);
+    const transition = repository.transition.bind(repository);
+    const paused = vi.spyOn(repository, 'transition').mockImplementationOnce(async (...args) => {
+      await executionRepository.enqueue({
+        id: randomUUID(),
+        taskId: task.id,
+        projectId,
+        agentId,
+        assignedAgentId: agentId,
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: `race-${task.id}`,
+      });
+      return transition(...args);
+    });
+    try {
+      await expect(controlled.transitionTask(task.id, 'CANCELED')).rejects.toMatchObject({
+        status: 409,
+        code: 'TASK_WORKTREE_MANAGED',
+      });
+      expect((await repository.get(task.id))?.status).toBe('IN_PROGRESS');
+      expect((await executionRepository.list({ taskId: task.id }))[0]?.status).toBe('QUEUED');
+    } finally {
+      paused.mockRestore();
+    }
+  });
 
   it('AH041：手工任务仍需BACKLOG→READY→IN_PROGRESS，不放宽状态机或创建Session', async () => {
     const task = await service.createTask({ projectId, title: '手工任务' });

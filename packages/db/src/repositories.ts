@@ -1446,6 +1446,15 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
     return task;
   }
 
+  async hasWorktreeExecution(id: string): Promise<boolean> {
+    const [execution] = await this.db
+      .select({ id: worktreeExecutions.id })
+      .from(worktreeExecutions)
+      .where(eq(worktreeExecutions.taskId, id))
+      .limit(1);
+    return Boolean(execution);
+  }
+
   async create(input: typeof tasks.$inferInsert) {
     const [created] = await this.db.insert(tasks).values(input).returning();
     if (!created) throw new DatabaseInvariantError('TASK_CREATE_FAILED', 'Task 创建失败');
@@ -1689,7 +1698,7 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
     id: string,
     to: TaskStatus,
     patch: Partial<typeof tasks.$inferInsert> = {},
-    options: { guardManualRunState?: boolean } = {},
+    options: { guardManualRunState?: boolean; guardWorktreeOwnership?: boolean } = {},
   ) {
     return this.db.transaction(async (transaction) => {
       const [current] = await transaction
@@ -1699,6 +1708,20 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
         .for('update')
         .limit(1);
       if (!current) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+      // Queue admission also locks this Task. Do not lock Execution here:
+      // managed lifecycle transactions use Execution -> Task lock ordering.
+      if (options.guardWorktreeOwnership) {
+        const [execution] = await transaction
+          .select({ id: worktreeExecutions.id })
+          .from(worktreeExecutions)
+          .where(eq(worktreeExecutions.taskId, id))
+          .limit(1);
+        if (execution)
+          throw new DatabaseInvariantError(
+            'TASK_WORKTREE_MANAGED',
+            '该任务由隔离执行管理，请使用隔离执行操作',
+          );
+      }
       // Admission also takes the Task lock, so a stale service snapshot cannot
       // cancel a new Run or bypass this protection via BLOCKED/WAITING_REVIEW.
       if (options.guardManualRunState) {

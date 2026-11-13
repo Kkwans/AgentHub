@@ -25,6 +25,38 @@ type Execution = {
 };
 type Task = { id: string; status: string; sessionId: string | null; finalRunId: string | null };
 
+async function assertOrdinaryActionsBlocked(
+  context: BrowserContext,
+  execution: Execution,
+  agentId: string,
+) {
+  const paths = [
+    `/tasks/${execution.taskId}`,
+    `/worktree-executions/${execution.id}`,
+    `/worktree-executions?taskId=${execution.taskId}`,
+    `/sessions/${execution.sessionId}`,
+    `/sessions/${execution.sessionId}/runs`,
+    `/sessions/${execution.sessionId}/messages`,
+    `/sessions?projectId=${execution.projectId}`,
+  ];
+  const snapshot = () => Promise.all(paths.map((path) => apiData(context, 'get', path)));
+  const before = await snapshot();
+  for (const [action, data] of [
+    ['review', { decision: 'APPROVE' }],
+    ['review', { decision: 'REWORK', feedback: '不得绕过隔离执行返工' }],
+    ['transition', { status: 'CANCELED' }],
+    ['transition', { status: 'DONE' }],
+    ['start', { agentId }],
+  ] as const) {
+    const response = await context.request.post(`/api/v1/tasks/${execution.taskId}/${action}`, {
+      data,
+    });
+    expect(response.status(), `ordinary ${action} must not bypass managed execution`).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: 'TASK_WORKTREE_MANAGED' } });
+    expect(await snapshot()).toEqual(before);
+  }
+}
+
 async function finishTurn(context: BrowserContext, executionId: string, previousRun?: string) {
   let active: Execution | undefined;
   await expect
@@ -114,6 +146,7 @@ for (const width of [390, 768, 1024, 1440]) {
       },
     );
     const first = await finishTurn(context, queued.execution.id);
+    await assertOrdinaryActionsBlocked(context, first, agent.id);
     expect(first.taskId).toBe(task.id);
     expect(first.worktreePath).toBeTruthy();
     const child = relative(app.worktreeRoot, first.worktreePath!);
@@ -166,7 +199,8 @@ for (const width of [390, 768, 1024, 1440]) {
     expect(second.sessionId).toBe(first.sessionId);
     expect(second.runId).not.toBe(first.runId);
     await expect(page).toHaveURL(new RegExp(`/workspace/${first.sessionId}$`));
-    await finishTurn(context, first.id, first.runId!);
+    const secondReview = await finishTurn(context, first.id, first.runId!);
+    await assertOrdinaryActionsBlocked(context, secondReview, agent.id);
     const messages = await apiData<Array<{ role: string; text: string }>>(
       context,
       'get',

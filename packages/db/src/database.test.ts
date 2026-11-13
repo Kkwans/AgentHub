@@ -14,6 +14,7 @@ import {
   MessageRepository,
   PromptRepository,
   WorktreeExecutionRepository,
+  TaskRepository,
 } from './repositories.js';
 import type { DatabaseInvariantError } from './repositories.js';
 import {
@@ -405,6 +406,44 @@ describe('数据库不变量', () => {
         (message) => message.sequence,
       ),
     ).toEqual([]);
+  });
+
+  it('普通 Task 事务拒绝历史 Worktree 所有权，隔离专用事务不受影响', async () => {
+    const { projectId, agentId } = await seedRun();
+    const repository = new TaskRepository(client.db);
+    const executions = new WorktreeExecutionRepository(client.db);
+    const task = await repository.create({
+      id: randomUUID(),
+      projectId,
+      title: '所有权边界',
+      status: 'WAITING_REVIEW',
+    });
+    const execution = await executions.create({
+      id: randomUUID(),
+      taskId: task.id,
+      projectId,
+      agentId,
+      status: 'BLOCKED',
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `guard-${task.id}`,
+    });
+    for (const status of ['BLOCKED', 'DONE', 'CANCELED']) {
+      await executions.patch(execution.id, { status });
+      await expect(
+        repository.transition(
+          task.id,
+          'DONE',
+          { completedAt: new Date() },
+          { guardWorktreeOwnership: true },
+        ),
+      ).rejects.toMatchObject({ code: 'TASK_WORKTREE_MANAGED' });
+      expect(await repository.get(task.id)).toEqual(task);
+    }
+    await executions.patch(execution.id, { status: 'REVIEW' });
+    const managed = await executions.transitionWithTask(execution.id, 'RUNNING', 'IN_PROGRESS');
+    expect(managed.task.status).toBe('IN_PROGRESS');
+    expect(managed.execution.status).toBe('RUNNING');
   });
 
   it('Worktree Execution 持久化队列并限制每 Project 单活跃项', async () => {

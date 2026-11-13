@@ -284,3 +284,20 @@ AH-078后端审查发现：cancel初读QUEUED/REVIEW后有await间隙，原trans
 AH-077当前验收：36c45e5精确CI43349803859双绿，1057单测、48 fixture、145真实项/140几何，隔离入队四宽通过；关闭当前切片，不代表视觉认可。
 
 AH-078最终本地验收：1078完整资源隔离覆盖/10原有skip、90前端专项、30后端相关项、lint/types/build/QA10和独立CR通过；最终构建后真实ACP权威终态烟测成功清理。首轮资源重叠失败保留，最终严格串行重跑通过。四宽待新exact CI，不提前关闭。
+
+## AH-079 / P1：普通Task API可绕过隔离执行审阅与合并
+
+- 隔离PGlite实际TaskService/Repository复现：Worktree REVIEW对应WAITING_REVIEW任务，经普通APPROVE直接TaskDONE而Execution仍REVIEW；普通REWORK另建1Session+1Run于Project根目录，Task与Execution的Session分裂。普通transition DONE/CANCELED也成功，仅改Task。
+- 每例独立Project，持久关联Session与COMPLETED Run；使用stub Session控制器，无真实Agent/Git操作。不是仅从UI隐藏推测安全。
+- S60范围：Worktree-owned任务普通start/review/manualtransition明确拒绝409 TASK_WORKTREE_MANAGED；副作用前检查及Task锁内最终检查，保留专属Worktree流程和普通任务。暂不覆盖跨实例普通启动Session原子预留或任意直接Session API的完整所有权。
+
+## AH-080 / P1（待运行复现）：旧隔离merge快照跨返工代际
+
+- 源码审查：merge先读取run1，再await Project/Task；若另一次返工run2完成并回到REVIEW，旧请求仍可claim MERGING并以旧run1写finalRunId。需barrier复现和锁内run代际claim，另行切片，不混入S60。
+
+### AH-001 / M1.2 追加启动准入证据
+
+- 隔离PGlite+fake Session runtime：普通start创建Session后暂停，Worktree入队启动获胜；普通start随后拒绝却遗留READY Session。真实RunRepository允许该孤立Session另建RUNNING Run，同时managed Run仍RUNNING。证明持久层双Run准入，不冒称真实adapter双派发。
+- 需要runtime副作用前的Task锁内原子Session预留/关联及故障恢复，不以S60入口guard冒充跨实例修复。保留为后续独立设计。
+
+AH-079最终本地验收：1089完整覆盖/10原有skip、68专项、lint/types/build/QA10及CR通过；最终构建后两轮10次真实HTTP拒绝且完整快照不变，专用返工/合并照常完成。四宽待新exact CI；跨实例孤立Session与DirectSession所有权仍开放。

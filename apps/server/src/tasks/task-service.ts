@@ -305,8 +305,9 @@ export class TaskService implements TaskRunLifecycleObserver {
   async transitionTask(id: string, to: TaskStatus) {
     return this.withTaskAdmission(id, async () => {
       await this.getTask(id);
+      await this.assertOrdinaryTask(id);
       try {
-        return await this.tasks.transition(
+        return await this.transitionOrdinaryTask(
           id,
           to,
           {
@@ -352,6 +353,7 @@ export class TaskService implements TaskRunLifecycleObserver {
 
   private async startAdmittedTask(id: string, input: StartTaskInput) {
     const task = await this.getTask(id);
+    await this.assertOrdinaryTask(id);
     if (task.status !== 'READY')
       throw new AppError(409, 'TASK_NOT_READY', '只有就绪的 Task 可以交给 Agent');
     const project = await this.requireProject(task.projectId);
@@ -397,7 +399,7 @@ export class TaskService implements TaskRunLifecycleObserver {
       ...(input.model ? { model: input.model } : {}),
       ...(input.mode ? { mode: input.mode } : {}),
     });
-    await this.tasks.transition(id, 'IN_PROGRESS', {
+    await this.transitionOrdinaryTask(id, 'IN_PROGRESS', {
       assignedAgentId: input.agentId,
       sessionId: session.id,
     });
@@ -410,7 +412,7 @@ export class TaskService implements TaskRunLifecycleObserver {
       });
     } catch (error) {
       if (error instanceof RunStartError) throw error;
-      await this.tasks.transition(id, 'BLOCKED');
+      await this.transitionOrdinaryTask(id, 'BLOCKED');
       throw error;
     }
     return { task: await this.getTask(id), session, run };
@@ -428,10 +430,11 @@ export class TaskService implements TaskRunLifecycleObserver {
     input: { decision: 'APPROVE' } | { decision: 'REWORK'; feedback: string },
   ) {
     const task = await this.getTask(id);
+    await this.assertOrdinaryTask(id);
     if (task.status !== 'WAITING_REVIEW')
       throw new AppError(409, 'TASK_NOT_WAITING_REVIEW', '只有待审阅的 Task 可以确认结果');
     if (input.decision === 'APPROVE') {
-      const approved = await this.tasks.transition(id, 'DONE', { completedAt: new Date() });
+      const approved = await this.transitionOrdinaryTask(id, 'DONE', { completedAt: new Date() });
       return { task: approved, session: null, run: null };
     }
 
@@ -449,7 +452,7 @@ export class TaskService implements TaskRunLifecycleObserver {
       cwd: project.realRootPath,
       ...(task.branch ? { branch: task.branch } : {}),
     });
-    await this.tasks.transition(id, 'IN_PROGRESS', {
+    await this.transitionOrdinaryTask(id, 'IN_PROGRESS', {
       sessionId: session.id,
       finalRunId: null,
       completedAt: null,
@@ -470,10 +473,36 @@ export class TaskService implements TaskRunLifecycleObserver {
       });
     } catch (error) {
       if (error instanceof RunStartError) throw error;
-      await this.tasks.transition(id, 'BLOCKED');
+      await this.transitionOrdinaryTask(id, 'BLOCKED');
       throw error;
     }
     return { task: await this.getTask(id), session, run };
+  }
+
+  private async assertOrdinaryTask(id: string) {
+    if (await this.tasks.hasWorktreeExecution(id)) {
+      throw new AppError(
+        409,
+        'TASK_WORKTREE_MANAGED',
+        '该任务由隔离执行管理，请使用隔离审阅、返工、合并或取消操作',
+      );
+    }
+  }
+
+  private async transitionOrdinaryTask(
+    ...[id, to, patch, options]: Parameters<TaskRepository<AgentHubDatabase>['transition']>
+  ) {
+    try {
+      return await this.tasks.transition(id, to, patch, {
+        ...options,
+        guardWorktreeOwnership: true,
+      });
+    } catch (error) {
+      if (error instanceof DatabaseInvariantError && error.code === 'TASK_WORKTREE_MANAGED') {
+        throw new AppError(409, error.code, '该任务由隔离执行管理，请刷新后使用隔离执行操作');
+      }
+      throw error;
+    }
   }
 
   recoverAfterRestart() {
