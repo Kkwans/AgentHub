@@ -1,7 +1,8 @@
 import { AhButton, AhErrorState, AhTextarea } from '@agenthub/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { createReviewOperation, type ReviewOperationProps } from './review-operation';
 import { api, type TaskRecord } from '../../../lib/api';
 import { ApiError } from '../../../lib/api-error';
 
@@ -27,11 +28,13 @@ export function TaskReviewActions({
   task,
   disabled,
   onPendingChange,
+  onOperationChange,
+  canAutoNavigate,
 }: {
   task: TaskRecord;
   disabled: boolean;
   onPendingChange: (key: string, pending: boolean) => void;
-}) {
+} & ReviewOperationProps) {
   const client = useQueryClient();
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState('');
@@ -40,6 +43,8 @@ export function TaskReviewActions({
   const [unknown, setUnknown] = useState(false);
   const [checking, setChecking] = useState(false);
   const [notice, setNotice] = useState('');
+  const [resultHref, setResultHref] = useState('');
+  const operation = useRef<ReturnType<typeof createReviewOperation> | null>(null);
   const [settled, setSettled] = useState(false);
   const busy = useRef(false);
   const resolved = useRef(false);
@@ -76,7 +81,15 @@ export function TaskReviewActions({
     setError('');
     setNotice('');
     const key = `${task.projectId}:${task.id}`;
+    const report = createReviewOperation(
+      { projectId: task.projectId, taskId: task.id },
+      onOperationChange,
+    );
+    operation.current = report;
+    const navigationGate = canAutoNavigate;
+    report('pending', '正在提交审阅操作。');
     onPendingChange(key, true);
+    let verifiedResultHref: string | undefined;
     try {
       const result = await api.post<ReviewResult>(
         `/tasks/${encodeURIComponent(task.id)}/review`,
@@ -103,25 +116,36 @@ export function TaskReviewActions({
           result.task.assignedAgentId !== task.assignedAgentId
         )
           throw new Error('继续修改的工作区无法确认，请核对原任务。');
+        verifiedResultHref = `/workspace/${encodeURIComponent(result.session.id)}`;
         if (
           current() &&
           (latestTask.current.sessionId === task.sessionId ||
             latestTask.current.sessionId === result.session.id)
         ) {
           setSettled(true);
-          navigate(`/workspace/${encodeURIComponent(result.session.id)}`);
+          const href = verifiedResultHref;
+          if (!navigationGate || navigationGate()) navigate(href);
+          else {
+            setResultHref(href);
+            setNotice('继续修改已提交，可打开工作区查看结果。');
+          }
         }
       }
+      report('resolved', '审阅操作已确认完成。', verifiedResultHref);
       resolved.current = true;
       // Never replace a newer task snapshot with a delayed review response.
       refresh();
     } catch (failure) {
+      const safe =
+        failure instanceof ApiError &&
+        failure.status >= 400 &&
+        failure.status < 500 &&
+        safeRejections.has(failure.code);
+      report(
+        safe ? 'retryable' : 'unknown',
+        failure instanceof Error ? failure.message : '审阅请求结果无法确认。',
+      );
       if (current()) {
-        const safe =
-          failure instanceof ApiError &&
-          failure.status >= 400 &&
-          failure.status < 500 &&
-          safeRejections.has(failure.code);
         setUnknown(!safe);
         setError(failure instanceof Error ? failure.message : '审阅请求结果无法确认。');
       }
@@ -135,6 +159,8 @@ export function TaskReviewActions({
   const check = async () => {
     if (!current() || checking || pending) return;
     setChecking(true);
+    const report = operation.current;
+    report?.('checking', '正在核对原任务。');
     try {
       const stored = await api.get<TaskRecord>(`/tasks/${encodeURIComponent(task.id)}`);
       if (!stored || stored.id !== task.id || stored.projectId !== task.projectId)
@@ -149,6 +175,7 @@ export function TaskReviewActions({
     } catch (failure) {
       if (current()) setError(failure instanceof Error ? failure.message : '无法核对原任务。');
     } finally {
+      report?.('unknown', '核对结束；原请求结果仍未确认，勿重复提交。');
       if (current()) setChecking(false);
     }
   };
@@ -207,6 +234,7 @@ export function TaskReviewActions({
         </>
       ) : null}
       {notice ? <p role="status">{notice}</p> : null}
+      {resultHref ? <Link to={resultHref}>打开已提交的工作区</Link> : null}
     </>
   );
 }

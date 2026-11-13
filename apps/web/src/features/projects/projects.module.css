@@ -1676,3 +1676,19 @@
     line-height: 1.6;
   }
 }
+
+/* Confirmed mobile header failures must not look like quiet metadata. */
+.headerWarnings[data-severity='warning'] {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--ah-warning);
+}
+.headerWarnings[data-severity='warning'] > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.headerWarnings[data-severity='warning'] .identityFacts {
+  color: inherit;
+  font-size: 12px;
+}

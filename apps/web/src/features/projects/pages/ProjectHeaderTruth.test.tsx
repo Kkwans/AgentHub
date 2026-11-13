@@ -151,6 +151,10 @@ it('mobile keeps title, next action and warnings visible while secondary metadat
     expect(screen.getByText('编辑类型').closest('details')).toBe(details);
     expect(screen.getByText('0 个登记可用 Agent').closest('details')).toBeNull();
     expect(screen.getByText('0 个登记可用 Agent')).toBeVisible();
+    expect(screen.getByText('0 个登记可用 Agent').closest('[role="status"]')).toHaveAttribute(
+      'data-severity',
+      'warning',
+    );
   } finally {
     media.mockRestore();
   }
@@ -177,6 +181,11 @@ it.each(['pending', 'error'] as const)(
         : ['会话分支确认中', '工作数量确认中']) {
         expect(screen.getByText(text)).toBeVisible();
         expect(screen.getByText(text).closest('details')).toBeNull();
+        if (state === 'error')
+          expect(screen.getByText(text).closest('[role="status"]')).toHaveAttribute(
+            'data-severity',
+            'warning',
+          );
       }
       expect(screen.queryByRole('link', { name: '进入 Work' })).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: '新建工作' })).toBeVisible();

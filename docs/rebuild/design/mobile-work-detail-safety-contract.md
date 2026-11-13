@@ -25,6 +25,8 @@ type OperationSnapshot = {
   operationId: string;
   phase: OperationPhase;
   message: string;
+  // 仅resolved且原响应身份校验通过时携带，供owner跨子组件卸载保留。
+  resultHref?: string;
 };
 onOperationChange?: (snapshot: OperationSnapshot) => void;
 // 返回当次操作是否仍可自动导航，不能用来授权提交或绕过资格校验。
@@ -85,3 +87,17 @@ canonical URL 恢复只修 task/view，保留用户当前最新 q/filterAgent/st
 ## 实施顺序
 
 先独立CR以上契约；然后只加操作回调/导航门及回归测试，不改UI；独立CR通过后再接URL驱动的单实例手机详情。每片分别提交，任何保护状态不完整则停留在现有布局，不发布半安全详情。
+
+## 子组件契约首片（2026-11-13 08:42–08:45 UTC）
+
+仅 TaskReviewActions / WorktreeReviewActions 接入可选快照回调与导航谓词，父页面未接入，不开启新列表/详情行为。每次写请求前同步报告 pending，合法结果 resolved，已知拒绝 retryable，无法确认 unknown；核对仅报告 checking→unknown，不把一次读取误当原请求已确认。只读差异加载不申请写操作锁，卸载不自动解锁；原请求最终结果仍以原operationId发回原订阅者。
+
+导航谓词在提交时捕获；当合法返工结果被门拦截，保留显式“打开已提交的工作区”入口，不抹掉成功结果、不自动重试。省略新props时保留原调用行为。operationId仅需页面生命周期内唯一，不依赖非安全LAN来源可能缺失的crypto.randomUUID。
+
+验证：新契约10项测试覆盖两组件pending先于POST、捕获旧epoch回调、有效结果链接、无效响应不生成链接、unknown核对仍锁定、重试operationId变化及卸载不释放锁。既有WorktreeReviewActions与ProjectWorkEmpty共91项通过。父route离开守卫、持久owner、列表状态条及真正手机详情仍未实现，不能依据本片宣称可以安全隐藏/卸载Inspector。
+
+### 独立 CR 修正：结果必须交付 owner（08:50 UTC）
+
+仅把成功链接存子组件不够：后台刷新会使任务离开待审阅状态，父条件随即卸载Review。现resolved快照同步携带通过原响应身份验证的resultHref，先于refresh及finally解除pending交给原owner；即使旧子组件已经卸载，合法旧响应仍以原operationId向原订阅者报告，不跨任务污染。UI setState与自动导航仍要求current归属，未知/无效响应从不携带链接。
+
+新增query cache状态改变实际卸载子组件后owner仍保留链接测试，两组件都覆盖；卸载早于响应的测试也断言快照携带已验证链接。当前总验证103项通过（新契约12项+既有91项）。父owner接入仍未实现，本片只是可靠结果交付接口。

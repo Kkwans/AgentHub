@@ -2,7 +2,8 @@ import { ApiError } from '../../../lib/api-error';
 import { AhButton, AhErrorState, AhInput, AhTextarea } from '@agenthub/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { createReviewOperation, type ReviewOperationProps } from './review-operation';
 import {
   api,
   type TaskRecord,
@@ -14,11 +15,13 @@ export function WorktreeReviewActions({
   execution,
   disabled,
   onPendingChange,
+  onOperationChange,
+  canAutoNavigate,
 }: {
   execution: WorktreeExecutionRecord;
   disabled: boolean;
   onPendingChange: (key: string, pending: boolean) => void;
-}) {
+} & ReviewOperationProps) {
   const client = useQueryClient();
   const navigate = useNavigate();
   const [review, setReview] = useState<{ identity: string; value: WorktreeReviewRecord }>();
@@ -29,6 +32,8 @@ export function WorktreeReviewActions({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [resultHref, setResultHref] = useState('');
+  const operation = useRef<ReturnType<typeof createReviewOperation> | null>(null);
   const [unknown, setUnknown] = useState(false);
   const busy = useRef(false);
   const settled = useRef(false);
@@ -129,7 +134,15 @@ export function WorktreeReviewActions({
     setError('');
     setNotice('');
     const key = `${execution.projectId}:${execution.taskId}`;
+    const report = createReviewOperation(
+      { projectId: execution.projectId, taskId: execution.taskId, executionId: execution.id },
+      onOperationChange,
+    );
+    operation.current = report;
+    const navigationGate = canAutoNavigate;
+    report('pending', '正在提交审阅操作。');
     onPendingChange(key, true);
+    let verifiedResultHref: string | undefined;
     try {
       if (action === 'rework') {
         const result = await api.post<WorktreeExecutionRecord>(
@@ -146,12 +159,18 @@ export function WorktreeReviewActions({
           result.runId === execution.runId
         )
           throw new Error('返工结果无法确认，请核对原隔离执行。');
+        verifiedResultHref = `/workspace/${encodeURIComponent(result.sessionId!)}`;
         if (
           current() &&
           (latest.current.runId === execution.runId || latest.current.runId === result.runId)
         ) {
           settled.current = true;
-          navigate(`/workspace/${encodeURIComponent(result.sessionId!)}`);
+          const href = verifiedResultHref;
+          if (!navigationGate || navigationGate()) navigate(href);
+          else {
+            setResultHref(href);
+            setNotice('继续修改已提交，可打开工作区查看结果。');
+          }
         }
       } else {
         const result = await api.post<{ execution: WorktreeExecutionRecord; task: TaskRecord }>(
@@ -175,25 +194,30 @@ export function WorktreeReviewActions({
           setNotice(`合并完成：${result.execution.mergeCommitSha}`);
         }
       }
+      report('resolved', '隔离审阅操作已确认完成。', verifiedResultHref);
     } catch (failure) {
+      const preClaimRejection =
+        action === 'merge' &&
+        failure instanceof ApiError &&
+        failure.status === 409 &&
+        failure.code === 'WORKTREE_EXECUTION_CHANGED';
+      const confirmedRejection =
+        preClaimRejection ||
+        (failure instanceof ApiError &&
+          ((failure.status === 400 && failure.code === 'VALIDATION_FAILED') ||
+            (failure.status === 409 &&
+              [
+                'PRIMARY_WORKTREE_DIRTY',
+                'PRIMARY_BRANCH_CHANGED',
+                'WORKTREE_BASE_DIVERGED',
+                'WORKTREE_MERGE_CONFLICT',
+                'WORKTREE_EXECUTION_NOT_IN_REVIEW',
+              ].includes(failure.code))));
+      report(
+        confirmedRejection ? 'retryable' : 'unknown',
+        failure instanceof Error ? failure.message : '操作结果无法确认。',
+      );
       if (current()) {
-        const preClaimRejection =
-          action === 'merge' &&
-          failure instanceof ApiError &&
-          failure.status === 409 &&
-          failure.code === 'WORKTREE_EXECUTION_CHANGED';
-        const confirmedRejection =
-          preClaimRejection ||
-          (failure instanceof ApiError &&
-            ((failure.status === 400 && failure.code === 'VALIDATION_FAILED') ||
-              (failure.status === 409 &&
-                [
-                  'PRIMARY_WORKTREE_DIRTY',
-                  'PRIMARY_BRANCH_CHANGED',
-                  'WORKTREE_BASE_DIVERGED',
-                  'WORKTREE_MERGE_CONFLICT',
-                  'WORKTREE_EXECUTION_NOT_IN_REVIEW',
-                ].includes(failure.code))));
         setUnknown(!confirmedRejection);
         setReview(undefined);
         if (confirmedRejection && action === 'merge')
@@ -218,6 +242,8 @@ export function WorktreeReviewActions({
     if (!current() || busy.current) return;
     busy.current = true;
     setLoading(true);
+    const report = operation.current;
+    report?.('checking', '正在核对原隔离执行。');
     try {
       const result = await api.get<WorktreeExecutionRecord>(
         `/worktree-executions/${encodeURIComponent(execution.id)}`,
@@ -234,6 +260,7 @@ export function WorktreeReviewActions({
     } catch (failure) {
       if (current()) setError(failure instanceof Error ? failure.message : '无法核对原隔离执行。');
     } finally {
+      report?.('unknown', '核对结束；原请求结果仍未确认，勿重复提交。');
       busy.current = false;
       if (current()) setLoading(false);
     }
@@ -361,6 +388,7 @@ export function WorktreeReviewActions({
         </>
       ) : null}
       {notice ? <p role="status">{notice}</p> : null}
+      {resultHref ? <Link to={resultHref}>打开已提交的工作区</Link> : null}
     </>
   );
 }

@@ -175,6 +175,8 @@ export function ProjectContextLayout() {
     eligibleAgentCount === undefined ||
     eligibleAgentCount === 0 ||
     unfinishedWorkCount === undefined;
+  const headerFailure =
+    sessions.isError || eligibility.isError || tasks.isError || eligibleAgentCount === 0;
   const renderFacts = (mode: 'all' | 'warnings' | 'secondary') => {
     const show = (attention: boolean) =>
       mode === 'all' || (mode === 'warnings' ? attention : !attention);
@@ -261,7 +263,12 @@ export function ProjectContextLayout() {
         {compact ? (
           <>
             {hasHeaderWarning ? (
-              <div className={projectsStyles.headerWarnings} role="status">
+              <div
+                className={projectsStyles.headerWarnings}
+                role="status"
+                data-severity={headerFailure ? 'warning' : 'pending'}
+              >
+                {headerFailure ? <AlertTriangle size={14} aria-hidden="true" /> : null}
                 {renderFacts('warnings')}
               </div>
             ) : null}
