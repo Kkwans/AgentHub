@@ -834,6 +834,11 @@
 }
 
 :global(.workspace) :global(.git-change-state .deletions) {
+  color: #b32d3a;
+}
+
+:global(.dark .workspace) :global(.git-change-state .deletions),
+:global([data-agenthub-theme='dark'] .workspace) :global(.git-change-state .deletions) {
   color: var(--ah-danger);
 }
 

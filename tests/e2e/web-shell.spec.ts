@@ -822,6 +822,20 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     );
     await expect(modifiedLines).toBeVisible();
     await expect(modifiedLines).toContainText(/display:\s*grid/);
+    const editorInputs = page.locator('.git-diff-editor [role="textbox"]');
+    await expect(editorInputs).toHaveCount(2);
+    await expect
+      .poll(() =>
+        editorInputs.evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute('aria-label') ?? ''),
+        ),
+      )
+      .toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('更改前：apps/web/src/features/workspace/workspace.module.css'),
+          expect.stringContaining('更改后：apps/web/src/features/workspace/workspace.module.css'),
+        ]),
+      );
     const diffHeader = await page.locator('.git-selected-diff-heading').boundingBox();
     const diffControls = await page.locator('.git-selected-diff > .git-diff-toolbar').boundingBox();
     const diffEditor = await page.locator('.git-selected-diff > .git-diff-editor').boundingBox();

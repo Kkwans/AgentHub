@@ -6,6 +6,8 @@ import htmlWorker from 'monaco-editor/language/html/html.worker.js?worker';
 import jsonWorker from 'monaco-editor/language/json/json.worker.js?worker';
 import typescriptWorker from 'monaco-editor/language/typescript/ts.worker.js?worker';
 
+import { diffEditorThemes } from './diff-editor-theme';
+
 type MonacoWorkerEnvironment = typeof globalThis & {
   MonacoEnvironment?: {
     getWorker(moduleId: string, label: string): Worker;
@@ -21,5 +23,9 @@ type MonacoWorkerEnvironment = typeof globalThis & {
     return new editorWorker();
   },
 };
+
+for (const [name, definition] of Object.entries(diffEditorThemes)) {
+  monaco.editor.defineTheme(name, definition);
+}
 
 loader.config({ monaco });

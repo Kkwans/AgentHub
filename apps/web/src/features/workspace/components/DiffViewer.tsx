@@ -3,6 +3,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 
 import { EmptyState, LoadingState } from '../../../components/Feedback';
 import { SafeDiffEditor } from '../../../components/SafeDiffEditor';
+import { AGENTHUB_DIFF_DARK, AGENTHUB_DIFF_LIGHT } from '../../../lib/diff-editor-theme';
 
 export function DiffViewer({
   patch,
@@ -70,9 +71,12 @@ export function DiffViewer({
         language={language}
         original={parsed.original}
         modified={parsed.modified}
-        theme={theme?.mode === 'dark' ? 'vs-dark' : 'vs-light'}
+        theme={theme?.mode === 'dark' ? AGENTHUB_DIFF_DARK : AGENTHUB_DIFF_LIGHT}
         options={{
           readOnly: true,
+          ariaLabel: '文件差异预览',
+          originalAriaLabel: `更改前：${path || '文件'}`,
+          modifiedAriaLabel: `更改后：${path || '文件'}`,
           minimap: { enabled: false },
           renderSideBySide: sideBySide,
           scrollBeyondLastLine: false,

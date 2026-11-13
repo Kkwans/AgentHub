@@ -490,3 +490,23 @@ The controlled-single initialization reproduction failed before the fix and now 
 Cold and warm direct-link tests require the real heading and close-button focus. Additional session-error unmount checks require the old Escape trap to stop preventing default, then require focus recovery when the view returns. The sibling candidate passed34 tests,UI build,types/lint/build and static review; the main tree is running a fresh broader regression before publication. The original390 browser direct URL remains unchanged, with query preservation and close-focus assertions added.
 
 Final integrated validation completed14:49:56 UTC:8 files/52 tests passed in13.00s against the newly rebuilt shared UI source. UI/web types,lint,production build3.67s,CSS budget and exact19eeeb7 static CR passed. Explicit E2E types/lint and eight-case collection passed. The combined C26/C27 candidate is ready for publication; actual new overlay/deep-link/axe evidence remains pending CI.
+
+### 2026-11-13 14:52 UTC — Combined publication and exact run
+
+Published ae5f6c3de040354e923bf8e0848c51ca0f9a50d0 and fetched it at14:51:30 UTC; its tree da057a3f9da0238dbd5a3d2d137e659669f389e8 exactly matches the reviewed local tree. Exact run43446740333 was verified from its complete-SHA link. C26/C27 and the corrected C25 fixture gate await this run's actual browser evidence. A fresh complete local Vitest run started14:51:55; product source remains unchanged during it.
+
+Previous3794 real-service finished153 passed and140 geometry checks, and accessibility succeeded, but its four fixture failures remain part of its red overall result. These regular real journeys do not replace the previously failing error/recovery fixture or new medium dialog/deep-link evidence. Current plan rows have been reconciled with already-recorded exact C16–C22 closures; no historical failure entry was erased.
+
+### 2026-11-13 14:58 UTC — Exactae5 complete local regression
+
+A fresh full Vitest run on ae5 product source exited0:141 files/1373 tests passed,4 files/10 tests skipped,359.21s. It started14:51:55 UTC and completion was first verified14:58:35. Only documentation reconciliation changed while it ran. This is one complete run, not the sum of focused test counts, and does not replace the pending new browser/154-state CI evidence.
+
+### 2026-11-13 15:09 UTC — Actual medium evidence and new selected-Diff accessibility failures
+
+Exactae5 fixture finished66 passed/2 failed. All four C25 direct-link/error/recovery cases now pass, including mobile close focus and preserving the query. Personally viewed its768 Diff and390 Git error images: the420px drawer keeps the full filename and code readable with an internal close button; Git failure clearly says cleanliness is unknown and offers retry. QA also inspected the recovered390 image. These close the bounded C25/C27 browser defects, not the entire ae5 run.
+
+The two failures are the added1024/768 selected-Diff axe gate, each containing two rules/five nodes: unnamed original/modified native edit contexts; selected deletions contrast4.29; CSS property red on insert/character highlights3.45 and3.05. The154 read-only page-state job being green does not cover this selected-code state. The1179 capture and subsequent keyboard loop follow this assertion and therefore have not run to completion.
+
+C28 retains all rules and4.5 threshold. Monaco themes inherit their existing light/dark palettes and diff backgrounds, overriding only the attribute/property token; local deletion statistics darken only in light mode. Testing both inserted and deleted composite backgrounds rejected an initial insufficient color before finalizing the deep-red token. Documented originalAriaLabel/modifiedAriaLabel identify both editors and the full file path, with a meaningful pathless fallback. The actual editor initialization waits for theme registration, and readOnly/model/diff semantics remain unchanged.
+
+Integrated47 tests across six files passed in11.84s, with types/lint,production build3.43s,CSS budget and independent static CR. New four-width assertions inspect both actual editor textbox names; the full axe scan remains. These are implementation/source validations, not a claim that actual new Monaco pixels or labels already pass CI.
