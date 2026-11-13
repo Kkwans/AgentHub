@@ -251,9 +251,9 @@ export function ProjectSessionsPage() {
             </AhButton>
           </div>
           {filteredSessions.length ? (
-            <AhSurface className={projectsStyles.sessionLibrary}>
+            <section className={projectsStyles.sessionLibrary} aria-label="项目会话">
               {groupLabels.map(renderSessionGroup)}
-            </AhSurface>
+            </section>
           ) : (
             <AhSurface className={projectsStyles.emptyPanel}>
               <AhEmptyState

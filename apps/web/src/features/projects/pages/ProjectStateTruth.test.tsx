@@ -194,3 +194,24 @@ it('does not present retained cached success as current success after refetch fa
     screen.getByText('已登记为 Git 项目；当前预检结果待确认').parentElement!.parentElement!,
   ).not.toHaveTextContent('✓');
 });
+
+it('keeps review and work in one reading flow before recent sessions and environment details', async () => {
+  mount();
+  const review = await screen.findByRole('heading', { name: 'Review Queue' });
+  const active = screen.getByRole('heading', { name: '正在进行' });
+  const sessions = screen.getByRole('heading', { name: '最近会话' });
+  const health = screen.getByRole('complementary', { name: '项目环境状态' });
+  for (const [before, after] of [
+    [review, active],
+    [active, sessions],
+    [sessions, health],
+  ]) {
+    expect(before!.compareDocumentPosition(after!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
+  expect(review.closest('section')?.parentElement).toBe(active.closest('section')?.parentElement);
+  expect(active.closest('section')?.parentElement).toBe(sessions.closest('section')?.parentElement);
+  expect(screen.getByRole('link', { name: '全部审阅 →' })).toHaveAttribute(
+    'href',
+    '/projects/p1/work?status=WAITING_REVIEW',
+  );
+});

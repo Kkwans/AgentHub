@@ -55,9 +55,9 @@
   min-height: 680px;
   overflow: hidden;
   background: var(--ah-surface);
-  border: 1px solid var(--ah-border-subtle);
-  border-radius: 16px;
-  box-shadow: var(--ah-shadow-xs);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .libraryPane {
@@ -178,9 +178,9 @@
 .promptListRow:hover,
 .promptListRowActive {
   color: var(--ah-text-primary);
-  background: var(--ah-surface);
-  border-color: var(--ah-border-subtle);
-  box-shadow: var(--ah-shadow-xs);
+  background: var(--ah-accent-soft);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .promptListRow > div {
@@ -197,7 +197,7 @@
 }
 
 .promptListRow strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 .promptListRow small {
   color: var(--ah-text-tertiary);
@@ -225,6 +225,7 @@
 
 .mainPane {
   display: grid;
+  max-width: 1040px;
   min-width: 0;
   align-content: start;
   padding: 24px 26px 30px;
@@ -787,4 +788,23 @@
 .emptyLibrary {
   min-width: 0;
   padding: 24px 12px;
+}
+
+/* Quiet document surfaces: rows, not cards nested inside the library frame. */
+.bindingList,
+.versionList,
+.labelList {
+  border-inline: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.bindingRow,
+.versionRow,
+.labelRow {
+  padding-inline: 4px;
+}
+.promptPage .mainHeader p,
+.promptPage .sectionHeading p {
+  font-size: 12px;
+  line-height: 1.6;
 }

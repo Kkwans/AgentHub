@@ -881,7 +881,20 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
     'page',
   );
   await expect(page.getByRole('button', { name: '列表' })).toHaveAttribute('aria-pressed', 'true');
+  const compactWork = (page.viewportSize()?.width ?? 1_000) < 768;
+  const workFilters = page.getByRole('button', { name: '筛选（1）', exact: true });
+  if (compactWork) {
+    await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByRole('combobox', { name: '工作状态' })).toHaveCount(0);
+    await workFilters.click();
+    await expect(workFilters).toHaveAttribute('aria-expanded', 'true');
+  }
   await expect(page.getByRole('combobox', { name: '工作状态' })).toContainText('待审阅');
+  if (compactWork) {
+    await attachViewportScreenshot(page, testInfo, 'project-work-filters-open');
+    await workFilters.click();
+    await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
+  }
   await expect(page.getByRole('region', { name: '工作列表' })).toContainText(task.title);
   await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
@@ -927,6 +940,8 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
   await expect(lifecycle.getByText('production', { exact: true })).toBeVisible();
   await expect(lifecycle.getByRole('heading', { name: '版本比较' })).toBeVisible();
   await expect(lifecycle.getByText('+请优先识别安全、数据一致性和回归风险。')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'prompts-lifecycle');
   await page.keyboard.press('Escape');
   await expect(lifecycle).toBeHidden({ timeout: SHELL_READY_TIMEOUT });
   await expectNoHorizontalOverflow(page);

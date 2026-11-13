@@ -607,30 +607,51 @@
 
 .overviewGrid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 40px;
   align-items: start;
+  padding: 8px 18px 24px;
 }
-
+.overviewMain {
+  display: grid;
+  gap: 28px;
+  min-width: 0;
+}
+.overviewAside {
+  min-width: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--ah-border-subtle);
+}
 .overviewPanel {
   min-width: 0;
-  overflow: hidden;
 }
-
-.overviewPanelWide {
-  grid-column: 1;
+.overviewPanel .panelHeader {
+  padding: 14px 0;
 }
-
-.overviewPanelNarrow {
-  grid-column: 2;
+.overviewPanel .overviewList,
+.overviewPanel .healthStack {
+  padding: 0;
 }
-
-.overviewPanelBottom {
-  grid-column: 1;
+.overviewEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  color: var(--ah-text-secondary);
 }
-
-.overviewPanelBottomNarrow {
-  grid-column: 2;
+.overviewEmpty h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.overviewEmpty p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.overviewEmpty > a {
+  flex-shrink: 0;
 }
 
 .panelHeader {
@@ -1248,14 +1269,13 @@
 
 @media (max-width: 1023px) {
   .overviewGrid {
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
   }
-
-  .overviewPanelWide,
-  .overviewPanelNarrow,
-  .overviewPanelBottom,
-  .overviewPanelBottomNarrow {
-    grid-column: auto;
+  .overviewAside {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--ah-border-subtle);
   }
 
   .workLayout {
@@ -1591,5 +1611,21 @@
   .workToolbar .toolbarCount {
     margin-left: auto;
     align-self: center;
+  }
+}
+
+/* Session history is a reading list, not a nested dashboard card. */
+.sessionsPage .sessionLibrary {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+@media (max-width: 767px) {
+  .overviewGrid {
+    padding-inline: 16px;
+  }
+  .overviewEmpty {
+    flex-wrap: wrap;
   }
 }
