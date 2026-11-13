@@ -4,6 +4,7 @@ import {
   ExecutionTargetRepository,
   ProjectRepository,
   GitCommitOperationRepository,
+  gitWriteClaims,
 } from '@agenthub/db';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { GitWriteCoordinator, GitWriteCoordinatorError } from './git-write-coordinator.js';
@@ -70,7 +71,11 @@ function fixture(kind: ManagedGitWriteKind = 'COMMIT') {
     payload: { paths: ['one.txt'], message: 'test' },
   };
   const get = () => repository.get(input.ownerScope, input.operationId, projectId);
-  return { repository, resolve, coordinator, writes, input, get };
+  const claim = async () =>
+    (await database.db.select().from(gitWriteClaims)).find(
+      (row) => row.repositoryKey === repositoryKey,
+    );
+  return { repository, resolve, coordinator, writes, input, get, claim };
 }
 const kinds = ['COMMIT', 'WORKTREE_CREATE', 'WORKTREE_MERGE'] as const;
 const unknownCode = (kind: ManagedGitWriteKind) =>
@@ -98,14 +103,30 @@ it.each(kinds)('%s 未知结果阻塞其他两种写入及不同 Project 别名'
   });
   await expect(f.writes.run(f.input, first)).rejects.toMatchObject({ code: unknownCode(kind) });
   expect((await f.get())?.phase).toBe('UNKNOWN');
+  const original = await f.get();
+  const holderClaim = await f.claim();
   const retry = vi.fn(async () => 'unexpected');
   for (const nextKind of kinds) {
-    await expect(
-      f.writes.run(
-        { ...f.input, kind: nextKind, projectId: aliasProjectId, operationId: randomUUID() },
-        retry,
-      ),
-    ).rejects.toMatchObject({ code: unknownCode(nextKind) });
+    const loser = {
+      ...f.input,
+      kind: nextKind,
+      projectId: aliasProjectId,
+      operationId: randomUUID(),
+    };
+    await expect(f.writes.run(loser, retry)).rejects.toMatchObject({
+      code:
+        nextKind === 'COMMIT' ? 'GIT_WRITE_PREWRITE_REJECTED' : 'WORKTREE_GIT_PREWRITE_REJECTED',
+    });
+    const saved = await f.repository.get(loser.ownerScope, loser.operationId, loser.projectId);
+    expect(saved).toMatchObject({
+      phase: 'REJECTED_PREWRITE',
+      errorCode: 'GIT_REPOSITORY_CLAIMED',
+      commandExit: null,
+      dispatchedAt: null,
+      settledAt: expect.any(Date),
+    });
+    expect(await f.get()).toEqual(original);
+    expect(await f.claim()).toEqual(holderClaim);
   }
   expect(retry).not.toHaveBeenCalled();
   expect(first).toHaveBeenCalledTimes(1);
@@ -127,23 +148,42 @@ it('首次写入未完成时另一种操作同仓库没有执行权', async () =
   });
   await ready;
   const other = vi.fn(async () => 'other');
+  const loser = {
+    ...f.input,
+    kind: 'WORKTREE_MERGE' as const,
+    projectId: aliasProjectId,
+    operationId: randomUUID(),
+  };
+  const holder = await f.get();
+  const holderClaim = await f.claim();
+  expect(holder?.phase).toBe('DISPATCHED');
   try {
-    await expect(
-      f.writes.run(
-        {
-          ...f.input,
-          kind: 'WORKTREE_MERGE',
-          projectId: aliasProjectId,
-          operationId: randomUUID(),
-        },
-        other,
-      ),
-    ).rejects.toMatchObject({ code: 'WORKTREE_GIT_OUTCOME_UNKNOWN' });
+    await expect(f.writes.run(loser, other)).rejects.toMatchObject({
+      code: 'WORKTREE_GIT_PREWRITE_REJECTED',
+    });
+    expect(
+      await f.repository.get(loser.ownerScope, loser.operationId, loser.projectId),
+    ).toMatchObject({
+      phase: 'REJECTED_PREWRITE',
+      errorCode: 'GIT_REPOSITORY_CLAIMED',
+      commandExit: null,
+      dispatchedAt: null,
+      settledAt: expect.any(Date),
+    });
+    expect(await f.get()).toEqual(holder);
+    expect(await f.claim()).toEqual(holderClaim);
     expect(other).not.toHaveBeenCalled();
   } finally {
     release();
     expect(await first).toBe('first');
   }
+  expect((await f.get())?.phase).toBe('COMMAND_SUCCEEDED');
+  expect(await f.claim()).toBeUndefined();
+  // Releasing the holder never rearms the terminal losing operation.
+  await expect(f.writes.run(loser, other)).rejects.toMatchObject({
+    code: 'WORKTREE_GIT_PREWRITE_REJECTED',
+  });
+  expect(other).not.toHaveBeenCalled();
 });
 it('明确 HEAD 前置拒绝及其重放不是 UNKNOWN，仓库可由新请求获取', async () => {
   const f = fixture('WORKTREE_CREATE');

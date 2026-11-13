@@ -99,7 +99,9 @@ it.each(kinds)(
         for (const nextKind of kinds) {
           await expect(runtime.writes.run(f.context(nextKind, 1), write)).rejects.toMatchObject({
             code:
-              nextKind === 'COMMIT' ? 'GIT_WRITE_OUTCOME_UNKNOWN' : 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+              nextKind === 'COMMIT'
+                ? 'GIT_WRITE_PREWRITE_REJECTED'
+                : 'WORKTREE_GIT_PREWRITE_REJECTED',
           });
         }
       await expect(restarted.writes.run(original, write)).rejects.toBeInstanceOf(Error);

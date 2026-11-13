@@ -99,7 +99,35 @@ export class GitCommitOperationRepository<TDatabase extends AgentHubDatabase> {
         })
         .onConflictDoNothing()
         .returning();
-      if (!claim) throw new DatabaseInvariantError('GIT_REPOSITORY_CLAIMED', '仓库存在未决写操作');
+      if (!claim) {
+        // This invocation received no dispatch authority. Persist that fact so
+        // its browser marker can recover without treating an absent row as proof.
+        // Keep the holder's claim untouched. A lost transaction response still
+        // throws to the caller and must be recovered by this exact operation ID.
+        const now = new Date();
+        const [rejected] = await tx
+          .update(gitCommitOperations)
+          .set({
+            phase: 'REJECTED_PREWRITE',
+            errorCode: 'GIT_REPOSITORY_CLAIMED',
+            commandExit: null,
+            settledAt: now,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(gitCommitOperations.ownerScope, created.ownerScope),
+              eq(gitCommitOperations.operationId, created.operationId),
+              eq(gitCommitOperations.phase, 'RECEIVED'),
+            ),
+          )
+          .returning();
+        if (!rejected)
+          throw new DatabaseInvariantError('GIT_OPERATION_CAS_FAILED', 'Git 拒绝记录更新失败');
+        // created=false means no fresh dispatch grant, even though a terminal
+        // recovery row was inserted by this call.
+        return { operation: rejected, created: false };
+      }
       return { operation: created, created: true };
     });
   }

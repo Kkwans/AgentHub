@@ -202,3 +202,5 @@
 20:52 UTC 持久逻辑协调域、全DB共享factory及只读恢复driver已实现基础。下一片一次性接全部三写入口/客户端key与恢复UI；需明确全球串行代价、历史ownerless阻断、custom base branch expectedHead与Git executor资源/环境绑定。Factory保持未启用，不能以准备完成冒充保护上线。
 
 21:20 UTC 三写生产接线和浏览器持久恢复候选完成主要实现，正在CR/集成验收。历史UNKNOWN启动隔离、无效POST回执恢复、存储失败真实说明与真实fixture协议均须闭环后才发布。全量与CI不得借用上一commit。
+
+21:48 UTC 正在闭环claim竞争败方持久拒绝与真实HTTP断线/服务重启回归。后续Worktree显式retry需独立持久attempt generation，仅权威PREWRITE拒绝可轮换；UNKNOWN/DISPATCHED永不轮换。执行归属owner是queue创建scope，并非merge点击者审计证据；当前所有principal均ADMIN，增加actor字段须保持原稳定重放scope。

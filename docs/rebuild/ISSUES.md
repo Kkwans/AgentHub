@@ -382,3 +382,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 21:20 UTC 生产接线CR补缺
 
 历史Worktree SETTING_UP/MERGING或明确UNKNOWN可能没有Git ledger。不能因为新表为空而生成新域后放行；启动检查同事务锁旧execution表，保守拒绝托管写，不修复/合成旧记录。已有合法in-flight时第二实例也可能拒写，接受保守可用性代价。正常Git global身份/hooks不应因隔离失效；共享环境只过滤ambient GIT_*重定向，保留正常用户配置。
+
+### 2026-11-13 21:48 UTC 正常claim竞争不能变永久未知
+
+已确认正常并发败方未获dispatch但没有可查询记录，导致marker永久404及Worktree错误隔离。修复要求保留败方明确REJECTED_PREWRITE/GIT_REPOSITORY_CLAIMED记录，持有方claim不动，旧ID不可重新派发；事务响应不确定仍保守UNKNOWN。历史已经缺失的记录不能凭猜测补造。Worktree同review固定merge ID经明确拒绝后仍不能直接重试，下一片需持久attempt generation与明确用户重试CAS，不可复活terminal旧key。

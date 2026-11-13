@@ -94,7 +94,10 @@ it('UNKNOWN跨新协调器持续阻塞新键写入', async () => {
   expect((await restarted.execute(f.input, f.write)).replayed).toBe(true);
   await expect(
     restarted.execute({ ...f.input, operationId: randomUUID() }, f.write),
-  ).rejects.toMatchObject({ code: 'GIT_REPOSITORY_CLAIMED' });
+  ).resolves.toMatchObject({
+    replayed: true,
+    operation: { phase: 'REJECTED_PREWRITE', errorCode: 'GIT_REPOSITORY_CLAIMED' },
+  });
   expect(f.write).not.toHaveBeenCalled();
 });
 it.each([
@@ -135,7 +138,10 @@ it('成功落库失败保持 DISPATCHED，不返回成功或释放 claim', async
   await f.coordinator.execute(f.input, f.write);
   await expect(
     f.coordinator.execute({ ...f.input, operationId: randomUUID() }, f.write),
-  ).rejects.toMatchObject({ code: 'GIT_REPOSITORY_CLAIMED' });
+  ).resolves.toMatchObject({
+    replayed: true,
+    operation: { phase: 'REJECTED_PREWRITE', errorCode: 'GIT_REPOSITORY_CLAIMED' },
+  });
   expect(f.write).toHaveBeenCalledTimes(1);
 });
 it('成功已落库但响应丢失可恢复证据，不再次调用 Git', async () => {
@@ -207,7 +213,10 @@ it('不同 operationId 同时争夺仓库，失败者没有写 callback', async 
   try {
     await expect(
       f.coordinator.execute({ ...f.input, operationId: randomUUID() }, f.write),
-    ).rejects.toMatchObject({ code: 'GIT_REPOSITORY_CLAIMED' });
+    ).resolves.toMatchObject({
+      replayed: true,
+      operation: { phase: 'REJECTED_PREWRITE', errorCode: 'GIT_REPOSITORY_CLAIMED' },
+    });
     expect(f.write).not.toHaveBeenCalled();
   } finally {
     release();
@@ -226,7 +235,10 @@ it('UNKNOWN 落库失败仍保留 DISPATCHED，不允许新键绕过', async () 
   expect((await f.get())?.phase).toBe('DISPATCHED');
   await expect(
     f.coordinator.execute({ ...f.input, operationId: randomUUID() }, f.write),
-  ).rejects.toMatchObject({ code: 'GIT_REPOSITORY_CLAIMED' });
+  ).resolves.toMatchObject({
+    replayed: true,
+    operation: { phase: 'REJECTED_PREWRITE', errorCode: 'GIT_REPOSITORY_CLAIMED' },
+  });
   expect(f.write).not.toHaveBeenCalled();
 });
 it('CAS 未授予执行权，绝不调用 callback', async () => {
@@ -269,4 +281,62 @@ it('非法 callback HEAD 证据不得标记成功或释放 claim', async () => {
     })),
   ).rejects.toMatchObject({ code: 'GIT_EVIDENCE_INVALID' });
   expect((await f.get())?.phase).toBe('UNKNOWN');
+});
+
+it('contention rejection survives lost reserve response; no dispatch and authoritative replay only', async () => {
+  const f = fixture();
+  let release!: () => void;
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const done = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const holder = f.coordinator.execute(f.input, async () => {
+    entered();
+    await done;
+    return { commandExit: 0, observedAfterHead: 'b'.repeat(40) };
+  });
+  await started;
+  const loser = { ...f.input, operationId: randomUUID() };
+  const originalReserve = f.repository.reserve.bind(f.repository);
+  vi.spyOn(f.repository, 'reserve').mockImplementationOnce(async (input) => {
+    await originalReserve(input);
+    throw new Error('reserve response lost');
+  });
+  const { ManagedGitWrites } = await import('./managed-git-writes.js');
+  const wrapper = new ManagedGitWrites(f.coordinator);
+  await expect(
+    wrapper.run(
+      {
+        kind: 'COMMIT',
+        ownerScope: loser.ownerScope,
+        operationId: loser.operationId,
+        projectId: loser.projectId,
+        expectedHead: loser.expectedHead,
+        payload: loser.payload,
+      },
+      f.write,
+    ),
+  ).rejects.toMatchObject({ code: 'GIT_WRITE_OUTCOME_UNKNOWN' });
+  const row = await f.repository.get(loser.ownerScope, loser.operationId, loser.projectId);
+  expect(row).toMatchObject({ phase: 'REJECTED_PREWRITE', errorCode: 'GIT_REPOSITORY_CLAIMED' });
+  release();
+  await holder;
+  await expect(
+    wrapper.run(
+      {
+        kind: 'COMMIT',
+        ownerScope: loser.ownerScope,
+        operationId: loser.operationId,
+        projectId: loser.projectId,
+        expectedHead: loser.expectedHead,
+        payload: loser.payload,
+      },
+      f.write,
+    ),
+  ).rejects.toMatchObject({ code: 'GIT_WRITE_PREWRITE_REJECTED' });
+  expect(f.write).not.toHaveBeenCalled();
+  expect((await f.get())?.phase).toBe('COMMAND_SUCCEEDED');
 });

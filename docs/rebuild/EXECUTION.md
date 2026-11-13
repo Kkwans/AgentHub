@@ -1147,3 +1147,17 @@ CR/类型检查发现并修复rework误插setup catch；startup回归又发现�
 21:38 UTC 修复后精确tree6cb26e6冻结全量完成：166文件通过/4跳过，1657测试通过/10跳过，407.50s；此前三个旧fixture失败全部闭环。通过后才发布6e1346c到开发分支，未合并main。精确远端CI/真实浏览器仍待结果。
 
 审查另外修订optional live Codex测试直调commit的旧请求协议：现在附protocolVersion/UUID operationId及status中的expectedHead。该live用例需要真实外部Codex环境，本次未运行；只验证类型/lint/format，不能把静态验收称为真实Codex执行通过。
+
+### 2026-11-13 21:44–21:48 UTC 精确验收与真实HTTP恢复
+
+21:46 UTC确认02c83fe精确冻结全量完成：166文件通过/4跳过，1657测试通过/10跳过，395.54s。CI43512663899真实154无障碍job通过，verify与真实服务/视觉仍运行，不能称三门禁全绿。
+
+新增隔离真实HTTP回归：生产startServer/index、临时磁盘PGlite与真实Git，成功提交后的201响应发送前销毁TCP连接，客户端确收ECONNRESET且未收到response；完整关闭服务/DB再以同目录重开，GET原scope取到持久成功记录，同ID重放409、旧无key400，HEAD与后续草稿/index不再改变。两次定向通过；独立CR通过。证据是同进程完整服务重启与磁盘DB重开，不是OS进程崩溃/断电，也不覆盖浏览器登录、多账号或PostgreSQL多进程。
+
+安全复核发现新缺陷：reserve抢不到其他写入持有的claim时回滚败方operation，却被包装为UNKNOWN；败方marker只能永久404，Worktree也可能被错误隔离并令下次启动全局拒写。已隔离复现第二callback为0、第一操作成功、第二record=null，正在修正为同事务持久REJECTED_PREWRITE；仍不能把任意404当未执行或在丢事务回执时擅自解锁。
+
+21:49 UTC 修复后repository/coordinator/runtime三文件40项通过；真实index HTTP测试新增并发case，两个真实HTTP用例共2项通过（8.48s）。pre-commit文件屏障让winner保持DISPATCHED；loser获409且GET200返回持久PREWRITE拒绝，释放winner后旧loser key仍不派发，显式新ID+新HEAD可提交后来草稿。初始断线测试未替换为mock；不同测试分别覆盖transport丢回执和claim竞争。全仓types/lint通过；新完整冻结与精确CI待验收。
+
+22:14 UTC 恢复中断现场：远端仍02c83fe，候选未发布；最近完整日志仍为21:55结束的4项旧契约失败，中间没有可验证新执行结果，不记作持续开发。managed-git-writes测试已按新明确拒绝契约补断言：callback=0、holder记录/claim逐字段不变、loser持久REJECTED且旧key不重派发。恢复后该文件13项通过（4.88s），全仓types/lint通过。02c83fe精确CI43512663899此刻三job全部success，包括真实浏览器与154无障碍；这不是新候选的CI结果。新候选再次完整冻结验收。
+
+22:38 UTC 再次恢复验收：候选tree79819ad与冻结工作树一致；旧22:15日志没有最终汇总，不计通过。直接调用已安装工具重跑后，精确冻结全量167文件通过/4跳过、1660测试通过/10跳过、409.84s；全仓tsc -b、eslint、Web生产构建、6个变更TS文件Prettier均通过。独立只读CR无阻塞；本次不包含501路径schema拒绝后的marker问题，也不声称PostgreSQL多进程/断电验证。发布前仅追加此验收记录，生产代码及测试与冻结tree相同。新提交CI仍需单独核验，未合并main/部署。

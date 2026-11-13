@@ -133,7 +133,7 @@ it('同键不同hash冲突，不覆盖原payload与claim', async () => {
   expect(await claim(f.input.repositoryKey)).toMatchObject(identity(original.operation));
 });
 
-it('不同操作与project别名竞争同一repository只有一个赢家且失败方不留操作', async () => {
+it('不同操作与project别名竞争仅一个赢家，失败方持久拒绝且重放不能写入', async () => {
   const f = fixture();
   const other = {
     ...f.input,
@@ -142,19 +142,28 @@ it('不同操作与project别名竞争同一repository只有一个赢家且失�
     ownerScope: 'account:other',
     dispatchToken: randomUUID(),
   };
-  const results = await Promise.allSettled([
+  const results = await Promise.all([
     f.repository.reserve(f.input),
     new GitCommitOperationRepository(database.db).reserve(other),
   ]);
-  expect(results.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
-  expect(results.filter((item) => item.status === 'rejected')).toHaveLength(1);
-  const winner = results.find((item) => item.status === 'fulfilled');
-  if (winner?.status !== 'fulfilled') throw new Error('缺少赢家');
-  const loser = winner.value.operation.operationId === f.input.operationId ? other : f.input;
-  expect(
-    await f.repository.get(loser.ownerScope, loser.operationId, loser.projectId),
-  ).toBeUndefined();
-  expect(await claim(f.input.repositoryKey)).toMatchObject(identity(winner.value.operation));
+  expect(results.filter((item) => item.created)).toHaveLength(1);
+  const winner = results.find((item) => item.created)!;
+  const loser = results.find((item) => !item.created)!;
+  expect(loser.operation).toMatchObject({
+    phase: 'REJECTED_PREWRITE',
+    errorCode: 'GIT_REPOSITORY_CLAIMED',
+    commandExit: null,
+    dispatchedAt: null,
+    settledAt: expect.any(Date),
+  });
+  expect(await claim(f.input.repositoryKey)).toMatchObject(identity(winner.operation));
+  expect(await f.repository.markDispatched(identity(loser.operation))).toBeUndefined();
+  await f.repository.rejectPrewrite(identity(winner.operation), 'TEST_RELEASE');
+  const loserInput = loser.operation.operationId === f.input.operationId ? f.input : other;
+  const replay = await f.repository.reserve(loserInput);
+  expect(replay.created).toBe(false);
+  expect(replay.operation).toEqual(loser.operation);
+  expect(await claim(f.input.repositoryKey)).toBeUndefined();
 });
 
 it('不同repository可以独立预留，不将scope当全局写锁', async () => {
@@ -220,7 +229,10 @@ it('UNKNOWN持久禁写，不可终态覆盖/重复派发/新键绕过或错误t
   ).toBeUndefined();
   await expect(
     f.repository.reserve({ ...f.input, operationId: randomUUID(), dispatchToken: randomUUID() }),
-  ).rejects.toMatchObject({ code: 'GIT_REPOSITORY_CLAIMED' });
+  ).resolves.toMatchObject({
+    created: false,
+    operation: { phase: 'REJECTED_PREWRITE', errorCode: 'GIT_REPOSITORY_CLAIMED' },
+  });
   expect(await claim(f.input.repositoryKey)).toMatchObject({ ...id, phase: 'UNKNOWN' });
   expect((await f.repository.reserve(f.input)).operation).toMatchObject({
     phase: 'UNKNOWN',
