@@ -943,6 +943,16 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
     await expect(workFilters).toHaveAttribute('aria-expanded', 'false');
   }
   await expect(page.getByRole('region', { name: '工作列表' })).toContainText(task.title);
+  if (compactWork) {
+    await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeHidden();
+    await attachViewportScreenshot(page, testInfo, 'project-work-list');
+    await page
+      .getByRole('region', { name: '工作列表' })
+      .getByRole('button', { name: new RegExp(task.title) })
+      .click();
+    await expect(page.getByRole('button', { name: '← 返回工作列表' })).toBeVisible();
+    await expect(page.getByRole('region', { name: '工作列表' })).toBeHidden();
+  }
   await expect(page.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'project-work');

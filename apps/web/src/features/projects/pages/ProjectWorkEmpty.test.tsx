@@ -1575,3 +1575,62 @@ it('看板选择一次写入task与列表视图，保留其他参数并清除旧
     '第二项工作',
   );
 });
+
+it('手机显式详情隐藏项目头和tabs，返回恢复且保留URL筛选', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+  try {
+    mount(
+      [task],
+      '?task=task-1&status=BACKLOG&promptId=keep',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
+    expect(await screen.findByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: '当前项目' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '项目上下文' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+    expect(screen.getByRole('heading', { name: '当前项目' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: '项目上下文' })).toBeVisible();
+    expect(screen.getByTestId('work-location')).toHaveTextContent('?status=BACKLOG&promptId=keep');
+  } finally {
+    media.mockRestore();
+  }
+});
+
+it('手机Agent启动pending暂禁返回列表，避免旧启动自动导航隐藏详情', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+  try {
+    mount([{ ...task, status: 'READY', assignedAgentId: 'agent-1' }], '?task=task-1');
+    vi.mocked(api.post).mockImplementation(() => new Promise(() => {}) as never);
+    const start = await screen.findByRole('button', { name: '启动 Session' });
+    await waitFor(() => expect(start).toBeEnabled());
+    fireEvent.click(start);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '← 返回工作列表' })).toBeDisabled(),
+    );
+    expect(screen.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
+  } finally {
+    media.mockRestore();
+  }
+});

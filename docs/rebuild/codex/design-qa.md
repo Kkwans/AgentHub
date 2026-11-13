@@ -160,3 +160,10 @@ ff89491 fixture verify已成功，新页头图正在复核；real仍运行。本
 已接入认证内部/Routes外owner、Task/Worktree提交时导航门、跨路由结果与unknown只读核对、仅终态可关闭及tombstone防旧回调复活。操作记录仅在AppShell显示，Workspace无状态条；持久化仅同页面生命周期，完整刷新不恢复。手机独立详情仍未开启，下一片保留原replace导航，用显式返回与同一隐藏Inspector避免引入新历史卸载路径。
 
 a503精确CI43396836789现verify/real均成功；本轮新接线仍需发布后的精确CI与实际截图，不沿用a503成功。
+
+## 2026-11-13 09:30 UTC · Mobile work list/detail implementation
+
+- Integrated the single mounted Inspector mobile slice after independent safety CR. At 390px, list and selected task detail are separate visible states, with an explicit 44px return action. Project metadata/navigation no longer displaces detail actions; warnings remain visible.
+- Return uses existing replace semantics and retains the selected Inspector, drafts and feedback. Pending review late results stay in the authenticated owner and do not navigate after leaving/re-entering detail. Local operation locks prevent selecting another task; Agent start pending disables the new return path. Invalid task URLs, including board combinations, never expose fallback writable actions.
+- Integrated focused tests: 95 passed; worker final expanded regression: 165 passed. Web TypeScript and CSS budget passed after conflict resolution. Independent static CR approved the integrated source; no new important declarations.
+- This is implementation, NOT visual acceptance. Exact published CI and new 390px list/detail/back screenshots are still required. Browser history push/Back restoration and generalized non-review cross-route persistence are not claimed.

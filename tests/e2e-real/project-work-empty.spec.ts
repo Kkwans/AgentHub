@@ -69,8 +69,23 @@ for (const width of [390, 768, 1024, 1440]) {
       );
       expect(tasks).toHaveLength(1);
       expect(tasks[0]!.projectId).toBe(project.id);
-      const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
+      const inspector = page.getByRole('complementary', {
+        name: '工作 Inspector',
+        includeHidden: true,
+      });
       await expect(inspector).toContainText('完成当前项目的第一项工作');
+      if (width === 390) {
+        const back = page.getByRole('button', { name: '← 返回工作列表' });
+        if (!(await back.isVisible()))
+          await page
+            .getByRole('region', { name: '工作列表' })
+            .getByRole('button', { name: /完成当前项目的第一项工作/ })
+            .click();
+        await expect(inspector).toBeVisible();
+        await capture('detail');
+        await back.click();
+        await expect(inspector).toBeHidden();
+      }
       const search = page.getByRole('textbox', { name: '搜索工作' });
       await expect(search).toBeVisible();
       await capture('created');

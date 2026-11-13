@@ -172,10 +172,6 @@ export function ProjectWorkPage() {
   const [selectedId, setSelectedId] = useState(selectedFromQuery ?? '');
   const [agentChoice, setAgentChoice] = useState<{ key: string; value: string }>();
   useEffect(() => {
-    if (selectedFromQuery && tasks.data?.some((task) => task.id === selectedFromQuery))
-      setSelectedId(selectedFromQuery);
-  }, [selectedFromQuery, tasks.data]);
-  useEffect(() => {
     if (!selectedId && tasks.data?.[0]) setSelectedId(tasks.data[0].id);
   }, [selectedId, tasks.data]);
   useEffect(() => {
@@ -201,6 +197,30 @@ export function ProjectWorkPage() {
     tasks.data?.find((task) => task.id === selectedId) ??
     filteredTasks[0] ??
     tasks.data?.[0];
+  const invalidDetail =
+    compact &&
+    Boolean(selectedFromQuery) &&
+    tasks.isSuccess &&
+    !tasks.data.some((task) => task.id === selectedFromQuery);
+  const detailVisible =
+    compact &&
+    Boolean(selectedFromQuery) &&
+    selected?.id === selectedFromQuery &&
+    !invalidDetail &&
+    view === 'list';
+  const [selectionMessage, setSelectionMessage] = useState('');
+  const detailBackRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLElement>(null);
+  const wasDetailVisible = useRef(false);
+  useLayoutEffect(() => {
+    if (detailVisible) detailBackRef.current?.focus();
+    else if (compact && wasDetailVisible.current)
+      (
+        listRef.current?.querySelector<HTMLButtonElement>('[aria-current="true"]') ??
+        listRef.current
+      )?.focus();
+    wasDetailVisible.current = detailVisible;
+  }, [compact, detailVisible]);
   const ownedReviewLock = hasReviewOperationLock(ownedOperations, project.id, selected?.id);
   useLayoutEffect(() => {
     const owner = reviewContext?.owner;
@@ -211,12 +231,12 @@ export function ProjectWorkPage() {
             taskId: selected.id,
             routeKey: location.key,
             viewport: compact ? 'compact' : 'wide',
-            visible: view === 'list',
+            visible: view === 'list' && (!compact || detailVisible),
           }
         : null,
     );
     return () => owner?.setView(null);
-  }, [reviewContext?.owner, selected?.id, project.id, location.key, compact, view]);
+  }, [reviewContext?.owner, selected?.id, project.id, location.key, compact, view, detailVisible]);
   const agentChoiceKey = JSON.stringify([project.id, selected?.id, selectedAgentFromQuery]);
   const runAgentId =
     agentChoice?.key === agentChoiceKey
@@ -378,13 +398,60 @@ export function ProjectWorkPage() {
   const manual = useManualTaskStart(project.id, selected?.id, manualScope, () => {
     void client.invalidateQueries({ queryKey: ['tasks', project.id] });
   });
+  const selectionLocked =
+    start.isPending ||
+    transition.isPending ||
+    manual.busy ||
+    manual.unknown ||
+    variablesSaving ||
+    reviewLocked ||
+    queueLocked ||
+    cancelLocked;
+  useEffect(() => {
+    if (!selectedFromQuery) return;
+    if (compact && selectionLocked && selectedFromQuery !== selected?.id) {
+      setSelectionMessage('原工作仍在提交或等待核对，请先处理原操作。');
+      const next = new URLSearchParams(searchParams);
+      if (selected) next.set('task', selected.id);
+      next.delete('view');
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    if (tasks.data?.some((task) => task.id === selectedFromQuery)) setSelectedId(selectedFromQuery);
+  }, [
+    compact,
+    selectionLocked,
+    selectedFromQuery,
+    selected?.id,
+    tasks.data,
+    searchParams,
+    setSearchParams,
+  ]);
+  const backToList = () => {
+    // Agent start has its own legacy multi-step mutation and automatic navigation.
+    // Do not introduce a new hidden-panel path while that operation is pending.
+    if (start.isPending) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('task');
+    next.delete('view');
+    setSearchParams(next, { replace: true });
+  };
   const setWorkView = (nextView: 'list' | 'board') => {
+    if (compact && selectionLocked && nextView === 'board') {
+      setSelectionMessage('原工作仍在提交或等待核对，请先处理原操作。');
+      return;
+    }
     const next = new URLSearchParams(searchParams);
     if (nextView === 'board') next.set('view', 'board');
     else next.delete('view');
     setSearchParams(next);
   };
   const selectTask = (task: TaskRecord, fromBoard = false) => {
+    if (compact && selectionLocked && task.id !== selected?.id) {
+      setSelectionMessage('原工作仍在提交或等待核对，请先处理原操作。');
+      return;
+    }
+    setSelectionMessage('');
     setSelectedId(task.id);
     const next = new URLSearchParams(searchParams);
     next.set('task', task.id);
@@ -406,6 +473,29 @@ export function ProjectWorkPage() {
   const emptyWork = tasks.isSuccess && tasks.data.length === 0 && !workLoading && !workError;
   return (
     <div className={projectsStyles.workPage}>
+      {selectionMessage ? <p role="status">{selectionMessage}</p> : null}
+      {compact && !detailVisible && selectionLocked ? (
+        <p role="status">
+          原工作仍在提交或等待核对。
+          <button type="button" onClick={() => selected && selectTask(selected)}>
+            返回原工作
+          </button>
+        </p>
+      ) : null}
+      {compact && (detailVisible || invalidDetail) ? (
+        <button
+          type="button"
+          className={projectsStyles.detailBack}
+          ref={detailBackRef}
+          disabled={start.isPending}
+          onClick={backToList}
+        >
+          ← 返回工作列表
+        </button>
+      ) : null}
+      {invalidDetail ? (
+        <AhEmptyState title="找不到这项工作" description="工作可能已被移除，请返回列表选择。" />
+      ) : null}
       <QueryMessage
         loading={workLoading}
         error={workError}
@@ -429,7 +519,11 @@ export function ProjectWorkPage() {
         </section>
       ) : !workLoading && !workError ? (
         <>
-          <div className={projectsStyles.workToolbar} aria-label="工作筛选">
+          <div
+            className={projectsStyles.workToolbar}
+            aria-label="工作筛选"
+            hidden={detailVisible || invalidDetail}
+          >
             <div
               className={`${projectsStyles.segmented} ${projectsStyles.viewSwitch}`}
               role="group"
@@ -514,7 +608,7 @@ export function ProjectWorkPage() {
               {goals.data?.length ?? 0} 个 Goal · {filteredTasks.length} 个 Work
             </span>
           </div>
-          {view === 'board' ? (
+          {view === 'board' && !invalidDetail ? (
             <>
               <p className={projectsStyles.boardHint} id="work-board-hint">
                 手机端左右滑动查看其他状态
@@ -558,9 +652,19 @@ export function ProjectWorkPage() {
                 })}
               </div>
             </>
-          ) : (
-            <div className={projectsStyles.workLayout}>
-              <section className={projectsStyles.workListPanel} aria-label="工作列表">
+          ) : null}
+          {(compact || view === 'list') && (
+            <div
+              className={projectsStyles.workLayout}
+              hidden={compact && (view === 'board' || invalidDetail)}
+            >
+              <section
+                className={projectsStyles.workListPanel}
+                aria-label="工作列表"
+                ref={listRef}
+                tabIndex={-1}
+                hidden={detailVisible}
+              >
                 <div className={projectsStyles.workListHeader}>
                   <span aria-hidden="true" />
                   <span>工作</span>
@@ -578,6 +682,7 @@ export function ProjectWorkPage() {
                       type="button"
                       className={`${projectsStyles.workRow} ${task.id === selected?.id ? projectsStyles.workRowSelected : ''}`}
                       key={task.id}
+                      aria-current={task.id === selected?.id ? true : undefined}
                       onClick={() => selectTask(task)}
                     >
                       <span
@@ -623,7 +728,11 @@ export function ProjectWorkPage() {
                   </div>
                 ) : null}
               </section>
-              <aside className={projectsStyles.workInspector} aria-label="工作 Inspector">
+              <aside
+                className={projectsStyles.workInspector}
+                aria-label="工作 Inspector"
+                hidden={compact && !detailVisible}
+              >
                 {selected ? (
                   <>
                     <header className={projectsStyles.inspectorHeader}>

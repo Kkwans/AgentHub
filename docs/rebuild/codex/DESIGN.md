@@ -22,7 +22,7 @@
 | C03  | 平铺文件与真实Diff                          | 0de fixture+real通过，实际Diff拉伸修复确认；e884继承文件名身份修正                               |
 | C04  | 全业务页统一布局                            | 455/e884业务页实图已看；ff/5c手机页头展开和异常图确认，a503警告可辨识性实图已验                  |
 | C05  | 四宽双主题实际浏览器与交互                  | 持续进行，455/e884 fixture成功；455/e884 real均已成功，持续发现并修复390细节，不作为最终视觉完成 |
-| C06  | 手机独立任务详情与安全导航                  | 子审阅快照/结果交付API已发布；owner基础通过CR，父路由与操作锁接线中，独立详情未上线              |
+| C06  | 手机独立任务详情与安全导航                  | 4f20b57父owner/审阅保护已发布；显式返回的手机单Inspector切片测试中，尚未上线                     |
 
 ## 问题台账
 
@@ -54,3 +54,13 @@
 - 本轮新看a503390警告图，颜色/图标提升已生效且无横溢出；其fixture成功、real仍运行。
 - owner基础10项新回归和独立CR通过，本地集成等待父接线片；认证scope改变清空旧记录，epoch阻断往返旧导航，子卸载不丢记录。
 - 仍需真实接入父owner、恢复unknown核对入口、聚合其它操作锁之后才能开放手机详情。不得将未接线基础代码描述成UI完成。
+
+## 2026-11-13 09:20 UTC 接线发布
+
+- 4f20b57已发布并核验源码树，认证内跨路由owner、审阅状态锁、晚响应导航门、结果核对、终态关闭已接入。整合169项定向回归、类型/lint/build/预算及独立CR通过；新CI43400472866待验。
+- 首次导航的热缓存StrictMode专项先红后绿，保留证据；不能仅凭空缓存测试通过而放行。
+- 下一可见手机片保持replace语义、同一Inspector及原反馈，显式返回列表；不增加新history push。pending返回/重入晚结果、非法任务和焦点fallback仍在验证，未宣称实现验收。
+
+### 2026-11-13 09:30 UTC checkpoint
+
+Mobile work now has a real list/detail visible-state slice, not only a shorter header: same Inspector remains mounted, explicit return retains feedback, warnings stay outside the hidden header, invalid task URLs cannot expose another task's actions. Integrated 95 tests and independent CR passed; expanded worker regression 165 passed. Publication and exact CI visual gate remain pending. Existing replace-history semantics are retained intentionally.

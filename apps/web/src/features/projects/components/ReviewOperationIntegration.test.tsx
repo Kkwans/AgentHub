@@ -41,13 +41,13 @@ const success = {
   session: { id: 'new-session' },
   run: { id: 'new-run' },
 };
-function mount(kind: 'task' | 'worktree' = 'task', warm = false) {
+function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task=t1') {
   let observedOwner: ReviewOperationOwner | undefined;
   function OwnerProbe() {
     observedOwner = useReviewOperations()?.owner;
     return null;
   }
-  let rows = [task];
+  let rows = [task, { ...task, id: 't2', title: '第二项工作' }];
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path.startsWith('/tasks?')) return rows as T;
     if (path.startsWith('/worktree-executions?'))
@@ -111,7 +111,7 @@ function mount(kind: 'task' | 'worktree' = 'task', warm = false) {
   const tree = () => (
     <StrictMode>
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/projects/p1/work?task=t1']}>
+        <MemoryRouter initialEntries={[`/projects/p1/work${search}`]}>
           <ReviewOperationProvider>
             <OwnerProbe />
             <Link to="/other">离开工作页</Link>
@@ -276,4 +276,132 @@ it('StrictMode warm cache首render已有选中任务，首操作仍可正常导�
   });
   await rework();
   expect(await screen.findByRole('heading', { name: '工作区已打开' })).toBeVisible();
+});
+
+function mobile() {
+  return vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: () => false,
+  }));
+}
+it('手机列表进入单详情并返回保留反馈输入与筛选', async () => {
+  const media = mobile();
+  try {
+    mount('task', false, '?status=WAITING_REVIEW');
+    expect(await screen.findByRole('region', { name: '工作列表' })).toBeVisible();
+    expect(screen.queryByRole('complementary', { name: '工作 Inspector' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /待审阅任务/ }));
+    const field = await screen.findByRole('textbox', { name: '继续修改说明' });
+    fireEvent.change(field, { target: { value: '保留我的反馈' } });
+    expect(screen.queryByRole('region', { name: '工作列表' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+    expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /待审阅任务/ }));
+    expect(screen.getByRole('textbox', { name: '继续修改说明' })).toBe(field);
+    expect(field).toHaveValue('保留我的反馈');
+  } finally {
+    media.mockRestore();
+  }
+});
+it('手机unknown返回列表仍保留原Inspector并阻止选其他工作', async () => {
+  const media = mobile();
+  try {
+    mount();
+    vi.mocked(api.post).mockRejectedValue(new Error('unknown network'));
+    await rework();
+    await screen.findByText('工作操作结果待核对');
+    fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+    fireEvent.click(screen.getByRole('button', { name: /第二项工作/ }));
+    expect(screen.getByText('原工作仍在提交或等待核对，请先处理原操作。')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '返回原工作' }));
+    expect(screen.getByRole('textbox', { name: '继续修改说明' })).toHaveValue('修正边界');
+    expect(api.post).toHaveBeenCalledTimes(1);
+  } finally {
+    media.mockRestore();
+  }
+});
+it.each(['?task=missing', '?task=missing&view=board'])(
+  '手机非法task显示不存在，不暴露fallback任务动作 %s',
+  async (query) => {
+    const media = mobile();
+    try {
+      mount('task', false, query);
+      expect(await screen.findByText('找不到这项工作')).toBeVisible();
+      expect(screen.queryByLabelText('工作看板')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('complementary', { name: '工作 Inspector' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '提交继续修改' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+      expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
+    } finally {
+      media.mockRestore();
+    }
+  },
+);
+
+it.each(['task', 'worktree'] as const)(
+  '手机%s审阅pending返回再进入后晚成功不导航，保留显式结果',
+  async (kind) => {
+    const media = mobile();
+    try {
+      mount(kind);
+      let finish!: (value: unknown) => void;
+      vi.mocked(api.post).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }) as never,
+      );
+      if (kind === 'task') await rework();
+      else {
+        fireEvent.click(await screen.findByRole('button', { name: '读取隔离工作区审阅' }));
+        await screen.findByText('已读取差异');
+        fireEvent.change(screen.getByRole('textbox', { name: '隔离工作区修改说明' }), {
+          target: { value: '继续修正' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: '提交隔离工作区返工' }));
+      }
+      fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+      expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: /待审阅任务/ }));
+      const response =
+        kind === 'task'
+          ? success
+          : {
+              id: 'execution-a',
+              projectId: 'p1',
+              taskId: 't1',
+              status: 'RUNNING',
+              sessionId: 'old-session',
+              runId: 'new-run',
+            };
+      await act(async () => finish(response));
+      expect(screen.queryByRole('heading', { name: '工作区已打开' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '打开已确认结果' })).toHaveAttribute(
+        'href',
+        kind === 'task' ? '/workspace/new-session' : '/workspace/old-session',
+      );
+    } finally {
+      media.mockRestore();
+    }
+  },
+);
+
+it('手机当前筛选排除选中工作，返回将焦点放到列表容器', async () => {
+  const media = mobile();
+  try {
+    mount('task', false, '?task=t1&status=DONE');
+    await screen.findByRole('textbox', { name: '继续修改说明' });
+    fireEvent.click(screen.getByRole('button', { name: '← 返回工作列表' }));
+    expect(screen.getByRole('region', { name: '工作列表' })).toHaveFocus();
+  } finally {
+    media.mockRestore();
+  }
 });

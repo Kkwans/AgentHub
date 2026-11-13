@@ -48,6 +48,7 @@ import {
   useOutletContext,
   useParams,
   useSearchParams,
+  useLocation,
 } from 'react-router-dom';
 
 import type {
@@ -102,6 +103,12 @@ import projectsStyles from '../projects.module.css';
 export function ProjectContextLayout() {
   const { projectId } = useParams();
   const compact = useCompactViewport();
+  const location = useLocation();
+  const compactWorkDetail =
+    compact &&
+    /\/work$/.test(location.pathname) &&
+    new URLSearchParams(location.search).get('view') !== 'board' &&
+    Boolean(new URLSearchParams(location.search).get('task'));
   const queryClient = useQueryClient();
   const project = useQuery({
     queryKey: ['project', projectId],
@@ -219,13 +226,16 @@ export function ProjectContextLayout() {
   ];
   return (
     <div className={`${layout.stack} ${projectsStyles.projectPage}`}>
-      <header className={projectsStyles.projectContext}>
-        <div className={projectsStyles.breadcrumbs}>
+      <header
+        className={projectsStyles.projectContext}
+        hidden={compactWorkDetail && !hasHeaderWarning}
+      >
+        <div className={projectsStyles.breadcrumbs} hidden={compactWorkDetail}>
           <Link to="/projects">项目</Link>
           <span aria-hidden="true">/</span>
           <strong>{project.data.name}</strong>
         </div>
-        <div className={projectsStyles.identityRow}>
+        <div className={projectsStyles.identityRow} hidden={compactWorkDetail}>
           <span className={projectsStyles.entityLogo} aria-hidden="true">
             {project.data.name.slice(0, 1).toUpperCase() || 'P'}
           </span>
@@ -272,7 +282,7 @@ export function ProjectContextLayout() {
                 {renderFacts('warnings')}
               </div>
             ) : null}
-            <details className={projectsStyles.projectDetails}>
+            <details className={projectsStyles.projectDetails} hidden={compactWorkDetail}>
               <summary>项目详情</summary>
               <p>{project.data.kind === 'TEST' ? '测试 Project' : '正式 Project'}</p>
               {project.data.description ? <p>{project.data.description}</p> : null}
@@ -283,7 +293,11 @@ export function ProjectContextLayout() {
             </details>
           </>
         ) : null}
-        <nav className={projectsStyles.contextTabs} aria-label="项目上下文">
+        <nav
+          className={projectsStyles.contextTabs}
+          aria-label="项目上下文"
+          hidden={compactWorkDetail}
+        >
           {tabs.map((tab) => (
             <NavLink
               key={tab.to}

@@ -126,3 +126,11 @@ AppShell 提供操作状态、原任务入口及已验证结果链接；unknown 
 ### StrictMode warm-cache CR 修正
 
 新增所有相关 query 预填、staleTime Infinity 的首屏测试，确认旧 setup 顺序会在父 scope replay 中清掉已注册的视图，导致首个合法返工错误地被阻止导航。Provider setup 现在先取子 layout 当次注册的 view，再恢复 scope 后重新登记；cleanup 仍同步清空认证状态，旧 operation callbacks 不复活。该测试先红后绿，集成共 7 项、owner/hook 11 项通过；首次异步加载和 warm-cache 均覆盖。扩大回归必须从仓库根运行以载入 test-setup，不能用 apps/web 目录无配置启动结果判断产品回归。
+
+## 手机首个可见切片（2026-11-13，待精确提交截图验收）
+
+本片采用受限的 replace URL 模式，不新增浏览器 history push/Forward 语义。手机默认列表；选择工作后隐藏筛选/列表及项目身份、metadata、tabs，只保留项目警告和单个 Inspector。返回按钮删除 task/view 参数，保留其它参数、selectedId、输入与组件实例；同一组件用 scoped `[hidden]` 样式隐藏而不是卸载。桌面仍为原两栏。非法显式 task 显示不存在，不暴露 fallback 工作的操作。
+
+选择不同工作或转看板前聚合现有 start/transition/manual.busy+unknown/variables/review/queue/cancel 锁；原任务仍可进入核对。审阅 pending 返回再进入后旧成功不可自动导航，但已验证结果保留。Agent start 仍是原有多步 mutation，pending 时暂禁用新返回按钮，避免引入隐藏后自动导航路径；不宣称已解决全部操作跨内部路由/完整刷新恢复。浏览器返回依旧是旧路由行为，本片没有加入新详情 history。
+
+键盘进入详情聚焦返回按钮；返回聚焦原任务行，若筛选已排除该行则聚焦列表容器。新增测试覆盖输入实例保留、unknown 改选受阻、非法 task 无写操作、Task/Worktree pending 返回再入与晚响应、筛选排除时焦点 fallback、真实项目头隐藏/恢复和参数保留。Fixture E2E 增加列表与详情两张手机截图；real-service E2E 增加新建后手机详情截图并返回再验证筛选。尚需 CI 对本次 SHA 的390实际图确认首屏主操作与警告布局，不能使用旧图作为验收。

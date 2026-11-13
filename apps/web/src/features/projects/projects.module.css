@@ -1692,3 +1692,29 @@
   color: inherit;
   font-size: 12px;
 }
+
+/* Component layouts must not override the native hidden state. */
+.projectContext[hidden],
+.workToolbar[hidden],
+.workLayout[hidden],
+.workListPanel[hidden],
+.workInspector[hidden],
+.breadcrumbs[hidden],
+.identityRow[hidden],
+.projectDetails[hidden],
+.contextTabs[hidden] {
+  display: none;
+}
+.detailBack {
+  justify-self: start;
+  min-height: 44px;
+  padding: 8px 0;
+  background: transparent;
+  border: 0;
+  color: var(--ah-text-secondary);
+  cursor: pointer;
+}
+.detailBack:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 3px;
+}
