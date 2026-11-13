@@ -1745,6 +1745,156 @@ test('大量变更文件在专注态保留代码首屏与末项键盘可达', as
   expect(violations).toEqual([]);
 });
 
+test('手机大量变更文件的自然阅读及外层滚动调查', async ({ page }, testInfo) => {
+  test.skip(page.viewportSize()!.width >= 768, '独立手机调查，非手机由专注态用例覆盖');
+  test.setTimeout(120_000);
+  const path = 'apps/web/src/features/workspace/workspace.module.css';
+  const paths = [
+    path,
+    ...Array.from(
+      { length: 39 },
+      (_, index) => `zz-review/file-${String(index + 1).padStart(2, '0')}.css`,
+    ),
+  ];
+  const errors: string[] = [];
+  let gitWrites = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.includes('/git/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      gitWrites += 1;
+  });
+  // This is an isolated status fixture, not evidence from a real 40-file repository.
+  await page.route(`**/api/v1/projects/${project.id}/git/status`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          branch: 'feature/large-review',
+          headSha: 'abcdef1234567890',
+          clean: false,
+          entries: paths.map((entry) => ({
+            index: ' ',
+            worktree: 'M',
+            path: entry,
+            worktreeStats: { additions: 3, deletions: 1 },
+          })),
+        },
+      }),
+    });
+  });
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
+  const code = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
+  await expect(code).toContainText(/display:\s*grid/);
+  await expect(page.getByRole('button', { name: '专注审阅', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '切换为分栏 Diff', exact: true })).toBeVisible();
+  const tree = page.getByRole('tree', { name: 'Git 文件变更树', exact: true });
+  await expect(tree.getByRole('checkbox')).toHaveCount(40);
+  for (const choice of await tree.getByRole('checkbox').all())
+    await expect(choice).not.toBeChecked();
+  await expect(page.getByRole('textbox', { name: '提交说明', exact: true })).toBeHidden();
+  await expectNoHorizontalOverflow(page);
+  expect(await page.locator('.inspector-body').evaluate((node) => node.scrollTop)).toBe(0);
+  // Deliberately diagnostic: record natural geometry before any scrolling or layout fix.
+  // A passing test is NOT a claim that the code is above the fold or that this UX is acceptable.
+  await testInfo.attach(`workspace-phone-large-reading-geometry-${testInfo.project.name}`, {
+    body: JSON.stringify({
+      viewport: page.viewportSize(),
+      windowScrollY: await page.evaluate(() => window.scrollY),
+      fileCount: paths.length,
+      list: await tree.boundingBox(),
+      code: await code.boundingBox(),
+      inspectorScroll: await page.locator('.inspector-body').evaluate((node) => ({
+        clientHeight: node.clientHeight,
+        scrollHeight: node.scrollHeight,
+        scrollTop: node.scrollTop,
+      })),
+      listScroll: await tree.evaluate((node) => ({
+        clientHeight: node.clientHeight,
+        scrollHeight: node.scrollHeight,
+        scrollTop: node.scrollTop,
+      })),
+    }),
+    contentType: 'application/json',
+  });
+  await attachViewportScreenshot(page, testInfo, 'workspace-phone-large-reading-natural');
+  const editorInputs = page.locator('.git-diff-editor [role="textbox"]');
+  await expect(editorInputs).toHaveCount(2);
+  await expect
+    .poll(() =>
+      editorInputs.evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute('aria-label') ?? ''),
+      ),
+    )
+    .toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`更改前：${path}`),
+        expect.stringContaining(`更改后：${path}`),
+      ]),
+    );
+  const audit = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const violations = audit.violations.filter((entry) =>
+    ['serious', 'critical'].includes(entry.impact ?? ''),
+  );
+  await testInfo.attach(`workspace-phone-large-reading-axe-${testInfo.project.name}`, {
+    body: JSON.stringify(violations),
+    contentType: 'application/json',
+  });
+  // This second image is explicitly after user-like wheel scrolling, not first-screen evidence.
+  const outer = page.locator('.inspector-body');
+  const beforeScroll = await outer.evaluate((node) => node.scrollTop);
+  const outerBox = (await outer.boundingBox())!;
+  await page.mouse.move(
+    outerBox.x + outerBox.width / 2,
+    outerBox.y + Math.min(100, outerBox.height / 2),
+  );
+  await page.mouse.wheel(0, 3000);
+  await expect.poll(() => outer.evaluate((node) => node.scrollTop)).toBeGreaterThan(beforeScroll);
+  await expect
+    .poll(async () => {
+      const box = await code.boundingBox();
+      const body = await outer.boundingBox();
+      return Boolean(
+        box &&
+        body &&
+        Math.min(box.y + box.height, body.y + body.height, page.viewportSize()!.height) >
+          Math.max(box.y, body.y, 0),
+      );
+    })
+    .toBe(true);
+  await testInfo.attach(
+    `workspace-phone-large-reading-after-scroll-geometry-${testInfo.project.name}`,
+    {
+      body: JSON.stringify({
+        viewport: page.viewportSize(),
+        code: await code.boundingBox(),
+        inspectorScroll: await outer.evaluate((node) => ({
+          scrollTop: node.scrollTop,
+          clientHeight: node.clientHeight,
+          scrollHeight: node.scrollHeight,
+        })),
+      }),
+      contentType: 'application/json',
+    },
+  );
+  await attachViewportScreenshot(page, testInfo, 'workspace-phone-large-reading-after-scroll');
+  expect(gitWrites).toBe(0);
+  expect(errors).toEqual([]);
+  expect(violations).toEqual([]);
+});
+
 test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {
   let failing = false;
   let reads = 0;
