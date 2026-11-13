@@ -1104,6 +1104,7 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
   await expect(modifiedLines).toContainText(/display:\s*grid/);
   const editorInputs = page.locator('.git-diff-editor [role="textbox"]');
   await expect(editorInputs).toHaveCount(2);
+  const modeViolations: Array<{ mode: string; violations: unknown[] }> = [];
   for (const mode of ['unified', 'split-requested'] as const) {
     if (mode === 'split-requested') {
       await page.getByRole('button', { name: '切换为分栏 Diff' }).click();
@@ -1159,10 +1160,13 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
       body: JSON.stringify(violations),
       contentType: 'application/json',
     });
-    expect(violations).toEqual([]);
+    // Capture both requested presentations even if the first has contrast issues.
+    // The same strict failure gate applies to every collected serious/critical node.
+    if (violations.length) modeViolations.push({ mode, violations });
   }
   expect(gitWrites).toBe(0);
   expect(errors).toEqual([]);
+  expect(modeViolations).toEqual([]);
 });
 
 test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {

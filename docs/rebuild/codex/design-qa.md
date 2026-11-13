@@ -530,3 +530,13 @@ Seven files/53 focused tests passed; final web types/lint/build/diff-check compl
 ### 2026-11-13 15:45 UTC — C30 publication and resize-name guard
 
 Published209ac08d74e9b3b145a509e7a3b4f43d9862a7b2 was fetched and its tree cab67f439f4377079f026a79c84f2a490c81fa22 verified15:44:12 UTC. Exact CI43455570705 is pending; a full local test run began15:44:27. A test-only follow-up reuses the unchanged actual two-textbox/full-path name assertion after1179,1180 and returning1024, specifically guarding layout-triggered resets. Explicit E2E types/lint,eight-case collection and independent static CR passed15:45; these remain browser-pending assertions, not completed resize proof.
+
+### 2026-11-13 15:50 UTC — C31 independently observed dark value contrast
+
+Exact420 fixture archived8 failed/64 passed. Seven failures are the old empty names; mobile390 dark did reach axe and found two separate serious contrast nodes: CSS block value CE9178 on6f1313 at4.46, and grid value CE9178 on4b5a2a at2.84. Its real-service153 passes/140 geometry and default154 audit success do not invalidate these findings. Neither209 nor6fb is claimed to fix this inherited dark color defect.
+
+Monaco0.56 CSS tokenizer was independently traced from rulevalue/term/name to attribute.value with css postfix. The bounded candidate overrides only dark attribute.value.css toF4C7AF; light, other-language strings, property blue, numeric colors and all diff backgrounds remain unchanged. Exact-background numerical ratios are7.67 and4.88, which are source tests, not browser validation. The test follow-up retains full per-mode axe attachments and aggregates serious/critical failures at the end, allowing requested-split evidence after a unified contrast failure without weakening the zero-violation gate. Other hard failures still stop the journey; unvisited modes are never counted as passes.
+
+Full209 product regression exited0 at15:50:30 UTC:145 files/1389 tests passed,4 files/10 skipped,362.80s. Only tests/E2E and documentation changed during the run. The C31 product candidate was cherry-picked afterward, so this count is not presented as a full regression of the new color override.
+
+C31 integrated validation completed15:51:06 UTC:5 files/19 targeted tests passed, web and explicit E2E types/lint, production build3.27s and diff-check succeeded. Independent static review covered the exact CSS token and unchanged background rules, plus the per-mode evidence aggregation. Actual new-SHA dark pixels and all requested presentations remain CI-pending.

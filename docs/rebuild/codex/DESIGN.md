@@ -168,3 +168,7 @@ Mobile work now has a real list/detail visible-state slice, not only a shorter h
 ## C30 实际 Diff 无障碍名称恢复（候选）
 
 四宽真实Monaco空名称由0.56内部配置重置造成，不能以传入props测试替代实际DOM。用公开子编辑器配置事件维护显式名称，缺省调用不虚构名称，同值不写、最新值合并、卸载清理。保留全部axe与四宽名称断言；53聚焦测试/类型/lint/build/CR已过，真实CI待验证。分栏请求与实际双栏几何仍分开记录。
+
+## C31 深色 Diff 值文本对比度（候选）
+
+420真实390深色axe定位CSS block/grid两值4.46/2.84，不与空名称问题混淆。仅dark attribute.value.css调整浅桃色，保增删背景及4.5门槛；单测准确token与实际背景，真实渲染仍须新CI。测试保存两请求模式证据后统一零违规，不把请求分栏称为实际双栏。

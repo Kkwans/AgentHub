@@ -986,3 +986,9 @@
 - dc真实服务153通过/140几何，但fixture四宽均空名称失败，未宣称整体验收。
 - 定位Monaco0.56内部空changeSummary重置子编辑器ariaLabel；公开API受限同步、microtask合并、最新提交props与卸载清理，不改DOM或放宽axe。
 - 7文件53测试通过，15:41:47完成types/lint/build/diff-check，独立CR放行。真实浏览器名称和选中代码对比度仍待新SHA CI。
+
+### 2026-11-13 15:50 UTC C31 深色实际违规处理
+
+- 420真实390深色已进入axe，确认block/grid对比不足；不是全部归空名称。
+- 候选精确局部CSS值token颜色，5颜色测试/类型/lint/build/独立CR已过，整合等待209完整测试结束避免混淆源码归属。
+- 同时增强两模式axe证据收集，不放宽零违规门；新真实截图尚待CI。

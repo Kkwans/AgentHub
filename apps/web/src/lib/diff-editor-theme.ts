@@ -15,7 +15,12 @@ export const diffEditorThemes: Record<string, editor.IStandaloneThemeData> = {
   [AGENTHUB_DIFF_DARK]: {
     base: 'vs-dark',
     inherit: true,
-    rules: [{ token: 'attribute.name', foreground: '9CDCFE' }],
+    rules: [
+      { token: 'attribute.name', foreground: '9CDCFE' },
+      // CSS identifier values (e.g. display: block/grid) retain their warm hue
+      // but need more luminance on Monaco's stacked inserted-text background.
+      { token: 'attribute.value.css', foreground: 'F4C7AF' },
+    ],
     colors: {},
   },
 };

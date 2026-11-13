@@ -49,9 +49,39 @@ describe('review-specific syntax contrast', () => {
       }
       expect(theme.inherit).toBe(true);
       expect(theme.colors).toEqual({}); // Never remove insertion/deletion highlights.
-      expect(theme.rules).toHaveLength(1);
+      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 1 : 2);
     },
   );
+  it('keeps CSS identifier values readable on actual dark CI inserted/deleted character backgrounds', () => {
+    const theme = diffEditorThemes[AGENTHUB_DIFF_DARK]!;
+    const valueColor = theme.rules.find(
+      (rule) => rule.token === 'attribute.value.css',
+    )!.foreground!;
+    // 42022db dark failure: block was CE9178 on 6f1313; grid on 4b5a2a.
+    const base = rgb('1e1e1e');
+    const inserted = over(base, '9bb955', 0.2);
+    const removed = over(base, 'ff0000', 0.2);
+    for (const background of [
+      rgb('6f1313'),
+      rgb('4b5a2a'),
+      base,
+      inserted,
+      removed,
+      over(inserted, '9ccc2c', 0.2),
+      over(removed, 'ff0000', 0.2),
+    ]) {
+      expect(contrast(valueColor, background)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast('CE9178', rgb('4b5a2a'))).toBeLessThan(4.5);
+    expect(theme.colors).toEqual({});
+    expect(theme.rules.map((rule) => rule.token)).toEqual([
+      'attribute.name',
+      'attribute.value.css',
+    ]);
+    expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
+      'attribute.name',
+    ]);
+  });
   it('covers the exact light axe backgrounds and preserves distinct property hue', () => {
     const color = diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules[0]!.foreground!;
     for (const background of ['ebf1dc', 'd7e8b0'])
