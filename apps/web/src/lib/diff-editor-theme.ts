@@ -9,7 +9,12 @@ export const diffEditorThemes: Record<string, editor.IStandaloneThemeData> = {
   [AGENTHUB_DIFF_LIGHT]: {
     base: 'vs',
     inherit: true,
-    rules: [{ token: 'attribute.name', foreground: '8E1616' }],
+    rules: [
+      { token: 'attribute.name', foreground: '8E1616' },
+      // Light CSS values retain blue syntax while clearing the actual stacked
+      // deleted-character background (#ffa3a3) seen in the focus-review CI.
+      { token: 'attribute.value.css', foreground: '033E80' },
+    ],
     colors: {},
   },
   [AGENTHUB_DIFF_DARK]: {

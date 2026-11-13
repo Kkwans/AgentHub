@@ -1963,6 +1963,107 @@ test('手机大量变更文件首屏可读且目录末项可达', async ({ page 
   expect(violations).toEqual([]);
 });
 
+test('Git 提交响应丢失保留未知记录且修改或只读刷新不能重复提交', async ({ page }, testInfo) => {
+  test.skip(![390, 1440].includes(page.viewportSize()!.width), '独立手机与桌面未知结果证据');
+  test.setTimeout(120_000);
+  const path = `src/${'long-path-segment-'.repeat(12)}.ts`;
+  const message = `未知提交原始说明${'LongUnbrokenCommitMessage'.repeat(20)}`;
+  const commitEndpoint = `/api/v1/projects/${project.id}/git/commit`;
+  const errors: string[] = [];
+  let posts = 0;
+  let reads = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (entry) => {
+    // The sole injected transport failure is expected; no other console errors are ignored.
+    if (
+      entry.type() === 'error' &&
+      !(entry.location().url.endsWith(commitEndpoint) && entry.text().includes('net::ERR_FAILED'))
+    )
+      errors.push(entry.text());
+  });
+  await page.route(`**/api/v1/projects/${project.id}/git/status`, async (route) => {
+    reads += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          branch: 'feature/unknown-commit',
+          headSha: 'a'.repeat(40),
+          clean: false,
+          entries: [{ index: ' ', worktree: 'M', path }],
+        },
+      }),
+    });
+  });
+  // Isolated browser transport fixture only: the POST is intercepted before any server
+  // or repository receives it. This does not prove a real commit succeeded before loss.
+  await page.route(`**${commitEndpoint}`, async (route) => {
+    expect(route.request().method()).toBe('POST');
+    posts += 1;
+    expect(route.request().postDataJSON()).toEqual({ mode: 'SELECTED', paths: [path], message });
+    await route.abort('failed');
+  });
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await page.getByRole('checkbox', { name: `选择 ${path}`, exact: true }).check();
+  const draft = page.getByRole('textbox', { name: '提交说明', exact: true });
+  await draft.fill(message);
+  await page.getByRole('button', { name: '提交所选文件 (1)', exact: true }).click();
+  const alert = page.locator('.workspace-query-error').filter({ hasText: '提交结果未知' });
+  await expect(alert).toBeVisible();
+  const retry = page.getByRole('button', { name: '重试提交', exact: true });
+  await expect(retry).toBeDisabled();
+  await expect(draft).toHaveValue(message);
+  await alert.getByText('本次提交记录与保护范围', { exact: true }).click();
+  await expect(alert.locator('code')).toHaveText(path);
+  await expect(alert).toContainText(message);
+  await expect(alert).toContainText('不跨面板关闭、路由离开或页面刷新保留');
+  await expectNoHorizontalOverflow(page);
+  const geometry = await alert.evaluate((node) => {
+    const panel = node.closest('.inspector-body')!;
+    return {
+      alertWidth: node.clientWidth,
+      alertScrollWidth: node.scrollWidth,
+      panelWidth: panel.clientWidth,
+      panelScrollWidth: panel.scrollWidth,
+    };
+  });
+  expect(geometry.alertScrollWidth).toBeLessThanOrEqual(geometry.alertWidth + 1);
+  expect(geometry.panelScrollWidth).toBeLessThanOrEqual(geometry.panelWidth + 1);
+  await alert.scrollIntoViewIfNeeded();
+  await attachViewportScreenshot(page, testInfo, 'workspace-git-unknown-expanded');
+  await testInfo.attach(`workspace-git-unknown-geometry-${testInfo.project.name}`, {
+    body: JSON.stringify(geometry),
+    contentType: 'application/json',
+  });
+  const audit = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  await testInfo.attach(`workspace-git-unknown-axe-${testInfo.project.name}`, {
+    body: JSON.stringify(audit.violations),
+    contentType: 'application/json',
+  });
+  expect(audit.violations).toEqual([]);
+  await draft.fill('修改后的说明不会解锁原提交');
+  await page.getByRole('checkbox', { name: `选择 ${path}`, exact: true }).uncheck();
+  await page.getByRole('checkbox', { name: `选择 ${path}`, exact: true }).check();
+  await expect(page.getByRole('button', { name: '提交所选文件 (1)', exact: true })).toBeDisabled();
+  // Exercise the handler guard even when native disabled controls cannot be clicked.
+  await page.locator('.git-commit-form').evaluate((form: HTMLFormElement) => form.requestSubmit());
+  await expect(alert).toContainText(message);
+  await page.getByRole('button', { name: '刷新 Git 数据', exact: true }).click();
+  await expect.poll(() => reads).toBeGreaterThanOrEqual(2);
+  await page.getByText('更多 Git', { exact: true }).click();
+  await page.getByRole('menuitem', { name: '提交历史', exact: true }).click();
+  await expect(retry).toBeDisabled();
+  await expect(alert).toContainText(message);
+  expect(posts).toBe(1);
+  expect(errors).toEqual([]);
+});
+
 test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {
   let failing = false;
   let reads = 0;

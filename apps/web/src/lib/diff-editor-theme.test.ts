@@ -49,7 +49,7 @@ describe('review-specific syntax contrast', () => {
       }
       expect(theme.inherit).toBe(true);
       expect(theme.colors).toEqual({}); // Never remove insertion/deletion highlights.
-      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 1 : 3);
+      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 2 : 3);
     },
   );
   it('keeps CSS identifier values readable on actual dark CI inserted/deleted character backgrounds', () => {
@@ -81,7 +81,39 @@ describe('review-specific syntax contrast', () => {
     ]);
     expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
       'attribute.name',
+      'attribute.value.css',
     ]);
+  });
+  it('keeps light CSS values readable on the exact stacked deleted-character CI background', () => {
+    const theme = diffEditorThemes[AGENTHUB_DIFF_LIGHT]!;
+    const color = theme.rules.find((rule) => rule.token === 'attribute.value.css')!.foreground!;
+    // f9efbde CI 43486971598: block (#0451a5) on #ffa3a3 scored 4.04.
+    expect(contrast('0451A5', rgb('ffa3a3'))).toBeLessThan(4.5);
+    const base = rgb('ffffff');
+    const inserted = over(base, '9bb955', 0.2);
+    const removed = over(base, 'ff0000', 0.2);
+    for (const background of [
+      rgb('ffa3a3'),
+      rgb('ebf1dc'),
+      rgb('d7e8b0'),
+      base,
+      inserted,
+      removed,
+      over(inserted, '9ccc2c', 0.25),
+      over(removed, 'ff0000', 0.2),
+    ])
+      expect(contrast(color, background)).toBeGreaterThanOrEqual(4.5);
+    expect(theme.colors).toEqual({});
+    expect(
+      theme.rules.some((rule) =>
+        ['attribute.value', 'keyword', 'string', 'number'].includes(rule.token),
+      ),
+    ).toBe(false);
+    expect(
+      diffEditorThemes[AGENTHUB_DIFF_DARK]!.rules.find(
+        (rule) => rule.token === 'attribute.value.css',
+      )!.foreground,
+    ).toBe('F4C7AF');
   });
   it('fixes the actual TSX const contrast without broadening to JS, strings or numbers', () => {
     const theme = diffEditorThemes[AGENTHUB_DIFF_DARK]!;
@@ -109,6 +141,7 @@ describe('review-specific syntax contrast', () => {
     expect(theme.colors).toEqual({});
     expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
       'attribute.name',
+      'attribute.value.css',
     ]);
   });
   it('covers the exact light axe backgrounds and preserves distinct property hue', () => {
