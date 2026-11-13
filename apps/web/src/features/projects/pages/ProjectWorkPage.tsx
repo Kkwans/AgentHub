@@ -1,3 +1,6 @@
+import { useReviewOperations } from '../components/ReviewOperationProvider';
+import { useReviewOperationOwner } from '../hooks/useReviewOperationOwner';
+import { hasReviewOperationLock } from '../lib/review-operation-owner';
 import { WorktreeCancelAction, type WorktreeCancelState } from '../components/WorktreeCancelAction';
 import { TaskWorktreeQueueAction } from '../components/TaskWorktreeQueueAction';
 import { WorktreeReviewActions } from '../components/WorktreeReviewActions';
@@ -49,12 +52,13 @@ import {
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Link,
   NavLink,
   Outlet,
   useNavigate,
+  useLocation,
   useOutletContext,
   useParams,
   useSearchParams,
@@ -112,6 +116,9 @@ import { useProjectContext } from './ProjectContextLayout';
 
 export function ProjectWorkPage() {
   const project = useProjectContext();
+  const reviewContext = useReviewOperations();
+  const ownedOperations = useReviewOperationOwner(reviewContext?.owner ?? null);
+  const location = useLocation();
   const client = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -194,6 +201,22 @@ export function ProjectWorkPage() {
     tasks.data?.find((task) => task.id === selectedId) ??
     filteredTasks[0] ??
     tasks.data?.[0];
+  const ownedReviewLock = hasReviewOperationLock(ownedOperations, project.id, selected?.id);
+  useLayoutEffect(() => {
+    const owner = reviewContext?.owner;
+    owner?.setView(
+      selected
+        ? {
+            projectId: project.id,
+            taskId: selected.id,
+            routeKey: location.key,
+            viewport: compact ? 'compact' : 'wide',
+            visible: view === 'list',
+          }
+        : null,
+    );
+    return () => owner?.setView(null);
+  }, [reviewContext?.owner, selected?.id, project.id, location.key, compact, view]);
   const agentChoiceKey = JSON.stringify([project.id, selected?.id, selectedAgentFromQuery]);
   const runAgentId =
     agentChoice?.key === agentChoiceKey
@@ -243,6 +266,7 @@ export function ProjectWorkPage() {
   const variablesSaving = variableSaveKey !== null;
   const [reviewPendingKey, setReviewPendingKey] = useState<string | null>(null);
   const reviewPending = reviewPendingKey === `${project.id}:${selected?.id}`;
+  const reviewLocked = reviewPending || ownedReviewLock;
   const [queuePendingKeys, setQueuePendingKeys] = useState<Record<string, boolean>>({});
   const [queueUnknownKeys, setQueueUnknownKeys] = useState<Record<string, boolean>>({});
   const queueKey = `${project.id}:${selected?.id}`;
@@ -626,6 +650,10 @@ export function ProjectWorkPage() {
                         <TaskReviewActions
                           key={`${project.id}:${selected.id}`}
                           task={selected}
+                          {...reviewContext?.contract({
+                            projectId: project.id,
+                            taskId: selected.id,
+                          })}
                           disabled={
                             worktrees.isFetching ||
                             start.isPending ||
@@ -633,7 +661,7 @@ export function ProjectWorkPage() {
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||
-                            reviewPending ||
+                            reviewLocked ||
                             queueLocked
                           }
                           onPendingChange={(key, pending) =>
@@ -650,13 +678,18 @@ export function ProjectWorkPage() {
                         <WorktreeReviewActions
                           key={`${project.id}:${selected.id}:${selectedWorktree.id}`}
                           execution={selectedWorktree}
+                          {...reviewContext?.contract({
+                            projectId: project.id,
+                            taskId: selected.id,
+                            executionId: selectedWorktree.id,
+                          })}
                           disabled={
                             worktrees.isFetching ||
                             start.isPending ||
                             transition.isPending ||
                             manual.busy ||
                             variablesSaving ||
-                            reviewPending ||
+                            reviewLocked ||
                             queueLocked
                           }
                           onPendingChange={(key, pending) =>
@@ -686,7 +719,7 @@ export function ProjectWorkPage() {
                           transition.isPending ||
                           manual.busy ||
                           variablesSaving ||
-                          reviewPending ||
+                          reviewLocked ||
                           queueLocked
                         }
                         label=""
@@ -730,7 +763,7 @@ export function ProjectWorkPage() {
                           transition.isPending ||
                           manual.busy ||
                           variablesSaving ||
-                          reviewPending ||
+                          reviewLocked ||
                           queueLocked
                         }
                         onClick={() => {
@@ -788,7 +821,7 @@ export function ProjectWorkPage() {
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||
-                            reviewPending ||
+                            reviewLocked ||
                             queueLocked
                           }
                           onSaved={() => start.reset()}
@@ -819,7 +852,7 @@ export function ProjectWorkPage() {
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||
-                            reviewPending
+                            reviewLocked
                           }
                           uncertain={queueUnknown}
                           inFlight={queuePending}
@@ -870,7 +903,7 @@ export function ProjectWorkPage() {
                             transition.isPending ||
                             manual.busy ||
                             variablesSaving ||
-                            reviewPending ||
+                            reviewLocked ||
                             queuePending ||
                             queueUnknown
                           }
@@ -910,7 +943,7 @@ export function ProjectWorkPage() {
                           (!runAgentId && manual.unavailable) ||
                           manual.busy ||
                           variablesSaving ||
-                          reviewPending ||
+                          reviewLocked ||
                           queueLocked ||
                           transition.isPending ||
                           start.isPending ||
@@ -949,7 +982,7 @@ export function ProjectWorkPage() {
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||
-                            reviewPending ||
+                            reviewLocked ||
                             queueLocked
                           }
                           onCancel={() =>

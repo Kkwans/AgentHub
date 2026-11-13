@@ -101,3 +101,28 @@ canonical URL 恢复只修 task/view，保留用户当前最新 q/filterAgent/st
 仅把成功链接存子组件不够：后台刷新会使任务离开待审阅状态，父条件随即卸载Review。现resolved快照同步携带通过原响应身份验证的resultHref，先于refresh及finally解除pending交给原owner；即使旧子组件已经卸载，合法旧响应仍以原operationId向原订阅者报告，不跨任务污染。UI setState与自动导航仍要求current归属，未知/无效响应从不携带链接。
 
 新增query cache状态改变实际卸载子组件后owner仍保留链接测试，两组件都覆盖；卸载早于响应的测试也断言快照携带已验证链接。当前总验证103项通过（新契约12项+既有91项）。父owner接入仍未实现，本片只是可靠结果交付接口。
+
+## 隔离 owner/hook 前置片（08:52 UTC，尚未接入）
+
+新增 createReviewOperationOwner 工厂与 useReviewOperationOwner 订阅 hook，不创建全局单例、不自动接入路由、不增加手机显示切换。实例未来必须由**认证身份作用域内部、路由内容之上**的稳定容器持有。logout或身份改变在展示新身份内容前调用setScope，立即清空操作/结果并使所有旧身份callback失效；hook卸载不清空owner。不能把owner放在认证边界之上共享给不同用户，也不能仅在延迟effect里清理后再声称无旧用户闪现。实际认证边界接线仍待独立CR。
+
+- 完整project/task/execution身份和operationId构成记录键。不同token分别保留，旧resolved只终结自身，不释放另一个pending/unknown/checking。未经pending登记的终结回调被拒绝；终态不接受迟到unknown反转。
+- setView接收project/task/routeKey/viewport/visible；任何变化递增epoch，返回同一路由/同一详情也不会重新激活旧闭包。它只禁止导航，不作为离开守卫；原操作结果继续存owner。
+- getSnapshot为不可变稳定快照，订阅者可跨路由卸载后重建，已验证resultHref继续可读。只保留resolved的本地/workspace/链接。
+- 默认无scope时拒绝快照和导航。只用内存，无localStorage、凭据或跨刷新恢复保证。
+
+验证：纯store9项与真实React订阅1项测试，覆盖多operationId独立锁、未知核对保持锁、身份隔离、退出再登录同一用户旧callback失效、route/hidden/task/viewport epoch、immutable快照以及订阅组件卸载后结果保留。父组件选择守卫、App认证边界owner挂载、route/view同步、结果状态条、其它manual/queue/cancel锁的聚合仍未接入；完整手机详情仍未放行。
+
+## 审阅 owner 实际接线片（2026-11-13，待独立 CR）
+
+认证边界内、Routes 上方挂载按身份隔离的 Provider。StrictMode 重放后首次 pending 才绑定原操作订阅；导航门在实际提交时捕获，避免 render 阶段旧 epoch 导致首次合法返工也无法导航。ProjectWorkPage 同步路由、任务、断点和可见性，离开再返回不会恢复旧导航权限。已登记审阅操作跨路由卸载仍保留；返回原任务时 owner 锁继续禁止再次写操作。
+
+AppShell 提供操作状态、原任务入口及已验证结果链接；unknown 可独立只读核对原任务/执行身份，不重发请求，也不把查询成功误判为原请求成功。确认终态可主动关闭，pending/unknown/checking 不可关闭，关闭后的旧 operationId 使用 tombstone 防止晚回调复活。状态条仅在 AppShell 可见，workspace 全屏路由没有新增覆盖层，但同身份 owner 仍存活。退出登录清空 owner 并使旧回调失效；无浏览器持久化或硬刷新恢复保证。
+
+实际 Provider 集成 6 项覆盖 StrictMode 首次 pending 登记与正常导航、离开后的晚结果交付、Task/Worktree 离开再返回同任务后禁止旧导航、unknown 回到原任务禁止重复提交并能核对、换身份后旧结果丢弃。owner/hook 共 11 项覆盖终态关闭与所有锁拒绝关闭、关闭后的旧回调不影响新操作等。
+
+本片未开启手机独立详情、未改变 history 行为，未聚合 manual/queue/cancel/variables 的跨路由操作生命周期。因此不能声称完整列表/详情或所有操作的离开安全已经完成；最终布局仍需精确提交的真实浏览器验收。
+
+### StrictMode warm-cache CR 修正
+
+新增所有相关 query 预填、staleTime Infinity 的首屏测试，确认旧 setup 顺序会在父 scope replay 中清掉已注册的视图，导致首个合法返工错误地被阻止导航。Provider setup 现在先取子 layout 当次注册的 view，再恢复 scope 后重新登记；cleanup 仍同步清空认证状态，旧 operation callbacks 不复活。该测试先红后绿，集成共 7 项、owner/hook 11 项通过；首次异步加载和 warm-cache 均覆盖。扩大回归必须从仓库根运行以载入 test-setup，不能用 apps/web 目录无配置启动结果判断产品回归。

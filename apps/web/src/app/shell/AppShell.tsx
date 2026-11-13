@@ -20,6 +20,7 @@ import {
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
+import { ReviewOperationStatus } from '../../features/projects/components/ReviewOperationStatus';
 import { realtime } from '../../lib/realtime';
 import { AgentHubLogo } from '../../components/AgentHubLogo';
 import { useAuthMode, useAuthUser } from '../../components/AccessGate';
@@ -478,6 +479,7 @@ export function AppShell() {
             className="ambient-canvas app-main min-h-0 flex-1 overflow-y-auto outline-none"
             tabIndex={-1}
           >
+            <ReviewOperationStatus />
             <div key={location.pathname} className="route-stage h-full min-h-0">
               <Outlet />
             </div>

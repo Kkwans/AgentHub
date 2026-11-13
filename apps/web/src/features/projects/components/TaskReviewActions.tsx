@@ -30,6 +30,7 @@ export function TaskReviewActions({
   onPendingChange,
   onOperationChange,
   canAutoNavigate,
+  captureNavigationGate,
 }: {
   task: TaskRecord;
   disabled: boolean;
@@ -86,7 +87,7 @@ export function TaskReviewActions({
       onOperationChange,
     );
     operation.current = report;
-    const navigationGate = canAutoNavigate;
+    const navigationGate = captureNavigationGate?.() ?? canAutoNavigate;
     report('pending', '正在提交审阅操作。');
     onPendingChange(key, true);
     let verifiedResultHref: string | undefined;

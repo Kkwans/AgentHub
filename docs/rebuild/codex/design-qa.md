@@ -142,3 +142,21 @@ ff89491 fixture verify已成功，新页头图正在复核；real仍运行。本
 审阅前置API独立CR发现成功链接仅存子组件、刷新卸载后丢失的缺口，未将未修候选发布。修正要求resolved快照同步向父owner交付已验证resultHref，包含卸载前后回归；父安全接线与手机详情仍未完成。
 
 08:52 UTC复审补充：已验证resultHref随原project/task/execution/operationId在刷新前同步交付owner；无效响应不带链接，子组件卸载前后均覆盖。独立CR确认缺口已修。组合116项测试通过；发布边界仍为兼容子API及警告样式，不含尚未完成的父owner接入、离页守卫和手机独立详情。
+
+## 2026-11-13 09:00–09:10 UTC 父层接线检查
+
+本轮本地集成并复跑owner基础10项回归，更新主设计台账；新查看a503手机资格失败图，语义警告样式生效。5c精确CI现双绿，a503的real仍待结果。
+
+父层接线在独立工作树实际开发：认证内部、Routes外持有owner；提交时捕获导航门，首pending才绑定认证generation，以免StrictMode布局effect重放使首次操作丢记录；跨路由未知结果提供独立只读核对，不自动解锁。四项初始集成回归已通过，仍在完整回归和独立CR中，未发布也未启用手机独立详情。
+
+新增审查要求：已完成操作必须可显式关闭，pending/unknown/checking不可关闭，防止永久通知堆满界面；补同任务离开再返回的晚响应与Worktree集成测试。操作记录面板当前仅计划放AppShell，Workspace不显示常驻面板，但owner必须继续存续。不得把这一可见性边界描述成全路由常驻UI。
+
+## 09:14–09:19 UTC 接线回归与发布门禁
+
+扩大回归曾因从apps/web目录启动Vitest未加载根test-setup出现6项scrollIntoView缺失错误；根目录正确配置重跑155项通过，不更改业务逻辑掩盖错误。随后独立CR要求热缓存StrictMode专项，新增用例真实失败，确认父scope重放会清掉子layout已注册view。
+
+修复只恢复子layout当前登记的view，不恢复旧记录/认证generation；热缓存用例禁止靠异步GET重新渲染，修复后18项专项通过，最终156项扩大回归通过并独立CR放行。本地整合后另复跑真实Provider/owner/工作页97项，继续复核App/AppShell、审阅及页头组合；类型、lint、build、CSS预算通过。
+
+已接入认证内部/Routes外owner、Task/Worktree提交时导航门、跨路由结果与unknown只读核对、仅终态可关闭及tombstone防旧回调复活。操作记录仅在AppShell显示，Workspace无状态条；持久化仅同页面生命周期，完整刷新不恢复。手机独立详情仍未开启，下一片保留原replace导航，用显式返回与同一隐藏Inspector避免引入新历史卸载路径。
+
+a503精确CI43396836789现verify/real均成功；本轮新接线仍需发布后的精确CI与实际截图，不沿用a503成功。

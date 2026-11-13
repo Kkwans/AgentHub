@@ -4,6 +4,7 @@ import { AhLoadingState, AhPageHeader } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
 
 import { AccessGate } from './components/AccessGate';
+import { ReviewOperationProvider } from './features/projects/components/ReviewOperationProvider';
 import { AppShell } from './app/shell/AppShell';
 import { HomePage } from './features/home/pages/HomePage';
 import type { SessionRecord } from './lib/api';
@@ -175,10 +176,18 @@ function WorkspaceLandingRoute() {
   return <Navigate replace to={latest ? `/workspace/${latest.id}` : '/projects'} />;
 }
 
+function AuthenticatedRoutes({ children }: { children: ReactNode }) {
+  return (
+    <ReviewOperationProvider>
+      <Routes>{children}</Routes>
+    </ReviewOperationProvider>
+  );
+}
+
 export function App() {
   return (
     <AccessGate>
-      <Routes>
+      <AuthenticatedRoutes>
         <Route path="workspace" element={<WorkspaceLandingRoute />} />
         <Route
           path="workspace/:id"
@@ -358,7 +367,7 @@ export function App() {
           <Route path="remote-nodes" element={<Navigate replace to="/agents/nodes" />} />
           <Route path="*" element={<Navigate replace to="/home" />} />
         </Route>
-      </Routes>
+      </AuthenticatedRoutes>
     </AccessGate>
   );
 }

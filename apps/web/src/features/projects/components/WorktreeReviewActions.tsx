@@ -17,6 +17,7 @@ export function WorktreeReviewActions({
   onPendingChange,
   onOperationChange,
   canAutoNavigate,
+  captureNavigationGate,
 }: {
   execution: WorktreeExecutionRecord;
   disabled: boolean;
@@ -139,7 +140,7 @@ export function WorktreeReviewActions({
       onOperationChange,
     );
     operation.current = report;
-    const navigationGate = canAutoNavigate;
+    const navigationGate = captureNavigationGate?.() ?? canAutoNavigate;
     report('pending', '正在提交审阅操作。');
     onPendingChange(key, true);
     let verifiedResultHref: string | undefined;

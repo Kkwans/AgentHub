@@ -14,6 +14,8 @@ export type ReviewOperationProps = {
   onOperationChange?: (snapshot: ReviewOperationSnapshot) => void;
   /** Capture an epoch-aware predicate when submitting, not a later render's predicate. */
   canAutoNavigate?: () => boolean;
+  /** Called synchronously at submit, after committed route/view effects. */
+  captureNavigationGate?: () => () => boolean;
 };
 // Unique within this page lifetime even on non-secure LAN origins without randomUUID.
 let nextOperationId = 0;
