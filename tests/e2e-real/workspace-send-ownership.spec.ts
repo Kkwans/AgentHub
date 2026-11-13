@@ -7,9 +7,11 @@ test.setTimeout(120_000);
 
 async function selectSession(page: Page, id: string) {
   const link = page.locator(`.session-rail a[href="/workspace/${id}"]`);
-  await expect(link).toBeAttached();
-  if (!(await link.isVisible())) {
-    await page.getByRole('button', { name: '打开辅助栏', exact: true }).click();
+  // Mobile drawers do not mount the rail until opened; desktop list loading
+  // must not be mistaken for a collapsed drawer with a nonexistent toggle.
+  if ((page.viewportSize()?.width ?? 1440) < 1180 && !(await link.isVisible())) {
+    const open = page.getByRole('button', { name: '打开辅助栏', exact: true });
+    if (await open.isVisible()) await open.click();
   }
   await expect(link).toBeVisible();
   await link.click();
