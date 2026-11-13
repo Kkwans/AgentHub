@@ -330,3 +330,21 @@ New actual-browser gates exercise all three fullscreen forms at390×600 and real
 Exactad732da now has all three jobs successful. Exacteee3791 verify and accessibility are successful; personally inspected its390 Overview Agent error/recovery screenshots, which preserve a useful unknown label for assigned work and restore Codex after GET recovery without horizontal clipping. Its real-service job is still pending at this checkpoint. CompactProjects and fullscreen candidates require their own exact images; older green runs do not approve those layouts.
 
 At12:37 UTC integrated validation completed in two scoped runs:85 FormDialog/NewWork/CSS-contract tests and24 CreateProject/Agent tests passed. The candidate worker's combined109 tests also passed. Web and explicit E2E types, lint, CSS budget, production build and independent static CR passed; none substitutes for the new fullscreen browser geometry gate.
+
+## 2026-11-13 12:38 UTC — Compact source notice visual closure
+
+Exactcd66 fixture and accessibility jobs passed. Personally inspected the new390 source-error capture; its browser layout attachment reports195px group height and44px buttons across all four viewports. Relative toad732da's approximately309px group, the first project moves fromabouty711 to597. All three source failures, independent retry controls and the shared failure-not-empty explanation remain visible. This closes the bounded density issue; no additional cosmetic refinement is planned. The real-service job remains pending at this checkpoint, and fullscreen08ea has its own new evidence gate.
+
+## 2026-11-13 12:42 UTC — Prompt binding target investigation
+
+Personally inspecteddf73 real390 binding-dialog keyboard capture: Agent target control is blank with no explanation, while create is disabled. Source confirms target queries are reduced todata-or-empty with no pending/error/empty distinction, cached target errors can still leave create enabled, and a disappeared selection can silently fall back to the first target. This is not a claim that the screenshot captured an API failure. A bounded follow-up is being assessed: explain target source states, GET-only retry, preserve chosen identity during failures and require explicit reselection when removed, plus submission-time membership/source checks. Binding request payload, operation lifecycle and selector mutation behavior should not be silently redesigned. No binding fix is yet claimed as implemented.
+
+### 2026-11-13 12:45 UTC — Exact08ea complete local regression
+
+A fresh complete local unit invocation on08ea ended with exit0:133 files and1306 tests passed,4 files and10 tests skipped, duration347.56s. This is one full run, not summed focused runs. It does not establish browser geometry or the next unpublished Prompt binding change.
+
+## 2026-11-13 12:51 UTC — Binding target safety candidate validation
+
+The bounded implementation now requires explicit target selection forProject/Agent/Task and distinguishes pending,error,refreshing,successful-empty,removed-selection and ready. Failed/paused/refreshing sources cannot submit; an existing ID is preserved, and removal never selects another target automatically. Mutation entry synchronously reads the current query cache status,fetchStatus and membership before callingPOST. Selector/version behavior,payload and success callback remain unchanged. The known pending-close/reopen ownership boundary is not fixed by this guard. See../design/prompt-binding-target-safety.md.
+
+Integrated all fivePrompt unit files passed36 tests, including direct-mutation refusal for unknown/removed targets and unchanged payload after explicit reselection. Web/E2E types,lint,production build and exact static CR passed. The new real-service browser path captures empty→narrowly injected GET503→real GET recovery, retains keyboard/Escape focus checks and counts bindingPOSTs to require zero during this invalid-target journey. That browser path is not yet executed on the new SHA, and the hook's positive payload test is not a claim of a new real successful-binding browser run.

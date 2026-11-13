@@ -1,4 +1,5 @@
 import { AhButton, AhDialog, AhErrorState, AhInput, AhSelect, AhTextarea } from '@agenthub/ui';
+import { ApiError } from '../../../lib/api-error';
 import { labelPromptBindingTarget } from '../../../presentation/domain-labels';
 
 import type { PromptLibraryModel } from '../hooks/usePromptLibrary';
@@ -42,6 +43,8 @@ export function PromptDialogs({ model }: { model: PromptLibraryModel }) {
     setBindingTargetType,
     setBindingTargetId,
     bindingTargets,
+    bindingTargetState,
+    bindingTargetSource,
     bindingSlot,
     setBindingSlot,
     bindingSelector,
@@ -218,7 +221,7 @@ export function PromptDialogs({ model }: { model: PromptLibraryModel }) {
             <AhButton
               onClick={() => createBinding.mutate()}
               loading={createBinding.isPending}
-              disabled={!bindingTargetId || !bindingSelectorValue}
+              disabled={bindingTargetState !== 'ready' || !bindingSelectorValue}
             >
               创建绑定
             </AhButton>
@@ -244,8 +247,60 @@ export function PromptDialogs({ model }: { model: PromptLibraryModel }) {
           value={bindingTargetId}
           onChange={(value) => setBindingTargetId(value ?? '')}
           data={bindingTargets}
-          placeholder="选择目标"
+          disabled={['error', 'loading', 'refreshing', 'empty'].includes(bindingTargetState)}
+          placeholder="请选择绑定目标"
         />
+        {bindingTargetState !== 'ready' ? (
+          <div
+            role={bindingTargetState === 'error' ? 'alert' : 'status'}
+            aria-label="绑定目标读取状态"
+          >
+            {bindingTargetState === 'error' ? (
+              <>
+                <p>
+                  {bindingTargetSource.error instanceof ApiError &&
+                  bindingTargetSource.error.code === 'AUTH_REQUIRED'
+                    ? '登录已失效，无法确认绑定目标。'
+                    : bindingTargetId
+                      ? '目标读取失败，不代表没有目标。原选择已保留，确认前不能创建绑定。'
+                      : '目标读取失败，不代表没有目标。读取成功前不能选择目标或创建绑定。'}
+                </p>
+              </>
+            ) : bindingTargetState === 'loading' ? (
+              <p>正在读取绑定目标。</p>
+            ) : bindingTargetState === 'refreshing' ? (
+              <p>
+                {bindingTargetId
+                  ? '正在等待目标数据更新，原选择已保留，确认前不能创建绑定。'
+                  : '正在等待目标数据更新，确认前不能选择目标或创建绑定。'}
+              </p>
+            ) : bindingTargetState === 'empty' ? (
+              <p>
+                当前没有可绑定的 {labelPromptBindingTarget(bindingTargetType)}
+                。请切换目标类型，或
+                {bindingTargetType === 'AGENT'
+                  ? '先接入 Agent'
+                  : bindingTargetType === 'PROJECT'
+                    ? '先创建项目'
+                    : '先创建工作'}
+                。
+              </p>
+            ) : bindingTargetState === 'missing' ? (
+              <p>原目标已不在最新列表，请重新选择；不会自动改选其他目标。</p>
+            ) : bindingTargetState === 'unselected' ? (
+              <p>请选择本次要绑定的目标。</p>
+            ) : null}
+            {['error', 'empty', 'missing'].includes(bindingTargetState) ? (
+              <AhButton
+                variant="subtle"
+                disabled={bindingTargetSource.fetchStatus !== 'idle'}
+                onClick={() => void bindingTargetSource.refetch()}
+              >
+                重新读取目标
+              </AhButton>
+            ) : null}
+          </div>
+        ) : null}
         <AhSelect
           label="提示位"
           value={bindingSlot}

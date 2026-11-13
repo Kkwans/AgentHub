@@ -7,9 +7,26 @@ for (const width of [390, 768, 1024, 1440]) {
   for (const theme of ['light', 'dark']) {
     test(`Prompt 空库到内容与筛选 ${width} ${theme}`, async ({ page, context, app }, info) => {
       const errors: string[] = [];
+      let injectingTargetFailure = false;
+      let bindingWrites = 0;
+      page.on('request', (request) => {
+        if (
+          request.method() === 'POST' &&
+          new URL(request.url()).pathname === '/api/v1/prompt-bindings'
+        )
+          bindingWrites += 1;
+      });
       page.on('pageerror', (error) => errors.push(error.message));
       page.on('console', (message) => {
-        if (message.type() === 'error') errors.push(message.text());
+        if (
+          message.type() === 'error' &&
+          !(
+            injectingTargetFailure &&
+            message.location().url.endsWith('/api/v1/agents') &&
+            message.text().includes('503')
+          )
+        )
+          errors.push(message.text());
       });
       await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
       await context.addInitScript(
@@ -141,6 +158,41 @@ for (const width of [390, 768, 1024, 1440]) {
       await capture('binding-select-open');
       await agentOption.click();
       await expect(targetType).toHaveText('Agent');
+      await expect(bindingDialog.getByRole('status', { name: '绑定目标读取状态' })).toContainText(
+        '当前没有可绑定的 Agent',
+      );
+      await expect(
+        bindingDialog.getByRole('button', { name: '创建绑定', exact: true }),
+      ).toBeDisabled();
+      await capture('binding-target-empty');
+      injectingTargetFailure = true;
+      await page.route('**/api/v1/agents', async (route) => {
+        if (route.request().method() !== 'GET') {
+          await route.fallback();
+          return;
+        }
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: '目标读取暂时失败' } }),
+        });
+      });
+      await bindingDialog.getByRole('button', { name: '重新读取目标' }).click();
+      const targetError = bindingDialog.getByRole('alert', { name: '绑定目标读取状态' });
+      await expect(targetError).toContainText('目标读取失败');
+      await expect(targetError).not.toContainText('原选择已保留');
+      await expect(
+        bindingDialog.getByRole('button', { name: '创建绑定', exact: true }),
+      ).toBeDisabled();
+      await capture('binding-target-error');
+      await page.unroute('**/api/v1/agents');
+      injectingTargetFailure = false;
+      await bindingDialog.getByRole('button', { name: '重新读取目标' }).click();
+      await expect(targetError).toHaveCount(0);
+      await expect(bindingDialog.getByRole('status', { name: '绑定目标读取状态' })).toContainText(
+        '当前没有可绑定的 Agent',
+      );
+
       await expect(page.getByRole('listbox')).toHaveCount(0);
       await targetType.click();
       await expect(page.getByRole('option', { name: 'Project', exact: true })).toBeVisible();
@@ -156,6 +208,7 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(closeBinding).toBeFocused();
       await page.keyboard.press('Shift+Tab');
       await expect(cancelBinding).toBeFocused();
+      expect(bindingWrites).toBe(0);
       await capture('binding-dialog-keyboard');
       await page.keyboard.press('Escape');
       await expect(bindingDialog).not.toBeVisible();

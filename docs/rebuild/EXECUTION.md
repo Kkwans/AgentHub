@@ -930,3 +930,11 @@
 - 首次完整真实axe报告cdaa完成154组合但有46违规（36对比度、10ARIA）。`df73eb4`精确报告已完成154组合且0违规/0页面失败/0缺失，未删规则、阈值或覆盖；verify成功，real-service仍运行，不冒称三门全绿。具体失效历史和逐SHA图见[codex/design-qa.md](codex/design-qa.md)。
 - 本地完整干净单测于12:03确认130文件/1290测试通过，另4文件/10测试跳过。此前工作树缺依赖链接造成4套导入失败已如实记录并修环境重跑，无源码/lockfile变更。
 - 下一定点工作是Projects列表数据语义：全局登记就绪不能冒充项目执行资格，无分支不能编造main，辅助源读取失败必须标未知与支持只读重试；当前未称新片完成。仍仅开发分支，未合并main或部署。
+
+### 2026-11-13 12:51 UTC Codex C16–C20 进度同步
+
+- `ad732da` Projects数据来源、`eee3791` Overview姓名来源均已精确三门全绿；失败不冒充0/未分配，重试只读。
+- `cd66da7` Projects三来源错误组已实际图/geometry验195px（旧约309px）、四宽按钮44px；所有错误与重试保留。verify/axe成功，real在最近检查时仍运行。
+- `08ea8d5` 仅修手机fullscreen表单滚动布局，不改焦点/请求生命周期；109定向回归及整轮1306测试通过，10跳过。新390×600几何/图仍待CI，不冒称真实软键盘验收。
+- C20绑定目标安全片已通过36整合Prompt测试和CR：明确选择，未知/刷新/删除时拒绝POST，mutation读取当前cache校验成员；payload/selector不变。实际绑定空/错误/恢复新图待CI，旧pending关闭重开所有权问题未在本片解决。
+- 历史失败、截图边界和新门详见[codex/design-qa.md](codex/design-qa.md)，当前任务与问题表见[codex/DESIGN.md](codex/DESIGN.md)。仍未合并main或部署。

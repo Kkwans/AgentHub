@@ -163,10 +163,27 @@ export function usePromptLibrary() {
           value: item.id,
           label: `v${item.version} · ${item.changelog ?? '无变更说明'}`,
         }));
-  useEffect(() => {
-    if (!bindingTargets.some((item) => item.value === bindingTargetId))
-      setBindingTargetId(bindingTargets[0]?.value ?? '');
-  }, [bindingTargetId, bindingTargets]);
+  const bindingTargetKey =
+    bindingTargetType === 'PROJECT'
+      ? 'projects'
+      : bindingTargetType === 'AGENT'
+        ? 'agents'
+        : 'tasks';
+  const bindingTargetSource =
+    bindingTargetType === 'PROJECT' ? projects : bindingTargetType === 'AGENT' ? agents : tasks;
+  const bindingTargetState = bindingTargetSource.isError
+    ? 'error'
+    : bindingTargetSource.isPending
+      ? 'loading'
+      : bindingTargetSource.fetchStatus !== 'idle'
+        ? 'refreshing'
+        : bindingTargetId && !bindingTargets.some((target) => target.value === bindingTargetId)
+          ? 'missing'
+          : !bindingTargets.length
+            ? 'empty'
+            : bindingTargetId
+              ? 'ready'
+              : 'unselected';
   useEffect(() => {
     if (!bindingSelectors.some((item) => item.value === bindingSelectorValue))
       setBindingSelectorValue(bindingSelectors[0]?.value ?? '');
@@ -175,6 +192,14 @@ export function usePromptLibrary() {
     mutationFn: () => {
       if (!selected || !bindingTargetId || !bindingSelectorValue)
         throw new Error('绑定目标和版本来源不能为空');
+      const currentTargets = client.getQueryState<Array<{ id: string }>>([bindingTargetKey]);
+      if (currentTargets?.status !== 'success' || currentTargets.fetchStatus !== 'idle')
+        throw new Error('绑定目标数据尚未确认，请读取成功后再提交');
+      if (
+        !Array.isArray(currentTargets.data) ||
+        !currentTargets.data.some((target) => target.id === bindingTargetId)
+      )
+        throw new Error('原目标已不在最新列表，请重新选择绑定目标');
       return api.post('/prompt-bindings', {
         targetType: bindingTargetType,
         targetId: bindingTargetId,
@@ -334,6 +359,8 @@ export function usePromptLibrary() {
     bindingTargetId,
     setBindingTargetId,
     bindingTargets,
+    bindingTargetState,
+    bindingTargetSource,
     bindingSlot,
     setBindingSlot,
     bindingSelector,
