@@ -1,6 +1,8 @@
 # C22：Prompt 绑定操作跨内部路由归属合同
 
-状态：**设计候选，未接线、未实现跨路由保护**。
+状态：**实现候选已接线，本地回归通过，真实浏览器门待验证**。
+
+下方推荐顺序及设计章节保留评审时的历史背景；当前实现与测试边界见末尾更新。
 
 实查时间：2026-11-13 13:35:59 UTC。依据 C21 `db2f1f2`、共享 Select 修复 `3c2a9b3` 的源码及已发布 `7bc23e8` 整合状态。当前全量单测与 154 状态 axe 已通过；真实绑定正向/晚响应流程仍待 CI。axe 不验证此并发合同。
 
@@ -98,3 +100,11 @@
 `repro/prompt-binding-route-unmount.patch` 在精确7bc的默认 hook 测试上追加两个预期正确行为的测试。与此前仅改变 location、保持 hook 挂载的测试不同，这次使用真实 `Routes`：在 `/prompts` 提交后进入 `/other` 卸载页面，再回 `/prompts` 挂载新实例。pending 和网络失败 unknown 两种状态都先确认原锁有效，回来后 `bindingBlocked` 实际为 false，原记录也不再保留。结果为原15通过、追加2失败，日志 `c21-route-repro`；并未发第二次 POST 来制造重复数据。
 
 补丁独立存放，不进入默认发现路径，不使用 skip/xfail 冒充修复。默认源码测试已恢复，后续真正 Provider 接线必须把这两项断言纳入正常门禁并转绿。当前合同和复现不是跨路由修复完成证明。
+
+## C22 实现候选与边界更新
+
+2026-11-13：操作规范已一次提取到 `binding-operation-owner` 并由认证域内、Routes 外的独立 Provider 持有；页面只保留 draft/route/generation。Provider 缺失或身份不明拒绝写入，测试显式挂载授权 Provider，不保留生产 fallback owner。
+
+StrictMode setup replay 在同一个 owner 实例上签发新的单调授权 epoch；不是恢复旧 capability。cleanup/revoke 立即失效旧 epoch，后续 activate 不能使旧 Promise 再有写记录、解锁或刷新缓存权限。认证 scope 改变仍以 keyed 子树创建新实例。完整快照包含 authorized/epoch/records，activate 完成后发布新引用，避免暖缓存初次 bindingBlocked 停留在未授权状态。记录、数组与 payload 均冻结。
+
+内部路由卸载不再销毁操作 owner；无消费者期间也可接收已验证成功或明确拒绝，回页看到原结果。unknown 锁跨内部路由保留，仍不保证硬刷新/新标签页/重新登录去重。新增回归覆盖真实 Routes 卸载后 pending/unknown、无消费者完成、两个入口同步争锁及授权 epoch 回放；真实浏览器门另由整合 CI 验证。本文设计部分保留评审背景，候选通过本地测试不等于真实门已通过。

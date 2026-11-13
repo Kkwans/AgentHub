@@ -1,3 +1,4 @@
+import { PromptBindingOperationProvider } from '../components/PromptBindingOperationProvider';
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import type { ReactNode } from 'react';
@@ -50,7 +51,9 @@ function mount() {
   const hook = renderHook(usePromptLibrary, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>
-        <MemoryRouter>{children}</MemoryRouter>
+        <MemoryRouter>
+          <PromptBindingOperationProvider>{children}</PromptBindingOperationProvider>
+        </MemoryRouter>
       </QueryClientProvider>
     ),
   });
@@ -258,3 +261,8 @@ it('同tick原Prompt cache删除时旧render提交也不能POST', async () => {
   });
   expect(api.post).not.toHaveBeenCalled();
 });
+
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthMode: () => 'local_trusted',
+  useAuthUser: () => null,
+}));

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-route
 import { AhLoadingState, AhPageHeader } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
 
+import { PromptBindingOperationProvider } from './features/promptos/components/PromptBindingOperationProvider';
 import { AccessGate } from './components/AccessGate';
 import { ReviewOperationProvider } from './features/projects/components/ReviewOperationProvider';
 import { AppShell } from './app/shell/AppShell';
@@ -179,7 +180,9 @@ function WorkspaceLandingRoute() {
 function AuthenticatedRoutes({ children }: { children: ReactNode }) {
   return (
     <ReviewOperationProvider>
-      <Routes>{children}</Routes>
+      <PromptBindingOperationProvider>
+        <Routes>{children}</Routes>
+      </PromptBindingOperationProvider>
     </ReviewOperationProvider>
   );
 }

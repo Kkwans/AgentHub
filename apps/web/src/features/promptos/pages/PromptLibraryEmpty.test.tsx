@@ -1,3 +1,4 @@
+import { PromptBindingOperationProvider } from '../components/PromptBindingOperationProvider';
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
@@ -23,7 +24,9 @@ function mount() {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PromptLibraryPage />
+        <PromptBindingOperationProvider>
+          <PromptLibraryPage />
+        </PromptBindingOperationProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -158,3 +161,8 @@ it('keeps mobile directory filters mounted while prioritizing the selected edito
   expect(editorAction).toHaveFocus();
   expect(api.post).not.toHaveBeenCalled();
 });
+
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthMode: () => 'local_trusted',
+  useAuthUser: () => null,
+}));

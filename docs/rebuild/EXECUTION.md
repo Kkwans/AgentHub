@@ -946,3 +946,10 @@
 - `c7e35e3` 真实NewWork390短高图/geometry已闭环：外层scrollTop1263，内层0，标题与底部动作可见。整run150过/1失败，剩余是独立正向绑定placeholder空白。
 - 该共享Select空值缺陷已在7bc修复，保留原断言并增加初始空/清除/显式空项3回归。三目标真实POST成功流程尚不能称已通过。
 - 明确限制：C21锁只在页面存活期，离开/刷新不保证保护持久；当前不做跨路由完成或后端幂等保证。仍未合并main或部署。
+
+### 2026-11-13 13:52 UTC Codex C22 实施进度
+
+- 两条真实Routes卸载红测转绿：绑定操作已迁到鉴权内、Routes外唯一owner，同身份内部跳转保留pending/unknown锁和原结果，页面仅管理草稿。没有无效unused工厂或缺Provider时的另一路写入。
+- 快照/记录/payload只读冻结，auth epoch撤权，原缓存归属与无consumer完成均有回归；候选99项Prompt/owner/App/AppShell测试、types/lint/build及独立CR通过，主树同99项整合复验、类型及构建也通过。
+- 真实E2E新增SPA导航卸载/返回与首页晚交付路径，原同页reopen断言保留；11用例收集通过不代表浏览器通过。
+- 仍不保证硬刷新、退出重登、新标签页去重或服务幂等；unknown不自动解锁，持久全绑定锁的UX代价在合同中明确。当前未合并main或部署。

@@ -1,3 +1,4 @@
+import { PromptBindingOperationProvider } from '../components/PromptBindingOperationProvider';
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
@@ -41,7 +42,9 @@ function mount(content: Record<string, unknown> | undefined, description?: strin
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PromptLibraryPage />
+        <PromptBindingOperationProvider>
+          <PromptLibraryPage />
+        </PromptBindingOperationProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -101,3 +104,8 @@ it.each([undefined, 'metadata', ''])(
     );
   },
 );
+
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthMode: () => 'local_trusted',
+  useAuthUser: () => null,
+}));
