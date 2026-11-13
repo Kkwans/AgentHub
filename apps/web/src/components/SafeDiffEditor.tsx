@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   DiffEditor,
   type DiffEditorProps,
@@ -6,6 +6,7 @@ import {
   type MonacoDiffEditor,
 } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
+import { bindDiffEditorLabels } from '../lib/diff-editor-labels';
 
 type SafeDiffEditorProps = Omit<
   DiffEditorProps,
@@ -14,14 +15,34 @@ type SafeDiffEditorProps = Omit<
 
 export function SafeDiffEditor({ onMount, ...props }: SafeDiffEditorProps) {
   const models = useRef<Array<editor.ITextModel>>([]);
+  const labelBinding = useRef<ReturnType<typeof bindDiffEditorLabels> | null>(null);
+  const optionsRef = useRef(props.options);
+  const onMountRef = useRef(onMount);
 
-  const captureModels: DiffOnMount = (instance, monaco) => {
+  useLayoutEffect(() => {
+    optionsRef.current = props.options;
+    onMountRef.current = onMount;
+    labelBinding.current?.refresh();
+  }, [props.options, onMount]);
+
+  const captureModels = useCallback<DiffOnMount>((instance, monaco) => {
     models.current = getModels(instance);
-    onMount?.(instance, monaco);
-  };
+    labelBinding.current?.dispose();
+    labelBinding.current = bindDiffEditorLabels(
+      instance,
+      monaco.editor.EditorOption.ariaLabel,
+      () => ({
+        original: optionsRef.current?.originalAriaLabel,
+        modified: optionsRef.current?.modifiedAriaLabel,
+      }),
+    );
+    onMountRef.current?.(instance, monaco);
+  }, []);
 
   useEffect(
     () => () => {
+      labelBinding.current?.dispose();
+      labelBinding.current = null;
       const staleModels = [...models.current];
       globalThis.setTimeout(() => {
         for (const model of new Set(staleModels)) {
