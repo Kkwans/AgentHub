@@ -157,3 +157,7 @@
 - S60 / AH-079：先修无需竞态即可绕过managed merge的普通Task API，覆盖APPROVE/REWORK/manualtransition/start及无副作用拒绝。真实PGlite红证据后加服务前置与事务最终guard；复用现有四宽审阅E2E确认专属闭环不回归。AH-080旧merge代际与AH-001跨实例原子预留分别规划，不扩大本片。
 
 - S60冻结1089完整覆盖及最终真实ACP两轮guard烟测通过，准备及时发布。先核验S59/S60精确CI，再用barrier复现AH-080旧merge代际，不把源码候选当已确认运行缺陷。
+
+- S61 / AH-080：barrier红测已证实旧merge跨返工代际写错finalRunId。实施Git前原子merge claim，检查expected REVIEW/Session/Run及最新完成Run归属；旧请求拒绝，新请求可正常合并。补实际临时Git/ACP旧请求无副作用证据，现有UI已知拒绝可重读再确认，不改视觉。
+
+- S61最终1098完整覆盖与实际Git/ACP旧merge拒绝/新merge成功烟测通过，及时发布并核验S60/S61精确CI。后续DirectSession Run准入与Task持久预留须独立设计，不能把本片claim时护栏称为全生命周期互斥。

@@ -2082,6 +2082,103 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
     return updated;
   }
 
+  // A merge claim must belong to the exact reviewed Run observed by its caller.
+  // Use the same Execution -> Task -> Session -> Run order as managed outcomes.
+  // This checks durable ownership at claim time, not external filesystem writes
+  // or a new direct Session turn admitted after this transaction commits.
+  async claimReviewForMerge(
+    id: string,
+    expected: { sessionId: string | null; runId: string | null },
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const changed = () =>
+        new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_CHANGED',
+          '隔离审阅的执行代际或归属已变化，未开始合并',
+        );
+      const [execution] = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(eq(worktreeExecutions.id, id))
+        .for('update')
+        .limit(1);
+      if (
+        !execution ||
+        execution.status !== 'REVIEW' ||
+        !execution.worktreePath ||
+        !execution.sessionId ||
+        !execution.runId ||
+        execution.sessionId !== expected.sessionId ||
+        execution.runId !== expected.runId
+      )
+        throw changed();
+      const [task] = await transaction
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, execution.taskId))
+        .for('update')
+        .limit(1);
+      if (
+        !task ||
+        task.status !== 'WAITING_REVIEW' ||
+        task.projectId !== execution.projectId ||
+        task.sessionId !== execution.sessionId ||
+        task.assignedAgentId !== execution.agentId ||
+        task.finalRunId !== execution.runId
+      )
+        throw changed();
+      const [session] = await transaction
+        .select()
+        .from(agentSessions)
+        .where(eq(agentSessions.id, execution.sessionId))
+        .for('update')
+        .limit(1);
+      if (
+        !session ||
+        session.taskId !== task.id ||
+        session.projectId !== execution.projectId ||
+        session.agentId !== execution.agentId ||
+        session.latestRunId !== execution.runId
+      )
+        throw changed();
+      const [run] = await transaction
+        .select()
+        .from(agentRuns)
+        .where(eq(agentRuns.id, execution.runId))
+        .for('update')
+        .limit(1);
+      if (
+        !run ||
+        run.taskId !== task.id ||
+        run.sessionId !== session.id ||
+        run.status !== 'COMPLETED' ||
+        isLegacyUncertainRun(run)
+      )
+        throw changed();
+      const [claimed] = await transaction
+        .update(worktreeExecutions)
+        .set({
+          status: 'MERGING',
+          mergeStartedAt: new Date(),
+          errorCode: null,
+          errorMessage: null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(worktreeExecutions.id, id), eq(worktreeExecutions.status, 'REVIEW')))
+        .returning();
+      if (!claimed) throw changed();
+      return {
+        execution: {
+          ...claimed,
+          worktreePath: execution.worktreePath,
+          sessionId: execution.sessionId,
+          runId: execution.runId,
+        },
+        task,
+      };
+    });
+  }
+
   async transition(
     id: string,
     to: WorktreeExecutionStatus,

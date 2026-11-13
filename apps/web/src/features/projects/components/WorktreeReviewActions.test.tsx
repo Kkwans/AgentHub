@@ -226,3 +226,50 @@ it('拒绝不匹配或不完整的审阅数据', async () => {
   await screen.findByText(/审阅归属无法确认/);
   expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
 });
+it('合并原子claim前明确拒绝不锁成未知，保留输入并要求重读及重新确认', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  const post = vi
+    .spyOn(api, 'post')
+    .mockRejectedValue(new ApiError('WORKTREE_EXECUTION_CHANGED', '原审阅执行已变化', 409));
+  mount();
+  await load();
+  fireEvent.change(screen.getByRole('textbox', { name: '隔离工作区修改说明' }), {
+    target: { value: '保留修改反馈' },
+  });
+  fireEvent.change(screen.getByRole('textbox', { name: '合并提交说明' }), {
+    target: { value: '保留提交说明' },
+  });
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await screen.findByText('原审阅执行已变化');
+  expect(screen.getByText(/未执行合并.*请重新读取.*确认/)).toBeVisible();
+  expect(screen.queryByText(/可能已生成受管提交/)).not.toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: '隔离工作区修改说明' })).toHaveValue('保留修改反馈');
+  expect(screen.getByRole('textbox', { name: '合并提交说明' })).toHaveValue('保留提交说明');
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+  expect(screen.queryByText(review.diffStat)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '核对原隔离执行' })).not.toBeInTheDocument();
+  expect(post).toHaveBeenCalledTimes(1);
+  await load();
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+  expect(post).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('checkbox'));
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeEnabled();
+});
+it.each([400, 500])('同名错误码但HTTP %s不视作Git前明确拒绝', async (status) => {
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  const post = vi
+    .spyOn(api, 'post')
+    .mockRejectedValue(new ApiError('WORKTREE_EXECUTION_CHANGED', '无法确定合并结果', status));
+  mount();
+  await load();
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await screen.findByText('无法确定合并结果');
+  expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '核对原隔离执行' })).toBeEnabled();
+  expect(screen.queryByText(/未执行合并/)).not.toBeInTheDocument();
+  expect(post).toHaveBeenCalledTimes(1);
+});

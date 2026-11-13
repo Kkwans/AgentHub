@@ -499,6 +499,152 @@ describe('Worktree Task Runner 编排', () => {
     await service.shutdown();
   });
 
+  it('旧 merge 快照跨返工 Run 代际后不能合并未经本次请求审阅的新结果', async () => {
+    const fixture = await seedFixture('MERGE-ABA');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '合并代际竞争',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+    await service.processQueue(fixture.projectId);
+    const first = await waitForStatus(queued.execution.id, 'RUNNING');
+    await complete(service, task.id, first.runId!);
+    const mergeGit = vi.spyOn(runtime.git, 'commitAndMerge');
+    let enter!: () => void;
+    let release!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const claim = executions.claimReviewForMerge.bind(executions);
+    const paused = vi
+      .spyOn(executions, 'claimReviewForMerge')
+      .mockImplementationOnce(async (...args) => {
+        enter();
+        await barrier;
+        return claim(...args);
+      });
+    const oldMerge = service.merge(queued.execution.id).then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    try {
+      await entered;
+      const second = await service.rework(queued.execution.id, '新一轮返工');
+      expect(second.runId).not.toBe(first.runId);
+      await complete(service, task.id, second.runId!);
+      const reviewed = await executions.get(queued.execution.id);
+      const reviewedTask = await tasks.get(task.id);
+      release();
+      const outcome = await oldMerge;
+      expect(outcome).toMatchObject({ error: { status: 409, code: 'WORKTREE_EXECUTION_CHANGED' } });
+      expect(mergeGit).not.toHaveBeenCalled();
+      expect(await executions.get(queued.execution.id)).toEqual(reviewed);
+      expect(await tasks.get(task.id)).toEqual(reviewedTask);
+      // A fresh explicit merge can still accept the new generation.
+      const accepted = await service.merge(queued.execution.id);
+      expect(accepted.execution.status).toBe('DONE');
+      expect(accepted.execution.runId).toBe(second.runId);
+      expect(accepted.task.finalRunId).toBe(second.runId);
+      expect(mergeGit).toHaveBeenCalledTimes(1);
+    } finally {
+      release();
+      await oldMerge;
+      paused.mockRestore();
+      mergeGit.mockRestore();
+      await service.shutdown();
+    }
+  });
+
+  it.each(['RUNNING', 'COMPLETED'] as const)(
+    'Execution 仍是旧 REVIEW，但 Session 已有新的 %s Run 时禁止合并',
+    async (newStatus) => {
+      const fixture = await seedFixture(`MERGE-NEW-RUN-${newStatus}`);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '新的会话轮次',
+        status: 'READY',
+      });
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+      await service.processQueue(fixture.projectId);
+      const first = await waitForStatus(queued.execution.id, 'RUNNING');
+      await complete(service, task.id, first.runId!);
+      // Durable Run admission updates latestRunId without claiming a Worktree rework.
+      const next = await runtime.sessions.startRun(first.sessionId!, { text: '直接会话的新一轮' });
+      if (newStatus === 'COMPLETED')
+        await new RunRepository(database.db).tryTransition(next.id, ['RUNNING'], 'COMPLETED');
+      const before = await executions.get(first.id);
+      const beforeTask = await tasks.get(task.id);
+      const mergeGit = vi.spyOn(runtime.git, 'commitAndMerge');
+      try {
+        await expect(service.merge(first.id)).rejects.toMatchObject({
+          status: 409,
+          code: 'WORKTREE_EXECUTION_CHANGED',
+        });
+        expect(mergeGit).not.toHaveBeenCalled();
+        expect(await executions.get(first.id)).toEqual(before);
+        expect(await tasks.get(task.id)).toEqual(beforeTask);
+      } finally {
+        mergeGit.mockRestore();
+        await service.shutdown();
+      }
+    },
+  );
+
+  it.each(['task-final-run', 'session-task', 'run-not-completed'] as const)(
+    '合并 claim 拒绝不一致的持久归属：%s',
+    async (mismatch) => {
+      const fixture = await seedFixture(`MERGE-OWNERSHIP-${mismatch}`);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '持久归属核对',
+        status: 'READY',
+      });
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+      await service.processQueue(fixture.projectId);
+      const first = await waitForStatus(queued.execution.id, 'RUNNING');
+      if (mismatch === 'run-not-completed') {
+        // Simulate a stale REVIEW row; the actual durable Run is still RUNNING.
+        await executions.transition(first.id, 'REVIEW');
+        await tasks.transition(task.id, 'WAITING_REVIEW', { finalRunId: first.runId });
+      } else {
+        await complete(service, task.id, first.runId!);
+        if (mismatch === 'task-final-run') await tasks.update(task.id, { finalRunId: null });
+        else
+          await new SessionRepository(database.db).transition(first.sessionId!, 'CLOSED', {
+            taskId: null,
+          });
+      }
+      const before = await executions.get(first.id);
+      const beforeTask = await tasks.get(task.id);
+      const mergeGit = vi.spyOn(runtime.git, 'commitAndMerge');
+      try {
+        await expect(service.merge(first.id)).rejects.toMatchObject({
+          status: 409,
+          code: 'WORKTREE_EXECUTION_CHANGED',
+        });
+        expect(mergeGit).not.toHaveBeenCalled();
+        expect(await executions.get(first.id)).toEqual(before);
+        expect(await tasks.get(task.id)).toEqual(beforeTask);
+      } finally {
+        mergeGit.mockRestore();
+        await service.shutdown();
+      }
+    },
+  );
+
   it('Merge preflight 失败时回到 Review，不提前完成 Task', async () => {
     const fixture = await seedFixture('MERGE-FAIL');
     const task = await tasks.create({

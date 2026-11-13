@@ -219,30 +219,38 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         '只有待审阅的 Worktree Execution 可以合并',
       );
     }
-    const [project, task] = await Promise.all([
-      this.requireProject(execution.projectId),
-      this.requireTask(execution.taskId),
-    ]);
-    await this.executions.transition(id, 'MERGING', {
-      mergeStartedAt: new Date(),
-      errorCode: null,
-      errorMessage: null,
-    });
+    const project = await this.requireProject(execution.projectId);
+    // Claim rejection is outside the Git failure recovery block: never reset
+    // a newer review/run back to REVIEW on behalf of a stale merge request.
+    const claimed = await this.executions
+      .claimReviewForMerge(id, {
+        sessionId: execution.sessionId,
+        runId: execution.runId,
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DatabaseInvariantError && error.code === 'WORKTREE_EXECUTION_CHANGED')
+          throw new AppError(
+            409,
+            error.code,
+            '隔离审阅已变化，尚未开始合并；请重新读取并确认最新结果',
+          );
+        throw error;
+      });
     try {
       const result = await this.git.commitAndMerge({
         projectRoot: project.realRootPath,
-        worktreePath: execution.worktreePath,
-        baseBranch: execution.baseBranch,
-        baseSha: execution.baseSha,
-        taskBranch: execution.taskBranch,
-        commitMessage: commitMessage || `feat(task): ${task.title}`,
+        worktreePath: claimed.execution.worktreePath,
+        baseBranch: claimed.execution.baseBranch,
+        baseSha: claimed.execution.baseSha,
+        taskBranch: claimed.execution.taskBranch,
+        commitMessage: commitMessage || `feat(task): ${claimed.task.title}`,
       });
       const completed = await this.executions.transitionWithTask(
         id,
         'DONE',
         'DONE',
         { mergeCommitSha: result.mergeCommitSha, completedAt: new Date() },
-        { completedAt: new Date(), finalRunId: execution.runId },
+        { completedAt: new Date(), finalRunId: claimed.execution.runId },
       );
       this.publish('worktree.execution.completed', completed.execution);
       this.schedule(execution.projectId);

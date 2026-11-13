@@ -291,7 +291,7 @@ AH-078最终本地验收：1078完整资源隔离覆盖/10原有skip、90前端�
 - 每例独立Project，持久关联Session与COMPLETED Run；使用stub Session控制器，无真实Agent/Git操作。不是仅从UI隐藏推测安全。
 - S60范围：Worktree-owned任务普通start/review/manualtransition明确拒绝409 TASK_WORKTREE_MANAGED；副作用前检查及Task锁内最终检查，保留专属Worktree流程和普通任务。暂不覆盖跨实例普通启动Session原子预留或任意直接Session API的完整所有权。
 
-## AH-080 / P1（待运行复现）：旧隔离merge快照跨返工代际
+## AH-080 / P1：旧隔离merge快照跨返工代际
 
 - 源码审查：merge先读取run1，再await Project/Task；若另一次返工run2完成并回到REVIEW，旧请求仍可claim MERGING并以旧run1写finalRunId。需barrier复现和锁内run代际claim，另行切片，不混入S60。
 
@@ -301,3 +301,11 @@ AH-078最终本地验收：1078完整资源隔离覆盖/10原有skip、90前端�
 - 需要runtime副作用前的Task锁内原子Session预留/关联及故障恢复，不以S60入口guard冒充跨实例修复。保留为后续独立设计。
 
 AH-079最终本地验收：1089完整覆盖/10原有skip、68专项、lint/types/build/QA10及CR通过；最终构建后两轮10次真实HTTP拒绝且完整快照不变，专用返工/合并照常完成。四宽待新exact CI；跨实例孤立Session与DirectSession所有权仍开放。
+
+AH-080运行证据：S61隔离PGlite barrier红测已复现旧merge错误成功DONE，Execution.runId=run2而Task.finalRunId=run1。旧请求在初读run1后停住，真实service返工run2完成回REVIEW，再放行，不是单纯手动改DB状态。
+- S61范围：Git之前原子核对原REVIEW的Session/Run代际，拒绝旧请求；同时核对当前Task/Session/latestRun及COMPLETED，不允许发现较新活跃Run仍执行merge。专用claim遵循Execution→Task→Session锁序，使用claim快照归属。
+- 仍不保证UI读取Diff与请求之间的不可变审阅快照，也不拦所有外部文件写入；DirectSession入口及跨实例普通启动预留独立保留。
+
+AH-078当前验收：54f5724精确CI43353585301双绿，1078单测/48 fixture、149真实项/140几何；取消请求不冒充终态且权威cancelled后释放队列四宽全部通过，关闭当前切片。
+
+AH-080最终本地验收：1098完整覆盖/10原有skip、25后端/12UI专项、lint/types/build/QA10与独立CR通过；真实Git/ACP证明旧请求409且0Git调用/完整数据及Git快照不变，新明确请求正常合并run2。claim时检查最新已完成Run，不保证claim后的新DirectSession或外部写入；UI不可变审阅token仍独立范围。新exact CI待验收，不提前关闭。

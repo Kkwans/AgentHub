@@ -177,21 +177,31 @@ export function WorktreeReviewActions({
       }
     } catch (failure) {
       if (current()) {
-        const confirmedRejection =
+        const preClaimRejection =
+          action === 'merge' &&
           failure instanceof ApiError &&
-          ((failure.status === 400 && failure.code === 'VALIDATION_FAILED') ||
-            (failure.status === 409 &&
-              [
-                'PRIMARY_WORKTREE_DIRTY',
-                'PRIMARY_BRANCH_CHANGED',
-                'WORKTREE_BASE_DIVERGED',
-                'WORKTREE_MERGE_CONFLICT',
-                'WORKTREE_EXECUTION_NOT_IN_REVIEW',
-              ].includes(failure.code)));
+          failure.status === 409 &&
+          failure.code === 'WORKTREE_EXECUTION_CHANGED';
+        const confirmedRejection =
+          preClaimRejection ||
+          (failure instanceof ApiError &&
+            ((failure.status === 400 && failure.code === 'VALIDATION_FAILED') ||
+              (failure.status === 409 &&
+                [
+                  'PRIMARY_WORKTREE_DIRTY',
+                  'PRIMARY_BRANCH_CHANGED',
+                  'WORKTREE_BASE_DIVERGED',
+                  'WORKTREE_MERGE_CONFLICT',
+                  'WORKTREE_EXECUTION_NOT_IN_REVIEW',
+                ].includes(failure.code))));
         setUnknown(!confirmedRejection);
         setReview(undefined);
         if (confirmedRejection && action === 'merge')
-          setNotice('合并未完成；隔离分支可能已生成受管提交。请重新读取差异后再明确确认。');
+          setNotice(
+            preClaimRejection
+              ? '原审阅执行已变化，本次请求未执行合并或 Git 提交。请重新读取差异并明确确认。'
+              : '合并未完成；隔离分支可能已生成受管提交。请重新读取差异后再明确确认。',
+          );
         setError(failure instanceof Error ? failure.message : '操作结果无法确认。');
       }
     } finally {
