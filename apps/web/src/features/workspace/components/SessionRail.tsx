@@ -1,6 +1,7 @@
 import { ChevronDown, Plus, Search, WorkbenchPanelHeader } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Folder, Settings, BookOpen, Bot } from 'lucide-react';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import type { SessionRecord } from '../../../lib/api';
 import { labelSessionBranch, resolveWorkspaceRunState } from '../../../presentation/domain-labels';
@@ -118,6 +119,24 @@ export function SessionRail({
       className={`${sessionRailStyles.owner} session-rail flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
+      <Link to="/home" className="codex-rail-brand" onClick={onSelect}>
+        <Bot size={22} aria-hidden="true" />
+        <span>AgentHub</span>
+      </Link>
+      <nav className="codex-rail-navigation" aria-label="工作区导航">
+        <Link to="/projects" onClick={onSelect}>
+          <Folder size={17} aria-hidden="true" />
+          项目
+        </Link>
+        <Link to="/prompts" onClick={onSelect}>
+          <BookOpen size={17} aria-hidden="true" />
+          Prompt 库
+        </Link>
+        <Link to="/settings/appearance" onClick={onSelect}>
+          <Settings size={17} aria-hidden="true" />
+          设置
+        </Link>
+      </nav>
       <WorkbenchPanelHeader
         title="会话列表"
         description={`${sessions.data?.length ?? 0} 个会话`}

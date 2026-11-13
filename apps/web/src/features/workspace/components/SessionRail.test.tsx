@@ -33,6 +33,36 @@ function session(id: string, title: string, lastActiveAt: string): SessionRecord
 }
 
 describe('SessionRail', () => {
+  it('工作区导航连接真实页面并保留项目范围的新建入口', () => {
+    const onSelect = vi.fn();
+    render(
+      <MemoryRouter>
+        <SessionRail
+          sessions={{ data: [], error: null, isLoading: false, refetch: vi.fn() }}
+          currentId="current"
+          projectId="project-1"
+          onSelect={onSelect}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'AgentHub' })).toHaveAttribute('href', '/home');
+    expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute(
+      'href',
+      '/projects',
+    );
+    expect(screen.getByRole('link', { name: 'Prompt 库' })).toHaveAttribute('href', '/prompts');
+    expect(screen.getByRole('link', { name: '设置' })).toHaveAttribute(
+      'href',
+      '/settings/appearance',
+    );
+    expect(screen.getByRole('link', { name: '新建会话' })).toHaveAttribute(
+      'href',
+      '/projects/project-1/sessions?new=1',
+    );
+    fireEvent.click(screen.getByRole('link', { name: '项目' }));
+    expect(onSelect).toHaveBeenCalledOnce();
+  });
+
   it('长列表按阈值窗口化，并保留当前会话', () => {
     const items = Array.from({ length: SESSION_VIRTUALIZATION_THRESHOLD + 20 }, (_, index) => ({
       id: `session-${index}`,

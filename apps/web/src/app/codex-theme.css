@@ -1,0 +1,79 @@
+/* Selected Codex concept: quiet neutral surfaces and content-first hierarchy.
+ * Both token families are mapped here while the legacy components migrate.
+ * Semantic success / warning / danger colors deliberately remain unchanged. */
+:root {
+  --background: 0 0% 100%;
+  --surface: 0 0% 100%;
+  --surface-muted: 0 0% 96%;
+  --surface-hover: 0 0% 92%;
+  --foreground: 0 0% 13%;
+  --foreground-muted: 0 0% 36%;
+  --foreground-subtle: 0 0% 39%;
+  --foreground-faint: 0 0% 43%;
+  --border: 0 0% 88%;
+  --border-strong: 0 0% 75%;
+  --primary: 0 0% 15%;
+  --primary-hover: 0 0% 24%;
+  --primary-foreground: 0 0% 100%;
+  --primary-soft: 0 0% 93%;
+  --sidebar-bg: 0 0% 96%;
+  --sidebar-border: 0 0% 89%;
+  --sidebar-item-active-bg: 0 0% 90%;
+  --sidebar-item-active-fg: 0 0% 13%;
+  --code-surface: 0 0% 96%;
+  --ah-canvas: #ffffff;
+  --ah-canvas-alt: #f5f5f5;
+  --ah-surface-subtle: #f5f5f5;
+  --ah-surface-hover: #ebebeb;
+  --ah-surface-tinted: #f5f5f5;
+  --ah-text-primary: #212121;
+  --ah-text-secondary: #5c5c5c;
+  --ah-text-tertiary: #6e6e6e;
+  --ah-border-subtle: #e6e6e6;
+  --ah-border-default: #dedede;
+  --ah-border-strong: #bfbfbf;
+  --ah-accent-primary: #262626;
+  --ah-accent-hover: #3d3d3d;
+  --ah-accent-pressed: #171717;
+  --ah-accent-soft: #ededed;
+  --ah-accent-soft-hover: #e5e5e5;
+}
+:root.dark,
+:root[data-agenthub-theme='dark'] {
+  --background: 0 0% 12%;
+  --surface: 0 0% 12%;
+  --surface-muted: 0 0% 16%;
+  --surface-hover: 0 0% 21%;
+  --foreground: 0 0% 93%;
+  --foreground-muted: 0 0% 74%;
+  --foreground-subtle: 0 0% 69%;
+  --foreground-faint: 0 0% 65%;
+  --border: 0 0% 24%;
+  --border-strong: 0 0% 38%;
+  --primary: 0 0% 91%;
+  --primary-hover: 0 0% 100%;
+  --primary-foreground: 0 0% 12%;
+  --primary-soft: 0 0% 22%;
+  --sidebar-bg: 0 0% 9%;
+  --sidebar-border: 0 0% 22%;
+  --sidebar-item-active-bg: 0 0% 21%;
+  --sidebar-item-active-fg: 0 0% 93%;
+  --code-surface: 0 0% 16%;
+  --ah-canvas: #1f1f1f;
+  --ah-canvas-alt: #171717;
+  --ah-surface: #1f1f1f;
+  --ah-surface-subtle: #292929;
+  --ah-surface-hover: #363636;
+  --ah-surface-tinted: #292929;
+  --ah-text-primary: #ededed;
+  --ah-text-secondary: #bdbdbd;
+  --ah-text-tertiary: #a6a6a6;
+  --ah-border-subtle: #383838;
+  --ah-border-default: #424242;
+  --ah-border-strong: #616161;
+  --ah-accent-primary: #e8e8e8;
+  --ah-accent-hover: #ffffff;
+  --ah-accent-pressed: #d1d1d1;
+  --ah-accent-soft: #383838;
+  --ah-accent-soft-hover: #424242;
+}

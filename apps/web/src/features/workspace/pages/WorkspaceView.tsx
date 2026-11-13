@@ -23,6 +23,7 @@ import { SessionRail } from '../components/SessionRail';
 import { TerminalDock } from '../components/TerminalDock';
 import { WorkspaceInspector, type InspectorTab } from '../components/WorkspaceInspector';
 import workspaceStyles from '../workspace.module.css';
+import codexStyles from '../codexWorkbench.module.css';
 
 import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
@@ -135,8 +136,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
 
   return (
     <div
-      className={`${workspaceStyles.workspace} workspace workspace-page workspace-shell relative isolate flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]`}
-      data-design-system="pinharness"
+      className={`${workspaceStyles.workspace} ${codexStyles.workspace} workspace workspace-page workspace-shell relative isolate flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]`}
+      data-design-system="codex"
       data-mobile-immersive={immersive || undefined}
       data-session-drawer-open={sessionDrawerOpen || undefined}
       data-inspector-drawer-open={inspectorDrawerOpen || undefined}
@@ -211,6 +212,19 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           onClick={() => setImmersive((value) => !value)}
         >
           <ScanSearch size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="codex-review-button"
+          aria-label="审阅更改"
+          onClick={() => {
+            setTab('changes');
+            if (inspectorActsAsDrawer) openInspectorDrawer('changes');
+            else if (workspaceLayout.rightCollapsed) toggleWorkspacePanel('right');
+          }}
+        >
+          <GitBranch size={15} aria-hidden="true" />
+          <span>审阅更改</span>
         </button>
         <div className="workspace-layout-actions" aria-label="Workspace 面板布局">
           <button

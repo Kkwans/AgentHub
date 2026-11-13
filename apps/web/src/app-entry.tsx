@@ -8,6 +8,7 @@ import '@fontsource-variable/geist';
 import { App } from './App';
 import '@agenthub/ui/styles.css';
 import '@agenthub/ui/pinharness.css';
+import './app/codex-theme.css';
 
 export function mountApp(root: HTMLElement) {
   const queryClient = new QueryClient({
