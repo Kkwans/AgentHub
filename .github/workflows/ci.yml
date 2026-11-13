@@ -124,7 +124,6 @@ jobs:
       # Isolated loopback/PGlite and local ACP fixture only. No NAS or paid Agent account.
       AGENTHUB_E2E_LIVE: '0'
       AGENTHUB_ACCESSIBILITY_OUTPUT: ${{ github.workspace }}/artifacts/real-accessibility/audit.json
-      AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-accessibility
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -138,6 +137,8 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - name: Scan 154 real page states with one report writer
+        env:
+          AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-accessibility
         run: pnpm exec playwright test --config=playwright.real.config.ts --workers=1 tests/e2e-real/v1-accessibility.spec.ts
       - name: Preserve complete or partial accessibility evidence
         if: ${{ always() }}
