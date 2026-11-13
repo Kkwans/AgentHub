@@ -170,6 +170,11 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(bindingDialog).not.toBeVisible();
       await expect(bindingTrigger).toBeFocused();
       await editor.getByRole('tab', { name: '内容', exact: true }).click();
+      if (width === 390) {
+        const toggle = page.getByRole('button', { name: '展开目录', exact: true });
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await toggle.click();
+      }
       const search = page.getByRole('textbox', { name: '搜索 Prompt' });
       await search.fill('完全不匹配的关键词');
       await expect(page.getByText('没有匹配的 Prompt', { exact: true })).toBeVisible();

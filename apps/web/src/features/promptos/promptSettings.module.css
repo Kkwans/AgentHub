@@ -808,3 +808,40 @@
   font-size: 12px;
   line-height: 1.6;
 }
+
+/* Keep the selected Prompt as the mobile reading surface; directory state stays mounted. */
+.directoryContent {
+  display: contents;
+}
+.directoryContent[hidden] {
+  display: none;
+}
+.directoryToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px;
+  color: var(--ah-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.directoryToggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+@media (max-width: 767px) {
+  .libraryHeader {
+    padding-bottom: 0;
+  }
+  .libraryPane {
+    max-height: none;
+  }
+  .directoryContent:not([hidden]) {
+    display: block;
+    max-height: 320px;
+    overflow-y: auto;
+    margin-top: 12px;
+  }
+}

@@ -40,9 +40,11 @@ function statusLabel(status: string, enabled: boolean): string {
 function AgentResourceCard({
   agent,
   target,
+  targetState,
 }: {
   agent: AgentRecord;
   target?: ExecutionTargetRecord;
+  targetState: 'loading' | 'error' | 'ready';
 }) {
   const ready = agent.status === 'READY' && agent.enabled;
   const runtimeLabel = executionTargetKindLabel(target?.kind);
@@ -52,7 +54,7 @@ function AgentResourceCard({
     <article
       className={styles.agentRow}
       role="group"
-      aria-label={`${agent.name}，${agentKindLabel(agent.agentKind)}，${ready ? '已就绪' : '需要处理'}`}
+      aria-label={`${agent.name}，${agentKindLabel(agent.agentKind)}，${ready ? '登记就绪' : '需要处理'}`}
     >
       <div className={styles.agentIdentity}>
         <Bot size={22} aria-hidden />
@@ -64,7 +66,7 @@ function AgentResourceCard({
         </div>
         <div className={styles.badges}>
           <Badge variant={ready ? 'success' : 'warning'} dot>
-            {ready ? '已就绪' : '需要处理'}
+            {ready ? '登记就绪' : '需要处理'}
           </Badge>
           <Badge variant={agent.enabled ? 'outline' : 'destructive'}>
             {agent.enabled ? '已启用' : '已停用'}
@@ -75,7 +77,13 @@ function AgentResourceCard({
         <div>
           <dt>Runtime</dt>
           <dd>
-            {target?.name ?? '运行环境待确认'} · {runtimeLabel}
+            {targetState === 'loading'
+              ? '正在加载运行环境'
+              : targetState === 'error'
+                ? '运行环境读取失败'
+                : target
+                  ? `${target.name} · ${runtimeLabel}`
+                  : '未找到关联运行环境'}
           </dd>
         </div>
         <div>
@@ -163,7 +171,7 @@ function AgentFilterBar({
             clearable={false}
             options={[
               { value: 'all', label: '全部状态' },
-              { value: 'ready', label: '已就绪' },
+              { value: 'ready', label: '登记就绪' },
               { value: 'attention', label: '需要处理' },
             ]}
             onChange={(value) => {
@@ -244,21 +252,21 @@ export function AgentCenterPage() {
         <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[hsl(var(--foreground-muted))]">
           <span>
             <strong className="font-semibold text-[hsl(var(--foreground))]">
-              {agents.isLoading ? '—' : (agents.data?.length ?? 0)}
+              {agents.isError ? '未知' : agents.isLoading ? '—' : (agents.data?.length ?? 0)}
             </strong>{' '}
             个 Agent
           </span>
           <span>
             <strong className="font-semibold text-[hsl(var(--success-fg))]">
-              {agents.isLoading ? '—' : readyCount}
+              {agents.isError ? '未知' : agents.isLoading ? '—' : readyCount}
             </strong>{' '}
-            已就绪
+            登记就绪
           </span>
           <span>
+            发现结果待处理：
             <strong className="font-semibold text-[hsl(var(--warning-fg))]">
-              {candidates.isLoading ? '—' : attentionCount}
-            </strong>{' '}
-            个发现结果待处理
+              {candidates.isError ? '未知' : candidates.isLoading ? '加载中' : attentionCount}
+            </strong>
           </span>
           <Link
             className={`${layout.link} ml-auto inline-flex items-center gap-1`}
@@ -267,6 +275,28 @@ export function AgentCenterPage() {
             打开 Infrastructure <Link2 size={13} aria-hidden />
           </Link>
         </div>
+
+        <p className="mb-4 text-xs text-[hsl(var(--foreground-muted))]">
+          登记状态不代表运行前预检结果。
+        </p>
+        {targets.isError ? (
+          <section aria-label="运行环境读取状态">
+            <ErrorState
+              title="运行环境信息读取失败"
+              error={targets.error}
+              retry={() => void targets.refetch()}
+            />
+          </section>
+        ) : null}
+        {candidates.isError ? (
+          <section aria-label="发现结果读取状态">
+            <ErrorState
+              title="发现结果读取失败"
+              error={candidates.error}
+              retry={() => void candidates.refetch()}
+            />
+          </section>
+        ) : null}
 
         <AgentFilterBar
           query={query}
@@ -291,7 +321,14 @@ export function AgentCenterPage() {
               {filteredAgents.map((agent) => {
                 const target = targetById.get(agent.targetId);
                 return (
-                  <AgentResourceCard key={agent.id} agent={agent} {...(target ? { target } : {})} />
+                  <AgentResourceCard
+                    key={agent.id}
+                    agent={agent}
+                    targetState={
+                      targets.isError ? 'error' : targets.isPending ? 'loading' : 'ready'
+                    }
+                    {...(target ? { target } : {})}
+                  />
                 );
               })}
             </div>

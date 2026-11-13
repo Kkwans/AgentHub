@@ -457,13 +457,47 @@ test('Home 以工作续接为主舞台', async ({ page }, testInfo) => {
   await attachViewportScreenshot(page, testInfo, 'home');
 });
 
+test('Agent 辅助信息失败保持未知并可恢复，不隐藏已登记身份', async ({ page }, testInfo) => {
+  let failing = true;
+  for (const endpoint of ['execution-targets', 'discovery/agents']) {
+    await page.route(`**/api/v1/${endpoint}`, async (route) => {
+      if (!failing) return route.fallback();
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: '辅助数据暂时不可用' } }),
+      });
+    });
+  }
+  await page.goto('/agents');
+  const row = page.getByRole('group', { name: 'Codex，Codex，登记就绪' });
+  await expect(row).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
+  const targets = page.getByRole('region', { name: '运行环境读取状态' });
+  const candidates = page.getByRole('region', { name: '发现结果读取状态' });
+  await expect(targets).toBeVisible();
+  await expect(candidates).toBeVisible();
+  await expect(page.getByText('未知', { exact: true })).toBeVisible();
+  await expect(row).toContainText('运行环境读取失败');
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'agent-center-source-error');
+  failing = false;
+  await targets.getByRole('button', { name: '重新加载' }).click();
+  await candidates.getByRole('button', { name: '重新加载' }).click();
+  await expect(targets).toBeHidden();
+  await expect(candidates).toBeHidden();
+  await expect(page.getByText('未知', { exact: true })).toBeHidden();
+  await expect(row).toContainText('未找到关联运行环境');
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'agent-center-source-recovered');
+});
+
 test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }, testInfo) => {
   await page.goto('/agents');
   await expect(page.getByRole('heading', { name: 'Agent 中心' })).toBeVisible({
     timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByText('Codex', { exact: true }).first()).toBeVisible();
-  const agentRow = page.getByRole('group', { name: 'Codex，Codex，已就绪' });
+  const agentRow = page.getByRole('group', { name: 'Codex，Codex，登记就绪' });
   await expect(agentRow.getByRole('link', { name: '管理 Agent' })).toHaveAttribute(
     'href',
     `/agents/${agent.id}`,
@@ -1037,6 +1071,28 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
   await expect(tabs.getByRole('tab', { name: '绑定' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('region', { name: 'Prompt 编辑器' })).toContainText(project.name);
   await expect(tabs.getByRole('tab', { name: '版本' })).toHaveCount(0);
+  if ((page.viewportSize()?.width ?? 1_000) < 768) {
+    const toggle = page.getByRole('button', { name: '展开目录', exact: true });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByRole('textbox', { name: '搜索 Prompt' })).toHaveCount(0);
+    const tabsBox = await tabs.boundingBox();
+    expect(tabsBox).not.toBeNull();
+    expect(tabsBox!.y + tabsBox!.height).toBeLessThan(620);
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    const search = page.getByRole('textbox', { name: '搜索 Prompt' });
+    await expect(search).toBeVisible();
+    await search.fill('安全');
+    await attachViewportScreenshot(page, testInfo, 'prompts-directory-open');
+    await search.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(search).toHaveValue('安全');
+    await search.fill('');
+    await search.press('Escape');
+    await expect(tabs.getByRole('tab', { name: '绑定' })).toHaveAttribute('aria-selected', 'true');
+  }
 
   await page.getByRole('button', { name: '版本与标签' }).click();
   const lifecycle = page.getByRole('dialog', { name: '版本与标签' });

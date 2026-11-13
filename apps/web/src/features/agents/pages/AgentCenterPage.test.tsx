@@ -1,13 +1,23 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AgentCenterPage } from './AgentCenterPage';
 import { capabilitiesFor, executionTargetKindLabel } from '../agent-presentation';
 
-afterEach(cleanup);
+import { api } from '../../../lib/api';
+vi.mock('../../../lib/api', async () => ({
+  api: { get: vi.fn() },
+  ApiError: (await import('../../../lib/api-error')).ApiError,
+}));
+const clients: QueryClient[] = [];
+afterEach(() => {
+  cleanup();
+  clients.splice(0).forEach((client) => client.clear());
+  vi.resetAllMocks();
+});
 const labels = (capabilitiesJson: Record<string, unknown>) => capabilitiesFor({ capabilitiesJson });
 describe('Agent capability truthfulness', () => {
   it.each([
@@ -93,7 +103,7 @@ describe('Agent capability truthfulness', () => {
     expect(card.querySelector('dl')).toHaveTextContent('Runtime');
     expect(card.querySelector('dl')).toHaveTextContent('Provider');
     expect(card.querySelector('dl')).toHaveTextContent('Model');
-    expect(within(card).getByText('运行环境待确认 · 类型待确认')).toBeInTheDocument();
+    expect(within(card).getByText('未找到关联运行环境')).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: '管理 Agent' })).toHaveAttribute(
       'href',
       '/agents/a1',
@@ -109,4 +119,130 @@ describe('Agent capability truthfulness', () => {
     expect(screen.getByTestId('route')).toHaveTextContent('/agents/diagnostics');
     client.clear();
   });
+});
+
+const readyAgent = {
+  id: 'a1',
+  name: 'Codex',
+  agentKind: 'CODEX',
+  adapterKind: 'ACP_STDIO',
+  enabled: true,
+  status: 'READY',
+  targetId: 't1',
+  capabilitiesJson: {},
+};
+function mountSources() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <AgentCenterPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  return client;
+}
+it('辅助源失败不伪装成零结果或缺配置，重试恢复且保留Agent', async () => {
+  let failed = true;
+  vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
+    if (path === '/agents') return [readyAgent] as T;
+    if (failed) throw new Error('unavailable');
+    return (
+      path === '/execution-targets'
+        ? [{ id: 't1', name: '本机环境', kind: 'LOCAL_HOST' }]
+        : [{ state: 'UNVERIFIED' }]
+    ) as T;
+  });
+  mountSources();
+  const row = await screen.findByRole('group', { name: 'Codex，Codex，登记就绪' });
+  expect(row).toBeVisible();
+  const targetError = await screen.findByRole('region', { name: '运行环境读取状态' });
+  const candidateError = await screen.findByRole('region', { name: '发现结果读取状态' });
+  expect(within(row).getByText('运行环境读取失败')).toBeVisible();
+  expect(screen.getByText('未知', { exact: true })).toBeVisible();
+  expect(screen.queryByText('未找到关联运行环境')).not.toBeInTheDocument();
+  failed = false;
+  fireEvent.click(within(targetError).getByRole('button', { name: '重新加载' }));
+  fireEvent.click(within(candidateError).getByRole('button', { name: '重新加载' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('region', { name: '运行环境读取状态' })).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole('region', { name: '发现结果读取状态' })).not.toBeInTheDocument(),
+  );
+  expect(within(row).getByText('本机环境 · 本机')).toBeVisible();
+  expect(screen.queryByText('未知', { exact: true })).not.toBeInTheDocument();
+  expect(screen.getByText('登记状态不代表运行前预检结果。')).toBeVisible();
+});
+it('辅助源加载中与成功缺关联分别显示，不声称零发现结果', async () => {
+  let finishTargets!: (value: unknown) => void;
+  let finishCandidates!: (value: unknown) => void;
+  vi.mocked(api.get).mockImplementation(<T,>(path: string) => {
+    if (path === '/agents') return Promise.resolve([readyAgent] as T);
+    return new Promise<unknown>((resolve) => {
+      if (path === '/execution-targets') finishTargets = resolve;
+      else finishCandidates = resolve;
+    }) as Promise<T>;
+  });
+  mountSources();
+  const row = await screen.findByRole('group', { name: 'Codex，Codex，登记就绪' });
+  expect(within(row).getByText('正在加载运行环境')).toBeVisible();
+  expect(screen.getByText('加载中', { exact: true })).toBeVisible();
+  expect(screen.queryByText('未找到关联运行环境')).not.toBeInTheDocument();
+  await act(async () => {
+    finishTargets([]);
+    finishCandidates([]);
+  });
+  expect(await screen.findByText('未找到关联运行环境')).toBeVisible();
+  expect(screen.queryByText('加载中', { exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: '运行环境读取状态' })).not.toBeInTheDocument();
+});
+
+it('已缓存辅助数据刷新失败仍明确未知，不把旧值冒充最新结果', async () => {
+  let failed = false;
+  vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
+    if (path === '/agents') return [readyAgent] as T;
+    if (failed) throw new Error('refresh failed');
+    return (
+      path === '/execution-targets' ? [{ id: 't1', name: '缓存环境', kind: 'LOCAL_HOST' }] : []
+    ) as T;
+  });
+  const client = mountSources();
+  expect(await screen.findByText('缓存环境 · 本机')).toBeVisible();
+  failed = true;
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ['execution-targets'] });
+    await client.invalidateQueries({ queryKey: ['discovery-agents'] });
+  });
+  expect(await screen.findByText('未知', { exact: true })).toBeVisible();
+  expect(screen.getByRole('group', { name: 'Codex，Codex，登记就绪' })).toBeVisible();
+  expect(screen.queryByText('缓存环境 · 本机')).not.toBeInTheDocument();
+  expect(screen.getByText('运行环境读取失败', { exact: true })).toBeVisible();
+});
+
+it.each([false, true])('主Agent源失败总数及登记就绪数均未知（旧缓存=%s）', async (cached) => {
+  let failed = !cached;
+  vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
+    if (path === '/agents') {
+      if (failed) throw new Error('agents unavailable');
+      return [readyAgent] as T;
+    }
+    return [] as T;
+  });
+  const client = mountSources();
+  if (cached) {
+    await screen.findByRole('group', { name: 'Codex，Codex，登记就绪' });
+    failed = true;
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['agents'] });
+    });
+  }
+  expect(await screen.findByText('暂时无法加载')).toBeVisible();
+  expect(screen.getAllByText('未知', { exact: true })).toHaveLength(2);
+  expect(screen.queryByText('还没有接入 Agent')).not.toBeInTheDocument();
+  failed = false;
+  fireEvent.click(screen.getByRole('button', { name: '重新加载' }));
+  expect(await screen.findByRole('group', { name: 'Codex，Codex，登记就绪' })).toBeVisible();
+  expect(screen.queryAllByText('未知', { exact: true })).toHaveLength(0);
 });
