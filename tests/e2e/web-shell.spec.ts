@@ -1064,6 +1064,101 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await attachViewportScreenshot(page, testInfo, 'workspace');
 });
 
+test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比度', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  let gitWrites = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.includes('/git/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      gitWrites += 1;
+  });
+  // Change the actual application preference, not just the HTML class. Monaco
+  // reads the theme context and must select the registered dark diff theme.
+  await page.goto('/settings/appearance');
+  await page.getByRole('combobox', { name: '主题' }).click();
+  await page.getByRole('option', { name: '深色', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  const path = 'apps/web/src/features/workspace/workspace.module.css';
+  await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
+  const modifiedLines = page.locator(
+    '.git-diff-editor .editor.modified .view-lines[role="presentation"]',
+  );
+  await expect(modifiedLines).toBeVisible();
+  await expect(modifiedLines).toContainText(/display:\s*grid/);
+  const editorInputs = page.locator('.git-diff-editor [role="textbox"]');
+  await expect(editorInputs).toHaveCount(2);
+  for (const mode of ['unified', 'split-requested'] as const) {
+    if (mode === 'split-requested') {
+      await page.getByRole('button', { name: '切换为分栏 Diff' }).click();
+      await expect(page.getByRole('button', { name: '切换为统一 Diff' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    }
+    await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
+    await expect
+      .poll(() =>
+        editorInputs.evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute('aria-label') ?? ''),
+        ),
+      )
+      .toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(`更改前：${path}`),
+          expect.stringContaining(`更改后：${path}`),
+        ]),
+      );
+    await expect(modifiedLines).toContainText(/display:\s*grid/);
+    await expectNoHorizontalOverflow(page);
+    await attachViewportScreenshot(page, testInfo, `workspace-diff-dark-${mode}`);
+    // Monaco can retain inline presentation below its own width threshold even
+    // when split is requested. Record actual panes, not an invented split claim.
+    const paneGeometry = await page
+      .locator('.git-diff-editor .editor.original, .git-diff-editor .editor.modified')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const box = node.getBoundingClientRect();
+          return {
+            className: node.className,
+            x: box.x,
+            y: box.y,
+            width: box.width,
+            height: box.height,
+            display: getComputedStyle(node).display,
+          };
+        }),
+      );
+    await testInfo.attach(`workspace-diff-dark-layout-${mode}-${testInfo.project.name}`, {
+      body: JSON.stringify(paneGeometry),
+      contentType: 'application/json',
+    });
+    const audit = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    const violations = audit.violations.filter((entry) =>
+      ['serious', 'critical'].includes(entry.impact ?? ''),
+    );
+    await testInfo.attach(`workspace-diff-dark-${mode}-axe-${testInfo.project.name}`, {
+      body: JSON.stringify(violations),
+      contentType: 'application/json',
+    });
+    expect(violations).toEqual([]);
+  }
+  expect(gitWrites).toBe(0);
+  expect(errors).toEqual([]);
+});
+
 test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {
   let failing = false;
   let reads = 0;
