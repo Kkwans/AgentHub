@@ -16,7 +16,7 @@ export type GitCommitOperation = Readonly<{
 const locked = (record: GitCommitOperation) =>
   record.phase === 'pending' || record.phase === 'unknown';
 
-/** Session-memory core, NOT yet wired to the UI. A provider must live above routes,
+/** Session-memory core, hosted by GitCommitOperationProvider above routes. It must
  * revoke on identity changes, and never present a previous owner's records.
  * No storage, server idempotency or reload recovery is supplied by this module. */
 export function createGitCommitOwner() {

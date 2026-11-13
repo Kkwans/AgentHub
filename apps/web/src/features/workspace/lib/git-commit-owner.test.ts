@@ -23,7 +23,7 @@ const activeOwner = () => {
   return owner;
 };
 
-describe('跨消费者 Git 操作 owner 核心（尚未接入 UI）', () => {
+describe('跨消费者 Git 操作 owner 核心', () => {
   it('没有授权和无效输入不调用 transport', async () => {
     const owner = createGitCommitOwner();
     const send = vi.fn();

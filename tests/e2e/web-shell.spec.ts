@@ -2020,7 +2020,7 @@ test('Git 提交响应丢失保留未知记录且修改或只读刷新不能重�
   await alert.getByText('本次提交记录与保护范围', { exact: true }).click();
   await expect(alert.locator('code')).toHaveText(path);
   await expect(alert).toContainText(message);
-  await expect(alert).toContainText('不跨面板关闭、路由离开或页面刷新保留');
+  await expect(alert).toContainText('关闭面板或内部跳转保留提交保护');
   await expectNoHorizontalOverflow(page);
   const geometry = await alert.evaluate((node) => {
     const panel = node.closest('.inspector-body')!;
@@ -2060,6 +2060,16 @@ test('Git 提交响应丢失保留未知记录且修改或只读刷新不能重�
   await page.getByRole('menuitem', { name: '提交历史', exact: true }).click();
   await expect(retry).toBeDisabled();
   await expect(alert).toContainText(message);
+  const inspectorTabs = page.getByRole('tablist', { name: '检查器视图' });
+  await inspectorTabs.getByRole('tab', { name: '文件', exact: true }).click();
+  await expect(alert).toHaveCount(0);
+  await inspectorTabs.getByRole('tab', { name: '变更', exact: true }).click();
+  await expect(alert).toContainText(message);
+  await expect(retry).toBeDisabled();
+  await alert.getByText('本次提交记录与保护范围', { exact: true }).click();
+  await expect(alert.locator('code')).toHaveText(path);
+  await expect(alert).toContainText(project.id);
+  await attachViewportScreenshot(page, testInfo, 'workspace-git-unknown-reopened');
   expect(posts).toBe(1);
   expect(errors).toEqual([]);
 });

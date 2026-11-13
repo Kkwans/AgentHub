@@ -17,6 +17,8 @@ import type {
   GitStatusRecord,
   QueryState,
 } from '../workspace-types';
+import { api } from '../../../lib/api';
+import { useGitCommitOperations } from './GitCommitOperationProvider';
 import { ApiError } from '../../../lib/api-error';
 import { DiffViewer } from './DiffViewer';
 import {
@@ -28,6 +30,8 @@ import {
 export { buildGitChangeTree, type GitChangeTreeNode } from './git-change-tree';
 
 export function GitChangesTree({
+  projectId,
+  projectName,
   status,
   diff,
   commits,
@@ -40,6 +44,8 @@ export function GitChangesTree({
   whitespace,
   onWhitespaceChange,
 }: {
+  projectId?: string;
+  projectName?: string;
   status: QueryState<GitStatusRecord>;
   diff: QueryState<GitDiffRecord>;
   commits: QueryState<GitCommitRecord[]>;
@@ -54,19 +60,46 @@ export function GitChangesTree({
     value: 'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines',
   ) => void;
 }) {
+  const { owner, operations, client: queryClient } = useGitCommitOperations();
+  const alive = useRef(false);
+  const uiAttempt = useRef(0);
+  const draftRevision = useRef(0);
+  const [refreshError, setRefreshError] = useState(false);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   type GitView = 'changes' | 'history' | 'branches';
   const [view, setView] = useState<GitView>('changes');
   const [treeLayout, setTreeLayout] = useState(false);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [commitMessage, setCommitMessage] = useState('');
-  const [commitReceipt, setCommitReceipt] = useState<string>();
-  const [commitPending, setCommitPending] = useState(false);
-  const [commitError, setCommitError] = useState<Error>();
+  const [localCommitReceipt, setCommitReceipt] = useState<string>();
+  const [localCommitPending, setCommitPending] = useState(false);
+  const [localCommitError, setCommitError] = useState<Error>();
   const commitLock = useRef(false);
-  const [commitUnknown, setCommitUnknown] = useState(false);
-  const [commitAttempt, setCommitAttempt] = useState<{ paths: string[]; message: string }>();
+  const [localCommitUnknown, setCommitUnknown] = useState(false);
+  const [localCommitAttempt, setCommitAttempt] = useState<{ paths: string[]; message: string }>();
   const [commitDockOpen, setCommitDockOpen] = useState(false);
   const [retainCommitDraft, setRetainCommitDraft] = useState(false);
+  const owned = projectId
+    ? [...operations].reverse().find((item) => item.input.projectId === projectId)
+    : undefined;
+  const commitPending = projectId ? owned?.phase === 'pending' : localCommitPending;
+  const commitUnknown = projectId ? owned?.phase === 'unknown' : localCommitUnknown;
+  const commitError = projectId
+    ? owned?.error
+      ? new Error(owned.error)
+      : localCommitError
+    : localCommitError;
+  const commitReceipt = projectId
+    ? owned?.phase === 'committed'
+      ? `提交完成：${owned.sha!.slice(0, 12)}`
+      : undefined
+    : localCommitReceipt;
+  const commitAttempt = projectId ? owned?.input : localCommitAttempt;
   const commitFormOpen =
     commitPending || (commitDockOpen && (selectedPaths.length > 0 || retainCommitDraft));
   const changeTree = useMemo(
@@ -75,6 +108,57 @@ export function GitChangesTree({
   );
 
   const commit = () => {
+    if (projectId) {
+      if (!owner || !selectedPaths.length || !commitMessage.trim() || owner.isLocked(projectId))
+        return;
+      const attemptToken = ++uiAttempt.current;
+      const submittedRevision = draftRevision.current;
+      setRefreshError(false);
+      const attempt = { projectId, paths: [...selectedPaths], message: commitMessage.trim() };
+      setCommitError(undefined);
+      void owner
+        .submit(
+          attempt,
+          (original) =>
+            api.post<unknown>(`/projects/${original.projectId}/git/commit`, {
+              mode: 'SELECTED',
+              paths: original.paths,
+              message: original.message,
+            }),
+          async (original) => {
+            if (
+              alive.current &&
+              uiAttempt.current === attemptToken &&
+              draftRevision.current === submittedRevision
+            ) {
+              setRetainCommitDraft(false);
+              setSelectedPaths([]);
+              setCommitMessage('');
+            }
+            // Refetch failures are distinct from the already validated commit receipt.
+            try {
+              await Promise.all(
+                ['git-status', 'git-diff', 'git-commits', 'git-branches'].map((key) =>
+                  queryClient!.invalidateQueries({ queryKey: [key, original.projectId] }),
+                ),
+              );
+            } catch {
+              if (alive.current && uiAttempt.current === attemptToken) setRefreshError(true);
+            }
+          },
+        )
+        .then((result) => {
+          if (!alive.current || !result) return;
+          if (result.phase !== 'committed') setRetainCommitDraft(true);
+        })
+        .catch((error: unknown) => {
+          if (alive.current)
+            setCommitError(
+              error instanceof Error ? error : new Error('Git 状态刷新失败，请只读刷新核对。'),
+            );
+        });
+      return;
+    }
     if (commitLock.current || !selectedPaths.length || !commitMessage.trim()) return;
     commitLock.current = true;
     const attempt = { paths: [...selectedPaths], message: commitMessage.trim() };
@@ -115,12 +199,13 @@ export function GitChangesTree({
   };
 
   useEffect(() => {
-    if (!status.data) return;
+    if (!status.data || commitPending || commitUnknown) return;
     const available = new Set(status.data.entries.map((entry) => entry.path));
     setSelectedPaths((current) => current.filter((path) => available.has(path)));
-  }, [status.data]);
+  }, [status.data, commitPending, commitUnknown]);
 
   const togglePath = (path: string) => {
+    draftRevision.current += 1;
     setCommitReceipt(undefined);
     setCommitDockOpen(true);
     setSelectedPaths((current) =>
@@ -228,6 +313,7 @@ export function GitChangesTree({
               type="button"
               onClick={() =>
                 (() => {
+                  draftRevision.current += 1;
                   const next =
                     selectedPaths.length === status.data?.entries.length
                       ? []
@@ -269,6 +355,20 @@ export function GitChangesTree({
         </div>
       </div>
 
+      {projectId && !owner && <p role="alert">Git 提交保护不可用，已禁用写入，请重新打开应用。</p>}
+      {projectId && commitPending && (
+        <p role="status">
+          原 Project（{projectName ?? projectId}）正在提交；关闭面板或内部跳转不会取消请求。
+        </p>
+      )}
+      {refreshError && (
+        <div className="workspace-query-error" role="alert">
+          <span>提交已完成，但 Git 状态刷新失败。请只读刷新核对，不要重复提交。</span>
+          <button type="button" onClick={refetchCurrentView}>
+            只读刷新
+          </button>
+        </div>
+      )}
       {commitReceipt && (
         <p className="git-commit-receipt" role="status">
           {commitReceipt}
@@ -285,6 +385,11 @@ export function GitChangesTree({
           {commitUnknown && commitAttempt && (
             <details className="min-w-0 basis-full [overflow-wrap:anywhere]">
               <summary>本次提交记录与保护范围</summary>
+              {projectId && (
+                <p>
+                  原 Project：{projectName ?? projectId}（{projectId}）
+                </p>
+              )}
               <p>{commitAttempt.message}</p>
               <ul>
                 {commitAttempt.paths.map((path) => (
@@ -294,7 +399,9 @@ export function GitChangesTree({
                 ))}
               </ul>
               <p>
-                当前面板已锁定提交。此保护不跨面板关闭、路由离开或页面刷新保留；重新打开前仍需人工核对。
+                {projectId
+                  ? '关闭面板或内部跳转保留提交保护；刷新页面、认证界面重新出现或重新登录会丢失保护，届时请先人工核对。'
+                  : '当前面板已锁定提交。此保护不跨面板关闭、路由离开或页面刷新保留；重新打开前仍需人工核对。'}
               </p>
             </details>
           )}
@@ -302,7 +409,11 @@ export function GitChangesTree({
             type="button"
             onClick={commit}
             disabled={
-              !selectedPaths.length || !commitMessage.trim() || commitPending || commitUnknown
+              !selectedPaths.length ||
+              !commitMessage.trim() ||
+              commitPending ||
+              commitUnknown ||
+              Boolean(projectId && !owner)
             }
           >
             重试提交
@@ -376,6 +487,7 @@ export function GitChangesTree({
                         rows={2}
                         placeholder="说明这次变更解决了什么"
                         onChange={(event) => {
+                          draftRevision.current += 1;
                           setCommitReceipt(undefined);
                           if (!commitUnknown) setCommitError(undefined);
                           setCommitMessage(event.target.value);
@@ -389,7 +501,8 @@ export function GitChangesTree({
                         !selectedPaths.length ||
                         !commitMessage.trim() ||
                         commitPending ||
-                        commitUnknown
+                        commitUnknown ||
+                        Boolean(projectId && !owner)
                       }
                       loading={commitPending}
                     >

@@ -1,3 +1,4 @@
+import { GitCommitOperationProvider } from './features/workspace/components/GitCommitOperationProvider';
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { AhLoadingState, AhPageHeader } from '@agenthub/ui';
@@ -181,7 +182,9 @@ function AuthenticatedRoutes({ children }: { children: ReactNode }) {
   return (
     <ReviewOperationProvider>
       <PromptBindingOperationProvider>
-        <Routes>{children}</Routes>
+        <GitCommitOperationProvider>
+          <Routes>{children}</Routes>
+        </GitCommitOperationProvider>
       </PromptBindingOperationProvider>
     </ReviewOperationProvider>
   );

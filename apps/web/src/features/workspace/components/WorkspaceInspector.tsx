@@ -155,6 +155,9 @@ export function WorkspaceInspector({
           />
         ) : tab === 'changes' ? (
           <GitChangesTree
+            key={`${session.id}:${project.id}`}
+            projectId={project.id}
+            projectName={project.name}
             status={gitStatus}
             diff={gitDiff}
             commits={gitCommits}

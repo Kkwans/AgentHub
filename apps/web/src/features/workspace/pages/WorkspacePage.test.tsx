@@ -1,3 +1,4 @@
+import { GitCommitOperationProvider } from '../components/GitCommitOperationProvider';
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -102,10 +103,12 @@ function renderWorkspace(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[initialEntry]}>
         {cachedSession ? <Link to={`/workspace/${cachedSession.id}`}>切换已缓存会话</Link> : null}
-        <Routes>
-          <Route path="/sessions/:id" element={<WorkspacePage />} />
-          <Route path="/workspace/:id" element={<WorkspacePage />} />
-        </Routes>
+        <GitCommitOperationProvider>
+          <Routes>
+            <Route path="/sessions/:id" element={<WorkspacePage />} />
+            <Route path="/workspace/:id" element={<WorkspacePage />} />
+          </Routes>
+        </GitCommitOperationProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );

@@ -1,6 +1,6 @@
 # Git 提交操作 owner：跨生命周期设计与可执行核心
 
-2026-11-13 19:03 UTC。基线 f9efbde。**核心实现已加入，但尚未接 UI/Provider；当前用户界面仍只有同挂载保护。**
+2026-11-13 19:03 UTC。基线 f9efbde。**19:20 UTC更新：Provider与生产UI已接入候选，路由/面板切换保留项目锁；真实浏览器与新SHA CI待验。认证界面重新出现（包括认证状态读取错误）、刷新或重新登录仍会丢失内存保护。**
 
 ## 已实现并单测的核心合同
 
@@ -14,9 +14,9 @@
 - 仅 `GIT_COMMIT_PATHS_REQUIRED` + HTTP400 是审查过的写入前拒绝。其他异常、畸形响应均 unknown。完整40/64位 SHA 是回执格式验证，不是操作身份认证。
 - transport 成功和缓存刷新是不同阶段：回执进入 committed 后，刷新失败不会降级 unknown。异步刷新错误被等待/交回仍有效的 consumer，撤权后不传播旧错误。
 
-25 项单测覆盖上述合同。独立 CR 发现终态发布期间撤权仍返回旧结果、async 刷新 rejection 无消费者两点，均修复并新增回归。尚无跨路由 UI 或真实断网端到端证据。
+25 项单测覆盖上述合同。独立 CR 发现终态发布期间撤权仍返回旧结果、async 刷新 rejection 无消费者两点，均修复并新增回归。已新增Provider与真实Tree的14项集成测试；真实断网端到端仍未验证。
 
-## 下一片接入步骤（尚未完成）
+## 接入合同与当前覆盖
 
 1. 在 AccessGate 内、Routes 外加入 auth-scoped Provider，遵循现有 PromptBindingOperationProvider 的身份/StrictMode合同。认证身份使用 `browserCreationScope`，不存 token。授权失效事件必须同步 revoke，不能仅依赖组件晚到的 effect。
 2. WorkspaceInspector 传入明确 projectId。GitChangesTree 从 owner snapshot 恢复 pending/unknown/committed 记录，锁由 owner 决定；不再单独维护会错误重置的局部锁。保留 standalone 测试适配，但生产路径缺 owner 必须 fail closed。
@@ -31,3 +31,11 @@
 ## 视觉证据分开记账
 
 19:03 UTC 新核验旧提交2bc0086的CI43482131266手机40文件图：390×844，目录clientHeight203/scrollHeight1932，首屏Diff可见238px；滚到末项scrollTop1729仍保留Diff；axe=[]。这是旧产品变更的新证据核查，不算当前阶段新增UI优化。新unknown提示390/1440浏览器门已加入，运行截图待新CI。
+
+## 19:20 UTC接入实施与明确边界
+
+- Provider已位于AccessGate内、Routes外，key按认证scope隔离，授权失效事件同步revoke；StrictMode、A→B→A、无consumer终态均有集成测试。WorkspaceInspector以session/project组合key隔离局部草稿。
+- GitChangesTree生产路径必须有projectId和Provider，否则禁用写按钮并且handler不POST。直接捕获原项目API，不再调用旧commit mutation；owner snapshot提供重新打开后的pending/unknown/已提交状态，原Project ID/说明/路径可见。
+- transport成功与缓存刷新异常分开。同步清理未修改的原草稿，编辑版本变化保留新草稿；刷新错误仅提供只读刷新，不显示重试提交。独立CR发现这个可能重复POST的路径后修复并补测试。
+- 保留AccessGate原有fail-closed策略：auth-status读取错误也会卸载Provider；恢复后内存记录不保证存在。因此不得称整个登录期间持久保护，UI明确提示“认证界面重新出现会丢失保护”。需要跨该边界/硬刷新/多客户端的恢复仍须服务端操作标识和持久查询协议。
+- 新浏览器门补检查器tab卸载重开、原记录/锁恢复与390/1440截图；目前仅静态collect，未冒充实跑。
