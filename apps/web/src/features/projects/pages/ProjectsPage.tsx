@@ -37,7 +37,7 @@ import {
   useAgentHubTheme,
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Link,
   NavLink,
@@ -126,6 +126,13 @@ export function ProjectsPage() {
   const [view, setView] = useState<'list' | 'grid'>('list');
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const compact = useCompactViewport();
+  const sourceDescriptionId = useId();
+  const sourceNotices = [
+    { key: 'tasks', label: '工作统计', source: tasks },
+    { key: 'sessions', label: '会话记录', source: sessions },
+    { key: 'agents', label: 'Agent 登记', source: agents },
+  ].filter(({ source }) => source.isError || source.isPending || source.isFetching);
+  const hasSourceError = sourceNotices.some(({ source }) => source.isError);
   const filterOptionsRef = useRef<HTMLDivElement>(null);
   const filterToggleRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -354,41 +361,49 @@ export function ProjectsPage() {
         />
         {!projects.isLoading && !projects.error ? (
           <>
-            {[
-              { key: 'tasks', label: '工作统计', source: tasks },
-              { key: 'sessions', label: '会话记录', source: sessions },
-              { key: 'agents', label: 'Agent 登记', source: agents },
-            ].map(({ key, label, source }) =>
-              source.isError || source.isPending || source.isFetching ? (
-                <div
-                  key={key}
-                  className={projectsStyles.projectSourceStatus}
-                  role={source.isError ? 'alert' : 'status'}
-                  aria-label={`${label}读取状态`}
-                >
-                  <span>
-                    <strong>{label}：</strong>
-                    {source.isError
-                      ? source.error instanceof ApiError && source.error.code === 'AUTH_REQUIRED'
-                        ? '登录已失效，无法确认当前数据。'
-                        : '读取失败，相关数据未知，不代表没有记录。'
-                      : source.isPending
-                        ? '正在加载。'
-                        : '正在更新，暂显示上次读取结果。'}
-                  </span>
-                  {source.isError ? (
-                    <AhButton
-                      size="sm"
-                      variant="subtle"
-                      disabled={source.isFetching}
-                      onClick={() => void source.refetch()}
-                    >
-                      重新读取{label}
-                    </AhButton>
-                  ) : null}
-                </div>
-              ) : null,
-            )}
+            {sourceNotices.length ? (
+              <div
+                className={projectsStyles.projectSourceGroup}
+                role="group"
+                aria-label="项目辅助数据读取状态"
+              >
+                {sourceNotices.map(({ key, label, source }) => (
+                  <div
+                    key={key}
+                    className={projectsStyles.projectSourceStatus}
+                    role={source.isError ? 'alert' : 'status'}
+                    aria-label={`${label}读取状态`}
+                    aria-describedby={source.isError ? sourceDescriptionId : undefined}
+                  >
+                    <span>
+                      <strong>{label}：</strong>
+                      {source.isError
+                        ? source.error instanceof ApiError && source.error.code === 'AUTH_REQUIRED'
+                          ? '登录已失效，无法确认当前数据。'
+                          : '读取失败，数据未知。'
+                        : source.isPending
+                          ? '正在加载。'
+                          : '正在更新，暂显示上次读取结果。'}
+                    </span>
+                    {source.isError ? (
+                      <AhButton
+                        className={projectsStyles.projectSourceRetry}
+                        aria-label={`重新读取${label}`}
+                        size="sm"
+                        variant="subtle"
+                        disabled={source.isFetching}
+                        onClick={() => void source.refetch()}
+                      >
+                        重新读取
+                      </AhButton>
+                    ) : null}
+                  </div>
+                ))}
+                {hasSourceError ? (
+                  <p id={sourceDescriptionId}>读取失败不代表没有记录；重试只重新读取对应数据。</p>
+                ) : null}
+              </div>
+            ) : null}
             <div
               className={`${projectsStyles.projectsToolbar} page-toolbar projects-dashboard-toolbar`}
               aria-label="项目筛选"

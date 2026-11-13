@@ -1810,3 +1810,24 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+
+/* Projects-only source notices: preserve every retry without stacking full-width actions. */
+.projectSourceGroup {
+  min-width: 0;
+  padding-inline: 16px;
+}
+.projectSourceGroup .projectSourceStatus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 6px 0;
+}
+.projectSourceGroup .projectSourceRetry {
+  min-height: 44px;
+  min-width: 44px;
+}
+.projectSourceGroup > p {
+  margin: 6px 0 0;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}

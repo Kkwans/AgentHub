@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
-import { api } from '../../../lib/api';
+import { ApiError, api } from '../../../lib/api';
 import type * as ApiModule from '../../../lib/api';
 import type * as PagePrimitives from '../../shared/page-primitives';
 import { ProjectsPage } from './ProjectsPage';
@@ -179,4 +179,40 @@ it('resize只迁移隐藏筛选焦点，清除后手机回筛选/桌面回搜索
   fireEvent.change(search, { target: { value: '真实' } });
   fireEvent.click(screen.getByRole('button', { name: '清除条件（1）' }));
   expect(search).toHaveFocus();
+});
+
+it('逐源错误保留共用说明、可见名称与独立只读重试，重试期间保持未知', async () => {
+  let retrying = false;
+  let finish!: (value: unknown[]) => void;
+  vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
+    if (path === '/tasks' && retrying)
+      return await new Promise<T>((resolve) => {
+        finish = resolve as (value: unknown[]) => void;
+      });
+    throw new ApiError('AUTH_REQUIRED', '需要登录', 401);
+  });
+  mount(true);
+  await act(async () => {
+    await Promise.all(sources.map(([key]) => clients[0]?.invalidateQueries({ queryKey: [key] })));
+  });
+  const group = await screen.findByRole('group', { name: '项目辅助数据读取状态' });
+  for (const [, label] of sources) {
+    const error = within(group).getByRole('alert', { name: `${label}读取状态` });
+    expect(error).toHaveTextContent('登录已失效');
+    expect(error).toHaveAccessibleDescription('读取失败不代表没有记录；重试只重新读取对应数据。');
+    const button = within(error).getByRole('button', { name: `重新读取${label}` });
+    expect(button.getAttribute('aria-label')).toContain(button.textContent);
+  }
+  retrying = true;
+  const retry = within(group).getByRole('button', { name: '重新读取工作统计' });
+  fireEvent.click(retry);
+  await waitFor(() => expect(retry).toBeDisabled());
+  expect(screen.getByRole('region', { name: '项目列表' })).toHaveTextContent('未知');
+  await act(async () => finish([]));
+  await waitFor(() =>
+    expect(screen.queryByRole('alert', { name: '工作统计读取状态' })).not.toBeInTheDocument(),
+  );
+  expect(screen.getByRole('alert', { name: '会话记录读取状态' })).toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+  expect(api.patch).not.toHaveBeenCalled();
 });

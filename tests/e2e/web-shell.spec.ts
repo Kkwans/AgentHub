@@ -931,6 +931,30 @@ test('Projects 辅助来源失败不伪装为空且可以只读恢复', async ({
       page.getByRole('region', { name: '项目列表' }).getByText('未知').first(),
     ).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  const sourceGroup = page.getByRole('group', { name: '项目辅助数据读取状态' });
+  const buttonHeights: number[] = [];
+  for (const label of ['工作统计', '会话记录', 'Agent 登记']) {
+    const error = page.getByRole('alert', { name: `${label}读取状态` });
+    await expect(error).toBeVisible();
+    await expect(error).toHaveAccessibleDescription(
+      '读取失败不代表没有记录；重试只重新读取对应数据。',
+    );
+    const retry = error.getByRole('button', { name: `重新读取${label}`, exact: true });
+    await expect(retry).toBeVisible();
+    const visibleLabel = (await retry.innerText()).trim();
+    expect(await retry.getAttribute('aria-label')).toContain(visibleLabel);
+    const box = await retry.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    buttonHeights.push(box!.height);
+  }
+  const sourceBox = await sourceGroup.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(sourceBox!.height).toBeLessThan((page.viewportSize()?.height ?? 844) * 0.3);
+  await testInfo.attach('projects-source-layout', {
+    body: JSON.stringify({ group: sourceBox, buttonHeights }),
+    contentType: 'application/json',
+  });
   await attachViewportScreenshot(page, testInfo, 'projects-source-error');
   failing = false;
   for (const label of ['工作统计', '会话记录', 'Agent 登记']) {
