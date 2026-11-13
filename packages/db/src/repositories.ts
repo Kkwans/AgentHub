@@ -2099,6 +2099,7 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
     taskTo: TaskStatus,
     executionPatch: Partial<typeof worktreeExecutions.$inferInsert> = {},
     taskPatch: Partial<typeof tasks.$inferInsert> = {},
+    expectedFrom?: WorktreeExecutionStatus,
   ) {
     return this.db.transaction(async (transaction) => {
       const [current] = await transaction
@@ -2111,6 +2112,14 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
         throw new DatabaseInvariantError(
           'WORKTREE_EXECUTION_NOT_FOUND',
           'Worktree Execution 不存在',
+        );
+      }
+      // A service snapshot may predate dispatch or rework. Check under the
+      // execution row lock before permitting a non-runtime cancellation.
+      if (expectedFrom !== undefined && current.status !== expectedFrom) {
+        throw new DatabaseInvariantError(
+          'WORKTREE_EXECUTION_CONCURRENT_UPDATE',
+          'Worktree Execution 状态已变化，未执行旧状态操作',
         );
       }
       const [task] = await transaction

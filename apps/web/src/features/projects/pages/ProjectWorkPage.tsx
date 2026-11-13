@@ -1,3 +1,4 @@
+import { WorktreeCancelAction, type WorktreeCancelState } from '../components/WorktreeCancelAction';
 import { TaskWorktreeQueueAction } from '../components/TaskWorktreeQueueAction';
 import { WorktreeReviewActions } from '../components/WorktreeReviewActions';
 import { TaskReviewActions } from '../components/TaskReviewActions';
@@ -236,7 +237,20 @@ export function ProjectWorkPage() {
   const queueAccepted = Boolean(queueAcceptedKeys[queueKey]);
   const queuePending = Boolean(queuePendingKeys[queueKey]);
   const queueUnknown = Boolean(queueUnknownKeys[queueKey]);
-  const queueLocked = queuePending || queueUnknown || (queueAccepted && !selectedWorktree);
+  const [cancelStates, setCancelStates] = useState<Record<string, WorktreeCancelState>>({});
+  const cancelPrefix = `${project.id}:${selected?.id}:${selectedWorktree?.id}:`;
+  const cancelState = selectedWorktree
+    ? (cancelStates[`${cancelPrefix}${selectedWorktree.runId ?? 'no-run'}`] ??
+      Object.entries(cancelStates).find(
+        ([key, value]) =>
+          key.startsWith(cancelPrefix) && ['pending', 'unknown', 'checking'].includes(value.phase),
+      )?.[1])
+    : undefined;
+  const cancelLocked = Boolean(
+    cancelState && !['resolved', 'retryable'].includes(cancelState.phase),
+  );
+  const queueLocked =
+    queuePending || queueUnknown || (queueAccepted && !selectedWorktree) || cancelLocked;
   const queueTarget = queueTargets.data?.find((item) => item.id === project.targetId);
   const queueEligible =
     selectedEligible &&
@@ -805,7 +819,31 @@ export function ProjectWorkPage() {
                       </section>
                     ) : null}
                     {selectedWorktree ? (
-                      <p>此任务由隔离 Worktree 管理，不使用普通任务启动或取消入口。</p>
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>隔离执行取消</h4>
+                        <WorktreeCancelAction
+                          key={`${project.id}:${selected.id}:${selectedWorktree.id}:${selectedWorktree.runId}`}
+                          execution={selectedWorktree}
+                          state={cancelState}
+                          disabled={
+                            worktrees.isFetching ||
+                            start.isPending ||
+                            transition.isPending ||
+                            manual.busy ||
+                            variablesSaving ||
+                            reviewPending ||
+                            queuePending ||
+                            queueUnknown
+                          }
+                          onStateChange={(key, value) =>
+                            setCancelStates((current) => ({
+                              ...current,
+                              [key]: { ...value, registryKey: key },
+                            }))
+                          }
+                        />
+                        <p>此任务由隔离 Worktree 管理，不使用普通任务启动或取消入口。</p>
+                      </section>
                     ) : null}
                     {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
                     {manual.message ? <p role="status">{manual.message}</p> : null}

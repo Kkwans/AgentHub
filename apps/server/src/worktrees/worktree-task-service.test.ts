@@ -47,6 +47,102 @@ describe('Worktree Task Runner 编排', () => {
 
   afterAll(async () => database.close());
 
+  it.each(['SETTING_UP', 'RUNNING', 'MERGING'] as const)(
+    '取消旧快照时 %s 已抢先进入，不能释放隔离队列槽位',
+    async (winner) => {
+      const fixture = await seedFixture(`cancel-race-${winner}`);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '取消竞争',
+        status: 'READY',
+      });
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      const queued = await executions.enqueue({
+        id: randomUUID(),
+        taskId: task.id,
+        projectId: fixture.projectId,
+        agentId: fixture.agentId,
+        assignedAgentId: fixture.agentId,
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: `race-${task.id}`,
+      });
+      if (winner !== 'SETTING_UP') {
+        await service.processQueue(fixture.projectId);
+        const running = (await executions.get(queued.execution.id))!;
+        await complete(service, task.id, running.runId!);
+      }
+      const nextTask = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '后续队列项',
+        status: 'READY',
+      });
+      const next = await executions.enqueue({
+        id: randomUUID(),
+        taskId: nextTask.id,
+        projectId: fixture.projectId,
+        agentId: fixture.agentId,
+        assignedAgentId: fixture.agentId,
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: `next-${nextTask.id}`,
+        // Keep the intended head deterministic even at identical timestamp precision.
+        queuedAt: new Date(Date.now() + 60_000),
+      });
+      let enter!: () => void;
+      let release!: () => void;
+      const entered = new Promise<void>((resolve) => {
+        enter = resolve;
+      });
+      const barrier = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const transition = executions.transitionWithTask.bind(executions);
+      const paused = vi
+        .spyOn(executions, 'transitionWithTask')
+        .mockImplementationOnce(async (...args) => {
+          enter();
+          await barrier;
+          return transition(...args);
+        });
+      const cancellation = service.cancel(queued.execution.id);
+      // Attach the rejection assertion before releasing the barrier.
+      const rejected = expect(cancellation).rejects.toMatchObject({
+        code: 'WORKTREE_EXECUTION_CHANGED',
+      });
+      try {
+        await entered;
+        if (winner === 'SETTING_UP') await executions.claimNext(fixture.projectId);
+        else if (winner === 'RUNNING')
+          await transition(queued.execution.id, 'RUNNING', 'IN_PROGRESS');
+        else await executions.transition(queued.execution.id, 'MERGING');
+        const taskBefore = await tasks.get(task.id);
+        release();
+        await rejected;
+        expect((await executions.get(queued.execution.id))?.status).toBe(winner);
+        expect((await tasks.get(task.id))?.status).toBe(taskBefore?.status);
+        expect(runtime.events.some((event) => event.type === 'worktree.execution.canceled')).toBe(
+          false,
+        );
+        expect(await executions.claimNext(fixture.projectId)).toBeUndefined();
+        expect((await executions.get(next.execution.id))?.status).toBe('QUEUED');
+      } finally {
+        release();
+        paused.mockRestore();
+        await service.shutdown();
+        await transition(next.execution.id, 'CANCELED', 'CANCELED');
+        // This suite shares one database; do not leak active race fixtures into recovery.
+        const remaining = await executions.get(queued.execution.id);
+        if (remaining && ['SETTING_UP', 'RUNNING', 'MERGING'].includes(remaining.status)) {
+          await transition(queued.execution.id, 'BLOCKED', 'BLOCKED');
+        }
+      }
+    },
+  );
+
   it('AH002隔离执行保存Task默认变量且显式值覆盖，返工沿用执行快照', async () => {
     const fixture = await seedFixture('Prompt variables');
     const defaults = { subject: 'saved', suffix: 'retained', flag: true, count: 7 };

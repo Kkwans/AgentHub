@@ -1321,3 +1321,172 @@ it('切换并返回原任务仍锁住每项未完成入队，不因其他任务p
     Reflect.deleteProperty(project, 'targetId');
   }
 });
+
+it('隔离取消按执行保留pending和请求结果，切换A→B→A及延迟刷新不重发', async () => {
+  const first = { ...task, status: 'IN_PROGRESS' };
+  const second = { ...first, id: 'task-2', title: '第二个隔离任务' };
+  const a = { id: 'cancel-a', taskId: first.id, projectId: project.id, status: 'RUNNING' };
+  const b = { ...a, id: 'cancel-b', taskId: second.id };
+  const finishers: Array<(value: unknown) => void> = [];
+  vi.mocked(api.post).mockImplementation(
+    () => new Promise((resolve) => finishers.push(resolve)) as never,
+  );
+  mount([first, second], '', [], undefined, [a, b]);
+  const cancel = await screen.findByRole('button', { name: '取消隔离执行' });
+  await waitFor(() => expect(cancel).toBeEnabled());
+  fireEvent.click(cancel);
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /第二个隔离任务/,
+    }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '取消隔离执行' }));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /真实任务/,
+    }),
+  );
+  expect(screen.getByRole('button', { name: '取消隔离执行' })).toBeDisabled();
+  const originalGet = vi.mocked(api.get).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation((path) =>
+    path.startsWith('/worktree-executions?') ? new Promise(() => {}) : originalGet(path),
+  );
+  await act(async () => finishers[1]!(b));
+  expect(screen.getByRole('button', { name: '取消隔离执行' })).toBeDisabled();
+  await act(async () => finishers[0]!(a));
+  await screen.findByText(/取消请求已发送/);
+  expect(screen.getByRole('button', { name: '取消隔离执行' })).toBeDisabled();
+  expect(vi.mocked(api.post).mock.calls).toEqual([
+    ['/worktree-executions/cancel-a/cancel', {}],
+    ['/worktree-executions/cancel-b/cancel', {}],
+  ]);
+});
+it('已受理取消核对到REVIEW释放审阅，返工新Run可单独取消', async () => {
+  const running = {
+    id: 'cancel-generation',
+    taskId: task.id,
+    projectId: project.id,
+    status: 'RUNNING',
+    runId: 'run-old',
+  };
+  vi.mocked(api.post).mockResolvedValue(running as never);
+  mount([{ ...task, status: 'IN_PROGRESS' }], '', [], undefined, [running]);
+  const cancel = await screen.findByRole('button', { name: '取消隔离执行' });
+  await waitFor(() => expect(cancel).toBeEnabled());
+  fireEvent.click(cancel);
+  await screen.findByText(/取消请求已发送/);
+  const originalGet = vi.mocked(api.get).getMockImplementation()!;
+  let current = { ...running, status: 'REVIEW' };
+  vi.mocked(api.get).mockImplementation((path) =>
+    path === '/worktree-executions/cancel-generation'
+      ? (Promise.resolve(current) as never)
+      : path.startsWith('/worktree-executions?')
+        ? (Promise.resolve([current]) as never)
+        : originalGet(path),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '核对隔离取消状态' }));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeEnabled(),
+  );
+  current = { ...running, runId: 'run-new' };
+  fireEvent.click(screen.getByRole('button', { name: '核对隔离取消状态' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '取消隔离执行' })).toBeEnabled());
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+it('no-run取消pending跨claim新Run仍锁住，回执绑定实际Run后不重复', async () => {
+  const execution = {
+    id: 'claim-cancel',
+    taskId: task.id,
+    projectId: project.id,
+    status: 'QUEUED',
+    runId: null as string | null,
+  };
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  mount(
+    [
+      { ...task, status: 'IN_PROGRESS' },
+      { ...task, id: 'task-2', title: '第二个隔离任务' },
+    ],
+    '',
+    [],
+    undefined,
+    [execution],
+  );
+  const cancel = await screen.findByRole('button', { name: '取消隔离执行' });
+  await waitFor(() => expect(cancel).toBeEnabled());
+  fireEvent.click(cancel);
+  execution.runId = 'claimed-run';
+  execution.status = 'RUNNING';
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /第二个隔离任务/,
+    }),
+  );
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /真实任务/,
+    }),
+  );
+  expect(screen.getByRole('button', { name: '取消隔离执行' })).toBeDisabled();
+  await act(async () => finish({ ...execution }));
+  await screen.findByText(/取消请求已发送/);
+  expect(screen.getByRole('button', { name: '取消隔离执行' })).toBeDisabled();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+it('核对请求跨A→B→A保持只读pending，不并发旧GET覆盖终态', async () => {
+  const execution = {
+    id: 'check-cancel',
+    taskId: task.id,
+    projectId: project.id,
+    status: 'RUNNING',
+    runId: 'run-a',
+  };
+  vi.mocked(api.post).mockResolvedValue(execution as never);
+  mount(
+    [
+      { ...task, status: 'IN_PROGRESS' },
+      { ...task, id: 'task-2', title: '第二个隔离任务' },
+    ],
+    '',
+    [],
+    undefined,
+    [execution],
+  );
+  const cancel = await screen.findByRole('button', { name: '取消隔离执行' });
+  await waitFor(() => expect(cancel).toBeEnabled());
+  fireEvent.click(cancel);
+  await screen.findByText(/取消请求已发送/);
+  let finish!: (value: unknown) => void;
+  const originalGet = vi.mocked(api.get).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation((path) =>
+    path === '/worktree-executions/check-cancel'
+      ? (new Promise((resolve) => {
+          finish = resolve;
+        }) as never)
+      : originalGet(path),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '核对隔离取消状态' }));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /第二个隔离任务/,
+    }),
+  );
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /真实任务/,
+    }),
+  );
+  expect(screen.getByRole('button', { name: '核对隔离取消状态' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '核对隔离取消状态' }));
+  expect(
+    vi.mocked(api.get).mock.calls.filter(([path]) => path === '/worktree-executions/check-cancel'),
+  ).toHaveLength(1);
+  await act(async () => finish({ ...execution, status: 'CANCELED' }));
+  await screen.findByText(/隔离执行已取消/);
+});

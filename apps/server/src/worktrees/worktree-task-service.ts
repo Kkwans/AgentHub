@@ -286,13 +286,28 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     if (execution.status === 'CANCELED') return execution;
 
     const taskStatus = (await this.requireTask(execution.taskId)).status;
-    const canceled = await this.executions.transitionWithTask(
-      id,
-      'CANCELED',
-      'CANCELED',
-      { completedAt: new Date(), errorCode: null, errorMessage: null },
-      { completedAt: null },
-    );
+    const canceled = await this.executions
+      .transitionWithTask(
+        id,
+        'CANCELED',
+        'CANCELED',
+        { completedAt: new Date(), errorCode: null, errorMessage: null },
+        { completedAt: null },
+        execution.status as WorktreeExecutionStatus,
+      )
+      .catch((error: unknown) => {
+        if (
+          error instanceof DatabaseInvariantError &&
+          error.code === 'WORKTREE_EXECUTION_CONCURRENT_UPDATE'
+        ) {
+          throw new AppError(
+            409,
+            'WORKTREE_EXECUTION_CHANGED',
+            '隔离执行状态已变化，本次未取消；请刷新后确认当前状态',
+          );
+        }
+        throw error;
+      });
     this.publish('worktree.execution.canceled', canceled.execution);
     this.schedule(execution.projectId);
     return { ...canceled, previousTaskStatus: taskStatus };
