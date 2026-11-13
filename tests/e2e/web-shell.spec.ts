@@ -1197,7 +1197,8 @@ test('Settings token读取失败不伪装为空，重试只读恢复', async ({ 
     });
   });
   await page.goto('/settings/integrations');
-  await expect(page.getByRole('heading', { name: '无法确认现有 API token' })).toBeVisible({
+  const tokenReadError = page.getByRole('alert').filter({ hasText: '无法确认现有 API token' });
+  await expect(tokenReadError).toBeVisible({
     timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByText('读取失败不代表没有已生效的 token。', { exact: true })).toBeVisible();
@@ -1207,7 +1208,7 @@ test('Settings token读取失败不伪装为空，重试只读恢复', async ({ 
   failing = false;
   await page.getByRole('button', { name: '重新加载', exact: true }).click();
   await expect(page.getByText('还没有 API token。', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '无法确认现有 API token' })).toHaveCount(0);
+  await expect(tokenReadError).toHaveCount(0);
   expect(writes).toBe(0);
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'settings-token-read-recovered');

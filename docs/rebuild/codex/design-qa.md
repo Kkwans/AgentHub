@@ -254,3 +254,7 @@ Old exact 27faa phone sessions capture was personally inspected: all four record
 ## 2026-11-13 11:21 UTC — Workspace close-focus follow-up
 
 A source-confirmed keyboard defect remained after the single-navigation slice: closing a phone Inspector/session drawer restored focus to `.workspace-support-toggle`, which the existing phone browser test explicitly asserts is hidden. Restore to the current Workspace's visible selected outer tab instead; in immersive mode use its visible exit control. Tablet retains its support entry. Initial-open focus, Escape handling, focus trapping and requests are unchanged. Unit tests cover Inspector close, Escape, session drawer close and immersive close; actual fixture asserts visible/focused conversation tab. Final 23 Workspace tests, web/E2E types, lint/format and independent CR pass; browser execution and new visual evidence remain pending.
+
+## 2026-11-13 11:25 UTC — Settings fixture locator correction
+
+While the d892 browser job remained running, source inspection found that its new Settings error-state check incorrectly requested a heading. AhErrorState renders an alert containing strong text, not a heading. The test now locates that real alert for error visibility and recovery removal; all empty-state, read-only retry and overflow assertions remain. This is a source-confirmed test defect, not a claim that CI logs have already established every failure. No production semantics were changed to satisfy a test.
