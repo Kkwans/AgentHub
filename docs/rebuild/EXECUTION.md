@@ -1177,3 +1177,13 @@ CR/类型检查发现并修复rework误插setup catch；startup回归又发现�
 23:29 UTC 冻结tree00c4f8a最终全量：167文件通过/4跳过，1670测试通过/10跳过，398.79s；types/lint、Web生产构建通过。真实Git/ACP浏览器用例增加1440/1024/768/390回执可见性、溢出、截图及console/pageerror门禁。但本地Chromium启动socket被环境拒绝后SIGABRT，升级执行重试相同，未进入页面、未产出有效截图，不称视觉通过；需由本提交精确CI完成浏览器验证。23:23 UTC确认上一7095d28精确CI43524092780三job成功，此结果不借用到本提交。
 
 Worktree重试独立设计CR完成，详见WORKTREE_RETRY_PLAN.md：持久generation、所有merge请求expected run/attempt CAS、同事务权威PREWRITE验证、用户重新读取和确认；本轮没有实现或启用该重试功能。没有main合并/部署。
+
+### 2026-11-13 23:30–23:52 UTC Worktree 权威拒绝后的显式新attempt
+
+实现DB持久gitMergeGeneration及0013迁移，generation0保持历史v1键；所有merge请求必须携带run/operation CAS，重试额外绑定原operation。只有同owner/project/kind的持久REJECTED_PREWRITE能原子递增并领取MERGING；普通请求遇旧ledger也拒绝。独立CR发现“已有错误但ledger缺失”只在UI许可拒绝而DB仍可领取，已补DB硬门禁与整行不变回归，未凭404推断未执行。
+
+UI新增权威核对：只允许匹配原run+attempt的明确拒绝恢复本地未知状态，之后仍须重新读取差异和勾选；generation变化及晚到GET不恢复旧确认。服务端review绑定读取差异的执行代际，变更则不发许可。同步真实Worktree四视口验收及optional live协议；未运行外部Agent。
+
+DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通过/1失败/10跳过，失败为旧mock测试只抛PREWRITE却未写ledger、仍期望第二次dispatch，已修测试断言安全拒绝且执行逐字段不变，UNKNOWN改用独立新执行；未放宽生产门禁。23:52 UTC最终冻结tree7d78d9f完整重跑：168文件通过/4跳过，1698测试通过/10跳过，402.81s。发布前仅补台账，代码不变。精确CI待启动；本地真实浏览器因已确认的socket启动限制未跑通，新retry未宣称真实Git/browser端到端通过。
+
+先前6d492df精确CI43527593792 verify与154无障碍已成功，真实服务/视觉仍执行完整矩阵；不得借用旧结果代表本片。没有main合并/部署。

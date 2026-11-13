@@ -32,8 +32,13 @@ const queueBody = z.object({
 });
 const reworkBody = z.object({ feedback: z.string().trim().min(1).max(1_000_000) });
 const mergeBody = z
-  .object({ commitMessage: z.string().trim().min(1).max(240).optional() })
-  .default({});
+  .object({
+    expectedRunId: z.string().uuid(),
+    expectedOperationId: z.string().uuid(),
+    retryOfOperationId: z.string().uuid().optional(),
+    commitMessage: z.string().trim().min(1).max(240).optional(),
+  })
+  .strict();
 
 export function createWorktreeRouter(service: WorktreeTaskService): Router {
   const router = Router();
@@ -123,7 +128,7 @@ export function createWorktreeRouter(service: WorktreeTaskService): Router {
         response.json({
           data: await service.merge(
             idParams.parse(request.params).id,
-            mergeBody.parse(request.body).commitMessage,
+            mergeBody.parse(request.body),
           ),
           requestId: String(request.id),
         });

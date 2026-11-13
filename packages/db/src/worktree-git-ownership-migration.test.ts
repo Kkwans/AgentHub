@@ -70,10 +70,12 @@ it('0012保持历史Worktree无owner，新enqueue完整ownership跨重开且拒�
     const {
       gitOwnerScope: omittedOwner,
       gitCreateOperationId: omittedOperation,
+      gitMergeGeneration: omittedGeneration,
       ...oldColumns
     } = getTableColumns(worktreeExecutions);
     void omittedOwner;
     void omittedOperation;
+    void omittedGeneration;
     const [historical] = await database.db
       .select(oldColumns)
       .from(worktreeExecutions)
@@ -86,6 +88,7 @@ it('0012保持历史Worktree无owner，新enqueue完整ownership跨重开且拒�
       ...historical,
       gitOwnerScope: null,
       gitCreateOperationId: null,
+      gitMergeGeneration: 0,
     });
     expect(await new TaskRepository(database.db).get(task.id)).toEqual(task);
     const nextTask = await new TaskRepository(database.db).create({
@@ -130,16 +133,25 @@ it('0012保持历史Worktree无owner，新enqueue完整ownership跨重开且拒�
       ...historical,
       gitOwnerScope: null,
       gitCreateOperationId: null,
+      gitMergeGeneration: 0,
     });
+    await database.db
+      .update(worktreeExecutions)
+      .set({ gitMergeGeneration: 1 })
+      .where(eq(worktreeExecutions.id, queued.execution.id));
     await database.close();
     database = undefined;
     database = await createPgliteDatabase({ dataDir });
     const reopened = new WorktreeExecutionRepository(database.db);
-    expect(await reopened.get(queued.execution.id)).toEqual(queued.execution);
+    expect(await reopened.get(queued.execution.id)).toEqual({
+      ...queued.execution,
+      gitMergeGeneration: 1,
+    });
     expect(await reopened.get(oldId)).toEqual({
       ...historical,
       gitOwnerScope: null,
       gitCreateOperationId: null,
+      gitMergeGeneration: 0,
     });
     expect(await new TaskRepository(database.db).get(task.id)).toEqual(task);
     expect(await database.db.select().from(worktreeExecutions)).toHaveLength(2);

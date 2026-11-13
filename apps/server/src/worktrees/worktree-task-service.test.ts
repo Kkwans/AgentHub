@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   RunRepository,
+  deriveWorktreeMergeOperationId,
   SessionRepository,
   agentSessions,
   AgentRepository,
@@ -47,7 +48,7 @@ describe('Worktree Task Runner 编排', () => {
     executions = new WorktreeExecutionRepository(database.db);
     // These services share one application boot, before any task starts. Building
     // another runtime after the UNKNOWN cases below would correctly deny startup.
-    for (let index = 0; index < 4; index++) {
+    for (let index = 0; index < 5; index++) {
       bootRuntimes.push(
         await createManagedGitRuntime(
           { db: database.db, projects, targets },
@@ -138,7 +139,7 @@ describe('Worktree Task Runner 编排', () => {
     });
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ projectRoot: '/canonical' }));
     await complete(service, task.id, running.runId!);
-    const result = await service.merge(queued.execution.id);
+    const result = await mergeReviewed(service, queued.execution.id);
     expect(result.execution.status).toBe('DONE');
     expect(run.mock.calls[1]?.[0]).toMatchObject({
       kind: 'WORKTREE_MERGE',
@@ -152,7 +153,112 @@ describe('Worktree Task Runner 编排', () => {
     await service.shutdown();
   });
 
-  it('同审阅 merge 重试保持同 operationId；协调器 UNKNOWN 不回退 raw Git 或 REVIEW', async () => {
+  it('权威前置拒绝经显式 retry CAS 新建持久 attempt，普通重放不能换键', async () => {
+    const fixture = await seedFixture('managed-merge-safe-retry');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: 'retry',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const managed = bootRuntimes.shift()!;
+    const service = createService(runtime, managed);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId }, 'local-trusted');
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    await complete(service, task.id, running.runId!);
+    const firstReview = await service.review(queued.execution.id);
+    expect(firstReview.mergeAdmission).toMatchObject({
+      expectedRunId: running.runId,
+      retryEligible: false,
+    });
+    const operationId = firstReview.mergeAdmission!.expectedOperationId;
+    const mergeGit = vi.spyOn(runtime.git, 'commitAndMerge');
+    const resource = await managed.resolve(fixture.projectId);
+    vi.spyOn(managed, 'resolve').mockResolvedValueOnce({ ...resource, head: 'd'.repeat(40) });
+    const intent = { expectedRunId: running.runId!, expectedOperationId: operationId };
+    await expect(service.merge(queued.execution.id, intent)).rejects.toMatchObject({
+      code: 'WORKTREE_GIT_PREWRITE_REJECTED',
+    });
+    expect(mergeGit).not.toHaveBeenCalled();
+    expect((await service.get(queued.execution.id)).gitMergeGeneration).toBe(0);
+    const rejectedReview = await service.review(queued.execution.id);
+    expect(rejectedReview.mergeAdmission).toMatchObject({
+      expectedOperationId: operationId,
+      retryEligible: true,
+    });
+    // Merely seeing REVIEW is not permission to mint a new identity.
+    await expect(service.merge(queued.execution.id, intent)).rejects.toMatchObject({
+      code: 'WORKTREE_EXECUTION_CHANGED',
+    });
+    expect(await service.get(queued.execution.id)).toMatchObject({
+      status: 'REVIEW',
+      gitMergeGeneration: 0,
+    });
+    expect(mergeGit).not.toHaveBeenCalled();
+    const result = await service.merge(queued.execution.id, {
+      ...intent,
+      retryOfOperationId: operationId,
+    });
+    expect(result.execution.status).toBe('DONE');
+    expect(result.execution.gitMergeGeneration).toBe(1);
+    expect(mergeGit).toHaveBeenCalledTimes(1);
+    await expect(
+      service.merge(queued.execution.id, { ...intent, retryOfOperationId: operationId }),
+    ).rejects.toMatchObject({ code: 'WORKTREE_EXECUTION_NOT_IN_REVIEW' });
+    expect(mergeGit).toHaveBeenCalledTimes(1);
+    await service.shutdown();
+  });
+
+  it('读取旧差异期间 run 变化不把新 attempt token 配给旧 review', async () => {
+    const fixture = await seedFixture('merge-review-snapshot');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: 'review snapshot',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId }, 'local-trusted');
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    await complete(service, task.id, running.runId!);
+    const before = await service.review(queued.execution.id);
+    expect(before.mergeAdmission).toMatchObject({
+      expectedRunId: running.runId,
+      retryEligible: false,
+    });
+    let release!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const ready = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const original = runtime.git.review.bind(runtime.git);
+    vi.spyOn(runtime.git, 'review').mockImplementationOnce(async (input) => {
+      entered();
+      await gate;
+      return original(input);
+    });
+    const pending = service.review(queued.execution.id);
+    await ready;
+    const newer = await service.rework(queued.execution.id, 'new review generation');
+    await complete(service, task.id, newer.runId!);
+    release();
+    expect((await pending).mergeAdmission).toBeNull();
+    const current = await service.review(queued.execution.id);
+    expect(current.mergeAdmission?.expectedRunId).toBe(newer.runId);
+    expect(current.mergeAdmission?.expectedOperationId).not.toBe(
+      before.mergeAdmission?.expectedOperationId,
+    );
+    await service.shutdown();
+  });
+
+  it('无账本前置拒绝不能重新领取；独立新执行 UNKNOWN 不回退 raw Git 或 REVIEW', async () => {
     const fixture = await seedFixture('managed-merge-replay');
     const task = await tasks.create({
       id: randomUUID(),
@@ -171,23 +277,50 @@ describe('Worktree Task Runner 编排', () => {
     const run = vi
       .spyOn(managed.writes, 'run')
       .mockRejectedValue(new AppError(409, 'WORKTREE_GIT_PREWRITE_REJECTED', 'rejected'));
-    for (const message of ['first', 'changed'])
-      await expect(service.merge(queued.execution.id, message)).rejects.toMatchObject({
-        code: 'WORKTREE_GIT_PREWRITE_REJECTED',
-      });
-    expect(run.mock.calls[0]?.[0].operationId).toBe(run.mock.calls[1]?.[0].operationId);
-    run.mockRejectedValue(new AppError(409, 'WORKTREE_GIT_OUTCOME_UNKNOWN', 'unknown'));
-    await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+    await expect(mergeReviewed(service, queued.execution.id, 'first')).rejects.toMatchObject({
+      code: 'WORKTREE_GIT_PREWRITE_REJECTED',
+    });
+    const rejected = await service.get(queued.execution.id);
+    await expect(mergeReviewed(service, queued.execution.id, 'changed')).rejects.toMatchObject({
+      code: 'WORKTREE_EXECUTION_CHANGED',
+    });
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(await service.get(queued.execution.id)).toEqual(rejected);
+    expect(merge).not.toHaveBeenCalled();
+    run.mockRestore();
+
+    // UNKNOWN needs an independent clean execution, never a reset of the rejected
+    // attempt's persisted evidence or relaxed admission guard.
+    const freshFixture = await seedFixture('managed-merge-independent-unknown');
+    const freshTask = await tasks.create({
+      id: randomUUID(),
+      projectId: freshFixture.projectId,
+      title: 'independent unknown',
+      status: 'READY',
+    });
+    const fresh = await service.queueTask(
+      freshTask.id,
+      { agentId: freshFixture.agentId },
+      'local-trusted',
+    );
+    await service.processQueue(freshFixture.projectId);
+    const freshRunning = await waitForStatus(fresh.execution.id, 'RUNNING');
+    await complete(service, freshTask.id, freshRunning.runId!);
+    const unknownRun = vi
+      .spyOn(managed.writes, 'run')
+      .mockRejectedValue(new AppError(409, 'WORKTREE_GIT_OUTCOME_UNKNOWN', 'unknown'));
+    await expect(mergeReviewed(service, fresh.execution.id)).rejects.toMatchObject({
       code: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
     });
-    expect((await service.get(queued.execution.id)).status).toBe('MERGING');
+    expect((await service.get(fresh.execution.id)).status).toBe('MERGING');
     expect(merge).not.toHaveBeenCalled();
-    await expect(service.cancel(queued.execution.id)).rejects.toMatchObject({
+    await expect(service.cancel(fresh.execution.id)).rejects.toMatchObject({
       code: 'WORKTREE_EXECUTION_BUSY',
     });
-    await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+    await expect(mergeReviewed(service, fresh.execution.id)).rejects.toMatchObject({
       code: 'WORKTREE_EXECUTION_NOT_IN_REVIEW',
     });
+    expect(unknownRun).toHaveBeenCalledTimes(1);
     await service.shutdown();
   });
 
@@ -785,7 +918,7 @@ describe('Worktree Task Runner 编排', () => {
     expect(reworked.status).toBe('RUNNING');
     expect(runtime.sessions.started.at(-1)?.input.text).toBe('请补充回归测试');
     await complete(service, firstTask.id, reworked.runId!);
-    const merged = await service.merge(first.execution.id);
+    const merged = await mergeReviewed(service, first.execution.id);
     expect(merged.execution.status).toBe('DONE');
     expect((await tasks.get(firstTask.id))?.status).toBe('DONE');
 
@@ -831,7 +964,7 @@ describe('Worktree Task Runner 编排', () => {
         await barrier;
         return claim(...args);
       });
-    const oldMerge = service.merge(queued.execution.id).then(
+    const oldMerge = mergeReviewed(service, queued.execution.id).then(
       (value) => ({ value }),
       (error: unknown) => ({ error }),
     );
@@ -849,7 +982,7 @@ describe('Worktree Task Runner 编排', () => {
       expect(await executions.get(queued.execution.id)).toEqual(reviewed);
       expect(await tasks.get(task.id)).toEqual(reviewedTask);
       // A fresh explicit merge can still accept the new generation.
-      const accepted = await service.merge(queued.execution.id);
+      const accepted = await mergeReviewed(service, queued.execution.id);
       expect(accepted.execution.status).toBe('DONE');
       expect(accepted.execution.runId).toBe(second.runId);
       expect(accepted.task.finalRunId).toBe(second.runId);
@@ -904,7 +1037,7 @@ describe('Worktree Task Runner 编排', () => {
       const beforeTask = await tasks.get(task.id);
       const mergeGit = vi.spyOn(runtime.git, 'commitAndMerge');
       try {
-        await expect(service.merge(first.id)).rejects.toMatchObject({
+        await expect(mergeReviewed(service, first.id)).rejects.toMatchObject({
           status: 409,
           code: 'WORKTREE_EXECUTION_CHANGED',
         });
@@ -949,7 +1082,7 @@ describe('Worktree Task Runner 编排', () => {
       const beforeTask = await tasks.get(task.id);
       const mergeGit = vi.spyOn(runtime.git, 'commitAndMerge');
       try {
-        await expect(service.merge(first.id)).rejects.toMatchObject({
+        await expect(mergeReviewed(service, first.id)).rejects.toMatchObject({
           status: 409,
           code: 'WORKTREE_EXECUTION_CHANGED',
         });
@@ -983,7 +1116,7 @@ describe('Worktree Task Runner 编排', () => {
     const running = await waitForStatus(queued.execution.id, 'RUNNING');
     await complete(service, task.id, running.runId!);
 
-    await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+    await expect(mergeReviewed(service, queued.execution.id)).rejects.toMatchObject({
       code: 'PRIMARY_WORKTREE_DIRTY',
     });
     expect(await executions.get(queued.execution.id)).toMatchObject({
@@ -1034,13 +1167,13 @@ describe('Worktree Task Runner 编排', () => {
         restore = () => spy.mockRestore();
       }
       try {
-        await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+        await expect(mergeReviewed(service, queued.execution.id)).rejects.toMatchObject({
           code: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
         });
         expect((await executions.get(queued.execution.id))?.status).toBe(
           mode === 'publish-failed' ? 'DONE' : 'MERGING',
         );
-        await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+        await expect(mergeReviewed(service, queued.execution.id)).rejects.toMatchObject({
           code: 'WORKTREE_EXECUTION_NOT_IN_REVIEW',
         });
         await expect(service.rework(queued.execution.id, 'retry')).rejects.toMatchObject({
@@ -1351,4 +1484,15 @@ function createRuntime(database: Awaited<ReturnType<typeof createPgliteDatabase>
     publish: (_topic, event) => events.push(event),
   };
   return { sessions, git, publisher, events };
+}
+
+async function mergeReviewed(service: WorktreeTaskService, id: string, commitMessage?: string) {
+  const snapshot = await service.get(id);
+  return service.merge(id, {
+    expectedRunId: snapshot.runId ?? randomUUID(),
+    expectedOperationId: snapshot.runId
+      ? deriveWorktreeMergeOperationId(snapshot.id, snapshot.runId, snapshot.gitMergeGeneration)
+      : randomUUID(),
+    ...(commitMessage ? { commitMessage } : {}),
+  });
 }

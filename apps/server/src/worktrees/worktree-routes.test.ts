@@ -53,7 +53,11 @@ describe('Worktree REST 契约', () => {
       (
         await request(app)
           .post(`/api/v1/worktree-executions/${executionId}/merge`)
-          .send({ commitMessage: 'feat(task): 完成隔离任务' })
+          .send({
+            expectedRunId: taskId,
+            expectedOperationId: agentId,
+            commitMessage: 'feat(task): 完成隔离任务',
+          })
       ).status,
     ).toBe(200);
     expect(
@@ -133,4 +137,30 @@ it('缺失认证 principal 即使 body 提供 owner 也不得入队', async () =
   expect(result.status).toBe(401);
   expect(result.body.code).toBe('AUTH_REQUIRED');
   expect(service.queueTask).not.toHaveBeenCalled();
+});
+
+it.each([
+  {},
+  { expectedRunId: taskId },
+  { expectedOperationId: agentId },
+  { expectedRunId: taskId, expectedOperationId: 'bad' },
+])('merge 拒绝缺少或错误 CAS token %j', async (body) => {
+  const service = { merge: vi.fn() };
+  const app = createApp({ worktrees: service as unknown as WorktreeTaskService });
+  const result = await request(app)
+    .post(`/api/v1/worktree-executions/${executionId}/merge`)
+    .send(body);
+  expect(result.status).toBe(400);
+  expect(service.merge).not.toHaveBeenCalled();
+});
+
+it('显式 retry token 原样传给原子服务，不能由路由生成新身份', async () => {
+  const service = { merge: vi.fn(async () => ({ status: 'DONE' })) };
+  const app = createApp({ worktrees: service as unknown as WorktreeTaskService });
+  const body = { expectedRunId: taskId, expectedOperationId: agentId, retryOfOperationId: agentId };
+  const result = await request(app)
+    .post(`/api/v1/worktree-executions/${executionId}/merge`)
+    .send(body);
+  expect(result.status).toBe(200);
+  expect(service.merge).toHaveBeenCalledExactlyOnceWith(executionId, body);
 });

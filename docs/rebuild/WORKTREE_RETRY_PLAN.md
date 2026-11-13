@@ -1,6 +1,6 @@
 # Worktree 合并显式重试方案
 
-状态：设计审查完成，尚未实现。2026-11-13 23:22 UTC。
+状态：2026-11-13 23:52 UTC 代码与本地回归实现完成，精确CI/真实浏览器待验收。设计审查时间23:22 UTC。
 
 ## 问题与目标
 
@@ -33,3 +33,9 @@
 并发重试只有一方递增和派发；旧普通/旧retry请求不派发；跨run stale token被拒；服务重启键稳定；事务回执丢失不重复；UNKNOWN/DISPATCHED/成功/404/错误scope均不轮换；winner claim不变；请求消息变化不能复活旧键；前端必须重新读取差异和确认；新旧版本请求明确拒绝，不降级成legacy不带CAS写入。
 
 完整类型/lint/build、全量回归及真实四视口浏览器验收通过后才宣称闭环。此文档不是实现完成的证据。
+
+## 实施验收记录（23:52 UTC）
+
+已实现0013迁移及持久generation、兼容v1派生、DB原子claim和权威拒绝重试、HTTP全部merge请求CAS、review快照绑定许可、UI按原attempt核对并重新确认。普通请求存在旧ledger或非空errorCode一律拒绝，防止缺失ledger+失败标签绕过只读许可。
+
+最终冻结tree7d78d9f：1698测试通过/10跳过，168文件通过/4跳过，402.81s；DB55、server66、UI61定向、types/lint/build通过。测试包括磁盘重开generation、事务提交后回执丢失模拟、真实PGlite/coordinator预写拒绝与一次Git回调、UI晚到响应。Git回调为替身，不称真实Git retry浏览器验证；PostgreSQL多进程与断电未验收。现有四视口真实Worktree流程已更新CAS协议，待精确CI；本地Chromium启动仍受socket限制。optional live协议已同步但未运行真实外部Agent。

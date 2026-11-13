@@ -208,3 +208,5 @@
 23:01 UTC 完成普通提交共享协议/UTF-8体积预检及完整回归；继续独立处理Worktree持久新attempt与observed HEAD准确文案。新slice精确CI不得借用64cf966结果；不合并main/部署。
 
 23:29 UTC 观测HEAD准确文案与单测全量通过；新四视口门禁等待精确CI。Worktree retry设计已落WORKTREE_RETRY_PLAN.md，下一完整切片先DB generation/原子CAS与迁移回归，再API/UI重新确认统一接线；严禁只有retry带CAS而普通merge无代际保护。
+
+23:52 UTC Worktree retry计划已落地代码与本地回归（见WORKTREE_RETRY_PLAN.md），最终1698通过/10跳过。下一步核对精确CI和真实四视口正常流，补真实Git/browser的竞争败方显式retry端到端证据；不得把mock Git回调回归称真实Git验证。

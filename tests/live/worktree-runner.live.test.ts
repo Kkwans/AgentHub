@@ -114,17 +114,30 @@ liveDescribe('Worktree Task Runner 真实闭环', () => {
       patch: string;
       entries: Array<{ path: string }>;
       taskBranch: string;
+      mergeAdmission: {
+        expectedRunId: string;
+        expectedOperationId: string;
+        retryEligible: boolean;
+        mergeAllowed: boolean;
+      } | null;
     }>(`/worktree-executions/${reviewExecution.id}/review`);
     expect(review.entries.some((entry) => entry.path === 'agenthub-worktree-live.txt')).toBe(true);
     expect(review.patch).toContain('worktree live acceptance');
     expect(review.taskBranch).toMatch(/^agenthub\/task-/);
+
+    expect(review.mergeAdmission).toMatchObject({ mergeAllowed: true, retryEligible: false });
+    if (!review.mergeAdmission) throw new Error('缺少可信合并审阅身份');
 
     const merged = await api<{
       execution: { status: string; mergeCommitSha: string };
       merge: { mergeCommitSha: string };
     }>(`/worktree-executions/${reviewExecution.id}/merge`, {
       method: 'POST',
-      body: { commitMessage: 'test(worktree): 完成真实隔离执行验收' },
+      body: {
+        expectedRunId: review.mergeAdmission.expectedRunId,
+        expectedOperationId: review.mergeAdmission.expectedOperationId,
+        commitMessage: 'test(worktree): 完成真实隔离执行验收',
+      },
     });
     expect(merged.execution.status).toBe('DONE');
     expect(merged.execution.mergeCommitSha).toBe(merged.merge.mergeCommitSha);

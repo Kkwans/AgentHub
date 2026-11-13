@@ -92,6 +92,13 @@
       "when": 1794600913001,
       "tag": "0012_worktree_git_ownership",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794612700897,
+      "tag": "0013_worktree_merge_generation",
+      "breakpoints": true
     }
   ]
 }

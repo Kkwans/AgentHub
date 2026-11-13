@@ -603,6 +603,7 @@ export type WorktreeExecutionStatus =
   | 'CANCELED';
 
 export interface WorktreeExecutionRecord {
+  gitMergeGeneration?: number;
   id: string;
   taskId: string;
   projectId: string;
@@ -628,6 +629,12 @@ export interface WorktreeExecutionRecord {
 }
 
 export interface WorktreeReviewRecord {
+  mergeAdmission: {
+    expectedRunId: string;
+    expectedOperationId: string;
+    retryEligible: boolean;
+    mergeAllowed: boolean;
+  } | null;
   worktreePath: string;
   baseSha: string;
   headSha: string;

@@ -208,6 +208,15 @@ for (const width of [390, 768, 1024, 1440]) {
     expect(second.runId).not.toBe(first.runId);
     await expect(page).toHaveURL(new RegExp(`/workspace/${first.sessionId}$`));
     const secondReview = await finishTurn(context, first.id, first.runId!);
+    const finalReview = await apiData<{
+      mergeAdmission: {
+        expectedRunId: string;
+        expectedOperationId: string;
+        retryEligible: boolean;
+      };
+    }>(context, 'get', `/worktree-executions/${first.id}/review`);
+    expect(finalReview.mergeAdmission.expectedRunId).toBe(second.runId);
+    expect(finalReview.mergeAdmission.retryEligible).toBe(false);
     await assertOrdinaryActionsBlocked(context, secondReview, agent.id);
     const messages = await apiData<Array<{ role: string; text: string }>>(
       context,
@@ -264,7 +273,13 @@ for (const width of [390, 768, 1024, 1440]) {
     expect((await git(['status', '--porcelain'])).stdout.trim()).toBe('');
     expect(mutations).toEqual([
       { path: `/api/v1/worktree-executions/${first.id}/rework`, body: { feedback } },
-      { path: `/api/v1/worktree-executions/${first.id}/merge`, body: {} },
+      {
+        path: `/api/v1/worktree-executions/${first.id}/merge`,
+        body: {
+          expectedRunId: finalReview.mergeAdmission.expectedRunId,
+          expectedOperationId: finalReview.mergeAdmission.expectedOperationId,
+        },
+      },
     ]);
     expect(
       await apiData<unknown[]>(context, 'get', `/sessions/${first.sessionId}/runs`),

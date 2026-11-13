@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { deriveWorktreeMergeOperationId } from './worktree-merge-operation.js';
 
 import {
   and,
@@ -32,6 +33,7 @@ import {
   agentSessions,
   apiTokens,
   approvalDeliveryOutbox,
+  gitCommitOperations,
   approvalRequests,
   browserSessions,
   executionTargets,
@@ -2232,9 +2234,57 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
   // Use the same Execution -> Task -> Session -> Run order as managed outcomes.
   // This checks durable ownership at claim time, not external filesystem writes
   // or a new direct Session turn admitted after this transaction commits.
+  async getMergeAdmission(
+    id: string,
+    expected: { sessionId: string | null; runId: string | null; generation: number },
+  ) {
+    const execution = await this.get(id);
+    if (
+      !execution ||
+      execution.status !== 'REVIEW' ||
+      !execution.gitOwnerScope ||
+      !execution.gitCreateOperationId ||
+      !execution.runId ||
+      execution.sessionId !== expected.sessionId ||
+      execution.runId !== expected.runId ||
+      execution.gitMergeGeneration !== expected.generation
+    )
+      return null;
+    const operationId = deriveWorktreeMergeOperationId(
+      execution.id,
+      execution.runId,
+      execution.gitMergeGeneration,
+    );
+    const [prior] = await this.db
+      .select()
+      .from(gitCommitOperations)
+      .where(
+        and(
+          eq(gitCommitOperations.ownerScope, execution.gitOwnerScope),
+          eq(gitCommitOperations.operationId, operationId),
+        ),
+      )
+      .limit(1);
+    const rejected =
+      prior?.projectId === execution.projectId &&
+      prior.payloadJson.operationKind === 'WORKTREE_MERGE' &&
+      prior.phase === 'REJECTED_PREWRITE';
+    return {
+      expectedRunId: execution.runId,
+      expectedOperationId: operationId,
+      retryEligible: rejected,
+      mergeAllowed: rejected || (!prior && execution.errorCode === null),
+    };
+  }
+
   async claimReviewForMerge(
     id: string,
-    expected: { sessionId: string | null; runId: string | null },
+    expected: {
+      sessionId: string | null;
+      runId: string | null;
+      expectedOperationId: string;
+      retryOfOperationId?: string;
+    },
   ) {
     return this.db.transaction(async (transaction) => {
       const changed = () =>
@@ -2301,10 +2351,55 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
         isLegacyUncertainRun(run)
       )
         throw changed();
+      const currentOperationId = deriveWorktreeMergeOperationId(
+        execution.id,
+        execution.runId,
+        execution.gitMergeGeneration,
+      );
+      if (expected.expectedOperationId !== currentOperationId) throw changed();
+      let generation = execution.gitMergeGeneration;
+      const prior = execution.gitOwnerScope
+        ? (
+            await transaction
+              .select()
+              .from(gitCommitOperations)
+              .where(
+                and(
+                  eq(gitCommitOperations.ownerScope, execution.gitOwnerScope),
+                  eq(gitCommitOperations.operationId, currentOperationId),
+                ),
+              )
+              .for('update')
+              .limit(1)
+          )[0]
+        : undefined;
+      if (expected.retryOfOperationId !== undefined) {
+        // Only a matching durable rejection permits a NEW attempt; neither a
+        // missing row nor an execution error label proves no prior dispatch.
+        if (
+          expected.retryOfOperationId !== currentOperationId ||
+          !execution.gitOwnerScope ||
+          !execution.gitCreateOperationId ||
+          !prior ||
+          prior.projectId !== execution.projectId ||
+          prior.payloadJson.operationKind !== 'WORKTREE_MERGE' ||
+          prior.phase !== 'REJECTED_PREWRITE' ||
+          generation >= 2147483647
+        )
+          throw changed();
+        generation += 1;
+      } else if (prior || execution.errorCode !== null) {
+        // A recorded review failure with no ledger is not a fresh intent either.
+        // Replaying a review request must not enter MERGING and then turn an old
+        // rejection into UNKNOWN due to newly observed HEAD/message hash changes.
+        throw changed();
+      }
+      const operationId = deriveWorktreeMergeOperationId(execution.id, execution.runId, generation);
       const [claimed] = await transaction
         .update(worktreeExecutions)
         .set({
           status: 'MERGING',
+          gitMergeGeneration: generation,
           mergeStartedAt: new Date(),
           errorCode: null,
           errorMessage: null,
@@ -2321,6 +2416,7 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
           runId: execution.runId,
         },
         task,
+        operationId,
       };
     });
   }

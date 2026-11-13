@@ -37,6 +37,12 @@ const execution = {
   worktreePath: '/tmp/tree',
 } as WorktreeExecutionRecord;
 const review = {
+  mergeAdmission: {
+    expectedRunId: 'run-a',
+    expectedOperationId: 'operation-a',
+    retryEligible: false,
+    mergeAllowed: true,
+  },
   worktreePath: '/tmp/tree',
   baseSha: 'base',
   headSha: 'head',

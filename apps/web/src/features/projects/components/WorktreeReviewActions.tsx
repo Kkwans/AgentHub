@@ -36,6 +36,7 @@ export function WorktreeReviewActions({
   const [resultHref, setResultHref] = useState('');
   const operation = useRef<ReturnType<typeof createReviewOperation> | null>(null);
   const [unknown, setUnknown] = useState(false);
+  const lastMerge = useRef<{ runId: string; operationId: string } | null>(null);
   const busy = useRef(false);
   const settled = useRef(false);
   const live = useRef(true);
@@ -44,6 +45,7 @@ export function WorktreeReviewActions({
   const identity = JSON.stringify([
     execution.id,
     execution.runId,
+    execution.gitMergeGeneration ?? 0,
     execution.baseSha,
     execution.taskBranch,
     execution.sessionId,
@@ -89,6 +91,13 @@ export function WorktreeReviewActions({
       );
       if (
         !result ||
+        (result.mergeAdmission !== null &&
+          (!result.mergeAdmission ||
+            result.mergeAdmission.expectedRunId !== execution.runId ||
+            typeof result.mergeAdmission.expectedOperationId !== 'string' ||
+            !result.mergeAdmission.expectedOperationId ||
+            typeof result.mergeAdmission.retryEligible !== 'boolean' ||
+            typeof result.mergeAdmission.mergeAllowed !== 'boolean')) ||
         result.worktreePath !== execution.worktreePath ||
         result.baseSha !== execution.baseSha ||
         result.taskBranch !== execution.taskBranch ||
@@ -127,7 +136,10 @@ export function WorktreeReviewActions({
       return;
     if (
       action === 'merge' &&
-      (!confirmation || shown.truncated || commitMessage.trim().length > 240)
+      (!confirmation ||
+        !shown.mergeAdmission?.mergeAllowed ||
+        shown.truncated ||
+        commitMessage.trim().length > 240)
     )
       return;
     busy.current = true;
@@ -146,6 +158,7 @@ export function WorktreeReviewActions({
     let verifiedResultHref: string | undefined;
     try {
       if (action === 'rework') {
+        lastMerge.current = null;
         const result = await api.post<WorktreeExecutionRecord>(
           `/worktree-executions/${encodeURIComponent(execution.id)}/rework`,
           { feedback: trimmed },
@@ -174,9 +187,21 @@ export function WorktreeReviewActions({
           }
         }
       } else {
+        const admission = shown.mergeAdmission!;
+        lastMerge.current = {
+          runId: admission.expectedRunId,
+          operationId: admission.expectedOperationId,
+        };
         const result = await api.post<{ execution: WorktreeExecutionRecord; task: TaskRecord }>(
           `/worktree-executions/${encodeURIComponent(execution.id)}/merge`,
-          commitMessage.trim() ? { commitMessage: commitMessage.trim() } : {},
+          {
+            expectedRunId: admission.expectedRunId,
+            expectedOperationId: admission.expectedOperationId,
+            ...(admission.retryEligible
+              ? { retryOfOperationId: admission.expectedOperationId }
+              : {}),
+            ...(commitMessage.trim() ? { commitMessage: commitMessage.trim() } : {}),
+          },
         );
         if (
           !result?.execution ||
@@ -244,6 +269,7 @@ export function WorktreeReviewActions({
     busy.current = true;
     setLoading(true);
     const report = operation.current;
+    let safeRetry = false;
     report?.('checking', '正在核对原隔离执行。');
     try {
       const result = await api.get<WorktreeExecutionRecord>(
@@ -256,12 +282,43 @@ export function WorktreeReviewActions({
         result.projectId !== execution.projectId
       )
         throw new Error('原隔离执行归属无法确认。');
-      if (current()) setNotice(`原隔离执行状态：${result.status}。请核对实际结果，未自动重试。`);
+      const attempted = lastMerge.current;
+      if (result.status === 'REVIEW' && attempted && result.runId === attempted.runId) {
+        const checked = await api.get<WorktreeReviewRecord>(
+          `/worktree-executions/${encodeURIComponent(execution.id)}/review`,
+        );
+        const admission = checked?.mergeAdmission;
+        if (
+          current() &&
+          latestIdentity.current === identity &&
+          admission?.retryEligible === true &&
+          admission.mergeAllowed === true &&
+          admission.expectedRunId === attempted.runId &&
+          admission.expectedOperationId === attempted.operationId &&
+          checked.worktreePath === execution.worktreePath &&
+          checked.baseSha === execution.baseSha &&
+          checked.taskBranch === execution.taskBranch
+        ) {
+          safeRetry = true;
+          setUnknown(false);
+          setReview(undefined);
+          setConfirmation(false);
+          setError('');
+          setNotice('原合并操作已确认未写入。请重新读取差异并再次确认，才会创建新的合并尝试。');
+        }
+      }
+      if (current() && !safeRetry)
+        setNotice(`原隔离执行状态：${result.status}。请核对实际结果，未自动重试。`);
       refresh();
     } catch (failure) {
       if (current()) setError(failure instanceof Error ? failure.message : '无法核对原隔离执行。');
     } finally {
-      report?.('unknown', '核对结束；原请求结果仍未确认，勿重复提交。');
+      report?.(
+        safeRetry ? 'retryable' : 'unknown',
+        safeRetry
+          ? '原合并已确认前置拒绝，需重新审阅确认。'
+          : '核对结束；原请求结果仍未确认，勿重复提交。',
+      );
       busy.current = false;
       if (current()) setLoading(false);
     }
@@ -341,6 +398,12 @@ export function WorktreeReviewActions({
         提交隔离工作区返工
       </AhButton>
       <p>返工复用原 Session，在隔离工作区继续修改，不创建普通 Task 审阅。</p>
+      {shown && !shown.mergeAdmission?.mergeAllowed ? (
+        <p role="alert">当前合并操作没有新的写入许可，请只读核对原操作，勿重复提交。</p>
+      ) : null}
+      {shown?.mergeAdmission?.retryEligible ? (
+        <p role="status">旧操作已确认未写入；本次确认将创建新的合并尝试。</p>
+      ) : null}
       <AhInput
         label="合并提交说明"
         value={commitMessage}
@@ -358,7 +421,7 @@ export function WorktreeReviewActions({
         <input
           type="checkbox"
           checked={confirmation && Boolean(shown)}
-          disabled={!ready || !shown || shown.truncated}
+          disabled={!ready || !shown?.mergeAdmission?.mergeAllowed || shown.truncated}
           onChange={(event) => setConfirmation(event.currentTarget.checked)}
         />
         我已审阅改动，确认提交并合并到基础分支
@@ -367,7 +430,11 @@ export function WorktreeReviewActions({
         size="xs"
         variant="light"
         disabled={
-          !ready || !shown || shown.truncated || !confirmation || commitMessage.trim().length > 240
+          !ready ||
+          !shown?.mergeAdmission?.mergeAllowed ||
+          shown.truncated ||
+          !confirmation ||
+          commitMessage.trim().length > 240
         }
         loading={pending}
         onClick={() => void submit('merge')}

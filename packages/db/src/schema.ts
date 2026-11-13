@@ -607,6 +607,7 @@ export const worktreeExecutions = pgTable(
     // Historical executions remain unowned; migration never guesses a principal.
     gitOwnerScope: text('git_owner_scope'),
     gitCreateOperationId: uuid('git_create_operation_id'),
+    gitMergeGeneration: integer('git_merge_generation').notNull().default(0),
     configJson: jsonb('config_json')
       .$type<{
         model?: string;
@@ -646,6 +647,7 @@ export const worktreeExecutions = pgTable(
       .where(
         sql`${table.status} in ('SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'REVIEW', 'MERGING')`,
       ),
+    check('worktree_executions_git_merge_generation_check', sql`${table.gitMergeGeneration} >= 0`),
     check(
       'worktree_executions_git_owner_pair_check',
       sql`(${table.gitOwnerScope} is null and ${table.gitCreateOperationId} is null) or (${table.gitOwnerScope} is not null and ${table.gitCreateOperationId} is not null)`,

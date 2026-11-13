@@ -394,3 +394,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 23:29 UTC 观测HEAD不是操作归属证明
 
 普通Git回执现在明确区分命令成功和观测HEAD，不再暗示外部Agent/PTY并发写入下SHA必属于本操作。真实浏览器本地启动被socket权限阻断，四视口新门禁待精确CI。Worktree终态键重试仍未实现，禁止用随机UUID或仅错误码解锁，实施约束见WORKTREE_RETRY_PLAN.md。
+
+### 2026-11-13 23:52 UTC Worktree固定终态键重试代码闭环
+
+已实现持久attempt及严格CAS的新意图：明确持久PREWRITE后重新读取/确认可轮换，旧普通请求和旧retry不能派发新代际。缺失ledger、UNKNOWN、成功及已有错误标签均不能冒充新首次请求。DB/服务/UI回归与全量通过；真实浏览器/精确CI和PostgreSQL多进程故障验证仍分别待验收，不对历史无ledger执行自动修复。

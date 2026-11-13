@@ -9,6 +9,7 @@ import {
   SessionRepository,
   TaskRepository,
   WorktreeExecutionRepository,
+  deriveWorktreeMergeOperationId,
 } from './index.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -204,6 +205,7 @@ describe('同 Session 最新 Run 的持久所有权', () => {
       await executions.claimReviewForMerge(execution.id, {
         sessionId: session.id,
         runId: first.id,
+        expectedOperationId: deriveWorktreeMergeOperationId(execution.id, first.id),
       });
     const beforeTask = await tasks.get(task.id);
     const beforeSession = await sessions.get(session.id);

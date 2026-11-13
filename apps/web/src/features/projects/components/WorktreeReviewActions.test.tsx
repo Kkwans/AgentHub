@@ -24,6 +24,12 @@ const execution = {
   worktreePath: '/tmp/tree',
 } as WorktreeExecutionRecord;
 const review = {
+  mergeAdmission: {
+    expectedRunId: 'run-a',
+    expectedOperationId: 'operation-a',
+    retryEligible: false,
+    mergeAllowed: true,
+  },
   worktreePath: '/tmp/tree',
   baseSha: 'base',
   headSha: 'head',
@@ -91,7 +97,10 @@ it('先显式读取完整受管差异，明确确认后才合并', async () => {
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
   await screen.findByText(/merge-sha/);
-  expect(post).toHaveBeenCalledWith('/worktree-executions/execution-a/merge', {});
+  expect(post).toHaveBeenCalledWith('/worktree-executions/execution-a/merge', {
+    expectedRunId: 'run-a',
+    expectedOperationId: 'operation-a',
+  });
 });
 it('返工复用原Session且提交修剪后的反馈，不使用普通Task审阅', async () => {
   vi.spyOn(api, 'get').mockResolvedValue(review);
@@ -272,4 +281,131 @@ it.each([400, 500])('同名错误码但HTTP %s不视作Git前明确拒绝', asyn
   expect(screen.getByRole('button', { name: '核对原隔离执行' })).toBeEnabled();
   expect(screen.queryByText(/未执行合并/)).not.toBeInTheDocument();
   expect(post).toHaveBeenCalledTimes(1);
+});
+
+it('前置拒绝必须按原 attempt 只读核实、重新读取和确认才显式重试', async () => {
+  let rejected = false;
+  vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (path.endsWith('/review'))
+      return {
+        ...review,
+        truncated: false,
+        mergeAdmission: { ...review.mergeAdmission, retryEligible: rejected },
+      } as never;
+    return execution as never;
+  });
+  const post = vi
+    .spyOn(api, 'post')
+    .mockImplementationOnce(async () => {
+      rejected = true;
+      throw new ApiError('WORKTREE_GIT_PREWRITE_REJECTED', '未写入', 409);
+    })
+    .mockResolvedValue({
+      execution: { ...execution, status: 'DONE', mergeCommitSha: 'new-merge' },
+      task: { id: 'task-a', projectId: 'project-a', status: 'DONE' },
+    });
+  mount();
+  await load();
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await screen.findByRole('button', { name: '核对原隔离执行' });
+  expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '核对原隔离执行' }));
+  await screen.findByText(/原合并操作已确认未写入/);
+  expect(post).toHaveBeenCalledTimes(1);
+  await load();
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await screen.findByText(/new-merge/);
+  expect(post).toHaveBeenLastCalledWith('/worktree-executions/execution-a/merge', {
+    expectedRunId: 'run-a',
+    expectedOperationId: 'operation-a',
+    retryOfOperationId: 'operation-a',
+  });
+});
+
+it.each(['missing', 'other-attempt', 'unknown'])('未知恢复的 %s 证据不能解锁', async (mode) => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  const post = vi.spyOn(api, 'post').mockRejectedValue(new Error('response lost'));
+  mount();
+  await load();
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await screen.findByRole('button', { name: '核对原隔离执行' });
+  get.mockImplementation(async (path) => {
+    if (!path.endsWith('/review')) return execution as never;
+    if (mode === 'missing') throw new ApiError('NOT_FOUND', 'missing', 404);
+    return {
+      ...review,
+      truncated: false,
+      mergeAdmission: {
+        ...review.mergeAdmission,
+        retryEligible: mode !== 'unknown',
+        expectedOperationId: mode === 'other-attempt' ? 'new-operation' : 'operation-a',
+      },
+    } as never;
+  });
+  fireEvent.click(screen.getByRole('button', { name: '核对原隔离执行' }));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: '核对原隔离执行' })).not.toBeDisabled(),
+  );
+  expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeDisabled();
+  expect(post).toHaveBeenCalledTimes(1);
+});
+
+it('持久 attempt generation 变化使旧差异和确认失效', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  const app = mount({ ...execution, gitMergeGeneration: 0 });
+  await load();
+  fireEvent.click(screen.getByRole('checkbox'));
+  app.update({ ...execution, gitMergeGeneration: 1 });
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+});
+
+it('只读核对在途时 generation 变化，晚到安全拒绝也不能解锁', async () => {
+  let resolve!: (value: unknown) => void;
+  const late = new Promise((yes) => {
+    resolve = yes;
+  });
+  const get = vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  vi.spyOn(api, 'post').mockRejectedValue(new Error('lost'));
+  const app = mount({ ...execution, gitMergeGeneration: 0 });
+  await load();
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await screen.findByRole('button', { name: '核对原隔离执行' });
+  get.mockImplementation(async (path) =>
+    path.endsWith('/review') ? ((await late) as never) : (execution as never),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '核对原隔离执行' }));
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(3));
+  app.update({ ...execution, gitMergeGeneration: 1 });
+  await act(async () =>
+    resolve({
+      ...review,
+      truncated: false,
+      mergeAdmission: { ...review.mergeAdmission, retryEligible: true },
+    }),
+  );
+  expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeDisabled();
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+});
+
+it('读取差异在途时 generation 变化，晚到旧差异不恢复合并权限', async () => {
+  let resolve!: (value: unknown) => void;
+  vi.spyOn(api, 'get').mockImplementation(
+    () =>
+      new Promise((yes) => {
+        resolve = yes;
+      }),
+  );
+  const app = mount({ ...execution, gitMergeGeneration: 0 });
+  fireEvent.click(screen.getByRole('button', { name: '读取隔离工作区审阅' }));
+  app.update({ ...execution, gitMergeGeneration: 1 });
+  await act(async () => resolve({ ...review, truncated: false }));
+  expect(screen.queryByText('1 file changed')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
 });

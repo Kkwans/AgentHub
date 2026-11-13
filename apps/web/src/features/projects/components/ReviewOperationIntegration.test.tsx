@@ -91,6 +91,12 @@ function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task
         worktreePath: '/tmp/tree',
         baseSha: 'base',
         headSha: 'head',
+        mergeAdmission: {
+          expectedRunId: 'old-run',
+          expectedOperationId: 'operation-a',
+          retryEligible: false,
+          mergeAllowed: true,
+        },
         taskBranch: 'task/a',
         clean: false,
         aheadBy: 0,

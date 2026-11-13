@@ -1,5 +1,5 @@
 import { RunStartError } from '../sessions/run-start-error.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type { createManagedGitRuntime } from '../git/managed-git-runtime.js';
 
 import type { WorktreeExecutionStatus } from '@agenthub/agent-core';
@@ -44,6 +44,13 @@ export type WorktreeGitRuntime = Pick<
   Awaited<ReturnType<typeof createManagedGitRuntime>>,
   'writes' | 'resolve'
 >;
+
+export interface MergeWorktreeInput {
+  expectedRunId: string;
+  expectedOperationId: string;
+  retryOfOperationId?: string | undefined;
+  commitMessage?: string | undefined;
+}
 
 export class WorktreeTaskService implements TaskRunLifecycleObserver {
   private readonly draining = new Map<string, Promise<void>>();
@@ -171,12 +178,18 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       throw new AppError(409, 'WORKTREE_NOT_READY', 'Worktree 尚未创建');
     }
     const project = await this.requireProject(execution.projectId);
-    return this.git.review({
+    const review = await this.git.review({
       projectRoot: project.realRootPath,
       worktreePath: execution.worktreePath,
       baseSha: execution.baseSha,
       taskBranch: execution.taskBranch,
     });
+    const mergeAdmission = await this.executions.getMergeAdmission(id, {
+      sessionId: execution.sessionId,
+      runId: execution.runId,
+      generation: execution.gitMergeGeneration,
+    });
+    return { ...review, mergeAdmission };
   }
 
   async rework(id: string, feedback: string) {
@@ -226,7 +239,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     }
   }
 
-  async merge(id: string, commitMessage?: string) {
+  async merge(id: string, input: MergeWorktreeInput) {
     const execution = await this.get(id);
     if (execution.status !== 'REVIEW' || !execution.worktreePath) {
       throw new AppError(
@@ -241,10 +254,12 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     const claimed = await this.executions
       .claimReviewForMerge(id, {
         sessionId: execution.sessionId,
-        runId: execution.runId,
+        runId: input.expectedRunId,
+        expectedOperationId: input.expectedOperationId,
+        ...(input.retryOfOperationId ? { retryOfOperationId: input.retryOfOperationId } : {}),
       })
       .catch((error: unknown) => {
-        if (error instanceof DatabaseInvariantError && error.code === 'WORKTREE_EXECUTION_CHANGED')
+        if (error instanceof DatabaseInvariantError)
           throw new AppError(
             409,
             error.code,
@@ -260,16 +275,16 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         baseBranch: claimed.execution.baseBranch,
         baseSha: claimed.execution.baseSha,
         taskBranch: claimed.execution.taskBranch,
-        commitMessage: commitMessage || `feat(task): ${claimed.task.title}`,
+        commitMessage: input.commitMessage || `feat(task): ${claimed.task.title}`,
       };
       const result = this.managedGit
         ? await this.managedGit.writes.run(
             {
               kind: 'WORKTREE_MERGE',
               ownerScope: requireGitOwner(claimed.execution),
-              // Stable for this exact review generation. Neither changed message
-              // nor a lost reply can mint a fresh identity to dispatch again.
-              operationId: mergeOperationId(claimed.execution.id, claimed.execution.runId),
+              // Only the atomic database claim can select a fresh attempt after
+              // authoritative prewrite rejection and explicit user retry CAS.
+              operationId: claimed.operationId,
               projectId: execution.projectId,
               expectedHead: (await this.managedGit.resolve(execution.projectId)).head,
               payload: mergeInput,
@@ -687,14 +702,4 @@ function requireGitOwner(execution: {
       '历史隔离执行缺少可信 Git 操作归属，已禁止写入；请核对后创建新执行',
     );
   return execution.gitOwnerScope;
-}
-
-function mergeOperationId(executionId: string, runId: string | null): string {
-  if (!runId)
-    throw new AppError(409, 'WORKTREE_GIT_REVIEW_MISSING', '缺少可信审阅 Run，已禁止合并');
-  const hex = createHash('sha256')
-    .update(JSON.stringify(['agenthub.worktree-merge.v1', executionId, runId]))
-    .digest('hex');
-  // RFC variant UUIDv8 derived from the immutable execution/review identity.
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
