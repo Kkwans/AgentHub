@@ -526,3 +526,7 @@ Exact dc fixture results are64 passed/4 failed: both actual editor names stay em
 C30 binds only explicit host labels through public child-editor getOption/updateOptions/onDidChangeConfiguration APIs. A cancellable, coalesced microtask reads latest committed labels, skips equal/missing labels and cleans listeners on editor disposal or wrapper unmount. No private DOM mutation, EditContext disabling, axe suppression or model/patch semantic change. Independent review checked real Monaco React4.7 asynchronous mount ordering as well as StrictMode tests.
 
 Seven files/53 focused tests passed; final web types/lint/build/diff-check completed15:41:47 UTC after correcting a test-only incomplete-instance cast. Static CR passed. Actual four-width textbox names, selected-code contrast and subsequent keyboard/resize checks remain new-CI gates, not claimed successes. Requested split still requires actual geometry evidence; no threshold was changed.
+
+### 2026-11-13 15:45 UTC — C30 publication and resize-name guard
+
+Published209ac08d74e9b3b145a509e7a3b4f43d9862a7b2 was fetched and its tree cab67f439f4377079f026a79c84f2a490c81fa22 verified15:44:12 UTC. Exact CI43455570705 is pending; a full local test run began15:44:27. A test-only follow-up reuses the unchanged actual two-textbox/full-path name assertion after1179,1180 and returning1024, specifically guarding layout-triggered resets. Explicit E2E types/lint,eight-case collection and independent static CR passed15:45; these remain browser-pending assertions, not completed resize proof.

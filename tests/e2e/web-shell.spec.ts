@@ -790,6 +790,22 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       [],
     );
   };
+  const assertSelectedDiffNames = async () => {
+    const editorInputs = page.locator('.git-diff-editor [role="textbox"]');
+    await expect(editorInputs).toHaveCount(2);
+    await expect
+      .poll(() =>
+        editorInputs.evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute('aria-label') ?? ''),
+        ),
+      )
+      .toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('更改前：apps/web/src/features/workspace/workspace.module.css'),
+          expect.stringContaining('更改后：apps/web/src/features/workspace/workspace.module.css'),
+        ]),
+      );
+  };
   const captureReviewHierarchy = async () => {
     await page
       .getByRole('tablist', { name: '检查器视图' })
@@ -822,20 +838,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     );
     await expect(modifiedLines).toBeVisible();
     await expect(modifiedLines).toContainText(/display:\s*grid/);
-    const editorInputs = page.locator('.git-diff-editor [role="textbox"]');
-    await expect(editorInputs).toHaveCount(2);
-    await expect
-      .poll(() =>
-        editorInputs.evaluateAll((nodes) =>
-          nodes.map((node) => node.getAttribute('aria-label') ?? ''),
-        ),
-      )
-      .toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('更改前：apps/web/src/features/workspace/workspace.module.css'),
-          expect.stringContaining('更改后：apps/web/src/features/workspace/workspace.module.css'),
-        ]),
-      );
+    await assertSelectedDiffNames();
     const diffHeader = await page.locator('.git-selected-diff-heading').boundingBox();
     const diffControls = await page.locator('.git-selected-diff > .git-diff-toolbar').boundingBox();
     const diffEditor = await page.locator('.git-selected-diff > .git-diff-editor').boundingBox();
@@ -960,6 +963,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       await page.setViewportSize({ ...originalViewport, width: 1179 });
       await assertMediumOpenGeometry();
       await expect(staged).toBeChecked();
+      await assertSelectedDiffNames();
       await attachViewportScreenshot(page, testInfo, 'workspace-review-medium-1179');
       await page.setViewportSize({ ...originalViewport, width: 1180 });
       await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -967,9 +971,11 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
         .poll(() => conversationPanel.evaluate((node) => Boolean(node.closest('[inert]'))))
         .toBe(false);
       await expect(staged).toBeChecked();
+      await assertSelectedDiffNames();
       await page.setViewportSize(originalViewport);
       await assertMediumOpenGeometry();
       await expect(staged).toBeChecked();
+      await assertSelectedDiffNames();
       await staged.uncheck();
     }
     await page
