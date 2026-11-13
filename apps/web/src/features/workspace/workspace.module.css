@@ -592,3 +592,8 @@
     opacity: 1;
   }
 }
+
+/* The phone Inspector owns its view navigation and focus trap while open. */
+.mobileTabs[hidden] {
+  display: none;
+}

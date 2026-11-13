@@ -886,6 +886,40 @@ describe('WorkspacePage 数据分区可靠性', () => {
     );
   });
 
+  it('手机检查器保留内部导航，关闭后恢复外层视图导航', async () => {
+    vi.stubGlobal('innerWidth', 390);
+    renderWorkspace(
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        baseFetch(String(input), init?.method),
+      ),
+    );
+    const views = await screen.findByRole('tablist', { name: 'Workspace 视图' });
+    fireEvent.click(within(views).getByRole('tab', { name: 'Git' }));
+    await waitFor(() => expect(views).toHaveAttribute('hidden'));
+    const inspector = screen.getByRole('tablist', { name: '检查器视图' });
+    for (const [name, heading] of [
+      ['活动', '会话活动'],
+      ['Run', '运行详情'],
+      ['文件', '项目文件'],
+    ] as const) {
+      const trigger = within(inspector).getByRole('tab', { name });
+      trigger.focus();
+      fireEvent.mouseDown(trigger, { button: 0, ctrlKey: false });
+      await waitFor(() => expect(trigger).toHaveAttribute('aria-selected', 'true'));
+      expect(trigger).toHaveFocus();
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByRole('button', { name: '关闭检查器' }));
+    await waitFor(() => expect(views).not.toHaveAttribute('hidden'));
+    expect(within(views).getByRole('tab', { name: '对话' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: '进入沉浸对话' }));
+    fireEvent.click(screen.getByRole('button', { name: '审阅更改' }));
+    expect(await screen.findByRole('tablist', { name: '检查器视图' })).toBeInTheDocument();
+  });
+
   it('移动端可切换沉浸对话并在退出时清理 body 状态', async () => {
     vi.stubGlobal(
       'matchMedia',

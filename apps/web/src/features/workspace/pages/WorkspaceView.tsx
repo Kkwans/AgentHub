@@ -261,6 +261,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <PinTabs value={mobileViewValue}>
           <TabsList
             className={`${workspaceStyles.mobileTabs} workspace-mobile-tabs`}
+            hidden={isMobileViewport && (inspectorDrawerOpen || mobileInspectorOpen)}
             aria-label="Workspace 视图"
           >
             <TabsTrigger value="sessions" aria-label="会话" onClick={openSessionDrawer}>

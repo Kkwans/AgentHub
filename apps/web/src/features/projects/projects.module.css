@@ -1742,6 +1742,9 @@
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
+  .detailBack {
+    margin-inline: 16px;
+  }
   .headerWarnings .identityFacts {
     flex-wrap: wrap;
     gap: 6px 12px;

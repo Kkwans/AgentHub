@@ -152,10 +152,12 @@ export function SettingsPage() {
         remoteNode: { available: boolean };
       }>('/settings/capabilities'),
   });
+  const tokensReadable =
+    auth.isSuccess && (auth.data.localTrusted === true || auth.data.authenticated === true);
   const tokens = useQuery({
     queryKey: ['api-tokens'],
     queryFn: () => api.get<ApiTokenRecord[]>('/auth/tokens'),
-    enabled: auth.data?.localTrusted === true || auth.data?.authenticated === true,
+    enabled: tokensReadable,
   });
   const createToken = useMutation({
     mutationFn: (name: string) =>
@@ -556,33 +558,67 @@ export function SettingsPage() {
                 </div>
               ) : null}
               <div className={styles.tokenList}>
-                {tokens.isLoading ? <p className={styles.muted}>正在读取 token…</p> : null}
-                {!tokens.isLoading && !tokens.data?.length ? (
+                {auth.isPending ? (
+                  <LoadingState label="正在确认 token 访问权限" />
+                ) : auth.isError ? (
+                  <ErrorState
+                    title="无法确认 token 访问权限"
+                    error={auth.error}
+                    retry={() => void auth.refetch()}
+                  />
+                ) : !tokensReadable ? (
+                  <div>
+                    <p className={styles.muted}>
+                      尚未确认 API token 访问权限，不能判断是否存在 token。
+                    </p>
+                    <AhButton
+                      variant="default"
+                      disabled={auth.isFetching}
+                      onClick={() => void auth.refetch()}
+                    >
+                      重新确认登录状态
+                    </AhButton>
+                  </div>
+                ) : tokens.isPending ? (
+                  <LoadingState label="正在读取 API token" />
+                ) : tokens.isError ? (
+                  <div>
+                    <ErrorState
+                      title="无法确认现有 API token"
+                      error={tokens.error}
+                      retry={() => void tokens.refetch()}
+                    />
+                    <p className={styles.muted}>读取失败不代表没有已生效的 token。</p>
+                  </div>
+                ) : null}
+                {tokensReadable && tokens.isSuccess && tokens.data.length === 0 ? (
                   <p className={styles.muted}>还没有 API token。</p>
                 ) : null}
-                {tokens.data?.map((token) => (
-                  <div className={styles.tokenRow} key={token.id}>
-                    <span className={styles.valueStack}>
-                      <strong>{token.name}</strong>
-                      <small>最近使用 {formatTime(token.lastUsedAt)}</small>
-                    </span>
-                    <StatusBadge status={token.revokedAt ? 'CANCELED' : 'ACTIVE'} />
-                    {!token.revokedAt ? (
-                      <AhButton
-                        color="red"
-                        size="xs"
-                        variant="subtle"
-                        onClick={() => revokeToken.mutate(token.id)}
-                      >
-                        撤销
-                      </AhButton>
-                    ) : null}
-                  </div>
-                ))}
+                {tokensReadable && tokens.isSuccess
+                  ? tokens.data.map((token) => (
+                      <div className={styles.tokenRow} key={token.id}>
+                        <span className={styles.valueStack}>
+                          <strong>{token.name}</strong>
+                          <small>最近使用 {formatTime(token.lastUsedAt)}</small>
+                        </span>
+                        <StatusBadge status={token.revokedAt ? 'CANCELED' : 'ACTIVE'} />
+                        {!token.revokedAt ? (
+                          <AhButton
+                            color="red"
+                            size="xs"
+                            variant="subtle"
+                            onClick={() => revokeToken.mutate(token.id)}
+                          >
+                            撤销
+                          </AhButton>
+                        ) : null}
+                      </div>
+                    ))
+                  : null}
               </div>
-              {tokens.error || createToken.error || revokeToken.error ? (
+              {createToken.error || revokeToken.error ? (
                 <p className={styles.inlineError} role="alert">
-                  {(tokens.error ?? createToken.error ?? revokeToken.error)?.message}
+                  {(createToken.error ?? revokeToken.error)?.message}
                 </p>
               ) : null}
               {tokenDialog}

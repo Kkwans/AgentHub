@@ -50,7 +50,7 @@ async function capture(
   await info.attach(`${state}-region`, { path: regionPath, contentType: 'image/png' });
 }
 async function showInspector(page: Page, width: number, tab: 'files' | 'changes') {
-  if (width < 768) {
+  if (width < 768 && !(await page.getByRole('tablist', { name: '检查器视图' }).isVisible())) {
     await page
       .getByRole('tablist', { name: 'Workspace 视图' })
       .getByRole('tab', { name: tab === 'files' ? '文件' : 'Git', exact: true })

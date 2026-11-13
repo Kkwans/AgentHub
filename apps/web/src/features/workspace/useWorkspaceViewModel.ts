@@ -485,7 +485,8 @@ export function useWorkspaceViewModel() {
     if (!nextState.session && !nextState.inspector) return;
 
     const closeButton = nextState.session ? sessionCloseRef.current : inspectorCloseRef.current;
-    closeButton?.focus();
+    // Opening above owns initial focus. A tab/URL change updates the Escape
+    // handler, but must not steal focus from the Inspector's active control.
     const drawer = closeButton?.closest<HTMLElement>(
       '.session-rail-panel, .inspector-panel, .workbench-panel',
     );

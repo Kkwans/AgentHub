@@ -851,6 +851,27 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await views.getByRole('tab', { name: '对话' }).click();
     await views.getByRole('tab', { name: '文件' }).click();
     await expect(page).toHaveURL(new RegExp(`workspace/${session.id}\\?view=files`));
+    await expect(views).toBeHidden();
+    const inspectorViews = page.getByRole('tablist', { name: '检查器视图' });
+    await expect(inspectorViews).toBeVisible();
+    // Use the Inspector's keyboard-accessible tabs inside its focus trap.
+    await inspectorViews.getByRole('tab', { name: '文件', exact: true }).focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: '会话活动', exact: true })).toBeVisible();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: '运行详情', exact: true })).toBeVisible();
+    await inspectorViews.getByRole('tab', { name: '文件', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '项目文件', exact: true })).toBeVisible();
+    await attachViewportScreenshot(page, testInfo, 'workspace-inspector-single-navigation');
+    await page.getByRole('button', { name: '关闭检查器' }).click();
+    await expect(views).toBeVisible();
+    await expect(views.getByRole('tab', { name: '对话', exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await views.getByRole('tab', { name: '文件', exact: true }).click();
   }
 
   await expectNoHorizontalOverflow(page);
@@ -994,6 +1015,7 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
   if (singlePaneWork) {
     const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
     const back = page.getByRole('button', { name: '返回工作列表' });
+    await expect(back).toHaveCSS('margin-left', '16px');
     if (compactWork) {
       const backBox = await back.boundingBox();
       expect(backBox).not.toBeNull();
@@ -1119,6 +1141,41 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
   await expect(lifecycle).toBeHidden({ timeout: SHELL_READY_TIMEOUT });
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'prompts');
+});
+
+test('Settings token读取失败不伪装为空，重试只读恢复', async ({ page }, testInfo) => {
+  let failing = true;
+  let writes = 0;
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.startsWith('/api/v1/auth/tokens') &&
+      request.method() !== 'GET'
+    )
+      writes += 1;
+  });
+  await page.route('**/api/v1/auth/tokens', async (route) => {
+    if (!failing) return route.fallback();
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: 'token列表暂时不可用' } }),
+    });
+  });
+  await page.goto('/settings/integrations');
+  await expect(page.getByRole('heading', { name: '无法确认现有 API token' })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await expect(page.getByText('读取失败不代表没有已生效的 token。', { exact: true })).toBeVisible();
+  await expect(page.getByText('还没有 API token。', { exact: true })).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'settings-token-read-error');
+  failing = false;
+  await page.getByRole('button', { name: '重新加载', exact: true }).click();
+  await expect(page.getByText('还没有 API token。', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '无法确认现有 API token' })).toHaveCount(0);
+  expect(writes).toBe(0);
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'settings-token-read-recovered');
 });
 
 test('Settings 使用窄本地导航和单一内容列', async ({ page }, testInfo) => {

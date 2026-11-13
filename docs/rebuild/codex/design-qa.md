@@ -238,3 +238,11 @@ b9的768px实际图只有一项任务，详情也从约y454开始。源码在<=1
 本片分离phone/tablet/wide，一次读取两个媒体查询并更新统一band，避免独立状态不同步；筛选仍按767断点，单面板工作详情按1023断点。初版182项扩大回归通过。独立CR随后发现并修复两类焦点边界：桌面无task的Inspector缩小被隐藏；详情任务被删除刷新后或进入看板时旧列表同样隐藏。现在仅迁移失效/隐藏/body或显式返回的焦点，分别到返回按钮、可见列表切换按钮、选中行/列表；外部仍可见链接与编辑器textarea不被抢焦点。
 
 最终整合125项聚焦测试通过，覆盖30任务768/1023、1024双栏、两断点晚结果、警告与焦点迁移；另三项动态回归覆盖删除/refetch及看板转换。Web与显式E2E类型、lint、CSS预算和生产build通过，独立CR无剩余静态阻塞。52 fixture与8 real项目工作用例保留，真实axe仍只在390浅深两扫，不扩称平板已扫。新的768图和真实流程需该发布SHA的CI；原desktop看板卸载策略与无锁看板草稿恢复未扩scope。
+
+## 2026-11-13 11:07 UTC — 192a evidence and navigation follow-up
+
+192a341 fixture job succeeded. Actual 768 work detail/list-return/warning captures and 1024 dual-pane capture were inspected; tablet primary review content is now reached directly and qualification failure remains visible. Real job is still pending. The tablet return control is flush with the rail, clipping its focus outline; the next slice adds the same 16px margin as phone, with a CSS browser assertion.
+
+The prior b9 phone Workspace capture shows duplicate outer and inner view strips. Current source still matches it. Removing the inner strip was rejected during CR: immersive mode hides the outer strip, and Inspector focus trapping prevents keyboard access to it. That candidate was withdrawn. Instead, keep the complete inner tabs and hide the outer duplicate only while the phone Inspector is open. Closing restores the outer navigation. Also stop re-focusing the close button on every tab/URL change; initial opening and the existing focus trap remain. Unit coverage checks retained focus and immersive navigation; fixture coverage uses arrow/Enter switching, close/restore and a new screenshot. Real file/diff helper now uses the inner tabs when already open. New visual approval remains pending.
+
+Settings token read-state follow-up: the empty-state bug was source-confirmed, not claimed as an existing captured failure. Added a fixture failure/recovery case in the actual CI file, checking no write request on retry and taking settings-token-read-error/recovered screenshots at all four viewports. The new five unit tests cover pending/disabled/error/stale failure/recovery. Create and revoke handlers are unchanged. Visual result is pending the next exact run.
