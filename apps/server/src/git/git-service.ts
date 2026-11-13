@@ -70,9 +70,11 @@ export class GitService implements GitHeadProbe {
         'GIT_OPERATION_NOT_FOUND',
         '未找到可访问的 Git 操作；这不证明提交未执行',
       );
+    // Scope is the authenticated lookup scope, not an access credential.
     // Explicit projection excludes executor paths, device/worker IDs and dispatch
     // tokens. operationId is an identifier, never an authorization credential.
     return {
+      scope: ownerScope,
       operationId: record.operationId,
       projectId: record.projectId,
       protocolVersion: record.protocolVersion,

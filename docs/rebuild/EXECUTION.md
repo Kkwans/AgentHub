@@ -1121,3 +1121,15 @@ CR/类型检查发现并修复rework误插setup catch；startup回归又发现�
 20:34:21 UTC上一938209b精确冻结全量全过：157文件通过/4跳过，1523测试通过/10跳过，372.25s，旧两项fixture失败已闭环。上一8e54ca7精确CI此刻三绿；938209b无障碍绿，verify浏览器与real矩阵仍运行。
 
 20:37:28 UTC 最终Git+marker9文件94项通过（13.39s），全仓types、lint/format/diffcheck与独立CR通过。生产GitService已加入全局literal-pathspecs；4个真实Git测试确认字面wildcard/magic仅提交所选、不动其他已暂存内容，不存在magic不改变HEAD/index。新增协调wrapper/marker/POST协议仍未启用。新精确提交全量/CI待运行。
+
+### 2026-11-13 20:44–20:52 UTC 持久协调域与恢复只读驱动
+
+实现DB逻辑域初始化/双向账本锁完整性检查、同域单一claim runtime factory、认证scope绑定GET与client只读恢复driver。23项domain、6项factory、28项query/driver分别通过；组合types/lint/测试进行中。CR补active ledger缺claim时禁止生成可绕过的新写锁；不自动repair。新factory/driver均未接index/UI/POST。
+
+20:47:15确认上一9968732精确冻结全量完成：161文件通过/4跳过，1575测试通过/10跳过，375.93s。不是本片验收。
+
+### 2026-11-13 21:01–21:04 UTC 中断恢复验收
+
+恢复时 HEAD/远端均为9968732，无活跃测试进程；保留并审阅全部未提交修改。重新构建DB后，domain/runtime/query/driver共4文件57项通过（17.04s）；全仓types、全仓lint、相关format、diffcheck通过，Web生产构建通过（既有大chunk警告）。独立只读CR未发现domain/runtime阻断项。此前corepack因本机缓存目录不可用未启动，改用仓库已安装的同版本CLI完成验证，未安装新依赖。
+
+验证边界：factory与恢复driver仍未生产启用；alias测试使用注入resolver，不是真实bind mount；PostgreSQL多连接未实测。新切片完整全量与精确CI尚待运行，不借用9968732全量结果。

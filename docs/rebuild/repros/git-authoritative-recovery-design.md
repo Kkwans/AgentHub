@@ -118,6 +118,14 @@ expectedHead须在获得资源claim并复核资源身份后、第一条写命令
 
 `ManagedGitWrites.run<T>` 把COMMIT/WORKTREE_CREATE/WORKTREE_MERGE统一到同一coordinator；仅首次callback返回且成功持久化后交付临时T。重放不能凭持久状态重造worktree路径等返回值，更不能回退raw Git；结果未知/落盘响应丢失一律隔离。前置错误仅在协调器明确证明callback未进入时分类，不用任意异常猜测未写。**包装器尚未安装到三条生产写路径**。
 
-客户端 `git-commit-recovery.ts` 只保存version/scope/project/op四字段，每op独立key；首次写入及读回成功才允许调用方考虑派发。原同op、损坏状态、存储不可用均要求恢复而非新提交。404/未知/网络错误不清marker；仅匹配当前认证scope/project/op且严格字符串终态的proof清单个marker。GET不返回scope，因此未来调用方必须将proof绑定发起查询的当前认证scope，不信任响应中伪造scope。跨标签页并发可能都通过前读，此模块不是互斥锁，必须依赖服务端claim。**尚未接Provider/UI/POST**。
+客户端 `git-commit-recovery.ts` 只保存version/scope/project/op四字段，每op独立key；首次写入及读回成功才允许调用方考虑派发。原同op、损坏状态、存储不可用均要求恢复而非新提交。404/未知/网络错误不清marker；仅匹配当前认证scope/project/op且严格字符串终态的proof清单个marker。GET随后新增由认证查询绑定的scope，恢复driver同时核对当前auth epoch与返回scope，不信任客户端自报owner。跨标签页并发可能都通过前读，此模块不是互斥锁，必须依赖服务端claim。**尚未接Provider/UI/POST**。
 
 新提交协议强制version=1、客户端UUID operationId和显式expectedHead（完整SHA或明确null），规范message/UUID/SHA但保留path顺序/大小写/重复。严格拒绝owner/device/dispatch等客户端伪造字段，STAGED不接受被忽略的paths。当前仅GET复用参数规范，旧POST仍未切换。禁止仅服务端每次给旧无key请求生成新key后宣称幂等：回执丢失后新key仍可能提交后来的改动。
+
+## 20:52 UTC 持久逻辑协调域与只读恢复驱动
+
+`getOrCreateGitCoordinationDomain` 在短事务锁app_settings/operation/claim后初始化唯一逻辑域UUID，多个初始化读取同一赢家。已有任意账本却缺域、设置损坏、active operation缺claim或双向key/token/worker/phase不一致、terminal残留claim，均拒绝启用；不修复、不续期、不生成新身份绕锁。文件DB重开及并发PGlite已测，**真实PostgreSQL多连接仍未实测**。
+
+`createManagedGitRuntime` 将所有本地Project/target/mount路径强制映射该数据库单一claim key。它是逻辑协调域，绝不是物理设备证明；不同DB/外部Git不覆盖。保守代价：一个UNKNOWN将阻断该DB其他托管Git写。Factory未接index，生产三入口尚未启用它。worktree自定义base branch的baseSha不等于当前primary HEAD，接线时必须冻结正确expectedHead，而不是混用。
+
+恢复GET现在额外返回认证lookup绑定的 `scope`（身份标识不是访问凭据），仍排除内部派发token和路径。新client只读driver按marker发GET，校验scope/project/op/version/hash格式与命令退出证据；已撤权/响应在途撤权不清marker或返回旧结果，404/未知/异常继续禁写。只有同scope精确终态才清单个marker，之后重读全部状态。**状态只属于marker原操作，不证明当前草稿已提交，不据此清当前草稿；未接UI或POST。**

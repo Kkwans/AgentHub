@@ -376,3 +376,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 已加未启用的client marker/三类写wrapper/strict协议基础，跨刷新闭环仍待接线。单纯服务端给legacy每次生成新key不解决回执丢失后重复提交；必须客户端持久key。额外发现Git pathspec magic/glob可扩大显式选择，正在修复literal-pathspecs并用真实Git验收，不放宽路径隔离。
 
 20:37 UTC pathspec扩大选择已修复并通过4项真实Git回归；仅此路径修复已在生产调用代码生效，wrapper/marker完整闭环仍未接入。
+
+### 2026-11-13 20:52 UTC 协调域不能伪装物理设备
+
+没有可信硬件身份时用持久DB逻辑域并全DB串行，避免同仓bind mount不同路径绕锁；独立DB与外部Git仍不覆盖。已实现factory但未启用。域缺失/损坏或operation/claim不完整拒绝启用，不能生成新UUID解除未知锁。client恢复状态仅证明原operation，不证明当前草稿；GET新增认证scope绑定辅助校验。

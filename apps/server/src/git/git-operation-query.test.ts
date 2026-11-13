@@ -76,6 +76,7 @@ describe('Git DB-only authenticated operation query', () => {
       operationId,
       projectId,
       phase: 'UNKNOWN',
+      scope: 'account:original',
       payload: stored.payloadJson,
     });
     for (const key of [

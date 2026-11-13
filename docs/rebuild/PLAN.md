@@ -199,3 +199,5 @@
 20:19 UTC 已补worktree持久owner/create-operationId和生产未知写入隔离（含重启）；下一片统一canonical claim的真实执行器/三个入口，明确历史ownerless阻断、merge每阶段操作身份及结果持久投影。保守活动槽位目前不能人工解除，不能以BLOCKED/cancel绕过。
 
 20:36 UTC 三写kind共享wrapper、最小客户端marker和strict请求协议已实现基础；尚须生产统一接线/客户端恢复查询、可信设备命名空间、历史ownerless处理及结果投影。必须同时封住旧无operationId提交入口，不允许安全层失败时回退raw Git。
+
+20:52 UTC 持久逻辑协调域、全DB共享factory及只读恢复driver已实现基础。下一片一次性接全部三写入口/客户端key与恢复UI；需明确全球串行代价、历史ownerless阻断、custom base branch expectedHead与Git executor资源/环境绑定。Factory保持未启用，不能以准备完成冒充保护上线。
