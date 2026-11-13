@@ -175,7 +175,7 @@ it('成功回执在清空选择后常显，合并工具栏全选仍可用', asyn
   });
   fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
   await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent('提交完成：aaaaaaaaaaaa'),
+    expect(screen.getByRole('status')).toHaveTextContent('提交命令已完成；观测 HEAD：aaaaaaaaaaaa'),
   );
   expect(screen.getByRole('checkbox', { name: '选择 src/one.ts' })).not.toBeChecked();
   expect(screen.getByRole('status')).toBeVisible();
@@ -350,7 +350,7 @@ it.each([undefined, null, {}, { sha: '' }, { sha: 'fake-sha' }])(
     });
     fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知'));
-    expect(screen.queryByText(/提交完成/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/提交命令已完成/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '重试提交' })).toBeDisabled();
     expect(screen.getByRole('textbox', { name: '提交说明' })).toHaveValue('说明');
   },
@@ -383,9 +383,9 @@ it('新提交未知时不能继续展示上一次成功回执', async () => {
       target: { value: message },
     });
     fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
-    if (message === '第一次') await screen.findByText('提交完成：aaaaaaaaaaaa');
+    if (message === '第一次') await screen.findByText('提交命令已完成；观测 HEAD：aaaaaaaaaaaa');
     else await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知'));
   }
-  expect(screen.queryByText(/提交完成/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/提交命令已完成/)).not.toBeInTheDocument();
   expect(props.onCommit).toHaveBeenCalledTimes(2);
 });

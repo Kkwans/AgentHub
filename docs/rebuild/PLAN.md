@@ -206,3 +206,5 @@
 21:48 UTC 正在闭环claim竞争败方持久拒绝与真实HTTP断线/服务重启回归。后续Worktree显式retry需独立持久attempt generation，仅权威PREWRITE拒绝可轮换；UNKNOWN/DISPATCHED永不轮换。执行归属owner是queue创建scope，并非merge点击者审计证据；当前所有principal均ADMIN，增加actor字段须保持原稳定重放scope。
 
 23:01 UTC 完成普通提交共享协议/UTF-8体积预检及完整回归；继续独立处理Worktree持久新attempt与observed HEAD准确文案。新slice精确CI不得借用64cf966结果；不合并main/部署。
+
+23:29 UTC 观测HEAD准确文案与单测全量通过；新四视口门禁等待精确CI。Worktree retry设计已落WORKTREE_RETRY_PLAN.md，下一完整切片先DB generation/原子CAS与迁移回归，再API/UI重新确认统一接线；严禁只有retry带CAS而普通merge无代际保护。

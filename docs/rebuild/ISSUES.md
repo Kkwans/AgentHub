@@ -390,3 +390,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 23:01 UTC 提交请求本地协议预检
 
 501路径、超长输入/无效HEAD及超过1 MiB的UTF-8 JSON在marker创建前拒绝，避免已知本地无效草稿进入永久未知。共享schema及body字节上限防止客户端规则漂移。历史已留下的缺失ledger marker不自动删除；服务器部署版本不一致、鉴权失效、任意400/404仍不能被推断成未执行。Worktree显式新attempt及观测HEAD文案继续独立待办。
+
+### 2026-11-13 23:29 UTC 观测HEAD不是操作归属证明
+
+普通Git回执现在明确区分命令成功和观测HEAD，不再暗示外部Agent/PTY并发写入下SHA必属于本操作。真实浏览器本地启动被socket权限阻断，四视口新门禁待精确CI。Worktree终态键重试仍未实现，禁止用随机UUID或仅错误码解锁，实施约束见WORKTREE_RETRY_PLAN.md。

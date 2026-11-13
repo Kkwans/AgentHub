@@ -131,7 +131,7 @@ it('关闭重开保留 pending，返回回执不重发且仅刷新原项目缓�
   expect(screen.getByRole('status')).toHaveTextContent('原 Project（项目a）正在提交');
   expect(screen.getByRole('button', { name: '正在提交…' })).toBeDisabled();
   await act(async () => pending.resolve(receipt));
-  expect(screen.getByRole('status')).toHaveTextContent('提交完成：aaaaaaaaaaaa');
+  expect(screen.getByRole('status')).toHaveTextContent('提交命令已完成；观测 HEAD：aaaaaaaaaaaa');
   expect(api.post).toHaveBeenCalledTimes(1);
   expect(app.fallback).not.toHaveBeenCalled();
   expect(app.invalidate.mock.calls.map(([options]) => options?.queryKey)).toEqual([
@@ -177,7 +177,7 @@ it('项目 A→B→A 时 A 的晚到成功不清空 B 草稿且回到 A 可读�
   expect(screen.getByRole('checkbox', { name: '选择 one.ts' })).toBeChecked();
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '切换项目' }));
-  expect(screen.getByRole('status')).toHaveTextContent('提交完成：aaaaaaaaaaaa');
+  expect(screen.getByRole('status')).toHaveTextContent('提交命令已完成；观测 HEAD：aaaaaaaaaaaa');
   expect(api.post).toHaveBeenCalledTimes(1);
 });
 
@@ -223,7 +223,7 @@ it('缓存刷新失败仍显示有效成功，不伪装网络未知结果', asyn
   app.invalidate.mockRejectedValue(new Error('缓存刷新失败'));
   fill('已成功提交');
   submit();
-  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('提交完成'));
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('提交命令已完成'));
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Git 状态刷新失败'));
   expect(screen.getByRole('alert')).not.toHaveTextContent('提交结果未知');
   expect(screen.queryByRole('button', { name: '重试提交' })).not.toBeInTheDocument();

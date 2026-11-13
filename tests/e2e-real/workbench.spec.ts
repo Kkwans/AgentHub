@@ -160,7 +160,16 @@ test.describe('local_trusted 项目与 Work', () => {
     await expect(page.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBeVisible();
   });
 
-  test('Workspace 真实 ACP Approval、Diff 与 Git commit 可完成', async ({ page, context, app }) => {
+  test('Workspace 真实 ACP Approval、Diff 与 Git commit 可完成', async ({
+    page,
+    context,
+    app,
+  }, info) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text());
+    });
     await initializeGitProject(app.projectRoot);
     const { project, agent } = await seedRealControlPlane(context, app);
     const session = await apiData<Identified>(context, 'post', '/sessions', {
@@ -217,7 +226,7 @@ test.describe('local_trusted 项目与 Work', () => {
     await commitForm.getByRole('button', { name: '提交所选文件 (1)' }).click();
     const commitResponse = await commitResponsePromise;
     expect(commitResponse.ok(), await commitResponse.text()).toBe(true);
-    await expect(page.locator('.git-commit-receipt')).toContainText('提交完成', {
+    await expect(page.locator('.git-commit-receipt')).toContainText('提交命令已完成；观测 HEAD：', {
       timeout: 30_000,
     });
     const committed = await execFile('/usr/bin/git', [
@@ -232,5 +241,17 @@ test.describe('local_trusted 项目与 Work', () => {
     expect(committed.stdout).toContain('fixture-output.md');
     const status = await execFile('/usr/bin/git', ['-C', app.projectRoot, 'status', '--porcelain']);
     expect(status.stdout.trim()).toBe('');
+    for (const width of [1440, 1024, 768, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(page.locator('.git-commit-receipt')).toBeVisible();
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+      await page.screenshot({
+        path: info.outputPath(`git-observed-head-${width}.png`),
+        fullPage: true,
+      });
+    }
+    expect(errors).toEqual([]);
   });
 });

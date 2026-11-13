@@ -104,7 +104,7 @@ export function GitChangesTree({
     : localCommitError;
   const commitReceipt = projectId
     ? owned?.phase === 'committed'
-      ? `提交完成：${owned.sha!.slice(0, 12)}`
+      ? `提交命令已完成；观测 HEAD：${owned.sha!.slice(0, 12)}`
       : undefined
     : localCommitReceipt;
   const commitAttempt = projectId ? owned?.input : localCommitAttempt;
@@ -188,7 +188,9 @@ export function GitChangesTree({
         setRetainCommitDraft(false);
         setSelectedPaths([]);
         setCommitMessage('');
-        setCommitReceipt(receipt.sha ? `提交完成：${receipt.sha.slice(0, 12)}` : '提交完成');
+        setCommitReceipt(
+          receipt.sha ? `提交命令已完成；观测 HEAD：${receipt.sha.slice(0, 12)}` : '提交完成',
+        );
       })
       .catch((error: unknown) => {
         // Only this audited pre-write service rejection is safe to retry.

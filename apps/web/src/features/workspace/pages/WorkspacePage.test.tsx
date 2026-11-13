@@ -886,7 +886,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     await act(async () => {
       finish(jsonResponse({ sha: 'abcdef0123456789abcdef0123456789abcdef01' }));
     });
-    expect(await screen.findByText('提交完成：abcdef012345')).toBeInTheDocument();
+    expect(await screen.findByText('提交命令已完成；观测 HEAD：abcdef012345')).toBeInTheDocument();
     if (width === 1024) {
       fireEvent.keyDown(focus, { key: 'Escape' });
       expect(screen.queryByRole('dialog', { name: '工作区辅助栏' })).not.toBeInTheDocument();
@@ -1045,7 +1045,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
         message: 'feat(workspace): 提交选择的文件',
       });
     });
-    expect(await screen.findByText('提交完成：abcdef012345')).toBeInTheDocument();
+    expect(await screen.findByText('提交命令已完成；观测 HEAD：abcdef012345')).toBeInTheDocument();
   });
 
   it('归档 Project 的初始变更视图不预取失效的 Git 诊断', async () => {
