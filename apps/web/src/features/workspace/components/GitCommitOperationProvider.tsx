@@ -1,3 +1,8 @@
+import {
+  API_JSON_BODY_LIMIT_BYTES,
+  gitCommitOperationBody,
+  gitCommitOperationParams,
+} from '@agenthub/shared';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   createContext,
@@ -89,6 +94,29 @@ export function useGitCommitOperations() {
   );
   const submit = (input: GitCommitInput, onCommitted: () => void, onRefreshError: () => void) => {
     if (!context) return Promise.reject(new Error('Git 提交保护不可用，未发起写入。'));
+    // Validate the exact shared server admission contract before creating either
+    // an in-memory operation or durable recovery evidence. A rejected local draft
+    // has never reached transport; this is NOT an inference from a server 400/404.
+    const operationId = newCreationOperationId();
+    const params = gitCommitOperationParams.safeParse({ id: input.projectId, operationId });
+    const request = gitCommitOperationBody.safeParse({
+      protocolVersion: 1,
+      operationId,
+      expectedHead: input.expectedHead,
+      mode: 'SELECTED',
+      paths: input.paths,
+      message: input.message,
+    });
+    if (!context.scope || !params.success || !request.success)
+      return Promise.reject(
+        new Error(
+          '提交内容无效，未发送：请确认 Project 与 HEAD、选择 1–500 个文件（路径不超过 4096 字符），并填写 1–10000 字符的提交说明。',
+        ),
+      );
+    if (
+      new TextEncoder().encode(JSON.stringify(request.data)).byteLength > API_JSON_BODY_LIMIT_BYTES
+    )
+      return Promise.reject(new Error('提交请求超过 1 MiB，未发送。请减少本次选择的文件。'));
     return context.owner.submit(
       input,
       async (original) => {
@@ -98,17 +126,13 @@ export function useGitCommitOperations() {
         const marker = saveGitCommitMarker(window.localStorage, {
           scope: context.scope,
           projectId: original.projectId,
-          operationId: newCreationOperationId(),
+          operationId: request.data.operationId,
         });
         if (!current()) throw new Error('授权已失效，未发送提交。');
-        const result = await api.post<unknown>(`/projects/${original.projectId}/git/commit`, {
-          protocolVersion: 1,
-          operationId: marker.operationId,
-          expectedHead: original.expectedHead,
-          mode: 'SELECTED',
-          paths: original.paths,
-          message: original.message,
-        });
+        const result = await api.post<unknown>(
+          `/projects/${params.data.id}/git/commit`,
+          request.data,
+        );
         if (
           !result ||
           typeof result !== 'object' ||

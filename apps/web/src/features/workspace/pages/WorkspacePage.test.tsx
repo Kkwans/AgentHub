@@ -1030,22 +1030,21 @@ describe('WorkspacePage 数据分区可靠性', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
 
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        `/api/v1/projects/${project.id}/git/commit`,
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            protocolVersion: 1,
-            operationId,
-            expectedHead: '1'.repeat(40),
-            mode: 'SELECTED',
-            paths: ['apps/web/src/App.tsx'],
-            message: 'feat(workspace): 提交选择的文件',
-          }),
-        }),
-      ),
-    );
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        ([input, init]) =>
+          String(input) === `/api/v1/projects/${project.id}/git/commit` && init?.method === 'POST',
+      );
+      expect(call).toBeDefined();
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+        protocolVersion: 1,
+        operationId,
+        expectedHead: '1'.repeat(40),
+        mode: 'SELECTED',
+        paths: ['apps/web/src/App.tsx'],
+        message: 'feat(workspace): 提交选择的文件',
+      });
+    });
     expect(await screen.findByText('提交完成：abcdef012345')).toBeInTheDocument();
   });
 

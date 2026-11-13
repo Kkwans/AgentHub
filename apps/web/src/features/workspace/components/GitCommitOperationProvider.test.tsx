@@ -6,6 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../../lib/api';
+import { ApiError } from '../../../lib/api-error';
 import { authSession } from '../../../lib/auth-api';
 import { GitCommitOperationProvider, useGitCommitOperations } from './GitCommitOperationProvider';
 import type { createGitCommitOwner } from '../lib/git-commit-owner';
@@ -517,4 +518,87 @@ it('并发旧恢复GET晚到失败不能重新锁定已确认操作', async () =
     await first;
   });
   expect(app.getOwner().isLocked(project)).toBe(false);
+});
+
+it.each([
+  ['501 个路径', { paths: Array.from({ length: 501 }, (_, i) => `file-${i}`) }],
+  ['空路径', { paths: [''] }],
+  ['超长路径', { paths: ['x'.repeat(4097)] }],
+  ['超长说明', { message: 'x'.repeat(10001) }],
+  ['空白说明', { message: '   ' }],
+  ['无效 HEAD', { expectedHead: 'short' }],
+  ['无效 Project', { projectId: 'not-a-uuid' }],
+])('%s 在 marker 与 owner 状态建立前拒绝，修正后可提交', async (_name, invalid) => {
+  const app = mount(vi.fn());
+  const post = vi.spyOn(api, 'post').mockResolvedValue(success);
+  terminalQuery();
+  const draft = { projectId: project, paths: ['one'], message: '提交', expectedHead: null };
+  await act(async () => {
+    await expect(
+      app.getOperations().submit({ ...draft, ...invalid }, vi.fn(), vi.fn()),
+    ).rejects.toThrow('未发送');
+  });
+  expect(post).not.toHaveBeenCalled();
+  expect(localStorage.length).toBe(0);
+  expect(app.getOwner().getSnapshot()).toEqual([]);
+  await act(async () => {
+    await app.getOperations().submit(draft, vi.fn(), vi.fn());
+  });
+  expect(post).toHaveBeenCalledTimes(1);
+  expect(app.getOwner().isLocked(project)).toBe(false);
+});
+
+it('500 路径及长度边界按共享协议发送，不擅自截断选择或说明', async () => {
+  const app = mount(vi.fn());
+  const post = vi.spyOn(api, 'post').mockResolvedValue(success);
+  terminalQuery();
+  const paths = Array.from({ length: 500 }, (_, i) => (i === 0 ? 'x'.repeat(4096) : `file-${i}`));
+  const message = 'm'.repeat(10000);
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit({ projectId: project, paths, message, expectedHead: null }, vi.fn(), vi.fn());
+  });
+  expect(post).toHaveBeenCalledWith(
+    `/projects/${project}/git/commit`,
+    expect.objectContaining({ paths, message }),
+  );
+  expect(localStorage.length).toBe(0);
+});
+
+it('通过本地校验后服务端拒绝且 GET 404 仍保留未知 marker', async () => {
+  const app = mount(vi.fn());
+  vi.spyOn(api, 'post').mockRejectedValue(new ApiError('VALIDATION_FAILED', '拒绝', 400));
+  vi.spyOn(api, 'get').mockRejectedValue(new Error('404'));
+  await act(async () => {
+    await app
+      .getOperations()
+      .submit(
+        { projectId: project, paths: ['one'], message: '提交', expectedHead: null },
+        vi.fn(),
+        vi.fn(),
+      );
+    await app.getOperations().recover(project);
+  });
+  expect(localStorage.length).toBe(1);
+  expect(app.getOwner().isLocked(project)).toBe(true);
+});
+
+it('缺失 HEAD 和超 1 MiB 多字节请求在创建 marker 前拒绝', async () => {
+  const app = mount(vi.fn());
+  const post = vi.spyOn(api, 'post');
+  await expect(
+    app
+      .getOperations()
+      .submit({ projectId: project, paths: ['one'], message: '提交' }, vi.fn(), vi.fn()),
+  ).rejects.toThrow('未发送');
+  const paths = Array.from({ length: 100 }, (_, i) => `${i}${'文'.repeat(4000)}`);
+  await expect(
+    app
+      .getOperations()
+      .submit({ projectId: project, paths, message: '提交', expectedHead: null }, vi.fn(), vi.fn()),
+  ).rejects.toThrow('1 MiB');
+  expect(post).not.toHaveBeenCalled();
+  expect(localStorage.length).toBe(0);
+  expect(app.getOwner().getSnapshot()).toEqual([]);
 });

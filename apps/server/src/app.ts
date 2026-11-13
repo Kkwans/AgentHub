@@ -2,7 +2,7 @@ import { logRedaction } from './log-redaction.js';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
-import { AGENTHUB_VERSION } from '@agenthub/shared';
+import { AGENTHUB_VERSION, API_JSON_BODY_LIMIT_BYTES } from '@agenthub/shared';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
@@ -104,7 +104,7 @@ export function createApp(options: AppOptions = {}): Express {
     }),
   );
   app.use(cors({ origin: false }));
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: API_JSON_BODY_LIMIT_BYTES }));
 
   app.get('/api/v1/health', async (request, response, next) => {
     try {

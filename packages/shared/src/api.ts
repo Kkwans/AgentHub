@@ -1,3 +1,5 @@
+export const API_JSON_BODY_LIMIT_BYTES = 1024 * 1024;
+
 import { z } from 'zod';
 
 export interface ApiErrorBody {
