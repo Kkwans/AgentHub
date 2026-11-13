@@ -22,6 +22,7 @@ import {
   type AgentTurnInput,
   type CreateAgentSessionInput,
 } from '@agenthub/agent-core';
+import express from 'express';
 import pino from 'pino';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -656,7 +657,12 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
         { publish: () => undefined },
       );
       f.sessionService.setTaskLifecycleObserver(worktrees);
-      const app = createApp({ worktrees, logger: pino({ level: 'silent' }) });
+      const app = express();
+      app.use((_request, response, next) => {
+        response.locals.authPrincipal = { kind: 'local_trusted', role: 'ADMIN' };
+        next();
+      });
+      app.use(createApp({ worktrees, logger: pino({ level: 'silent' }) }));
       const asset = await f.makePrompt('隔离主题 {{ subject }}', f.projectId, {
         type: 'object',
         properties: { subject: { type: 'string' } },

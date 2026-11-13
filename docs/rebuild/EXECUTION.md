@@ -1111,3 +1111,5 @@ CR/类型检查发现并修复rework误插setup catch；startup回归又发现�
 补记上一8e54ca7冻结全量20:12完成：1506通过/10跳过、155文件通过/4跳过、370.65s。仅属于上一提交。
 
 20:20:45 UTC 最终组合startup/worktree/迁移6文件80测试全过（42.70s）；全仓types、相关lint/format、diffcheck、独立CR通过。首次组合读到修复前编译产物，重建DB后完整重跑通过，未放宽归属错配断言。上一8e54ca7精确CI verify与无障碍绿、真实服务矩阵仍运行；新片全量使用冻结源码及独立本树依赖链接。
+
+20:25 UTC 53239ad冻结全量进行中已发现旧AH002 Prompt集成fixture两项失败：queue新增认证归属要求后，fixture没有principal而被401拒绝。仅修复测试fixture，明确注入local_trusted ADMIN后挂载原应用，不放宽生产认证/业务断言。完整Prompt20测试重跑通过（36.16s），lint/format/server types/diffcheck通过。新测试修复提交仍需精确全量/CI；不能把进行中的旧失败run记为通过。
