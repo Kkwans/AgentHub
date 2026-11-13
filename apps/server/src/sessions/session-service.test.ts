@@ -24,6 +24,7 @@ import {
   MessageRepository,
   ProjectRepository,
   RunRepository,
+  WorktreeExecutionRepository,
   TaskRepository,
   GoalRepository,
   SessionRepository,
@@ -1008,6 +1009,42 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await tasks.update(task.id, { sessionId: session.id });
     return { ...fixture, adapter, tasks, taskService, task, session };
   }
+
+  it('managed Run 准入拒绝映射409且不污染Session、消息或派发，专用阶段恢复后可执行', async () => {
+    const f = await preparationFixture();
+    const executions = new WorktreeExecutionRepository(database.db);
+    const execution = await executions.create({
+      id: randomUUID(),
+      taskId: f.task.id,
+      projectId: f.projectId,
+      agentId: f.agentId,
+      sessionId: f.session.id,
+      status: 'REVIEW',
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `guard-${f.task.id}`,
+    });
+    const send = vi.spyOn(f.adapter.handles[0]!, 'sendTurn');
+    const beforeSession = await f.repositories.sessions.get(f.session.id);
+    const beforeTask = await f.tasks.get(f.task.id);
+    try {
+      await expect(
+        f.service.startRun(f.session.id, { text: '不应直接运行' }),
+      ).rejects.toMatchObject({ status: 409, code: 'WORKTREE_RUN_ADMISSION_REJECTED' });
+      expect(await f.repositories.runs.list(f.session.id)).toEqual([]);
+      expect(await f.repositories.messages.list(f.session.id)).toEqual([]);
+      expect(await f.repositories.sessions.get(f.session.id)).toEqual(beforeSession);
+      expect(await f.tasks.get(f.task.id)).toEqual(beforeTask);
+      expect(send).not.toHaveBeenCalled();
+      // Prove rejection did not leave a preparation fence or lose the active handle.
+      await executions.transition(execution.id, 'RUNNING');
+      const run = await f.service.startRun(f.session.id, { text: '已进入专用运行阶段' });
+      expect(run.id).toBeTruthy();
+      expect(send).toHaveBeenCalledTimes(1);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
 
   it.each(['reject', 'deadline'] as const)(
     'AH061 %s提交返回迟到时终态与新Run不能越过取消收敛',

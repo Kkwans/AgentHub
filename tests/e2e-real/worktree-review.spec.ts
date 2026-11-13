@@ -55,6 +55,14 @@ async function assertOrdinaryActionsBlocked(
     expect(await response.json()).toMatchObject({ error: { code: 'TASK_WORKTREE_MANAGED' } });
     expect(await snapshot()).toEqual(before);
   }
+  const directRun = await context.request.post(`/api/v1/sessions/${execution.sessionId}/runs`, {
+    data: { text: '不得绕过隔离审阅直接发送新一轮执行' },
+  });
+  expect(directRun.status()).toBe(409);
+  expect(await directRun.json()).toMatchObject({
+    error: { code: 'WORKTREE_RUN_ADMISSION_REJECTED' },
+  });
+  expect(await snapshot()).toEqual(before);
 }
 
 async function finishTurn(context: BrowserContext, executionId: string, previousRun?: string) {

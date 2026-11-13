@@ -309,3 +309,18 @@ AH-080运行证据：S61隔离PGlite barrier红测已复现旧merge错误成功D
 AH-078当前验收：54f5724精确CI43353585301双绿，1078单测/48 fixture、149真实项/140几何；取消请求不冒充终态且权威cancelled后释放队列四宽全部通过，关闭当前切片。
 
 AH-080最终本地验收：1098完整覆盖/10原有skip、25后端/12UI专项、lint/types/build/QA10与独立CR通过；真实Git/ACP证明旧请求409且0Git调用/完整数据及Git快照不变，新明确请求正常合并run2。claim时检查最新已完成Run，不保证claim后的新DirectSession或外部写入；UI不可变审阅token仍独立范围。新exact CI待验收，不提前关闭。
+
+## AH-081 / P1：Direct Session可绕过隔离阶段新增Run
+
+- S62实际PGlite红测9项确认：已有Worktree的QUEUED/SETTING_UP/AWAITING_INPUT/REVIEW/MERGING/BLOCKED/DONE/CANCELED阶段仍可直接新增Run；RUNNING时错误孤立Session也可派发。旧RunRepository只限制Task取消与Session.taskId相等，未检查受管执行阶段/当前Session所有权。
+- S62仅对Worktree-owned Task新增持久准入：Task→Session锁内读取全部Execution，不反向锁Execution，仅当前匹配RUNNING+Task IN_PROGRESS及项目/Agent/Session身份一致才允许，已存在活动Run不得重复准入。普通Task直接会话语义保留。
+- 关闭审阅/合并中另开Run与managed孤立Session派发窗口，不等于清理遗留Session或实现普通启动的原子Session预留；RUNNING阶段仍无专用调用者令牌，完整派发预留另行设计。
+
+AH-081追加独立证据：f6fcc53的同managed Session两个RunRepository实例并发create均成功，留下2个RUNNING；S62仅对managed会话在事务中检查活动/未知Run以拒绝重复准入。执行已绑定Session但Session.taskId丢失的持久不一致也须fail closed，不因缺Task绕过ownership；普通未绑定Session不受影响。
+- RUNNING阶段直接调用抢先于专用startRun的调用者竞争仍无独占令牌；可能导致runner将忙碌错误误判BLOCKED的源码候选另留后续barrier复现，未在本片声称解决。
+
+AH-079当前验收：d5325e7精确CI43355699706双绿，1089单测/48 fixture、149真实项/140几何；当前普通Task入口护栏关闭，DirectSession及原子Session预留各按独立问题跟进。
+
+AH-080当前验收：f6fcc53精确CI43357553824的verify与真实服务/视觉证据双绿，关闭当前旧merge代际护栏切片；不可变审阅token及claim后新写入仍在独立范围。
+
+AH-081最终本地验收：1111完整覆盖/10原有skip、lint/types/build/QA10与独立CR通过；真实Git/PGlite/ACP证明REVIEW/MERGING直接Run均409且无业务/Git副作用，合法专用返工与合并正常。断连仍占槽时新增拒绝回归，旧回调不能释放当前Run。四宽浏览器待新exact CI，不提前关闭。

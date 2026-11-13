@@ -161,3 +161,7 @@
 - S61 / AH-080：barrier红测已证实旧merge跨返工代际写错finalRunId。实施Git前原子merge claim，检查expected REVIEW/Session/Run及最新完成Run归属；旧请求拒绝，新请求可正常合并。补实际临时Git/ACP旧请求无副作用证据，现有UI已知拒绝可重读再确认，不改视觉。
 
 - S61最终1098完整覆盖与实际Git/ACP旧merge拒绝/新merge成功烟测通过，及时发布并核验S60/S61精确CI。后续DirectSession Run准入与Task持久预留须独立设计，不能把本片claim时护栏称为全生命周期互斥。
+
+- S62 / AH-081：隔离阶段直接Run准入9红已复现，补受管Task持久阶段/身份/当前Run护栏，保留普通会话语义。SessionService明确零插入409，不制造未知派发；安全中文提示。既有四宽审阅增加directRun拒绝，实际Git/ACP在MERGING持有时验证拒绝与合法合并完成。单槽验证后发布。
+
+- S62最终1111完整覆盖及实际Git/ACP阶段准入烟测通过，及时发布并核验精确CI；S61 f6fcc53双绿已验收。后续RUNNING调用者竞争和普通启动原子预留先独立barrier复现/设计，不放宽本片护栏，不恢复未确认视觉稿。

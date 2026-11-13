@@ -215,6 +215,7 @@ const errorMessages: Record<string, string> = {
   WORKTREE_PATH_EXISTS: '隔离工作区目录已存在。',
   WORKTREE_PATH_SEGMENT_INVALID: '隔离工作区路径包含无效片段。',
   WORKTREE_ROOT_NOT_ABSOLUTE: '隔离工作区根目录必须是绝对路径。',
+  WORKTREE_RUN_ADMISSION_REJECTED: '该会话由隔离执行管理，请回到任务使用隔离返工或核对执行状态。',
   WORKTREE_RUNNER_STOPPING: '隔离执行器正在停止，请稍后重试。',
   WORKTREE_STAGE_CHECK_FAILED: '隔离工作区暂存检查失败，请刷新后重试。',
   WORKTREE_TASK_BRANCH_EXISTS: 'Task 分支已经存在，请刷新后重试。',

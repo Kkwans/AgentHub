@@ -8,6 +8,7 @@ import {
   RunRepository,
   SessionRepository,
   TaskRepository,
+  WorktreeExecutionRepository,
 } from './index.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -74,6 +75,182 @@ describe('同 Session 最新 Run 的持久所有权', () => {
     await tasks.update(task.id, { sessionId: session.id });
     return { tasks, sessions, runs, task, session };
   }
+
+  it.each([
+    'QUEUED',
+    'SETTING_UP',
+    'AWAITING_INPUT',
+    'REVIEW',
+    'MERGING',
+    'BLOCKED',
+    'DONE',
+    'CANCELED',
+  ] as const)('Worktree %s 阶段拒绝直接会话Run且不改变latestRun', async (phase) => {
+    const { tasks, sessions, runs, task, session } = await fixture();
+    const first = await runs.create({
+      id: randomUUID(),
+      sessionId: session.id,
+      taskId: task.id,
+      status: 'COMPLETED',
+    });
+    await tasks.update(task.id, {
+      status: ['QUEUED', 'SETTING_UP', 'AWAITING_INPUT'].includes(phase)
+        ? 'IN_PROGRESS'
+        : 'WAITING_REVIEW',
+      finalRunId: first.id,
+    });
+    const executions = new WorktreeExecutionRepository(database.db);
+    const execution = await executions.create({
+      id: randomUUID(),
+      taskId: task.id,
+      projectId,
+      agentId,
+      sessionId: session.id,
+      runId: first.id,
+      status: phase === 'MERGING' ? 'REVIEW' : phase,
+      worktreePath: `/tmp/managed-${task.id}`,
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `managed-${task.id}`,
+    });
+    if (phase === 'MERGING')
+      await executions.claimReviewForMerge(execution.id, {
+        sessionId: session.id,
+        runId: first.id,
+      });
+    const beforeTask = await tasks.get(task.id);
+    const beforeSession = await sessions.get(session.id);
+    const beforeExecution = await executions.get(execution.id);
+    try {
+      await expect(
+        runs.create({
+          id: randomUUID(),
+          sessionId: session.id,
+          taskId: task.id,
+          status: 'RUNNING',
+        }),
+      ).rejects.toMatchObject({ code: 'WORKTREE_RUN_ADMISSION_REJECTED' });
+      expect(await runs.list(session.id)).toEqual([first]);
+      expect(await sessions.get(session.id)).toEqual(beforeSession);
+      expect(await tasks.get(task.id)).toEqual(beforeTask);
+      expect(await executions.get(execution.id)).toEqual(beforeExecution);
+    } finally {
+      await executions.patch(execution.id, { status: 'CANCELED' });
+    }
+  });
+
+  it('Worktree RUNNING 拒绝孤立Session，而原归属Session仍可启动', async () => {
+    const { tasks, sessions, runs, task, session } = await fixture();
+    const orphan = await sessions.create({
+      id: randomUUID(),
+      projectId,
+      agentId,
+      taskId: task.id,
+      title: 'orphan',
+      cwd: '/tmp/orphan',
+      status: 'READY',
+    });
+    const executions = new WorktreeExecutionRepository(database.db);
+    // A historical terminal record must not shadow the current managed owner.
+    await executions.create({
+      id: randomUUID(),
+      taskId: task.id,
+      projectId,
+      agentId,
+      status: 'CANCELED',
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `history-${task.id}`,
+    });
+    const execution = await executions.create({
+      id: randomUUID(),
+      taskId: task.id,
+      projectId,
+      agentId,
+      sessionId: session.id,
+      status: 'RUNNING',
+      worktreePath: `/tmp/managed-${task.id}`,
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `managed-${task.id}`,
+    });
+    try {
+      await expect(
+        runs.create({ id: randomUUID(), sessionId: orphan.id, taskId: task.id, status: 'RUNNING' }),
+      ).rejects.toMatchObject({ code: 'WORKTREE_RUN_ADMISSION_REJECTED' });
+      expect((await sessions.get(orphan.id))?.latestRunId).toBeNull();
+      expect(await runs.list(orphan.id)).toEqual([]);
+      const results = await Promise.allSettled(
+        [runs, new RunRepository(database.db)].map((repository) =>
+          repository.create({
+            id: randomUUID(),
+            sessionId: session.id,
+            taskId: task.id,
+            status: 'RUNNING',
+          }),
+        ),
+      );
+      const winner = results.find((result) => result.status === 'fulfilled');
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      expect(results.find((result) => result.status === 'rejected')).toMatchObject({
+        reason: { code: 'WORKTREE_RUN_ADMISSION_REJECTED' },
+      });
+      if (!winner || winner.status !== 'fulfilled') throw new Error('Missing admission winner');
+      const accepted = winner.value;
+      expect((await sessions.get(session.id))?.latestRunId).toBe(accepted.id);
+      expect((await tasks.get(task.id))?.sessionId).toBe(session.id);
+      expect(await runs.list(session.id)).toEqual([accepted]);
+    } finally {
+      await executions.patch(execution.id, { status: 'CANCELED' });
+    }
+  });
+
+  it.each(['MISSING', 'WRONG'] as const)(
+    'Session的Task归属%s但仍绑定Worktree时拒绝Run',
+    async (kind) => {
+      const { tasks, sessions, runs, task, session } = await fixture();
+      const executions = new WorktreeExecutionRepository(database.db);
+      const execution = await executions.create({
+        id: randomUUID(),
+        taskId: task.id,
+        projectId,
+        agentId,
+        sessionId: session.id,
+        status: 'RUNNING',
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: `lost-${task.id}`,
+      });
+      const otherTask =
+        kind === 'WRONG'
+          ? await tasks.create({
+              id: randomUUID(),
+              projectId,
+              title: '错误归属',
+              status: 'IN_PROGRESS',
+              sessionId: session.id,
+              assignedAgentId: agentId,
+            })
+          : undefined;
+      // Explicit persisted-corruption fixture: no legitimate endpoint rebinds this owner.
+      await sessions.transition(session.id, 'CLOSED', { taskId: otherTask?.id ?? null });
+      const before = await sessions.get(session.id);
+      try {
+        await expect(
+          runs.create({
+            id: randomUUID(),
+            sessionId: session.id,
+            taskId: otherTask?.id,
+            status: 'RUNNING',
+          }),
+        ).rejects.toMatchObject({ code: 'WORKTREE_RUN_ADMISSION_REJECTED' });
+        expect(await runs.list(session.id)).toEqual([]);
+        expect(await sessions.get(session.id)).toEqual(before);
+      } finally {
+        await executions.patch(execution.id, { status: 'CANCELED' });
+      }
+    },
+  );
 
   it.each(['CANCELING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELED', 'DISCONNECTED'] as const)(
     'AH061取消失败只收敛当前CANCELING，不重写%s权威状态',

@@ -381,14 +381,20 @@ it('在线断连保留Worktree槽位，过期Run回调不能释放当前执行',
     );
     expect((await executions.get(row.executionId))?.status).toBe('RUNNING');
     expect((await new TaskRepository(database.db).get(row.task.id))?.status).toBe('IN_PROGRESS');
-    const current = await runtime.runs.create({
+    const nextRun = {
       id: randomUUID(),
       taskId: row.task.id,
       sessionId: row.session.id,
-      status: 'RUNNING',
-      dispatchState: 'ATTEMPTED',
+      status: 'RUNNING' as const,
+      dispatchState: 'ATTEMPTED' as const,
+    };
+    // An unresolved disconnect still owns the slot. Only authoritative terminal
+    // evidence permits another Run; a late callback must not release that Run.
+    await expect(runtime.runs.create(nextRun)).rejects.toMatchObject({
+      code: 'WORKTREE_RUN_ADMISSION_REJECTED',
     });
     await runtime.runs.patch(row.run.id, { status: 'COMPLETED' });
+    const current = await runtime.runs.create(nextRun);
     expect(await runtime.worktrees.onRunCompleted(row.task.id, row.run.id)).toBe(false);
     expect((await executions.get(row.executionId))?.status).toBe('RUNNING');
     await runtime.runs.patch(current.id, { status: 'COMPLETED' });

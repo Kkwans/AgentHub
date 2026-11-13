@@ -6,12 +6,12 @@
 
 | 范围 | 最新事实 | 后续动作 |
 | --- | --- | --- |
-| 已验收发布基线 | S59 `54f5724`精确CI43353585301双绿：149项真实浏览器、140页面几何通过 | 不合并main、不部署；功能门禁不等于视觉认可 |
-| 本地最终门禁 | S61冻结树lint/types/串行build/QA10通过；120文件1072项＋另2文件26项完整覆盖1098通过/10原有skip | 资源隔离验证；历史混合树/资源失败保留 |
-| 当前CI | S59 54f5724 CI43353585301双绿：1078单测/48 fixture、149真实项/140几何 | 隔离入队四宽已验收；隔离取消四宽已验收；S60 d5325e7 CI43355699706仍在运行 |
+| 已验收发布基线 | S61 `f6fcc53`精确CI43357553824的verify与真实服务/视觉证据双绿 | 不合并main、不部署；功能门禁不等于视觉认可 |
+| 本地最终门禁 | S62冻结树lint/types/串行build/QA10通过；120文件1085项＋另2文件26项完整覆盖1111通过/10原有skip | 资源隔离验证；历史混合树/资源失败保留 |
+| 当前CI | S61 f6fcc53 CI43357553824双绿（2026-11-13 11:37 UTC+08完成） | S62待新提交的精确CI，不借S61结果提前验收 |
 | 已知前轮失败 | 74f49ba/c78905f的Esc故障已修；17566/70c838/4156787的Agent容器边缘断言已用原生IO取证修正，095485c通过 | 原红灯与依据保留在下方历史，不隐去失败 |
 | 视觉状态 | 用户已否定两轮全部概念；最新要求参考Codex实际UI，正在研究真实参考 | 未选实施稿前不恢复视觉实现；功能回归不等于审美认可 |
-| 下一重点 | 等待Codex视觉方向确认；S61旧merge代际护栏已本地验证；核验S60/S61精确CI | 沿用既有组件，不借旧CI或局部烟测冒称浏览器全过 |
+| 下一重点 | 等待Codex视觉方向确认；S62受管会话准入护栏已本地验证；发布后核验S62精确CI | 沿用既有组件，不借旧CI或局部烟测冒称浏览器全过 |
 | 仍有限制 | 本地Chromium socket限制；真实NAS/用户Agent/独立Postgres多连接未验收；历史Cookie日志未清理或撤销 | 保留明确边界，不声称完整发布就绪 |
 
 ## 运行记录
@@ -813,3 +813,29 @@
 - 最终build后的独立真实临时Git/PGlite/ACP烟测通过：旧merge跨返工Run后409 WORKTREE_EXECUTION_CHANGED，git.commitAndMerge调用0，Task/Execution/Run/Session与Git refs/HEAD/status完整快照不变；fresh明确合并成功且finalRunId归属run2。精确临时目录已清理。
 - 新错误的UI恢复仅专项验证，既有四宽审阅/返工/合并等待新exact CI；无本地浏览器执行、无真实Agent/NAS操作、无视觉改版。
 - S60 CI43355699706仍进行中；S59 54f5724双绿仍为最新完整远端验收基线。保留旧dist与fixture构造失败记录，最终重建后测试全部通过。
+
+### S62 / AH-081 启动
+
+- 当前f6fcc53干净后继续；S60/S61精确CI43355699706/43357553824仍在运行，最新完整双绿仍S59。
+- 9条PGlite旧源红测确认非运行受管阶段与错误Session可直接创建Run，新增持久准入仅影响Worktree-owned Task；不动普通会话继续发送合同。
+- SessionService独立runs.create异常发生在新Message/snapshot/dispatch之前，仅补明确409映射；早期关于preparationFence污染的猜测经完整代码审查已否定，不据此改无关流程。
+
+- S62双Repository并发旧构建proof确认2个RUNNING均可插入；新增managed重复准入事务拒绝回归。UI安全映射红1→绿19专项，不泄漏原始路径，不自动重放。
+- 新准入按预期阻止S61旧测试直接制造非法新Run；两条fixture改为先合法RUNNING准入再恢复旧审阅行来模拟历史不一致，保留全部claim拒绝/零Git/数据不变断言，不放宽产品护栏。
+
+- S60精确CI43355699706现双绿：d5325e7完整1089单测/10原有skip、48 fixture、149真实项/140几何。普通Task API拒绝绕过的四宽负向断言及合法专属流程均通过，AH-079当前切片关闭。S61仍待精确结果。
+
+- S62后端最终专项：DBlatest32+Worktree25=57通过，SessionService新增目标1通过（其余119未选，不当作整体覆盖）；lint/DB build/server typecheck通过。UI19专项及独立CR通过，全部源码冻结，开始完整串行门禁。
+- 归属查询纳入Execution.sessionId，Task丢失/改绑同样拒绝；历史terminal不遮蔽当前RUNNING。保留TASK_CANCELED原错误优先级，不泛化普通会话规则。准备阶段曾误用不存在的SessionRepository.patch导致类型失败，已改为真实transition并重验。
+
+### S62 恢复与全量夹具修正
+
+- 中断后未把不完整日志当通过；从冻结源码重新串行执行lint/types/build/QA10及完整测试。首轮主集合1085通过/10原有skip，隔离批次8发现旧断连测试在DISCONNECTED仍占槽时创建第二Run，新护栏按预期拒绝。保留原失败证据。
+- 测试新增断连阶段拒绝断言，先取得旧Run已COMPLETED的确定证据再创建current Run，然后验证旧回调不能释放新执行；不放宽产品准入，重新执行整套门禁。
+- S61精确CI43357553824的verify与Real service and visual evidence均成功，当前远端已验收基线推进至f6fcc53；不代表视觉认可或NAS/用户Agent验收。
+
+### S62 最终本地验收
+
+- 修正fixture后冻结树整套严格串行重跑：lint/types/build/QA10、120文件1085项＋另2文件13批26项，合计1111通过/10原有skip，所有进程退出0。后端57＋SessionService目标1、UI19专项及独立CR通过；断连fixture后续修正也经独立审查，无阻塞。
+- 最终build后串行真实临时Git/PGlite/ACP烟测通过：REVIEW两次、MERGING一次Direct Session Run均409 WORKTREE_RUN_ADMISSION_REJECTED；拒绝前后业务数据及Git完整快照不变。专用返工及新明确合并成功，finalRunId对应返工Run，精确临时目录已清理。
+- 四宽审阅E2E已接入相同拒绝断言，显式收集通过，实际浏览器等待新exact CI；未把本地HTTP/ACP烟测冒称浏览器或真实用户Agent/NAS验证。普通启动原子Session预留、RUNNING调用者独占令牌、不可变审阅token仍独立保留；无视觉改版。

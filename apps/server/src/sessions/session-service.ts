@@ -727,6 +727,15 @@ export class SessionService {
     } catch (error) {
       if (error instanceof DatabaseInvariantError && error.code === 'TASK_CANCELED')
         throw new AppError(409, error.code, '任务已取消，不能继续派发；请新建任务');
+      if (
+        error instanceof DatabaseInvariantError &&
+        error.code === 'WORKTREE_RUN_ADMISSION_REJECTED'
+      )
+        throw new AppError(
+          409,
+          error.code,
+          '该会话由隔离执行管理，请回到任务使用隔离返工或核对执行状态',
+        );
       if (error instanceof DatabaseInvariantError && error.code === 'RUN_TASK_MISMATCH')
         throw new AppError(409, error.code, 'Run 与 Session 的任务归属不一致，未派发');
       throw error;

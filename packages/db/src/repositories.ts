@@ -2854,18 +2854,20 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
     return this.db.transaction(async (transaction) => {
       // Task callbacks take the same Task -> Session locks. Do not insert first:
       // a callback must see either the previous admission or the complete new one.
+      let task: typeof tasks.$inferSelect | undefined;
       if (input.taskId) {
-        const [task] = await transaction
-          .select({ id: tasks.id, status: tasks.status })
+        const [ownedTask] = await transaction
+          .select()
           .from(tasks)
           .where(eq(tasks.id, input.taskId))
           .for('update')
           .limit(1);
+        task = ownedTask;
         if (task?.status === 'CANCELED')
           throw new DatabaseInvariantError('TASK_CANCELED', '任务已取消，不能继续派发');
       }
       const [session] = await transaction
-        .select({ id: agentSessions.id, taskId: agentSessions.taskId })
+        .select()
         .from(agentSessions)
         .where(eq(agentSessions.id, input.sessionId))
         .for('update')
@@ -2873,6 +2875,67 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
       if (!session) throw new DatabaseInvariantError('SESSION_NOT_FOUND', 'Session 不存在');
       if ((session.taskId ?? null) !== (input.taskId ?? null))
         throw new DatabaseInvariantError('RUN_TASK_MISMATCH', 'Run 与 Session 的任务归属不一致');
+      // Queue, owner-binding transitions and merge claims share the Task lock.
+      // Read without locking Execution: managed claims use Execution -> Task -> Session.
+      const ownedExecutions = await transaction
+        .select()
+        .from(worktreeExecutions)
+        .where(
+          or(
+            eq(worktreeExecutions.sessionId, session.id),
+            ...(task ? [eq(worktreeExecutions.taskId, task.id)] : []),
+          ),
+        );
+      if (ownedExecutions.length) {
+        const current = ownedExecutions.filter((execution) => execution.status === 'RUNNING');
+        const execution = current.length === 1 ? current[0] : undefined;
+        const rejected = () =>
+          new DatabaseInvariantError(
+            'WORKTREE_RUN_ADMISSION_REJECTED',
+            '该会话由隔离执行管理，请使用隔离返工或核对执行状态',
+          );
+        if (
+          !task ||
+          !execution ||
+          execution.taskId !== task.id ||
+          task.status !== 'IN_PROGRESS' ||
+          task.sessionId !== session.id ||
+          task.assignedAgentId !== execution.agentId ||
+          execution.sessionId !== session.id ||
+          execution.projectId !== task.projectId ||
+          session.projectId !== task.projectId ||
+          session.agentId !== execution.agentId
+        )
+          throw rejected();
+        // Serialize duplicate managed admission across service instances, not
+        // only within one SessionService. Ordinary Session semantics are unchanged.
+        const [blocking] = await transaction
+          .select({ id: agentRuns.id })
+          .from(agentRuns)
+          .where(
+            and(
+              eq(agentRuns.sessionId, session.id),
+              or(
+                inArray(agentRuns.status, [
+                  'QUEUED',
+                  'STARTING',
+                  'RUNNING',
+                  'WAITING_APPROVAL',
+                  'CANCELING',
+                  'DISCONNECTED',
+                ]),
+                and(
+                  eq(agentRuns.dispatchState, 'LEGACY_UNKNOWN'),
+                  inArray(agentRuns.status, ['FAILED', 'CANCELED']),
+                  inArray(agentRuns.errorCode, legacyUncertainRunCodes),
+                ),
+                eq(agentRuns.errorCode, 'RUN_PREPARATION_RECOVERY_REQUIRED'),
+              ),
+            ),
+          )
+          .limit(1);
+        if (blocking) throw rejected();
+      }
       const [created] = await transaction.insert(agentRuns).values(input).returning();
       if (!created) throw new DatabaseInvariantError('RUN_CREATE_FAILED', 'Run 创建失败');
       await transaction

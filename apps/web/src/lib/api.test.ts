@@ -207,3 +207,31 @@ describe('Task Prompt recovery error contract', () => {
     });
   });
 });
+
+it('隔离任务Session直发被拒绝时指向受管返工，不泄漏后端细节或自动重发', async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValue(
+      Response.json(
+        {
+          error: {
+            code: 'WORKTREE_RUN_ADMISSION_REJECTED',
+            message: 'private identity mismatch /secret/worktree',
+          },
+        },
+        { status: 409 },
+      ),
+    );
+  vi.stubGlobal('fetch', fetch);
+  const failure = await api
+    .post('/sessions/session-a/messages', { text: '继续修改' })
+    .catch((error: unknown) => error);
+  expect(failure).toBeInstanceOf(ApiError);
+  expect(failure).toMatchObject({
+    code: 'WORKTREE_RUN_ADMISSION_REJECTED',
+    status: 409,
+    message: '该会话由隔离执行管理，请回到任务使用隔离返工或核对执行状态。',
+  });
+  expect((failure as Error).message).not.toContain('/secret/worktree');
+  expect(fetch).toHaveBeenCalledTimes(1);
+});

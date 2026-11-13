@@ -578,10 +578,27 @@ describe('Worktree Task Runner 编排', () => {
       await service.processQueue(fixture.projectId);
       const first = await waitForStatus(queued.execution.id, 'RUNNING');
       await complete(service, task.id, first.runId!);
-      // Durable Run admission updates latestRunId without claiming a Worktree rework.
-      const next = await runtime.sessions.startRun(first.sessionId!, { text: '直接会话的新一轮' });
+      // Admission now rejects new turns during REVIEW. Create the new Run through
+      // its legal managed RUNNING phase, then explicitly seed legacy inconsistent
+      // ownership left by older versions. This is not an alternate product path
+      // around the admission guard; merge must still reject such persisted data.
+      await executions.transitionWithTask(
+        first.id,
+        'RUNNING',
+        'IN_PROGRESS',
+        { reviewReadyAt: null },
+        { finalRunId: null },
+      );
+      const next = await runtime.sessions.startRun(first.sessionId!, { text: '新一轮合法准入' });
       if (newStatus === 'COMPLETED')
         await new RunRepository(database.db).tryTransition(next.id, ['RUNNING'], 'COMPLETED');
+      await executions.transitionWithTask(
+        first.id,
+        'REVIEW',
+        'WAITING_REVIEW',
+        { runId: first.runId, reviewReadyAt: new Date() },
+        { finalRunId: first.runId },
+      );
       const before = await executions.get(first.id);
       const beforeTask = await tasks.get(task.id);
       const mergeGit = vi.spyOn(runtime.git, 'commitAndMerge');
