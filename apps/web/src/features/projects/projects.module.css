@@ -1706,6 +1706,7 @@
   display: none;
 }
 .detailBack {
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1718,6 +1719,7 @@
   cursor: pointer;
 }
 .detailBack:focus-visible {
+  box-shadow: none;
   outline: 2px solid var(--ah-accent-primary);
   outline-offset: 3px;
 }

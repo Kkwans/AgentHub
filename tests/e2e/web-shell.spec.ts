@@ -994,6 +994,11 @@ test('Work 保持 List-first、可恢复审阅筛选且中屏不横向溢出', a
     });
     await expect(page.getByRole('navigation', { name: '项目上下文' })).toBeHidden();
     await expect(back).toBeVisible();
+    await back.focus();
+    await expect(back).toBeFocused();
+    await expect(back).toHaveCSS('box-shadow', 'none');
+    await expect(back).toHaveCSS('outline-width', '2px');
+    await expect(back).toHaveCSS('border-radius', '6px');
     // Warnings must remain accessible in detail, but may legitimately increase page height.
     await expectNoHorizontalOverflow(page);
     await attachViewportScreenshot(page, testInfo, 'project-work-detail-warning');

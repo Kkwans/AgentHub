@@ -186,3 +186,13 @@ The mobile gutter candidate passed 95 work/owner and 13 header tests, TypeScript
 Final integration caught a test-authoring error before publication: the new Playwright focus assertion used the jest-dom matcher `toHaveFocus`. Corrected it to `toBeFocused`; lint and collection alone had not caught it. Explicit E2E TypeScript validation is added to this slice's checks (ESNext/Bundler matching the test transpilation; NodeNext gives existing axe default-import interop errors).
 
 Explicit E2E typing also exposed pre-existing axe report schema drift: axe impact can be undefined and frame selectors are not always string arrays. The report now uses the library's actual target type and serializes absent impact as null, without changing severity filtering or dropping violations. All three affected E2E files now pass explicit ESNext/Bundler TypeScript validation.
+
+## 2026-11-13 09:54 UTC · Exact CI follow-up
+
+- 8db535b / CI43402016110: both verify and real-service jobs succeeded. The mobile list/detail structural slice has exact browser execution evidence; this is not a claim that every page has final visual approval.
+- b5fb80c / CI43403104547: verify succeeded, real-service still running. Personally inspected its exact `project-work-mobile-390.png`: the ChevronLeft icon is rendered and detail layout is stable. Its delayed real-response test has not yet been confirmed.
+- 9e4c1fd / CI43404482539: both jobs still running, no new artifact at this check. The 16px inset, border removal and detail-warning checks remain unverified visually.
+
+## 2026-11-13 09:57 UTC · 9e4c1fd fixture inspection
+
+Verify succeeded. Personally inspected its exact mobile detail, qualification-failure detail and returned filtered list: 16px inset and unboxed detail are correct; amber warning survives, and the returned list retains status filtering. The failure capture exposed a double focus treatment on the back button (module outline plus inherited global shadow). The small follow-up keeps a visible 2px outline but removes the duplicate shadow and uses a 6px radius; screenshot assertions will check the focused state. Necessary warnings legitimately push some form content lower; they will not be hidden to force every action above the fold. Real-service results are still pending.
