@@ -1079,7 +1079,36 @@ test('Sessions 按时间组织并可恢复 Workspace', async ({ page }, testInfo
   await expect(sessionLink).toContainText('Codex');
   await expect(sessionLink).toHaveAttribute('href', `/workspace/${session.id}`);
   await expectNoHorizontalOverflow(page);
+  await expect(sessionLink.locator('time')).toBeVisible();
+  await expect(sessionLink.locator('time')).toHaveAttribute('datetime', session.lastActiveAt);
   await attachViewportScreenshot(page, testInfo, 'project-sessions');
+  if ((page.viewportSize()?.width ?? 1440) < 768) {
+    const toggle = page.getByRole('button', { name: '筛选', exact: true });
+    const status = page.getByRole('combobox', { name: '会话状态', exact: true });
+    await expect(status).toBeHidden();
+    await expect(page.getByRole('button', { name: '新建会话', exact: true })).toBeVisible();
+    await toggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await status.click();
+    await page.getByRole('option', { name: '待审阅', exact: true }).click();
+    await expect(toggle).toHaveText('筛选（1）');
+    await toggle.focus();
+    await page.keyboard.press('Space');
+    await expect(status).toBeHidden();
+    await expect(sessionLink).toBeVisible();
+    await attachViewportScreenshot(page, testInfo, 'project-sessions-filtered');
+    await page.getByRole('button', { name: '清除条件', exact: true }).click();
+    await expect(toggle).toBeFocused();
+    await expect(toggle).toHaveText('筛选');
+    await expect(page.getByRole('link', { name: /Workspace 三栏视觉校准/ })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await attachViewportScreenshot(page, testInfo, 'project-sessions-cleared');
+  } else {
+    await expect(page.getByRole('combobox', { name: '会话 Agent', exact: true })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: '会话状态', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '筛选', exact: true })).toHaveCount(0);
+  }
 });
 
 test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板', async ({ page }, testInfo) => {

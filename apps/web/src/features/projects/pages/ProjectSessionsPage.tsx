@@ -38,7 +38,7 @@ import {
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Link,
   NavLink,
@@ -113,9 +113,28 @@ export function ProjectSessionsPage() {
     queryKey: ['agents'],
     queryFn: () => api.get<AgentRecord[]>('/agents'),
   });
+  const compact = useCompactViewport();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterOptionsId = useId();
+  const filterToggleRef = useRef<HTMLButtonElement>(null);
+  const filterOptionsRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (compact && !filtersOpen && filterOptionsRef.current?.contains(document.activeElement)) {
+      filterToggleRef.current?.focus();
+    }
+  }, [compact, filtersOpen]);
+  const clearFilters = () => {
+    setQuery('');
+    setAgentFilter('all');
+    setStatusFilter('all');
+    filterToggleRef.current?.focus();
+  };
   const [query, setQuery] = useState('');
   const [agentFilter, setAgentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const activeFilterCount = [query.trim(), agentFilter !== 'all', statusFilter !== 'all'].filter(
+    Boolean,
+  ).length;
   const [searchParams, setSearchParams] = useSearchParams();
   const newOpen = searchParams.get('new') === '1';
   const creation = useSessionCreation(project, newOpen, agents.data);
@@ -187,7 +206,13 @@ export function ProjectSessionsPage() {
               </span>
               <AhStatusPill status={session.status} />
               <span className={projectsStyles.sessionUpdated}>
-                {displayDate(session.lastActiveAt)}
+                {session.lastActiveAt && !Number.isNaN(Date.parse(session.lastActiveAt)) ? (
+                  <time dateTime={session.lastActiveAt}>
+                    最近活动 {displayDate(session.lastActiveAt)}
+                  </time>
+                ) : (
+                  '暂无活动时间'
+                )}
               </span>
               <ArrowRight className={projectsStyles.sessionArrow} size={14} />
             </Link>
@@ -220,29 +245,54 @@ export function ProjectSessionsPage() {
                 leftSection={<Search size={15} />}
               />
             </div>
-            <div className={projectsStyles.toolbarSelect}>
-              <AhSelect
-                aria-label="会话 Agent"
-                label=""
-                value={agentFilter}
-                onChange={(value) => setAgentFilter(value ?? 'all')}
-                data={[
-                  { value: 'all', label: '全部 Agent' },
-                  ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
-                ]}
-              />
-            </div>
-            <div className={projectsStyles.toolbarSelect}>
-              <AhSelect
-                aria-label="会话状态"
-                label=""
-                value={statusFilter}
-                onChange={(value) => setStatusFilter(value ?? 'all')}
-                data={[
-                  { value: 'all', label: '全部状态' },
-                  ...sessionStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
-                ]}
-              />
+            {compact ? (
+              <button
+                type="button"
+                ref={filterToggleRef}
+                className={projectsStyles.toolbarMore}
+                aria-expanded={filtersOpen}
+                aria-controls={filterOptionsId}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                <ScanSearch size={14} aria-hidden="true" />
+                筛选{activeFilterCount ? `（${activeFilterCount}）` : ''}
+              </button>
+            ) : null}
+            {compact && activeFilterCount ? (
+              <button type="button" className={projectsStyles.toolbarMore} onClick={clearFilters}>
+                清除条件
+              </button>
+            ) : null}
+            <div
+              id={filterOptionsId}
+              ref={filterOptionsRef}
+              className={projectsStyles.sessionFilterOptions}
+              hidden={compact && !filtersOpen}
+            >
+              <div className={projectsStyles.toolbarSelect}>
+                <AhSelect
+                  aria-label="会话 Agent"
+                  label=""
+                  value={agentFilter}
+                  onChange={(value) => setAgentFilter(value ?? 'all')}
+                  data={[
+                    { value: 'all', label: '全部 Agent' },
+                    ...(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name })),
+                  ]}
+                />
+              </div>
+              <div className={projectsStyles.toolbarSelect}>
+                <AhSelect
+                  aria-label="会话状态"
+                  label=""
+                  value={statusFilter}
+                  onChange={(value) => setStatusFilter(value ?? 'all')}
+                  data={[
+                    { value: 'all', label: '全部状态' },
+                    ...sessionStatuses.map((value) => ({ value, label: domainStatusLabel(value) })),
+                  ]}
+                />
+              </div>
             </div>
             <span className={projectsStyles.toolbarSpacer} />
             <span className={projectsStyles.toolbarCount}>{filteredSessions.length} 个会话</span>

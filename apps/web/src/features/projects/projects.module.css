@@ -1754,3 +1754,38 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* Session filters disclose only on phones; dates remain readable at every width. */
+.sessionFilterOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+.sessionFilterOptions[hidden] {
+  display: none;
+}
+.sessionsToolbar .toolbarMore:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 1023px) {
+  .sessionRow .sessionUpdated {
+    display: block;
+    grid-column: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .sessionRow .sessionArrow {
+    grid-column: -2;
+    grid-row: 1;
+  }
+}
+@media (max-width: 767px) {
+  .sessionFilterOptions {
+    flex: 1 1 100%;
+  }
+  .sessionsToolbar {
+    padding-inline: 16px;
+  }
+}
