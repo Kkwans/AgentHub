@@ -7,6 +7,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { ProjectContextLayout } from './ProjectContextLayout';
 import { ProjectWorkPage } from './ProjectWorkPage';
 import { api } from '../../../lib/api';
+import { ApiError } from '../../../lib/api-error';
 
 vi.mock('../../../lib/api', async () => ({
   api: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
@@ -57,12 +58,14 @@ function mount(
   query = '',
   agents: unknown[] = selectableAgents,
   eligibility: unknown = registeredEligibility(),
+  worktrees: unknown[] | Promise<unknown[]> = [],
 ) {
   vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
     if (path === `/projects/${project.id}`) return project as T;
     if (path.startsWith('/tasks?')) return (await rows) as T;
     if (path === '/tasks/task-1') return task as T;
     if (path === '/agents') return agents as T;
+    if (path.startsWith('/worktree-executions?')) return (await worktrees) as T;
     if (path.endsWith('/agent-eligibility')) return (await eligibility) as T;
     return [] as T;
   });
@@ -860,3 +863,281 @@ it.each(['success', 'failure'] as const)(
     expect(api.post).toHaveBeenCalledTimes(1);
   },
 );
+
+it('待审阅任务可明确确认完成，不启动新Session', async () => {
+  const reviewTask = {
+    ...task,
+    status: 'WAITING_REVIEW',
+    assignedAgentId: 'agent-1',
+    sessionId: 'session-old',
+    finalRunId: 'run-old',
+  };
+  vi.mocked(api.post).mockResolvedValue({
+    task: { ...reviewTask, status: 'DONE' },
+    session: null,
+    run: null,
+  } as never);
+  mount([reviewTask]);
+  fireEvent.click(await screen.findByRole('button', { name: '确认达到验收标准' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/review', { decision: 'APPROVE' }),
+  );
+  expect(api.post).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText('已进入工作区')).not.toBeInTheDocument();
+});
+it('待审阅任务提交明确反馈后进入新工作区', async () => {
+  const reviewTask = {
+    ...task,
+    status: 'WAITING_REVIEW',
+    assignedAgentId: 'agent-1',
+    sessionId: 'session-old',
+    finalRunId: 'run-old',
+  };
+  vi.mocked(api.post).mockResolvedValue({
+    task: { ...reviewTask, status: 'IN_PROGRESS', sessionId: 'session-new' },
+    session: { id: 'session-new' },
+    run: { id: 'run-new' },
+  } as never);
+  mount([reviewTask]);
+  const feedback = await screen.findByRole('textbox', { name: '继续修改说明' });
+  expect(screen.getByRole('button', { name: '提交继续修改' })).toBeDisabled();
+  fireEvent.change(feedback, { target: { value: '  补充错误恢复测试  ' } });
+  fireEvent.click(screen.getByRole('button', { name: '提交继续修改' }));
+  await waitFor(() =>
+    expect(api.post).toHaveBeenCalledWith('/tasks/task-1/review', {
+      decision: 'REWORK',
+      feedback: '补充错误恢复测试',
+    }),
+  );
+  expect(await screen.findByText('已进入工作区')).toBeVisible();
+});
+
+it('普通Task审阅不越过未知或隔离Worktree生命周期', async () => {
+  const reviewTask = {
+    ...task,
+    status: 'WAITING_REVIEW',
+    assignedAgentId: 'agent-1',
+    sessionId: 'session-old',
+  };
+  let finish!: (value: unknown[]) => void;
+  mount(
+    [reviewTask],
+    '',
+    selectableAgents,
+    registeredEligibility(),
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  await waitFor(() =>
+    expect(api.get).toHaveBeenCalledWith(`/worktree-executions?projectId=${project.id}`),
+  );
+  expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
+  await act(async () => finish([{ id: 'worktree-1', taskId: task.id, status: 'REVIEW' }]));
+  await screen.findByRole('complementary', { name: '工作 Inspector' });
+  expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '继续修改说明' })).not.toBeInTheDocument();
+});
+it('自身返工状态后台刷新先于响应时仍进入本次新工作区', async () => {
+  const old = {
+    ...task,
+    status: 'WAITING_REVIEW',
+    assignedAgentId: 'agent-1',
+    sessionId: 'session-old',
+    finalRunId: 'run-old',
+  };
+  const next = { ...old, status: 'IN_PROGRESS', sessionId: 'session-new', finalRunId: null };
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  const client = mount([old]);
+  fireEvent.change(await screen.findByRole('textbox', { name: '继续修改说明' }), {
+    target: { value: '继续完善' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '提交继续修改' }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+  await act(async () => client.setQueryData(['tasks', project.id], [next]));
+  await act(async () =>
+    finish({ task: next, session: { id: 'session-new' }, run: { id: 'run-new' } }),
+  );
+  expect(await screen.findByText('已进入工作区')).toBeVisible();
+});
+it('审阅重复点击不重复提交且pending锁定取消和Agent切换', async () => {
+  const reviewTask = {
+    ...task,
+    status: 'WAITING_REVIEW',
+    assignedAgentId: 'agent-1',
+    sessionId: 'session-old',
+    finalRunId: 'run-old',
+  };
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  mount([reviewTask]);
+  const approve = await screen.findByRole('button', { name: '确认达到验收标准' });
+  fireEvent.click(approve);
+  fireEvent.click(approve);
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole('combobox', { name: '运行 Agent' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '取消' })).toBeDisabled();
+  await act(async () =>
+    finish({ task: { ...reviewTask, status: 'DONE' }, session: null, run: null }),
+  );
+  expect(await screen.findByText('任务已确认完成。')).toBeVisible();
+  expect(screen.getByRole('button', { name: '确认达到验收标准' })).toBeDisabled();
+});
+it('返工失败保留反馈，未知结果不允许直接重放', async () => {
+  vi.mocked(api.post).mockRejectedValue(new Error('网络响应丢失'));
+  mount([
+    { ...task, status: 'WAITING_REVIEW', assignedAgentId: 'agent-1', sessionId: 'session-old' },
+  ]);
+  const feedback = await screen.findByRole('textbox', { name: '继续修改说明' });
+  fireEvent.change(feedback, { target: { value: '保留修改意见' } });
+  fireEvent.click(screen.getByRole('button', { name: '提交继续修改' }));
+  expect(await screen.findByText('网络响应丢失')).toBeVisible();
+  expect(feedback).toHaveValue('保留修改意见');
+  expect(screen.getByRole('button', { name: '提交继续修改' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '核对原任务' })).toBeEnabled();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+it('明确准入拒绝后可保留反馈重试且不自动重放', async () => {
+  vi.mocked(api.post).mockRejectedValue(new ApiError('AGENT_NOT_READY', '原Agent尚未就绪', 409));
+  mount([
+    { ...task, status: 'WAITING_REVIEW', assignedAgentId: 'agent-1', sessionId: 'session-old' },
+  ]);
+  const feedback = await screen.findByRole('textbox', { name: '继续修改说明' });
+  fireEvent.change(feedback, { target: { value: '保留修改意见' } });
+  fireEvent.click(screen.getByRole('button', { name: '提交继续修改' }));
+  expect(await screen.findByText('原Agent尚未就绪')).toBeVisible();
+  expect(feedback).toHaveValue('保留修改意见');
+  expect(screen.getByRole('button', { name: '提交继续修改' })).toBeEnabled();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+it('Worktree查询失败不开放普通审阅入口', async () => {
+  const worktrees = Promise.reject(new Error('隔离执行读取失败'));
+  worktrees.catch(() => undefined);
+  mount(
+    [{ ...task, status: 'WAITING_REVIEW' }],
+    '',
+    selectableAgents,
+    registeredEligibility(),
+    worktrees,
+  );
+  expect(await screen.findByText('隔离执行读取失败')).toBeVisible();
+  expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
+});
+it('切换任务后旧返工响应不跳走、不污染新任务反馈', async () => {
+  const old = {
+    ...task,
+    status: 'WAITING_REVIEW',
+    assignedAgentId: 'agent-1',
+    sessionId: 'session-old',
+    finalRunId: 'run-old',
+  };
+  const other = {
+    ...old,
+    id: 'task-2',
+    title: '另一项待审阅工作',
+    sessionId: 'session-other',
+    finalRunId: 'run-other',
+  };
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  mount([old, other]);
+  fireEvent.change(await screen.findByRole('textbox', { name: '继续修改说明' }), {
+    target: { value: '旧任务反馈' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '提交继续修改' }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: '工作列表' })).getByRole('button', {
+      name: /另一项待审阅工作/,
+    }),
+  );
+  const input = await screen.findByRole('textbox', { name: '继续修改说明' });
+  expect(input).toHaveValue('');
+  expect(input).toBeEnabled();
+  fireEvent.change(input, { target: { value: '新任务反馈' } });
+  await act(async () =>
+    finish({
+      task: { ...old, status: 'IN_PROGRESS', sessionId: 'session-new' },
+      session: { id: 'session-new' },
+      run: { id: 'run-new' },
+    }),
+  );
+  expect(input).toHaveValue('新任务反馈');
+  expect(screen.queryByText('已进入工作区')).not.toBeInTheDocument();
+  expect(screen.queryByText('审阅未完成')).not.toBeInTheDocument();
+});
+it('未分配Agent可确认完成但不可返工，错误响应不冒称成功', async () => {
+  mount([{ ...task, status: 'WAITING_REVIEW', assignedAgentId: null, sessionId: null }]);
+  const approve = await screen.findByRole('button', { name: '确认达到验收标准' });
+  expect(approve).toBeEnabled();
+  expect(screen.getByRole('button', { name: '提交继续修改' })).toBeDisabled();
+  vi.mocked(api.post).mockResolvedValue({
+    task: { ...task, id: 'wrong-task', status: 'DONE' },
+    session: null,
+    run: null,
+  } as never);
+  fireEvent.click(approve);
+  expect(await screen.findByText('审阅响应无法确认，请核对原任务。')).toBeVisible();
+  expect(screen.queryByText('任务已确认完成。')).not.toBeInTheDocument();
+  expect(approve).toBeDisabled();
+});
+it('自身确认完成后台刷新先于响应不误报或重复提交', async () => {
+  const old = {
+    ...task,
+    status: 'WAITING_REVIEW',
+    assignedAgentId: 'agent-1',
+    sessionId: 'session-old',
+    finalRunId: 'run-old',
+  };
+  const done = { ...old, status: 'DONE' };
+  const rows = [old];
+  let finish!: (value: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
+  const client = mount(rows);
+  fireEvent.click(await screen.findByRole('button', { name: '确认达到验收标准' }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+  // The subsequent refetch must represent the same updated server state. Do not
+  // mutate the original array retained in QueryClient's cache in place.
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(path: string) =>
+      (path.startsWith('/tasks?')
+        ? [done]
+        : path === `/projects/${project.id}`
+          ? project
+          : path === '/agents'
+            ? selectableAgents
+            : path.endsWith('/agent-eligibility')
+              ? registeredEligibility()
+              : []) as T,
+  );
+  await act(async () => client.setQueryData(['tasks', project.id], [done]));
+  await act(async () => finish({ task: done, session: null, run: null }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument(),
+  );
+  expect(screen.queryByText('审阅未完成')).not.toBeInTheDocument();
+  expect(screen.queryByText('已进入工作区')).not.toBeInTheDocument();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});

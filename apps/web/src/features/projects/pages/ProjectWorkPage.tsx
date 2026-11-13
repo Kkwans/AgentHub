@@ -1,3 +1,4 @@
+import { TaskReviewActions } from '../components/TaskReviewActions';
 import { useProjectEligibility } from '../hooks/useProjectEligibility';
 import { eligibilityReasons } from '../lib/project-eligibility';
 import { TaskPromptVariablesEditor } from '../components/TaskPromptVariablesEditor';
@@ -219,6 +220,8 @@ export function ProjectWorkPage() {
   ];
   const [variableSaveKey, setVariableSaveKey] = useState<string | null>(null);
   const variablesSaving = variableSaveKey !== null;
+  const [reviewPendingKey, setReviewPendingKey] = useState<string | null>(null);
+  const reviewPending = reviewPendingKey === `${project.id}:${selected?.id}`;
   const operationContext = useRef({ identity: '', generation: 0, mounted: true });
   const selectionIdentity = JSON.stringify([project.id, selected?.id, runAgentId]);
   if (operationContext.current.identity !== selectionIdentity) {
@@ -544,7 +547,11 @@ export function ProjectWorkPage() {
                       <AhSelect
                         aria-label="运行 Agent"
                         disabled={
-                          start.isPending || transition.isPending || manual.busy || variablesSaving
+                          start.isPending ||
+                          transition.isPending ||
+                          manual.busy ||
+                          variablesSaving ||
+                          reviewPending
                         }
                         label=""
                         value={runAgentId}
@@ -583,7 +590,11 @@ export function ProjectWorkPage() {
                         size="xs"
                         variant="default"
                         disabled={
-                          start.isPending || transition.isPending || manual.busy || variablesSaving
+                          start.isPending ||
+                          transition.isPending ||
+                          manual.busy ||
+                          variablesSaving ||
+                          reviewPending
                         }
                         onClick={() => {
                           void agents.refetch();
@@ -645,12 +656,39 @@ export function ProjectWorkPage() {
                             transition.isPending ||
                             manual.busy ||
                             manual.unknown ||
-                            variablesSaving
+                            variablesSaving ||
+                            reviewPending
                           }
                           onSaved={() => start.reset()}
                           onSavingChange={(key, saving) =>
                             setVariableSaveKey((current) =>
                               saving ? key : current === key ? null : current,
+                            )
+                          }
+                        />
+                      </section>
+                    ) : null}
+                    {reviewPending ||
+                    (selected.status === 'WAITING_REVIEW' &&
+                      worktrees.isSuccess &&
+                      !selectedWorktree) ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>审阅结果</h4>
+                        <TaskReviewActions
+                          key={`${project.id}:${selected.id}`}
+                          task={selected}
+                          disabled={
+                            worktrees.isFetching ||
+                            start.isPending ||
+                            transition.isPending ||
+                            manual.busy ||
+                            manual.unknown ||
+                            variablesSaving ||
+                            reviewPending
+                          }
+                          onPendingChange={(key, pending) =>
+                            setReviewPendingKey((current) =>
+                              pending ? key : current === key ? null : current,
                             )
                           }
                         />
@@ -685,6 +723,7 @@ export function ProjectWorkPage() {
                           (!runAgentId && manual.unavailable) ||
                           manual.busy ||
                           variablesSaving ||
+                          reviewPending ||
                           transition.isPending ||
                           start.isPending ||
                           (manual.unknown && (Boolean(runAgentId) || !manual.status)) ||
@@ -720,7 +759,8 @@ export function ProjectWorkPage() {
                           start.isPending ||
                           manual.busy ||
                           manual.unknown ||
-                          variablesSaving
+                          variablesSaving ||
+                          reviewPending
                         }
                         onCancel={() =>
                           transition.mutate({
