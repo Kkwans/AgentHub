@@ -57,7 +57,7 @@ describe('Agent capability truthfulness', () => {
       }),
     ).toEqual(['Session', '文本输入', 'Approval', '文件']);
   });
-  it('keeps cards informational and exposes an honest host diagnostics link', async () => {
+  it('keeps directory rows informational and exposes an honest host diagnostics link', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
     client.setQueryData(
       ['agents'],
@@ -89,6 +89,10 @@ describe('Agent capability truthfulness', () => {
     );
     const card = await screen.findByRole('group', { name: /待核对 Agent/ });
     expect(within(card).getByText('能力待确认')).toBeInTheDocument();
+    expect(within(card).getByText('已启用')).toBeVisible();
+    expect(card.querySelector('dl')).toHaveTextContent('Runtime');
+    expect(card.querySelector('dl')).toHaveTextContent('Provider');
+    expect(card.querySelector('dl')).toHaveTextContent('Model');
     expect(within(card).getByText('运行环境待确认 · 类型待确认')).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: '管理 Agent' })).toHaveAttribute(
       'href',

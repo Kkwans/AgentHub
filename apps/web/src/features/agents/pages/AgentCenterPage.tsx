@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Badge,
   Bot,
-  Card,
   Link2,
   RefreshCw,
   Search,
@@ -21,6 +20,7 @@ import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { AgentCandidateRecord, AgentRecord, ExecutionTargetRecord } from '../../../lib/api';
 import { api } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';
+import styles from './AgentDirectory.module.css';
 import { NavigationPageHeader, displayDate } from '../../shared/page-primitives';
 
 import { agentKindLabel, capabilitiesFor, executionTargetKindLabel } from '../agent-presentation';
@@ -49,99 +49,65 @@ function AgentResourceCard({
   const capabilities = capabilitiesFor(agent);
 
   return (
-    <Card
-      className="resource-card relative flex min-h-0 flex-col overflow-hidden p-0 sm:min-h-[190px]"
+    <article
+      className={styles.agentRow}
       role="group"
       aria-label={`${agent.name}，${agentKindLabel(agent.agentKind)}，${ready ? '已就绪' : '需要处理'}`}
     >
-      <div className="flex flex-1 flex-col px-4 pb-3 pt-4">
-        <div className="mb-3 flex min-h-5 flex-wrap items-center gap-1">
+      <div className={styles.agentIdentity}>
+        <Bot size={22} aria-hidden />
+        <div>
+          <h3>{agent.name}</h3>
+          <p>
+            {agentKindLabel(agent.agentKind)} · {agent.detectedVersion ?? '版本待检测'}
+          </p>
+        </div>
+        <div className={styles.badges}>
           <Badge variant={ready ? 'success' : 'warning'} dot>
-            <span>{ready ? '已就绪' : '需要处理'}</span>
+            {ready ? '已就绪' : '需要处理'}
           </Badge>
-          <Badge variant="secondary">
-            <span>{agentKindLabel(agent.agentKind)}</span>
-          </Badge>
-          <Badge variant={agent.enabled ? 'outline' : 'destructive'} className="ml-auto">
-            <span>{agent.enabled ? '已启用' : '已停用'}</span>
+          <Badge variant={agent.enabled ? 'outline' : 'destructive'}>
+            {agent.enabled ? '已启用' : '已停用'}
           </Badge>
         </div>
-
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-full border border-[hsl(var(--primary))]/15 bg-[hsl(var(--primary-soft))] text-[hsl(var(--primary))] transition-transform duration-[var(--motion-fast)] ease-[var(--ease-standard)]">
-            <Bot size={19} weight="duotone" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold tracking-[-0.01em] text-[hsl(var(--foreground))] transition-colors duration-[var(--motion-fast)]">
-              {agent.name}
-            </h3>
-            <code className="mt-1 block truncate font-mono text-xs text-[hsl(var(--foreground-faint))]">
-              {agentKindLabel(agent.agentKind)} · {agent.detectedVersion ?? '版本待检测'}
-            </code>
-          </div>
+      </div>
+      <dl className={styles.agentFacts}>
+        <div>
+          <dt>Runtime</dt>
+          <dd>
+            {target?.name ?? '运行环境待确认'} · {runtimeLabel}
+          </dd>
         </div>
-
-        <div className="mt-4 grid min-w-0 gap-2 text-xs text-[hsl(var(--foreground-muted))]">
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-            <span className="shrink-0 text-[hsl(var(--foreground-faint))]">Runtime</span>
-            <span className="min-w-0 truncate font-medium text-[hsl(var(--foreground-subtle))]">
-              {target?.name ?? '运行环境待确认'} · {runtimeLabel}
-            </span>
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-            <span className="shrink-0 text-[hsl(var(--foreground-faint))]">Provider</span>
-            <span className="min-w-0 truncate font-medium text-[hsl(var(--foreground-subtle))]">
-              {providerLabel(agent.adapterKind)}
-            </span>
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-            <span className="shrink-0 text-[hsl(var(--foreground-faint))]">Model</span>
-            <span className="min-w-0 truncate font-medium text-[hsl(var(--foreground-subtle))]">
-              {agent.defaultModel ?? 'Session 中选择'}
-            </span>
-          </div>
+        <div>
+          <dt>Provider</dt>
+          <dd>{providerLabel(agent.adapterKind)}</dd>
         </div>
-
-        <div className="mt-3 flex min-h-6 flex-wrap items-center gap-1.5">
-          {!capabilities.length ? (
-            <span className="text-xs text-[hsl(var(--foreground-muted))]">能力待确认</span>
-          ) : null}
+        <div>
+          <dt>Model</dt>
+          <dd>{agent.defaultModel ?? 'Session 中选择'}</dd>
+        </div>
+      </dl>
+      <div className={styles.agentFooter}>
+        <div className={styles.capabilities}>
+          {!capabilities.length ? <span>能力待确认</span> : null}
           {capabilities.map((capability) => (
-            <span
-              key={capability}
-              className="inline-flex items-center rounded-md border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-muted))]/65 px-1.5 py-0.5 text-xs font-medium text-[hsl(var(--foreground-subtle))]"
-            >
-              {capability}
-            </span>
+            <span key={capability}>{capability}</span>
           ))}
         </div>
-      </div>
-
-      <div className="border-t border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-muted))]/25 px-4 py-2.5">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0 text-xs text-[hsl(var(--foreground-faint))]">
-            <span className="mr-1.5">最近检查</span>
-            <span className="font-mono tabular-nums text-[hsl(var(--foreground-subtle))]">
-              {displayDate(agent.lastPreflightAt)}
-            </span>
-          </div>
-          <Link
-            to={`/agents/${encodeURIComponent(agent.id)}`}
-            className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-soft))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))]"
-          >
-            管理 Agent
-          </Link>
-          <Link
-            className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-soft))] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[hsl(var(--primary))]"
-            aria-description="当前 AgentHub 服务器，不是此 Agent 专属诊断"
-            to="/agents/diagnostics"
-          >
-            服务器诊断 <ArrowRight size={13} aria-hidden />
-          </Link>
-        </div>
+        <span>最近检查 {displayDate(agent.lastPreflightAt)}</span>
+        <Link className={styles.action} to={`/agents/${encodeURIComponent(agent.id)}`}>
+          管理 Agent
+        </Link>
+        <Link
+          className={styles.action}
+          aria-description="当前 AgentHub 服务器，不是此 Agent 专属诊断"
+          to="/agents/diagnostics"
+        >
+          服务器诊断 <ArrowRight size={13} aria-hidden />
+        </Link>
         <span className="sr-only">当前状态：{statusLabel(agent.status, agent.enabled)}</span>
       </div>
-    </Card>
+    </article>
   );
 }
 
@@ -161,10 +127,7 @@ function AgentFilterBar({
   refreshing: boolean;
 }) {
   return (
-    <section
-      aria-label="Agent 筛选与操作"
-      className="resource-filter-bar overflow-hidden rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)]"
-    >
+    <section aria-label="Agent 筛选与操作" className={styles.filterBar}>
       <div className="resource-filter-main flex min-h-12 flex-wrap items-center gap-2 px-3 py-2.5">
         <div className="resource-filter-search relative w-full min-w-0 sm:w-96">
           <AhInput
@@ -324,7 +287,7 @@ export function AgentCenterPage() {
             <ErrorState error={agents.error} retry={() => void agents.refetch()} />
           ) : null}
           {!agents.isLoading && !agents.error && filteredAgents.length ? (
-            <div className="responsive-card-grid resource-card-grid">
+            <div className={styles.agentList}>
               {filteredAgents.map((agent) => {
                 const target = targetById.get(agent.targetId);
                 return (

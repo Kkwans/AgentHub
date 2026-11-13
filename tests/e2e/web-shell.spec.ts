@@ -463,6 +463,14 @@ test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }
     timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByText('Codex', { exact: true }).first()).toBeVisible();
+  const agentRow = page.getByRole('group', { name: 'Codex，Codex，已就绪' });
+  await expect(agentRow.getByRole('link', { name: '管理 Agent' })).toHaveAttribute(
+    'href',
+    `/agents/${agent.id}`,
+  );
+  await expect(agentRow).toContainText('能力待确认');
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'agent-center');
   if ((page.viewportSize()?.width ?? 1_000) >= 641) {
     await expect(page.getByRole('link', { name: '运行环境' })).toHaveAttribute(
       'href',
@@ -483,6 +491,8 @@ test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }
   await expect(page.getByText('Local Host', { exact: true })).toBeVisible({
     timeout: SHELL_READY_TIMEOUT,
   });
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'agent-runtime');
   await page.goto('/agents/nodes');
   await expect(page.getByRole('heading', { name: 'Remote Nodes' })).toBeVisible({
     timeout: SHELL_READY_TIMEOUT,

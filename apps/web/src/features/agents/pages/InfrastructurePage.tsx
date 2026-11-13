@@ -85,6 +85,7 @@ import {
   labelPromptVersionSource,
 } from '../../../presentation/domain-labels';
 import layout from '../../shared/layout.module.css';
+import styles from './AgentDirectory.module.css';
 import {
   Screen,
   QueryMessage,
@@ -196,8 +197,8 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
       }
     >
       {kind === 'runtimes' ? (
-        <AhSurface>
-          <div className={layout.surfaceHeader}>
+        <section className={styles.infrastructure}>
+          <div className={`${layout.surfaceHeader} ${styles.infrastructureHeader}`}>
             <div>
               <h3>执行环境</h3>
               <p>
@@ -216,7 +217,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               </AhButton>
             ) : null}
           </div>
-          <div className={layout.surfaceBody}>
+          <div className={styles.infrastructureBody}>
             <QueryMessage
               loading={runtimes.isLoading}
               error={runtimes.error}
@@ -225,13 +226,13 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
             />
             {visibleRuntimeRows.map((runtime) => (
               <div
-                className={`${layout.row} ${layout.infrastructureRow}`}
+                className={`${layout.row} ${layout.infrastructureRow} ${styles.infrastructureRow}`}
                 key={runtime.candidateId}
               >
                 <Server size={19} />
                 <div className={layout.rowMain}>
                   <span className={layout.rowTitle}>{runtimeDisplayName(runtime.displayName)}</span>
-                  <span className={layout.rowMeta}>
+                  <span className={styles.rowMeta}>
                     {runtimeImageLabel(runtime)} · {runtimeStatusDetail(runtime)}
                   </span>
                 </div>
@@ -279,10 +280,10 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               />
             ) : null}
           </div>
-        </AhSurface>
+        </section>
       ) : kind === 'nodes' ? (
-        <AhSurface>
-          <div className={layout.surfaceBody}>
+        <section className={styles.infrastructure}>
+          <div className={styles.infrastructureBody}>
             <QueryMessage
               loading={nodes.isLoading}
               error={nodes.error}
@@ -290,17 +291,20 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               label="正在加载 Remote Nodes"
             />
             {(nodes.data ?? []).map((node) => (
-              <div className={`${layout.row} ${layout.infrastructureRow}`} key={node.id}>
+              <div
+                className={`${layout.row} ${layout.infrastructureRow} ${styles.infrastructureRow}`}
+                key={node.id}
+              >
                 <Network size={19} />
                 <div className={layout.rowMain}>
                   <span className={layout.rowTitle}>{node.name}</span>
-                  <span className={layout.rowMeta}>
+                  <span className={styles.rowMeta}>
                     {node.hostname} · {node.allowedRootsJson.length} 个授权目录 · 最近{' '}
                     {displayDate(node.lastSeenAt)}
                   </span>
                 </div>
                 <AhStatusPill status={node.status} />
-                <Link className={layout.rowAction} to={`/agents/nodes/${node.id}`}>
+                <Link className={styles.action} to={`/agents/nodes/${node.id}`}>
                   查看
                 </Link>
               </div>
@@ -317,10 +321,10 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               />
             ) : null}
           </div>
-        </AhSurface>
+        </section>
       ) : (
-        <AhSurface>
-          <div className={layout.surfaceHeader}>
+        <section className={styles.infrastructure}>
+          <div className={`${layout.surfaceHeader} ${styles.infrastructureHeader}`}>
             <div>
               <h3>服务器诊断</h3>
               <p>以下信息来自当前 AgentHub 服务器，详细结果可按需展开。</p>
@@ -334,7 +338,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               刷新
             </AhButton>
           </div>
-          <div className={layout.surfaceBody}>
+          <div className={styles.infrastructureBody}>
             <QueryMessage
               loading={host.isLoading}
               error={host.error}
@@ -358,7 +362,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               </>
             ) : null}
           </div>
-        </AhSurface>
+        </section>
       )}
     </Screen>
   );

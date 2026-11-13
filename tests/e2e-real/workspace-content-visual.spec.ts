@@ -127,6 +127,11 @@ for (const width of [390, 768, 1024, 1440]) {
       const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令', exact: true });
       await expect(composer).toBeVisible({ timeout: 30_000 });
       await composer.fill('请修改隔离测试项目的 Fixture 文件，等待批准，再汇报结果。');
+      // Capture the enabled input before sending: completion can still leave
+      // the run settling, which is not evidence of keyboard-focus treatment.
+      await expect(composer).toBeFocused();
+      await expect(composer).toBeEnabled();
+      await capture(page, info, 'composer-focused', composer, page.locator('.chat-command-card'));
       await page.getByRole('button', { name: '发送', exact: true }).click();
       const approve = page.getByRole('button', { name: '允许一次', exact: true });
       await expect(approve).toBeVisible({ timeout: 30_000 });
