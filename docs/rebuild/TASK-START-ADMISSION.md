@@ -1,6 +1,6 @@
 # 普通 Task 持久启动预留方案
 
-状态：S65 已实现未启用的数据库基础；完整运行流程尚未接入，不将本文当作已生效的运行安全保证。
+状态：S66 已接入运行路径并完成本地验收，精确提交 CI 待验证；下面保留设计依据与实施边界。UNKNOWN 隔离不是所有故障都能自动恢复。
 基线：S63 `7b05581`。关联 M1.2、AH-001；S62/S63 的 Worktree 护栏不能关闭本问题。
 
 ## 1. 需要解决的用户问题
@@ -132,3 +132,12 @@ SessionService 的公开 create 与内部 Task 启动入口必须明确分离。
 ## S65 已实现范围与启用门禁
 
 0010表、阶段/唯一约束和TaskStartAttemptRepository原子reserve、markCreateAttempted、releaseUnattempted已实现；21项专项覆盖迁移及事务合同。没有调用方接入，因此旧运行路径仍存在S64复现缺口。后续接入必须完成本方案的全部失败/恢复/身份条件。基础可独立回归不意味着允许把reserve单独插入现有Session.create之前上线。
+
+## S66 接入验收与使用边界
+
+- Task.start/rework只经createForTask/startTaskRun；公共taskId Session创建及Task会话独立continuation拒绝，不静默另建孤立会话。当前普通会话继续对话合同保留，旧归属Run明确409。
+- 创建生命周期令牌从reserve之前覆盖至激活；close及shutdown撤销不能被迟到响应恢复，包含关闭写失败、reserve提交响应丢失等故障。
+- startup先恢复attempt再恢复Run/Session；RESERVED按正面证据释放，CREATE_ATTEMPTED/SESSION_READY变UNKNOWN且不重放，RUN_ADMITTED沿用Run合同。历史无Run会话不猜未尝试。
+- GET `/api/v1/tasks/:id/start-attempts`返回attempt/task/session/run身份、kind/phase、安全错误和时间，no-store，不含输入hash、路径或正文。仅查询，不会重建Session或派发Run。
+- 本地1186完整覆盖、独立CR及真实ACP双实例START/REWORK唯一赢家/审阅完成烟测通过。四宽浏览器等待精确CI，独立Postgres多连接未实测。
+- 完整用户恢复交互、启动请求operationId幂等及跨进程runtime路由仍为后续；本片不提供无证据强制释放UNKNOWN的后门。

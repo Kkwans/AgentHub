@@ -26,6 +26,7 @@ import type {
   RunRepository,
   SessionRepository,
   SessionContinuationRepository,
+  TaskStartAttemptRepository,
 } from '@agenthub/db';
 
 import type { AgentService } from '../agents/agent-service.js';
@@ -132,13 +133,14 @@ interface CancellationTimer {
 }
 
 export class SessionService {
+  private acceptingTaskStarts = true;
   private readonly approvalEpochs = new Map<string, ApprovalEffectEpoch>();
   private readonly active = new Map<string, ActiveSession>();
   private readonly preparationFences = new Set<string>();
   private readonly activationCommits = new Map<string, Promise<void>>();
   private readonly lifecycleAdmissions = new Map<
     string,
-    { kind: 'resume' | 'close'; token: symbol }
+    { kind: 'create' | 'resume' | 'close'; token: symbol }
   >();
   private readonly runAdmissions = new Set<string>();
   private readonly cancellationTimers = new Map<string, CancellationTimer>();
@@ -163,6 +165,7 @@ export class SessionService {
     private readonly promptContext?: PromptContextResolver,
     options: SessionServiceOptions = {},
     private readonly continuations?: SessionContinuationRepository<AgentHubDatabase>,
+    private readonly taskStartAttempts?: TaskStartAttemptRepository<AgentHubDatabase>,
   ) {
     this.cancelConvergenceTimeoutMs = resolveCancelConvergenceTimeout(
       options.cancelConvergenceTimeoutMs,
@@ -322,6 +325,8 @@ export class SessionService {
   }
 
   async create(input: CreateSessionInput) {
+    if (input.taskId)
+      throw new AppError(409, 'TASK_SESSION_START_REQUIRED', '任务会话须通过任务启动或返工创建');
     const project = await this.projects.get(input.projectId);
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
     if (project.status !== 'ACTIVE') {
@@ -334,6 +339,201 @@ export class SessionService {
     );
     const cwd = await this.validateProjectCwd(project.realRootPath, profile, input.cwd);
     return this.createWithRuntime(input, project.id, profile, adapter, cwd);
+  }
+
+  /** Internal Task admission; REST create cannot supply this capability. */
+  async createForTask(
+    input: CreateSessionInput,
+    admission: { kind: 'START' | 'REWORK'; expectedOldSessionId: string | null; inputHash: string },
+  ) {
+    const attempts = this.taskStartAttempts;
+    if (!this.acceptingTaskStarts || !attempts || !input.taskId)
+      throw new AppError(503, 'TASK_START_UNAVAILABLE', '当前服务无法安全预留任务启动');
+    const project = await this.projects.get(input.projectId);
+    if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
+    if (project.status !== 'ACTIVE')
+      throw new AppError(409, 'PROJECT_NOT_ACTIVE', 'Project 当前不可创建 Session');
+    const { profile, adapter } = await this.agentService.resolveRuntime(
+      input.agentId,
+      input.cwd,
+      project.targetId,
+    );
+    const cwd = await this.validateProjectCwd(project.realRootPath, profile, input.cwd);
+    // Validation may outlive shutdown before any lifecycle token exists.
+    if (!this.acceptingTaskStarts)
+      throw new AppError(503, 'TASK_START_UNAVAILABLE', '服务已停止接受任务启动');
+    const id = randomUUID(),
+      attemptId = randomUUID();
+    const model = input.model ?? profile.defaultModel ?? undefined;
+    const mode = input.mode ?? profile.defaultMode ?? undefined;
+    const reasoningEffort = input.reasoningEffort ?? profile.defaultReasoningEffort ?? undefined;
+    const creationAdmission = { kind: 'create' as const, token: Symbol(id) };
+    if (!this.lifecycleAdmissions.has(id)) this.lifecycleAdmissions.set(id, creationAdmission);
+    const activationAllowed = () => this.lifecycleAdmissions.get(id) === creationAdmission;
+    try {
+      await attempts.reserve({
+        attemptId,
+        ...admission,
+        session: {
+          id,
+          projectId: project.id,
+          agentId: input.agentId,
+          taskId: input.taskId,
+          title: input.title,
+          cwd,
+          branch: input.branch,
+          ...(model ? { model } : {}),
+          ...(mode ? { mode } : {}),
+          ...(reasoningEffort ? { reasoningEffort } : {}),
+        },
+      });
+    } catch (error) {
+      try {
+        // A thrown response is not evidence of rollback. Release only our
+        // positive RESERVED evidence; a missing/unreadable row remains unknown.
+        let saved: Awaited<ReturnType<typeof attempts.get>> = undefined;
+        try {
+          await attempts.releaseUnattempted(attemptId);
+          saved = await attempts.get(attemptId);
+        } catch {
+          /* IDs still let the caller locate the original attempt later. */
+        }
+        if (saved?.phase === 'FAILED_KNOWN')
+          throw new AppError(409, 'TASK_START_NOT_ATTEMPTED', '任务启动预留已释放，未调用 Agent', {
+            attemptId,
+            sessionId: id,
+          });
+        if (saved)
+          throw new AppError(
+            503,
+            'TASK_START_UNRESOLVED',
+            '启动预留保存结果需要核对，请勿重复启动',
+            { attemptId, sessionId: id },
+          );
+        if (
+          error instanceof DatabaseInvariantError &&
+          [
+            'TASK_START_OWNERSHIP_CHANGED',
+            'TASK_START_UNRESOLVED',
+            'TASK_WORKTREE_MANAGED',
+          ].includes(error.code)
+        )
+          throw new AppError(409, error.code, '任务启动归属已变化或仍有未决操作，请核对原任务');
+        throw new AppError(
+          503,
+          'TASK_START_RESERVATION_UNCONFIRMED',
+          '启动预留结果暂无法确认，请核对原尝试',
+          { attemptId, sessionId: id },
+          { cause: error },
+        );
+      } finally {
+        if (activationAllowed()) this.lifecycleAdmissions.delete(id);
+      }
+    }
+    let ownedHandle: AgentSessionHandle | undefined;
+    let attempted = false;
+    try {
+      if (!activationAllowed())
+        throw new AppError(409, 'TASK_START_OWNERSHIP_CHANGED', '会话正在关闭，未创建 Agent 会话');
+      const marked = await attempts.markCreateAttempted(attemptId);
+      if (!marked)
+        throw new AppError(
+          409,
+          'TASK_START_OWNERSHIP_CHANGED',
+          '启动预留已变化，未创建 Agent 会话',
+        );
+      attempted = true;
+      if (!activationAllowed())
+        throw new AppError(409, 'TASK_START_OWNERSHIP_CHANGED', '会话关闭已撤销创建，未调用 Agent');
+      ownedHandle = await adapter.createSession({
+        sessionId: id,
+        profile,
+        projectId: project.id,
+        cwd,
+        ...(model ? { model } : {}),
+        ...(mode ? { mode } : {}),
+        ...(reasoningEffort ? { reasoningEffort } : {}),
+      });
+      const handle = ownedHandle;
+      await this.persistEffectiveConfiguration(id, handle, {
+        owned: activationAllowed,
+        expectedFrom: 'STARTING',
+      });
+      return await this.withActivationCommit(id, async () => {
+        if (!activationAllowed())
+          throw new AppError(409, 'TASK_START_OWNERSHIP_CHANGED', '会话正在关闭，未激活旧会话');
+        const ready = await attempts.recordSessionReady(attemptId, {
+          externalSessionId: handle.externalSessionId,
+          startedAt: new Date(),
+        });
+        // close admits synchronously before awaiting this commit queue. Its
+        // earlier detach must not be followed by a newly activated handle.
+        if (!ready || !activationAllowed())
+          throw new AppError(409, 'TASK_START_OWNERSHIP_CHANGED', '启动归属已变化，未激活旧会话');
+        this.activate(id, project.id, adapter, handle);
+        ownedHandle = undefined;
+        return { ...ready, taskStartAttemptId: attemptId };
+      });
+    } catch (error) {
+      let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
+        'NOT_ACQUIRED';
+      if (ownedHandle) {
+        if (this.active.get(id)?.handle === ownedHandle) handleCleanup = 'ACTIVE_OWNED';
+        else {
+          try {
+            await withTimeout(
+              Promise.resolve().then(() => ownedHandle!.close()),
+              Math.min(this.cancelConvergenceTimeoutMs, 1_000),
+            );
+            handleCleanup = 'HANDLE_CLOSE_RETURNED';
+          } catch {
+            handleCleanup = 'UNKNOWN';
+          }
+        }
+      }
+      // Release only positive RESERVED evidence. An uncertain CAS response can
+      // already mean CREATE_ATTEMPTED committed, which release must not undo.
+      if (!attempted) {
+        try {
+          await attempts.releaseUnattempted(attemptId);
+        } catch {
+          /* Recovery retries durable evidence, never runtime. */
+        }
+      }
+      if (!attempted) {
+        try {
+          const current = await attempts.get(attemptId);
+          if (current?.phase === 'FAILED_KNOWN')
+            throw new AppError(
+              409,
+              'TASK_START_NOT_ATTEMPTED',
+              '任务启动预留已释放，未调用 Agent',
+              { attemptId, sessionId: id },
+            );
+        } catch (lookupError) {
+          if (lookupError instanceof AppError && lookupError.code === 'TASK_START_NOT_ATTEMPTED')
+            throw lookupError;
+          // Unknown read outcome is not positive no-call proof.
+        }
+      }
+      let failureStateRecorded = false;
+      try {
+        failureStateRecorded = Boolean(
+          await attempts.markUnknown(attemptId, 'TASK_SESSION_CREATE_UNKNOWN'),
+        );
+      } catch {
+        /* The committed attempt still fences admission even if this write fails. */
+      }
+      throw new AppError(
+        502,
+        'TASK_SESSION_CREATE_UNKNOWN',
+        '任务会话创建结果需要核对，请勿重复启动',
+        { attemptId, sessionId: id, handleCleanup, failureStateRecorded },
+        { cause: error },
+      );
+    } finally {
+      if (activationAllowed()) this.lifecycleAdmissions.delete(id);
+    }
   }
 
   /**
@@ -482,7 +682,7 @@ export class SessionService {
         'Session 正在恢复或关闭，请等待原操作结束并核对状态',
       );
     const entry = { kind, token: Symbol(id) };
-    this.lifecycleAdmissions.set(id, entry); // Close revokes a pending resume without waiting for its adapter.
+    this.lifecycleAdmissions.set(id, entry); // Close revokes pending creation/resume without waiting for its adapter.
     const owned = () => this.lifecycleAdmissions.get(id) === entry;
     try {
       return await action(owned);
@@ -626,6 +826,45 @@ export class SessionService {
   }
 
   async startRun(sessionId: string, input: StartRunInput) {
+    return this.startRunWithAdmission(sessionId, input);
+  }
+
+  async startTaskRun(sessionId: string, input: StartRunInput, attemptId: string) {
+    if (!this.acceptingTaskStarts || !this.taskStartAttempts)
+      throw new AppError(503, 'TASK_START_UNAVAILABLE', '当前服务无法核对任务启动归属');
+    if (this.runAdmissions.has(sessionId))
+      throw new AppError(409, 'SESSION_NOT_READY', 'Session 正在启动 Run，请等待当前请求完成');
+    const attempt = await this.taskStartAttempts.get(attemptId);
+    if (!this.acceptingTaskStarts)
+      throw new AppError(503, 'TASK_START_UNAVAILABLE', '服务已停止接受任务启动');
+    if (!attempt || attempt.sessionId !== sessionId || attempt.phase !== 'SESSION_READY')
+      throw new AppError(
+        409,
+        'TASK_START_UNRESOLVED',
+        '任务启动尝试不属于当前待派发会话，请核对原操作',
+      );
+    // Another same-process call can acquire admission during the durable read.
+    if (this.runAdmissions.has(sessionId))
+      throw new AppError(409, 'SESSION_NOT_READY', 'Session 正在启动 Run，请等待当前请求完成');
+    try {
+      return await this.startRunWithAdmission(sessionId, input, attemptId);
+    } catch (error) {
+      // Once Run insertion atomically handed off the attempt, this is a no-op;
+      // the existing RunStartError/dispatch recovery contract owns the result.
+      try {
+        await this.taskStartAttempts.markUnknown(attemptId, 'TASK_RUN_START_UNRESOLVED');
+      } catch {
+        /* Durable phase remains a fence. */
+      }
+      throw error;
+    }
+  }
+
+  private async startRunWithAdmission(
+    sessionId: string,
+    input: StartRunInput,
+    taskStartAttemptId?: string,
+  ) {
     // Reserve admission before the first await. Do not queue duplicate sends:
     // they could otherwise become an unintended new turn after completion.
     if (this.runAdmissions.has(sessionId)) {
@@ -633,13 +872,17 @@ export class SessionService {
     }
     this.runAdmissions.add(sessionId);
     try {
-      return await this.startAdmittedRun(sessionId, input);
+      return await this.startAdmittedRun(sessionId, input, taskStartAttemptId);
     } finally {
       this.runAdmissions.delete(sessionId);
     }
   }
 
-  private async startAdmittedRun(sessionId: string, input: StartRunInput) {
+  private async startAdmittedRun(
+    sessionId: string,
+    input: StartRunInput,
+    taskStartAttemptId?: string,
+  ) {
     if (
       this.preparationFences.has(sessionId) ||
       (await this.runs.findBlockingForSession(sessionId))
@@ -693,38 +936,50 @@ export class SessionService {
           (await this.runs.findBlockingForSession(sessionId))
         )
           throw new AppError(409, 'SESSION_RUN_UNRESOLVED', 'Session 有未决 Run，请先核对原操作');
-        await this.runs.create({
-          id: runId,
-          sessionId,
-          taskId: session.taskId,
-          status: 'QUEUED',
-          dispatchState: 'PREPARING',
-          model: session.model,
-          mode: session.mode,
-          gitBeforeSha,
-          metadataJson: promptContext
-            ? {
-                promptContext: {
-                  finalContextHash: createHash('sha256')
-                    .update(promptContext.finalContext)
-                    .digest('hex'),
-                  items: promptContext.items.map((item) => ({
-                    promptId: item.promptId,
-                    versionId: item.versionId,
-                    version: item.version,
-                    label: item.label,
-                    contentHash: item.contentHash,
-                    bindingId: item.bindingId,
-                    slot: item.slot,
-                    targetType: item.targetType,
-                    targetId: item.targetId,
-                  })),
-                },
-              }
-            : {},
-        });
+        await this.runs.create(
+          {
+            id: runId,
+            sessionId,
+            taskId: session.taskId,
+            status: 'QUEUED',
+            dispatchState: 'PREPARING',
+            model: session.model,
+            mode: session.mode,
+            gitBeforeSha,
+            metadataJson: promptContext
+              ? {
+                  promptContext: {
+                    finalContextHash: createHash('sha256')
+                      .update(promptContext.finalContext)
+                      .digest('hex'),
+                    items: promptContext.items.map((item) => ({
+                      promptId: item.promptId,
+                      versionId: item.versionId,
+                      version: item.version,
+                      label: item.label,
+                      contentHash: item.contentHash,
+                      bindingId: item.bindingId,
+                      slot: item.slot,
+                      targetType: item.targetType,
+                      targetId: item.targetId,
+                    })),
+                  },
+                }
+              : {},
+          },
+          taskStartAttemptId ? { taskStartAttemptId } : undefined,
+        );
       });
     } catch (error) {
+      if (
+        error instanceof DatabaseInvariantError &&
+        ['TASK_RUN_OWNERSHIP_CHANGED', 'TASK_START_UNRESOLVED'].includes(error.code)
+      )
+        throw new AppError(
+          409,
+          error.code,
+          '任务会话归属已变化或存在未决启动，未派发；请核对原任务',
+        );
       if (error instanceof DatabaseInvariantError && error.code === 'TASK_CANCELED')
         throw new AppError(409, error.code, '任务已取消，不能继续派发；请新建任务');
       if (
@@ -896,6 +1151,12 @@ export class SessionService {
         409,
         'SESSION_RUN_UNRESOLVED',
         '原 Session 尚有未决 Run，不能通过继续会话绕过核对',
+      );
+    if (source.taskId)
+      throw new AppError(
+        409,
+        'TASK_SESSION_START_REQUIRED',
+        '任务会话不能新建独立续接，请回到任务核对或返工',
       );
     const project = await this.projects.get(source.projectId);
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
@@ -1377,6 +1638,7 @@ export class SessionService {
   }
 
   async recoverAfterRestart() {
+    const taskStarts = await this.taskStartAttempts?.recoverAfterRestart();
     const [runs, sessions, approvals, deliveries] = await Promise.all([
       this.runs.recoverInterrupted(),
       this.sessions.recoverInterrupted(),
@@ -1384,6 +1646,7 @@ export class SessionService {
       this.approvals.recoverInterruptedDeliveries(),
     ]);
     return {
+      ...(taskStarts ? { taskStarts } : {}),
       runs,
       sessions,
       approvals: approvals.map((approval) => approval.id),
@@ -1395,6 +1658,10 @@ export class SessionService {
   }
 
   async shutdown(): Promise<void> {
+    this.acceptingTaskStarts = false;
+    // Revoke pending create/resume before closing active handles. Late provider
+    // responses may clean up only their own handle, never reactivate this service.
+    this.lifecycleAdmissions.clear();
     this.clearCancellationTimers();
     this.configurationQueues.clear();
     const entries = [...this.active.entries()];

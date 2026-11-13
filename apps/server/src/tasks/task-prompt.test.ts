@@ -14,6 +14,7 @@ import {
   SessionRepository,
   SkillRepository,
   TaskRepository,
+  TaskStartAttemptRepository,
   WorktreeExecutionRepository,
 } from '@agenthub/db';
 import {
@@ -117,6 +118,9 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
       { publish: () => undefined },
       { readHead: async () => undefined },
       promptos,
+      {},
+      undefined,
+      new TaskStartAttemptRepository(database.db),
     );
     const service = new TaskService(goals, tasks, projects, sessionService, promptos);
     sessionService.setTaskLifecycleObserver(service);
@@ -332,8 +336,8 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const original = f.sessionService.create.bind(f.sessionService);
-    vi.spyOn(f.sessionService, 'create').mockImplementationOnce(async (...args) => {
+    const original = f.sessionService.createForTask.bind(f.sessionService);
+    vi.spyOn(f.sessionService, 'createForTask').mockImplementationOnce(async (...args) => {
       entered();
       await gate;
       return original(...args);
@@ -686,6 +690,31 @@ describe('Task 明确选择 PromptOS 的持久化与真实 Run 链路', () => {
       await worktrees.shutdown();
     },
   );
+
+  it('返工缺少Prompt变量在预留和创建Session前拒绝，保留原审阅状态', async () => {
+    const f = await fixture();
+    const asset = await f.makePrompt('处理 {{ subject }}', f.projectId, {
+      type: 'object',
+      properties: { subject: { type: 'string' } },
+      required: ['subject'],
+    });
+    const task = await f.service.createTask({
+      projectId: f.projectId,
+      title: '历史审阅缺变量',
+      selectedPrompt: { promptId: asset.prompt.id },
+    });
+    await f.tasks.update(task.id, { status: 'WAITING_REVIEW', assignedAgentId: f.agentId });
+    const before = await f.service.getTask(task.id);
+    const response = await request(f.app)
+      .post(`/api/v1/tasks/${task.id}/review`)
+      .send({ decision: 'REWORK', feedback: '继续修改' });
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('TASK_PROMPT_VARIABLES_MISSING');
+    expect(f.adapter.createdSessions).toBe(0);
+    expect(await f.sessions.list(f.projectId)).toHaveLength(0);
+    expect(await new TaskStartAttemptRepository(f.database.db).getForTask(task.id)).toHaveLength(0);
+    expect(await f.service.getTask(task.id)).toEqual(before);
+  });
 
   it('没有 production 时固定 latest，缺少变量在创建 Session 之前拒绝且可明确重试', async () => {
     const f = await fixture();

@@ -29,6 +29,7 @@ import {
   GoalRepository,
   SessionRepository,
   SessionContinuationRepository,
+  TaskStartAttemptRepository,
 } from '@agenthub/db';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -81,6 +82,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
     const events = new EventRepository(database.db);
     const approvals = new ApprovalRepository(database.db);
     const continuations = new SessionContinuationRepository(database.db);
+    const taskStartAttempts = new TaskStartAttemptRepository(database.db);
     const targetId = randomUUID();
     const projectId = randomUUID();
     const agentId = randomUUID();
@@ -151,16 +153,477 @@ describe('Session/Run/Approval 持久化闭环', () => {
           : { approvalDeliveryTimeoutMs: fixtureOptions.approvalDeliveryTimeoutMs }),
       },
       continuations,
+      taskStartAttempts,
     );
     return {
       service,
       agentService,
-      repositories: { sessions, runs, messages, events, approvals, continuations },
+      repositories: {
+        sessions,
+        runs,
+        messages,
+        events,
+        approvals,
+        continuations,
+        taskStartAttempts,
+      },
       projectId,
       agentId,
       published,
     };
   }
+
+  async function taskAdmissionFixture(
+    adapter = new ControlledAdapter('never'),
+    git?: GitHeadProbe,
+  ) {
+    const f = await createFixture('idle', undefined, {}, { adapter, ...(git ? { git } : {}) });
+    const tasks = new TaskRepository(database.db);
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: f.projectId,
+      title: '持久启动',
+      status: 'READY',
+    });
+    const input = {
+      projectId: f.projectId,
+      agentId: f.agentId,
+      taskId: task.id,
+      title: task.title,
+      cwd: '/tmp',
+    };
+    const admission = {
+      kind: 'START' as const,
+      expectedOldSessionId: null,
+      inputHash: 'fixture-hash',
+    };
+    return { ...f, tasks, task, input, admission, adapter };
+  }
+
+  it('任务公共create拒绝零runtime副作用，任务会话continuation也不得绕过返工', async () => {
+    const f = await taskAdmissionFixture();
+    try {
+      await expect(f.service.create(f.input)).rejects.toMatchObject({
+        code: 'TASK_SESSION_START_REQUIRED',
+      });
+      expect(f.adapter.handles).toHaveLength(0);
+      expect(await f.repositories.sessions.list(f.projectId)).toHaveLength(0);
+      const session = await f.service.createForTask(f.input, f.admission);
+      await f.service.close(session.id);
+      await expect(f.service.continue(session.id)).rejects.toMatchObject({
+        code: 'TASK_SESSION_START_REQUIRED',
+      });
+      expect(f.adapter.handles).toHaveLength(1);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('持久任务创建并发只创建一个handle，公共Run不能抢先内部原子移交', async () => {
+    const f = await taskAdmissionFixture();
+    try {
+      const results = await Promise.allSettled([
+        f.service.createForTask(f.input, f.admission),
+        f.service.createForTask(f.input, f.admission),
+      ]);
+      const winner = results.find((result) => result.status === 'fulfilled');
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      if (winner?.status !== 'fulfilled') throw new Error('缺少赢家');
+      const session = winner.value;
+      expect(f.adapter.handles).toHaveLength(1);
+      expect((await f.repositories.taskStartAttempts.get(session.taskStartAttemptId))?.phase).toBe(
+        'SESSION_READY',
+      );
+      await expect(f.service.startRun(session.id, { text: '直接抢先' })).rejects.toMatchObject({
+        code: 'TASK_START_UNRESOLVED',
+        status: 409,
+      });
+      expect(await f.repositories.messages.list(session.id)).toHaveLength(0);
+      const run = await f.service.startTaskRun(
+        session.id,
+        { text: '首次专属指令' },
+        session.taskStartAttemptId,
+      );
+      expect(await f.repositories.taskStartAttempts.get(session.taskStartAttemptId)).toMatchObject({
+        phase: 'RUN_ADMITTED',
+        runId: run.id,
+      });
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('任务adapter创建抛错持久UNKNOWN，不能把未取得handle猜成未调用', async () => {
+    const f = await taskAdmissionFixture();
+    const create = vi
+      .spyOn(f.adapter, 'createSession')
+      .mockRejectedValue(new Error('provider unknown'));
+    try {
+      await expect(f.service.createForTask(f.input, f.admission)).rejects.toMatchObject({
+        code: 'TASK_SESSION_CREATE_UNKNOWN',
+      });
+      const rows = await f.repositories.taskStartAttempts.getForTask(f.task.id);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.phase).toBe('UNKNOWN');
+      expect((await f.tasks.get(f.task.id))?.status).toBe('IN_PROGRESS');
+      await expect(f.service.createForTask(f.input, f.admission)).rejects.toMatchObject({
+        status: 409,
+      });
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(
+        await f.repositories.taskStartAttempts.releaseUnattempted(rows[0]!.id),
+      ).toBeUndefined();
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('恢复先释放RESERVED后原请求CAS失败不调用adapter', async () => {
+    const f = await taskAdmissionFixture();
+    const mark = f.repositories.taskStartAttempts.markCreateAttempted.bind(
+      f.repositories.taskStartAttempts,
+    );
+    vi.spyOn(f.repositories.taskStartAttempts, 'markCreateAttempted').mockImplementationOnce(
+      async (id) => {
+        await f.repositories.taskStartAttempts.releaseUnattempted(id);
+        return mark(id);
+      },
+    );
+    try {
+      await expect(f.service.createForTask(f.input, f.admission)).rejects.toMatchObject({
+        code: 'TASK_START_NOT_ATTEMPTED',
+      });
+      expect(f.adapter.handles).toHaveLength(0);
+      expect((await f.repositories.taskStartAttempts.getForTask(f.task.id))[0]?.phase).toBe(
+        'FAILED_KNOWN',
+      );
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('创建响应晚于UNKNOWN恢复时关闭自己handle且不激活旧Session', async () => {
+    const f = await taskAdmissionFixture();
+    const ready = f.repositories.taskStartAttempts.recordSessionReady.bind(
+      f.repositories.taskStartAttempts,
+    );
+    let close: ReturnType<typeof vi.spyOn> | undefined;
+    vi.spyOn(f.repositories.taskStartAttempts, 'recordSessionReady').mockImplementationOnce(
+      async (id, patch) => {
+        close = vi.spyOn(f.adapter.handles[0]!, 'close');
+        await f.repositories.taskStartAttempts.markUnknown(id, 'TASK_SESSION_CREATE_UNKNOWN');
+        return ready(id, patch);
+      },
+    );
+    try {
+      await expect(f.service.createForTask(f.input, f.admission)).rejects.toMatchObject({
+        code: 'TASK_SESSION_CREATE_UNKNOWN',
+      });
+      expect(close).toHaveBeenCalledTimes(1);
+      const rows = await f.repositories.taskStartAttempts.getForTask(f.task.id);
+      expect(rows[0]?.phase).toBe('UNKNOWN');
+      expect((await f.service.getConfiguration(rows[0]!.sessionId)).supported).toBe(false);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('任务recordReady与activate之间close获准时不晚激活CLOSED会话', async () => {
+    const f = await taskAdmissionFixture();
+    const record = f.repositories.taskStartAttempts.recordSessionReady.bind(
+      f.repositories.taskStartAttempts,
+    );
+    let reached!: (id: string) => void, release!: () => void;
+    const entered = new Promise<string>((resolve) => {
+      reached = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(f.repositories.taskStartAttempts, 'recordSessionReady').mockImplementationOnce(
+      async (id, patch) => {
+        const ready = await record(id, patch);
+        reached(ready!.id);
+        await barrier;
+        return ready;
+      },
+    );
+    const creation = f.service.createForTask(f.input, f.admission);
+    const rejected = expect(creation).rejects.toMatchObject({
+      code: 'TASK_SESSION_CREATE_UNKNOWN',
+    });
+    try {
+      const sessionId = await entered;
+      const closeHandle = vi.spyOn(f.adapter.handles[0]!, 'close');
+      const closing = f.service.close(sessionId);
+      release();
+      await rejected;
+      expect((await closing).status).toBe('CLOSED');
+      expect((await f.repositories.sessions.get(sessionId))?.status).toBe('CLOSED');
+      expect((await f.service.getConfiguration(sessionId)).supported).toBe(false);
+      expect(closeHandle).toHaveBeenCalledTimes(1);
+      expect((await f.repositories.taskStartAttempts.getForTask(f.task.id))[0]?.phase).toBe(
+        'UNKNOWN',
+      );
+    } finally {
+      release();
+      await rejected;
+      await f.service.shutdown();
+    }
+  });
+
+  it('close写CLOSED失败也永久撤销未返回的任务创建token', async () => {
+    const f = await taskAdmissionFixture();
+    const create = f.adapter.createSession.bind(f.adapter);
+    let reached!: (id: string) => void, release!: () => void;
+    const entered = new Promise<string>((resolve) => {
+      reached = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(f.adapter, 'createSession').mockImplementationOnce(async (input) => {
+      const handle = await create(input);
+      reached(input.sessionId);
+      await barrier;
+      return handle;
+    });
+    const transition = f.repositories.sessions.transition.bind(f.repositories.sessions);
+    vi.spyOn(f.repositories.sessions, 'transition').mockImplementation(
+      async (id, to, patch, options) => {
+        if (to === 'CLOSED') throw new Error('injected close persistence failure');
+        return transition(id, to, patch, options);
+      },
+    );
+    const creation = f.service.createForTask(f.input, f.admission);
+    const rejected = expect(creation).rejects.toMatchObject({
+      code: 'TASK_SESSION_CREATE_UNKNOWN',
+    });
+    try {
+      const sessionId = await entered;
+      const closeHandle = vi.spyOn(f.adapter.handles[0]!, 'close');
+      await expect(f.service.close(sessionId)).rejects.toThrow(
+        'injected close persistence failure',
+      );
+      release();
+      await rejected;
+      expect((await f.service.getConfiguration(sessionId)).supported).toBe(false);
+      expect(closeHandle).toHaveBeenCalledTimes(1);
+      expect((await f.repositories.taskStartAttempts.getForTask(f.task.id))[0]?.phase).toBe(
+        'UNKNOWN',
+      );
+    } finally {
+      release();
+      await rejected;
+      await f.service.shutdown();
+    }
+  });
+
+  it('reserve提交响应尚未返回时close失败仍撤销创建，零adapter调用', async () => {
+    const f = await taskAdmissionFixture();
+    const reserve = f.repositories.taskStartAttempts.reserve.bind(f.repositories.taskStartAttempts);
+    let reached!: (id: string) => void, release!: () => void;
+    const entered = new Promise<string>((resolve) => {
+      reached = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(f.repositories.taskStartAttempts, 'reserve').mockImplementationOnce(async (input) => {
+      const reserved = await reserve(input);
+      reached(reserved.session.id);
+      await barrier;
+      return reserved;
+    });
+    const transition = f.repositories.sessions.transition.bind(f.repositories.sessions);
+    vi.spyOn(f.repositories.sessions, 'transition').mockImplementation(
+      async (id, to, patch, options) => {
+        if (to === 'CLOSED') throw new Error('injected close persistence failure');
+        return transition(id, to, patch, options);
+      },
+    );
+    const creation = f.service.createForTask(f.input, f.admission);
+    const rejected = expect(creation).rejects.toMatchObject({ code: 'TASK_START_NOT_ATTEMPTED' });
+    try {
+      const sessionId = await entered;
+      await expect(f.service.close(sessionId)).rejects.toThrow(
+        'injected close persistence failure',
+      );
+      release();
+      await rejected;
+      expect(f.adapter.handles).toHaveLength(0);
+      expect((await f.repositories.taskStartAttempts.getForTask(f.task.id))[0]?.phase).toBe(
+        'FAILED_KNOWN',
+      );
+    } finally {
+      release();
+      await rejected;
+      await f.service.shutdown();
+    }
+  });
+
+  it('reserve提交后响应抛错不猜回滚，可读取原尝试且安全释放未调用预留', async () => {
+    const f = await taskAdmissionFixture();
+    const reserve = f.repositories.taskStartAttempts.reserve.bind(f.repositories.taskStartAttempts);
+    vi.spyOn(f.repositories.taskStartAttempts, 'reserve').mockImplementationOnce(async (input) => {
+      await reserve(input);
+      throw new Error('injected response lost after commit');
+    });
+    try {
+      await expect(f.service.createForTask(f.input, f.admission)).rejects.toMatchObject({
+        code: 'TASK_START_NOT_ATTEMPTED',
+        details: { attemptId: expect.any(String), sessionId: expect.any(String) },
+      });
+      const attempts = await f.repositories.taskStartAttempts.getForTask(f.task.id);
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0]?.phase).toBe('FAILED_KNOWN');
+      expect((await f.tasks.get(f.task.id))?.status).toBe('BLOCKED');
+      expect(f.adapter.handles).toHaveLength(0);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('shutdown撤销未返回的任务创建token，迟到handle只能清理不能激活', async () => {
+    const f = await taskAdmissionFixture();
+    const create = f.adapter.createSession.bind(f.adapter);
+    let reached!: (id: string) => void, release!: () => void;
+    const entered = new Promise<string>((resolve) => {
+      reached = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(f.adapter, 'createSession').mockImplementationOnce(async (input) => {
+      const handle = await create(input);
+      reached(input.sessionId);
+      await barrier;
+      return handle;
+    });
+    const creation = f.service.createForTask(f.input, f.admission);
+    const rejected = expect(creation).rejects.toMatchObject({
+      code: 'TASK_SESSION_CREATE_UNKNOWN',
+    });
+    try {
+      const sessionId = await entered;
+      const closeHandle = vi.spyOn(f.adapter.handles[0]!, 'close');
+      await f.service.shutdown();
+      release();
+      await rejected;
+      expect(closeHandle).toHaveBeenCalledTimes(1);
+      expect((await f.service.getConfiguration(sessionId)).supported).toBe(false);
+      expect((await f.repositories.taskStartAttempts.getForTask(f.task.id))[0]?.phase).toBe(
+        'UNKNOWN',
+      );
+    } finally {
+      release();
+      await rejected;
+      await f.service.shutdown();
+    }
+  });
+
+  it('任务验证await期间shutdown后不重新注册token或预留Session', async () => {
+    const f = await taskAdmissionFixture();
+    const resolveRuntime = f.agentService.resolveRuntime.bind(f.agentService);
+    let reached!: () => void, release!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(f.agentService, 'resolveRuntime').mockImplementationOnce(async (...args) => {
+      const runtime = await resolveRuntime(...args);
+      reached();
+      await barrier;
+      return runtime;
+    });
+    const creation = f.service.createForTask(f.input, f.admission);
+    const rejected = expect(creation).rejects.toMatchObject({ code: 'TASK_START_UNAVAILABLE' });
+    try {
+      await entered;
+      await f.service.shutdown();
+      release();
+      await rejected;
+      expect(f.adapter.handles).toHaveLength(0);
+      expect(await f.repositories.sessions.list(f.projectId)).toHaveLength(0);
+      expect(await f.repositories.taskStartAttempts.getForTask(f.task.id)).toHaveLength(0);
+      expect((await f.tasks.get(f.task.id))?.status).toBe('READY');
+      await expect(f.service.createForTask(f.input, f.admission)).rejects.toMatchObject({
+        code: 'TASK_START_UNAVAILABLE',
+      });
+      await expect(
+        f.service.startTaskRun(randomUUID(), { text: '停止后请求' }, randomUUID()),
+      ).rejects.toMatchObject({ code: 'TASK_START_UNAVAILABLE' });
+    } finally {
+      release();
+      await rejected;
+      await f.service.shutdown();
+    }
+  });
+
+  it('内部启动传入其他Task尝试不得派发或污染另一任务阶段', async () => {
+    const a = await taskAdmissionFixture(),
+      b = await taskAdmissionFixture();
+    try {
+      const first = await a.service.createForTask(a.input, a.admission);
+      const second = await b.service.createForTask(b.input, b.admission);
+      await expect(
+        a.service.startTaskRun(first.id, { text: '错误归属' }, second.taskStartAttemptId),
+      ).rejects.toMatchObject({ code: 'TASK_START_UNRESOLVED' });
+      expect((await a.repositories.taskStartAttempts.get(first.taskStartAttemptId))?.phase).toBe(
+        'SESSION_READY',
+      );
+      expect((await b.repositories.taskStartAttempts.get(second.taskStartAttemptId))?.phase).toBe(
+        'SESSION_READY',
+      );
+      expect(await a.repositories.runs.list(first.id)).toHaveLength(0);
+      expect(await b.repositories.runs.list(second.id)).toHaveLength(0);
+    } finally {
+      await a.service.shutdown();
+      await b.service.shutdown();
+    }
+  });
+
+  it('重复内部startTaskRun忙碌拒绝不污染原请求的SESSION_READY移交', async () => {
+    let entered!: () => void, release!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const f = await taskAdmissionFixture(new ControlledAdapter('never'), {
+      readHead: async () => {
+        entered();
+        await barrier;
+        return undefined;
+      },
+    });
+    try {
+      const session = await f.service.createForTask(f.input, f.admission);
+      const first = f.service.startTaskRun(
+        session.id,
+        { text: '首次' },
+        session.taskStartAttemptId,
+      );
+      await reached;
+      await expect(
+        f.service.startTaskRun(session.id, { text: '重复' }, session.taskStartAttemptId),
+      ).rejects.toMatchObject({ code: 'SESSION_NOT_READY' });
+      expect((await f.repositories.taskStartAttempts.get(session.taskStartAttemptId))?.phase).toBe(
+        'SESSION_READY',
+      );
+      release();
+      const run = await first;
+      expect((await f.repositories.taskStartAttempts.get(session.taskStartAttemptId))?.runId).toBe(
+        run.id,
+      );
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
 
   it('resume配置读取挂起后close，迟到配置不写CLOSED会话', async () => {
     let release!: () => void;
@@ -852,13 +1315,16 @@ describe('Session/Run/Approval 持久化闭环', () => {
         },
       });
       try {
-        const session = await fixture.service.create({
-          projectId: fixture.projectId,
-          agentId: fixture.agentId,
-          taskId: task.id,
-          title: '受控终态窗口',
-          cwd: '/tmp',
-        });
+        const session = await fixture.service.createManagedWorktree(
+          {
+            projectId: fixture.projectId,
+            agentId: fixture.agentId,
+            taskId: task.id,
+            title: '受控终态窗口',
+            cwd: '/tmp',
+          },
+          '/tmp',
+        );
         await tasks.update(task.id, { sessionId: session.id });
         const first = await fixture.service.startRun(session.id, { text: '第一轮' });
         firstId = first.id;
@@ -936,13 +1402,16 @@ describe('Session/Run/Approval 持久化闭环', () => {
         assignedAgentId: fixture.agentId,
       });
       try {
-        const session = await fixture.service.create({
-          projectId: fixture.projectId,
-          agentId: fixture.agentId,
-          taskId: task.id,
-          title: '无HEAD会话',
-          cwd: '/tmp',
-        });
+        const session = await fixture.service.createManagedWorktree(
+          {
+            projectId: fixture.projectId,
+            agentId: fixture.agentId,
+            taskId: task.id,
+            title: '无HEAD会话',
+            cwd: '/tmp',
+          },
+          '/tmp',
+        );
         await tasks.update(task.id, { sessionId: session.id });
         const run = await fixture.service.startRun(session.id, { text: '正常完成' });
         adapter.handles[0]!.complete(run.id);
@@ -999,13 +1468,16 @@ describe('Session/Run/Approval 持久化闭环', () => {
       status: 'IN_PROGRESS',
       assignedAgentId: fixture.agentId,
     });
-    const session = await fixture.service.create({
-      projectId: fixture.projectId,
-      agentId: fixture.agentId,
-      taskId: task.id,
-      title: '准备窗口',
-      cwd: '/tmp',
-    });
+    const session = await fixture.service.createManagedWorktree(
+      {
+        projectId: fixture.projectId,
+        agentId: fixture.agentId,
+        taskId: task.id,
+        title: '准备窗口',
+        cwd: '/tmp',
+      },
+      '/tmp',
+    );
     await tasks.update(task.id, { sessionId: session.id });
     return { ...fixture, adapter, tasks, taskService, task, session };
   }
@@ -2870,13 +3342,14 @@ describe('Session/Run/Approval 持久化闭环', () => {
       await f.tasks.transition(f.task.id, 'WAITING_REVIEW');
       await f.taskService.transitionTask(f.task.id, 'CANCELED');
       await f.service.close(f.session.id);
-      const continued = await f.service.continue(f.session.id);
-      expect(continued.session.taskId).toBe(f.task.id);
-      await expect(
-        f.service.startRun(continued.session.id, { text: '新会话也不能继续执行' }),
-      ).rejects.toMatchObject({ status: 409, code: 'TASK_CANCELED' });
-      expect(await f.repositories.runs.list(continued.session.id)).toHaveLength(0);
-      expect(await f.repositories.messages.list(continued.session.id)).toHaveLength(0);
+      const before = await f.repositories.sessions.list(f.projectId);
+      await expect(f.service.continue(f.session.id)).rejects.toMatchObject({
+        status: 409,
+        code: 'TASK_SESSION_START_REQUIRED',
+      });
+      expect(await f.repositories.sessions.list(f.projectId)).toEqual(before);
+      expect(await f.repositories.runs.list(f.session.id)).toHaveLength(0);
+      expect(await f.repositories.messages.list(f.session.id)).toHaveLength(0);
       expect(send).not.toHaveBeenCalled();
       expect((await f.tasks.get(f.task.id))?.status).toBe('CANCELED');
     } finally {
@@ -3105,6 +3578,15 @@ describe('Session/Run/Approval 持久化闭环', () => {
     'Task%s准备失败由停止观察器收敛后不重复BLOCKED转换',
     async (mode) => {
       const f = await preparationFixture();
+      // Seed authoritative old completion; a no-Run legacy Session is now
+      // intentionally unknown and must not be used to bypass startup recovery.
+      await f.repositories.runs.create({
+        id: randomUUID(),
+        sessionId: f.session.id,
+        taskId: f.task.id,
+        status: 'COMPLETED',
+        dispatchState: 'ATTEMPTED',
+      });
       await f.tasks.update(f.task.id, { status: mode === 'START' ? 'READY' : 'WAITING_REVIEW' });
       vi.spyOn(f.repositories.messages, 'append').mockRejectedValueOnce(new Error('prepare'));
       try {
@@ -3122,6 +3604,13 @@ describe('Session/Run/Approval 持久化闭环', () => {
 
   it('权威完成先于ack写失败时UNKNOWN不得覆盖已完成Task', async () => {
     const f = await preparationFixture();
+    await f.repositories.runs.create({
+      id: randomUUID(),
+      sessionId: f.session.id,
+      taskId: f.task.id,
+      status: 'COMPLETED',
+      dispatchState: 'ATTEMPTED',
+    });
     await f.tasks.update(f.task.id, { status: 'READY' });
     const send = vi
       .spyOn(ControlledHandle.prototype, 'sendTurn')
@@ -3355,7 +3844,6 @@ describe('Session/Run/Approval 持久化闭环', () => {
         agentId: fixture.agentId,
         title: 'REST 越界',
         cwd: worktree,
-        taskId: randomUUID(),
       }),
     ).rejects.toMatchObject({ code: 'SESSION_CWD_OUTSIDE_PROJECT' });
     const session = await fixture.service.createManagedWorktree(
@@ -3555,6 +4043,14 @@ describe('Session/Run/Approval 持久化闭环', () => {
     const fixture = await createFixture('approval');
     const lifecycle: string[] = [];
     const taskId = randomUUID();
+    const tasks = new TaskRepository(database.db);
+    await tasks.create({
+      id: taskId,
+      projectId: fixture.projectId,
+      title: 'Approval任务',
+      status: 'IN_PROGRESS',
+      assignedAgentId: fixture.agentId,
+    });
     fixture.service.setTaskLifecycleObserver({
       onRunCompleted: async () => {
         lifecycle.push('completed');
@@ -3566,13 +4062,17 @@ describe('Session/Run/Approval 持久化闭环', () => {
         lifecycle.push('resumed');
       },
     });
-    const session = await fixture.service.create({
-      projectId: fixture.projectId,
-      agentId: fixture.agentId,
-      taskId,
-      title: 'Approval 测试',
-      cwd: '/tmp',
-    });
+    const session = await fixture.service.createManagedWorktree(
+      {
+        projectId: fixture.projectId,
+        agentId: fixture.agentId,
+        taskId,
+        title: 'Approval 测试',
+        cwd: '/tmp',
+      },
+      '/tmp',
+    );
+    await tasks.update(taskId, { sessionId: session.id });
     const run = await fixture.service.startRun(session.id, { text: '执行需要权限的任务' });
 
     await waitFor(

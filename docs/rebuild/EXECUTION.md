@@ -6,12 +6,12 @@
 
 | 范围 | 最新事实 | 后续动作 |
 | --- | --- | --- |
-| 已验收发布基线 | S63 `7b05581`精确CI43367292783的verify与真实服务/视觉证据双绿 | 不合并main、不部署；功能门禁不等于视觉认可 |
-| 本地最终门禁 | S65冻结树lint/types/串行build/QA10通过；122文件1128项＋另2文件26项完整覆盖1154通过/10原有skip | 资源隔离验证；历史混合树/资源失败保留 |
-| 当前CI | S63 7b05581 CI43367292783双绿；S64 e010713 verify成功、真实服务仍运行 | S65待新提交精确CI；未启用预留基础不等于AH-001修复 |
+| 已验收发布基线 | S65 `761561c`精确CI43370321494的verify与真实服务/视觉证据双绿 | 不合并main、不部署；功能门禁不等于视觉认可 |
+| 本地最终门禁 | S66冻结树lint/types/串行build/QA10通过；123文件1160项＋另2文件26项完整覆盖1186通过/10原有skip | 资源隔离验证；历史混合树/资源失败保留 |
+| 当前CI | S65 761561c CI43370321494双绿；S64 e010713 CI43368085203双绿 | S66待新exact CI；UNKNOWN隔离不等于所有故障可自动恢复 |
 | 已知前轮失败 | 74f49ba/c78905f的Esc故障已修；17566/70c838/4156787的Agent容器边缘断言已用原生IO取证修正，095485c通过 | 原红灯与依据保留在下方历史，不隐去失败 |
 | 视觉状态 | 用户已否定两轮全部概念；最新要求参考Codex实际UI，正在研究真实参考 | 未选实施稿前不恢复视觉实现；功能回归不等于审美认可 |
-| 下一重点 | 等待Codex视觉方向确认；S65持久基础已本地验证，S66接入完整恢复后才能启用 | 沿用既有组件，不借旧CI或局部烟测冒称浏览器全过 |
+| 下一重点 | 等待Codex视觉方向确认；S66启动预留/恢复已本地验证；核验新CI，后续补显式核对体验 | 沿用既有组件，不借旧CI或局部烟测冒称浏览器全过 |
 | 仍有限制 | 本地Chromium socket限制；真实NAS/用户Agent/独立Postgres多连接未验收；历史Cookie日志未清理或撤销 | 保留明确边界，不声称完整发布就绪 |
 
 ## 运行记录
@@ -875,3 +875,22 @@
 - 冻结树严格串行lint/types/build/QA10，122文件1128项＋另2文件13批26项，完整1154通过/10原有skip，全部退出0；21专项与独立CR通过；drizzle-kit check成功。
 - 增量0010迁移实际从旧库升级，历史Task/CREATED/FAILED/READY Session不变、空账本不回填猜测，唯一/阶段约束与持久重开验证通过。没有运行未接入的adapter烟测或声称完整预留生效。
 - S63 7b05581精确CI43367292783双绿，AH-082当前切片验收；S64 e010713 verify成功、真实服务仍运行。新S65 exact CI待发布后核验。
+
+### S66 / M1.2 完整运行接入启动
+
+- 基线761561c；S64 e010713精确CI43368085203双绿，S65精确CI43370321494 verify成功、真实服务仍运行。
+- 接入专属Task创建/首Run、持久阶段和Run原子移交、旧/孤立会话拒绝、pending手工/Worktree互锁、startup恢复和只读attempt核对API。公共taskId Session创建及Task会话独立continuation明确拒绝，当前普通Session继续对话不隐式重启Task仍保留。
+- 独立CR发现创建READY与close的迟到激活窗口，要求创建身份令牌覆盖reserve之前并在外部await后重验，close写失败也不能重新取得资格；修复和故障barrier验证中，不把半成品推送。
+- Task专项最终84通过；早期旧dist/旧create spy和不明确legacy夹具失败保留并改为合法准入后模拟历史失配，旧断言保留。DB首轮67专项通过，后续增加移交原子回滚/关闭未尝试释放/真实持久重启。Session完整首轮124通过5旧合同/夹具冲突，正在修正后重验。
+
+- S66最终专项：Session133全部通过；Task84通过；root数据库/真实持久重开startup/UI三文件52通过及types通过，后追加一个503安全映射回归进入完整门禁。关闭撤销令牌从reserve前覆盖，关闭写失败/READY后/adapter未回包均不迟到激活；shutdown的验证await与adapter窗口均撤销；reserve提交响应丢失只按精确持久证据释放。
+- 旧Session测试5失败为旧公共continuation合同和历史无Run/随机Task夹具，改为明确公共拒绝、合法归属后构造历史情况，原结果/故障断言保留；externalSessionId可选类型错误按真实adapter合同修正并重验。源码冻结，开始全仓严格串行门禁；真实ACP烟测等门禁全部退出后才运行。
+
+- S66首轮整仓lint/types/build/QA10均通过，主1159通过/1失败/10原有skip：独立core-workflow测试装配漏注入新attempt仓库，未启动任何Agent；补与生产相同依赖后核心闭环通过，独立CR确认原断言未弱化。保留原失败JSON，完整冻结门禁从头再跑。四宽task-review及workbench显式E2E类型/收集8项通过，未执行本地浏览器。
+
+### S66 最终本地验收
+
+- 最终冻结源码严格串行lint/types/build/QA10、123文件1160项＋另2文件13批26项，完整1186通过/10原有skip，全部退出0；Session133、Task84及DB/完整持久startup/UI专项通过，独立CR无剩余阻塞。原夹具/装配/类型失败证据保留，没有以单个JSON覆盖失败进程。
+- 门禁全部结束后最终build真实临时Git/PGlite/ACP烟测通过：每个HTTP请求独立TaskService、双请求均进入创建前barrier；START为201+409且真实ACP创建1次/1Session/1Run；REWORK为200+409，总计仅2次ACP创建/2Session/2Run。审批后WAITING_REVIEW、普通APPROVE到DONE；旧会话直接Run409且无副作用；核对账本字段白名单、no-store及重复GET无重放。精确临时目录已清理。
+- 新核对接口GET /api/v1/tasks/:id/start-attempts只读；UNKNOWN保持所有权，不自动重建/重发。确定RESERVED未调用可释放，RUN_ADMITTED交给已有Run恢复；历史无确定证据会话保守拒绝新启动。当前Session继续对话不隐式重启Task，旧/孤立Session及Task关联独立续接明确拒绝。
+- 四宽task-review新增账本/旧Session拒绝断言，workbench明确公共Task会话绕过拒绝，类型及8项收集通过；实际浏览器等待新exact CI。独立Postgres多连接、跨进程runtime路由、真实用户Agent/NAS未验，完整用户恢复交互及启动请求幂等仍独立范围；没有改视觉。S65精确CI已双绿。

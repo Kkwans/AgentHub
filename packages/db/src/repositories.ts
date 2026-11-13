@@ -52,6 +52,7 @@ import {
   skills,
   tasks,
   taskCreationOperations,
+  taskStartAttempts,
   worktreeExecutions,
 } from './schema.js';
 
@@ -1725,6 +1726,27 @@ export class TaskRepository<TDatabase extends AgentHubDatabase> {
       // Admission also takes the Task lock, so a stale service snapshot cannot
       // cancel a new Run or bypass this protection via BLOCKED/WAITING_REVIEW.
       if (options.guardManualRunState) {
+        const [attempt] = await transaction
+          .select({ id: taskStartAttempts.id })
+          .from(taskStartAttempts)
+          .where(
+            and(
+              eq(taskStartAttempts.taskId, id),
+              inArray(taskStartAttempts.phase, [
+                'RESERVED',
+                'CREATE_ATTEMPTED',
+                'SESSION_READY',
+                'UNKNOWN',
+              ]),
+            ),
+          )
+          .limit(1);
+        if (attempt)
+          throw new DatabaseInvariantError(
+            'TASK_START_UNRESOLVED',
+            '任务启动结果未确认，请核对原启动尝试',
+          );
+
         const [run] = await transaction
           .select({ id: agentRuns.id })
           .from(agentRuns)
@@ -2146,6 +2168,23 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
         .for('update')
         .limit(1);
       if (!task) throw new DatabaseInvariantError('TASK_NOT_FOUND', 'Task 不存在');
+      const [attempt] = await transaction
+        .select({ id: taskStartAttempts.id })
+        .from(taskStartAttempts)
+        .where(
+          and(
+            eq(taskStartAttempts.taskId, task.id),
+            inArray(taskStartAttempts.phase, [
+              'RESERVED',
+              'CREATE_ATTEMPTED',
+              'SESSION_READY',
+              'UNKNOWN',
+            ]),
+          ),
+        )
+        .limit(1);
+      if (attempt)
+        throw new DatabaseInvariantError('TASK_START_UNRESOLVED', '任务存在未决启动，不能隔离入队');
       transitionTask(task.status as TaskStatus, 'IN_PROGRESS');
 
       const { assignedAgentId, ...executionInput } = input;
@@ -2957,7 +2996,10 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
     });
   }
 
-  async create(input: typeof agentRuns.$inferInsert) {
+  async create(
+    input: typeof agentRuns.$inferInsert,
+    options: { taskStartAttemptId?: string } = {},
+  ) {
     return this.db.transaction(async (transaction) => {
       // Task callbacks take the same Task -> Session locks. Do not insert first:
       // a callback must see either the previous admission or the complete new one.
@@ -3043,12 +3085,57 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
           .limit(1);
         if (blocking) throw rejected();
       }
+      if (
+        !ownedExecutions.length &&
+        session.taskId &&
+        (!task ||
+          task.sessionId !== session.id ||
+          task.projectId !== session.projectId ||
+          task.assignedAgentId !== session.agentId)
+      )
+        throw new DatabaseInvariantError(
+          'TASK_RUN_OWNERSHIP_CHANGED',
+          '该会话不再属于任务当前执行，未派发',
+        );
+      const [attempt] = await transaction
+        .select()
+        .from(taskStartAttempts)
+        .where(eq(taskStartAttempts.sessionId, session.id))
+        .for('update')
+        .limit(1);
+      if (attempt && attempt.phase !== 'RUN_ADMITTED') {
+        if (
+          !options.taskStartAttemptId ||
+          options.taskStartAttemptId !== attempt.id ||
+          attempt.phase !== 'SESSION_READY' ||
+          !task ||
+          task.status !== 'IN_PROGRESS' ||
+          attempt.taskId !== task.id ||
+          attempt.projectId !== session.projectId ||
+          attempt.agentId !== session.agentId ||
+          session.status !== 'READY' ||
+          session.latestRunId !== null
+        )
+          throw new DatabaseInvariantError(
+            'TASK_START_UNRESOLVED',
+            '任务启动归属未就绪，请核对原启动尝试',
+          );
+      } else if (options.taskStartAttemptId)
+        throw new DatabaseInvariantError(
+          'TASK_START_UNRESOLVED',
+          '启动尝试已经移交或不存在，不能重复派发',
+        );
       const [created] = await transaction.insert(agentRuns).values(input).returning();
       if (!created) throw new DatabaseInvariantError('RUN_CREATE_FAILED', 'Run 创建失败');
       await transaction
         .update(agentSessions)
         .set({ latestRunId: created.id })
         .where(eq(agentSessions.id, input.sessionId));
+      if (attempt && options.taskStartAttemptId)
+        await transaction
+          .update(taskStartAttempts)
+          .set({ phase: 'RUN_ADMITTED', runId: created.id, errorCode: null, updatedAt: new Date() })
+          .where(eq(taskStartAttempts.id, attempt.id));
       // Direct Session turns preserve existing Task status; claiming the latest
       // Run never implicitly restarts a reviewed, blocked, or completed Task.
       return created;

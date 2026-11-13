@@ -209,19 +209,17 @@ describe('Task Prompt recovery error contract', () => {
 });
 
 it('隔离任务Session直发被拒绝时指向受管返工，不泄漏后端细节或自动重发', async () => {
-  const fetch = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json(
-        {
-          error: {
-            code: 'WORKTREE_RUN_ADMISSION_REJECTED',
-            message: 'private identity mismatch /secret/worktree',
-          },
+  const fetch = vi.fn().mockResolvedValue(
+    Response.json(
+      {
+        error: {
+          code: 'WORKTREE_RUN_ADMISSION_REJECTED',
+          message: 'private identity mismatch /secret/worktree',
         },
-        { status: 409 },
-      ),
-    );
+      },
+      { status: 409 },
+    ),
+  );
   vi.stubGlobal('fetch', fetch);
   const failure = await api
     .post('/sessions/session-a/messages', { text: '继续修改' })
@@ -233,5 +231,42 @@ it('隔离任务Session直发被拒绝时指向受管返工，不泄漏后端细
     message: '该会话由隔离执行管理，请回到任务使用隔离返工或核对执行状态。',
   });
   expect((failure as Error).message).not.toContain('/secret/worktree');
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  'TASK_START_UNRESOLVED',
+  'TASK_SESSION_CREATE_UNKNOWN',
+  'TASK_RUN_OWNERSHIP_CHANGED',
+  'TASK_START_RESERVATION_UNCONFIRMED',
+])('%s明确核对原尝试，不暴露后端原文或自动重发', async (code) => {
+  const fetch = vi.fn().mockResolvedValue(
+    Response.json(
+      {
+        error: {
+          code,
+          message: 'secret provider /private/path',
+          details: { attemptId: 'attempt-a', sessionId: 'session-a' },
+        },
+      },
+      {
+        status:
+          code === 'TASK_SESSION_CREATE_UNKNOWN'
+            ? 502
+            : code === 'TASK_START_RESERVATION_UNCONFIRMED'
+              ? 503
+              : 409,
+      },
+    ),
+  );
+  vi.stubGlobal('fetch', fetch);
+  const failure = await api.post('/tasks/task-a/start', {}).catch((error: unknown) => error);
+  expect(failure).toBeInstanceOf(ApiError);
+  expect(failure).toMatchObject({
+    code,
+    details: { attemptId: 'attempt-a', sessionId: 'session-a' },
+  });
+  expect((failure as Error).message).toContain('核对');
+  expect((failure as Error).message).not.toContain('/private/path');
   expect(fetch).toHaveBeenCalledTimes(1);
 });

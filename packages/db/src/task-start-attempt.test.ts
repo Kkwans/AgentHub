@@ -12,6 +12,7 @@ import {
   WorktreeExecutionRepository,
   TaskStartAttemptRepository,
   taskStartAttempts,
+  agentRuns,
   type ReserveTaskStartInput,
 } from './index.js';
 
@@ -73,7 +74,16 @@ async function fixture(kind: 'START' | 'REWORK' = 'START') {
           status: 'READY',
         })
       : undefined;
-  if (old) await tasks.update(task.id, { sessionId: old.id });
+  if (old) {
+    await tasks.update(task.id, { sessionId: old.id });
+    await new RunRepository(database.db).create({
+      id: randomUUID(),
+      sessionId: old.id,
+      taskId: task.id,
+      status: 'COMPLETED',
+      dispatchState: 'ATTEMPTED',
+    });
+  }
   const input: ReserveTaskStartInput = {
     attemptId: randomUUID(),
     kind,
@@ -207,7 +217,7 @@ it.each(['TASK_CHANGED', 'SESSION_CHANGED', 'RUN_EXISTS', 'UNKNOWN'] as const)(
     if (mode === 'TASK_CHANGED') await f.tasks.update(f.task.id, { sessionId: null });
     if (mode === 'SESSION_CHANGED') await f.sessions.transition(f.input.session.id, 'STARTING');
     if (mode === 'RUN_EXISTS')
-      await new RunRepository(database.db).create({
+      await database.db.insert(agentRuns).values({
         id: randomUUID(),
         taskId: f.task.id,
         sessionId: f.input.session.id,
@@ -294,4 +304,185 @@ it('确定未尝试释放后显式重置并新预留，不复用旧attempt', asy
   expect((await f.attempts.reserve(next)).attempt.phase).toBe('RESERVED');
   expect((await f.attempts.get(f.input.attemptId))?.phase).toBe('FAILED_KNOWN');
   expect(await f.attempts.markCreateAttempted(f.input.attemptId)).toBeUndefined();
+});
+
+it('READY阶段只允许内部精确attempt移交一次，Run和latest指针同事务', async () => {
+  const f = await fixture();
+  const runs = new RunRepository(database.db);
+  await f.attempts.reserve(f.input);
+  await f.attempts.markCreateAttempted(f.input.attemptId);
+  expect(
+    await f.attempts.recordSessionReady(f.input.attemptId, {
+      externalSessionId: 'fixture-external',
+      startedAt: new Date(),
+    }),
+  ).toMatchObject({ status: 'READY' });
+  const input = {
+    id: randomUUID(),
+    sessionId: f.input.session.id,
+    taskId: f.task.id,
+    status: 'QUEUED',
+    dispatchState: 'PREPARING' as const,
+  };
+  await expect(runs.create(input)).rejects.toMatchObject({ code: 'TASK_START_UNRESOLVED' });
+  await expect(runs.create(input, { taskStartAttemptId: randomUUID() })).rejects.toMatchObject({
+    code: 'TASK_START_UNRESOLVED',
+  });
+  expect(await runs.list(f.input.session.id)).toEqual([]);
+  const admitted = await runs.create(input, { taskStartAttemptId: f.input.attemptId });
+  expect(await f.attempts.get(f.input.attemptId)).toMatchObject({
+    phase: 'RUN_ADMITTED',
+    runId: admitted.id,
+  });
+  expect((await f.sessions.get(f.input.session.id))?.latestRunId).toBe(admitted.id);
+  await expect(
+    runs.create({ ...input, id: randomUUID() }, { taskStartAttemptId: f.input.attemptId }),
+  ).rejects.toMatchObject({ code: 'TASK_START_UNRESOLVED' });
+  expect(await f.attempts.markUnknown(f.input.attemptId, 'LATE_ERROR')).toBeUndefined();
+  expect((await f.attempts.get(f.input.attemptId))?.phase).toBe('RUN_ADMITTED');
+});
+
+it.each(['RESERVED', 'CREATE_ATTEMPTED', 'SESSION_READY', 'RUN_ADMITTED'] as const)(
+  '重启恢复%s不创建Session或Run，重复恢复幂等',
+  async (phase) => {
+    const f = await fixture();
+    await f.attempts.reserve(f.input);
+    if (phase !== 'RESERVED') await f.attempts.markCreateAttempted(f.input.attemptId);
+    if (['SESSION_READY', 'RUN_ADMITTED'].includes(phase))
+      await f.attempts.recordSessionReady(f.input.attemptId, {
+        externalSessionId: 'fixture',
+        startedAt: new Date(),
+      });
+    if (phase === 'RUN_ADMITTED')
+      await new RunRepository(database.db).create(
+        {
+          id: randomUUID(),
+          sessionId: f.input.session.id,
+          taskId: f.task.id,
+          status: 'QUEUED',
+          dispatchState: 'PREPARING',
+        },
+        { taskStartAttemptId: f.input.attemptId },
+      );
+    await f.attempts.recoverAfterRestart();
+    const expected =
+      phase === 'RESERVED' ? 'FAILED_KNOWN' : phase === 'RUN_ADMITTED' ? 'RUN_ADMITTED' : 'UNKNOWN';
+    expect((await f.attempts.get(f.input.attemptId))?.phase).toBe(expected);
+    const before = {
+      task: await f.tasks.get(f.task.id),
+      session: await f.sessions.get(f.input.session.id),
+      attempt: await f.attempts.get(f.input.attemptId),
+    };
+    await f.attempts.recoverAfterRestart();
+    expect({
+      task: await f.tasks.get(f.task.id),
+      session: await f.sessions.get(f.input.session.id),
+      attempt: await f.attempts.get(f.input.attemptId),
+    }).toEqual(before);
+    expect(await new RunRepository(database.db).list(f.input.session.id)).toHaveLength(
+      phase === 'RUN_ADMITTED' ? 1 : 0,
+    );
+    if (expected === 'UNKNOWN')
+      expect(
+        await f.attempts.recordSessionReady(f.input.attemptId, {
+          externalSessionId: 'late',
+          startedAt: new Date(),
+        }),
+      ).toBeUndefined();
+  },
+);
+
+it('旧或孤立普通Session不能派发，但当前会话继续对话不重启已审阅Task', async () => {
+  const f = await fixture('REWORK');
+  const runs = new RunRepository(database.db);
+  const orphan = await f.sessions.create({ ...f.input.session, id: randomUUID(), status: 'READY' });
+  await expect(
+    runs.create({ id: randomUUID(), taskId: f.task.id, sessionId: orphan.id, status: 'RUNNING' }),
+  ).rejects.toMatchObject({ code: 'TASK_RUN_OWNERSHIP_CHANGED' });
+  const run = await runs.create({
+    id: randomUUID(),
+    taskId: f.task.id,
+    sessionId: f.old!.id,
+    status: 'COMPLETED',
+    dispatchState: 'ATTEMPTED',
+  });
+  expect((await f.tasks.get(f.task.id))?.status).toBe('WAITING_REVIEW');
+  expect((await f.sessions.get(f.old!.id))?.latestRunId).toBe(run.id);
+  await expect(f.attempts.reserve(f.input)).rejects.toMatchObject({
+    code: 'TASK_START_UNRESOLVED',
+  });
+});
+
+it('未决预留不能通过手工状态或Worktree入队绕过', async () => {
+  const f = await fixture();
+  await f.attempts.reserve(f.input);
+  await expect(
+    f.tasks.transition(f.task.id, 'BLOCKED', {}, { guardManualRunState: true }),
+  ).rejects.toMatchObject({ code: 'TASK_START_UNRESOLVED' });
+  await f.tasks.update(f.task.id, { status: 'READY' });
+  await expect(
+    new WorktreeExecutionRepository(database.db).enqueue({
+      id: randomUUID(),
+      taskId: f.task.id,
+      projectId,
+      agentId,
+      assignedAgentId: agentId,
+      baseBranch: 'main',
+      baseSha: 'a'.repeat(40),
+      taskBranch: `test-${f.task.id}`,
+    }),
+  ).rejects.toMatchObject({ code: 'TASK_START_UNRESOLVED' });
+});
+
+it('Run移交attempt写失败时Run插入和latest指针全部回滚', async () => {
+  const f = await fixture();
+  await f.attempts.reserve(f.input);
+  await f.attempts.markCreateAttempted(f.input.attemptId);
+  await f.attempts.recordSessionReady(f.input.attemptId, {
+    externalSessionId: 'fixture',
+    startedAt: new Date(),
+  });
+  const functionName = 'reject_handoff_' + randomUUID().replaceAll('-', '');
+  await database.db.execute(
+    sql.raw(
+      `CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id = '${f.input.attemptId}' AND NEW.phase = 'RUN_ADMITTED' THEN RAISE EXCEPTION 'injected handoff failure'; END IF; RETURN NEW; END $$`,
+    ),
+  );
+  await database.db.execute(
+    sql.raw(
+      `CREATE TRIGGER ${functionName} BEFORE UPDATE ON task_start_attempts FOR EACH ROW EXECUTE FUNCTION ${functionName}()`,
+    ),
+  );
+  const runs = new RunRepository(database.db);
+  const input = {
+    id: randomUUID(),
+    sessionId: f.input.session.id,
+    taskId: f.task.id,
+    status: 'QUEUED',
+    dispatchState: 'PREPARING' as const,
+  };
+  try {
+    await expect(runs.create(input, { taskStartAttemptId: f.input.attemptId })).rejects.toThrow();
+    expect(await runs.list(f.input.session.id)).toEqual([]);
+    expect((await f.sessions.get(f.input.session.id))?.latestRunId).toBeNull();
+    expect((await f.attempts.get(f.input.attemptId))?.phase).toBe('SESSION_READY');
+  } finally {
+    await database.db.execute(sql.raw(`DROP TRIGGER ${functionName} ON task_start_attempts`));
+    await database.db.execute(sql.raw(`DROP FUNCTION ${functionName}()`));
+  }
+  expect(await runs.create(input, { taskStartAttemptId: f.input.attemptId })).toMatchObject({
+    id: input.id,
+  });
+});
+
+it('RESERVED先关闭仍可确定释放且保持CLOSED，绝不取得创建资格', async () => {
+  const f = await fixture();
+  await f.attempts.reserve(f.input);
+  await f.sessions.transition(f.input.session.id, 'CLOSED');
+  expect(await f.attempts.markCreateAttempted(f.input.attemptId)).toBeUndefined();
+  expect(await f.attempts.releaseUnattempted(f.input.attemptId)).toMatchObject({
+    phase: 'FAILED_KNOWN',
+  });
+  expect((await f.sessions.get(f.input.session.id))?.status).toBe('CLOSED');
+  expect((await f.tasks.get(f.task.id))?.status).toBe('BLOCKED');
 });

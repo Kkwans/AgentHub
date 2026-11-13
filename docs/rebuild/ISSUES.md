@@ -343,3 +343,10 @@ AH-082最终本地验收：1133完整覆盖/10原有skip、79专项、lint/types
 AH-082当前验收：7b05581精确CI43367292783双绿，关闭错误释放槽位/迟到失败覆盖的当前切片；不是专用调用者独占。
 
 AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CAS，21专项、1154完整覆盖/10原有skip及独立CR通过。问题仍开放；S66必须完整接入创建未知恢复、Run当前归属/原子移交、旧数据保守处理和最小核对接口，不能只启用reserve。
+
+### AH-001 / S66 普通启动持久预留与恢复当前切片
+
+- 已接入Task专属创建/首Run，Task/Session/attempt原子预留，调用前标记，Run/latest指针/attempt移交同事务。pending阻止手工转换和Worktree入队，旧/孤立Session不得直接新Run；Task会话独立continuation改为明确要求原任务操作，不静默脱离归属。
+- 闭合创建close/shutdown撤销、reserve响应丢失、确定未调用释放与未知创建隔离。真实持久重开完整startup验证四阶段且零adapter重放；只读attempt接口可定位原尝试。
+- 1186完整覆盖/10原有skip、lint/types/build/QA10与独立CR通过；真实ACP双实例START/REWORK分别只有一个赢家与一次合法创建，专用闭环到DONE，旧会话拒绝无副作用。浏览器待新exact CI。
+- 不整体关闭AH-001：UNKNOWN人工核对/显式恢复体验、启动operationId幂等、跨进程runtime路由与独立Postgres多连接仍未完成。UNKNOWN被隔离不是“所有失败都能自动恢复”。

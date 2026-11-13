@@ -14,6 +14,7 @@ import {
   SessionRepository,
   SkillRepository,
   TaskRepository,
+  TaskStartAttemptRepository,
 } from '../packages/db/src/index.js';
 import { FakeAgentAdapter } from '../packages/agent-core/src/index.js';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -110,6 +111,7 @@ describe('AgentHub 核心工程闭环', () => {
       () => fakeAdapter,
     );
     const git = new FixtureGitProbe();
+    const taskStarts = new TaskStartAttemptRepository(database.db);
     const sessionService = new SessionService(
       sessions,
       runs,
@@ -121,9 +123,19 @@ describe('AgentHub 核心工程闭环', () => {
       { publish: () => undefined },
       git,
       promptos,
+      {},
+      undefined,
+      taskStarts,
     );
     sessionServices.push(sessionService);
-    const taskService = new TaskService(goals, tasks, projects, sessionService);
+    const taskService = new TaskService(
+      goals,
+      tasks,
+      projects,
+      sessionService,
+      undefined,
+      taskStarts,
+    );
     sessionService.setTaskLifecycleObserver(taskService);
 
     const goal = await taskService.createGoal({ projectId, title: '交付可审阅结果' });

@@ -64,10 +64,10 @@ describe('持久 Task 创建操作', () => {
       tasks,
       projects,
       {
-        create: async () => {
+        createForTask: async () => {
           throw new Error('创建操作不得启动 Session');
         },
-        startRun: async () => {
+        startTaskRun: async () => {
           throw new Error('创建操作不得启动 Run');
         },
       },

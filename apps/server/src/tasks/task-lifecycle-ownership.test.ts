@@ -1,3 +1,4 @@
+import { taskSessionTestRuntime } from './task-session-test-runtime.js';
 import { randomUUID } from 'node:crypto';
 import {
   AgentRepository,
@@ -74,11 +75,12 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
         cwd: '/tmp/task-ownership',
         status: 'READY',
       });
+      await tasks.update(task.id, { sessionId: previousSession.id });
       const previousRun = await runs.create({
         id: randomUUID(),
         sessionId: previousSession.id,
         taskId: task.id,
-        status: outcome,
+        status: 'COMPLETED',
       });
       await tasks.update(task.id, {
         sessionId: previousSession.id,
@@ -88,30 +90,13 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
         new GoalRepository(database.db),
         tasks,
         new ProjectRepository(database.db),
-        {
-          create: async (input) =>
-            sessions.create({
-              id: randomUUID(),
-              projectId: input.projectId,
-              agentId: input.agentId,
-              taskId: input.taskId,
-              title: input.title ?? '返工',
-              cwd: input.cwd,
-              status: 'READY',
-            }),
-          startRun: async (sessionId) =>
-            runs.create({
-              id: randomUUID(),
-              sessionId,
-              taskId: task.id,
-              status: 'RUNNING',
-            }),
-        },
+        taskSessionTestRuntime(database.db),
       );
       const rework = await service.reviewTask(task.id, {
         decision: 'REWORK',
         feedback: '继续修改',
       });
+      await runs.patch(previousRun.id, { status: outcome });
       expect(rework.session?.id).not.toBe(previousSession.id);
       if (outcome === 'COMPLETED') await service.onRunCompleted(task.id, previousRun.id);
       else await service.onRunStopped(task.id, previousRun.id);
@@ -138,7 +123,10 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
           : service.onRunStopped(task.id, rework.run!.id);
       if (outcome === 'DISCONNECTED') {
         expect(await apply()).toBe(false);
-        expect(await service.getTask(task.id)).toMatchObject({ status: 'IN_PROGRESS', finalRunId: null });
+        expect(await service.getTask(task.id)).toMatchObject({
+          status: 'IN_PROGRESS',
+          finalRunId: null,
+        });
         await runs.transition(rework.run!.id, 'COMPLETED');
         expect(await service.onRunCompleted(task.id, rework.run!.id)).toBe(true);
       } else {
@@ -167,10 +155,10 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
       repoKind: 'NONE',
     });
     const service = new TaskService(new GoalRepository(database.db), tasks, projects, {
-      create: async () => {
+      createForTask: async () => {
         throw new Error('不应创建 Session');
       },
-      startRun: async () => {
+      startTaskRun: async () => {
         throw new Error('不应创建 Run');
       },
     });
@@ -184,13 +172,14 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
       });
       const session = await sessions.create({
         id: randomUUID(),
-        projectId: mismatch === 'project' ? other.id : projectId,
+        projectId,
         agentId,
         taskId: task.id,
         title: '不匹配',
         cwd: '/tmp/task-ownership',
         status: 'READY',
       });
+      await tasks.update(task.id, { sessionId: session.id });
       const run = await runs.create({
         id: randomUUID(),
         sessionId: session.id,
@@ -201,6 +190,7 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
       // association drift after a valid Run admission to retain callback defense.
       if (mismatch === 'task')
         await sessions.transition(session.id, 'RUNNING', { taskId: randomUUID() });
+      else await sessions.transition(session.id, 'RUNNING', { projectId: other.id });
       await tasks.update(task.id, { sessionId: session.id });
       const before = await tasks.get(task.id);
       const changed = await service.onRunCompleted(task.id, run.id);
@@ -228,7 +218,7 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
       projectId,
       title: 'Agent 所有权不匹配',
       status: 'IN_PROGRESS',
-      assignedAgentId: otherAgent.id,
+      assignedAgentId: agentId,
     });
     const session = await sessions.create({
       id: randomUUID(),
@@ -241,12 +231,14 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
     });
     await tasks.update(task.id, { sessionId: session.id });
     for (const status of ['COMPLETED', 'FAILED'] as const) {
+      await tasks.update(task.id, { assignedAgentId: agentId });
       const run = await runs.create({
         id: randomUUID(),
         sessionId: session.id,
         taskId: task.id,
         status,
       });
+      await tasks.update(task.id, { assignedAgentId: otherAgent.id });
       const beforeTask = await tasks.get(task.id);
       const beforeSession = await sessions.get(session.id);
       const beforeRun = await runs.get(run.id);
@@ -297,10 +289,10 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
         tasks,
         new ProjectRepository(database.db),
         {
-          create: async () => {
+          createForTask: async () => {
             throw new Error('不应创建 Session');
           },
-          startRun: async () => {
+          startTaskRun: async () => {
             throw new Error('不应创建 Run');
           },
         },
@@ -323,9 +315,11 @@ describe('Task 生命周期必须属于当前返工 Session', () => {
         await runs.transition(run.id, 'COMPLETED');
         expect(await service.onRunCompleted(task.id, run.id)).toBe(true);
       } else {
-        expect(status === 'COMPLETED'
-          ? await service.onRunCompleted(task.id, run.id)
-          : await service.onRunStopped(task.id, run.id)).toBe(true);
+        expect(
+          status === 'COMPLETED'
+            ? await service.onRunCompleted(task.id, run.id)
+            : await service.onRunStopped(task.id, run.id),
+        ).toBe(true);
         expect(await tasks.get(task.id)).toMatchObject({
           status: status === 'COMPLETED' ? 'WAITING_REVIEW' : 'BLOCKED',
           finalRunId: run.id,

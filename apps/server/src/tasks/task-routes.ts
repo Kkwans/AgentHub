@@ -242,6 +242,21 @@ export function createTaskRouter(service: TaskService): Router {
       }
     },
   );
+  router.get(
+    '/:id/start-attempts',
+    validate({ params: idParams }),
+    async (request, response, next) => {
+      response.setHeader('Cache-Control', 'no-store');
+      try {
+        response.json({
+          data: await service.getStartAttempts(idParams.parse(request.params).id),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
   router.post(
     '/:id/start',
     validate({ params: idParams, body: taskStart }),

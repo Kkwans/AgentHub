@@ -67,6 +67,16 @@ for (const width of [390, 768, 1024, 1440]) {
     const first = await apiData<Started>(context, 'post', `/tasks/${task.id}/start`, {
       agentId: agent.id,
     });
+    const firstAttempts = await apiData<
+      Array<{ id: string; phase: string; sessionId: string; runId: string }>
+    >(context, 'get', `/tasks/${task.id}/start-attempts`);
+    expect(firstAttempts).toHaveLength(1);
+    expect(firstAttempts[0]).toMatchObject({
+      phase: 'RUN_ADMITTED',
+      sessionId: first.session.id,
+      runId: first.run.id,
+    });
+    expect(firstAttempts[0]).not.toHaveProperty('inputHash');
     await finishFixtureTurn(context, task.id, first);
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     const errors: string[] = [];
@@ -116,6 +126,30 @@ for (const width of [390, 768, 1024, 1440]) {
     expect(instruction).toContain('请补齐边界条件回归，再按原验收标准检查');
     expect(instruction).toContain('审阅主目标保持不变');
     expect(instruction).toContain('保留原始验收上下文');
+    const beforeOldRun = await apiData(context, 'get', `/sessions/${first.session.id}/runs`);
+    const rejectedOld = await context.request.post(`/api/v1/sessions/${first.session.id}/runs`, {
+      data: { text: '旧会话不可抢占新返工' },
+    });
+    expect(rejectedOld.status()).toBe(409);
+    expect((await rejectedOld.json()).error.code).toBe('TASK_RUN_OWNERSHIP_CHANGED');
+    expect(await apiData(context, 'get', `/sessions/${first.session.id}/runs`)).toEqual(
+      beforeOldRun,
+    );
+    const attempts = await apiData<Array<{ phase: string; sessionId: string; runId: string }>>(
+      context,
+      'get',
+      `/tasks/${task.id}/start-attempts`,
+    );
+    expect(attempts).toHaveLength(2);
+    expect(attempts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          phase: 'RUN_ADMITTED',
+          sessionId: second.session.id,
+          runId: second.run.id,
+        }),
+      ]),
+    );
     await finishFixtureTurn(context, task.id, second);
     await page.goto(`/projects/${project.id}/work?task=${task.id}`);
     const approve = page.getByRole('button', { name: '确认达到验收标准', exact: true });

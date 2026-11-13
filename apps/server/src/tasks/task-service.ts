@@ -1,7 +1,6 @@
-import { RunStartError } from '../sessions/run-start-error.js';
 import { DatabaseInvariantError } from '@agenthub/db';
 import { taskCreationHash, type CreateTaskInput } from './task-creation-operation.js';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import type { TaskStatus } from '@agenthub/agent-core';
 import type {
@@ -9,6 +8,7 @@ import type {
   GoalRepository,
   ProjectRepository,
   TaskRepository,
+  TaskStartAttemptRepository,
 } from '@agenthub/db';
 
 import { AppError } from '../errors.js';
@@ -43,8 +43,31 @@ function buildTaskInstructions(task: {
 }
 
 export interface TaskSessionController {
-  create(input: CreateSessionInput): Promise<{ id: string }>;
-  startRun(sessionId: string, input: StartRunInput): Promise<{ id: string }>;
+  createForTask(
+    input: CreateSessionInput,
+    admission: {
+      kind: 'START' | 'REWORK';
+      expectedOldSessionId: string | null;
+      inputHash: string;
+    },
+  ): Promise<{ id: string; taskStartAttemptId: string }>;
+  startTaskRun(sessionId: string, input: StartRunInput, attemptId: string): Promise<{ id: string }>;
+}
+
+function startInputHash(input: unknown): string {
+  const canonical = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(canonical)
+      : value && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value)
+              .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+              .map(([key, item]) => [key, canonical(item)]),
+          )
+        : value;
+  return createHash('sha256')
+    .update(JSON.stringify(canonical(input)))
+    .digest('hex');
 }
 
 const goalTransitions: Record<GoalStatus, readonly GoalStatus[]> = {
@@ -63,6 +86,7 @@ export class TaskService implements TaskRunLifecycleObserver {
     private readonly projects: ProjectRepository<AgentHubDatabase>,
     private readonly sessions: TaskSessionController,
     private readonly promptos?: Pick<PromptService, 'resolveTaskSelection' | 'resolveForRun'>,
+    private readonly startAttempts?: TaskStartAttemptRepository<AgentHubDatabase>,
   ) {}
 
   listGoals(projectId?: string) {
@@ -358,38 +382,9 @@ export class TaskService implements TaskRunLifecycleObserver {
       throw new AppError(409, 'TASK_NOT_READY', '只有就绪的 Task 可以交给 Agent');
     const project = await this.requireProject(task.projectId);
     const promptVariables = { ...task.promptVariablesJson, ...input.promptVariables };
-    if (this.promptos) {
-      let context;
-      try {
-        context = await this.promptos.resolveForRun({
-          projectId: task.projectId,
-          agentId: input.agentId,
-          taskId: task.id,
-          variables: promptVariables,
-        });
-      } catch (error) {
-        if (!(error instanceof AppError) || error.status >= 500) throw error;
-        throw new AppError(
-          409,
-          'TASK_PROMPT_RESOLUTION_FAILED',
-          '任务 Prompt 无法解析，请核对绑定与版本',
-          {
-            reasonCode: error.code,
-          },
-        );
-      }
-      if (!context.ready) {
-        throw new AppError(
-          409,
-          'TASK_PROMPT_VARIABLES_MISSING',
-          '任务 Prompt 缺少必填变量，尚未启动 Agent',
-          {
-            missingVariables: context.missingVariables,
-          },
-        );
-      }
-    }
-    const session = await this.sessions.create({
+    await this.validateStartPrompt(task.projectId, task.id, input.agentId, promptVariables);
+    const text = buildTaskInstructions(task);
+    const sessionInput: CreateSessionInput = {
       projectId: task.projectId,
       agentId: input.agentId,
       taskId: task.id,
@@ -398,23 +393,16 @@ export class TaskService implements TaskRunLifecycleObserver {
       ...(task.branch ? { branch: task.branch } : {}),
       ...(input.model ? { model: input.model } : {}),
       ...(input.mode ? { mode: input.mode } : {}),
+    };
+    const runInput = { text, promptVariables };
+    const session = await this.sessions.createForTask(sessionInput, {
+      kind: 'START',
+      expectedOldSessionId: task.sessionId,
+      inputHash: startInputHash({ kind: 'START', session: sessionInput, run: runInput }),
     });
-    await this.transitionOrdinaryTask(id, 'IN_PROGRESS', {
-      assignedAgentId: input.agentId,
-      sessionId: session.id,
-    });
-    const text = buildTaskInstructions(task);
-    let run: Awaited<ReturnType<TaskSessionController['startRun']>>;
-    try {
-      run = await this.sessions.startRun(session.id, {
-        text,
-        promptVariables,
-      });
-    } catch (error) {
-      if (error instanceof RunStartError) throw error;
-      await this.transitionOrdinaryTask(id, 'BLOCKED');
-      throw error;
-    }
+    // createForTask has already atomically bound Task + Session + attempt.
+    // Never overwrite that ownership or mark BLOCKED from a stale catch here.
+    const run = await this.sessions.startTaskRun(session.id, runInput, session.taskStartAttemptId);
     return { task: await this.getTask(id), session, run };
   }
 
@@ -444,19 +432,12 @@ export class TaskService implements TaskRunLifecycleObserver {
       throw new AppError(409, 'TASK_REWORK_AGENT_REQUIRED', 'Task 没有可用于继续修改的 Agent');
     }
     const project = await this.requireProject(task.projectId);
-    const session = await this.sessions.create({
-      projectId: task.projectId,
-      agentId: task.assignedAgentId,
-      taskId: task.id,
-      title: `${task.title} · 继续修改`,
-      cwd: project.realRootPath,
-      ...(task.branch ? { branch: task.branch } : {}),
-    });
-    await this.transitionOrdinaryTask(id, 'IN_PROGRESS', {
-      sessionId: session.id,
-      finalRunId: null,
-      completedAt: null,
-    });
+    await this.validateStartPrompt(
+      task.projectId,
+      task.id,
+      task.assignedAgentId,
+      task.promptVariablesJson,
+    );
     const text = [
       '请根据以下审阅反馈继续修改：',
       feedback,
@@ -465,18 +446,91 @@ export class TaskService implements TaskRunLifecycleObserver {
     ]
       .filter(Boolean)
       .join('\n');
-    let run: Awaited<ReturnType<TaskSessionController['startRun']>>;
-    try {
-      run = await this.sessions.startRun(session.id, {
-        text,
-        promptVariables: task.promptVariablesJson,
-      });
-    } catch (error) {
-      if (error instanceof RunStartError) throw error;
-      await this.transitionOrdinaryTask(id, 'BLOCKED');
-      throw error;
-    }
+    const sessionInput: CreateSessionInput = {
+      projectId: task.projectId,
+      agentId: task.assignedAgentId,
+      taskId: task.id,
+      title: `${task.title} · 继续修改`,
+      cwd: project.realRootPath,
+      ...(task.branch ? { branch: task.branch } : {}),
+    };
+    const runInput = { text, promptVariables: task.promptVariablesJson };
+    const session = await this.sessions.createForTask(sessionInput, {
+      kind: 'REWORK',
+      expectedOldSessionId: task.sessionId,
+      inputHash: startInputHash({ kind: 'REWORK', session: sessionInput, run: runInput }),
+    });
+    const run = await this.sessions.startTaskRun(session.id, runInput, session.taskStartAttemptId);
     return { task: await this.getTask(id), session, run };
+  }
+
+  private async validateStartPrompt(
+    projectId: string,
+    taskId: string,
+    agentId: string,
+    promptVariables: Record<string, unknown>,
+  ) {
+    if (this.promptos) {
+      let context;
+      try {
+        context = await this.promptos.resolveForRun({
+          projectId: projectId,
+          agentId: agentId,
+          taskId: taskId,
+          variables: promptVariables,
+        });
+      } catch (error) {
+        if (!(error instanceof AppError) || error.status >= 500) throw error;
+        throw new AppError(
+          409,
+          'TASK_PROMPT_RESOLUTION_FAILED',
+          '任务 Prompt 无法解析，请核对绑定与版本',
+          {
+            reasonCode: error.code,
+          },
+        );
+      }
+      if (!context.ready) {
+        throw new AppError(
+          409,
+          'TASK_PROMPT_VARIABLES_MISSING',
+          '任务 Prompt 缺少必填变量，尚未启动 Agent',
+          {
+            missingVariables: context.missingVariables,
+          },
+        );
+      }
+    }
+  }
+
+  async getStartAttempts(id: string) {
+    await this.getTask(id);
+    if (!this.startAttempts)
+      throw new AppError(503, 'TASK_START_RECOVERY_UNAVAILABLE', '启动核对服务尚未就绪');
+    const attempts = await this.startAttempts.getForTask(id);
+    return attempts.map(
+      ({
+        id: attemptId,
+        taskId,
+        sessionId,
+        runId,
+        kind,
+        phase,
+        errorCode,
+        createdAt,
+        updatedAt,
+      }) => ({
+        attemptId,
+        taskId,
+        sessionId,
+        runId,
+        kind,
+        phase,
+        errorCode,
+        createdAt,
+        updatedAt,
+      }),
+    );
   }
 
   private async assertOrdinaryTask(id: string) {
@@ -498,6 +552,12 @@ export class TaskService implements TaskRunLifecycleObserver {
         guardWorktreeOwnership: true,
       });
     } catch (error) {
+      if (error instanceof DatabaseInvariantError && error.code === 'TASK_START_UNRESOLVED')
+        throw new AppError(
+          409,
+          error.code,
+          '任务启动结果仍待核对，请查看原启动尝试；本次未修改状态',
+        );
       if (error instanceof DatabaseInvariantError && error.code === 'TASK_WORKTREE_MANAGED') {
         throw new AppError(409, error.code, '该任务由隔离执行管理，请刷新后使用隔离执行操作');
       }

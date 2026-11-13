@@ -125,10 +125,22 @@ test.describe('local_trusted 项目与 Work', () => {
       { status: 'READY' },
     );
     expect(transitioned.status).toBe('READY');
+    const rejected = await context.request.post('/api/v1/sessions', {
+      data: {
+        projectId: project.id,
+        agentId: agent.id,
+        taskId: task.id,
+        title: '拒绝绕过任务启动',
+        cwd: app.projectRoot,
+      },
+    });
+    expect(rejected.status()).toBe(409);
+    expect((await rejected.json()).error.code).toBe('TASK_SESSION_START_REQUIRED');
+    // This screen test needs an empty standalone conversation, not an orphan
+    // Task Session that bypasses the dedicated startup contract.
     const session = await apiData<Identified>(context, 'post', '/sessions', {
       projectId: project.id,
       agentId: agent.id,
-      taskId: task.id,
       title: 'QA E2E Session',
       cwd: app.projectRoot,
     });

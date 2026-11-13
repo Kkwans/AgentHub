@@ -1,3 +1,7 @@
+import pino from 'pino';
+import request from 'supertest';
+import { createApp } from '../app.js';
+import { taskSessionTestRuntime } from './task-session-test-runtime.js';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -7,6 +11,7 @@ import {
   GoalRepository,
   ProjectRepository,
   TaskRepository,
+  TaskStartAttemptRepository,
   SessionRepository,
   RunRepository,
   WorktreeExecutionRepository,
@@ -59,35 +64,21 @@ describe('Goal 与 Task service', () => {
       executable: '/bin/false',
       status: 'READY',
     });
-    const fakeSessions: TaskSessionController = {
+    const fakeSessions: TaskSessionController = taskSessionTestRuntime(database.db, {
       create: async (input) => {
         createdSessions.push(input);
-        return new SessionRepository(database.db).create({
-          id: randomUUID(),
-          projectId: input.projectId,
-          agentId: input.agentId,
-          taskId: input.taskId,
-          title: input.title ?? '测试',
-          cwd: input.cwd,
-          status: 'READY',
-        });
       },
-      startRun: async (sessionId, input) => {
+      start: async (sessionId, input) => {
         startedRuns.push({ sessionId, ...input });
-        const session = await new SessionRepository(database.db).get(sessionId);
-        return new RunRepository(database.db).create({
-          id: randomUUID(),
-          sessionId,
-          taskId: session!.taskId,
-          status: 'RUNNING',
-        });
       },
-    };
+    });
     service = new TaskService(
       new GoalRepository(database.db),
       new TaskRepository(database.db),
       projects,
       fakeSessions,
+      undefined,
+      new TaskStartAttemptRepository(database.db),
     );
   });
 
@@ -148,6 +139,128 @@ describe('Goal 与 Task service', () => {
     }
   });
 
+  it.each(['START', 'REWORK'] as const)(
+    '两个独立TaskService的%s同过前置快照仍只创建一次runtime',
+    async (kind) => {
+      const tasks = new TaskRepository(database.db);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId,
+        title: '持久单次启动',
+        status: kind === 'START' ? 'READY' : 'WAITING_REVIEW',
+        assignedAgentId: agentId,
+      });
+      let release!: () => void, bothEntered!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const entered = new Promise<void>((resolve) => {
+        bothEntered = resolve;
+      });
+      let enteredCount = 0,
+        createdCount = 0;
+      const make = () =>
+        new TaskService(
+          new GoalRepository(database.db),
+          tasks,
+          new ProjectRepository(database.db),
+          taskSessionTestRuntime(database.db, {
+            beforeCreate: async () => {
+              if (++enteredCount === 2) bothEntered();
+              await gate;
+            },
+            create: async () => {
+              createdCount++;
+            },
+          }),
+        );
+      const invoke = (instance: TaskService) =>
+        kind === 'START'
+          ? instance.startTask(task.id, { agentId })
+          : instance.reviewTask(task.id, { decision: 'REWORK', feedback: '继续同一任务' });
+      const results = Promise.allSettled([invoke(make()), invoke(make())]);
+      try {
+        await entered;
+        release();
+        const outcomes = await results;
+        expect(outcomes.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+        expect(outcomes.filter((x) => x.status === 'rejected')).toHaveLength(1);
+        expect(createdCount).toBe(1);
+        const sessions = (await new SessionRepository(database.db).list(projectId)).filter(
+          (x) => x.taskId === task.id,
+        );
+        expect(sessions).toHaveLength(1);
+        expect((await tasks.get(task.id))?.sessionId).toBe(sessions[0]!.id);
+        expect(await new TaskStartAttemptRepository(database.db).getForTask(task.id)).toHaveLength(
+          1,
+        );
+      } finally {
+        release();
+        await results;
+      }
+    },
+  );
+
+  it('启动核对接口只返回定位字段并禁止缓存，不泄露输入摘要', async () => {
+    const task = await service.createTask({ projectId, title: '核对原启动' });
+    await service.transitionTask(task.id, 'READY');
+    const started = await service.startTask(task.id, { agentId });
+    const app = createApp({ tasks: service, logger: pino({ level: 'silent' }) });
+    const response = await request(app).get(`/api/v1/tasks/${task.id}/start-attempts`).expect(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0]).toMatchObject({
+      taskId: task.id,
+      sessionId: started.session.id,
+      runId: started.run.id,
+      kind: 'START',
+      phase: 'RUN_ADMITTED',
+    });
+    expect(Object.keys(response.body.data[0]).sort()).toEqual(
+      [
+        'attemptId',
+        'taskId',
+        'sessionId',
+        'runId',
+        'kind',
+        'phase',
+        'errorCode',
+        'createdAt',
+        'updatedAt',
+      ].sort(),
+    );
+    await request(app).get(`/api/v1/tasks/${randomUUID()}/start-attempts`).expect(404);
+    await request(app).get('/api/v1/tasks/not-a-uuid/start-attempts').expect(400);
+  });
+
+  it('未决启动预留的手工状态请求明确409且不释放归属', async () => {
+    const task = await service.createTask({ projectId, title: '未知预留不可绕过' });
+    await service.transitionTask(task.id, 'READY');
+    const attempts = new TaskStartAttemptRepository(database.db);
+    const reserved = await attempts.reserve({
+      attemptId: randomUUID(),
+      kind: 'START',
+      expectedOldSessionId: null,
+      inputHash: 'fixture',
+      session: {
+        id: randomUUID(),
+        taskId: task.id,
+        projectId,
+        agentId,
+        title: task.title,
+        cwd: '/tmp/tasks',
+      },
+    });
+    const app = createApp({ tasks: service, logger: pino({ level: 'silent' }) });
+    const response = await request(app)
+      .post(`/api/v1/tasks/${task.id}/transition`)
+      .send({ status: 'CANCELED' })
+      .expect(409);
+    expect(response.body.error.code).toBe('TASK_START_UNRESOLVED');
+    expect(await service.getTask(task.id)).toEqual(reserved.task);
+    expect((await attempts.get(reserved.attempt.id))?.phase).toBe('RESERVED');
+  });
+
   it('Worktree 入队赢得竞争后，普通手工变更的事务再次核对所有权', async () => {
     const repository = new TaskRepository(database.db);
     const controlled = new TaskService(
@@ -155,10 +268,10 @@ describe('Goal 与 Task service', () => {
       repository,
       new ProjectRepository(database.db),
       {
-        create: async () => {
+        createForTask: async () => {
           throw new Error('不应创建 Session');
         },
-        startRun: async () => {
+        startTaskRun: async () => {
           throw new Error('不应创建 Run');
         },
       },
@@ -273,7 +386,11 @@ describe('Goal 与 Task service', () => {
     const started = await service.startTask(task.id, { agentId });
     const tasks = new TaskRepository(database.db);
     await tasks.update(task.id, { status: 'BLOCKED' });
-    await new RunRepository(database.db).patch(started.run.id, { status, errorCode });
+    await new RunRepository(database.db).patch(started.run.id, {
+      status,
+      errorCode,
+      dispatchState: 'LEGACY_UNKNOWN',
+    });
     await expect(service.transitionTask(task.id, 'CANCELED')).rejects.toMatchObject({
       code: 'TASK_RUN_CANCEL_REQUIRED',
     });
@@ -425,16 +542,14 @@ describe('Goal 与 Task service', () => {
       new GoalRepository(database.db),
       repository,
       new ProjectRepository(database.db),
-      {
+      taskSessionTestRuntime(database.db, {
         create: async () => {
           created++;
           if (created === 1) entered();
           else duplicateEntered();
           await gate;
-          return { id: randomUUID() };
         },
-        startRun: async () => ({ id: randomUUID() }),
-      },
+      }),
     );
     const first = controlled.reviewTask(task.id, { decision: 'REWORK', feedback: '继续修复' });
     await firstEntry;
@@ -473,14 +588,12 @@ describe('Goal 与 Task service', () => {
       new GoalRepository(database.db),
       repository,
       new ProjectRepository(database.db),
-      {
+      taskSessionTestRuntime(database.db, {
         create: async () => {
           entered();
           await gate;
-          return { id: randomUUID() };
         },
-        startRun: async () => ({ id: randomUUID() }),
-      },
+      }),
     );
     const rework = controlled
       .reviewTask(task.id, { decision: 'REWORK', feedback: '继续修复' })
@@ -521,14 +634,12 @@ describe('Goal 与 Task service', () => {
       new GoalRepository(database.db),
       repository,
       new ProjectRepository(database.db),
-      {
+      taskSessionTestRuntime(database.db, {
         create: async () => {
           entered();
           await gate;
-          return { id: randomUUID() };
         },
-        startRun: async () => ({ id: randomUUID() }),
-      },
+      }),
     );
     const running = (
       operation === 'start'
@@ -550,7 +661,7 @@ describe('Goal 与 Task service', () => {
     expect((await controlled.getTask(task.id)).status).toBe('IN_PROGRESS');
   });
 
-  it('返工创建失败释放 admission，后续独立审阅仍可执行', async () => {
+  it('返工预留前校验失败释放 admission，后续独立审阅仍可执行', async () => {
     const repository = new TaskRepository(database.db);
     const task = await repository.create({
       id: randomUUID(),
@@ -563,12 +674,11 @@ describe('Goal 与 Task service', () => {
       new GoalRepository(database.db),
       repository,
       new ProjectRepository(database.db),
-      {
-        create: async () => {
+      taskSessionTestRuntime(database.db, {
+        beforeCreate: async () => {
           throw new Error('确定性创建失败');
         },
-        startRun: async () => ({ id: randomUUID() }),
-      },
+      }),
     );
     await expect(
       controlled.reviewTask(task.id, { decision: 'REWORK', feedback: '继续' }),
@@ -596,16 +706,14 @@ describe('Goal 与 Task service', () => {
       new GoalRepository(database.db),
       new TaskRepository(database.db),
       new ProjectRepository(database.db),
-      {
+      taskSessionTestRuntime(database.db, {
         create: async () => {
           created += 1;
           if (created === 1) entered();
           else duplicateEntered();
           await gate;
-          return { id: randomUUID() };
         },
-        startRun: async () => ({ id: randomUUID() }),
-      },
+      }),
     );
     const task = await controlled.createTask({ projectId, title: '并发启动' });
     await controlled.transitionTask(task.id, 'READY');
@@ -628,13 +736,11 @@ describe('Goal 与 Task service', () => {
       new GoalRepository(database.db),
       new TaskRepository(database.db),
       new ProjectRepository(database.db),
-      {
-        create: async () => {
+      taskSessionTestRuntime(database.db, {
+        beforeCreate: async () => {
           if (++attempts === 1) throw new Error('adapter temporarily unavailable');
-          return { id: randomUUID() };
         },
-        startRun: async () => ({ id: randomUUID() }),
-      },
+      }),
     );
     const task = await controlled.createTask({ projectId, title: '恢复启动' });
     await controlled.transitionTask(task.id, 'READY');

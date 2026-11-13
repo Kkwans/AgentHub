@@ -24,6 +24,7 @@ import {
   SessionContinuationRepository,
   SkillRepository,
   TaskRepository,
+  TaskStartAttemptRepository,
   WorktreeExecutionRepository,
   type DatabaseClient,
 } from '@agenthub/db';
@@ -168,6 +169,7 @@ export async function startServer(
   const skillRepository = new SkillRepository(database.db);
   const goalRepository = new GoalRepository(database.db);
   const taskRepository = new TaskRepository(database.db);
+  const taskStartAttempts = new TaskStartAttemptRepository(database.db);
   const worktreeExecutionRepository = new WorktreeExecutionRepository(database.db);
   const remoteNodeRepository = new RemoteNodeRepository(database.db);
   const remoteNodes = new RemoteNodeService(remoteNodeRepository, {
@@ -275,6 +277,7 @@ export async function startServer(
     promptos,
     { cancelConvergenceTimeoutMs, approvalDeliveryTimeoutMs },
     sessionContinuationRepository,
+    taskStartAttempts,
   );
   const tasks = new TaskService(
     goalRepository,
@@ -282,6 +285,7 @@ export async function startServer(
     projectRepository,
     sessions,
     promptos,
+    taskStartAttempts,
   );
   const dataPath = environment.AGENTHUB_DATA_DIR
     ? resolve(environment.AGENTHUB_DATA_DIR)
