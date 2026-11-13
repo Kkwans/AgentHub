@@ -1,5 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from '@agenthub/ui';
-import { useId } from 'react';
+import { useId, type RefObject } from 'react';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
@@ -50,7 +50,10 @@ export function WorkspaceInspector({
   onCommit,
   stagedDiff,
   onStagedDiffChange,
+  reviewFocus,
 }: {
+  reviewFocus?:
+    { active: boolean; toggle(): void; buttonRef: RefObject<HTMLButtonElement | null> } | undefined;
   project: ProjectRecord | undefined;
   projects: QueryState<ProjectRecord[]>;
   session: SessionRecord;
@@ -100,6 +103,17 @@ export function WorkspaceInspector({
                 ? '会话活动'
                 : '运行详情'}
         </h2>
+        {reviewFocus && (
+          <button
+            type="button"
+            className="workspace-review-focus"
+            ref={reviewFocus.buttonRef}
+            aria-pressed={reviewFocus.active}
+            onClick={reviewFocus.toggle}
+          >
+            {reviewFocus.active ? '退出专注审阅' : '专注审阅'}
+          </button>
+        )}
       </header>
       <Tabs value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
         <TabsList

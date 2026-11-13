@@ -524,7 +524,10 @@ export function useWorkspaceViewModel() {
     )
       closeButton?.focus();
     const closeOnEscapeAndTrapFocus = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       if (event.key === 'Escape') {
+        // The focused-review host owns the first Escape; do not also close its drawer.
+        if (drawer?.closest('[data-right-focused="true"]')) return;
         event.preventDefault();
         closeMobileInspector();
         return;

@@ -1009,3 +1009,7 @@ ac79真实71过/1桌面对话nested-interactive失败，四宽CSS颜色门已过
 ### 2026-11-13 16:18 UTC C35 定点修复与完整回归
 
 bb107完整本地146文件1392测试通过/10跳过，16:18:13结束；随后才整合C35 dark keyword.ts修复，避免混淆全量源码归属。原候选6颜色测试/类型/lint/build/CR过，主整合验证中。c8实际const3.82节点已亲看图和JSON，不从预测扩大主题规则。
+
+### 2026-11-13 16:40 UTC C36 状态安全的临时专注候选
+
+独立候选39回归与CR通过，涵盖同节点/真实Git pending仅一次POST、两级Escape/defaultPrevented、phone/切left/route身份失效、对话草稿与storage不变。主树已整合并重新构建共享UI，第一轮8文件54回归通过，现扩大完整相关10文件组+types/lint/build/预算验证。主E2E仅新增专注旅程，修掉勾选后重复展开错误后CR通过；新实际浏览器尚待CI。

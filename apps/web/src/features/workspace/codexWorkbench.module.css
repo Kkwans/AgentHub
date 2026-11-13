@@ -354,3 +354,22 @@
   min-height: 36px;
   padding-block: 6px;
 }
+
+.workspace :global(.workspace-review-focus) {
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.workspace :global(.workspace-review-focus:focus-visible) {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+@media (min-width: 768px) and (max-width: 1179px) {
+  .workspace :global(.codex-inspector-heading) {
+    padding-right: 64px;
+  }
+}

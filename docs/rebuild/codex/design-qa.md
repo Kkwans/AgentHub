@@ -576,3 +576,23 @@ The next bounded candidate changes only dark keyword.ts after confirming Monaco'
 At16:18:13 UTC fullbb107 product regression exited0:146 files/1392 tests passed,4 files/10 skipped,373.42s. Product was unchanged during this run. Only afterward was the two-file C35 candidate integrated: dark keyword.ts=B1D3FF, with the exact373d29 and composite line/character backgrounds tested while preserving light, backgrounds and other tokens. Candidate6 color tests/types/lint/build/static CR passed; main integrated validation is in progress. This fullbb107 count is not claimed for the new C35 product.
 
 C35 main integrated validation completed16:18:40 UTC:5 files/20 tests passed, web types/lint/production build and diff-check passed. Publication is pending; the exact new TSX axe result is still required and not inferred from these numerical/source tests.
+
+### 2026-11-13 16:24 UTC — C33/C34 real fixture gates passed
+
+Exactbb107 fixture archived72 passed/1 failed. All four primary Workspace journeys and dark CSS unified/split-requested journeys passed: native summary Enter/Space and semantic axe, real original/modified pane minimum widths/non-overlap/original source, and return to unified were actually executed. The remaining failure is the prior TSX const contrast targeted by8eb, not a summary or split failure. Default accessibility succeeded; real-service is still running. The new narrow split images are being inspected separately, so passing geometry is not yet described as visual comfort.
+
+C35 was published and fetched16:21:08 UTC as8eb66a7871a754fcd70c45566fc27824bc66a7e8, tree96c9bec155c346d2742c039ba777c67edcdafa16 matching the reviewed local candidate. Its actual new TSX audit and full CI remain pending;20 targeted local tests are not relabeled as a full1393-test run.
+
+### 2026-11-13 16:35 UTC — Actual C35 fixture closure
+
+Exact8eb verify is green:73 fixture tests passed,3 explicitly planned non390 TSX skips; its CI unit run passed146 files/1393 tests with10 skipped. Default154-state accessibility also succeeded, while real-service is still running, so the complete run is not called green. Personally viewed the new390 TSX image and read its final axe JSON at16:35:26:empty. CSS four widths×two modes and medium selected-code audits are also empty; the lawful lexical sample was retained. This closes the tested TS keyword defect, not every language/token combination.
+
+C36 test-only work now checks opt-in focus with actual textarea/Monaco node sentinels, selected file and draft preservation, unchanged layout preferences, expanded real pane geometry, Escape-before-drawer-close, keyboard re-entry and zero Git writes. Static review caught that selecting a file already opens its commit form; the redundant expand click was removed and the input is awaited directly. Explicit E2E types/lint passed16:35:06. Product integration and all new browser evidence are still pending.
+
+### 2026-11-13 16:40 UTC — C36 state-preserving opt-in implementation
+
+The shared rightFocused prop defaults false and is opted into only by Workspace. Wide layout expands the existing right grid slot while retaining hidden/inert left/middle wrappers; medium reuses the same dialog/Inspector; phone offers no ineffective expansion. No ratios/collapse preferences are written. Native header controls expose pressed state; first Escape exits focus without simultaneously closing the medium drawer, consumed Escape is respected, and explicit exit returns focus to the same control. Session/phone/left-panel/closed-inspector changes invalidate the temporary mode.
+
+The independent candidate passed39 relevant tests, including actual deferred Git submission remaining single-owner/single-POST, unchanged draft/Monaco/chat nodes, no layout-storage writes and boundary invalidation. UI build/types/lint/build/budget/static CR passed. Main integration rebuilt the shared UI and passed an initial8-file54-test run; the complete related suite is running. The new fixture uses actual node sentinels, expanded pane geometry and full axe without submitting Git. Existing cross-layout remount behavior is explicitly not claimed fixed.
+
+C36 final integrated validation completed16:40:39 UTC:10 files/59 tests passed in15.08s, rebuilt shared UI and web types/lint/production build/CSS budget/diff-check passed, and four-project fixture collection passed. Product and E2E static CR are both approved. New actual focus width/readability, state continuity and axe remain pending publication/CI.

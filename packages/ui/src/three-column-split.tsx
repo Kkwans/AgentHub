@@ -92,6 +92,8 @@ export interface ThreeColumnSplitProps {
   compactTabsVisible?: boolean;
   /** Opt-in modal presentation for hosts that own focus and background isolation. */
   mediumPresentation?: 'inline' | 'drawer';
+  /** Temporary review expansion. Does not change persisted ratios. */
+  rightFocused?: boolean;
   /** 实际容器宽度对应的布局模式变化 */
   onLayoutModeChange?: (mode: ThreeColumnLayoutMode) => void;
   /** localStorage key：左栏宽度比例 */
@@ -176,6 +178,7 @@ function CompactThreeColumnLayout({
 function MediumThreeColumnLayout({
   sideWidth,
   presentation,
+  rightFocused,
   sidePanel,
   sideOpen,
   tabs,
@@ -187,6 +190,7 @@ function MediumThreeColumnLayout({
 }: {
   sideWidth: number;
   presentation: 'inline' | 'drawer';
+  rightFocused: boolean;
   sidePanel: 'left' | 'right';
   sideOpen: boolean;
   tabs: CompactTabs;
@@ -234,7 +238,13 @@ function MediumThreeColumnLayout({
         hidden={drawer && !sideOpen}
         style={
           drawer
-            ? { display: sideOpen ? 'flex' : 'none', width: 'min(420px, calc(100% - 32px))' }
+            ? {
+                display: sideOpen ? 'flex' : 'none',
+                width:
+                  rightFocused && sidePanel === 'right'
+                    ? 'calc(100% - 32px)'
+                    : 'min(420px, calc(100% - 32px))',
+              }
             : undefined
         }
         className={cn(
@@ -318,6 +328,7 @@ export function ThreeColumnSplit({
   compactPanelOrder = ['middle', 'left', 'right'],
   compactTabsVisible = true,
   mediumPresentation = 'inline',
+  rightFocused = false,
   onLayoutModeChange,
   leftRatioKey,
   rightRatioKey,
@@ -483,6 +494,15 @@ export function ThreeColumnSplit({
 
   const measuredLayoutMode = resolveThreeColumnLayoutMode(containerWidth);
   const layoutMode = requestedLayoutMode === 'auto' ? measuredLayoutMode : requestedLayoutMode;
+  const wideRightFocused = rightFocused && layoutMode === 'wide' && !rightCollapsed;
+  useEffect(() => {
+    if (!rightFocused) return;
+    draggingHandle.current = null;
+    draggingPointerId.current = null;
+    setActiveHandle(null);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, [rightFocused]);
   const previousLayoutModeRef = useRef<ThreeColumnLayoutMode | null>(null);
   const previousDefaultPanelRef = useRef(defaultCompactPanel);
 
@@ -622,6 +642,11 @@ export function ThreeColumnSplit({
   return (
     <div
       ref={containerRef}
+      data-right-focused={
+        (rightFocused &&
+          (wideRightFocused || (layoutMode === 'medium' && activeCompactPanel === 'right'))) ||
+        undefined
+      }
       className={cn(
         'three-column-split h-full min-h-0 w-full',
         layoutMode === 'single' && 'three-column-split--compact',
@@ -633,7 +658,7 @@ export function ThreeColumnSplit({
         layoutMode === 'wide'
           ? {
               display: 'grid',
-              gridTemplateColumns: gridCols,
+              gridTemplateColumns: wideRightFocused ? '0px 0px 0px 0px minmax(0, 1fr)' : gridCols,
               gridTemplateRows: '1fr',
               gap: 0,
               transition:
@@ -659,6 +684,7 @@ export function ThreeColumnSplit({
         <MediumThreeColumnLayout
           sideWidth={mediumSideWidth}
           presentation={mediumPresentation}
+          rightFocused={rightFocused}
           sidePanel={mediumPanel}
           sideOpen={activeCompactPanel !== 'middle'}
           tabs={compactTabs}
@@ -671,10 +697,18 @@ export function ThreeColumnSplit({
       ) : layoutMode === 'wide' ? (
         <>
           {/* 左栏：折叠时不渲染，grid-column 已经是 0px */}
-          <div className="h-full min-w-0 overflow-hidden">{!leftCollapsed && left}</div>
+          <div
+            hidden={wideRightFocused}
+            inert={wideRightFocused || undefined}
+            className="h-full min-w-0 overflow-hidden"
+          >
+            {!leftCollapsed && left}
+          </div>
 
           {/* L|M 拖拽手柄：折叠时 grid 已给 0px，pointer-events 关闭 */}
           <div
+            hidden={wideRightFocused}
+            inert={wideRightFocused || undefined}
             role="separator"
             aria-orientation="vertical"
             aria-valuemin={12}
@@ -703,7 +737,11 @@ export function ThreeColumnSplit({
           </div>
 
           {/* 中栏：相对定位，用于挂载展开 tab */}
-          <div className="relative h-full min-w-0 overflow-hidden">
+          <div
+            hidden={wideRightFocused}
+            inert={wideRightFocused || undefined}
+            className="relative h-full min-w-0 overflow-hidden"
+          >
             {middle}
             {/* 左侧折叠后的展开 tab（贴左边缘，垂直居中） */}
             {leftCollapsed && (
@@ -739,6 +777,8 @@ export function ThreeColumnSplit({
 
           {/* M|R 拖拽手柄：折叠时 grid 已给 0px，pointer-events 关闭 */}
           <div
+            hidden={wideRightFocused}
+            inert={wideRightFocused || undefined}
             role="separator"
             aria-orientation="vertical"
             aria-valuemin={18}
@@ -767,7 +807,9 @@ export function ThreeColumnSplit({
           </div>
 
           {/* 右栏：折叠时不渲染 */}
-          <div className="h-full min-w-0 overflow-hidden">{!rightCollapsed && right}</div>
+          <div style={{ gridColumn: 5 }} className="h-full min-w-0 overflow-hidden">
+            {!rightCollapsed && right}
+          </div>
         </>
       ) : null}
     </div>

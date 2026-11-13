@@ -29,6 +29,8 @@ import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
 export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const [immersive, setImmersive] = useState(false);
+  const [focusedSession, setFocusedSession] = useState<string | null>(null);
+  const reviewFocusRef = useRef<HTMLButtonElement>(null);
   const navigationId = useId();
   const mobileTriggerId = (value: string) => `${navigationId}-tab-${value}`;
   // Keep the Terminal trigger in the CommandBar, where the PinHarness source
@@ -97,6 +99,25 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     stagedDiff,
     setStagedDiff,
   } = model;
+
+  const canFocusReview =
+    !isMobileViewport &&
+    (inspectorActsAsDrawer ? inspectorDrawerOpen : !workspaceLayout.rightCollapsed);
+  const reviewFocused = focusedSession === id && canFocusReview;
+  useEffect(() => {
+    if (!canFocusReview || focusedSession !== id) setFocusedSession(null);
+  }, [canFocusReview, focusedSession, id]);
+  useEffect(() => {
+    if (!reviewFocused) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      setFocusedSession(null);
+      reviewFocusRef.current?.focus();
+    };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [reviewFocused]);
 
   const mediumAuxiliaryOpen =
     inspectorActsAsDrawer && !isMobileViewport && (sessionDrawerOpen || inspectorDrawerOpen);
@@ -307,6 +328,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
       >
         <ThreeColumnSplit
           mediumPresentation="drawer"
+          rightFocused={reviewFocused}
           left={
             <section className="workspace-panel workbench-panel session-rail-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
               {sessionDrawerOpen && (
@@ -409,6 +431,18 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                 </button>
               )}
               <WorkspaceInspector
+                reviewFocus={
+                  !isMobileViewport
+                    ? {
+                        active: reviewFocused,
+                        buttonRef: reviewFocusRef,
+                        toggle: () => {
+                          setFocusedSession((current) => (current === id ? null : id));
+                          reviewFocusRef.current?.focus();
+                        },
+                      }
+                    : undefined
+                }
                 project={project}
                 projects={projects}
                 session={currentSession}

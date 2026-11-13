@@ -771,6 +771,142 @@ describe('WorkspacePage 数据分区可靠性', () => {
     );
   });
 
+  it.each([1024, 1440])('专注审阅保留提交草稿与进行中的请求（%s）', async (width) => {
+    vi.stubGlobal('innerWidth', width);
+    const mediaChanges = new Set<() => void>();
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: (_: string, update: () => void) => mediaChanges.add(update),
+      removeEventListener: (_: string, update: () => void) => mediaChanges.delete(update),
+    }));
+    localStorage.setItem('agenthub.workspace.layout-v2.right.collapsed', 'false');
+    let finish!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === `/api/v1/projects/${project.id}/git/status`)
+        return jsonResponse({
+          branch: 'main',
+          clean: false,
+          entries: [{ index: ' ', worktree: 'M', path: 'a.ts' }],
+        });
+      if (path === `/api/v1/projects/${project.id}/git/commit` && init?.method === 'POST')
+        return pending;
+      return baseFetch(path, init?.method);
+    });
+    const savedStorage = JSON.stringify({ ...localStorage });
+    renderWorkspace(fetchMock, `/workspace/${session.id}?view=changes`);
+    fireEvent.click(await screen.findByRole('checkbox', { name: '选择 a.ts' }));
+    const draft = screen.getByPlaceholderText('说明这次变更解决了什么');
+    fireEvent.change(draft, { target: { value: '保留草稿' } });
+    const conversation = screen.getByRole('textbox', { name: '给 Agent 发送工程指令' });
+    fireEvent.change(conversation, { target: { value: '保留对话草稿' } });
+    const focus = screen.getByRole('button', { name: '专注审阅' });
+    fireEvent.click(focus);
+    expect(focus).toHaveAttribute('aria-pressed', 'true');
+    const consumedEscape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    consumedEscape.preventDefault();
+    window.dispatchEvent(consumedEscape);
+    expect(focus).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByPlaceholderText('说明这次变更解决了什么')).toBe(draft);
+    expect(draft).toHaveValue('保留草稿');
+    fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
+    const busy = await screen.findByRole('button', { name: '正在提交…' });
+    fireEvent.keyDown(focus, { key: 'Escape' });
+    expect(focus).toHaveAccessibleName('专注审阅');
+    expect(focus).toHaveFocus();
+    if (width === 1024)
+      expect(screen.getByRole('dialog', { name: '工作区辅助栏' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '给 Agent 发送工程指令' })).toBe(conversation);
+    expect(conversation).toHaveValue('保留对话草稿');
+    expect(screen.getByRole('button', { name: '正在提交…' })).toBe(busy);
+    expect(screen.getByPlaceholderText('说明这次变更解决了什么')).toBe(draft);
+    fireEvent.click(focus);
+    fireEvent.click(focus);
+    expect(JSON.stringify({ ...localStorage })).toBe(savedStorage);
+    expect(
+      fetchMock.mock.calls.filter(
+        ([path, init]) => String(path).endsWith('/git/commit') && init?.method === 'POST',
+      ),
+    ).toHaveLength(1);
+    await act(async () => {
+      finish(jsonResponse({ sha: 'abcdef0123456789' }));
+    });
+    expect(await screen.findByText('提交完成：abcdef012345')).toBeInTheDocument();
+    if (width === 1024) {
+      fireEvent.keyDown(focus, { key: 'Escape' });
+      expect(screen.queryByRole('dialog', { name: '工作区辅助栏' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: '打开辅助栏' }));
+      fireEvent.click(
+        within(screen.getByRole('tablist', { name: '辅助栏视图' })).getByRole('tab', {
+          name: '检查器',
+        }),
+      );
+      expect(screen.getByRole('button', { name: '专注审阅' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      fireEvent.click(screen.getByRole('button', { name: '专注审阅' }));
+      fireEvent.click(
+        within(screen.getByRole('tablist', { name: '辅助栏视图' })).getByRole('tab', {
+          name: '会话',
+        }),
+      );
+      fireEvent.click(
+        within(screen.getByRole('tablist', { name: '辅助栏视图' })).getByRole('tab', {
+          name: '检查器',
+        }),
+      );
+      expect(screen.getByRole('button', { name: '专注审阅' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      fireEvent.click(screen.getByRole('button', { name: '专注审阅' }));
+      await act(async () => {
+        vi.stubGlobal('innerWidth', 390);
+        for (const update of mediaChanges) update();
+      });
+      expect(screen.queryByRole('button', { name: /专注审阅/ })).not.toBeInTheDocument();
+      await act(async () => {
+        vi.stubGlobal('innerWidth', 1024);
+        for (const update of mediaChanges) update();
+      });
+      expect(screen.getByRole('button', { name: '专注审阅' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+    }
+    localStorage.removeItem('agenthub.workspace.layout-v2.right.collapsed');
+  });
+
+  it('更换会话身份不会继承旧会话的专注布局', async () => {
+    vi.stubGlobal('innerWidth', 1440);
+    localStorage.setItem('agenthub.workspace.layout-v2.right.collapsed', 'false');
+    const next = { ...session, id: 'next-session', title: '另一个会话' };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === `/api/v1/sessions/${next.id}`) return jsonResponse(next);
+      return baseFetch(String(input), init?.method);
+    });
+    renderWorkspace(fetchMock, `/workspace/${session.id}?view=changes`, next);
+    fireEvent.click(await screen.findByRole('button', { name: '专注审阅' }));
+    fireEvent.click(screen.getByRole('link', { name: '切换已缓存会话' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '专注审阅' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      ),
+    );
+    expect(screen.queryByRole('button', { name: '退出专注审阅' })).not.toBeInTheDocument();
+    localStorage.removeItem('agenthub.workspace.layout-v2.right.collapsed');
+  });
+
   it('Git 工作区提供可发现的历史、分支与 selected-files commit', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = String(input);

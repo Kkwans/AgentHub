@@ -1302,6 +1302,149 @@ test('深色 TSX 选中 Diff 使用真实词法内容并保持可读', async ({ 
   expect(violations).toEqual([]);
 });
 
+test('专注审阅保留未提交草稿和编辑器并恢复原布局', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  let gitWrites = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.includes('/git/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      gitWrites += 1;
+  });
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  const viewportWidth = page.viewportSize()!.width;
+  const enterFocus = page.getByRole('button', { name: '专注审阅', exact: true });
+  if (viewportWidth < 768) {
+    // A phone is already full-width. Do not offer an ineffective enlargement.
+    await expect(enterFocus).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    expect(gitWrites).toBe(0);
+    expect(errors).toEqual([]);
+    return;
+  }
+  const path = 'apps/web/src/features/workspace/workspace.module.css';
+  await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
+  await expect(
+    page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]'),
+  ).toContainText(/display:\s*grid/);
+  const selected = page.getByRole('checkbox', { name: `选择 ${path}`, exact: true });
+  await selected.check();
+  const draft = page.getByRole('textbox', { name: '提交说明', exact: true });
+  await expect(draft).toBeVisible();
+  await draft.fill('专注切换必须保留这份未提交草稿');
+  await draft.evaluate((node) => {
+    node.dataset.focusIdentity = 'same-draft-node';
+  });
+  const editor = page.locator('.git-diff-editor .monaco-diff-editor');
+  await expect(editor).toHaveCount(1);
+  await editor.evaluate((node) => {
+    node.dataset.focusIdentity = 'same-editor-node';
+  });
+  await page.getByRole('button', { name: '切换为分栏 Diff' }).click();
+  const inspector = page.locator('.inspector-panel');
+  const layout = page.locator('.three-column-split');
+  const initialWidth = (await inspector.boundingBox())!.width;
+  const preferences = async () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        Object.entries(localStorage)
+          .filter(([key]) => key.startsWith('agenthub.workspace.layout-'))
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    );
+  const previousPreferences = await preferences();
+  await enterFocus.click();
+  const exitFocus = page.getByRole('button', { name: '退出专注审阅', exact: true });
+  await expect(exitFocus).toHaveAttribute('aria-pressed', 'true');
+  await expect(layout).toHaveAttribute('data-right-focused', 'true');
+  await expect
+    .poll(async () => (await inspector.boundingBox())!.width)
+    .toBeGreaterThanOrEqual(viewportWidth - 34);
+  const focusedPanes = page.locator(
+    '.git-diff-editor .editor.original, .git-diff-editor .editor.modified',
+  );
+  await expect(focusedPanes).toHaveCount(2);
+  for (let index = 0; index < 2; index += 1) {
+    await expect
+      .poll(async () => (await focusedPanes.nth(index).boundingBox())?.width ?? 0)
+      .toBeGreaterThanOrEqual((viewportWidth - 32) * 0.4);
+  }
+  await testInfo.attach(`workspace-review-focused-geometry-${testInfo.project.name}`, {
+    body: JSON.stringify({
+      viewportWidth,
+      initialWidth,
+      focusedInspector: await inspector.boundingBox(),
+      panes: await focusedPanes.evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const box = node.getBoundingClientRect();
+          return { x: box.x, width: box.width, height: box.height };
+        }),
+      ),
+    }),
+    contentType: 'application/json',
+  });
+  await expect(draft).toHaveValue('专注切换必须保留这份未提交草稿');
+  await expect(draft).toHaveAttribute('data-focus-identity', 'same-draft-node');
+  await expect(editor).toHaveAttribute('data-focus-identity', 'same-editor-node');
+  await expect(selected).toBeChecked();
+  if (viewportWidth >= 1180) {
+    const conversation = page.locator('.conversation-panel');
+    await expect(conversation).toHaveCount(1);
+    await expect(conversation).toBeHidden();
+    await expect
+      .poll(() => conversation.evaluate((node) => Boolean(node.closest('[inert]'))))
+      .toBe(true);
+  } else {
+    await expect(page.getByRole('dialog', { name: '工作区辅助栏' })).toHaveCount(1);
+  }
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'workspace-review-focused');
+  const audit = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const violations = audit.violations.filter((entry) =>
+    ['serious', 'critical'].includes(entry.impact ?? ''),
+  );
+  await testInfo.attach(`workspace-review-focused-axe-${testInfo.project.name}`, {
+    body: JSON.stringify(violations),
+    contentType: 'application/json',
+  });
+  // Escape leaves focus mode first, not the existing medium drawer itself.
+  await exitFocus.focus();
+  await page.keyboard.press('Escape');
+  await expect(layout).not.toHaveAttribute('data-right-focused', 'true');
+  await expect(enterFocus).toBeFocused();
+  await expect
+    .poll(async () => Math.abs((await inspector.boundingBox())!.width - initialWidth))
+    .toBeLessThanOrEqual(2);
+  if (viewportWidth < 1180)
+    await expect(page.getByRole('dialog', { name: '工作区辅助栏' })).toHaveCount(1);
+  await expect(draft).toHaveValue('专注切换必须保留这份未提交草稿');
+  await expect(draft).toHaveAttribute('data-focus-identity', 'same-draft-node');
+  await expect(editor).toHaveAttribute('data-focus-identity', 'same-editor-node');
+  await page.keyboard.press('Enter');
+  await expect(exitFocus).toHaveAttribute('aria-pressed', 'true');
+  await exitFocus.click();
+  await expect(enterFocus).toBeFocused();
+  await expect(layout).not.toHaveAttribute('data-right-focused', 'true');
+  expect(await preferences()).toEqual(previousPreferences);
+  await expect(selected).toBeChecked();
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'workspace-review-focus-restored');
+  expect(gitWrites).toBe(0);
+  expect(errors).toEqual([]);
+  expect(violations).toEqual([]);
+});
+
 test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {
   let failing = false;
   let reads = 0;
