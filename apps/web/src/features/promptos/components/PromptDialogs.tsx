@@ -221,13 +221,20 @@ export function PromptDialogs({ model }: { model: PromptLibraryModel }) {
             <AhButton
               onClick={() => createBinding.mutate()}
               loading={createBinding.isPending}
-              disabled={bindingTargetState !== 'ready' || !bindingSelectorValue}
+              disabled={
+                model.bindingBlocked || bindingTargetState !== 'ready' || !bindingSelectorValue
+              }
             >
               创建绑定
             </AhButton>
           </>
         }
       >
+        {model.bindingBlocked ? (
+          <p role="status">
+            原绑定操作尚未确认，暂不能再次创建。请查看页面中的原操作结果；关闭或重开表单不会重试。
+          </p>
+        ) : null}
         {createBinding.error ? <AhErrorState description={createBinding.error.message} /> : null}
         <AhSelect
           label="绑定目标类型"

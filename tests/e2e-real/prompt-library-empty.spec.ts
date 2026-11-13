@@ -372,3 +372,140 @@ test('Prompt 显式选择三类目标并保存真实绑定 390 light', async ({ 
   expect(writes).toHaveLength(3);
   expect(errors).toEqual([]);
 });
+
+// Delay delivery of a genuine committed response, not the server write itself.
+test('Prompt 绑定晚成功不关闭重开的草稿 390 light', async ({ page, context, app }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await context.addInitScript((origin) => {
+    if (location.origin === origin) localStorage.setItem('agenthub-theme', 'light');
+  }, app.origin);
+  const { project } = await seedWorkspace(context, app);
+  const prompt = await apiData<{ id: string }>(context, 'post', '/prompts', {
+    projectId: project.id,
+    key: 'e2e/binding-delayed',
+    name: '原绑定请求模板',
+    kind: 'TASK',
+    type: 'TEXT',
+  });
+  const version = await apiData<{ id: string }>(context, 'post', `/prompts/${prompt.id}/versions`, {
+    content: { text: '旧请求不得关闭新草稿。' },
+  });
+  const errors: string[] = [];
+  const writes: unknown[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/v1/prompt-bindings'
+    )
+      writes.push(request.postDataJSON());
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let finish!: () => void;
+  const done = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  let started = false;
+  let fetched = false;
+  let handlerError: unknown;
+  let savedId: string | undefined;
+  const expected = {
+    targetType: 'PROJECT',
+    targetId: project.id,
+    promptId: prompt.id,
+    slot: 'SYSTEM',
+    selectorType: 'VERSION',
+    versionId: version.id,
+    priority: 0,
+  };
+  const url = `${app.origin}/api/v1/prompt-bindings`;
+  await page.route(url, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    started = true;
+    try {
+      const response = await route.fetch({ timeout: 15_000 });
+      expect(response.ok()).toBe(true);
+      const saved = (await response.json()).data;
+      expect(saved).toMatchObject({ ...expected, enabled: true });
+      expect(typeof saved.id).toBe('string');
+      savedId = saved.id;
+      fetched = true;
+      await gate;
+      await route.fulfill({ response });
+    } catch (error) {
+      handlerError = error;
+      fetched = true;
+      await route.abort().catch(() => {});
+    } finally {
+      finish();
+    }
+  });
+  try {
+    await page.goto('/prompts');
+    const editor = page.getByRole('region', { name: 'Prompt 编辑器' });
+    await expect(editor.getByRole('heading', { name: '原绑定请求模板' })).toBeVisible();
+    await editor.getByRole('tab', { name: '绑定', exact: true }).click();
+    await editor.getByRole('button', { name: '新增绑定', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '新建 Prompt 绑定', exact: true });
+    await dialog.getByRole('combobox', { name: 'Project', exact: true }).click();
+    await page.getByRole('option', { name: 'v1 baseline project', exact: true }).click();
+    await dialog.getByRole('combobox', { name: '选择方式', exact: true }).click();
+    await page.getByRole('option', { name: '固定版本', exact: true }).click();
+    await dialog.getByRole('combobox', { name: '固定版本', exact: true }).click();
+    await page.getByRole('option', { name: /^v1 ·/ }).click();
+    await dialog.getByRole('button', { name: '创建绑定', exact: true }).click();
+    await expect.poll(() => fetched, { timeout: 20_000 }).toBe(true);
+    if (handlerError) throw handlerError;
+    await dialog.getByRole('button', { name: '取消', exact: true }).click();
+    await editor.getByRole('button', { name: '新增绑定', exact: true }).click();
+    await expect(dialog.getByRole('button', { name: '创建绑定', exact: true })).toBeDisabled();
+    await dialog.getByRole('combobox', { name: '提示位', exact: true }).click();
+    await page.getByRole('option', { name: '任务前置', exact: true }).click();
+    release();
+    await done;
+    if (handlerError) throw handlerError;
+    // Waiting for the pending lock to clear proves the callback has run.
+    await expect(dialog.getByRole('button', { name: '创建绑定', exact: true })).toBeEnabled();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: '提示位', exact: true })).toHaveText(
+      '任务前置',
+    );
+    expect(writes).toEqual([expected]);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const draftPath = info.outputPath('binding-delayed-new-draft-390-light.png');
+    await page.screenshot({ path: draftPath, fullPage: true, animations: 'disabled' });
+    await info.attach('旧响应后保留的新草稿', { path: draftPath, contentType: 'image/png' });
+    await dialog.getByRole('button', { name: '取消', exact: true }).click();
+    const result = page.getByRole('status', { name: '绑定操作结果' });
+    await expect(result).toContainText('已保存原绑定');
+    await expect(result).toContainText(prompt.id);
+    await expect(result).toContainText(savedId!);
+    const persisted = await apiData<Array<{ id: string }>>(
+      context,
+      'get',
+      `/prompt-bindings?promptId=${prompt.id}`,
+    );
+    expect(persisted).toHaveLength(1);
+    expect(persisted[0]).toMatchObject({ ...expected, id: savedId, enabled: true });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const path = info.outputPath('binding-delayed-original-result-390-light.png');
+    await page.screenshot({ path, fullPage: true, animations: 'disabled' });
+    await info.attach('原绑定晚成功结果', { path, contentType: 'image/png' });
+    expect(errors).toEqual([]);
+  } finally {
+    release();
+    if (started) await done;
+    await page.unroute(url);
+  }
+});

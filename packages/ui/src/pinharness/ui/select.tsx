@@ -79,8 +79,7 @@ export function Select({
     );
   }, [optionsWithClear, query, searchable]);
   const hasFilteredOptions = filteredOptions.length > 0;
-  const radixValue =
-    value === '' && (hasEmptyOption || clearable) ? EMPTY_OPTION_VALUE : value || undefined;
+  const radixValue = value === '' && hasEmptyOption ? EMPTY_OPTION_VALUE : value;
 
   useEffect(() => {
     if (!open || !searchable) return;

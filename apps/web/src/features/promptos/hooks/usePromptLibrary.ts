@@ -12,6 +12,7 @@ import type {
   TaskRecord,
 } from '../../../lib/api';
 import { api } from '../../../lib/api';
+import { usePromptBindingDraft } from './usePromptBindingDraft';
 import { usePromptVersionDraft } from './usePromptVersionDraft';
 
 export type PromptMainTab = 'content' | 'variables' | 'bindings' | 'playground';
@@ -141,7 +142,6 @@ export function usePromptLibrary() {
     },
   });
 
-  const [bindingOpen, setBindingOpen] = useState(false);
   const [bindingTargetType, setBindingTargetType] = useState<PromptBindingTargetType>('PROJECT');
   const [bindingTargetId, setBindingTargetId] = useState('');
   const [bindingSlot, setBindingSlot] = useState('SYSTEM');
@@ -188,10 +188,20 @@ export function usePromptLibrary() {
     if (!bindingSelectors.some((item) => item.value === bindingSelectorValue))
       setBindingSelectorValue(bindingSelectors[0]?.value ?? '');
   }, [bindingSelectorValue, bindingSelectors]);
-  const createBinding = useMutation({
-    mutationFn: () => {
+  const bindingDraft = usePromptBindingDraft(
+    selected,
+    prompts.data,
+    projectId ?? 'all',
+    () => {
       if (!selected || !bindingTargetId || !bindingSelectorValue)
         throw new Error('绑定目标和版本来源不能为空');
+      const promptSource = client.getQueryState<PromptRecord[]>(['prompts', projectId ?? 'all']);
+      if (
+        promptSource?.status !== 'success' ||
+        promptSource.fetchStatus !== 'idle' ||
+        !promptSource.data?.some((prompt) => prompt.id === selected.id)
+      )
+        throw new Error('原 Prompt 数据尚未确认或已移除，请重新读取后打开表单');
       const currentTargets = client.getQueryState<Array<{ id: string }>>([bindingTargetKey]);
       if (currentTargets?.status !== 'success' || currentTargets.fetchStatus !== 'idle')
         throw new Error('绑定目标数据尚未确认，请读取成功后再提交');
@@ -200,7 +210,7 @@ export function usePromptLibrary() {
         !currentTargets.data.some((target) => target.id === bindingTargetId)
       )
         throw new Error('原目标已不在最新列表，请重新选择绑定目标');
-      return api.post('/prompt-bindings', {
+      return {
         targetType: bindingTargetType,
         targetId: bindingTargetId,
         slot: bindingSlot,
@@ -210,13 +220,11 @@ export function usePromptLibrary() {
           ? { label: bindingSelectorValue }
           : { versionId: bindingSelectorValue }),
         priority: 0,
-      });
+      };
     },
-    onSuccess: () => {
-      setBindingOpen(false);
-      void client.invalidateQueries({ queryKey: ['prompt-bindings', selected?.id] });
-    },
-  });
+    bindingTargets.find((target) => target.value === bindingTargetId)?.label ?? bindingTargetId,
+  );
+  const { bindingOpen, setBindingOpen, createBinding } = bindingDraft;
   const toggleBinding = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       api.patch(`/prompt-bindings/${id}`, { enabled }),
@@ -352,6 +360,7 @@ export function usePromptLibrary() {
     labelVersionId,
     setLabelVersionId,
     moveLabel,
+    ...bindingDraft,
     bindingOpen,
     setBindingOpen,
     bindingTargetType,

@@ -10,7 +10,11 @@ import type * as ApiModule from '../../../lib/api';
 import { usePromptLibrary, type PromptBindingTargetType } from './usePromptLibrary';
 vi.mock('../../../lib/api', async (original) => ({
   ...(await original<typeof ApiModule>()),
-  api: { get: vi.fn(async () => []), post: vi.fn(async () => ({})), patch: vi.fn() },
+  api: {
+    get: vi.fn(async () => []),
+    post: vi.fn(async (_path, payload) => ({ id: 'saved', enabled: true, ...payload })),
+    patch: vi.fn(),
+  },
 }));
 const clients: QueryClient[] = [];
 afterEach(() => {
@@ -59,6 +63,7 @@ async function choose(result: ReturnType<typeof mount>['result'], type: PromptBi
     result.current.setBindingSelectorValue('latest');
   });
   await waitFor(() => expect(result.current.bindingTargetState).toBe('ready'));
+  act(() => result.current.setBindingOpen(true));
 }
 it.each(sources)(
   '%s不自动选目标，当前cache error/fetching/paused立即拒绝旧render提交',
@@ -159,8 +164,97 @@ it.each(sources)('%s初次pending/error/成功空分开且直接mutation拒绝',
     client.setQueryData([key], []);
   });
   await waitFor(() => expect(result.current.bindingTargetState).toBe('empty'));
+  act(() => result.current.setBindingOpen(true));
   await act(async () => {
     await expect(result.current.createBinding.mutateAsync()).rejects.toThrow('不能为空');
+  });
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it.each(['same-prompt', 'different-prompt'] as const)(
+  'pending绑定关闭重开 %s：旧成功不应关闭新弹层且只刷新原Prompt',
+  async (destination) => {
+    const { result, client } = mount();
+    client.setQueryData(
+      ['prompts', 'all'],
+      [
+        { id: 'p1', name: 'Prompt', kind: 'TASK', type: 'TEXT', key: 'test' },
+        { id: 'p2', name: 'Prompt 2', kind: 'TASK', type: 'TEXT', key: 'test-2' },
+      ],
+    );
+    client.setQueryData(['prompt-labels', 'p2'], [{ label: 'latest', version: 1 }]);
+    client.setQueryData(['prompt-versions', 'p2'], []);
+    client.setQueryData(['prompt-bindings', 'p2'], []);
+    let resolve!: (value: unknown) => void;
+    vi.mocked(api.post).mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    await choose(result, 'PROJECT');
+    act(() => result.current.setBindingOpen(true));
+    let submitted!: Promise<unknown>;
+    act(() => {
+      submitted = result.current.createBinding.mutateAsync();
+    });
+    await waitFor(() => expect(result.current.createBinding.isPending).toBe(true));
+    expect(api.post).toHaveBeenCalledWith(
+      '/prompt-bindings',
+      expect.objectContaining({ promptId: 'p1' }),
+    );
+    act(() => result.current.setBindingOpen(false));
+    if (destination === 'different-prompt') {
+      act(() => result.current.setSelectedId('p2'));
+      await waitFor(() => expect(result.current.selected?.id).toBe('p2'));
+    }
+    act(() => result.current.setBindingOpen(true));
+    expect(result.current.bindingOpen).toBe(true);
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await act(async () => {
+      resolve({
+        id: 'saved-binding',
+        enabled: true,
+        ...(vi.mocked(api.post).mock.calls[0]?.[1] as Record<string, unknown>),
+      });
+      await submitted;
+    });
+    // Soft assertions retain evidence of both the close and wrong-cache failure.
+    expect.soft(result.current.bindingOpen).toBe(true);
+    expect.soft(invalidate).toHaveBeenCalledWith({ queryKey: ['prompt-bindings', 'p1'] });
+    expect.soft(invalidate).not.toHaveBeenCalledWith({ queryKey: ['prompt-bindings', 'p2'] });
+  },
+);
+
+it('打开Prompt A后数据删除A时不得向fallback Prompt B提交', async () => {
+  const { result, client } = mount();
+  client.setQueryData(['prompt-labels', 'p2'], [{ label: 'latest', version: 1 }]);
+  client.setQueryData(['prompt-versions', 'p2'], []);
+  client.setQueryData(['prompt-bindings', 'p2'], []);
+  await choose(result, 'PROJECT');
+  act(() => result.current.setBindingOpen(true));
+  expect(result.current.selected?.id).toBe('p1');
+  act(() =>
+    client.setQueryData(
+      ['prompts', 'all'],
+      [{ id: 'p2', name: 'Prompt 2', kind: 'TASK', type: 'TEXT', key: 'test-2' }],
+    ),
+  );
+  await waitFor(() => expect(result.current.selected?.id).toBe('p2'));
+  await waitFor(() => expect(result.current.bindingSelectorValue).toBe('latest'));
+  await act(async () => {
+    await expect.soft(result.current.createBinding.mutateAsync()).rejects.toThrow();
+  });
+  expect.soft(api.post).not.toHaveBeenCalled();
+});
+
+it('同tick原Prompt cache删除时旧render提交也不能POST', async () => {
+  const { result, client } = mount();
+  await choose(result, 'PROJECT');
+  const submit = result.current.createBinding.mutateAsync;
+  await act(async () => {
+    client.setQueryData(['prompts', 'all'], []);
+    await expect(submit()).rejects.toThrow('原 Prompt');
   });
   expect(api.post).not.toHaveBeenCalled();
 });

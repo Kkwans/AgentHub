@@ -1,0 +1,81 @@
+diff --git a/apps/web/src/features/promptos/hooks/PromptBindingTarget.test.tsx b/apps/web/src/features/promptos/hooks/PromptBindingTarget.test.tsx
+index 57f2e7f..de21f55 100644
+--- a/apps/web/src/features/promptos/hooks/PromptBindingTarget.test.tsx
++++ b/apps/web/src/features/promptos/hooks/PromptBindingTarget.test.tsx
+@@ -164,3 +164,76 @@ it.each(sources)('%s初次pending/error/成功空分开且直接mutation拒绝',
+   });
+   expect(api.post).not.toHaveBeenCalled();
+ });
++
++it.each(['same-prompt', 'different-prompt'] as const)(
++  'pending绑定关闭重开 %s：旧成功不应关闭新弹层且只刷新原Prompt',
++  async (destination) => {
++    const { result, client } = mount();
++    client.setQueryData(
++      ['prompts', 'all'],
++      [
++        { id: 'p1', name: 'Prompt', kind: 'TASK', type: 'TEXT', key: 'test' },
++        { id: 'p2', name: 'Prompt 2', kind: 'TASK', type: 'TEXT', key: 'test-2' },
++      ],
++    );
++    client.setQueryData(['prompt-labels', 'p2'], [{ label: 'latest', version: 1 }]);
++    client.setQueryData(['prompt-versions', 'p2'], []);
++    client.setQueryData(['prompt-bindings', 'p2'], []);
++    let resolve!: (value: unknown) => void;
++    vi.mocked(api.post).mockImplementationOnce(
++      () =>
++        new Promise((done) => {
++          resolve = done;
++        }),
++    );
++    await choose(result, 'PROJECT');
++    act(() => result.current.setBindingOpen(true));
++    let submitted!: Promise<unknown>;
++    act(() => {
++      submitted = result.current.createBinding.mutateAsync();
++    });
++    await waitFor(() => expect(result.current.createBinding.isPending).toBe(true));
++    expect(api.post).toHaveBeenCalledWith(
++      '/prompt-bindings',
++      expect.objectContaining({ promptId: 'p1' }),
++    );
++    act(() => result.current.setBindingOpen(false));
++    if (destination === 'different-prompt') {
++      act(() => result.current.setSelectedId('p2'));
++      await waitFor(() => expect(result.current.selected?.id).toBe('p2'));
++    }
++    act(() => result.current.setBindingOpen(true));
++    expect(result.current.bindingOpen).toBe(true);
++    const invalidate = vi.spyOn(client, 'invalidateQueries');
++    await act(async () => {
++      resolve({ id: 'saved-binding' });
++      await submitted;
++    });
++    // Soft assertions retain evidence of both the close and wrong-cache failure.
++    expect.soft(result.current.bindingOpen).toBe(true);
++    expect.soft(invalidate).toHaveBeenCalledWith({ queryKey: ['prompt-bindings', 'p1'] });
++    expect.soft(invalidate).not.toHaveBeenCalledWith({ queryKey: ['prompt-bindings', 'p2'] });
++  },
++);
++
++it('打开Prompt A后数据删除A时不得向fallback Prompt B提交', async () => {
++  const { result, client } = mount();
++  client.setQueryData(['prompt-labels', 'p2'], [{ label: 'latest', version: 1 }]);
++  client.setQueryData(['prompt-versions', 'p2'], []);
++  client.setQueryData(['prompt-bindings', 'p2'], []);
++  await choose(result, 'PROJECT');
++  act(() => result.current.setBindingOpen(true));
++  expect(result.current.selected?.id).toBe('p1');
++  act(() =>
++    client.setQueryData(
++      ['prompts', 'all'],
++      [{ id: 'p2', name: 'Prompt 2', kind: 'TASK', type: 'TEXT', key: 'test-2' }],
++    ),
++  );
++  await waitFor(() => expect(result.current.selected?.id).toBe('p2'));
++  await waitFor(() => expect(result.current.bindingSelectorValue).toBe('latest'));
++  await act(async () => {
++    await expect.soft(result.current.createBinding.mutateAsync()).rejects.toThrow();
++  });
++  expect.soft(api.post).not.toHaveBeenCalled();
++});

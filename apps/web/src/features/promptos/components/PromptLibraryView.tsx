@@ -1,5 +1,6 @@
 import { AhButton, AhEmptyState, Braces, Card, NavigationPageHeader, Plus } from '@agenthub/ui';
 
+import { labelPromptBindingTarget } from '../../../presentation/domain-labels';
 import { QueryMessage } from '../../shared/page-primitives';
 import promptSettingsStyles from '../promptSettings.module.css';
 
@@ -34,6 +35,34 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
         }
       />
       <div className="page-content page-shell min-h-full">
+        {model.bindingOperations.map((operation) => (
+          <section
+            key={operation.id}
+            role={
+              operation.phase === 'unknown' || operation.phase === 'rejected' ? 'alert' : 'status'
+            }
+            aria-label="绑定操作结果"
+            className="rounded-md border p-3 text-sm [overflow-wrap:anywhere]"
+          >
+            <p>
+              Prompt：{operation.promptName}（{operation.payload.promptId}）
+            </p>
+            <p>
+              目标：{labelPromptBindingTarget(operation.payload.targetType)} ·{' '}
+              {operation.targetName}（{operation.payload.targetId}）
+            </p>
+            <p>{operation.message}</p>
+            {operation.bindingId ? <p>绑定编号：{operation.bindingId}</p> : null}
+            {operation.phase === 'saved' || operation.phase === 'rejected' ? (
+              <AhButton
+                variant="subtle"
+                onClick={() => model.dismissBindingOperation(operation.id)}
+              >
+                关闭此结果提示
+              </AhButton>
+            ) : null}
+          </section>
+        ))}
         <QueryMessage
           loading={prompts.isLoading}
           error={prompts.error}

@@ -36,8 +36,8 @@
 | C17 | Overview Agent姓名读取与分配事实分离 | 候选30整合测试与独立CR通过；保留资格/预检和写动作，新错误/恢复图待精确CI |
 | C18 | Projects多源失败时保持项目可见性 | 基于ad732da实图做Projects专用来源组；31整合回归与CR通过；cd66 fixture实图/geometry确认195px与44px按钮，real待验 |
 | C19 | 手机全屏长表单保持上下文与操作可达 | 基于df73真实NewWork390图；只fullscreen独立body滚动，08ea真实149过/1失败已定位内层fieldset滚动；单owner修复110回归/CR通过，保留真实滚动门，新CI待验 |
-| C20 | Prompt绑定目标明确选择与提交校验 | 36整合Prompt回归/独立CR通过；目标未知不POST，保留原选择、移除首项代选；新空/失败/恢复图待CI |
-| C21 | Prompt绑定异步请求归属 | deferred测试复现误关新dialog/失效错Prompt；owner/snapshot/auth方案评估中，尚未改产品 |
+| C20 | Prompt绑定目标明确选择与提交校验 | 36整合Prompt回归/独立CR通过；775真实空/失败/恢复8组合通过，目标未知不POST，移除首项代选；373三目标成功门另待CI |
+| C21 | Prompt绑定异步请求归属 | 3条红测复现误关新dialog/失效错Prompt/打开后改投fallback；同页owner/snapshot/auth隔离与unknown锁已实现；55定向回归通过，真实晚响应门已编写待精确CI |
 
 ## 问题台账
 
@@ -60,7 +60,7 @@
 | UI-C15 | 三来源错误重复间距/换行将首项目推至y711 | C18实图/geometry已验：错误区195px（旧约309），按钮四宽44px，不改Overview |
 | UI-C16 | fullScreen宽高被后置样式覆盖，长表单关闭/提交滚出视口 | C19仅全屏规则修复；不改焦点/请求生命周期，390短高非真机键盘验证 |
 | UI-C17 | 绑定目标空白无解释，缓存失败仍能提交，原目标消失会自动换首项 | C20三来源状态+当前query成员校验；payload/selector/既有pending生命周期不变，新浏览器门待验 |
-| UI-C18 | 绑定旧成功回调误关新dialog并刷新新Prompt缓存 | 已复现2红测，需冻结请求与打开owner、身份/route隔离；非幂等接口不能自动重试 |
+| UI-C18 | 绑定旧成功回调误关新dialog并刷新新Prompt缓存 | 已复现3红测，同页冻结owner/请求与身份/route隔离已实现，实际新浏览器验收待CI；非幂等接口不自动重试，跨路由/刷新锁不宣称覆盖 |
 
 ## C02/C03 验证记录
 
