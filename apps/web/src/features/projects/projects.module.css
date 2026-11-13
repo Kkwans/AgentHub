@@ -16,11 +16,9 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 12px;
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-border-subtle);
-  border-radius: var(--ah-radius-surface);
-  box-shadow: var(--ah-shadow-xs);
+  padding: 0 0 18px;
+  background: transparent;
+  border-bottom: 1px solid var(--ah-border-subtle);
 }
 
 .toolbarSearch {
@@ -140,8 +138,8 @@
   overflow: hidden;
   background: var(--ah-surface);
   border: 1px solid var(--ah-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--ah-shadow-xs);
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 .projectListHeader,
@@ -156,7 +154,7 @@
   min-height: 40px;
   padding: 0 18px;
   color: var(--ah-text-tertiary);
-  background: var(--ah-surface-subtle);
+  background: transparent;
   border-bottom: 1px solid var(--ah-border-subtle);
   font-size: 11px;
   font-weight: 700;
@@ -170,8 +168,8 @@
   color: inherit;
   background: var(--ah-surface);
   border: 1px solid var(--ah-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--ah-shadow-xs);
+  border-radius: 8px;
+  box-shadow: none;
   transition:
     background var(--ah-motion-fast),
     border-color var(--ah-motion-fast),
@@ -204,7 +202,7 @@
 .workRow:hover {
   background: var(--ah-surface-subtle);
   border-color: var(--ah-border-default);
-  box-shadow: var(--ah-shadow-sm);
+  box-shadow: none;
 }
 
 .projectEdit {
@@ -228,8 +226,8 @@
   height: 40px;
   flex: 0 0 auto;
   place-items: center;
-  color: #fff;
-  background: var(--ah-accent-primary);
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface-subtle);
   border-radius: var(--ah-radius-control);
   box-shadow: var(--ah-shadow-xs);
   font-size: 15px;
@@ -238,7 +236,7 @@
 }
 
 .entityLogoAlt {
-  background: var(--ah-info);
+  background: var(--ah-surface-subtle);
 }
 
 .entityLogoNeutral {
@@ -262,7 +260,7 @@
   overflow: hidden;
   color: var(--ah-text-primary);
   font-size: 15px;
-  font-weight: 720;
+  font-weight: 600;
   letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -863,8 +861,8 @@
   overflow: hidden;
   background: var(--ah-surface);
   border: 1px solid var(--ah-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--ah-shadow-xs);
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 .workListHeader,
@@ -881,7 +879,7 @@
   min-height: 42px;
   padding: 0 16px;
   color: var(--ah-text-tertiary);
-  background: var(--ah-surface-subtle);
+  background: transparent;
   border-bottom: 1px solid var(--ah-border-subtle);
   font-size: 11px;
   font-weight: 700;

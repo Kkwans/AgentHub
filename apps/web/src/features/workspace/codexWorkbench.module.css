@@ -63,6 +63,7 @@
 }
 
 .workspace :global(.conversation-turn) {
+  width: 100%;
   max-width: 820px;
   margin-inline: auto;
 }
@@ -78,6 +79,8 @@
 }
 
 .workspace :global(.message-assistant) {
+  --conversation-prose-size: 15px;
+  --conversation-prose-color: hsl(var(--foreground));
   font-size: 15px;
   line-height: 1.8;
 }
@@ -209,5 +212,27 @@
   .workspace :global(.conversation-panel .ah-workbench-disclosure-content > div) {
     flex-wrap: wrap;
     overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 767px) {
+  .workspace :global(.workspace-contextbar) {
+    gap: 5px;
+    padding-inline: 10px;
+  }
+  .workspace :global(.codex-session-title > a),
+  .workspace :global(.codex-session-title > svg),
+  .workspace :global(.workspace-context-disclosure-summary small) {
+    display: none;
+  }
+  .workspace :global(.codex-session-title > span) {
+    flex-shrink: 0;
+  }
+  .workspace :global(.workspace-context-disclosure) {
+    flex-shrink: 0;
+    max-width: 64px;
+  }
+  .workspace :global(.conversation-turn) {
+    margin-inline: 0;
   }
 }

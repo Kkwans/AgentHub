@@ -184,7 +184,7 @@ export const MarkdownView = memo(function MarkdownView({
   className,
 }: MarkdownViewProps) {
   const prepared = useMemo(() => normalizeMarkdown(text), [text]);
-  const fontSize = size === 'large' ? '14px' : '13px';
+  const fontSize = size === 'large' ? '14px' : 'var(--conversation-prose-size, 13px)';
   const lineHeight = size === 'large' ? 1.75 : 1.7;
   const rootStyle: CSSProperties = {
     fontSize,
@@ -206,7 +206,7 @@ export const MarkdownView = memo(function MarkdownView({
             border: '1px solid hsl(var(--border))',
             borderRadius: '6px',
             padding: '6px 9px',
-            color: 'hsl(var(--foreground-muted))',
+            color: 'var(--conversation-prose-color, hsl(var(--foreground-muted)))',
             backgroundColor: 'hsl(var(--surface-muted))',
             fontSize: '11px',
           }}
@@ -290,7 +290,10 @@ export const MarkdownView = memo(function MarkdownView({
             <p
               {...rest}
               className={c}
-              style={{ margin: '6px 0', color: 'hsl(var(--foreground-muted))' }}
+              style={{
+                margin: '6px 0',
+                color: 'var(--conversation-prose-color, hsl(var(--foreground-muted)))',
+              }}
             >
               {children}
             </p>
@@ -304,7 +307,7 @@ export const MarkdownView = memo(function MarkdownView({
                 borderRadius: '0 6px 6px 0',
                 backgroundColor: 'hsl(var(--surface-muted) / 0.5)',
                 padding: '8px 12px',
-                color: 'hsl(var(--foreground-muted))',
+                color: 'var(--conversation-prose-color, hsl(var(--foreground-muted)))',
                 border: '1px solid hsl(var(--border))',
               }}
             >
@@ -343,7 +346,7 @@ export const MarkdownView = memo(function MarkdownView({
               className={c}
               style={{
                 lineHeight: 1.65,
-                color: 'hsl(var(--foreground-muted))',
+                color: 'var(--conversation-prose-color, hsl(var(--foreground-muted)))',
                 paddingLeft: '2px',
                 marginBottom: '5px',
               }}
@@ -381,7 +384,10 @@ export const MarkdownView = memo(function MarkdownView({
             <em
               {...rest}
               className={c}
-              style={{ fontStyle: 'italic', color: 'hsl(var(--foreground-muted))' }}
+              style={{
+                fontStyle: 'italic',
+                color: 'var(--conversation-prose-color, hsl(var(--foreground-muted)))',
+              }}
             >
               {children}
             </em>
@@ -491,7 +497,7 @@ export const MarkdownView = memo(function MarkdownView({
                 padding: '8px 11px',
                 minWidth: '96px',
                 verticalAlign: 'top',
-                color: 'hsl(var(--foreground-muted))',
+                color: 'var(--conversation-prose-color, hsl(var(--foreground-muted)))',
                 borderTop: '1px solid hsl(var(--border))',
               }}
             >

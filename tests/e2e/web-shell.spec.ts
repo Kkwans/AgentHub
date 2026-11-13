@@ -535,10 +535,26 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await expect(page.locator('.message.assistant').last().locator('strong')).toHaveText(
     '关键校正已完成：',
   );
+  const clippedTurns = await page.locator('.conversation-scroll').evaluate((scroll) => {
+    const boundary = scroll.getBoundingClientRect();
+    return [...scroll.querySelectorAll('.conversation-turn')].filter((turn) => {
+      const bounds = turn.getBoundingClientRect();
+      return bounds.left < boundary.left - 1 || bounds.right > boundary.right + 1;
+    }).length;
+  });
+  expect(clippedTurns).toBe(0);
   const contextDisclosure = page.locator('.workspace-context-disclosure');
   await contextDisclosure.locator('summary').click();
   await expect(contextDisclosure.locator('code')).toBeVisible();
   await expect(contextDisclosure.locator('code')).toHaveText(project.rootPath);
+  if ((page.viewportSize()?.width ?? 0) >= 1180) {
+    const popup = await contextDisclosure.locator('.ah-workbench-disclosure-content').boundingBox();
+    const pane = await page.locator('.conversation-panel').boundingBox();
+    expect(popup).not.toBeNull();
+    expect(pane).not.toBeNull();
+    expect(popup!.x).toBeGreaterThanOrEqual(pane!.x);
+    expect(popup!.x + popup!.width).toBeLessThanOrEqual(pane!.x + pane!.width + 1);
+  }
   await contextDisclosure.locator('summary').click();
   const thought = page.locator('.thinking-event-row');
   await expect(thought).toHaveCount(1);

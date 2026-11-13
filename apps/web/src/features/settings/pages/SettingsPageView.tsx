@@ -60,15 +60,15 @@ function SettingSection({
 }) {
   return (
     <section
-      className={`${styles.section} workspace-settings-panel premium-panel overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)] ${tone === 'warning' ? styles.warningSection : ''}`}
+      className={`${styles.section} workspace-settings-panel ${tone === 'warning' ? styles.warningSection : ''}`}
     >
-      <header className={`${styles.sectionHeader} border-b border-[hsl(var(--border))] px-5 py-4`}>
+      <header className={styles.sectionHeader}>
         <div>
           <h2>{title}</h2>
           {description ? <p>{description}</p> : null}
         </div>
       </header>
-      <div className={`${styles.sectionBody} px-5 pb-1`}>{children}</div>
+      <div className={styles.sectionBody}>{children}</div>
     </section>
   );
 }
