@@ -82,6 +82,7 @@ jobs:
           tests/e2e-real/task-cancel-safety.spec.ts
           tests/e2e-real/manual-task-start.spec.ts
           tests/e2e-real/task-review.spec.ts
+          tests/e2e-real/worktree-review.spec.ts
           tests/e2e-real/agent-defaults-management.spec.ts
           tests/e2e-real/agent-capability-truth.spec.ts
           tests/e2e-real/prompt-library-empty.spec.ts

@@ -1,3 +1,4 @@
+import { WorktreeReviewActions } from '../components/WorktreeReviewActions';
 import { TaskReviewActions } from '../components/TaskReviewActions';
 import { useProjectEligibility } from '../hooks/useProjectEligibility';
 import { eligibilityReasons } from '../lib/project-eligibility';
@@ -668,7 +669,7 @@ export function ProjectWorkPage() {
                         />
                       </section>
                     ) : null}
-                    {reviewPending ||
+                    {(reviewPending && !selectedWorktree) ||
                     (selected.status === 'WAITING_REVIEW' &&
                       worktrees.isSuccess &&
                       !selectedWorktree) ? (
@@ -694,6 +695,31 @@ export function ProjectWorkPage() {
                         />
                       </section>
                     ) : null}
+                    {selectedWorktree && (selectedWorktree.status === 'REVIEW' || reviewPending) ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>隔离工作区审阅</h4>
+                        <WorktreeReviewActions
+                          key={`${project.id}:${selected.id}:${selectedWorktree.id}`}
+                          execution={selectedWorktree}
+                          disabled={
+                            worktrees.isFetching ||
+                            start.isPending ||
+                            transition.isPending ||
+                            manual.busy ||
+                            variablesSaving ||
+                            reviewPending
+                          }
+                          onPendingChange={(key, pending) =>
+                            setReviewPendingKey((current) =>
+                              pending ? key : current === key ? null : current,
+                            )
+                          }
+                        />
+                      </section>
+                    ) : null}
+                    {selectedWorktree ? (
+                      <p>此任务由隔离 Worktree 管理，不使用普通任务启动或取消入口。</p>
+                    ) : null}
                     {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
                     {manual.message ? <p role="status">{manual.message}</p> : null}
                     {actionError ? (
@@ -716,6 +742,7 @@ export function ProjectWorkPage() {
                         }
                         loading={transition.isPending || start.isPending || manual.busy}
                         disabled={
+                          Boolean(selectedWorktree) ||
                           ['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'].includes(
                             selected.status,
                           ) ||
@@ -752,24 +779,26 @@ export function ProjectWorkPage() {
                           查询原任务状态
                         </AhButton>
                       ) : null}
-                      <TaskCancelAction
-                        task={selected}
-                        pending={
-                          transition.isPending ||
-                          start.isPending ||
-                          manual.busy ||
-                          manual.unknown ||
-                          variablesSaving ||
-                          reviewPending
-                        }
-                        onCancel={() =>
-                          transition.mutate({
-                            id: selected.id,
-                            status: 'CANCELED',
-                            generation: operationContext.current.generation,
-                          })
-                        }
-                      />
+                      {!selectedWorktree ? (
+                        <TaskCancelAction
+                          task={selected}
+                          pending={
+                            transition.isPending ||
+                            start.isPending ||
+                            manual.busy ||
+                            manual.unknown ||
+                            variablesSaving ||
+                            reviewPending
+                          }
+                          onCancel={() =>
+                            transition.mutate({
+                              id: selected.id,
+                              status: 'CANCELED',
+                              generation: operationContext.current.generation,
+                            })
+                          }
+                        />
+                      ) : null}
                     </div>
                   </>
                 ) : (

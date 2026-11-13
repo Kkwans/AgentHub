@@ -1141,3 +1141,30 @@ it('自身确认完成后台刷新先于响应不误报或重复提交', async (
   expect(screen.queryByText('已进入工作区')).not.toBeInTheDocument();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
+
+it('隔离REVIEW只开放专属审阅，不走普通任务完成或取消入口', async () => {
+  const managed = {
+    id: 'execution-a',
+    projectId: project.id,
+    taskId: task.id,
+    status: 'REVIEW',
+    sessionId: 'session-a',
+    runId: 'run-a',
+    taskBranch: 'task/a',
+    baseBranch: 'main',
+    baseSha: 'base',
+    worktreePath: '/tmp/tree',
+  };
+  mount(
+    [{ ...task, status: 'WAITING_REVIEW', assignedAgentId: 'agent-1', sessionId: 'session-a' }],
+    '',
+    selectableAgents,
+    registeredEligibility(),
+    [managed],
+  );
+  expect(await screen.findByRole('button', { name: '读取隔离工作区审阅' })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '取消' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '启动 Session' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+});
