@@ -733,6 +733,26 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   );
   const panels = page.locator('.workspace-panels');
   const conversationPanel = page.locator('.conversation-panel');
+  const captureRailActivity = async () => {
+    const rail = page.locator('.session-rail');
+    const link = rail.locator(`a[href="/workspace/${session.id}"]`);
+    const time = link.locator('time');
+    await expect(time).toBeVisible();
+    await expect(time).toHaveAttribute('datetime', new Date(session.lastActiveAt).toISOString());
+    await expect(time).toHaveAttribute('title', /最近活动：.*2026/);
+    await expect(time).not.toHaveText('');
+    await expect(link.locator('strong')).toHaveAttribute('title', session.title);
+    const meta = link.locator('.session-entry-meta');
+    const branchBox = (await meta.locator('code').boundingBox())!;
+    const timeBox = (await time.boundingBox())!;
+    const rowBox = (await link.boundingBox())!;
+    expect(branchBox.x + branchBox.width).toBeLessThanOrEqual(timeBox.x + 1);
+    expect(timeBox.x + timeBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+    await expect
+      .poll(() => rail.evaluate((node) => node.scrollWidth - node.clientWidth))
+      .toBeLessThanOrEqual(1);
+    await attachViewportScreenshot(page, testInfo, 'workspace-session-activity');
+  };
   const assertMediumOpenGeometry = async () => {
     const [host, side, conversation] = await Promise.all([
       panels.boundingBox(),
@@ -770,6 +790,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByRole('button', { name: '打开辅助栏' }).click();
     const mediumGeometry = await assertMediumOpenGeometry();
+    await captureRailActivity();
     await testInfo.attach(`workspace-medium-open-${testInfo.project.name}.json`, {
       body: Buffer.from(JSON.stringify(mediumGeometry, null, 2)),
       contentType: 'application/json',
@@ -888,6 +909,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(inspector.getByRole('tab', { name: '文件' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: '活动' })).toBeVisible();
     await expect(inspector.getByRole('tab', { name: 'Run' })).toBeVisible();
+    await captureRailActivity();
     await attachViewportScreenshot(page, testInfo, 'workspace-three-column');
     await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(
       'aria-pressed',
@@ -1042,6 +1064,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(page.locator('.workspace-support-toggle')).toBeHidden();
     await views.getByRole('tab', { name: '会话' }).click();
     await expect(page.getByRole('button', { name: '关闭会话列表' })).toBeVisible();
+    await captureRailActivity();
     await page.getByRole('button', { name: '关闭会话列表' }).click();
     await expect(views.getByRole('tab', { name: '对话', exact: true })).toBeVisible();
     await expect(views.getByRole('tab', { name: '对话', exact: true })).toBeFocused();
@@ -1745,7 +1768,7 @@ test('大量变更文件在专注态保留代码首屏与末项键盘可达', as
   expect(violations).toEqual([]);
 });
 
-test('手机大量变更文件的自然阅读及外层滚动调查', async ({ page }, testInfo) => {
+test('手机大量变更文件首屏可读且目录末项可达', async ({ page }, testInfo) => {
   test.skip(page.viewportSize()!.width >= 768, '独立手机调查，非手机由专注态用例覆盖');
   test.setTimeout(120_000);
   const path = 'apps/web/src/features/workspace/workspace.module.css';
@@ -1805,13 +1828,29 @@ test('手机大量变更文件的自然阅读及外层滚动调查', async ({ pa
   await expect(page.getByRole('textbox', { name: '提交说明', exact: true })).toBeHidden();
   await expectNoHorizontalOverflow(page);
   expect(await page.locator('.inspector-body').evaluate((node) => node.scrollTop)).toBe(0);
-  // Deliberately diagnostic: record natural geometry before any scrolling or layout fix.
-  // A passing test is NOT a claim that the code is above the fold or that this UX is acceptable.
+  // The 977 baseline needed 1745px outer scrolling. Keep that 40-file sample,
+  // and require actual initial reading space before any pointer scrolling.
+  const visibleReadingHeight = () =>
+    page.locator('.git-diff-editor .editor.modified').evaluate((node) => {
+      const editorBox = node.getBoundingClientRect();
+      const clipBox = node.closest('.inspector-body')!.getBoundingClientRect();
+      return Math.max(
+        0,
+        Math.min(editorBox.bottom, clipBox.bottom, window.innerHeight) -
+          Math.max(editorBox.top, clipBox.top, 0),
+      );
+    });
+  await expect.poll(visibleReadingHeight).toBeGreaterThanOrEqual(180);
+  await expect
+    .poll(() => tree.evaluate((node) => node.scrollHeight > node.clientHeight))
+    .toBe(true);
+  await expect.poll(async () => (await tree.boundingBox())!.height).toBeLessThanOrEqual(241);
   await testInfo.attach(`workspace-phone-large-reading-geometry-${testInfo.project.name}`, {
     body: JSON.stringify({
       viewport: page.viewportSize(),
       windowScrollY: await page.evaluate(() => window.scrollY),
       fileCount: paths.length,
+      visibleReadingHeight: await visibleReadingHeight(),
       list: await tree.boundingBox(),
       code: await code.boundingBox(),
       inspectorScroll: await page.locator('.inspector-body').evaluate((node) => ({
@@ -1852,34 +1891,46 @@ test('手机大量变更文件的自然阅读及外层滚动调查', async ({ pa
     body: JSON.stringify(violations),
     contentType: 'application/json',
   });
-  // This second image is explicitly after user-like wheel scrolling, not first-screen evidence.
+  // Browser wheel input proves inner-directory reachability, not physical touchscreen behavior.
   const outer = page.locator('.inspector-body');
-  const beforeScroll = await outer.evaluate((node) => node.scrollTop);
-  const outerBox = (await outer.boundingBox())!;
+  const listBox = (await tree.boundingBox())!;
+  const beforeScroll = await tree.evaluate((node) => node.scrollTop);
   await page.mouse.move(
-    outerBox.x + outerBox.width / 2,
-    outerBox.y + Math.min(100, outerBox.height / 2),
+    listBox.x + listBox.width / 2,
+    listBox.y + Math.min(100, listBox.height / 2),
   );
   await page.mouse.wheel(0, 3000);
-  await expect.poll(() => outer.evaluate((node) => node.scrollTop)).toBeGreaterThan(beforeScroll);
+  await expect.poll(() => tree.evaluate((node) => node.scrollTop)).toBeGreaterThan(beforeScroll);
+  const lastPath = paths.at(-1)!;
+  const lastPreview = page.getByRole('button', { name: `查看 ${lastPath} Diff`, exact: true });
   await expect
     .poll(async () => {
-      const box = await code.boundingBox();
-      const body = await outer.boundingBox();
+      const lastBox = await lastPreview.boundingBox();
+      const currentList = await tree.boundingBox();
       return Boolean(
-        box &&
-        body &&
-        Math.min(box.y + box.height, body.y + body.height, page.viewportSize()!.height) >
-          Math.max(box.y, body.y, 0),
+        lastBox &&
+        currentList &&
+        lastBox.y >= Math.max(currentList.y - 1, 0) &&
+        lastBox.y + lastBox.height <=
+          Math.min(currentList.y + currentList.height + 1, page.viewportSize()!.height),
       );
     })
     .toBe(true);
+  await expect(page.getByRole('button', { name: '关闭检查器', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '关闭检查器', exact: true })).toBeInViewport({
+    ratio: 1,
+  });
   await testInfo.attach(
     `workspace-phone-large-reading-after-scroll-geometry-${testInfo.project.name}`,
     {
       body: JSON.stringify({
         viewport: page.viewportSize(),
         code: await code.boundingBox(),
+        listScroll: await tree.evaluate((node) => ({
+          scrollTop: node.scrollTop,
+          clientHeight: node.clientHeight,
+          scrollHeight: node.scrollHeight,
+        })),
         inspectorScroll: await outer.evaluate((node) => ({
           scrollTop: node.scrollTop,
           clientHeight: node.clientHeight,
@@ -1890,6 +1941,23 @@ test('手机大量变更文件的自然阅读及外层滚动调查', async ({ pa
     },
   );
   await attachViewportScreenshot(page, testInfo, 'workspace-phone-large-reading-after-scroll');
+  const lastChoice = page.getByRole('checkbox', { name: `选择 ${lastPath}`, exact: true });
+  await lastChoice.check();
+  await expect(lastChoice).toBeChecked();
+  const directory = page.getByRole('button', { name: '按目录显示变更', exact: true });
+  await directory.click();
+  await expect(tree).toHaveAttribute('data-layout', 'tree');
+  await expect(lastChoice).toBeChecked();
+  await directory.click();
+  await expect(tree).toHaveAttribute('data-layout', 'list');
+  await expect(lastChoice).toBeChecked();
+  await page.getByRole('button', { name: '全选', exact: true }).click();
+  await expect(tree.locator('input:checked')).toHaveCount(40);
+  await page.getByRole('button', { name: '取消全选', exact: true }).click();
+  await expect(tree.locator('input:checked')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: '提交说明', exact: true })).toBeHidden();
+  await expect(page.locator('.git-selected-diff-heading code')).toHaveAttribute('aria-label', path);
+  await expectNoHorizontalOverflow(page);
   expect(gitWrites).toBe(0);
   expect(errors).toEqual([]);
   expect(violations).toEqual([]);

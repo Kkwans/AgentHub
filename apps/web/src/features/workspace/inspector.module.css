@@ -1239,3 +1239,13 @@
   background: var(--ah-accent-primary);
   box-shadow: 0 0 0 3px var(--ah-accent-soft);
 }
+
+/* Phones already use the full-width Inspector and have no focus-mode control. */
+@media (max-width: 767px) {
+  :global(.workspace) :global(.git-change-list) {
+    max-height: min(240px, 24dvh);
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+  }
+}

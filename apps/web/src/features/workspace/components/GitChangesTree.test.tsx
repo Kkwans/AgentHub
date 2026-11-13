@@ -63,3 +63,20 @@ it('bounds only the focused file index without clipping the whole Inspector or c
   const normal = css.match(/:global\(\.workspace\) :global\(\.change-list\)\s*\{([^}]+)\}/)![1]!;
   expect(normal).not.toMatch(/(?:max-)?height|overflow/);
 });
+
+it('bounds the phone file index only below768 without requiring focus or clipping feedback', () => {
+  const css = readFileSync(new URL('../inspector.module.css', import.meta.url), 'utf8');
+  const media = css.match(
+    /@media \(max-width: 767px\)\s*\{\s*:global\(\.workspace\) :global\(\.git-change-list\)\s*\{([^}]+)\}\s*\}/,
+  )![1]!;
+  for (const declaration of [
+    'max-height: min(240px, 24dvh)',
+    'min-height: 0',
+    'overflow-y: auto',
+    'align-content: start',
+  ])
+    expect(media).toContain(declaration);
+  expect(media).not.toMatch(/hidden|display:\s*none/);
+  const normal = css.match(/:global\(\.workspace\) :global\(\.change-list\)\s*\{([^}]+)\}/)![1]!;
+  expect(normal).not.toMatch(/height|overflow/);
+});

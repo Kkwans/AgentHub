@@ -13,6 +13,7 @@ import {
   SESSION_WINDOW_SIZE,
   SESSION_WINDOW_STEP,
   SessionRail,
+  sessionActivityTime,
 } from './SessionRail';
 
 afterEach(() => cleanup());
@@ -152,4 +153,56 @@ describe('SessionRail', () => {
     expect(earlier).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('历史会话')).toBeInTheDocument();
   });
+});
+
+it('活动时间使用真实本地绝对日期，缺失或非法不回退当前时间，未来日期保留', () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 10, 13, 12, 0));
+  try {
+    expect(sessionActivityTime(new Date(2026, 10, 13, 9, 5).toISOString())?.short).toBe(
+      '11-13 09:05',
+    );
+    expect(sessionActivityTime(new Date(2026, 7, 28).toISOString())?.short).toBe('08-28 00:00');
+    expect(sessionActivityTime(new Date(2025, 7, 28).toISOString())?.short).toBe('2025-08-28');
+    expect(sessionActivityTime(new Date(2027, 7, 28).toISOString())?.short).toBe('2027-08-28');
+    for (const value of [undefined, null, '', ' ', 'invalid', '999999-01-01'])
+      expect(sessionActivityTime(value)).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('同名长标题保留完整可访问名称、分支与真实活动时间', () => {
+  const title = '同名会话'.repeat(15);
+  const records = [
+    session('a', title, '2026-08-28T09:00:00Z'),
+    session('b', title, '2025-08-28T10:00:00Z'),
+    session('c', title, 'invalid'),
+  ];
+  records[0]!.branch = 'feature/' + 'very-long-branch'.repeat(10);
+  const view = render(
+    <MemoryRouter>
+      <SessionRail
+        currentId="a"
+        projectId="project-1"
+        sessions={{ data: records, error: null, isLoading: false, refetch: vi.fn() }}
+      />
+    </MemoryRouter>,
+  );
+  const links = records.map((record) =>
+    view.container.querySelector(`a[href="/workspace/${record.id}"]`)!,
+  );
+  for (const link of links) expect(link).toHaveAccessibleName(new RegExp(title));
+  const times = view.container.querySelectorAll('time');
+  expect(times).toHaveLength(2);
+  expect(times[0]).toHaveAttribute('datetime', '2026-08-28T09:00:00.000Z');
+  expect(times[0]).toHaveAttribute('title', expect.stringContaining('2026'));
+  expect(links[0]!.querySelector('code')).toHaveAttribute(
+    'title',
+    expect.stringContaining(records[0]!.branch!),
+  );
+  const unknownTime = links[2]!.querySelector('.session-activity-time')!;
+  expect(unknownTime).toHaveTextContent('活动时间未知');
+  expect(unknownTime).not.toHaveAttribute('aria-label');
+  expect(unknownTime.querySelector('.sr-only')).toHaveTextContent('活动时间');
 });

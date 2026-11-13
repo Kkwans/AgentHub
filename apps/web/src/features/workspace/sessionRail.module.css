@@ -292,3 +292,19 @@
   display: grid;
   gap: 3px;
 }
+
+:global(.workspace) :global(.session-entry-meta) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+:global(.workspace) :global(.session-activity-time) {
+  color: var(--ah-text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

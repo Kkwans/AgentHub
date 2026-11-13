@@ -9,6 +9,21 @@ import { labelSessionBranch, resolveWorkspaceRunState } from '../../../presentat
 import type { QueryState } from '../workspace-types';
 import sessionRailStyles from '../sessionRail.module.css';
 
+export function sessionActivityTime(value: string | null | undefined, now = new Date()) {
+  const date = value?.trim() ? new Date(value) : null;
+  if (!date || !Number.isFinite(date.getTime())) return null;
+  const sameYear = date.getFullYear() === now.getFullYear();
+  const pad = (part: number) => String(part).padStart(2, '0');
+  const calendar = `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const short = sameYear
+    ? `${calendar} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+    : `${date.getFullYear()}-${calendar}`;
+  const full = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'full', timeStyle: 'long' }).format(
+    date,
+  );
+  return { short, full, dateTime: date.toISOString() };
+}
+
 export const SESSION_VIRTUALIZATION_THRESHOLD = 120;
 export const SESSION_WINDOW_SIZE = 80;
 export const SESSION_WINDOW_STEP = 80;
@@ -81,26 +96,43 @@ export function SessionRail({
   useEffect(() => {
     setVisibleSessionCount(SESSION_WINDOW_SIZE);
   }, [query]);
-  const sessionLink = (session: SessionRecord) => (
-    <Link
-      className={`group/session flex min-h-14 min-w-0 items-center gap-2 rounded-[var(--radius)] border border-transparent px-2.5 py-2 text-[hsl(var(--foreground-muted))] transition-[background-color,border-color,color] duration-[var(--motion-fast)] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/45 ${session.id === currentId ? 'current bg-[hsl(var(--primary-soft))] text-[hsl(var(--foreground))]' : ''}`}
-      to={`/workspace/${session.id}`}
-      key={session.id}
-      onClick={onSelect}
-    >
-      <span
-        className={`session-state-dot session-state-${resolveWorkspaceRunState(session.status).toLowerCase()}`}
-        aria-hidden="true"
-      />
-      <div>
-        <strong>{session.title}</strong>
-        <code>
-          {labelSessionBranch(session.branch)} · {session.cwd.split('/').at(-1)}
-          {session.continuedFromSessionId ? '（续接）' : ''}
-        </code>
-      </div>
-    </Link>
-  );
+  const sessionLink = (session: SessionRecord) => {
+    const activity = sessionActivityTime(session.lastActiveAt);
+    const branch = `${labelSessionBranch(session.branch)} · ${session.cwd.split('/').at(-1)}${session.continuedFromSessionId ? '（续接）' : ''}`;
+    return (
+      <Link
+        className={`group/session flex min-h-14 min-w-0 items-center gap-2 rounded-[var(--radius)] border border-transparent px-2.5 py-2 text-[hsl(var(--foreground-muted))] transition-[background-color,border-color,color] duration-[var(--motion-fast)] hover:bg-[hsl(var(--surface-hover))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/45 ${session.id === currentId ? 'current bg-[hsl(var(--primary-soft))] text-[hsl(var(--foreground))]' : ''}`}
+        to={`/workspace/${session.id}`}
+        key={session.id}
+        onClick={onSelect}
+      >
+        <span
+          className={`session-state-dot session-state-${resolveWorkspaceRunState(session.status).toLowerCase()}`}
+          aria-hidden="true"
+        />
+        <div>
+          <strong title={session.title}>{session.title}</strong>
+          <span className="session-entry-meta">
+            <code title={branch}>{branch}</code>
+            {activity ? (
+              <time
+                className="session-activity-time"
+                dateTime={activity.dateTime}
+                title={`最近活动：${activity.full}`}
+                aria-label={`最近活动：${activity.full}`}
+              >
+                {activity.short}
+              </time>
+            ) : (
+              <span className="session-activity-time" title="暂无有效活动时间">
+                <span className="sr-only">活动时间</span>未知
+              </span>
+            )}
+          </span>
+        </div>
+      </Link>
+    );
+  };
   return (
     <div
       className={`${sessionRailStyles.owner} session-rail flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
