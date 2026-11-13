@@ -201,11 +201,13 @@ for (const width of [390, 768, 1024, 1440]) {
     app,
   }, info) => {
     const { project, agent } = await seedWorkspace(context, app);
-    const original = await apiData<{ executable: string; argsJson: string[] }>(
-      context,
-      'get',
-      `/agents/${agent.id}`,
-    );
+    const registered = await apiData<
+      Array<{ id: string; executable: string | null; argsJson: string[] }>
+    >(context, 'get', '/agents');
+    const original = registered.find((item) => item.id === agent.id);
+    expect(original).toBeDefined();
+    expect(original?.executable).toBeTruthy();
+    expect(Array.isArray(original?.argsJson)).toBe(true);
     const otherTarget = await apiData<{ id: string }>(context, 'post', '/execution-targets', {
       name: '另一个登记环境',
       kind: 'LOCAL_HOST',
@@ -217,8 +219,8 @@ for (const width of [390, 768, 1024, 1440]) {
       name: '不兼容的就绪Agent',
       targetId: otherTarget.id,
       agentKind: 'CUSTOM_ACP',
-      executable: original.executable,
-      args: original.argsJson,
+      executable: original!.executable,
+      args: original!.argsJson,
     });
     const preflight = await apiData<{ status: string }>(
       context,
