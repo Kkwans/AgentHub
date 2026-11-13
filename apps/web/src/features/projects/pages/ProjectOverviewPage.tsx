@@ -76,7 +76,7 @@ import type {
   TaskRecord,
   WorktreeExecutionRecord,
 } from '../../../lib/api';
-import { api } from '../../../lib/api';
+import { ApiError, api } from '../../../lib/api';
 import { realtime } from '../../../lib/realtime';
 import {
   labelPromptBindingTarget,
@@ -126,9 +126,15 @@ export function ProjectOverviewPage() {
       }>(`/projects/${project.id}/preflight`),
   });
   const agentById = useMemo(
-    () => new Map((agents.data ?? []).map((agent) => [agent.id, agent])),
-    [agents.data],
+    () => new Map((agents.isSuccess ? agents.data : []).map((agent) => [agent.id, agent])),
+    [agents.data, agents.isSuccess],
   );
+  const agentLabel = (id: string | null | undefined, emptyLabel: string) => {
+    if (!id) return emptyLabel;
+    if (agents.isError) return 'Agent 信息未知';
+    if (agents.isPending) return '正在读取 Agent 信息';
+    return agentById.get(id)?.name ?? 'Agent 记录未找到';
+  };
   const activeTasks = useMemo(
     () =>
       [...(tasks.data ?? [])]
@@ -213,6 +219,33 @@ export function ProjectOverviewPage() {
   return (
     <div className={projectsStyles.overviewGrid}>
       <div className={projectsStyles.overviewMain}>
+        {agents.isPending || agents.isError || agents.isFetching ? (
+          <div
+            className={projectsStyles.projectSourceStatus}
+            role={agents.isError ? 'alert' : 'status'}
+            aria-label="Agent 姓名读取状态"
+          >
+            <span>
+              {agents.isError
+                ? agents.error instanceof ApiError && agents.error.code === 'AUTH_REQUIRED'
+                  ? '登录已失效，无法确认 Agent 姓名。'
+                  : 'Agent 信息读取失败，姓名暂时未知；不代表工作未分配 Agent。'
+                : agents.isPending
+                  ? '正在读取 Agent 信息。'
+                  : '正在更新 Agent 信息，暂显示上次读取的姓名。'}
+            </span>
+            {agents.isError ? (
+              <AhButton
+                size="sm"
+                variant="subtle"
+                disabled={agents.isFetching}
+                onClick={() => void agents.refetch()}
+              >
+                重新读取 Agent 信息
+              </AhButton>
+            ) : null}
+          </div>
+        ) : null}
         <section className={projectsStyles.overviewPanel}>
           <div className={projectsStyles.panelHeader}>
             <div>
@@ -278,7 +311,6 @@ export function ProjectOverviewPage() {
               }
             />
             {(!tasks.isError ? activeTasks : []).map((task) => {
-              const agent = task.assignedAgentId ? agentById.get(task.assignedAgentId) : undefined;
               return (
                 <Link
                   className={projectsStyles.overviewWorkRow}
@@ -292,7 +324,7 @@ export function ProjectOverviewPage() {
                   <span className={projectsStyles.overviewCopy}>
                     <strong>{task.title}</strong>
                     <small>
-                      {agent?.name ?? '尚未分配 Agent'}
+                      {agentLabel(task.assignedAgentId, '尚未分配 Agent')}
                       {task.branch ? ` · ${task.branch}` : ''} · {displayDate(task.updatedAt)}
                     </small>
                   </span>
@@ -348,7 +380,7 @@ export function ProjectOverviewPage() {
                   <span className={projectsStyles.overviewCopy}>
                     <strong>{session.title}</strong>
                     <small>
-                      {agent?.name ?? 'Agent'}
+                      {agentLabel(session.agentId, 'Agent 未记录')}
                       {session.model ? ` · ${session.model}` : ''} ·{' '}
                       {displayDate(session.lastActiveAt)}
                     </small>

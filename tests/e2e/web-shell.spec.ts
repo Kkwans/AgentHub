@@ -977,6 +977,58 @@ test('Projects 使用高密度实体列表并打开路由弹层', async ({ page 
   await attachViewportScreenshot(page, testInfo, 'projects');
 });
 
+test('Overview Agent来源失败保持工作会话入口并可只读恢复', async ({ page }, testInfo) => {
+  let failing = true;
+  let agentWrites = 0;
+  await page.route('**/api/v1/agents', async (route) => {
+    if (route.request().method() !== 'GET') {
+      agentWrites += 1;
+      await route.fallback();
+      return;
+    }
+    if (failing)
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: 'Agent来源暂时不可用' } }),
+      });
+    else await route.fallback();
+  });
+  await page.route('**/api/v1/tasks?*', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [{ ...task, status: 'IN_PROGRESS' }] }),
+    });
+  });
+  await page.goto(`/projects/${project.id}/overview`);
+  const error = page.getByRole('alert', { name: 'Agent 姓名读取状态' });
+  await expect(error).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
+  const assigned = page
+    .getByRole('link')
+    .filter({ hasText: task.title })
+    .filter({ hasText: 'Agent 信息未知' })
+    .first();
+  await expect(assigned).toBeVisible();
+  await expect(assigned).toHaveAttribute('href', `/projects/${project.id}/work?task=${task.id}`);
+  const sessionLink = page
+    .locator(`a[href="/workspace/${session.id}"]`)
+    .filter({ hasText: session.title });
+  await expect(sessionLink).toContainText('Agent 信息未知');
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'project-overview-agent-error');
+  failing = false;
+  await error.getByRole('button', { name: '重新读取 Agent 信息' }).click();
+  await expect(error).toHaveCount(0);
+  await expect(sessionLink).toContainText(agent.name);
+  expect(agentWrites).toBe(0);
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'project-overview-agent-recovered');
+});
+
 test('Project Context 仅保留 Overview、Work、Sessions', async ({ page }, testInfo) => {
   await page.goto(`/projects/${project.id}/overview`);
   const compactHeader = (page.viewportSize()?.width ?? 1_000) < 768;
