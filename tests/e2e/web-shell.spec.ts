@@ -1075,6 +1075,11 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
     const toggle = page.getByRole('button', { name: '展开目录', exact: true });
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByRole('textbox', { name: '搜索 Prompt' })).toHaveCount(0);
+    const directoryBox = await page
+      .getByRole('complementary', { name: 'Prompt 目录' })
+      .boundingBox();
+    expect(directoryBox).not.toBeNull();
+    expect(directoryBox!.height).toBeLessThanOrEqual(100);
     const tabsBox = await tabs.boundingBox();
     expect(tabsBox).not.toBeNull();
     expect(tabsBox!.y + tabsBox!.height).toBeLessThan(620);
@@ -1083,6 +1088,8 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
     const search = page.getByRole('textbox', { name: '搜索 Prompt' });
     await expect(search).toBeVisible();
     await search.fill('安全');
+    await expect(search).toHaveCSS('box-shadow', 'none');
+    await expect(search.locator('..')).not.toHaveCSS('box-shadow', 'none');
     await attachViewportScreenshot(page, testInfo, 'prompts-directory-open');
     await search.press('Escape');
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');

@@ -120,6 +120,11 @@
   font-size: 13px;
 }
 
+.searchField input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
 .searchField:focus-within {
   border-color: var(--ah-accent-primary);
   box-shadow: 0 0 0 3px var(--ah-accent-soft);
@@ -681,6 +686,7 @@
 @media (max-width: 900px) {
   .promptLayout {
     grid-template-columns: 1fr;
+    align-content: start;
   }
   .libraryPane {
     max-height: 288px;
