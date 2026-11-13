@@ -301,3 +301,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Branch identity must not collapse when long names share a narrow inspector. */
+.workspace :global(.git-summary > svg) {
+  flex-shrink: 0;
+}
+.workspace :global(.git-summary > div) {
+  flex: 1 1 auto;
+}

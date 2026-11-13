@@ -31,11 +31,15 @@ it('默认平铺真实文件，目录切换保留勾选与完整路径预览', (
       onCommit={vi.fn()}
       stagedDiff={false}
       onStagedDiffChange={vi.fn()}
+      selectedPath="src/deep/one.ts"
       onSelectPath={onSelectPath}
       whitespace="default"
       onWhitespaceChange={vi.fn()}
     />,
   );
+  const selectedFile = screen.getByLabelText('src/deep/one.ts', { selector: 'code' });
+  expect(selectedFile).toHaveTextContent(/^one.ts$/);
+  expect(selectedFile).toHaveAttribute('title', 'src/deep/one.ts');
   const toggle = screen.getByRole('button', { name: '按目录显示变更' });
   expect(toggle).toHaveAttribute('aria-pressed', 'false');
   expect(screen.getAllByRole('treeitem')).toHaveLength(2);

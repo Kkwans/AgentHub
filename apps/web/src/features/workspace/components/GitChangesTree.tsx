@@ -297,7 +297,9 @@ export function GitChangesTree({
                 <div className="git-selected-diff-heading">
                   <div>
                     <span>选中文件</span>
-                    <code title={selectedPath}>{selectedPath}</code>
+                    <code title={selectedPath} aria-label={selectedPath}>
+                      {selectedPath.split('/').at(-1)}
+                    </code>
                   </div>
                   <span>Diff</span>
                 </div>

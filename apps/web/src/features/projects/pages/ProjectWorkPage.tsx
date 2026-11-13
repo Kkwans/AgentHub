@@ -608,6 +608,66 @@ export function ProjectWorkPage() {
                       <h2>{selected.title}</h2>
                       {selected.description ? <p>{selected.description}</p> : null}
                     </header>
+                    {manual.message ? <p role="status">{manual.message}</p> : null}
+                    {actionError ? (
+                      <AhErrorState title="任务操作失败" description={actionError.message} />
+                    ) : null}
+                    {selectedWorktree?.errorMessage ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>需要处理</h4>
+                        <p>{selectedWorktree.errorMessage}</p>
+                      </section>
+                    ) : null}
+                    {(reviewPending && !selectedWorktree) ||
+                    (selected.status === 'WAITING_REVIEW' &&
+                      worktrees.isSuccess &&
+                      !selectedWorktree) ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>审阅结果</h4>
+                        <TaskReviewActions
+                          key={`${project.id}:${selected.id}`}
+                          task={selected}
+                          disabled={
+                            worktrees.isFetching ||
+                            start.isPending ||
+                            transition.isPending ||
+                            manual.busy ||
+                            manual.unknown ||
+                            variablesSaving ||
+                            reviewPending ||
+                            queueLocked
+                          }
+                          onPendingChange={(key, pending) =>
+                            setReviewPendingKey((current) =>
+                              pending ? key : current === key ? null : current,
+                            )
+                          }
+                        />
+                      </section>
+                    ) : null}
+                    {selectedWorktree && (selectedWorktree.status === 'REVIEW' || reviewPending) ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>隔离工作区审阅</h4>
+                        <WorktreeReviewActions
+                          key={`${project.id}:${selected.id}:${selectedWorktree.id}`}
+                          execution={selectedWorktree}
+                          disabled={
+                            worktrees.isFetching ||
+                            start.isPending ||
+                            transition.isPending ||
+                            manual.busy ||
+                            variablesSaving ||
+                            reviewPending ||
+                            queueLocked
+                          }
+                          onPendingChange={(key, pending) =>
+                            setReviewPendingKey((current) =>
+                              pending ? key : current === key ? null : current,
+                            )
+                          }
+                        />
+                      </section>
+                    ) : null}
                     {acceptanceCriteria.length ? (
                       <section className={projectsStyles.inspectorSection}>
                         <h4>验收标准</h4>
@@ -697,12 +757,6 @@ export function ProjectWorkPage() {
                       </div>
                       {selectedWorktree ? <AhStatusPill status={selectedWorktree.status} /> : null}
                     </section>
-                    {selectedWorktree?.errorMessage ? (
-                      <section className={projectsStyles.inspectorSection}>
-                        <h4>需要处理</h4>
-                        <p>{selectedWorktree.errorMessage}</p>
-                      </section>
-                    ) : null}
                     <section className={projectsStyles.inspectorSection}>
                       <h4>执行信息</h4>
                       <p>分支：{selected.branch ?? selectedWorktree?.taskBranch ?? '尚未创建'}</p>
@@ -804,56 +858,6 @@ export function ProjectWorkPage() {
                         ) : null}
                       </section>
                     ) : null}
-                    {(reviewPending && !selectedWorktree) ||
-                    (selected.status === 'WAITING_REVIEW' &&
-                      worktrees.isSuccess &&
-                      !selectedWorktree) ? (
-                      <section className={projectsStyles.inspectorSection}>
-                        <h4>审阅结果</h4>
-                        <TaskReviewActions
-                          key={`${project.id}:${selected.id}`}
-                          task={selected}
-                          disabled={
-                            worktrees.isFetching ||
-                            start.isPending ||
-                            transition.isPending ||
-                            manual.busy ||
-                            manual.unknown ||
-                            variablesSaving ||
-                            reviewPending ||
-                            queueLocked
-                          }
-                          onPendingChange={(key, pending) =>
-                            setReviewPendingKey((current) =>
-                              pending ? key : current === key ? null : current,
-                            )
-                          }
-                        />
-                      </section>
-                    ) : null}
-                    {selectedWorktree && (selectedWorktree.status === 'REVIEW' || reviewPending) ? (
-                      <section className={projectsStyles.inspectorSection}>
-                        <h4>隔离工作区审阅</h4>
-                        <WorktreeReviewActions
-                          key={`${project.id}:${selected.id}:${selectedWorktree.id}`}
-                          execution={selectedWorktree}
-                          disabled={
-                            worktrees.isFetching ||
-                            start.isPending ||
-                            transition.isPending ||
-                            manual.busy ||
-                            variablesSaving ||
-                            reviewPending ||
-                            queueLocked
-                          }
-                          onPendingChange={(key, pending) =>
-                            setReviewPendingKey((current) =>
-                              pending ? key : current === key ? null : current,
-                            )
-                          }
-                        />
-                      </section>
-                    ) : null}
                     {selectedWorktree ? (
                       <section className={projectsStyles.inspectorSection}>
                         <h4>隔离执行取消</h4>
@@ -882,10 +886,6 @@ export function ProjectWorkPage() {
                       </section>
                     ) : null}
                     {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
-                    {manual.message ? <p role="status">{manual.message}</p> : null}
-                    {actionError ? (
-                      <AhErrorState title="任务操作失败" description={actionError.message} />
-                    ) : null}
                     <div className={projectsStyles.inspectorActions}>
                       <AhButton
                         size="xs"

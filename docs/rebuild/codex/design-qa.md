@@ -66,3 +66,7 @@ CI 43384706087 的 fixture verify 已成功；实际查看 `workspace-review-dif
 继续根据 495 的真实服务截图修正：新任务 BACKLOG 原来显示泛化“状态”，现在明确为中性灰色“待规划”，不修改状态机；手机工作页保留搜索，把状态/Agent 次要筛选折叠，显示激活条件计数和清除入口，桌面仍常驻。原生按钮提供 aria-expanded/controls，隐藏控件不进入键盘导航。真实390 light/dark E2E新增 Enter/Space 切换、计数和清除验证，新增展开图；新图仍待此次精确 SHA CI。
 
 暗色真实图还显示长项目名把 Folder 图标挤缩，现为图标保留尺寸、仅名称省略，完整名称仍保留于 DOM 和 title。以上修正须继续以新截图验收，不把本地单测、静态审查当视觉完成。
+
+## 审阅身份与主动作层级（803deaf 后续）
+
+0de8d1实际Diff图中，标题只露出 `apps/web/src/features/workspace/works...`，无法直读选中文件名。后续标题改为 basename；完整路径仍用于 section accessible name、code aria-label/title 和预览请求，不改变文件身份或目录切换。分支图标固定不可压缩，长分支文本仍省略。Git渲染回归验证 basename 和完整路径同时保留。

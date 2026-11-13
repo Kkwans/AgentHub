@@ -880,7 +880,12 @@ it('待审阅任务可明确确认完成，不启动新Session', async () => {
     run: null,
   } as never);
   mount([reviewTask]);
-  fireEvent.click(await screen.findByRole('button', { name: '确认达到验收标准' }));
+  const approve = await screen.findByRole('button', { name: '确认达到验收标准' });
+  expect(
+    approve.compareDocumentPosition(screen.getByRole('combobox', { name: '运行 Agent' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  fireEvent.click(approve);
   await waitFor(() =>
     expect(api.post).toHaveBeenCalledWith('/tasks/task-1/review', { decision: 'APPROVE' }),
   );
@@ -1164,7 +1169,12 @@ it('隔离REVIEW只开放专属审阅，不走普通任务完成或取消入口'
     registeredEligibility(),
     [managed],
   );
-  expect(await screen.findByRole('button', { name: '读取隔离工作区审阅' })).toBeEnabled();
+  const review = await screen.findByRole('button', { name: '读取隔离工作区审阅' });
+  expect(review).toBeEnabled();
+  expect(
+    review.compareDocumentPosition(screen.getByRole('combobox', { name: '运行 Agent' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '取消' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '启动 Session' })).toBeDisabled();
