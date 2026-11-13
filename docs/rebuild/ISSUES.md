@@ -366,3 +366,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 20:05 UTC 全写入口接入门
 
 已完成休眠canonical resolver/coordinator及只读受权查询；真实生产写入仍未迁移。发现worktree merge catch任意失败还原REVIEW，接入UNKNOWN必须改为不可重试隔离；merge-tree --write-tree也需claim。队列缺持久owner、现有Docker目标语义和设备身份配置须明确。Agent/PTY外部Git为锁外并发，不能宣称全仓排他。
+
+### 2026-11-13 20:19 UTC Worktree失败可能已写入
+
+真实hook测试确认失败后已创建branch/worktree或修改index。已修复分类及编排：首写后UNKNOWN保持活动槽位，重启同样不能凭无Session放行。新queue持久owner/createop，历史null保留。未解决的是统一claim跨project别名、普通commit入口、旧ownerless行及人工确认解除流程；不要把本片project槽位防重试称全仓排他。

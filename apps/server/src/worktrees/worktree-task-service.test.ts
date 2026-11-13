@@ -47,6 +47,47 @@ describe('Worktree Task Runner 编排', () => {
 
   afterAll(async () => database.close());
 
+  it.each(['account:original', 'token:original', 'local-trusted', undefined])(
+    '队列持久保存服务端 Git owner %s，历史调用不猜测归属',
+    async (ownerScope) => {
+      const fixture = await seedFixture(`owner-${ownerScope}`);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '持久 owner',
+        status: 'READY',
+      });
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      vi.spyOn(service, 'processQueue').mockResolvedValue(undefined);
+      const queued = await service.queueTask(task.id, { agentId: fixture.agentId }, ownerScope);
+      const saved = await executions.get(queued.execution.id);
+      expect(saved?.gitOwnerScope).toBe(ownerScope ?? null);
+      if (ownerScope) {
+        expect(saved?.gitCreateOperationId).toMatch(/^[0-9a-f-]{36}$/);
+        expect(saved?.gitCreateOperationId).not.toBe(queued.execution.id);
+        expect(queued.execution.gitCreateOperationId).toBe(saved?.gitCreateOperationId);
+      } else expect(saved?.gitCreateOperationId).toBeNull();
+      expect(saved?.configJson).not.toHaveProperty('gitOwnerScope');
+      await service.shutdown();
+      await executions.transitionWithTask(queued.execution.id, 'CANCELED', 'CANCELED');
+    },
+  );
+  it('空 server-only owner 在读取任务或 Git 前被拒绝', async () => {
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const lookup = vi.spyOn(tasks, 'get');
+    try {
+      await expect(
+        service.queueTask(randomUUID(), { agentId: randomUUID() }, '  '),
+      ).rejects.toMatchObject({ code: 'WORKTREE_GIT_OWNER_INVALID' });
+      expect(lookup).not.toHaveBeenCalled();
+    } finally {
+      lookup.mockRestore();
+      await service.shutdown();
+    }
+  });
+
   it.each(['SETTING_UP', 'RUNNING', 'MERGING'] as const)(
     '取消旧快照时 %s 已抢先进入，不能释放隔离队列槽位',
     async (winner) => {
@@ -781,8 +822,8 @@ describe('Worktree Task Runner 编排', () => {
     const runtime = createRuntime(database);
     runtime.git.mergeError = new AppError(
       409,
-      'WORKTREE_MERGE_CONFLICT',
-      '任务分支与 base branch 存在冲突',
+      'PRIMARY_WORKTREE_DIRTY',
+      'Project 主工作区存在未提交变更',
     );
     const service = createService(runtime);
     const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
@@ -791,17 +832,133 @@ describe('Worktree Task Runner 编排', () => {
     await complete(service, task.id, running.runId!);
 
     await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
-      code: 'WORKTREE_MERGE_CONFLICT',
+      code: 'PRIMARY_WORKTREE_DIRTY',
     });
     expect(await executions.get(queued.execution.id)).toMatchObject({
       status: 'REVIEW',
-      errorCode: 'WORKTREE_MERGE_CONFLICT',
+      errorCode: 'PRIMARY_WORKTREE_DIRTY',
     });
     expect((await tasks.get(task.id))?.status).toBe('WAITING_REVIEW');
     await service.shutdown();
   });
 
-  it('重启恢复阻断不安全状态并继续持久化队列', async () => {
+  it.each(['command-unknown', 'completion-db-failed', 'publish-failed'] as const)(
+    '合并 %s 不恢复为可重试 REVIEW 或倒退 DONE',
+    async (mode) => {
+      const fixture = await seedFixture(`unknown-merge-${mode}`);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '未知合并',
+        status: 'READY',
+      });
+      const next = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '后续任务',
+        status: 'READY',
+      });
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+      await service.processQueue(fixture.projectId);
+      const running = await waitForStatus(queued.execution.id, 'RUNNING');
+      await complete(service, task.id, running.runId!);
+      const second = await service.queueTask(next.id, { agentId: fixture.agentId });
+      const git = vi.spyOn(runtime.git, 'commitAndMerge');
+      let restore = () => {};
+      if (mode === 'command-unknown')
+        runtime.git.mergeError = new AppError(409, 'WORKTREE_GIT_OUTCOME_UNKNOWN', 'unknown');
+      if (mode === 'completion-db-failed') {
+        const spy = vi
+          .spyOn(executions, 'transitionWithTask')
+          .mockRejectedValueOnce(new Error('DB unavailable'));
+        restore = () => spy.mockRestore();
+      }
+      if (mode === 'publish-failed') {
+        const spy = vi.spyOn(runtime.publisher, 'publish').mockImplementationOnce(() => {
+          throw new Error('publisher unavailable');
+        });
+        restore = () => spy.mockRestore();
+      }
+      try {
+        await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+          code: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+        });
+        expect((await executions.get(queued.execution.id))?.status).toBe(
+          mode === 'publish-failed' ? 'DONE' : 'MERGING',
+        );
+        await expect(service.merge(queued.execution.id)).rejects.toMatchObject({
+          code: 'WORKTREE_EXECUTION_NOT_IN_REVIEW',
+        });
+        await expect(service.rework(queued.execution.id, 'retry')).rejects.toMatchObject({
+          code: 'WORKTREE_EXECUTION_NOT_IN_REVIEW',
+        });
+        await expect(service.cancel(queued.execution.id)).rejects.toMatchObject({
+          code:
+            mode === 'publish-failed'
+              ? 'WORKTREE_EXECUTION_NOT_CANCELABLE'
+              : 'WORKTREE_EXECUTION_BUSY',
+        });
+        expect(git).toHaveBeenCalledTimes(1);
+        if (mode !== 'publish-failed') {
+          await service.processQueue(fixture.projectId);
+          expect((await executions.get(second.execution.id))?.status).toBe('QUEUED');
+        }
+      } finally {
+        restore();
+        git.mockRestore();
+        await service.shutdown();
+        if (mode !== 'publish-failed')
+          await executions.transitionWithTask(queued.execution.id, 'BLOCKED', 'BLOCKED');
+        await executions.transitionWithTask(second.execution.id, 'CANCELED', 'CANCELED');
+      }
+    },
+  );
+  it.each(['command-unknown', 'post-create-db-failed'] as const)(
+    'Worktree 创建 %s 保留 SETTING_UP，禁止取消与启动后续任务',
+    async (mode) => {
+      const fixture = await seedFixture('unknown-create');
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      const git = vi.spyOn(runtime.git, 'create');
+      if (mode === 'command-unknown')
+        git.mockRejectedValue(new AppError(409, 'WORKTREE_GIT_OUTCOME_UNKNOWN', 'unknown'));
+      const patch =
+        mode === 'post-create-db-failed'
+          ? vi
+              .spyOn(executions, 'patch')
+              .mockRejectedValueOnce(new Error('DB unavailable after Git'))
+          : undefined;
+      const queued = [];
+      for (let i = 0; i < 2; i++) {
+        const task = await tasks.create({
+          id: randomUUID(),
+          projectId: fixture.projectId,
+          title: `create-${i}`,
+          status: 'READY',
+        });
+        queued.push(await service.queueTask(task.id, { agentId: fixture.agentId }));
+      }
+      await service.processQueue(fixture.projectId);
+      expect(await executions.get(queued[0]!.execution.id)).toMatchObject({
+        status: 'SETTING_UP',
+        errorCode: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+      });
+      expect((await executions.get(queued[1]!.execution.id))?.status).toBe('QUEUED');
+      await expect(service.cancel(queued[0]!.execution.id)).rejects.toMatchObject({
+        code: 'WORKTREE_EXECUTION_BUSY',
+      });
+      expect(git).toHaveBeenCalledTimes(1);
+      await service.shutdown();
+      git.mockRestore();
+      patch?.mockRestore();
+      await executions.transitionWithTask(queued[0]!.execution.id, 'BLOCKED', 'BLOCKED');
+      await executions.transitionWithTask(queued[1]!.execution.id, 'CANCELED', 'CANCELED');
+    },
+  );
+
+  it('重启恢复隔离未知 Git 创建状态，不自动释放后续队列', async () => {
     const fixture = await seedFixture('RECOVERY');
     const interruptedTask = await tasks.create({
       id: randomUUID(),
@@ -842,14 +999,19 @@ describe('Worktree Task Runner 编排', () => {
     const runtime = createRuntime(database);
     const service = createService(runtime);
     const recovery = await service.recoverAfterRestart();
-    expect(recovery.blocked).toEqual([firstId]);
+    expect(recovery.blocked).not.toContain(firstId);
     expect(recovery.queuedProjects).toEqual([fixture.projectId]);
-    expect((await executions.get(firstId))?.status).toBe('BLOCKED');
-    expect((await tasks.get(interruptedTask.id))?.status).toBe('BLOCKED');
+    expect(await executions.get(firstId)).toMatchObject({
+      status: 'SETTING_UP',
+      errorCode: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+    });
+    expect((await tasks.get(interruptedTask.id))?.status).toBe('IN_PROGRESS');
 
     service.resumeQueued(recovery.queuedProjects);
     await service.processQueue(fixture.projectId);
-    expect((await executions.get(secondId))?.status).toBe('RUNNING');
+    expect((await executions.get(secondId))?.status).toBe('QUEUED');
+    await service.recoverAfterRestart();
+    expect((await executions.get(firstId))?.status).toBe('SETTING_UP');
     await service.shutdown();
   });
 

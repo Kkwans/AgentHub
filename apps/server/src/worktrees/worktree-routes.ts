@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
+import { creationOwnerScope } from '../tasks/task-creation-operation.js';
 import { validate } from '../validation.js';
 import type { WorktreeTaskService } from './worktree-task-service.js';
 
@@ -88,6 +89,7 @@ export function createWorktreeRouter(service: WorktreeTaskService): Router {
           data: await service.queueTask(
             taskParams.parse(request.params).taskId,
             queueBody.parse(request.body),
+            creationOwnerScope(response.locals.authPrincipal),
           ),
           requestId: String(request.id),
         });

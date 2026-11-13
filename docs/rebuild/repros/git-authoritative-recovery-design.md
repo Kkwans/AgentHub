@@ -103,3 +103,13 @@ expectedHead须在获得资源claim并复核资源身份后、第一条写命令
 ### 全入口启用前的硬门
 
 直接托管Git写方法为 `GitService.commit`、`WorktreeGitService.create`、`commitAndMerge`。后者的`merge-tree --write-tree`也写object，不能当只读。worktree queue需先持久保存认证owner和每写阶段操作身份；merge catch不能把派发未知一律还原REVIEW。不能以先GET无claim后旧命令执行代替原子reserve/CAS。三个入口必须统一协调后才启用新写API。PTY/Agent/hook/外部Git不受DB锁自动约束，承诺仅托管入口互斥，不是全仓排他或精确SHA归属。
+
+## 20:19 UTC Worktree归属与真实未知结果止损
+
+0012增加worktree execution的nullable `gitOwnerScope` / `gitCreateOperationId`，约束成对存在；历史行保持null/null，绝不猜身份。新HTTP queue从当前认证principal推导scope、服务端生成创建操作UUID并与execution一同入库；请求body不能覆盖。内部legacy调用仍显式ownerless，**完整coordinator启用前仍须决定历史缺失身份如何failclosed处理**。
+
+真实临时Git实验表明：post-checkout hook失败后worktree目录/branch已存在；pre-commit hook失败后index已暂存且hook已写文件。因此 `WorktreeGitService.create` 自首次worktree add起、`commitAndMerge` 自首次add起，异常统一标 `WORKTREE_GIT_OUTCOME_UNKNOWN`，不再当作无写前置失败。已有merge失败处理仍可能调用`merge --abort`，不声称失败后零额外Git命令。
+
+编排层未知create保SETTING_UP，未知merge或Git已成功但完成落盘失败保MERGING；已持久DONE不会因publish异常降回REVIEW。重启恢复也保留SETTING_UP/MERGING活动槽位：“尚无Session”不是“Git没运行”的证据。取消/rework/再次merge与后续同project队列不能绕过该槽位；身份错配不覆盖当前Task。
+
+这是**实际生产worktree路径止损**，不是跨project别名互斥：普通commit和canonical repository claim尚未统一接入，其他project别名仍可能绕过project队列；用户终端/Agent也不受此锁约束。未知隔离目前不自动释放，无人工解锁API。

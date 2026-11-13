@@ -356,14 +356,17 @@ it('中断的合并不因上一Run已完成而恢复为可审核', async () => {
     const runtime = services(database);
     await recoverRuntimeAfterRestart(runtime);
     expect(await new WorktreeExecutionRepository(database.db).get(row.executionId)).toMatchObject({
-      status: 'BLOCKED',
-      errorCode: 'WORKTREE_MERGE_UNRESOLVED',
-      errorMessage: expect.stringContaining('合并结果未确认'),
+      status: 'MERGING',
+      errorCode: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+      errorMessage: expect.stringContaining('保留活动槽位'),
     });
-    expect((await new TaskRepository(database.db).get(row.task.id))?.status).toBe('BLOCKED');
+    expect((await new TaskRepository(database.db).get(row.task.id))?.status).toBe('WAITING_REVIEW');
+    expect(
+      await new WorktreeExecutionRepository(database.db).claimNext(row.project.id),
+    ).toBeUndefined();
     await recoverRuntimeAfterRestart(runtime);
     expect((await new WorktreeExecutionRepository(database.db).get(row.executionId))?.status).toBe(
-      'BLOCKED',
+      'MERGING',
     );
   } finally {
     await database.close();

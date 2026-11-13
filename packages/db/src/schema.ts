@@ -604,6 +604,9 @@ export const worktreeExecutions = pgTable(
     sessionId: uuid('session_id').references(() => agentSessions.id),
     runId: uuid('run_id').references(() => agentRuns.id),
     mergeCommitSha: text('merge_commit_sha'),
+    // Historical executions remain unowned; migration never guesses a principal.
+    gitOwnerScope: text('git_owner_scope'),
+    gitCreateOperationId: uuid('git_create_operation_id'),
     configJson: jsonb('config_json')
       .$type<{
         model?: string;
@@ -643,6 +646,10 @@ export const worktreeExecutions = pgTable(
       .where(
         sql`${table.status} in ('SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'REVIEW', 'MERGING')`,
       ),
+    check(
+      'worktree_executions_git_owner_pair_check',
+      sql`(${table.gitOwnerScope} is null and ${table.gitCreateOperationId} is null) or (${table.gitOwnerScope} is not null and ${table.gitCreateOperationId} is not null)`,
+    ),
     check(
       'worktree_executions_status_check',
       sql`${table.status} in ('QUEUED', 'SETTING_UP', 'RUNNING', 'AWAITING_INPUT', 'REVIEW', 'MERGING', 'DONE', 'BLOCKED', 'CANCELED')`,

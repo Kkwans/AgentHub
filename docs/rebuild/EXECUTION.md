@@ -1101,3 +1101,13 @@ d19于17:58:31完成完整147文件1401测试/10skip，属于前一报告窗口�
 补记e2882c2冻结全量19:55完成：1474通过/10跳过、152文件通过/4跳过、365.87s。20:04精确d6d9b9c三项CI全绿；e2882c2无障碍绿、verify/real仍在收尾与运行。新片最终主整合结果待后记。
 
 20:05:20 UTC 最终主整合Git目录5文件42项通过；全仓types、改动lint/format、diffcheck及独立最终CR通过。依赖软链原指旧工作树导致新DB导出类型暂缺，已仅修本树依赖链接并重新验证；没有改源码绕过检查。冻结全量/新精确CI待执行。
+
+### 2026-11-13 20:14–20:19 UTC Worktree归属与未知写入隔离
+
+0012持久队列owner/createop（历史null不猜）、认证scope传播、防body伪造；升级重开测试已过。真实/tmp Git hook故障证实失败后目录/branch/index已改变，已加入实际worktree首写后UNKNOWN分类；编排与重启保SETTING_UP/MERGING，不自动回REVIEW或放队列。publish失败不倒退DONE。
+
+CR/类型检查发现并修复rework误插setup catch；startup回归又发现身份错配诊断码变化，保持原WORKTREE_RECOVERY_UNRESOLVED以保兼容，状态仍隔离。新Git6回归、服务/路由55回归分别通过；最终组合和冻结全量待后记。无生产用户仓库Git写操作。普通commit与跨别名claim尚未统一，不能称完整幂等已上线。
+
+补记上一8e54ca7冻结全量20:12完成：1506通过/10跳过、155文件通过/4跳过、370.65s。仅属于上一提交。
+
+20:20:45 UTC 最终组合startup/worktree/迁移6文件80测试全过（42.70s）；全仓types、相关lint/format、diffcheck、独立CR通过。首次组合读到修复前编译产物，重建DB后完整重跑通过，未放宽归属错配断言。上一8e54ca7精确CI verify与无障碍绿、真实服务矩阵仍运行；新片全量使用冻结源码及独立本树依赖链接。

@@ -85,6 +85,13 @@
       "when": 1794599241559,
       "tag": "0011_git_commit_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794600913001,
+      "tag": "0012_worktree_git_ownership",
+      "breakpoints": true
     }
   ]
 }

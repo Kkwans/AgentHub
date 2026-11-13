@@ -102,22 +102,28 @@ export class WorktreeGitService {
       throw new AppError(409, 'WORKTREE_BRANCH_CHECK_FAILED', '任务分支检查失败');
     }
 
-    const created = await git(
-      [
-        '-C',
-        input.projectRoot,
-        'worktree',
-        'add',
-        '-b',
-        input.taskBranch,
-        worktreePath,
-        input.baseSha,
-      ],
-      2 * 1024 * 1024,
-    );
-    requireGitSuccess(created, 'WORKTREE_CREATE_FAILED', 'Git Worktree 创建失败');
-    await this.assertIdentity(input.projectRoot, worktreePath, input.taskBranch);
-    return await realpath(worktreePath);
+    // From the first Git write onward, a nonzero exit/throw is not proof that
+    // refs, index, hooks or worktree metadata were untouched.
+    try {
+      const created = await git(
+        [
+          '-C',
+          input.projectRoot,
+          'worktree',
+          'add',
+          '-b',
+          input.taskBranch,
+          worktreePath,
+          input.baseSha,
+        ],
+        2 * 1024 * 1024,
+      );
+      requireGitSuccess(created, 'WORKTREE_CREATE_FAILED', 'Git Worktree 创建失败');
+      await this.assertIdentity(input.projectRoot, worktreePath, input.taskBranch);
+      return await realpath(worktreePath);
+    } catch (error) {
+      throw unknownGitWrite(error);
+    }
   }
 
   async review(input: {
@@ -195,61 +201,65 @@ export class WorktreeGitService {
     await this.assertIdentity(input.projectRoot, worktreePath, input.taskBranch);
     await this.assertPrimaryMergeReady(input.projectRoot, input.baseBranch, input.baseSha);
 
-    const add = await git(['-C', worktreePath, 'add', '-A']);
-    requireGitSuccess(add, 'WORKTREE_STAGE_FAILED', 'Worktree 变更暂存失败');
-    const staged = await git(['-C', worktreePath, 'diff', '--cached', '--quiet']);
-    if (![0, 1].includes(staged.exitCode ?? -1)) {
-      throw new AppError(409, 'WORKTREE_STAGE_CHECK_FAILED', 'Worktree 暂存状态检查失败');
-    }
+    try {
+      const add = await git(['-C', worktreePath, 'add', '-A']);
+      requireGitSuccess(add, 'WORKTREE_STAGE_FAILED', 'Worktree 变更暂存失败');
+      const staged = await git(['-C', worktreePath, 'diff', '--cached', '--quiet']);
+      if (![0, 1].includes(staged.exitCode ?? -1)) {
+        throw new AppError(409, 'WORKTREE_STAGE_CHECK_FAILED', 'Worktree 暂存状态检查失败');
+      }
 
-    let managedCommitSha: string | undefined;
-    if (staged.exitCode === 1) {
-      const committed = await git(
-        ['-C', worktreePath, 'commit', '-m', input.commitMessage],
+      let managedCommitSha: string | undefined;
+      if (staged.exitCode === 1) {
+        const committed = await git(
+          ['-C', worktreePath, 'commit', '-m', input.commitMessage],
+          2 * 1024 * 1024,
+        );
+        requireGitSuccess(committed, 'WORKTREE_COMMIT_FAILED', 'Worktree 受管提交创建失败');
+        managedCommitSha = await readHead(worktreePath);
+      }
+
+      await this.assertPrimaryMergeReady(input.projectRoot, input.baseBranch, input.baseSha);
+      const unmergedCount = await git([
+        '-C',
+        input.projectRoot,
+        'rev-list',
+        '--count',
+        `${input.baseBranch}..${input.taskBranch}`,
+      ]);
+      requireGitSuccess(unmergedCount, 'WORKTREE_HISTORY_FAILED', '任务分支提交历史读取失败');
+      if (Number(unmergedCount.stdout.trim()) === 0) {
+        return {
+          mergeCommitSha: await readHead(input.projectRoot),
+          ...(managedCommitSha ? { managedCommitSha } : {}),
+          merged: false,
+        };
+      }
+
+      const conflictCheck = await git(
+        ['-C', input.projectRoot, 'merge-tree', '--write-tree', input.baseBranch, input.taskBranch],
         2 * 1024 * 1024,
       );
-      requireGitSuccess(committed, 'WORKTREE_COMMIT_FAILED', 'Worktree 受管提交创建失败');
-      managedCommitSha = await readHead(worktreePath);
-    }
+      if (conflictCheck.exitCode !== 0) {
+        throw new AppError(409, 'WORKTREE_MERGE_CONFLICT', '任务分支与 base branch 存在冲突');
+      }
 
-    await this.assertPrimaryMergeReady(input.projectRoot, input.baseBranch, input.baseSha);
-    const unmergedCount = await git([
-      '-C',
-      input.projectRoot,
-      'rev-list',
-      '--count',
-      `${input.baseBranch}..${input.taskBranch}`,
-    ]);
-    requireGitSuccess(unmergedCount, 'WORKTREE_HISTORY_FAILED', '任务分支提交历史读取失败');
-    if (Number(unmergedCount.stdout.trim()) === 0) {
+      const merged = await git(
+        ['-C', input.projectRoot, 'merge', '--no-ff', '--no-edit', input.taskBranch],
+        2 * 1024 * 1024,
+      );
+      if (merged.exitCode !== 0) {
+        await git(['-C', input.projectRoot, 'merge', '--abort']);
+        throw new AppError(409, 'WORKTREE_MERGE_FAILED', '任务分支合并失败，已尝试恢复主工作区');
+      }
       return {
         mergeCommitSha: await readHead(input.projectRoot),
         ...(managedCommitSha ? { managedCommitSha } : {}),
-        merged: false,
+        merged: true,
       };
+    } catch (error) {
+      throw unknownGitWrite(error);
     }
-
-    const conflictCheck = await git(
-      ['-C', input.projectRoot, 'merge-tree', '--write-tree', input.baseBranch, input.taskBranch],
-      2 * 1024 * 1024,
-    );
-    if (conflictCheck.exitCode !== 0) {
-      throw new AppError(409, 'WORKTREE_MERGE_CONFLICT', '任务分支与 base branch 存在冲突');
-    }
-
-    const merged = await git(
-      ['-C', input.projectRoot, 'merge', '--no-ff', '--no-edit', input.taskBranch],
-      2 * 1024 * 1024,
-    );
-    if (merged.exitCode !== 0) {
-      await git(['-C', input.projectRoot, 'merge', '--abort']);
-      throw new AppError(409, 'WORKTREE_MERGE_FAILED', '任务分支合并失败，已尝试恢复主工作区');
-    }
-    return {
-      mergeCommitSha: await readHead(input.projectRoot),
-      ...(managedCommitSha ? { managedCommitSha } : {}),
-      merged: true,
-    };
   }
 
   private async root(): Promise<string> {
@@ -446,4 +456,14 @@ async function git(args: string[], maxOutputBytes = 1024 * 1024): Promise<Proces
 
 function requireGitSuccess(result: ProcessResult, code: string, message: string): void {
   if (result.exitCode !== 0) throw new AppError(409, code, message);
+}
+
+function unknownGitWrite(cause: unknown): AppError {
+  return new AppError(
+    409,
+    'WORKTREE_GIT_OUTCOME_UNKNOWN',
+    'Git 写入已开始，结果需要核对；不会自动重试或释放执行槽位。',
+    undefined,
+    { cause },
+  );
 }

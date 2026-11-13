@@ -77,7 +77,14 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     return execution;
   }
 
-  async queueTask(taskId: string, input: QueueWorktreeTaskInput) {
+  async queueTask(taskId: string, input: QueueWorktreeTaskInput, ownerScope?: string) {
+    // Server-only enqueue context, never read from request input/config. Historical
+    // internal callers remain explicitly ownerless until a safe migration exists.
+    if (ownerScope !== undefined && (typeof ownerScope !== 'string' || !ownerScope.trim())) {
+      throw new AppError(400, 'WORKTREE_GIT_OWNER_INVALID', 'Worktree Git 操作归属不能为空');
+    }
+    const gitOwnerScope = ownerScope ?? null;
+    const gitCreateOperationId = ownerScope === undefined ? null : randomUUID();
     if (!this.accepting) {
       throw new AppError(503, 'WORKTREE_RUNNER_STOPPING', 'Worktree Task Runner 正在停止');
     }
@@ -115,6 +122,8 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     try {
       const queued = await this.executions.enqueue({
         id: executionId,
+        gitOwnerScope,
+        gitCreateOperationId,
         taskId: task.id,
         projectId: task.projectId,
         agentId: input.agentId,
@@ -236,6 +245,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
           );
         throw error;
       });
+    let gitCompleted = false;
     try {
       const result = await this.git.commitAndMerge({
         projectRoot: project.realRootPath,
@@ -245,6 +255,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         taskBranch: claimed.execution.taskBranch,
         commitMessage: commitMessage || `feat(task): ${claimed.task.title}`,
       });
+      gitCompleted = true;
       const completed = await this.executions.transitionWithTask(
         id,
         'DONE',
@@ -257,6 +268,23 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       return { ...completed, merge: result };
     } catch (error) {
       const normalized = asAppError(error, 'WORKTREE_MERGE_FAILED', 'Worktree 合并失败');
+      if (gitCompleted || normalized.code === 'WORKTREE_GIT_OUTCOME_UNKNOWN') {
+        // Git writes cannot be rolled back by resetting our queue state. Even a
+        // failed completion response may hide a durable DONE transaction.
+        const current = await this.get(id);
+        if (current.status === 'MERGING')
+          await this.executions.patch(id, {
+            errorCode: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+            errorMessage: 'Git 写入结果或完成记录尚未确认，已保留隔离槽位，禁止重试合并',
+          });
+        throw new AppError(
+          409,
+          'WORKTREE_GIT_OUTCOME_UNKNOWN',
+          'Git 写入结果尚未确认，请勿重试',
+          undefined,
+          { cause: error },
+        );
+      }
       const review = await this.executions.transition(id, 'REVIEW', {
         errorCode: normalized.code,
         errorMessage: normalized.message,
@@ -412,6 +440,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     const execution = await this.get(id);
     let startedRun: { id: string } | undefined;
     let startedSessionId: string | undefined;
+    let gitCreated = false;
     try {
       const [project, task] = await Promise.all([
         this.requireProject(execution.projectId),
@@ -424,6 +453,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         taskBranch: execution.taskBranch,
         baseSha: execution.baseSha,
       });
+      gitCreated = true;
       await this.executions.patch(id, { worktreePath });
       const config = execution.configJson;
       const session = await this.sessions.createManagedWorktree(
@@ -464,6 +494,18 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       this.publish('worktree.execution.running', running);
       return true;
     } catch (error) {
+      if (
+        !startedSessionId &&
+        (gitCreated || (error instanceof AppError && error.code === 'WORKTREE_GIT_OUTCOME_UNKNOWN'))
+      ) {
+        const current = await this.get(id);
+        if (current.status === 'SETTING_UP')
+          await this.executions.patch(id, {
+            errorCode: 'WORKTREE_GIT_OUTCOME_UNKNOWN',
+            errorMessage: 'Worktree Git 创建结果或完成记录尚未确认，已保留隔离槽位',
+          });
+        return true;
+      }
       if (startedRun || error instanceof RunStartError) {
         const uncertain =
           error instanceof RunStartError

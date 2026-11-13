@@ -1,0 +1,3 @@
+ALTER TABLE "worktree_executions" ADD COLUMN "git_owner_scope" text;--> statement-breakpoint
+ALTER TABLE "worktree_executions" ADD COLUMN "git_create_operation_id" uuid;--> statement-breakpoint
+ALTER TABLE "worktree_executions" ADD CONSTRAINT "worktree_executions_git_owner_pair_check" CHECK (("worktree_executions"."git_owner_scope" is null and "worktree_executions"."git_create_operation_id" is null) or ("worktree_executions"."git_owner_scope" is not null and "worktree_executions"."git_create_operation_id" is not null));

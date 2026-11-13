@@ -1,4 +1,7 @@
+import express, { type ErrorRequestHandler } from 'express';
 import request from 'supertest';
+import type { AuthPrincipal } from '../auth/auth-service.js';
+import { createWorktreeRouter } from './worktree-routes.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../app.js';
@@ -19,13 +22,22 @@ describe('Worktree REST 契约', () => {
       merge: vi.fn(async () => ({ execution: { id: executionId, status: 'DONE' } })),
       cancel: vi.fn(async () => ({ execution: { id: executionId, status: 'CANCELED' } })),
     };
-    const app = createApp({ worktrees: service as unknown as WorktreeTaskService });
+    const app = express();
+    app.use((_request, response, next) => {
+      response.locals.authPrincipal = { kind: 'local_trusted', role: 'ADMIN' };
+      next();
+    });
+    app.use(createApp({ worktrees: service as unknown as WorktreeTaskService }));
 
     const queued = await request(app)
       .post(`/api/v1/tasks/${taskId}/worktree/queue`)
       .send({ agentId, baseBranch: 'main' });
     expect(queued.status).toBe(202);
-    expect(service.queueTask).toHaveBeenCalledWith(taskId, { agentId, baseBranch: 'main' });
+    expect(service.queueTask).toHaveBeenCalledWith(
+      taskId,
+      { agentId, baseBranch: 'main' },
+      'local-trusted',
+    );
 
     expect(
       (await request(app).get(`/api/v1/worktree-executions/${executionId}/review`)).status,
@@ -69,4 +81,56 @@ describe('Worktree REST 契约', () => {
     expect(service.queueTask).not.toHaveBeenCalled();
     expect(service.rework).not.toHaveBeenCalled();
   });
+});
+
+function ownerRoute(principal?: AuthPrincipal) {
+  const service = { queueTask: vi.fn(async () => ({ execution: { id: executionId } })) };
+  const app = express();
+  app.use(express.json());
+  app.use((_request, response, next) => {
+    response.locals.authPrincipal = principal;
+    next();
+  });
+  app.use(createWorktreeRouter(service as unknown as WorktreeTaskService));
+  const errors: ErrorRequestHandler = (error, _request, response, _next) => {
+    response.status(error.status ?? 500).json({ code: error.code });
+  };
+  app.use(errors);
+  return { app, service };
+}
+it.each([
+  [
+    {
+      kind: 'browser_session',
+      accountId: 'account-one',
+      sessionId: 'session-one',
+      username: 'user',
+      role: 'ADMIN',
+    },
+    'account:account-one',
+  ],
+  [{ kind: 'api_token', tokenId: 'token-one', role: 'ADMIN' }, 'token:token-one'],
+  [{ kind: 'local_trusted', role: 'ADMIN' }, 'local-trusted'],
+] as const)(
+  'Worktree queue 从认证 principal %j 派生 owner，忽略 body 伪造值',
+  async (principal, owner) => {
+    const { app, service } = ownerRoute(principal);
+    const result = await request(app).post(`/tasks/${taskId}/worktree/queue`).send({
+      agentId,
+      ownerScope: 'account:attacker',
+      gitOwnerScope: 'account:attacker',
+      gitCreateOperationId: executionId,
+    });
+    expect(result.status).toBe(202);
+    expect(service.queueTask).toHaveBeenCalledWith(taskId, { agentId }, owner);
+  },
+);
+it('缺失认证 principal 即使 body 提供 owner 也不得入队', async () => {
+  const { app, service } = ownerRoute();
+  const result = await request(app)
+    .post(`/tasks/${taskId}/worktree/queue`)
+    .send({ agentId, ownerScope: 'local-trusted' });
+  expect(result.status).toBe(401);
+  expect(result.body.code).toBe('AUTH_REQUIRED');
+  expect(service.queueTask).not.toHaveBeenCalled();
 });

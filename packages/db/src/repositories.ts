@@ -2586,17 +2586,28 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
               .limit(1);
           }
         }
-        const noDispatchSetup = execution.status === 'SETTING_UP' && !execution.sessionId;
-        const interruptedMerge = execution.status === 'MERGING';
+        // No Session is NOT proof that worktree add was never dispatched.
+        // MERGING likewise has no durable command outcome in legacy rows. Keep
+        // the active slot across restart, even if the preceding Run completed.
+        if (execution.status === 'SETTING_UP' || execution.status === 'MERGING') {
+          await transaction
+            .update(worktreeExecutions)
+            .set({
+              errorCode:
+                taskOwnership && sessionOwnership
+                  ? 'WORKTREE_GIT_OUTCOME_UNKNOWN'
+                  : 'WORKTREE_RECOVERY_UNRESOLVED',
+              errorMessage: 'Git 创建或合并结果未确认，保留活动槽位；不会自动重发或放行队列',
+              updatedAt: new Date(),
+            })
+            .where(eq(worktreeExecutions.id, execution.id));
+          return 'quarantined' as const;
+        }
         const terminal =
           run &&
           ['COMPLETED', 'FAILED', 'CANCELED'].includes(run.status) &&
           !isLegacyUncertainRun(run);
-        if (
-          !taskOwnership ||
-          !sessionOwnership ||
-          (!noDispatchSetup && !interruptedMerge && !terminal)
-        ) {
+        if (!taskOwnership || !sessionOwnership || !terminal) {
           await transaction
             .update(worktreeExecutions)
             .set({
@@ -2606,9 +2617,8 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
             .where(eq(worktreeExecutions.id, execution.id));
           return 'quarantined' as const;
         }
-        const status = interruptedMerge
-          ? 'BLOCKED'
-          : run?.status === 'COMPLETED'
+        const status =
+          run?.status === 'COMPLETED'
             ? 'REVIEW'
             : run?.status === 'CANCELED'
               ? 'CANCELED'
@@ -2618,24 +2628,14 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
           .set({
             status,
             ...(run ? { runId: run.id } : {}),
-            errorCode: interruptedMerge
-              ? 'WORKTREE_MERGE_UNRESOLVED'
-              : status === 'BLOCKED'
-                ? 'SERVER_RESTARTED'
-                : null,
-            errorMessage: interruptedMerge
-              ? '合并结果未确认，需人工检查 Git 状态；不会自动合并或重试'
-              : status === 'BLOCKED'
-                ? '服务重启后已确认未派发或执行已停止；请人工检查后重试'
-                : null,
+            errorCode: status === 'BLOCKED' ? 'SERVER_RESTARTED' : null,
+            errorMessage:
+              status === 'BLOCKED' ? '服务重启后已确认执行已停止；请人工检查后重试' : null,
             ...(status === 'REVIEW' ? { reviewReadyAt: new Date() } : {}),
             updatedAt: new Date(),
           })
           .where(eq(worktreeExecutions.id, execution.id));
-        if (
-          task &&
-          (task.status === 'IN_PROGRESS' || (interruptedMerge && task.status === 'WAITING_REVIEW'))
-        ) {
+        if (task && task.status === 'IN_PROGRESS') {
           await transaction
             .update(tasks)
             .set({
