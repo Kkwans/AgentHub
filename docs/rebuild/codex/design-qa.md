@@ -540,3 +540,17 @@ Monaco0.56 CSS tokenizer was independently traced from rulevalue/term/name to at
 Full209 product regression exited0 at15:50:30 UTC:145 files/1389 tests passed,4 files/10 skipped,362.80s. Only tests/E2E and documentation changed during the run. The C31 product candidate was cherry-picked afterward, so this count is not presented as a full regression of the new color override.
 
 C31 integrated validation completed15:51:06 UTC:5 files/19 targeted tests passed, web and explicit E2E types/lint, production build3.27s and diff-check succeeded. Independent static review covered the exact CSS token and unchanged background rules, plus the per-mode evidence aggregation. Actual new-SHA dark pixels and all requested presentations remain CI-pending.
+
+### 2026-11-13 15:54 UTC — Actual C30 name/light-drawer gate closure
+
+Exact209 fixture archived68 passed/4 failed. All four Workspace primary cases passed, including actual original/modified names, selected light-code axe and the previously blocked medium resize/keyboard/close sequence. This is actual browser closure of those C30/C26 gates, not a fully green run: four dark cases still report the inherited grid contrast2.84 that C31 targets. The extra per-breakpoint name assertions added in6fb require that exact run and cannot be inferred from209.
+
+Evidence correction: the initial420 failure log contained block4.46 and grid2.84, but the downloaded final-retry axe JSON contains only grid. These are different attempts, not identical two-node JSONs. Personally viewed the420 dark390 image and read its final JSON; unified pane geometry was original25px/modified319px. There is still no claim that split-requested actually displayed two full panes.
+
+At15:56:01 UTC personally viewed exact209 workspace-review-medium-1179-desktop-1024.png: the420px right drawer, internal close button, scrim and full readable code have no visible edge clipping. Personally read both workspace-medium-drawer-axe-desktop-1024.json and tablet-768.json; both are empty arrays. This supplies actual1179 image evidence for C26 and selected-light contrast closure, without treating209 as the newer6fb per-resize-label test or C31 dark validation. Exactac79 run43457114626 is still pending.
+
+### 2026-11-13 16:01 UTC — Latest complete regression and bounded TSX coverage candidate
+
+Fullac79 product regression exited0 at15:59:51 UTC:145 files/1390 tests passed,4 files/10 skipped,362.26s. Product source remained unchanged during the run. Exact6fb fixture then archived68 passed/4 dark failures at16:00:26, with the added1179→1180→1024 actual editor-name assertions passing. C30 per-breakpoint closure is therefore now based on its own run. Exactac79 default accessibility is successful, but selected-code fixture and real-service remain pending.
+
+The existing common git/diff fixture returns CSS regardless of selected path, so clicking its TSX row is not credible TSX syntax coverage. A new isolated390-dark case supplies a valid, exact-path five-line TSX patch with let→const,1→2 and idle→ready changes, selects the actual staged scope, waits for TypeScript labels/content/names, captures screenshot/full axe and enforces zero Git writes/runtime errors. Other widths are explicitly skipped for this focused lexical audit; no broader palette was changed from source predictions alone. Explicit E2E types/lint and four-project collection passed16:00:59, which does not mean any browser audit has executed.

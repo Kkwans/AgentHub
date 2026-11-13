@@ -172,3 +172,9 @@ Mobile work now has a real list/detail visible-state slice, not only a shorter h
 ## C31 深色 Diff 值文本对比度（候选）
 
 420真实390深色axe定位CSS block/grid两值4.46/2.84，不与空名称问题混淆。仅dark attribute.value.css调整浅桃色，保增删背景及4.5门槛；单测准确token与实际背景，真实渲染仍须新CI。测试保存两请求模式证据后统一零违规，不把请求分栏称为实际双栏。
+
+C30实际闭环更新（15:54 UTC）：209四宽Workspace主旅程通过，真实子编辑器名称/浅色选中代码axe/中宽后半交互已验。209整体仍因4个深色值对比失败为红，C31验收不能被替代；6fb新增逐断点名称断言也等待自身CI。
+
+## C32 真实 TSX 词法覆盖（测试候选）
+
+只新增390深色独立旅程，精确路径返回合法TSX patch，覆盖关键字/数字/字符串的增删字符高亮；普通CSS fixture保持。验证实际staged响应完成、语言/文本/双侧名称、截图和完整axe；其它三宽明确skip，不能称全宽TSX矩阵。未因源码预测先改主题规则。

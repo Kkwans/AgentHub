@@ -1169,6 +1169,103 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
   expect(modeViolations).toEqual([]);
 });
 
+test('深色 TSX 选中 Diff 使用真实词法内容并保持可读', async ({ page }, testInfo) => {
+  test.skip((page.viewportSize()?.width ?? 0) !== 390, 'Focused narrow dark token audit');
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  let gitWrites = 0;
+  let tsxReads = 0;
+  let stagedReads = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.includes('/git/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      gitWrites += 1;
+  });
+  const path = 'apps/web/src/features/workspace/pages/WorkspacePage.tsx';
+  // The common fixture returns CSS for every path. Override only this file so
+  // TSX assertions inspect actual TypeScript/JSX tokens, never renamed CSS.
+  const patch = [
+    `diff --git a/${path} b/${path}`,
+    `--- a/${path}`,
+    `+++ b/${path}`,
+    '@@ -1,5 +1,5 @@',
+    ' export function WorkspacePage() {',
+    '-  let count = 1;',
+    '+  const count = 2;',
+    "-  const label = 'idle';",
+    "+  const label = 'ready';",
+    '   return <span>{label}: {count}</span>;',
+    ' }',
+    '',
+  ].join('\n');
+  await page.route(`**/api/v1/projects/${project.id}/git/diff?**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('path') !== path) return route.fallback();
+    tsxReads += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: { patch, truncated: false, staged: url.searchParams.get('staged') === 'true' },
+      }),
+    });
+    if (url.searchParams.get('staged') === 'true') stagedReads += 1;
+  });
+  await page.goto('/settings/appearance');
+  await page.getByRole('combobox', { name: '主题' }).click();
+  await page.getByRole('option', { name: '深色', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'dark');
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
+  const staged = page.getByRole('checkbox', { name: 'staged', exact: true });
+  await staged.check();
+  await expect(staged).toBeChecked();
+  await expect.poll(() => stagedReads).toBeGreaterThan(0);
+  const lines = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
+  await expect(lines).toBeVisible();
+  await expect(lines).toContainText(/const\s+count\s*=\s*2/);
+  await expect(lines).toContainText(/label\s*=\s*'ready'/);
+  await expect(page.locator('.git-diff-editor-toolbar small')).toHaveText('typescript');
+  await expect.poll(() => tsxReads).toBeGreaterThan(0);
+  const editors = page.locator('.git-diff-editor [role="textbox"]');
+  await expect(editors).toHaveCount(2);
+  await expect
+    .poll(() =>
+      editors.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') ?? '')),
+    )
+    .toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`更改前：${path}`),
+        expect.stringContaining(`更改后：${path}`),
+      ]),
+    );
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'workspace-diff-dark-tsx');
+  const audit = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const violations = audit.violations.filter((entry) =>
+    ['serious', 'critical'].includes(entry.impact ?? ''),
+  );
+  await testInfo.attach(`workspace-diff-dark-tsx-axe-${testInfo.project.name}`, {
+    body: JSON.stringify(violations),
+    contentType: 'application/json',
+  });
+  expect(gitWrites).toBe(0);
+  expect(errors).toEqual([]);
+  expect(violations).toEqual([]);
+});
+
 test('Git 状态读取失败不沿用干净缓存且恢复只读', async ({ page }, testInfo) => {
   let failing = false;
   let reads = 0;
