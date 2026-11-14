@@ -434,3 +434,39 @@
     top: 4px;
   }
 }
+
+/* Tablet auxiliary drawer: keep its outer view switcher, combine only the
+ * Inspector's title/tab rows. Actions remain outside the roving tablist. */
+@media (min-width: 768px) and (max-width: 1179px) {
+  .workspace :global(.tablet-inspector-toolbar) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-height: 52px;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--workspace-line);
+  }
+  .workspace :global(.tablet-inspector-toolbar .inspector-tabs) {
+    min-height: 44px;
+    gap: 8px;
+    padding: 0;
+    border-bottom: 0;
+  }
+  .workspace :global(.tablet-inspector-toolbar [role='tab']) {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 0;
+  }
+  .workspace :global(.tablet-inspector-toolbar .workspace-review-focus) {
+    margin: 0;
+    white-space: nowrap;
+    gap: 4px;
+    padding-inline: 6px;
+  }
+  .workspace :global(.tablet-inspector-toolbar > .workspace-drawer-close) {
+    position: static;
+    display: inline-grid;
+  }
+}

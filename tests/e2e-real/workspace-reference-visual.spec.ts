@@ -114,6 +114,79 @@ async function assertCompactPhoneInspector(page: Page, info: TestInfo) {
   }
 }
 
+async function assertCompactTabletInspector(page: Page, info: TestInfo, width: number) {
+  const toolbar = page.locator('.tablet-inspector-toolbar');
+  const list = toolbar.getByRole('tablist', { name: '检查器视图' });
+  const close = toolbar.getByRole('button', { name: '关闭检查器', exact: true });
+  const focus = toolbar.getByRole('button', { name: '专注审阅', exact: true });
+  const measure = async () => {
+    const { row, controls, overflow } = await toolbar.evaluate((element) => {
+      const rect = (node: Element) => {
+        const { x, y, width, height } = node.getBoundingClientRect();
+        return { x, y, width, height };
+      };
+      return {
+        row: rect(element),
+        controls: [
+          ...element.querySelectorAll('[role="tab"]'),
+          element.querySelector('.workspace-review-focus')!,
+          element.querySelector('.workspace-drawer-close')!,
+        ].map(rect),
+        overflow: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+    expect(row.height).toBeLessThanOrEqual(56);
+    expect(controls).toHaveLength(6);
+    let right = row.x;
+    for (const box of controls) {
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.x).toBeGreaterThanOrEqual(right);
+      expect(box.y).toBeGreaterThanOrEqual(row.y);
+      expect(box.y + box.height).toBeLessThanOrEqual(row.y + row.height);
+      expect(box.x + box.width).toBeLessThanOrEqual(row.x + row.width);
+      right = box.x + box.width;
+    }
+    expect(overflow).toBeLessThanOrEqual(1);
+  };
+  for (const [label, title] of Object.entries({
+    变更: '审阅更改',
+    文件: '项目文件',
+    活动: '会话活动',
+    Run: '运行详情',
+  })) {
+    const tab = list.getByRole('tab', { name: label, exact: true });
+    await tab.focus();
+    await page.keyboard.press('Enter');
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    await expect(toolbar.getByRole('heading', { name: title, exact: true })).toHaveCount(1);
+    await measure();
+  }
+  await list.getByRole('tab', { name: '变更', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await expect(focus).toBeFocused();
+  await page.keyboard.press('Enter');
+  const exit = toolbar.getByRole('button', { name: '退出专注审阅', exact: true });
+  await expect(exit).toHaveAttribute('aria-pressed', 'true');
+  await expect(exit).toBeFocused();
+  await measure();
+  await exit.click();
+  await expect(focus).toHaveAttribute('aria-pressed', 'false');
+  await expect(focus).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await capture(page, info, `compact-tablet-inspector-${width}`);
+  await page.keyboard.press('Escape');
+  await expect(close).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '打开辅助栏', exact: true })).toBeFocused();
+  await showChanges(page, width);
+  await close.click();
+  await expect(close).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '打开辅助栏', exact: true })).toBeFocused();
+  await showChanges(page, width);
+}
+
 for (const width of [390, 768, 1024, 1440]) {
   for (const theme of ['light', 'dark'] as const) {
     test(`参考构图：合成中文对话与实际 Git 差异 ${width} ${theme}`, async ({
@@ -374,6 +447,7 @@ for (const width of [390, 768, 1024, 1440]) {
       }
       await showChanges(page, width);
       if (width === 390) await assertCompactPhoneInspector(page, info);
+      if (width === 768 || width === 1024) await assertCompactTabletInspector(page, info, width);
       if (width >= 768) {
         const focus = page.getByRole('button', { name: '专注审阅', exact: true });
         await expect(focus).toHaveCount(1);

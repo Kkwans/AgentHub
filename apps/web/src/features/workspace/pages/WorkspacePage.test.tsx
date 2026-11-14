@@ -1172,6 +1172,40 @@ describe('WorkspacePage 数据分区可靠性', () => {
     assertPanel(inspector);
   });
 
+  it.each([768, 1024])('平板检查器合并工具行但保留独立导航和动作（%s）', async (width) => {
+    vi.stubGlobal('innerWidth', width);
+    renderWorkspace(
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        baseFetch(String(input), init?.method),
+      ),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '打开辅助栏' }));
+    fireEvent.click(
+      within(screen.getByRole('tablist', { name: '辅助栏视图' })).getByRole('tab', {
+        name: '检查器',
+      }),
+    );
+    const list = await screen.findByRole('tablist', { name: '检查器视图' });
+    const toolbar = list.closest('.tablet-inspector-toolbar')!;
+    expect(toolbar).not.toBeNull();
+    const focus = screen.getByRole('button', { name: '专注审阅' });
+    const close = screen.getByRole('button', { name: '关闭检查器' });
+    expect(toolbar).toContainElement(focus);
+    expect(toolbar).toContainElement(close);
+    expect(list).not.toContainElement(focus);
+    expect(list).not.toContainElement(close);
+    expect(
+      within(toolbar as HTMLElement).getByRole('heading', { name: '审阅更改' }),
+    ).toBeInTheDocument();
+    fireEvent.click(focus);
+    expect(focus).toHaveAccessibleName('退出专注审阅');
+    expect(focus).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(focus);
+    expect(focus).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(close);
+    expect(await screen.findByRole('button', { name: '打开辅助栏' })).toHaveFocus();
+  });
+
   it('手机检查器保留内部导航，关闭后恢复外层视图导航', async () => {
     vi.stubGlobal('innerWidth', 390);
     renderWorkspace(

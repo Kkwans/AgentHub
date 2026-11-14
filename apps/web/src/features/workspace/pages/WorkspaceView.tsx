@@ -505,7 +505,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           }
           right={
             <section className="workspace-panel workbench-panel inspector-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-              {inspectorDrawerOpen && (
+              {inspectorDrawerOpen && !(inspectorActsAsDrawer && !isMobileViewport) && (
                 <button
                   type="button"
                   className="workspace-drawer-close"
@@ -517,6 +517,20 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                 </button>
               )}
               <WorkspaceInspector
+                compactToolbar={inspectorActsAsDrawer && !isMobileViewport}
+                closeControl={
+                  inspectorDrawerOpen && inspectorActsAsDrawer && !isMobileViewport ? (
+                    <button
+                      type="button"
+                      className="workspace-drawer-close"
+                      aria-label="关闭检查器"
+                      ref={registerInspectorClose}
+                      onClick={closeMobileInspector}
+                    >
+                      <X size={18} />
+                    </button>
+                  ) : undefined
+                }
                 reviewFocus={
                   !isMobileViewport
                     ? {

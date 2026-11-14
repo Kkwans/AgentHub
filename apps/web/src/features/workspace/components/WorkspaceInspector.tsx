@@ -1,5 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from '@agenthub/ui';
-import { useId, type RefObject } from 'react';
+import { useId, type ReactNode, type RefObject } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
@@ -54,7 +54,11 @@ export function WorkspaceInspector({
   stagedDiff,
   onStagedDiffChange,
   reviewFocus,
+  compactToolbar = false,
+  closeControl,
 }: {
+  compactToolbar?: boolean;
+  closeControl?: ReactNode;
   reviewFocus?:
     { active: boolean; toggle(): void; buttonRef: RefObject<HTMLButtonElement | null> } | undefined;
   project: ProjectRecord | undefined;
@@ -93,59 +97,75 @@ export function WorkspaceInspector({
     { id: 'activity', label: '活动' },
     { id: 'run', label: 'Run' },
   ];
+  const contextHeading = (
+    <h2>
+      {tab === 'changes'
+        ? '审阅更改'
+        : tab === 'files'
+          ? '项目文件'
+          : tab === 'activity'
+            ? '会话活动'
+            : '运行详情'}
+    </h2>
+  );
+  const reviewControl = reviewFocus && (
+    <button
+      type="button"
+      className="workspace-review-focus"
+      ref={reviewFocus.buttonRef}
+      aria-pressed={reviewFocus.active}
+      title={reviewFocus.active ? '恢复原布局（Escape）' : '临时扩大代码阅读区，不改变保存的栏宽'}
+      onClick={reviewFocus.toggle}
+    >
+      {reviewFocus.active ? (
+        <Minimize2 size={16} aria-hidden="true" />
+      ) : (
+        <Maximize2 size={16} aria-hidden="true" />
+      )}
+      <span>{reviewFocus.active ? '退出专注审阅' : '专注审阅'}</span>
+    </button>
+  );
+  const inspectorTabs = (
+    <Tabs value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
+      <TabsList
+        className="inspector-tabs flex min-h-12 items-center gap-5 overflow-x-auto border-b border-[hsl(var(--border))] px-4"
+        aria-label="检查器视图"
+      >
+        {tabs.map((item) => (
+          <TabsTrigger
+            key={item.id}
+            value={item.id}
+            id={triggerId(item.id)}
+            aria-controls={panelId}
+            aria-label={item.label}
+          >
+            {item.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  );
   return (
     <div
       className={`${inspectorStyles.owner} inspector flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
-      <header className="codex-inspector-heading">
-        <h2>
-          {tab === 'changes'
-            ? '审阅更改'
-            : tab === 'files'
-              ? '项目文件'
-              : tab === 'activity'
-                ? '会话活动'
-                : '运行详情'}
-        </h2>
-        {reviewFocus && (
-          <button
-            type="button"
-            className="workspace-review-focus"
-            ref={reviewFocus.buttonRef}
-            aria-pressed={reviewFocus.active}
-            title={
-              reviewFocus.active ? '恢复原布局（Escape）' : '临时扩大代码阅读区，不改变保存的栏宽'
-            }
-            onClick={reviewFocus.toggle}
-          >
-            {reviewFocus.active ? (
-              <Minimize2 size={16} aria-hidden="true" />
-            ) : (
-              <Maximize2 size={16} aria-hidden="true" />
-            )}
-            <span>{reviewFocus.active ? '退出专注审阅' : '专注审阅'}</span>
-          </button>
-        )}
-      </header>
-      <Tabs value={tab} onValueChange={(value) => setTab(value as InspectorTab)}>
-        <TabsList
-          className="inspector-tabs flex min-h-12 items-center gap-5 overflow-x-auto border-b border-[hsl(var(--border))] px-4"
-          aria-label="检查器视图"
-        >
-          {tabs.map((item) => (
-            <TabsTrigger
-              key={item.id}
-              value={item.id}
-              id={triggerId(item.id)}
-              aria-controls={panelId}
-              aria-label={item.label}
-            >
-              {item.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {compactToolbar ? (
+        <header className="tablet-inspector-toolbar">
+          <div className="sr-only">{contextHeading}</div>
+          {inspectorTabs}
+          {reviewControl}
+          {closeControl}
+        </header>
+      ) : (
+        <>
+          <header className="codex-inspector-heading">
+            {contextHeading}
+            {reviewControl}
+          </header>
+          {inspectorTabs}
+        </>
+      )}
       <div
         id={panelId}
         role="tabpanel"
