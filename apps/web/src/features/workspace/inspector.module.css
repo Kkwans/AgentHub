@@ -1271,3 +1271,40 @@
   grid-template-rows: auto 1fr;
   align-content: start;
 }
+
+/* Reading a selected file does not discard the mounted selection/commit state. */
+:global(.workspace) :global(.git-change-list[hidden]),
+:global(.workspace) :global(.git-change-actions[hidden]) {
+  display: none !important;
+}
+:global(.workspace) :global(.git-file-list-toggle) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding-inline: 4px;
+}
+:global(.workspace) :global(.git-selected-diff-heading .git-file-navigation) {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: normal;
+}
+:global(.workspace) :global(.git-file-navigation button) {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+}
+:global(.workspace) :global(.git-file-navigation button:disabled) {
+  opacity: 0.4;
+}
+:global(.workspace) :global(.git-file-navigation button:not(:disabled):hover) {
+  background: var(--workspace-hover);
+}
+:global(.workspace) :global(.git-selected-file-missing) {
+  margin: 8px 12px;
+  font-size: 13px;
+}

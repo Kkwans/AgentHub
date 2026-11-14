@@ -10,6 +10,7 @@ interface ToolEntryHeaderProps {
   theme: ToolTheme;
   toolName: string;
   summary: string;
+  summaryFilePath?: string | null;
   summaryMonospace?: boolean;
   resultSummary: string;
   failureSummary?: string;
@@ -109,6 +110,7 @@ export function ToolEntryHeader({
   theme,
   toolName,
   summary,
+  summaryFilePath,
   summaryMonospace = false,
   resultSummary,
   failureSummary,
@@ -121,7 +123,8 @@ export function ToolEntryHeader({
   const { Icon } = theme;
   // Presentation-only exact deduplication. Whitespace may be meaningful in a
   // command or path; preserve distinct text and the original file action.
-  const visibleSummary = summary === toolName ? '' : summary;
+  const fileName = summaryFilePath?.split(/[\\/]/).at(-1);
+  const visibleSummary = summary === toolName ? '' : fileName || summary;
   return (
     <div
       className={cn(
@@ -153,7 +156,10 @@ export function ToolEntryHeader({
             <span className="tool-entry-badge">{toolName}</span>
             {visibleSummary && <span className="tool-entry-separator" aria-hidden="true" />}
             {visibleSummary && (
-              <span className={cn('tool-entry-summary', summaryMonospace && 'font-mono')}>
+              <span
+                className={cn('tool-entry-summary', summaryMonospace && 'font-mono')}
+                title={summaryFilePath || undefined}
+              >
                 {visibleSummary}
               </span>
             )}

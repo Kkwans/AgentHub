@@ -193,7 +193,13 @@
 }
 
 @media (min-width: 1180px) {
-  .workspace :global(.conversation-panel > .workspace-contextbar) {
+  .workspace
+    :global(
+      .conversation-panel
+        > .workspace-contextbar-slot
+        > .workspace-contextbar-host
+        > .workspace-contextbar
+    ) {
     min-height: 56px;
     gap: 6px;
     padding-inline: 16px;

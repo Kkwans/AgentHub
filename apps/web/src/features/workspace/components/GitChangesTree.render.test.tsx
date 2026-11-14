@@ -51,6 +51,7 @@ it('默认平铺真实文件，目录切换保留勾选与完整路径预览', (
   expect(screen.getByRole('checkbox', { name: '选择 src/deep/one.ts' })).toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: '查看 src/deep/one.ts Diff' }));
   expect(onSelectPath).toHaveBeenLastCalledWith('src/deep/one.ts', 'diff');
+  fireEvent.click(screen.getByRole('button', { name: '展开文件清单' }));
   fireEvent.click(screen.getByRole('button', { name: '查看 src/other/one.ts 文件' }));
   expect(onSelectPath).toHaveBeenLastCalledWith('src/other/one.ts', 'files');
 });
@@ -288,6 +289,7 @@ it.each(['focused', 'phone'] as const)(
     expect(screen.getByRole('checkbox', { name: '选择 src/file-39.ts' })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: '查看 src/file-39.ts Diff' }));
     expect(props.onSelectPath).toHaveBeenLastCalledWith('src/file-39.ts', 'diff');
+    fireEvent.click(screen.getByRole('button', { name: '展开文件清单' }));
     fireEvent.click(screen.getByRole('button', { name: /^全选$/ }));
     for (const choice of choices()) expect(choice).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: '按目录显示变更' }));
@@ -388,4 +390,76 @@ it('新提交未知时不能继续展示上一次成功回执', async () => {
   }
   expect(screen.queryByText(/提交命令已完成/)).not.toBeInTheDocument();
   expect(props.onCommit).toHaveBeenCalledTimes(2);
+});
+
+it('明确读取后收起持续挂载清单，导航只读且刷新不抢展开与提交草稿', async () => {
+  const props = reviewProps();
+  props.status.data!.entries.push({ index: ' ', worktree: 'M', path: 'src/two.ts' });
+  const view = render(<GitChangesTree {...props} />);
+  const tree = screen.getByRole('tree', { name: 'Git 文件变更树' });
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
+  fireEvent.change(screen.getByLabelText('提交说明'), { target: { value: '保留草稿' } });
+  fireEvent.click(screen.getByRole('button', { name: '查看 src/one.ts Diff' }));
+  expect(tree).toBeInTheDocument();
+  expect(tree).not.toBeVisible();
+  expect(screen.getByLabelText('提交说明')).toHaveValue('保留草稿');
+  expect(props.onCommit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '下一个变更文件' }));
+  expect(props.onSelectPath).toHaveBeenLastCalledWith('src/two.ts', 'diff');
+  view.rerender(<GitChangesTree {...props} selectedPath="src/two.ts" />);
+  expect(screen.getByText('2 / 2')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '展开文件清单' }));
+  expect(screen.getByRole('checkbox', { name: '选择 src/one.ts' })).toBeChecked();
+  view.rerender(
+    <GitChangesTree
+      {...props}
+      selectedPath="src/two.ts"
+      status={{
+        ...props.status,
+        data: { ...props.status.data!, entries: [...props.status.data!.entries] },
+      }}
+    />,
+  );
+  expect(tree).toBeVisible();
+  expect(screen.getByLabelText('提交说明')).toHaveValue('保留草稿');
+  expect(props.onCommit).not.toHaveBeenCalled();
+});
+
+it('已选文件从状态消失仍保留对象提示，不自动跳到别的文件', () => {
+  const props = reviewProps();
+  props.status.data!.entries = [{ index: ' ', worktree: 'M', path: 'src/other.ts' }];
+  render(<GitChangesTree {...props} />);
+  expect(screen.getByText('当前文件不在最新变更清单中，请展开清单选择文件。')).toBeVisible();
+  expect(screen.getByLabelText('src/one.ts', { selector: 'code' })).toBeVisible();
+  expect(screen.getByRole('button', { name: '下一个变更文件' })).toBeDisabled();
+  expect(props.onSelectPath).not.toHaveBeenCalled();
+});
+
+it('清单收起不隐藏pending与UNKNOWN，不解锁重试或提交草稿', async () => {
+  const props = reviewProps();
+  let reject!: (reason: Error) => void;
+  props.onCommit.mockImplementation(
+    () =>
+      new Promise((_yes, no) => {
+        reject = no;
+      }),
+  );
+  render(<GitChangesTree {...props} />);
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择 src/one.ts' }));
+  fireEvent.change(screen.getByLabelText('提交说明'), { target: { value: '原草稿' } });
+  fireEvent.click(screen.getByRole('button', { name: '提交所选文件 (1)' }));
+  fireEvent.click(screen.getByRole('button', { name: '查看 src/one.ts Diff' }));
+  expect(screen.getByRole('button', { name: /正在提交/ })).toBeVisible();
+  expect(screen.getByRole('button', { name: /正在提交/ })).toBeDisabled();
+  await act(async () => {
+    await Promise.resolve();
+    reject(new Error('断线'));
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent('提交结果未知');
+  expect(screen.getByRole('alert')).toBeVisible();
+  expect(screen.getByRole('button', { name: '重试提交' })).toBeDisabled();
+  expect(screen.getByLabelText('提交说明')).toHaveValue('原草稿');
+  fireEvent.click(screen.getByRole('button', { name: '展开文件清单' }));
+  expect(screen.getByRole('checkbox', { name: '选择 src/one.ts' })).toBeChecked();
+  expect(props.onCommit).toHaveBeenCalledTimes(1);
 });

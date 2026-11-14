@@ -210,6 +210,22 @@ function parseLeadingSleepDurationMs(command: string | null): number | null {
   return value * (unitMs[match[2]?.toLowerCase() ?? ''] ?? 1_000);
 }
 
+/** Display evidence comes only from the exact file fields used by the summary.
+ * Directory/glob and generic string fallbacks must not be promoted to files. */
+export function toolSummaryFilePath(
+  themeKey: ToolThemeKey,
+  input?: Record<string, unknown> | null,
+): string | null {
+  if (!input || (themeKey !== 'read' && themeKey !== 'edit')) return null;
+  const path =
+    themeKey === 'read'
+      ? (input.target_file ?? input.file_path ?? input.path)
+      : (input.file_path ?? input.target_file ?? input.path);
+  if (typeof path !== 'string' || !path || /[\\/]$/.test(path)) return null;
+  const name = path.split(/[\\/]/).at(-1);
+  return name && name !== '.' && name !== '..' ? path : null;
+}
+
 function openableFilePath(
   themeKey: ToolThemeKey,
   input?: Record<string, unknown> | null,
@@ -310,6 +326,7 @@ export const ToolUseEntry = memo(
           theme={theme}
           toolName={toolName}
           summary={summary}
+          summaryFilePath={toolSummaryFilePath(themeKey, e.rawInput)}
           summaryMonospace={['terminal', 'read', 'edit', 'search', 'fetch'].includes(themeKey)}
           resultSummary={resultSummary}
           failureSummary={isFailed ? toolFailurePreview(e.rawOutput) : ''}

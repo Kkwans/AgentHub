@@ -220,6 +220,29 @@ for (const width of [390, 768, 1024, 1440]) {
           }
         }
       }
+      if (width === 390) {
+        for (const [label, name] of [
+          ['读取代码', 'runner.ts'],
+          ['编辑文件', 'task.ts'],
+        ]) {
+          const card = tools.filter({
+            has: page.locator('.tool-entry-badge').filter({ hasText: new RegExp(`^${label}$`) }),
+          });
+          const summary = card.locator('.tool-entry-summary');
+          await expect(summary).toHaveText(name!);
+          await expect(summary).toHaveAttribute('title', join(app.projectRoot, name!));
+          // A short basename must actually fit, not merely exist behind ellipsis.
+          expect(
+            await summary.evaluate((node) => node.scrollWidth - node.clientWidth),
+          ).toBeLessThanOrEqual(1);
+          await expect(
+            card.getByRole('button', {
+              name: `在文件面板中打开：${join(app.projectRoot, name!)}`,
+              exact: true,
+            }),
+          ).toHaveCount(1);
+        }
+      }
       await expect(page.locator('.thinking-event-row')).toHaveCount(0);
       await expect(
         page.getByText('合成演示数据，非真实 Agent 执行。', { exact: true }),
@@ -270,10 +293,66 @@ for (const width of [390, 768, 1024, 1440]) {
       await composer.fill('继续检查取消后的状态传播。');
       // Capture the real conversation separately before opening narrow-screen review.
       await capture(page, info, `reference-conversation-${theme}-${width}`);
+      if (width === 390) {
+        // The presentation basename must not replace the original action path.
+        await tools
+          .filter({ has: page.locator('.tool-entry-badge').filter({ hasText: /^读取代码$/ }) })
+          .getByRole('button', {
+            name: `在文件面板中打开：${join(app.projectRoot, 'runner.ts')}`,
+            exact: true,
+          })
+          .click();
+        await expect
+          .poll(() => new URL(page.url()).searchParams.get('file'))
+          .toBe(join(app.projectRoot, 'runner.ts'));
+        expect(new URL(page.url()).searchParams.get('view')).toBe('files');
+      }
       await showChanges(page, width);
+      const gitWrites: string[] = [];
+      page.on('request', (request) => {
+        if (
+          !['GET', 'HEAD', 'OPTIONS'].includes(request.method()) &&
+          new URL(request.url()).pathname.startsWith(`/api/v1/projects/${project.id}/git/`)
+        )
+          gitWrites.push(request.method() + ' ' + new URL(request.url()).pathname);
+      });
       await page.getByRole('button', { name: '查看 runner.ts Diff', exact: true }).click();
       const review = page.getByRole('region', { name: '已选择 runner.ts 的 Diff', exact: true });
       await expect(review).toBeVisible({ timeout: 30_000 });
+      const fileTree = page.locator('.git-change-list[role="tree"]');
+      await expect(fileTree).toHaveCount(1);
+      await expect(fileTree).toBeHidden();
+      const readingOffset = () =>
+        review.evaluate(
+          (node) =>
+            node.getBoundingClientRect().top -
+            node.closest('.git-inspector')!.getBoundingClientRect().top,
+        );
+      const collapsedOffset = await readingOffset();
+      await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
+      await expect(fileTree).toBeVisible();
+      const expandedOffset = await readingOffset();
+      const treeHeight = (await fileTree.boundingBox())!.height;
+      expect(expandedOffset - collapsedOffset).toBeGreaterThanOrEqual(treeHeight - 1);
+      await page.getByRole('button', { name: '收起文件清单', exact: true }).click();
+      await expect(fileTree).toBeHidden();
+      await expect(review.getByRole('group', { name: '变更文件导航' })).toContainText('2 / 3');
+      for (const name of ['上一个变更文件', '下一个变更文件']) {
+        const box = (await review.getByRole('button', { name, exact: true }).boundingBox())!;
+        expect(box.width).toBeGreaterThanOrEqual(43.99);
+        expect(box.height).toBeGreaterThanOrEqual(43.99);
+      }
+      await review.getByRole('button', { name: '下一个变更文件' }).click();
+      const nextReview = page.getByRole('region', { name: '已选择 task.ts 的 Diff', exact: true });
+      await expect(nextReview).toBeVisible();
+      await nextReview.getByRole('button', { name: '上一个变更文件' }).click();
+      await expect(review).toBeVisible();
+      await info.attach(`reading-priority-${theme}-${width}`, {
+        body: JSON.stringify({ collapsedOffset, expandedOffset, treeHeight }),
+        contentType: 'application/json',
+      });
+      expect(gitWrites).toEqual([]);
+
       const options = review.getByRole('group', { name: '文件 Diff 显示选项' });
       await expect(options).toHaveCount(1);
       await expect(review.locator(':scope > .git-diff-toolbar')).toHaveCount(0);
@@ -377,6 +456,7 @@ for (const width of [390, 768, 1024, 1440]) {
       await capture(page, info, `reference-review-${theme}-${width}`);
       expect(errors).toEqual([]);
       expect((await apiData<Id[]>(context, 'get', `/sessions/${session.id}/runs`)).length).toBe(1);
+      expect(gitWrites).toEqual([]);
     });
   }
 }

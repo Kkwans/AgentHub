@@ -874,7 +874,11 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(modifiedLines).toContainText(/display:\s*grid/);
     await assertSelectedDiffNames();
     const diffHeader = await page.locator('.git-selected-diff-heading').boundingBox();
-    const diffControls = await page.locator('.git-selected-diff > .git-diff-toolbar').boundingBox();
+    const diffOptions = page
+      .locator('.git-selected-diff')
+      .getByRole('group', { name: '文件 Diff 显示选项' });
+    await expect(diffOptions).toHaveCount(1);
+    const diffControls = await diffOptions.boundingBox();
     const diffEditor = await page.locator('.git-selected-diff > .git-diff-editor').boundingBox();
     if (viewportWidth >= 1180) {
       expect(diffHeader!.height).toBeLessThanOrEqual(64);
@@ -918,6 +922,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       'false',
     );
     await captureReviewHierarchy();
+    await page.getByRole('button', { name: '展开文件清单' }).click();
     await page.getByRole('button', { name: '按目录显示变更' }).click();
     await expect(page.getByRole('button', { name: '按目录显示变更' })).toHaveAttribute(
       'aria-pressed',
@@ -1548,6 +1553,7 @@ test('专注审阅保留未提交草稿和编辑器并恢复原布局', async ({
   await expect(
     page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]'),
   ).toContainText(/display:\s*grid/);
+  await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
   const selected = page.getByRole('checkbox', { name: `选择 ${path}`, exact: true });
   await selected.check();
   const draft = page.getByRole('textbox', { name: '提交说明', exact: true });
@@ -1681,6 +1687,7 @@ test('只读预览的专注审阅保留默认统一模式并提供真实分栏�
   await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
   const lines = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
   await expect(lines).toContainText(/display:\s*grid/);
+  await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
   const choices = page.getByRole('checkbox', { name: /^选择 / });
   expect(await choices.count()).toBeGreaterThan(0);
   const assertReadingOnly = async () => {
@@ -1851,6 +1858,7 @@ test('大量变更文件在专注态保留代码首屏与末项键盘可达', as
   const previousPreferences = await preferences();
   const inspector = page.locator('.inspector-panel');
   const initialWidth = (await inspector.boundingBox())!.width;
+  await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
   const initialListHeight = (await page
     .getByRole('tree', { name: 'Git 文件变更树', exact: true })
     .boundingBox())!.height;
@@ -2010,6 +2018,7 @@ test('手机大量变更文件首屏可读且目录末项可达', async ({ page 
   await expect(code).toContainText(/display:\s*grid/);
   await expect(page.getByRole('button', { name: '专注审阅', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '切换为分栏 Diff', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
   const tree = page.getByRole('tree', { name: 'Git 文件变更树', exact: true });
   await expect(tree.getByRole('checkbox')).toHaveCount(40);
   for (const choice of await tree.getByRole('checkbox').all())

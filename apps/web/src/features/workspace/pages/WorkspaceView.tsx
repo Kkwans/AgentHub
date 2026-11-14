@@ -14,7 +14,8 @@ import {
   X,
   type CompactPanel,
 } from '@agenthub/ui';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { PanelLeft, PanelRight } from 'lucide-react';
 import { StatusBadge } from '../../../components/Feedback';
@@ -160,6 +161,32 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     else if (panel === 'right') openInspectorDrawer(tab);
     else closeMobileInspector();
   };
+
+  // The portal target and React owner stay constant across the split-layout
+  // breakpoint. Moving its DOM host must not remount open action dialogs.
+  const [contextBarHost] = useState(() => {
+    if (typeof document === 'undefined') return null;
+    const host = document.createElement('div');
+    host.className = 'workspace-contextbar-host';
+    host.style.display = 'contents';
+    return host;
+  });
+  const outerContextBarSlot = useRef<HTMLDivElement>(null);
+  const middleContextBarSlot = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const slot = inspectorActsAsDrawer ? outerContextBarSlot.current : middleContextBarSlot.current;
+    if (!contextBarHost || !slot || contextBarHost.parentElement === slot) return;
+    const active = document.activeElement;
+    slot.append(contextBarHost);
+    if (
+      active instanceof HTMLElement &&
+      contextBarHost.contains(active) &&
+      active.isConnected &&
+      document.activeElement === document.body
+    )
+      active.focus({ preventScroll: true });
+  });
+  useLayoutEffect(() => () => contextBarHost?.remove(), [contextBarHost]);
 
   if (!session.data) return null;
   const currentSession = session.data;
@@ -317,7 +344,12 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
       data-session-drawer-open={sessionDrawerOpen || undefined}
       data-inspector-drawer-open={inspectorDrawerOpen || undefined}
     >
-      {inspectorActsAsDrawer && contextBar}
+      <div
+        ref={outerContextBarSlot}
+        className="workspace-contextbar-slot"
+        style={{ display: 'contents' }}
+      />
+      {contextBarHost && createPortal(contextBar, contextBarHost)}
       {inspectorActsAsDrawer && (
         <PinTabs value={mobileViewValue}>
           <TabsList
@@ -399,7 +431,11 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           }
           middle={
             <section className="workspace-panel workbench-panel conversation-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-              {!inspectorActsAsDrawer && contextBar}
+              <div
+                ref={middleContextBarSlot}
+                className="workspace-contextbar-slot"
+                style={{ display: 'contents' }}
+              />
               <div ref={setSearchHost} className="min-w-0 shrink-0" />
               <div className="relative grid flex-1 min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[hsl(var(--surface))]">
                 <ChatConversationView

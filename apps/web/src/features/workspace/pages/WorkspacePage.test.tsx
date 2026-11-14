@@ -1026,6 +1026,7 @@ describe('WorkspacePage 数据分区可靠性', () => {
     expect(
       await screen.findByRole('region', { name: '已选择 apps/web/src/App.tsx 的 Diff' }),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '展开文件清单' }));
     expect(screen.getByRole('checkbox', { name: '选择 apps/web/src/App.tsx' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('checkbox', { name: '选择 apps/web/src/App.tsx' }));
     fireEvent.change(screen.getByPlaceholderText('说明这次变更解决了什么'), {
@@ -1281,3 +1282,60 @@ it.each([
   client.clear();
   window.sessionStorage.clear();
 });
+
+it.each(['draft', 'unknown'])(
+  '实际WorkspacePage跨1180保留重命名弹窗草稿与唯一动作树 %s',
+  async (phase) => {
+    vi.stubGlobal('innerWidth', 1440);
+    const updates = new Set<() => void>();
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: (_: string, fn: () => void) => updates.add(fn),
+      removeEventListener: (_: string, fn: () => void) => updates.delete(fn),
+    }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === `/api/v1/sessions/${session.id}/title` && init?.method === 'PATCH')
+        throw new Error('response lost');
+      if (String(input) === `/api/v1/sessions/${session.id}`)
+        return jsonResponse({ ...session, titleRevision: 0 });
+      return baseFetch(String(input), init?.method);
+    });
+    renderWorkspace(fetchMock, `/workspace/${session.id}`);
+    const rename = await screen.findByRole('button', { name: '重命名会话' });
+    rename.focus();
+    fireEvent.click(rename);
+    const input = await screen.findByRole('textbox', { name: '会话名称' });
+    fireEvent.change(input, { target: { value: '跨宽度不能丢失' } });
+    if (phase === 'unknown') {
+      await waitFor(() => expect(screen.getByRole('button', { name: '保存名称' })).toBeEnabled());
+      fireEvent.click(screen.getByRole('button', { name: '保存名称' }));
+      await screen.findByRole('button', { name: '核对当前名称' });
+    }
+    input.focus();
+    for (const width of [390, 1440, 390]) {
+      await act(async () => {
+        vi.stubGlobal('innerWidth', width);
+        for (const update of updates) update();
+      });
+      expect(screen.getByRole('dialog', { name: '重命名会话' })).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: '会话名称' })).toBe(input);
+      expect(input).toHaveValue('跨宽度不能丢失');
+      if (phase === 'draft') expect(input).toHaveFocus();
+      else {
+        expect(screen.getByRole('button', { name: '核对当前名称' })).toBeEnabled();
+        expect(screen.queryByRole('button', { name: '保存名称' })).not.toBeInTheDocument();
+      }
+      expect(document.querySelectorAll('button[aria-label="重命名会话"]')).toHaveLength(1);
+    }
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: phase === 'draft' ? '取消' : '关闭重命名窗口',
+      }),
+    );
+    await waitFor(() => expect(rename).toHaveFocus());
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(
+      phase === 'draft' ? 0 : 1,
+    );
+  },
+);

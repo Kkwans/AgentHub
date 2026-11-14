@@ -22,6 +22,17 @@ export function SessionSecondaryTools({
     const dismiss = (event: PointerEvent | KeyboardEvent) => {
       if (window.matchMedia?.('(max-width: 767px)').matches === false) return;
       // A portalled modal owns dismissal and return focus until it closes.
+      // The modal may have closed between native capture and bubble listeners.
+      // Its original event path still owns that Escape; do not close twice.
+      if (
+        event
+          .composedPath()
+          .some(
+            (node) =>
+              node instanceof HTMLElement && node.matches('[role="dialog"][aria-modal="true"]'),
+          )
+      )
+        return;
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       if (event instanceof KeyboardEvent) {
         if (event.key !== 'Escape' || event.defaultPrevented) return;

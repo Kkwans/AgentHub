@@ -4,6 +4,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api, authSession, type SessionRecord } from '../../../lib/api';
 import ReactMarkdown from 'react-markdown';
+import { flushSync } from 'react-dom';
+import { SessionSecondaryTools } from './SessionSecondaryTools';
 import { formatTranscript } from '../sessionTranscriptExport';
 import { SessionTranscriptExport } from './SessionTranscriptExport';
 const identity = vi.hoisted(() => ({
@@ -145,4 +147,35 @@ it('parses the entire download with the production Markdown parser without escap
     'AgentHub 会话文字记录',
   ]);
   expect(view.container.querySelectorAll('h2')).toHaveLength(2);
+});
+
+it('真实导出弹窗在Escape capture关闭后，同事件不能再收起更多菜单', async () => {
+  vi.stubGlobal('matchMedia', () => ({ matches: true }));
+  render(
+    <SessionSecondaryTools sessionId="s">
+      <SessionTranscriptExport session={session} />
+    </SessionSecondaryTools>,
+  );
+  const more = screen.getByRole('button', { name: '更多会话操作' });
+  fireEvent.click(more);
+  const trigger = screen.getByRole('button', { name: '导出文字记录' });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole('dialog', { name: '导出文字记录' });
+  // Model the browser's listener checkpoint: the modal can commit its close
+  // before the outer document bubble listener sees this same native event.
+  const closeAtCapture = (event: KeyboardEvent) => {
+    if (event.key === 'Escape')
+      flushSync(() => fireEvent.click(screen.getByText('关闭', { exact: true })));
+  };
+  document.addEventListener('keydown', closeAtCapture, true);
+  try {
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+  } finally {
+    document.removeEventListener('keydown', closeAtCapture, true);
+  }
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(more).toHaveAttribute('aria-expanded', 'true');
+  await waitFor(() => expect(trigger).toHaveFocus());
+  expect(click).not.toHaveBeenCalled();
 });

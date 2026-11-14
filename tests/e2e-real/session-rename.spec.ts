@@ -127,7 +127,7 @@ test('重命名草稿从桌面缩至手机：保留弹窗并恢复可见操作�
   await expect(dialog).toBeVisible();
   await expect(input).toHaveValue('跨宽度保留的未提交草稿');
   await expect(input).toBeFocused();
-  await dialog.getByRole('button', { name: '关闭重命名窗口', exact: true }).click();
+  await dialog.getByRole('button', { name: '取消', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(rename).toBeVisible();
   await expect(rename).toBeFocused();

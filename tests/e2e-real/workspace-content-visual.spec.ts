@@ -380,6 +380,7 @@ for (const width of [390, 768, 1024, 1440]) {
         diffRegion,
       );
       await showInspector(page, width, 'changes');
+      await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
       await page
         .getByRole('tree', { name: 'Git 文件变更树' })
         .getByRole('checkbox', { name: '选择 fixture-output.md', exact: true })

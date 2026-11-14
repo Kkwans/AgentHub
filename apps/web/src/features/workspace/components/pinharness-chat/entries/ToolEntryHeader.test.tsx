@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { TOOL_THEMES } from '../toolThemes';
 import { ToolEntryHeader } from './ToolEntryHeader';
+import { ToolUseEntry } from './ToolUseEntry';
 afterEach(cleanup);
 const base = {
   hasOutput: true,
@@ -82,4 +83,79 @@ it('preserves meaningful command/path whitespace including leading and trailing 
     );
     expect(view.container.querySelector('.tool-entry-summary')?.textContent).toBe(summary);
   }
+});
+
+it('displays a supplied file basename but keeps its full title and original open action', () => {
+  const onOpenFile = vi.fn();
+  const props = {
+    ...base,
+    summary: '…/long/project/runner.ts',
+    summaryFilePath: '/tmp/long/project/runner.ts',
+    filePathForOpen: '/tmp/long/project/runner.ts',
+    onOpenFile,
+  };
+  const view = render(<ToolEntryHeader {...props} />);
+  const summary = view.container.querySelector('.tool-entry-summary');
+  expect(summary?.textContent).toBe('runner.ts');
+  expect(summary).toHaveAttribute('title', '/tmp/long/project/runner.ts');
+  fireEvent.click(
+    screen.getByRole('button', { name: '在文件面板中打开：/tmp/long/project/runner.ts' }),
+  );
+  expect(onOpenFile).toHaveBeenCalledTimes(1);
+  expect(props.summary).toBe('…/long/project/runner.ts');
+});
+it('never treats ordinary slash-containing summaries as filenames and keeps Windows filename spaces', () => {
+  const view = render(
+    <ToolEntryHeader {...base} summary="cat /tmp/very/long/file.ts" summaryMonospace />,
+  );
+  expect(view.container.querySelector('.tool-entry-summary')?.textContent).toBe(
+    'cat /tmp/very/long/file.ts',
+  );
+  expect(view.container.querySelector('.tool-entry-summary')).not.toHaveAttribute('title');
+  view.rerender(
+    <ToolEntryHeader
+      {...base}
+      summary="C:\\project\\  file name.ts "
+      summaryFilePath="C:\\project\\  file name.ts "
+    />,
+  );
+  expect(view.container.querySelector('.tool-entry-summary')?.textContent).toBe('  file name.ts ');
+});
+
+it('keeps existing edit open-path precedence independent of basename summary precedence', () => {
+  const onOpenDiff = vi.fn();
+  const rawInput = Object.freeze({
+    target_file: '/action/original.ts',
+    file_path: '/summary/visible.ts',
+  });
+  const view = render(
+    <ToolUseEntry
+      entry={{
+        id: 'dual',
+        type: 'tool_use',
+        entry: {
+          id: 'dual',
+          entryType: 'tool_use',
+          content: '',
+          messageId: 'm',
+          timestamp: 0,
+          streaming: false,
+          toolTitle: 'Edit',
+          toolKind: 'edit',
+          toolStatus: 'completed',
+          rawInput,
+        },
+      }}
+      onOpenFile={undefined}
+      onOpenDiff={onOpenDiff}
+    />,
+  );
+  expect(view.container.querySelector('.tool-entry-summary')?.textContent).toBe('visible.ts');
+  expect(view.container.querySelector('.tool-entry-summary')).toHaveAttribute(
+    'title',
+    '/summary/visible.ts',
+  );
+  fireEvent.click(screen.getByRole('button', { name: '在文件面板中打开：/action/original.ts' }));
+  expect(onOpenDiff).toHaveBeenCalledWith('/action/original.ts');
+  expect(rawInput.file_path).toBe('/summary/visible.ts');
 });

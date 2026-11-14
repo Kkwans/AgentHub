@@ -212,6 +212,7 @@ test.describe('local_trusted 项目与 Work', () => {
         }),
     ).toBeVisible({ timeout: 30_000 });
     await inspectorTabs.getByRole('tab', { name: '变更', exact: true }).click();
+    await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
     const changeTree = page.getByRole('tree', { name: 'Git 文件变更树' });
     const fixtureCheckbox = changeTree.getByRole('checkbox', { name: '选择 fixture-output.md' });
     await expect(fixtureCheckbox).toBeVisible({ timeout: 15_000 });

@@ -8,7 +8,7 @@ import {
   RefreshCw,
   Select,
 } from '@agenthub/ui';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
   GitBranchRecord,
@@ -82,6 +82,29 @@ export function GitChangesTree({
   type GitView = 'changes' | 'history' | 'branches';
   const [view, setView] = useState<GitView>('changes');
   const [treeLayout, setTreeLayout] = useState(false);
+  const [fileListOpen, setFileListOpen] = useState(true);
+  const fileListId = useId();
+  const readingHeading = useRef<HTMLElement>(null);
+  const focusReading = useRef<string | undefined>(undefined);
+  const selectForReading = (path: string, nextView?: 'diff' | 'files') => {
+    if (!onSelectPath) return;
+    onSelectPath(path, nextView);
+    if (nextView === 'diff') {
+      focusReading.current = path;
+      setFileListOpen(false);
+    }
+  };
+  useEffect(() => {
+    if (
+      fileListOpen ||
+      !selectedPath ||
+      focusReading.current !== selectedPath ||
+      !readingHeading.current
+    )
+      return;
+    focusReading.current = undefined;
+    readingHeading.current.focus({ preventScroll: true });
+  }, [fileListOpen, selectedPath]);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [commitMessage, setCommitMessage] = useState('');
   const [localCommitReceipt, setCommitReceipt] = useState<string>();
@@ -114,6 +137,10 @@ export function GitChangesTree({
     () => buildGitChangeTree(status.data?.entries ?? []),
     [status.data?.entries],
   );
+  const entries = flattenGitChangeTree(changeTree).flatMap((node) =>
+    node.kind === 'file' ? [node.entry] : [],
+  );
+  const selectedIndex = entries.findIndex((entry) => entry.path === selectedPath);
 
   const commit = () => {
     if (projectId) {
@@ -320,16 +347,34 @@ export function GitChangesTree({
       <div className="git-viewbar git-review-toolbar">
         <div className="git-review-count">
           {' '}
-          <strong>
-            {view === 'changes' && status.data && !status.isLoading && !status.error
-              ? `${status.data.entries.length} 个变更`
-              : viewLabels[view]}
-          </strong>
+          {view === 'changes' && status.data && !status.isLoading && !status.error ? (
+            <button
+              type="button"
+              className="git-file-list-toggle"
+              aria-label={fileListOpen ? '收起文件清单' : '展开文件清单'}
+              aria-expanded={fileListOpen}
+              aria-controls={fileListId}
+              onClick={() => {
+                focusReading.current = undefined;
+                setFileListOpen((value) => !value);
+              }}
+            >
+              {fileListOpen ? (
+                <ChevronDown size={14} aria-hidden="true" />
+              ) : (
+                <ChevronRight size={14} aria-hidden="true" />
+              )}
+              <strong>{status.data.entries.length} 个变更</strong>
+            </button>
+          ) : (
+            <strong>{viewLabels[view]}</strong>
+          )}
           {view === 'changes' &&
           status.data &&
           !status.data.clean &&
           !status.isLoading &&
           !status.error &&
+          fileListOpen &&
           !selectedPaths.length &&
           !commitError &&
           !commitReceipt &&
@@ -343,7 +388,7 @@ export function GitChangesTree({
         !status.data.clean &&
         !status.isLoading &&
         !status.error ? (
-          <div className="git-change-actions">
+          <div className="git-change-actions" hidden={!fileListOpen}>
             <button
               type="button"
               aria-label="按目录显示变更"
@@ -478,12 +523,14 @@ export function GitChangesTree({
           <LoadingState label="正在读取 Git 状态" />
         ) : status.error ? (
           <ErrorState error={status.error} retry={() => status.refetch()} />
-        ) : status.data?.clean ? (
+        ) : status.data?.clean && !selectedPath ? (
           <EmptyState title="工作区干净" description="没有 staged、unstaged 或 untracked 文件。" />
         ) : (
           <>
             <div
+              id={fileListId}
               className="change-list git-change-list"
+              hidden={!fileListOpen}
               role="tree"
               aria-label="Git 文件变更树"
               data-layout={treeLayout ? 'tree' : 'list'}
@@ -496,7 +543,7 @@ export function GitChangesTree({
                   selectedPath={selectedPath}
                   selectedPaths={selectedPaths}
                   onTogglePath={togglePath}
-                  onSelectPath={onSelectPath}
+                  onSelectPath={selectForReading}
                   onSelectView={setView}
                 />
               ))}
@@ -567,13 +614,63 @@ export function GitChangesTree({
                 )}
               </div>
             ) : null}
+            {selectedPath && !status.isLoading && !status.error && selectedIndex < 0 && (
+              <p role="status" className="git-selected-file-missing">
+                当前文件不在最新变更清单中，请展开清单选择文件。
+              </p>
+            )}
             {selectedPath && (
               <section className="git-selected-diff" aria-label={`已选择 ${selectedPath} 的 Diff`}>
                 <div className="git-selected-diff-heading">
                   <div>
-                    <code title={selectedPath} aria-label={selectedPath}>
+                    <code
+                      ref={readingHeading}
+                      tabIndex={-1}
+                      title={selectedPath}
+                      aria-label={selectedPath}
+                    >
                       {selectedPath.split('/').at(-1)}
                     </code>
+                  </div>
+                  <div className="git-file-navigation" role="group" aria-label="变更文件导航">
+                    <span>
+                      {selectedIndex >= 0
+                        ? `${selectedIndex + 1} / ${entries.length}`
+                        : '不在清单中'}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="上一个变更文件"
+                      disabled={
+                        !onSelectPath ||
+                        status.isLoading ||
+                        Boolean(status.error) ||
+                        selectedIndex <= 0
+                      }
+                      onClick={() => {
+                        const previous = entries[selectedIndex - 1];
+                        if (previous) selectForReading(previous.path, 'diff');
+                      }}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="下一个变更文件"
+                      disabled={
+                        !onSelectPath ||
+                        status.isLoading ||
+                        Boolean(status.error) ||
+                        selectedIndex < 0 ||
+                        selectedIndex >= entries.length - 1
+                      }
+                      onClick={() => {
+                        const next = entries[selectedIndex + 1];
+                        if (next) selectForReading(next.path, 'diff');
+                      }}
+                    >
+                      ↓
+                    </button>
                   </div>
                 </div>
                 {diff.isLoading ? (
