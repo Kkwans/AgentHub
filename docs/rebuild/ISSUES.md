@@ -446,3 +446,9 @@ REVIEW中的保留errorMessage此前以“需要处理”展示，容易与重�
 ### 2026-11-14 03:34 UTC 精确 CI 的首页断言与深色字符串对比
 
 e0f10ea / CI43549132495：真实服务与独立 axe 成功，但 fixture Home 四宽因旧测试将正文视为 Link 子节点失败；当前正文/操作分层正确，测试需分别验证正文和动作可访问名/目标。深色 TSX fixture 另在首次尝试发现 string.ts 默认 CE9178 在删除字符背景6f1313上仅4.46:1，虽重试通过仍为真实视觉缺陷，不应当忽略。候选只提升该 token 为暖色F4C7AF；保持删除背景、其他语言与 axe 门槛。新精确 CI 未结束前不关闭。
+
+### 2026-11-14 03:47 UTC 普通任务启动核对出口与恢复归属
+
+S66已接入持久启动预留，旧“缺claim”描述是历史设计依据，不是当前事实。但前端没有调用已有GET start-attempts，普通启动失败后用户不能查看原尝试。候选增加任务详情只读查询、历史阶段/折叠身份、auth+project+task迟到回包隔离；空/404/失败/UNKNOWN不解释未执行，不重试或解锁。
+
+另以独立memory PGlite、两个真实Repository复现：A reserve/markCreateAttempted后，B recoverAfterRestart把A标为UNKNOWN，A recordSessionReady返回false。第二实例startup可误伤仍活跃实例是待解决可用性风险；仅数据库双Repository证据，不称独立PostgreSQL进程或真实Agent双派发。后端归属/fencing须另设计，不通过跳过恢复或超时释放绕开。

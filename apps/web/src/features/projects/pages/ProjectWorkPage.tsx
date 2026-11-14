@@ -1,3 +1,4 @@
+import { TaskStartAttemptsPanel } from '../components/TaskStartAttemptsPanel';
 import { useWorkViewport } from '../hooks/useWorkViewport';
 import { useReviewOperations } from '../components/ReviewOperationProvider';
 import { useReviewOperationOwner } from '../hooks/useReviewOperationOwner';
@@ -1163,6 +1164,13 @@ export function ProjectWorkPage() {
                         />
                       ) : null}
                     </div>
+                    {worktrees.isSuccess && !selectedWorktree ? (
+                      <TaskStartAttemptsPanel
+                        projectId={project.id}
+                        taskId={selected.id}
+                        scope={manualScope}
+                      />
+                    ) : null}
                   </>
                 ) : (
                   <div className={projectsStyles.emptyPanel}>

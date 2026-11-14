@@ -68,7 +68,7 @@ for (const width of [390, 768, 1024, 1440]) {
       agentId: agent.id,
     });
     const firstAttempts = await apiData<
-      Array<{ id: string; phase: string; sessionId: string; runId: string }>
+      Array<{ attemptId: string; phase: string; sessionId: string; runId: string }>
     >(context, 'get', `/tasks/${task.id}/start-attempts`);
     expect(firstAttempts).toHaveLength(1);
     expect(firstAttempts[0]).toMatchObject({
@@ -81,11 +81,17 @@ for (const width of [390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     const errors: string[] = [];
     const reviews: unknown[] = [];
+    let pageWrites = 0;
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text());
     });
     page.on('request', (request) => {
+      if (
+        !['GET', 'HEAD', 'OPTIONS'].includes(request.method()) &&
+        new URL(request.url()).pathname.startsWith('/api/v1/')
+      )
+        pageWrites += 1;
       if (
         request.method() === 'POST' &&
         new URL(request.url()).pathname === `/api/v1/tasks/${task.id}/review`
@@ -93,6 +99,35 @@ for (const width of [390, 768, 1024, 1440]) {
         reviews.push(request.postDataJSON());
     });
     await page.goto(`/projects/${project.id}/work?task=${task.id}`);
+    const attemptsPanel = page.getByRole('region', { name: '任务启动记录' });
+    await expect(attemptsPanel).toBeVisible();
+    const writesBeforeCheck = pageWrites;
+    const queryAttempts = attemptsPanel.getByRole('button', { name: '查询启动记录', exact: true });
+    await queryAttempts.focus();
+    await page.keyboard.press('Enter');
+    await expect(attemptsPanel).toContainText('已移交运行，不代表任务完成');
+    await expect(attemptsPanel).toContainText('以下是历史记录，不代表当前执行状态');
+    const identifiers = attemptsPanel.locator('summary');
+    await identifiers.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+      attemptsPanel.getByText(firstAttempts[0]!.attemptId, { exact: true }),
+    ).toBeVisible();
+    await expect(attemptsPanel.getByText(first.session.id, { exact: true })).toBeVisible();
+    await expect(attemptsPanel.getByText(first.run.id, { exact: true })).toBeVisible();
+    expect(pageWrites).toBe(writesBeforeCheck);
+    expect((await apiData<Task>(context, 'get', `/tasks/${task.id}`)).status).toBe(
+      'WAITING_REVIEW',
+    );
+    await attemptsPanel.scrollIntoViewIfNeeded();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+    const attemptsShot = info.outputPath(`task-start-attempts-${width}.png`);
+    await page.screenshot({ path: attemptsShot });
+    await info.attach('原启动记录只读核对', { path: attemptsShot, contentType: 'image/png' });
+    await identifiers.focus();
+    await page.keyboard.press('Enter');
     const feedback = page.getByRole('textbox', { name: '继续修改说明' });
     const rework = page.getByRole('button', { name: '提交继续修改', exact: true });
     await expect(rework).toBeDisabled();
