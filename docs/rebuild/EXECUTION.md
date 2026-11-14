@@ -2133,3 +2133,7 @@ aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spe
 8c48 focused在25分钟被取消。日志证明workspace-content-visual仍在selected Diff内部寻找已移到摘要行的显示选项group，4例各180秒超时；下一例被中断，后续未执行。fixture通过不能代替该真实矩阵。此处是本次重排遗漏测试同步，不是把产品失败归咎环境。
 
 只改该真实spec：键盘展开/关闭外部显示选项并验证已暂存/空白/分栏控件；默认截图改实际文件标题锚点，仍保持原diff区域与capture几何、后续真实Git提交全流程。最终CR将可见性定位到modified view-lines，避免统一Diff首个monaco隐藏gutter歧义。timeout未加大，断言未删除以掩盖失败。list8/scoped lint/类型验证，实际执行仍待新commit。
+
+### 2026-11-14 22:08 UTC 保覆盖的工作区独立图证job
+
+先发布dd3f616修复遗漏真实截图锚点，再做小范围CI分拆：3个工作区spec单独24例，full未动，其余focused/Prompt repair未动；独立runner/临时目录、1 worker、0 retry、always精确SHA附件、失败不吞。前后spec集合22=19+3精确相同且无重叠，YAML/list24/diff通过，未改任何产品或单例timeout。原8c48/a486长job的旧定位问题不可能被新配置追溯修正，仍按旧失败/取消报告；新短链实际执行待。

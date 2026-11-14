@@ -59,3 +59,7 @@
 - 已有 140 图基线中的 Workspace 为无消息/干净 Git，不能证明文件预览和非空 Diff 的呈现质量；原 workbench 成功流程虽验证批准/提交，但没有每步主动截图。
 - 新 workspace-content-visual 覆盖四宽双主题，每例复用一次隔离 ACP 运行：批准卡、完成消息/工具、真实文件树与 Monaco 预览、Git Diff、提交回执。截图同时保存当前视口和对应区域，附内部滚动尺寸，不把 fullPage 等同所有内部内容。
 - 所有 Git 写入仅测试 fixture 临时仓库，真实 HTTP/文件/HEAD/clean 核验；不使用用户项目、NAS 或付费 Agent。类型、lint 与八项收集通过，真实执行待新 CI，不预宣称已生成 80 张证据图。
+
+## 2026-11-14 22:08 UTC 工作区短链证据
+
+将3个工作区spec（content/reference/deep-files）从focused移到独立Workspace interaction evidence job，24例，单worker、零重试、隔离runner/TMP/output、always上传精确SHA产物，失败独立可见。原full完全不变；其余focused与Prompt repair不变。未改变单例timeout或断言，新job20分钟上限，原focused25分钟不加大。集合校验：原focused含22个spec，现19+3且无交叉、无遗漏；YAML解析与list24通过。该调整用于先拿会话/文件/差异真实图，不是实际运行已通过。
