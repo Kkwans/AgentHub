@@ -6,12 +6,30 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { DiffEditorProps, EditorProps } from '@monaco-editor/react';
 
 import { fetchSessionEventPages, mergeSessionEvents, WorkspacePage } from './WorkspacePage';
 
 vi.mock('../../../components/AccessGate', () => ({
   useAuthMode: () => 'local_trusted',
   useAuthUser: () => null,
+}));
+
+// This suite verifies workspace requests/state, not Monaco's browser runtime.
+// Keep FileInspector real, but never start its worker/module graph in jsdom;
+// actual editor initialization and syntax remain covered by browser gates.
+vi.mock('../../../lib/monaco', () => ({ prepareDiffLanguage: async () => undefined }));
+vi.mock('@monaco-editor/react', () => ({
+  default: ({ value, options }: EditorProps) => (
+    <textarea aria-label="单测只读文件预览" value={value ?? ''} readOnly={options?.readOnly} />
+  ),
+  DiffEditor: ({ original, modified }: DiffEditorProps) => (
+    <pre aria-label="单测差异预览">
+      {original}
+      {'\n'}
+      {modified}
+    </pre>
+  ),
 }));
 
 vi.mock('../../../lib/realtime', () => ({
@@ -1359,6 +1377,9 @@ it('原绝对文件深链保持身份，读取API仅发送项目内相对路径'
   );
   await waitFor(() => expect(paths).toHaveLength(1));
   expect(paths).toEqual(['src/runner.ts']);
+  const preview = await screen.findByRole('textbox', { name: '单测只读文件预览' });
+  expect(preview).toHaveValue('export const originalFile = true;');
+  expect(preview).toHaveAttribute('readonly');
 });
 
 it('项目外绝对文件显示本地错误且不请求文件读取API', async () => {
