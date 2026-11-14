@@ -2,12 +2,26 @@ import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from './schema.js';
+import { AgentRepository, ExecutionTargetRepository } from './repositories.js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createPostgresDatabase } from './client.js';
 import {
   acquirePostgresRuntimeOwnership,
   type RuntimeOwnershipGuard,
 } from './runtime-ownership.js';
+
+function assertClosed(results: PromiseSettledResult<void>[]) {
+  const failed = results.filter(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  );
+  if (failed.length)
+    throw new AggregateError(
+      failed.map((result) => result.reason),
+      '本例临时PG连接关闭未确认，保留临时数据库',
+    );
+}
 
 // Never read DATABASE_URL. Only the explicitly provisioned disposable loopback CI service is allowed.
 const enabled = process.env.AGENTHUB_PG_OWNERSHIP_TEST === '1';
@@ -136,6 +150,115 @@ describe.skipIf(!enabled)('真实PostgreSQL运行归属（隔离临时数据库�
     } finally {
       await a.release();
       await b?.release();
+    }
+  });
+
+  it('启停CAS在两个独立PG连接竞争时仅一方成功，持久状态不被默认配置或预检覆盖', async () => {
+    // Separate database: do not depend on test order or change the ownership test's
+    // initial no-migrations assertion. The admin is the validated disposable CI service.
+    const casName = `agenthub_availability_${randomUUID().replaceAll('-', '')}`;
+    const casUrl = new URL(databaseUrl);
+    casUrl.pathname = `/${casName}`;
+    let casCreated = false;
+    let migration: Awaited<ReturnType<typeof createPostgresDatabase>> | undefined;
+    const clients: pg.Client[] = [];
+    const connect = async () => {
+      const client = new pg.Client({
+        connectionString: casUrl.toString(),
+        connectionTimeoutMillis: 5_000,
+        query_timeout: 5_000,
+      });
+      clients.push(client);
+      await client.connect();
+      return client;
+    };
+    try {
+      await admin!.query(`CREATE DATABASE "${casName}"`);
+      casCreated = true;
+      migration = await createPostgresDatabase(casUrl.toString());
+      await migration.close();
+      migration = undefined;
+      const first = await connect();
+      const second = await connect();
+      const firstDb = drizzle(first, { schema });
+      const secondDb = drizzle(second, { schema });
+      const a = new AgentRepository(firstDb);
+      const b = new AgentRepository(secondDb);
+      const target = await new ExecutionTargetRepository(firstDb).create({
+        id: randomUUID(),
+        name: 'CAS fixture',
+        kind: 'LOCAL_HOST',
+        hostname: 'fixture',
+        os: 'linux',
+        arch: 'x64',
+        status: 'READY',
+      });
+      const agent = await a.create({
+        id: randomUUID(),
+        targetId: target.id,
+        name: 'CAS fixture',
+        agentKind: 'CUSTOM_ACP',
+        adapterKind: 'ACP_STDIO',
+        executable: '/fixture/never-launched',
+        status: 'READY',
+        defaultModel: 'before',
+        enabled: true,
+      });
+      const firstPid = (await first.query<{ pid: number }>('SELECT pg_backend_pid() AS pid'))
+        .rows[0]!.pid;
+      const secondPid = (await second.query<{ pid: number }>('SELECT pg_backend_pid() AS pid'))
+        .rows[0]!.pid;
+      expect(firstPid).not.toBe(secondPid);
+      await first.query('BEGIN');
+      try {
+        const winner = await a.compareAndSetAvailability(agent.id, false, 0);
+        expect(winner).toMatchObject({ enabled: false, enabledRevision: 1 });
+        const competing = b.compareAndSetAvailability(agent.id, true, 0);
+        void competing.catch(() => undefined); // Observe timeout/rejection even if the lock assertion fails.
+        await vi.waitFor(
+          async () => {
+            const state = await admin!.query<{ wait_event_type: string | null }>(
+              'SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',
+              [secondPid],
+            );
+            expect(state.rows[0]?.wait_event_type).toBe('Lock');
+          },
+          { timeout: 2_000 },
+        );
+        await first.query('COMMIT');
+        expect(await competing).toBeUndefined();
+      } finally {
+        await first.query('ROLLBACK'); // Harmless after COMMIT; releases lock on any earlier failure.
+      }
+      await b.update(agent.id, { defaultModel: 'after', defaultMode: 'fixture' });
+      await a.updatePreflight(agent.id, {
+        status: 'BROKEN',
+        detectedVersion: '1.2.3',
+        capabilitiesJson: { history: true },
+      });
+      await expect(b.update(agent.id, { enabled: true } as never)).rejects.toMatchObject({
+        code: 'AGENT_AVAILABILITY_PROTECTED',
+      });
+      const reopened = await connect();
+      const persisted = await new AgentRepository(drizzle(reopened, { schema })).get(agent.id);
+      expect(persisted).toMatchObject({
+        id: agent.id,
+        enabled: false,
+        enabledRevision: 1,
+        status: 'BROKEN',
+        defaultModel: 'after',
+        defaultMode: 'fixture',
+        detectedVersion: '1.2.3',
+        capabilitiesJson: { history: true },
+      });
+    } finally {
+      const cleanup = await Promise.allSettled([
+        ...(migration ? [Promise.resolve().then(() => migration!.close())] : []),
+        ...clients.map((client) => Promise.resolve().then(() => client.end())),
+      ]);
+      assertClosed(cleanup);
+      // No FORCE, wildcard, existing schema reset, or reference to DATABASE_URL.
+      if (casCreated) await admin!.query(`DROP DATABASE "${casName}"`);
     }
   });
 });

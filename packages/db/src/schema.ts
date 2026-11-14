@@ -225,11 +225,13 @@ export const agents = pgTable(
     detectedVersion: text('detected_version'),
     status: text('status').notNull(),
     enabled: boolean('enabled').notNull().default(true),
+    enabledRevision: integer('enabled_revision').notNull().default(0),
     lastPreflightAt: timestamp('last_preflight_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
+    check('agents_enabled_revision_check', sql`${table.enabledRevision} >= 0`),
     check(
       'agents_kind_check',
       sql`${table.agentKind} in ('CODEX', 'CLAUDE_CODE', 'OPENCODE', 'HERMES', 'OPENCLAW', 'CUSTOM_ACP')`,

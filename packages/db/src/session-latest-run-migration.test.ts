@@ -1,3 +1,4 @@
+import { createLegacyAgent } from './migration-test-helpers.js';
 import { createLegacyTask, readLegacyTask } from './migration-test-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -9,7 +10,6 @@ import { createPgliteDatabase } from './client.js';
 import {
   ExecutionTargetRepository,
   ProjectRepository,
-  AgentRepository,
   SessionRepository,
   RunRepository,
   TaskRepository,
@@ -57,7 +57,7 @@ it('从0006升级保留会话与Run，不猜历史所有权；新指针跨重开
       '旧正文😀不丢失',
     );
 
-    const agent = await new AgentRepository(database.db).create({
+    const agent = await createLegacyAgent(database.db, {
       id: randomUUID(),
       targetId: target.id,
       name: '旧Agent',

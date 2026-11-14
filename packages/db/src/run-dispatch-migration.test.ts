@@ -1,3 +1,4 @@
+import { createLegacyAgent } from './migration-test-helpers.js';
 import { createLegacySession } from './migration-test-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -7,7 +8,6 @@ import { sql } from 'drizzle-orm';
 import { expect, it } from 'vitest';
 import { createPgliteDatabase } from './client.js';
 import {
-  AgentRepository,
   ExecutionTargetRepository,
   ProjectRepository,
   RunRepository,
@@ -47,7 +47,7 @@ it('0007升级不把历史QUEUED猜成未派发；新证据与历史正文跨重
       repoKind: 'NONE',
       status: 'ACTIVE',
     });
-    const agent = await new AgentRepository(database.db).create({
+    const agent = await createLegacyAgent(database.db, {
       id: randomUUID(),
       targetId: target.id,
       name: '旧',

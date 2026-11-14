@@ -1,3 +1,4 @@
+import { createLegacyAgent } from './migration-test-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,7 +7,6 @@ import { sql } from 'drizzle-orm';
 import { expect, it } from 'vitest';
 import { createPgliteDatabase } from './client.js';
 import {
-  AgentRepository,
   ExecutionTargetRepository,
   ProjectRepository,
   SessionRepository,
@@ -46,7 +46,7 @@ it('0014 upgrades existing titles without activity changes; CAS has one winner a
       repoKind: 'NONE',
       status: 'ACTIVE',
     });
-    const agent = await new AgentRepository(database.db).create({
+    const agent = await createLegacyAgent(database.db, {
       id: randomUUID(),
       targetId: target.id,
       name: 'fixture',

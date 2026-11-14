@@ -1,6 +1,6 @@
 import { eq, getTableColumns, sql } from 'drizzle-orm';
 import type { PgliteAgentHubDatabase } from './client.js';
-import { tasks, agentSessions } from './schema.js';
+import { tasks, agentSessions, agents } from './schema.js';
 
 // Historical schemas must not be queried using columns introduced later.
 export async function readLegacyTask(db: PgliteAgentHubDatabase, id: string) {
@@ -41,5 +41,28 @@ export async function createLegacySession(
   void titleRevision;
   const [row] = await db.select(columns).from(agentSessions).where(eq(agentSessions.id, input.id));
   if (!row) throw new Error('Legacy session fixture missing');
+  return row;
+}
+
+// Insert only historical columns; current schema returning() would name newer fields.
+export async function createLegacyAgent(
+  db: PgliteAgentHubDatabase,
+  input: {
+    id: string;
+    targetId: string;
+    name: string;
+    agentKind: string;
+    adapterKind: string;
+    executable: string;
+    status: string;
+    enabled?: boolean;
+  },
+) {
+  await db.execute(sql`insert into agents(id,target_id,name,agent_kind,adapter_kind,executable,status,enabled)
+    values(${input.id},${input.targetId},${input.name},${input.agentKind},${input.adapterKind},${input.executable},${input.status},${input.enabled ?? true})`);
+  const { enabledRevision, ...columns } = getTableColumns(agents);
+  void enabledRevision;
+  const [row] = await db.select(columns).from(agents).where(eq(agents.id, input.id));
+  if (!row) throw new Error('Legacy agent fixture missing');
   return row;
 }

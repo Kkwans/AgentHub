@@ -1340,13 +1340,38 @@ export class AgentRepository<TDatabase extends AgentHubDatabase> {
     return created;
   }
 
-  async update(id: string, patch: Partial<typeof agents.$inferInsert>) {
+  async update(
+    id: string,
+    patch: Partial<Omit<typeof agents.$inferInsert, 'enabled' | 'enabledRevision'>>,
+  ) {
+    if (Object.hasOwn(patch, 'enabled') || Object.hasOwn(patch, 'enabledRevision'))
+      throw new DatabaseInvariantError(
+        'AGENT_AVAILABILITY_PROTECTED',
+        '启停状态只能通过专用版本校验更新',
+      );
     const [updated] = await this.db
       .update(agents)
       .set({ ...patch, updatedAt: new Date() })
       .where(eq(agents.id, id))
       .returning();
     if (!updated) throw new DatabaseInvariantError('AGENT_NOT_FOUND', 'Agent 不存在');
+    return updated;
+  }
+
+  /** Availability-only CAS. Return the committed row, never a later reread. */
+  async compareAndSetAvailability(id: string, enabled: boolean, expectedRevision: number) {
+    if (
+      typeof enabled !== 'boolean' ||
+      !Number.isInteger(expectedRevision) ||
+      expectedRevision < 0 ||
+      expectedRevision > 2_147_483_646
+    )
+      throw new DatabaseInvariantError('AGENT_AVAILABILITY_INPUT_INVALID', '启停版本或状态无效');
+    const [updated] = await this.db
+      .update(agents)
+      .set({ enabled, enabledRevision: sql`${agents.enabledRevision} + 1`, updatedAt: new Date() })
+      .where(and(eq(agents.id, id), eq(agents.enabledRevision, expectedRevision)))
+      .returning();
     return updated;
   }
 
@@ -1360,7 +1385,15 @@ export class AgentRepository<TDatabase extends AgentHubDatabase> {
   ) {
     const [updated] = await this.db
       .update(agents)
-      .set({ ...input, lastPreflightAt: new Date(), updatedAt: new Date() })
+      .set({
+        status: input.status,
+        ...(input.detectedVersion !== undefined ? { detectedVersion: input.detectedVersion } : {}),
+        ...(input.capabilitiesJson !== undefined
+          ? { capabilitiesJson: input.capabilitiesJson }
+          : {}),
+        lastPreflightAt: new Date(),
+        updatedAt: new Date(),
+      })
       .where(eq(agents.id, id))
       .returning();
     if (!updated) throw new DatabaseInvariantError('AGENT_NOT_FOUND', 'Agent 不存在');
