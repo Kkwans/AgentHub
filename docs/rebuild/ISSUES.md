@@ -452,3 +452,7 @@ e0f10ea / CI43549132495：真实服务与独立 axe 成功，但 fixture Home �
 S66已接入持久启动预留，旧“缺claim”描述是历史设计依据，不是当前事实。但前端没有调用已有GET start-attempts，普通启动失败后用户不能查看原尝试。候选增加任务详情只读查询、历史阶段/折叠身份、auth+project+task迟到回包隔离；空/404/失败/UNKNOWN不解释未执行，不重试或解锁。
 
 另以独立memory PGlite、两个真实Repository复现：A reserve/markCreateAttempted后，B recoverAfterRestart把A标为UNKNOWN，A recordSessionReady返回false。第二实例startup可误伤仍活跃实例是待解决可用性风险；仅数据库双Repository证据，不称独立PostgreSQL进程或真实Agent双派发。后端归属/fencing须另设计，不通过跳过恢复或超时释放绕开。
+
+### 2026-11-14 04:02 UTC 启动恢复误伤已在完整服务边界复现
+
+两个实际TaskService/SessionService加完整recoverRuntimeAfterRestart与FakeAgentAdapter barrier：对照A正常RUN_ADMITTED/create1/send1；B恢复介入后A UNKNOWN/Session DISCONNECTED、create1/send0/close1，B零创建。独立memory PGlite与临时空目录，无真实Agent。端口冲突发生在恢复后，不能提供互斥。修复方案见RUNTIME_OWNERSHIP_PLAN.md；后端仍未修，不使用TTL或强制释放UNKNOWN掩盖问题。

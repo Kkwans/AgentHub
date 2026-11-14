@@ -1327,3 +1327,11 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - Trace确认采样混入display:none删除view-zone的灰色idle，同时original editor宽25px、文字容器left35px，即使CSS visible也可能完全裁切；故不能接受任意original暖色节点当绘制证据。实际失败截图已查看。
 - 修正门禁仅取modified pane：idle要求实际可见char-delete，ready要求实际可见词法span，节点须完整位于pane/viewport且尺寸非零；仍要求非空且全部命中F4C7AF，保留完整axe、只读请求、overflow与错误检查。若可见删除词实际仍灰色，门禁继续失败而非放宽。
 - 9项调色板专项/build通过，最后E2E显式类型/lint/diff-check通过，4例发现不是执行。产品代码未改，不冒领新的全量结果；最终门禁效果仍须精确CI。
+
+### 2026-11-14 04:02–04:12 UTC 启动恢复归属诊断与修复设计
+
+- 04:02:01.393–04:02:05.916完整服务barrier复现，对照成功、第二实例恢复介入后活跃A转UNKNOWN/断连，详见RUNTIME_OWNERSHIP_PLAN.md。只使用memory PGlite/FakeAgentAdapter/临时空目录，不是实际多进程PostgreSQL或真实Agent。
+- 保存可重复opt-in诊断脚本，正常对照须成功；已知干扰应exit2，普通脚本/夹具失败为exit1，不纳入普通CI把缺陷包装成绿色。独立CR指出初稿超时unref可能误exit0、错误分类过宽、清理中断，已修保活超时+提前结束race、精确故障断言及完整清理，正在最终复跑。
+- 方案明确优先单权威runtime全生命周期排他、第二实例恢复前零状态变更拒绝、失联撤销，PG/PGlite分别验收。不在本片修改后端、清UNKNOWN或承诺网络分区自动接管。
+- 04:01尝试本机已安装Chromium，普通和标准升级执行均在process_singleton socket EPERM退出，故没有新的本地浏览器证据；继续精确远端CI，而非声称静态检查等于截图验收。
+- 04:12:19.183最终正常诊断结束，严格匹配预期exit2；04:12:19.827–04:12:21提前失败探针正确exit1，lint0。04:12:22无残留临时目录，diff-check通过。诊断结果只证明问题可重复，后端问题保持开放。
