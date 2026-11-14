@@ -18,26 +18,19 @@ export interface MobileDrawerPanelProps {
   className?: string;
 }
 
-function DrawerBackdrop({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      className="mobile-drawer-backdrop fixed inset-0 z-[80] bg-[hsl(220_32%_10%/0.42)] dark:bg-[hsl(220_30%_3%/0.62)]"
-      onClick={onClose}
-      aria-hidden="true"
-    />
-  );
-}
-
 function useMobileDrawerBehavior(open: boolean, onClose: () => void) {
   const drawerRef = useRef<HTMLDialogElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const touchStartXRef = useRef<number | null>(null);
+  const closingRef = useRef(false);
   const historyMarkerRef = useRef<string | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const [dragOffset, setDragOffset] = useState(0);
 
   const requestClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
     const marker = historyMarkerRef.current;
     if (marker && window.history.state?.mobileDrawer === marker) {
       const restState = { ...window.history.state };
@@ -48,20 +41,15 @@ function useMobileDrawerBehavior(open: boolean, onClose: () => void) {
     onCloseRef.current();
   }, []);
 
-  const closeForAction = useCallback(() => {
-    const marker = historyMarkerRef.current;
-    if (marker && window.history.state?.mobileDrawer === marker) {
-      const restState = { ...window.history.state };
-      delete restState.mobileDrawer;
-      window.history.replaceState(restState, '');
-      historyMarkerRef.current = null;
-    }
-    onCloseRef.current();
-  }, []);
+  const closeForAction = requestClose;
 
   useEffect(() => {
     if (!open) return;
+    const dialog = drawerRef.current;
+    if (!dialog) return;
+    closingRef.current = false;
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    dialog.showModal();
     const previousOverflow = document.body.style.overflow;
     const previousPosition = document.body.style.position;
     const previousWidth = document.body.style.width;
@@ -72,48 +60,40 @@ function useMobileDrawerBehavior(open: boolean, onClose: () => void) {
     document.body.style.width = '100%';
     document.body.style.top = `-${scrollY}px`;
 
-    const focusableSelector =
-      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        requestClose();
-        return;
-      }
-      if (event.key !== 'Tab' || !drawerRef.current) return;
-      const focusable = Array.from(
-        drawerRef.current.querySelectorAll<HTMLElement>(focusableSelector),
-      ).filter((element) => !element.hasAttribute('hidden'));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
     const historyMarker = `mobile-drawer-${Date.now()}`;
     historyMarkerRef.current = historyMarker;
     window.history.pushState({ ...window.history.state, mobileDrawer: historyMarker }, '');
-    const handlePopState = () => onCloseRef.current();
-    window.addEventListener('keydown', handler);
+    const handlePopState = requestClose;
     window.addEventListener('popstate', handlePopState);
-    requestAnimationFrame(() =>
-      drawerRef.current?.querySelector<HTMLElement>(focusableSelector)?.focus(),
-    );
+    // showModal performs native initial focus. Do not schedule a second focus
+    // pass that could steal a user's selection or survive a rapid close/reopen.
     return () => {
+      // Route changes may already have focused a new destination. Native close
+      // restores an opener, so preserve a deliberate focus outside this dialog.
+      const outside =
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement !== document.body &&
+        !dialog.contains(document.activeElement)
+          ? document.activeElement
+          : null;
+      if (dialog.open) dialog.close();
       document.body.style.overflow = previousOverflow;
       document.body.style.position = previousPosition;
       document.body.style.width = previousWidth;
       document.body.style.top = previousTop;
       window.scrollTo(0, scrollY);
-      window.removeEventListener('keydown', handler);
       window.removeEventListener('popstate', handlePopState);
+      if (
+        historyMarkerRef.current &&
+        window.history.state?.mobileDrawer === historyMarkerRef.current
+      ) {
+        const restState = { ...window.history.state };
+        delete restState.mobileDrawer;
+        window.history.replaceState(restState, '');
+      }
       historyMarkerRef.current = null;
-      previouslyFocusedRef.current?.focus();
+      const restore = outside?.isConnected ? outside : previouslyFocusedRef.current;
+      if (restore?.isConnected) restore.focus();
       setDragOffset(0);
     };
   }, [open, requestClose]);
@@ -159,28 +139,39 @@ export function MobileDrawerPanel({
   const drawer = useMobileDrawerBehavior(open, onClose);
   if (!open) return null;
   return (
-    <>
-      <DrawerBackdrop onClose={drawer.requestClose} />
-      <dialog
-        ref={drawer.drawerRef}
-        open
-        aria-modal="true"
-        aria-label={ariaLabel}
-        className={cn(
-          'mobile-drawer m-0 h-dvh max-h-dvh overflow-hidden fixed inset-y-0 left-0 z-[90] flex w-[80vw] max-w-[320px] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--surface-elevated))] shadow-[var(--shadow-lg)] outline-none',
-          className,
-        )}
-        style={{
-          transform: `translateX(-${drawer.dragOffset}px)`,
-          transition: drawer.dragOffset ? 'none' : undefined,
-        }}
-        onTouchStart={drawer.onTouchStart}
-        onTouchMove={drawer.onTouchMove}
-        onTouchEnd={drawer.onTouchEnd}
-        onTouchCancel={drawer.onTouchCancel}
-      >
-        {typeof children === 'function' ? children(drawer.closeForAction) : children}
-      </dialog>
-    </>
+    <dialog
+      ref={drawer.drawerRef}
+      aria-modal="true"
+      aria-label={ariaLabel}
+      className={cn(
+        'mobile-drawer m-0 h-dvh max-h-dvh overflow-hidden fixed inset-y-0 left-0 z-[90] flex w-[80vw] max-w-[320px] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--surface-elevated))] shadow-[var(--shadow-lg)] outline-none',
+        className,
+      )}
+      style={{
+        transform: `translateX(-${drawer.dragOffset}px)`,
+        transition: drawer.dragOffset ? 'none' : undefined,
+      }}
+      onCancel={(event) => {
+        event.preventDefault();
+        drawer.requestClose();
+      }}
+      onClick={(event) => {
+        if (event.target !== event.currentTarget) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (
+          event.clientX < rect.left ||
+          event.clientX >= rect.right ||
+          event.clientY < rect.top ||
+          event.clientY >= rect.bottom
+        )
+          drawer.requestClose();
+      }}
+      onTouchStart={drawer.onTouchStart}
+      onTouchMove={drawer.onTouchMove}
+      onTouchEnd={drawer.onTouchEnd}
+      onTouchCancel={drawer.onTouchCancel}
+    >
+      {typeof children === 'function' ? children(drawer.closeForAction) : children}
+    </dialog>
   );
 }

@@ -242,6 +242,11 @@ for (const width of [390, 768, 1024, 1440])
       await touchTarget(saveDefaults);
       expect((await saveDefaults.boundingBox())!.width).toBeLessThan(300);
       await expect(defaults.locator('..')).toHaveCSS('border-bottom-width', '0px');
+      const availabilitySection = availability.locator('..').locator('..');
+      const defaultsBox = (await defaults.locator('..').boundingBox())!;
+      const availabilityBox = (await availabilitySection.boundingBox())!;
+      expect(Math.abs(availabilityBox.x - defaultsBox.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(availabilityBox.width - defaultsBox.width)).toBeLessThanOrEqual(1);
       await page.locator('#main-content').evaluate((element) => {
         element.scrollTop = 0;
       });

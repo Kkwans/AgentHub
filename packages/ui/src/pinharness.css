@@ -4780,3 +4780,12 @@ a:focus-visible {
     padding: 1.5rem 1.25rem;
   }
 }
+
+/* The navigation drawer is a native modal: its backdrop belongs to the top
+ * layer, not a sibling element underneath the modal's hit-testing surface. */
+.mobile-drawer::backdrop {
+  background: hsl(220 32% 10% / 0.42);
+}
+.dark .mobile-drawer::backdrop {
+  background: hsl(220 30% 3% / 0.62);
+}

@@ -317,6 +317,8 @@ export function AppShell() {
     const listener = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        // The command dialog lives outside the native navigation modal.
+        setDrawerOpen(false);
         setCommandOpen((value) => !value);
       }
       const target = event.target;

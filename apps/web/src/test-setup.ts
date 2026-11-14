@@ -65,3 +65,23 @@ if (typeof Element !== 'undefined' && typeof Element.prototype.scrollTo !== 'fun
     },
   });
 }
+
+// JSDOM lifecycle simulation only, NOT evidence of native modal focus/inertness.
+// Browser E2E owns :modal, backdrop hit testing and background interaction gates.
+if (
+  typeof HTMLDialogElement !== 'undefined' &&
+  typeof HTMLDialogElement.prototype.showModal !== 'function'
+) {
+  HTMLDialogElement.prototype.showModal = function () {
+    if (this.open) throw new DOMException('Dialog is already open', 'InvalidStateError');
+    this.open = true;
+  };
+}
+if (
+  typeof HTMLDialogElement !== 'undefined' &&
+  typeof HTMLDialogElement.prototype.close !== 'function'
+) {
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+  };
+}

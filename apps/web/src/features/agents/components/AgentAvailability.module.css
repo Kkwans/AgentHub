@@ -1,8 +1,8 @@
 .panel {
   display: grid;
   gap: 12px;
-  width: min(100%, 720px);
-  max-width: 720px;
+  width: 100%;
+  max-width: 800px;
   min-width: 0;
   padding-block: 24px 0;
   border-top: 1px solid var(--ah-border-subtle);
@@ -36,6 +36,7 @@
   overflow-wrap: anywhere;
 }
 .description {
+  max-width: 64ch;
   color: var(--ah-text-secondary);
 }
 .controls,

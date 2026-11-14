@@ -179,6 +179,15 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: '折叠侧边栏' })).toBeInTheDocument();
   });
 
+  it('Ctrl+K closes mobile navigation before opening the outside command dialog', async () => {
+    renderShell(['/projects/p-1/overview'], 390);
+    fireEvent.click(screen.getByRole('button', { name: '打开导航' }));
+    expect(screen.getByRole('dialog', { name: '导航' })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(screen.queryByRole('dialog', { name: '导航' })).toBeNull();
+    expect(await screen.findByRole('combobox', { name: '搜索' })).toBeInTheDocument();
+  });
+
   it('按六个业务分组展示命令面板并支持模糊搜索和键盘打开', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: /搜索与跳转/ }));
