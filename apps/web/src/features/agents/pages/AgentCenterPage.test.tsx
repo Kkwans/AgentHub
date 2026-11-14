@@ -301,3 +301,16 @@ it('真实默认Model保留且基础设施每个目标唯一，停用不变成�
     expect(within(nav).getByRole('link', { name })).toHaveAttribute('href', href);
   }
 });
+
+it('discovery entries are single semantic links, not nested interactive buttons', async () => {
+  vi.mocked(api.get).mockResolvedValue([]);
+  mountSources();
+  const discovery = screen.getByRole('link', { name: '发现 Agent' });
+  expect(discovery).toHaveAttribute('href', '/agents/agents/discover');
+  expect(discovery.querySelector('button, a, [role="button"]')).toBeNull();
+  const emptyDiscovery = await screen.findByRole('link', { name: '开始发现' });
+  expect(emptyDiscovery).toHaveAttribute('href', '/agents/agents/discover');
+  expect(emptyDiscovery.querySelector('button, a, [role="button"]')).toBeNull();
+  discovery.focus();
+  expect(discovery).toHaveFocus();
+});

@@ -235,8 +235,9 @@ export function AgentCenterPage() {
         title="Agent 中心"
         description="管理 Agent 身份与已登记能力。"
         actions={
-          <Link to="/agents/agents/discover">
-            <AhButton leftSection={<RefreshCw size={16} />}>发现 Agent</AhButton>
+          <Link className={styles.discoveryLink} to="/agents/agents/discover">
+            <RefreshCw size={16} aria-hidden="true" />
+            发现 Agent
           </Link>
         }
       />
@@ -350,8 +351,8 @@ export function AgentCenterPage() {
                     清除筛选
                   </AhButton>
                 ) : (
-                  <Link to="/agents/agents/discover">
-                    <AhButton>开始发现</AhButton>
+                  <Link className={styles.discoveryLink} to="/agents/agents/discover">
+                    开始发现
                   </Link>
                 )
               }

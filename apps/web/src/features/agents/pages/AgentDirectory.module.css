@@ -241,8 +241,34 @@
     gap: 4px 8px;
   }
 }
-.directoryHeader :global(.page-header-actions button) {
+/* The anchor itself owns the complete pointer and keyboard target. */
+.discoveryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 44px;
+  min-width: 44px;
+  padding: 8px 16px;
+  border: 1px solid hsl(var(--primary-hover) / 0.35);
+  border-radius: var(--radius);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.discoveryLink:hover {
+  background: hsl(var(--primary-hover));
+}
+.discoveryLink:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 3px;
+}
+.discoveryLink svg {
+  flex-shrink: 0;
 }
 @media (max-width: 767px) {
   .directoryHeader:global(.page-header-row) > :global(.page-header-actions):last-child {
