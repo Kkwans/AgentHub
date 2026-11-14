@@ -1636,3 +1636,11 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 11:31开始全web冻结验证，101文件1209测试通过/155.40s；11:35:35 root lint/types、integration types、串行全部build成功，21文件指纹一致。
 - 产品7c35a358、真实E2E c0420974分开准备推送；11条E2E实际浏览器尚未执行，不能算功能/像素验收通过。
 - 移动端两行保持标题与三个44px入口；真实DOM定位、5页/10秒预算、取消及成功后SPA ABA均有可验证断言。
+
+### 2026-11-14 11:44–11:46 UTC：首轮搜索真实浏览器失败与判定修正
+
+- a2a0736精确CI43590897144 focused job132435173044：49 passed /8 failed（6.1m），11:44:40结束。八个四宽浅深搜索case均在最后writes[]断言失败，实际观察到POST /api/v1/prompt-context/resolve；501turn、迟到取消、成功后SPA ABA三例通过。独立Prompt step因前步失败未执行，不计为通过。
+- 独立双人追踪 Workspace useQuery→Prompt路由→resolveContext→repository读取+纯render，确认该POST是既有只读解析，无写库、Run、snapshot或Provider。测试不能用POST方法等同业务写入。
+- 仅修测试分类：method严格POST且pathname精确等于prompt-context/resolve或当前Session搜索才视为只读；DELETE/其他Session搜索/其它写入仍进入writes[]。原零Run、真实id/sequence/focus/容器相交、44px/标题宽度/草稿/console断言全保留。types/lint/list11/diff通过，待新精确CI，不追认原8例通过。
+- 精确artifact14112302860 digest039102b77eb2764721319e903b1da72a9edb8ae2676920b50d2101e5d87e0938已产16张搜索/定位原图和geometry；当前尚未收到人工像素验收结论。
+- 另完成SESSION_ARCHIVE_PLAN只读方案与NEXT_PRODUCT_PLAN引用，未实施归档或迁移。
