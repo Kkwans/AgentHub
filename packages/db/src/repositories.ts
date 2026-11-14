@@ -2798,6 +2798,16 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
     return created;
   }
 
+  /** Title-only CAS: activity ordering and runtime state are deliberately untouched. */
+  async renameTitle(id: string, title: string, expectedRevision: number) {
+    const [updated] = await this.db
+      .update(agentSessions)
+      .set({ title, titleRevision: sql`${agentSessions.titleRevision} + 1` })
+      .where(and(eq(agentSessions.id, id), eq(agentSessions.titleRevision, expectedRevision)))
+      .returning();
+    return updated;
+  }
+
   async updateConfiguration(
     id: string,
     patch: Pick<typeof agentSessions.$inferInsert, 'model' | 'mode' | 'reasoningEffort'>,

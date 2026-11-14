@@ -209,6 +209,31 @@ export class SessionService {
     return { ...session, continuedFromSessionId: continuation?.sourceSessionId ?? null };
   }
 
+  async renameTitle(id: string, input: { title: string; expectedRevision: number }) {
+    this.assertRuntimeAdmission();
+    return this.trackAdmission(() => this.renameTitleAdmitted(id, input));
+  }
+
+  private async renameTitleAdmitted(
+    id: string,
+    input: { title: string; expectedRevision: number },
+  ) {
+    const updated = await this.sessions.renameTitle(id, input.title, input.expectedRevision);
+    if (!updated) {
+      if (!(await this.sessions.get(id)))
+        throw new AppError(404, 'SESSION_NOT_FOUND', 'Session 不存在');
+      throw new AppError(
+        409,
+        'SESSION_TITLE_CONFLICT',
+        '会话标题已被其他操作修改，请读取当前标题后再编辑。',
+      );
+    }
+    // Return the exact committed CAS result, never a later reread attributed to this write.
+    if (!this.continuations) return updated;
+    const continuation = await this.continuations.getByTargetSessionId(id);
+    return { ...updated, continuedFromSessionId: continuation?.sourceSessionId ?? null };
+  }
+
   async getConfiguration(id: string): Promise<SessionConfiguration> {
     const session = await this.get(id);
     const active = this.active.get(id);

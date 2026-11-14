@@ -99,6 +99,13 @@
       "when": 1794612700897,
       "tag": "0013_worktree_merge_generation",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794645000000,
+      "tag": "0014_session_title_revision",
+      "breakpoints": true
     }
   ]
 }

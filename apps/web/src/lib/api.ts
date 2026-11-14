@@ -511,6 +511,8 @@ export interface SessionRecord {
   agentId: string;
   taskId: string | null;
   title: string;
+  /** Absent only for legacy clients/fixtures; never infer a write revision. */
+  titleRevision?: number;
   cwd: string;
   branch: string | null;
   status: string;

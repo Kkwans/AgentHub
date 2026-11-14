@@ -256,6 +256,7 @@ export const agentSessions = pgTable(
     latestRunId: uuid('latest_run_id'),
     externalSessionId: text('external_session_id'),
     title: text('title').notNull(),
+    titleRevision: integer('title_revision').notNull().default(0),
     cwd: text('cwd').notNull(),
     branch: text('branch'),
     status: text('status').notNull(),
@@ -270,6 +271,7 @@ export const agentSessions = pgTable(
     archivedAt: timestamp('archived_at', { withTimezone: true }),
   },
   (table) => [
+    check('agent_sessions_title_revision_check', sql`${table.titleRevision} >= 0`),
     check(
       'agent_sessions_status_check',
       sql`${table.status} in ('CREATED', 'STARTING', 'READY', 'RUNNING', 'WAITING_APPROVAL', 'DISCONNECTED', 'FAILED', 'CLOSED')`,

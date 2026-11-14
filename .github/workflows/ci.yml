@@ -76,6 +76,7 @@ jobs:
           pnpm exec playwright test --config=playwright.real.config.ts
           tests/e2e-real/workbench.spec.ts
           tests/e2e-real/workspace-content-visual.spec.ts tests/e2e-real/workspace-process-visual.spec.ts
+          tests/e2e-real/session-rename.spec.ts
           tests/e2e-real/workspace-send-ownership.spec.ts
           tests/e2e-real/project-directory-picker.spec.ts
           tests/e2e-real/new-work-prompt.spec.ts

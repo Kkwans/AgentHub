@@ -19,6 +19,7 @@ import { StatusBadge } from '../../../components/Feedback';
 import { labelSessionBranch } from '../../../presentation/domain-labels';
 import { ChatCommandBar } from '../components/ChatCommandBar';
 import { ChatConversationView } from '../components/ChatConversationView';
+import { SessionRename } from '../components/SessionRename';
 import { SessionRail } from '../components/SessionRail';
 import { TerminalDock } from '../components/TerminalDock';
 import { WorkspaceInspector, type InspectorTab } from '../components/WorkspaceInspector';
@@ -187,6 +188,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <strong className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.02em] text-[hsl(var(--foreground))]">
           {currentSession.title}
         </strong>
+        <SessionRename session={currentSession} />
         <span className={`${workspaceStyles.sessionStatus} inline-flex items-center gap-1.5`}>
           <StatusBadge status={currentSession.status} />
         </span>

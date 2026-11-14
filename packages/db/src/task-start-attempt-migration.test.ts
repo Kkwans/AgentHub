@@ -1,3 +1,4 @@
+import { createLegacySession } from './migration-test-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -65,11 +66,10 @@ it('0010升级保留历史Task/Session，不猜创建证据，启动尝试跨重
       description: '正文与未知创建证据都不能被迁移猜写',
       promptVariablesJson: { empty: null, n: 0 },
     });
-    const sessions = new SessionRepository(database.db);
     const oldSessions = [];
     for (const status of ['CREATED', 'FAILED', 'READY'])
       oldSessions.push(
-        await sessions.create({
+        await createLegacySession(database.db, {
           id: randomUUID(),
           projectId: project.id,
           agentId: agent.id,
@@ -84,7 +84,10 @@ it('0010升级保留历史Task/Session，不猜创建证据，启动尝试跨重
     database = await createPgliteDatabase({ dataDir });
     expect(await new TaskRepository(database.db).get(task.id)).toEqual(task);
     for (const session of oldSessions)
-      expect(await new SessionRepository(database.db).get(session.id)).toEqual(session);
+      expect(await new SessionRepository(database.db).get(session.id)).toEqual({
+        ...session,
+        titleRevision: 0,
+      });
     expect(await database.db.select().from(taskStartAttempts)).toEqual([]);
     const input = {
       id: randomUUID(),
@@ -131,15 +134,13 @@ it('0010升级保留历史Task/Session，不猜创建证据，启动尝试跨重
         .values({ ...input, id: randomUUID(), sessionId: oldSessions[2]!.id, phase: 'INVALID' }),
     ).rejects.toThrow();
     await expect(
-      database.db
-        .insert(taskStartAttempts)
-        .values({
-          ...input,
-          id: randomUUID(),
-          sessionId: oldSessions[2]!.id,
-          phase: 'FAILED_KNOWN',
-          kind: 'INVALID',
-        }),
+      database.db.insert(taskStartAttempts).values({
+        ...input,
+        id: randomUUID(),
+        sessionId: oldSessions[2]!.id,
+        phase: 'FAILED_KNOWN',
+        kind: 'INVALID',
+      }),
     ).rejects.toThrow();
     await database.close();
     database = undefined;
@@ -150,7 +151,10 @@ it('0010升级保留历史Task/Session，不猜创建证据，启动尝试跨重
     expect(rows.find((row) => row.id === next!.id)).toEqual(next);
     expect(await new TaskRepository(database.db).get(task.id)).toEqual(task);
     for (const session of oldSessions)
-      expect(await new SessionRepository(database.db).get(session.id)).toEqual(session);
+      expect(await new SessionRepository(database.db).get(session.id)).toEqual({
+        ...session,
+        titleRevision: 0,
+      });
   } finally {
     await database?.close();
     await rm(temp, { recursive: true, force: true });

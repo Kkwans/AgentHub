@@ -24,6 +24,12 @@ const createSchema = z.object({
   reasoningEffort: z.string().max(80).optional(),
   taskId: z.string().uuid().optional(),
 });
+const renameTitleSchema = z
+  .object({
+    title: z.string().trim().min(1).max(240),
+    expectedRevision: z.number().int().min(0).max(2_147_483_646),
+  })
+  .strict();
 const runSchema = z.object({
   text: z.string().min(1).max(1_000_000),
   content: z.array(z.record(z.string(), z.unknown())).max(64).optional(),
@@ -67,6 +73,22 @@ export function createSessionRouter(service: SessionService): Router {
       next(error);
     }
   });
+
+  router.patch(
+    '/:id/title',
+    validate({ params: idParams, body: renameTitleSchema }),
+    async (request, response, next) => {
+      try {
+        const { id } = idParams.parse(request.params);
+        response.json({
+          data: await service.renameTitle(id, renameTitleSchema.parse(request.body)),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.get(
     '/:id/configuration',

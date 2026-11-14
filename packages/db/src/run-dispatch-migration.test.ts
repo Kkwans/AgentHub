@@ -1,3 +1,4 @@
+import { createLegacySession } from './migration-test-helpers.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -55,7 +56,7 @@ it('0007升级不把历史QUEUED猜成未派发；新证据与历史正文跨重
       executable: '/bin/false',
       status: 'READY',
     });
-    const session = await new SessionRepository(database.db).create({
+    const session = await createLegacySession(database.db, {
       id: randomUUID(),
       projectId: project.id,
       agentId: agent.id,
