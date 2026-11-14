@@ -49,7 +49,7 @@ describe('review-specific syntax contrast', () => {
       }
       expect(theme.inherit).toBe(true);
       expect(theme.colors).toEqual({}); // Never remove insertion/deletion highlights.
-      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 2 : 4);
+      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 14 : 4);
     },
   );
   it('keeps CSS identifier values readable on actual dark CI inserted/deleted character backgrounds', () => {
@@ -80,10 +80,11 @@ describe('review-specific syntax contrast', () => {
       'keyword.ts',
       'string.ts',
     ]);
-    expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
-      'attribute.name',
-      'attribute.value.css',
-    ]);
+    expect(
+      diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.filter(
+        (rule) => !rule.token.endsWith('.ts'),
+      ).map((rule) => rule.token),
+    ).toEqual(['attribute.name', 'attribute.value.css']);
   });
   it('keeps light CSS values readable on the exact stacked deleted-character CI background', () => {
     const theme = diffEditorThemes[AGENTHUB_DIFF_LIGHT]!;
@@ -135,15 +136,14 @@ describe('review-specific syntax contrast', () => {
       expect(contrast(color, background)).toBeGreaterThanOrEqual(4.5);
     }
     expect(
-      theme.rules.some((rule) =>
-        ['keyword', 'keyword.js', 'number.ts'].includes(rule.token),
-      ),
+      theme.rules.some((rule) => ['keyword', 'keyword.js', 'number.ts'].includes(rule.token)),
     ).toBe(false);
     expect(theme.colors).toEqual({});
-    expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
-      'attribute.name',
-      'attribute.value.css',
-    ]);
+    expect(
+      diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.filter(
+        (rule) => !rule.token.endsWith('.ts'),
+      ).map((rule) => rule.token),
+    ).toEqual(['attribute.name', 'attribute.value.css']);
   });
   it('keeps TSX strings readable on exact dark deleted and inserted character backgrounds', () => {
     const theme = diffEditorThemes[AGENTHUB_DIFF_DARK]!;
@@ -195,5 +195,44 @@ describe('review-specific syntax contrast', () => {
     for (const bg of ['171717', '292929', '383838'])
       expect(contrast(colors[1]!, rgb(bg))).toBeGreaterThanOrEqual(4.5);
     expect(theme).toContain('--ah-text-tertiary: #6e6e6e;');
+  });
+});
+
+describe('neutral light TypeScript palette', () => {
+  const groups = [
+    ['3D4859', ['keyword.ts', 'keyword.other.ts']],
+    ['554236', ['string.ts', 'string.escape.ts']],
+    [
+      '374B42',
+      ['number.ts', 'number.float.ts', 'number.hex.ts', 'number.octal.ts', 'number.binary.ts'],
+    ],
+    ['4D4057', ['type.identifier.ts']],
+    ['424B45', ['comment.ts', 'comment.doc.ts']],
+  ] as const;
+  it.each(groups)(
+    '%s covers only its normal TS token family on unchanged/added/deleted backgrounds',
+    (color, tokens) => {
+      for (const token of tokens)
+        expect(
+          diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.find((rule) => rule.token === token)
+            ?.foreground,
+        ).toBe(color);
+      for (const bg of ['ffffff', 'ebf1dc', 'd7e8b0', 'ffcccc', 'ffa3a3'])
+        expect(contrast(color, rgb(bg))).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+  it('does not recolor invalid tokens, other languages or diff backgrounds', () => {
+    const light = diffEditorThemes[AGENTHUB_DIFF_LIGHT]!;
+    expect(
+      light.rules.filter((rule) => !rule.token.endsWith('.ts')).map((rule) => rule.token),
+    ).toEqual(['attribute.name', 'attribute.value.css']);
+    expect(light.rules.some((rule) => /invalid|error|\.js$/.test(rule.token))).toBe(false);
+    expect(light.colors).toEqual({});
+    expect(diffEditorThemes[AGENTHUB_DIFF_DARK]!.rules).toEqual([
+      { token: 'attribute.name', foreground: '9CDCFE' },
+      { token: 'attribute.value.css', foreground: 'F4C7AF' },
+      { token: 'keyword.ts', foreground: 'B1D3FF' },
+      { token: 'string.ts', foreground: 'F4C7AF' },
+    ]);
   });
 });

@@ -3,8 +3,8 @@ import type { editor } from 'monaco-editor';
 export const AGENTHUB_DIFF_LIGHT = 'agenthub-diff-light';
 export const AGENTHUB_DIFF_DARK = 'agenthub-diff-dark';
 
-// Keep Monaco's syntax palette and diff backgrounds. Its default bright-red
-// attribute/property token fails contrast on the inserted-character highlight.
+// Preserve Monaco's diff backgrounds. Override only audited syntax families:
+// light TS uses muted hues; CSS and dark retain their verified contrast fixes.
 export const diffEditorThemes: Record<string, editor.IStandaloneThemeData> = {
   [AGENTHUB_DIFF_LIGHT]: {
     base: 'vs',
@@ -14,6 +14,20 @@ export const diffEditorThemes: Record<string, editor.IStandaloneThemeData> = {
       // Light CSS values retain blue syntax while clearing the actual stacked
       // deleted-character background (#ffa3a3) seen in the focus-review CI.
       { token: 'attribute.value.css', foreground: '033E80' },
+      // Low-chroma TS only. Keep the inherited diff backgrounds and invalid
+      // token semantics; ordinary text clears the stacked #ffa3a3 deletion.
+      { token: 'keyword.ts', foreground: '3D4859' },
+      { token: 'keyword.other.ts', foreground: '3D4859' },
+      { token: 'string.ts', foreground: '554236' },
+      { token: 'string.escape.ts', foreground: '554236' },
+      { token: 'number.ts', foreground: '374B42' },
+      { token: 'number.float.ts', foreground: '374B42' },
+      { token: 'number.hex.ts', foreground: '374B42' },
+      { token: 'number.octal.ts', foreground: '374B42' },
+      { token: 'number.binary.ts', foreground: '374B42' },
+      { token: 'type.identifier.ts', foreground: '4D4057' },
+      { token: 'comment.ts', foreground: '424B45' },
+      { token: 'comment.doc.ts', foreground: '424B45' },
     ],
     colors: {},
   },
