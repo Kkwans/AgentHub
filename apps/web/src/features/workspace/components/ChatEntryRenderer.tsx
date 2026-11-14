@@ -414,7 +414,6 @@ function PlanEventRow({ plan }: { plan: ConversationPlanItem }) {
         <span className="tool-event-copy min-w-0 flex-1">
           <span>
             <strong>{title}</strong>
-            <small className="tool-entry-badge">Agent 计划</small>
           </span>
           {plan.updatedAt && plan.updatedAt !== plan.createdAt ? (
             <code>{new Date(plan.updatedAt).toLocaleTimeString('zh-CN')}</code>

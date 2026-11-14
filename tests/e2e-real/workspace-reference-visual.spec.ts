@@ -312,6 +312,10 @@ for (const width of [390, 768, 1024, 1440]) {
       const tools = page.locator('.tool-event-row .tool-entry-card');
       await expect(tools).toHaveCount(4);
       await expect(page.locator('.plan-event-row')).toHaveCount(1);
+      await expect(page.locator('.plan-event-row summary')).toHaveText('执行计划 · 3/3 完成');
+      await expect(page.locator('.plan-event-row summary')).toHaveAccessibleName(
+        '执行计划 · 3/3 完成，展开执行计划详情',
+      );
       for (const label of ['读取代码', '编辑文件', '测试结果（合成）', '静态检查（合成）']) {
         const heading = tools
           .locator('.tool-entry-badge')
