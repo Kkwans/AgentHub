@@ -486,6 +486,8 @@ export interface AgentRecord {
   adapterKind: string;
   status: string;
   enabled: boolean;
+  /** Absent on older servers; availability editing must fail closed. */
+  enabledRevision?: number;
   detectedVersion: string | null;
   defaultModel: string | null;
   defaultMode: string | null;

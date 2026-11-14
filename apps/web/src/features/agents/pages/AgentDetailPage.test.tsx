@@ -25,6 +25,7 @@ const make = (id: string): AgentRecord => ({
   adapterKind: 'ACP_STDIO',
   status: 'UNVERIFIED',
   enabled: true,
+  enabledRevision: 0,
   detectedVersion: null,
   defaultModel: 'old-model',
   defaultMode: null,
@@ -138,7 +139,8 @@ describe('exact Agent defaults management', () => {
     expect(await screen.findByRole('heading', { name: 'Agent two' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Agent one' })).not.toBeInTheDocument();
     expect(screen.getByText('尚未检查')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /启动|禁用|删除|检查/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '禁用新工作' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /启动|删除|检查/ })).not.toBeInTheDocument();
   });
   it.each(['missing', 'duplicate', 'malformed'])(
     'blocks unsafe detail identity: %s',
@@ -333,4 +335,19 @@ it('连接检查读取已保存状态不覆盖默认设置草稿', async () => {
   await screen.findByText('最近检查就绪');
   expect(model).toHaveValue('unsaved-draft');
   expect(api.patch).not.toHaveBeenCalled();
+});
+
+it('availability update preserves unsaved model/mode draft and never posts a connection probe', async () => {
+  mount();
+  const model = await screen.findByRole('textbox', { name: '默认模型' });
+  fireEvent.change(model, { target: { value: 'keep-my-draft' } });
+  vi.mocked(api.patch).mockResolvedValue({ ...records[1], enabled: false, enabledRevision: 1 });
+  fireEvent.click(screen.getByRole('button', { name: '禁用新工作' }));
+  await screen.findByText('本次启停设置已保存。');
+  expect(model).toHaveValue('keep-my-draft');
+  expect(api.patch).toHaveBeenCalledWith('/agents/two/availability', {
+    enabled: false,
+    expectedRevision: 0,
+  });
+  expect(api.post).not.toHaveBeenCalled();
 });

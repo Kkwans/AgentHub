@@ -1,3 +1,4 @@
+import { AgentAvailability } from '../components/AgentAvailability';
 import { AgentConnectionCheck } from '../components/AgentConnectionCheck';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -84,7 +85,15 @@ function AgentDetail({ agentId }: { agentId: string }) {
   const [identityChanged, setIdentityChanged] = useState(false);
   const current = (token: number) => live.current && token === generation.current;
   const adopt = (value: AgentRecord) => {
-    setAgent(value);
+    setAgent((previous) =>
+      previous &&
+      previous.id === value.id &&
+      previous.targetId === value.targetId &&
+      typeof previous.enabledRevision === 'number' &&
+      previous.enabledRevision > (value.enabledRevision ?? -1)
+        ? { ...value, enabled: previous.enabled, enabledRevision: previous.enabledRevision }
+        : value,
+    );
     setModel(value.defaultModel ?? '');
     setMode(value.defaultMode ?? '');
   };
@@ -326,6 +335,25 @@ function AgentDetail({ agentId }: { agentId: string }) {
               </section>
             ) : null}
           </Card>
+          <AgentAvailability
+            agent={agent}
+            onObserved={(value) => {
+              setAgent((previous) => {
+                if (
+                  !previous ||
+                  previous.id !== value.id ||
+                  previous.targetId !== value.targetId ||
+                  (previous.enabledRevision ?? -1) > value.enabledRevision
+                )
+                  return previous;
+                return {
+                  ...previous,
+                  enabled: value.enabled,
+                  enabledRevision: value.enabledRevision,
+                };
+              });
+            }}
+          />
           <AgentConnectionCheck
             key={`${agent.id}:${agent.targetId}`}
             agent={agent}
@@ -336,7 +364,17 @@ function AgentDetail({ agentId }: { agentId: string }) {
               const saved = await readAgent(agentId);
               if (!current(token)) return;
               if (saved.targetId !== agent.targetId) throw new Error('identity changed');
-              setAgent(saved); // Refresh evidence, never overwrite unsaved defaults.
+              setAgent((previous) =>
+                previous &&
+                typeof previous.enabledRevision === 'number' &&
+                previous.enabledRevision > (saved.enabledRevision ?? -1)
+                  ? {
+                      ...saved,
+                      enabled: previous.enabled,
+                      enabledRevision: previous.enabledRevision,
+                    }
+                  : saved,
+              ); // Refresh evidence, never overwrite unsaved defaults.
             }}
           />
           <details className={styles.technical}>
