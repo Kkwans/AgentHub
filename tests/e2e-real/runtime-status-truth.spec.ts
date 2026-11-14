@@ -80,21 +80,37 @@ for (const theme of ['light', 'dark']) {
         await expect(runtime).toHaveAttribute('aria-current', 'page');
         const primaryBox = (await home.boundingBox())!;
         const runtimeBox = (await runtime.boundingBox())!;
+        const navBox = (await infrastructure.boundingBox())!;
+        const navMetrics = async (element: HTMLElement) => ({
+          clientWidth: element.clientWidth,
+          offsetWidth: element.offsetWidth,
+          reservedInlineWidth: element.offsetWidth - element.clientWidth,
+          scrollbarGutter: getComputedStyle(element).scrollbarGutter,
+          overflowY: getComputedStyle(element).overflowY,
+          paddingLeft: getComputedStyle(element).paddingLeft,
+          paddingRight: getComputedStyle(element).paddingRight,
+        });
+        const metrics = {
+          primary: await primary.evaluate(navMetrics),
+          infrastructure: await infrastructure.evaluate(navMetrics),
+        };
+        await info.attach(`runtime-sidebar-geometry-${theme}-${width}`, {
+          body: JSON.stringify({ primaryBox, runtimeBox, navBox, metrics }),
+          contentType: 'application/json',
+        });
+        expect(metrics.infrastructure.scrollbarGutter).toBe(metrics.primary.scrollbarGutter);
+        expect(metrics.infrastructure.clientWidth).toBe(metrics.primary.clientWidth);
         expect(Math.abs(primaryBox.x - runtimeBox.x)).toBeLessThanOrEqual(1);
         expect(
           Math.abs(primaryBox.x + primaryBox.width - runtimeBox.x - runtimeBox.width),
         ).toBeLessThanOrEqual(1);
-        const navBox = (await infrastructure.boundingBox())!;
+
         expect(runtimeBox.x - navBox.x).toBeGreaterThanOrEqual(7.99);
         expect(navBox.x + navBox.width - runtimeBox.x - runtimeBox.width).toBeGreaterThanOrEqual(
           7.99,
         );
         await runtime.focus();
         await expect(runtime).toBeFocused();
-        await info.attach(`runtime-sidebar-geometry-${theme}-${width}`, {
-          body: JSON.stringify({ primaryBox, runtimeBox, navBox }),
-          contentType: 'application/json',
-        });
       }
       const adopt = page.getByRole('button', { name: '接入', exact: true });
       if (await adopt.count()) {

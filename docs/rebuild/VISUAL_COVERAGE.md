@@ -259,3 +259,9 @@ artifact14119838536，声明SHA256 30c25df9be4ec448b8033b449e74ec85e62a6ced07188
 | P2 | 项目详情次级弹窗/读取异常 | overview/work/sessions正常图与state-truth行为不等于弹窗/异常图 | 打开取消/回焦；受控延迟/错误明确标注故障注入，不真实创建会话或改类型 |
 
 v1-exception-states虽然有登录/loading/error/offline spec，但不在当前CI显式清单，不能计入持续验收；该spec包含账户初始化，不能未经单独范围审查直接为补图启用。Settings新图与Infrastructure新图待各自精确SHA实际产出。
+
+## 2026-11-14 17:54 UTC Sidebar 真实轴线失败修片
+
+649与fa5精确focused各133过6失败，全部是Runtime导航轴线：768/1024差3.5px，1440右轴差7px。实际fa5图与CSS证实主导航overflow-y-auto触发全局stable 7px滚动槽，而副导航没有；候选统一副导航滚动容器规则，不硬写7px补丁、不放宽≤1门禁。原始client/offset/gutter/link几何移至断言前附存，失败也可审。29专项、1422聚合与build过；新像素仍待，不拿静态成功宣称视觉修复通过。
+
+fa5 Settings四标准宽双主题实际五子页/取消弹窗已产出，人工抽390浅五页与两弹窗、1440深五页及768浅系统：无新裁切阻断。P2高级安全句分组、中文标题、账户中性scope标签待改；这不掩盖同run六个Sidebar失败。

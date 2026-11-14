@@ -73,7 +73,7 @@ describe('AppShell', () => {
     const primary = screen.getByRole('navigation', { name: '主导航' });
     const infrastructure = screen.getByRole('navigation', { name: 'Infrastructure' });
     for (const navigation of [primary, infrastructure]) {
-      expect(navigation).toHaveClass('px-2', '2xl:px-3');
+      expect(navigation).toHaveClass('px-2', '2xl:px-3', 'overflow-y-auto');
     }
     const runtime = within(infrastructure).getByRole('link', { name: '运行环境' });
     expect(runtime).toHaveAttribute('href', '/agents/runtime');

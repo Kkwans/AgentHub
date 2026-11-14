@@ -173,7 +173,10 @@ function Navigation({
         ))}
       </nav>
       <div className="my-3 h-px w-full bg-[hsl(var(--sidebar-border))]/70" aria-hidden="true" />
-      <nav aria-label="Infrastructure" className={`flex flex-col gap-0.5 ${navigationGutterClass}`}>
+      <nav
+        aria-label="Infrastructure"
+        className={`flex flex-col gap-0.5 overflow-y-auto ${navigationGutterClass}`}
+      >
         {!collapsed && (
           <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--sidebar-section-label))]">
             Infrastructure

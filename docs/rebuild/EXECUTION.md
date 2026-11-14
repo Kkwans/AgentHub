@@ -1941,3 +1941,8 @@ Home四文件最终冻结聚合17:17:32结束130文件1420通过/190.38秒，14�
 - 17:33:28 UTC已fetch核fa5b983推送，run43621745516排队；17:32:22最终build成功。仅test/docs变更，Settings真实图仍待。527首页focused139/0/0精确图已人工验收：CTA gap24、零摘要去除，祖先opacity全1，当前像素不泛灰；旧灰疑点归稳定截图证据，不冒称修了配色bug。
 - 17:40 UTC 三spec候选静态/30例发现及独立CR无阻断：独立Infrastructure8例仅接focused（不改full140 baseline），真实新图未执行；创建项目/新建工作主流程各补四宽双主题，原路径/固定版本/hash/Run/消息断言保留。CR发现capture漏dialog自身overflow，已纳入自身+后代稳定索引并补真实到底≤1/归零验证，未以过宽断言隐藏。
 - 17:40:19 UTC 尝试现有Chromium运行独立390浅色首例，browser fixture启动被本环境socket() Operation not permitted阻断，正文未进入，因此无新host diagnostics GET、无像素图，不算产品用例失败/通过。未绕过权限，继续已支持的CI浏览器验证。全仓build继续，尚未发布此三spec。
+- 17:42:39 UTC已fetch核b452448推送，run43622579736排队；最终类型/lint/CR及17:41:06全仓build通过。三spec发现30例，但本地Chromium启动权限阻塞，尚无新真实用例通过/截图，不把发现列表当执行。新样式未在本片改动，重点补全页证据与故障门禁。
+- 17:45 UTC发现页只读审计发现默认Docker Unix socket不受现PATH/HOME隔离约束，已暂停图证接入并启动test-only前置；未执行发现页GET/重扫/接入，也未访问真实Docker。当前b452仅Nodes/注册空表单/host diagnostics范围保持，等待精确CI。
+- 17:51:59.862 UTC Sidebar滚动槽修片最终130文件1422通过200.37秒，29专项/类型/独立CR通过，17:52:21全仓build通过。新分页红回归文件mtime17:52:01.338晚于聚合完成1.476秒，故本结果不含该新测试，不能声称分页已修。
+- 分页649精确trace与新专项已证pending旧内容尺寸改变时保存过时基线：新回归expected6000/actual6100，产品候选尚未修/未发布，保持原2px门禁，后续以同消息相对scrollport证据复核，不把该故障当纯fixture噪声。
+- Docker test-only前置独立18/18与类型/主工程CR通过，仅health起停、HTTP mock验证，不连接真实Docker/发现页；5c089b4已更新分支并fetch核对，Sidebar独立切片继续发布。
