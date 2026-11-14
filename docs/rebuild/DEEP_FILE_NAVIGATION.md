@@ -55,3 +55,5 @@ FileInspector现在明确100%高度，树占有限轨道并独立滚动，预览
 22:54 UTC标题聚焦小修：仅.file-preview-header h3:focus去掉box-shadow，保2px solid outline/-2px offset与全部焦点/键盘行为。新增源样式回归及真实首次阅读、键盘返回后computed shadow/outline门禁。43专项、web/真实类型、全仓lint/typecheck与串行build通过；这是局部CSS风险范围验证，不重复声称新一轮全仓单测完成，精确新图待CI。
 
 43专项可复现范围：`corepack pnpm exec vitest run apps/web/src/features/workspace/components/FileInspector.test.tsx apps/web/src/features/workspace/pages/WorkspacePage.test.tsx`，FileInspector9+WorkspacePage34。
+
+23:04 UTC dbc精确补证：run43650616675工作区24/24通过，artifact14135879213（SHA256 03b3a3df94836b3fd24a6f1c9a155656911fe507be74b4ba2e634b6a659943db）390浅/1440深实图确认h3外侧叠框消失，仅保2pxoutline。首次选择/键盘返回的computed shadow none与outline门禁通过，首屏/树状态行为不变。其完整CI仍非全部完成。

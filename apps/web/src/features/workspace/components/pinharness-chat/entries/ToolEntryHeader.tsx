@@ -1,5 +1,6 @@
 import { cn } from '@agenthub/ui';
 import { Check, ChevronRight, CircleAlert, Link2 } from 'lucide-react';
+import { useId } from 'react';
 import type { ToolTheme } from '../toolThemes';
 
 interface ToolEntryHeaderProps {
@@ -10,6 +11,7 @@ interface ToolEntryHeaderProps {
   theme: ToolTheme;
   toolName: string;
   summary: string;
+  summaryFullText?: string | undefined;
   summaryFilePath?: string | null;
   summaryMonospace?: boolean;
   resultSummary: string;
@@ -110,6 +112,7 @@ export function ToolEntryHeader({
   theme,
   toolName,
   summary,
+  summaryFullText,
   summaryFilePath,
   summaryMonospace = false,
   resultSummary,
@@ -120,6 +123,8 @@ export function ToolEntryHeader({
   onToggle,
   onOpenFile,
 }: ToolEntryHeaderProps) {
+  const descriptionId = useId();
+  const fullSummary = summaryFilePath || summaryFullText || summary;
   const { Icon } = theme;
   // Presentation-only exact deduplication. Whitespace may be meaningful in a
   // command or path; preserve distinct text and the original file action.
@@ -135,10 +140,16 @@ export function ToolEntryHeader({
         showDetail && 'tool-entry-trigger--expanded',
       )}
     >
+      {visibleSummary && fullSummary && (
+        <span id={descriptionId} className="sr-only">
+          {fullSummary}
+        </span>
+      )}
       <button
         type="button"
         onClick={onToggle}
         disabled={!hasOutput}
+        aria-describedby={visibleSummary && fullSummary ? descriptionId : undefined}
         aria-expanded={hasOutput ? showDetail : undefined}
         aria-label={`${toolName}，${isActive ? '工具执行中' : isFailed ? '工具调用失败' : '工具调用完成'}${hasOutput ? (showDetail ? '，收起详情' : '，展开详情') : ''}`}
         className="flex min-h-11 min-w-0 flex-1 items-center gap-2 overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/35"
@@ -153,7 +164,9 @@ export function ToolEntryHeader({
         </span>
         <span className="tool-entry-copy">
           <span className="tool-entry-title-row">
-            <span className="tool-entry-badge">{toolName}</span>
+            <span className="tool-entry-badge" title={toolName}>
+              {toolName}
+            </span>
             {visibleSummary && <span className="tool-entry-separator" aria-hidden="true" />}
             {visibleSummary && (
               <span

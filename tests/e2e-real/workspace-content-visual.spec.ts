@@ -367,6 +367,33 @@ for (const width of [390, 768, 1024, 1440]) {
         completed,
         page.getByRole('region', { name: 'Agent 对话' }),
       );
+      if (width === 390) {
+        const toolRow = page
+          .locator('.tool-entry-card')
+          .filter({ has: page.locator('.tool-entry-badge', { hasText: '修改 Fixture 文件' }) });
+        const badge = toolRow.locator('.tool-entry-badge');
+        const summary = toolRow.locator('.tool-entry-summary');
+        await expect(badge).toHaveText('修改 Fixture 文件');
+        await expect(summary).toHaveText('fixture.ts');
+        for (const text of [badge, summary]) {
+          const metrics = await text.evaluate((node) => ({
+            width: node.clientWidth,
+            scroll: node.scrollWidth,
+            height: node.clientHeight,
+            scrollHeight: node.scrollHeight,
+          }));
+          expect(metrics.scroll).toBeLessThanOrEqual(metrics.width + 1);
+          expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.height + 1);
+        }
+        const titleBox = (await badge.boundingBox())!;
+        const summaryBox = (await summary.boundingBox())!;
+        expect(summaryBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
+        for (const button of await toolRow.locator('.tool-entry-trigger > button').all()) {
+          const box = (await button.boundingBox())!;
+          expect(box.width).toBeGreaterThanOrEqual(44);
+          expect(box.height).toBeGreaterThanOrEqual(44);
+        }
+      }
       const body = await readFile(join(app.projectRoot, 'fixture-output.md'), 'utf8');
       expect(body).toContain('Approval 已确认');
       // Intent-to-add produces a real reviewable diff for the new fixture file.

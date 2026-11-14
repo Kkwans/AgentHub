@@ -326,6 +326,7 @@ export const ToolUseEntry = memo(
           theme={theme}
           toolName={toolName}
           summary={summary}
+          summaryFullText={toolCommand(e.rawInput) ?? toolInputPath(e.rawInput) ?? summary}
           summaryFilePath={toolSummaryFilePath(themeKey, e.rawInput)}
           summaryMonospace={['terminal', 'read', 'edit', 'search', 'fetch'].includes(themeKey)}
           resultSummary={resultSummary}

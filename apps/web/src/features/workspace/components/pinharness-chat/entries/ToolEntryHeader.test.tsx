@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { URL as NodeURL } from 'node:url';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { TOOL_THEMES } from '../toolThemes';
@@ -158,4 +160,37 @@ it('keeps existing edit open-path precedence independent of basename summary pre
   fireEvent.click(screen.getByRole('button', { name: '在文件面板中打开：/action/original.ts' }));
   expect(onOpenDiff).toHaveBeenCalledWith('/action/original.ts');
   expect(rawInput.file_path).toBe('/summary/visible.ts');
+});
+
+it('retains full command and file identity as an accessible description without disturbing adjacent file action', () => {
+  const command = 'printf "' + 'long command '.repeat(20) + '"';
+  const view = render(<ToolEntryHeader {...base} summary="printf …" summaryFullText={command} />);
+  expect(screen.getByRole('button', { name: /读取代码/ })).toHaveAccessibleDescription(command);
+  view.rerender(
+    <ToolEntryHeader
+      {...base}
+      summary="long/path/file.ts"
+      summaryFilePath="long/path/file.ts"
+      filePathForOpen="long/path/file.ts"
+    />,
+  );
+  expect(screen.getByRole('button', { name: /^读取代码/ })).toHaveAccessibleDescription(
+    'long/path/file.ts',
+  );
+  expect(view.container.querySelector('.tool-entry-summary')).toHaveTextContent('file.ts');
+  expect(
+    view.container.querySelector('.tool-entry-trigger > button + button'),
+  ).toHaveAccessibleName('在文件面板中打开：long/path/file.ts');
+});
+it('only stacks summary-bearing title rows within the phone breakpoint', () => {
+  const css = readFileSync(
+    new NodeURL('../../../../../../../../packages/ui/src/pinharness.css', import.meta.url),
+    'utf8',
+  );
+  const rule = css.slice(css.indexOf('/* Phone tool rows preserve action'));
+  expect(rule).toContain('@media (max-width: 767px)');
+  expect(rule).toMatch(
+    /\.tool-entry-title-row:has\(\.tool-entry-summary\)\s*\{[^}]*flex-direction: column/,
+  );
+  expect(rule).toMatch(/> \.tool-entry-badge\s*\{[^}]*max-width: 100%/);
 });

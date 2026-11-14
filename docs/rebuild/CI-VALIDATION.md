@@ -81,3 +81,7 @@
 0ff36ee focused为146/1：390浅色诊断summary焦点outline读到3px/offset0，原期待2px/offset2；精确artifact14135367570显示focusVisible/activeElementMatches/documentHasFocus均true、radius6/gap8正常。trace实际加载模块CSS与DOM class一致、声明正确，未发现workspace scope覆盖或对应3/0样式。Enter约18ms后读取，只等待焦点而未等待完整样式。全局reduced-motion通配0.01ms且summary默认transition-property:all是候选解释，但旧trace缺动态数据，不能宣称已证明flaky/过渡根因。
 
 本次仅测试改为同次采样有限poll完整焦点/样式元组，仍要求2px/2px/radius6/gap>=7.99与焦点三真，保留原最终断言/用例timeout/零重试；finally记录首读及全部采样、transition/reducedMotion/animations供失败诊断。未改产品CSS、不放宽目标值。严格类型/lint/prettier/list8通过，精确新浏览器验证待运行。
+
+### 2026-11-14 23:09 UTC：ec2精确完整CI收口
+
+`ec2e9fec9c036b0ff77c4a1e78c8b3a515835d70` / run43649594476为completed success，全部6 job成功：full186/186（含此前遗漏锚点后的真实ACP Approval/Diff/Git commit完整链）、geometry140页；focused147+repair4；工作区短链24；verify244文件2483例通过、6文件12例按原条件skip、fixture111+13skip及另一9例；axe/真实PG成功。auth-stream完整8/8于该CI通过。此为精确ec2验收，不覆盖后续dbc或当前手机工具行/平板候选，也不等于生产provider/NAS联调。

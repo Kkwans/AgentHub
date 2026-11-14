@@ -2149,3 +2149,5 @@ aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spe
 - 2026-11-14 22:53 UTC：ec2新真实短链24/24，下载校验并审16张深树reading/empty图，390正文首行约820→367，basename与分区已实际可读；两张手机/桌面图已交付root。发现聚焦标题双框来自全局shadow+局部outline，另做局部保焦点修补。53e3e39已推基础设施完整焦点样式轮询及采样证据，不放宽2px/2px期待；新focused执行待结果。
 
 - 2026-11-14 22:54 UTC：ec2真图发现文件标题聚焦双框，确认为pinharness.css全局[tabindex]:focus-visible shadow叠局部outline。小修只清该h3 shadow，保焦点与outline，并补源样式+首次/返回阅读真实computed门禁；43专项、全仓lint/typecheck、串行build过，准备push供精确新图。未改空目录裁切或平板头部，未降低焦点可见性。
+
+- 2026-11-14 23:10 UTC：手机工具行候选完成，将<=767有summary工具操作名/对象分两行，完整路径/命令可访问，不动桌面一行/状态/折叠/文件动作；专项19、CR过。与平板候选统一冻结10文件，lint/types、web116/1392+UI18/89（134文件1481例）、串行build与哈希核对成功。先推手机逻辑片，精确新图尚待。ec2完整6 jobs已绿，边界详CI-VALIDATION，不能代替本候选。
