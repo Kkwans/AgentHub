@@ -79,3 +79,11 @@ PATCH /api/v1/sessions/:id/archive
 - **视觉与真实服务**：390 / 768 / 1024 / 1440 × 明暗，标题宽度和44px移动触点、横向溢出、键盘与焦点；实际数据库归档 / 恢复及原消息仍可搜索导出；无真实 Provider 调用。
 
 **本文件未执行迁移、修改产品、调用 Provider 或证明真实浏览器通过。**
+
+## 2026-11-14 12:18 UTC：DB候选与服务准入收窄
+
+DB层已实现未发布候选，隔离PGlite 19文件193通过；0015旧schema实测不存在新列再升级0016。独立CR确认只新增归档列/非负约束、专用CAS、通用写入保护与后台list完整性。新增真实PG双连接锁竞争用例已发现4例，**尚未执行真实PG**，不得声称实际多进程验证通过。服务和UI未实施。
+
+服务首片拟仅允许 **CLOSED且无待处理/未知操作或资源清理风险** 的会话归档。READY/DISCONNECTED可能随后启动，仅短锁检查不足以保证隐藏后不会出现工作；在活动/审批发现入口完整前，不支持这两类归档。CLOSED本身仍不是安全证明：还需核对blocking Run、approval pending/outbox UNKNOWN或DEAD、task-start UNKNOWN及准备阶段、preparation/run/lifecycle admission，以及未确认handle/资源清理。恢复始终只改变分类，不清理这些未知事实。
+
+拟复用runtime admission tracking和activation commit队列对短DB检查+CAS线性化，停服应等待已准入写入；不得把Provider调用放进队列或把状态假定为资源已退出。该服务合同仍需专门竞态测试及独立CR，不能凭DB候选推断安全归档已可用。

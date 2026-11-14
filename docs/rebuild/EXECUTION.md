@@ -1654,3 +1654,14 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 产品065b9fdd、证据ee98eb16本批准备发布：新增浏览器断言compact前后真实几何、无假新消息、回最新不遮正文、恢复/再次搜索/草稿、临时高亮结束后的computed可见focus ring；11真实E2E尚未新跑。
 - verify fixture门禁改零重试+首错停止，原partial artifact保留。全通过仍跑全矩阵；失败时未跑项不得计通过。旧running日志API404，不能编造旧verify失败原因。
 - 2fdcec9精确CI43591858437 focused已57主流程+Prompt4通过，含原11搜索；这是测试分类修复复验，不是本批紧凑样式像素验收。
+
+### 2026-11-14 12:02–12:14 UTC：发布后精确CI的两类失败
+
+- 065b9fdd/ee98eb16/6cdc4597 已于12:02:06完成远端发布并fetch确认；本机最终1211通过不替代浏览器结果。
+- 6cdc4597 run43592809083：真实PG与axe成功。verify的Monaco重复6例通过，但fixture首例desktop1440/light在初始化等待消息200时无`.message`，30秒超时；首错停止后1失败、119未运行，未进入分页动作。fixture artifact14113770579，SHA256 73571e0b1a1194bcb4329ad978012cb8693eac7ffeba5232610ea5feb7a762d1。根因调查中，不将其预判为环境问题。
+- focused job132440941026：49通过、8失败。四宽浅深的八个搜索case均在临时标记结束后的computed可见焦点断言失败（session-message-search.spec.ts:222）；此前几何断言和图片不能视为整例通过。artifact14113117543，SHA256 aae9b262b2d5057626b8d69f72894da448003134f6a2e9060e6b2753ad564c79。独立Prompt step未执行；完整real矩阵仍运行。
+- 正在分别读取精确trace定位初始历史fixture与焦点CSS/计算问题，未推热修，未以旧图替代新图。
+- 独立归档DB候选19文件193测试通过，旧0015真实升级0016与CAS边界通过，独立CR无阻断；仍未发布、未接服务/UI，仅PGlite并发不等于独立PostgreSQL连接验证。追加真实PG测试中，不改用户数据库。
+- 12:15 UTC补充：精确focused artifact下载hash核对并查看390浅色失败图，确实缺焦点环。构建CSS的`.workspace .message-user { box-shadow:none }`优先级高于全局`:where(...):focus-visible`，临时标记消退后仍覆盖默认环；不是单纯颜色解析假阴性。正在最小修复workspace消息单内描边，保留真实可见焦点门禁；此前本地单测/CR未覆盖此CSS层叠，不能视为已经解决。
+- 12:16 UTC补充：history fixture精确trace的Prompt解析POST返回{data:[]}，随后Composer访问items.length抛异常，截图全白。只补typed ResolvedPromptContextRecord空绑定DTO，原消息200/分页/草稿/切会话断言不变；单文件types/lint、24例发现、Composer7专项通过。尚无新版浏览器通过证据。
+- 12:20 UTC热修冻结验收：四文件UI/fixture切片的完整web102文件1212测试通过/161.45s，root lint/types、integration types、串行全部build通过，冻结指纹无变化。中途integration types命令误写配置路径TS5058，纠正到tests/integration/tsconfig.json后通过，不是源码缺陷。临时定位1px内描边保留，持久focus规则显式排除临时marker，过期后2px主题内描边；computed门禁不放宽，另加样式JSON与过期截图。准备独立发布；归档DB及PG测试仍留工作区，不混入热修。
