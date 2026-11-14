@@ -233,6 +233,10 @@
     gap: 5px;
     padding-inline: 10px;
   }
+  /* Keep both 44px actions without squeezing the mobile title below its readable gate. */
+  .workspace :global(.codex-session-title) {
+    gap: 4px;
+  }
   .workspace :global(.codex-session-title > a),
   .workspace :global(.codex-session-title > svg),
   .workspace :global(.workspace-context-disclosure-summary small) {
