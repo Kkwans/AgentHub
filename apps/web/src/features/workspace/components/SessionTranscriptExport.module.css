@@ -1,0 +1,50 @@
+.trigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: hsl(var(--foreground-muted));
+  background: transparent;
+}
+.trigger:hover {
+  background: hsl(var(--surface-muted));
+  color: hsl(var(--foreground));
+}
+.trigger:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+.trigger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.body {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+.actions button:last-child {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
