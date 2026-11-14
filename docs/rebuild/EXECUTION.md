@@ -1814,3 +1814,15 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - focused复用原Prompt spec共11例（8完整视觉主流程+3绑定回归），当前合计96例/11文件无重复；原fullreal仍另做完整矩阵。不是96个新用例，也不是已跑96通过。
 - b6精确focused132489406814最终83通过2失败，仍是390已知文件400；新增workspace-content8例通过，1440浅深阅读入口44/grip>=3门禁通过。artifact14120140255 sha256 02f0747cef5c1454a17598a5e4c7c541b78ca91a88854fe63ecdf0b4ee1fbc02。902 verify已成功：全仓2363过11条件skip、词法9过、完整fixture111过13条件skip；focused另有2失败，不混称整个CI成功。
 - 已实看并核源码的Agent/Prompt目录改版方案保存DIRECTORY_UI_REDESIGN.md；Agent实现尚未开始，不把规划算完成。新Prompt原图尚待验。
+
+### 2026-11-14 15:36 UTC Agent 目录视觉重排候选
+
+- 基于 f0 全页实际图与其后目录源码未变的核验，重排 Agent 页头主动作、摘要与唯一基础设施展开区；手机筛选和刷新同排，删除逐行/页尾重复诊断入口。运行环境/Provider紧凑展示，无默认Model不再制造占位行，真实Model/unknown/错误保留。
+- 30 项 Agent 专项、web 类型与局部 lint 通过；产品和单测已冻结，正在跑 web+UI 聚合。真实 spec 保留能力 preflight/false/unknown 与诊断键盘跳转及服务器级范围，补四宽双主题第一项、44触点、长名/Model验收。它仍是一条测试内部循环八种视口主题，不虚报八独立用例。
+- 独立 CR 发现 8e11e79 将合法 POSIX a:report.txt 误认驱动器路径；最小对齐服务端 drive+分隔符规则。新增合法冒号4种先红，修复后70项相关测试通过；绝对路径、双重编码及项目边界仍拒绝，未放宽服务端 realpath/symlink 检查。
+- 当前两片均未发布；新目录美学、673 Prompt 新图与390真实文件GET200均待精确CI。基础设施是原生details展开区，不宣称具备Escape/外点关闭的菜单行为。
+
+- 15:38:57 UTC 最终冻结 web+UI 聚合130文件、1413项通过/195.50秒，七个产品/测试/工作流文件hash未变；全仓构建继续。focused清单准确97测试/12文件（目录增加1条，内循环八组合），不把list当执行。
+- 同窗6732997精确focused已通过96+独立Prompt4，原390文件400已由新HTTP200断言复验消除；截图交人工审美，verify/full仍未完成。此结果不覆盖本次尚未发布Agent目录。
+
+- 15:40:19 UTC 已推送并fetch核验596c398（冒号兼容）→a48c239（Agent目录），本地树与远端一致；15:39:15全仓build通过。新精确CI43611416269已启动，尚无新Agent目录像素证据。不合并main或部署。
