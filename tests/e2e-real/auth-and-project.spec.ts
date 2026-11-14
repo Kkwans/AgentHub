@@ -260,7 +260,7 @@ test.describe.skip('legacy local_trusted 项目注册', () => {
     await commitForm.getByRole('button', { name: '提交所选文件 (1)' }).click();
     // The receipt is rendered alongside (not inside) the form so it remains visible
     // after the selected-file list is cleared on successful commit.
-    await expect(page.locator('.git-commit-receipt')).toContainText(/提交完成/, {
+    await expect(page.locator('.git-commit-receipt')).toContainText(/提交命令已完成；观测 HEAD：/, {
       timeout: 15_000,
     });
 

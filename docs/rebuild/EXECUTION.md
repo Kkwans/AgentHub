@@ -1187,3 +1187,7 @@ UI新增权威核对：只允许匹配原run+attempt的明确拒绝恢复本地�
 DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通过/1失败/10跳过，失败为旧mock测试只抛PREWRITE却未写ledger、仍期望第二次dispatch，已修测试断言安全拒绝且执行逐字段不变，UNKNOWN改用独立新执行；未放宽生产门禁。23:52 UTC最终冻结tree7d78d9f完整重跑：168文件通过/4跳过，1698测试通过/10跳过，402.81s。发布前仅补台账，代码不变。精确CI待启动；本地真实浏览器因已确认的socket启动限制未跑通，新retry未宣称真实Git/browser端到端通过。
 
 先前6d492df精确CI43527593792 verify与154无障碍已成功，真实服务/视觉仍执行完整矩阵；不得借用旧结果代表本片。没有main合并/部署。
+
+### 2026-11-14 00:01 UTC 精确视觉CI旧断言修复
+
+读取6d492df的CI43527593792完整日志：真实服务/视觉145通过、8失败，全部workspace-content-visual的旧“提交完成”匹配未随OBSERVED_ONLY准确文案更新；实际DOM已呈现新文字。geometry140页通过，不代表失败用例通过。同步该断言，并全仓搜索修正auth-and-project同类旧断言；只改测试预期，不放宽UI逻辑/几何/错误门禁。format/lint与8项Playwright测试发现通过，未把list称浏览器执行。当前本地Chromium仍受socket启动限制，修正交精确CI实际验证；04440ce仍在跑且继承旧断言风险。

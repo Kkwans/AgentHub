@@ -257,7 +257,7 @@ for (const width of [390, 768, 1024, 1440]) {
       const response = await responsePromise;
       expect(response.ok(), await response.text()).toBe(true);
       const receipt = page.locator('.git-commit-receipt');
-      await expect(receipt).toContainText('提交完成', { timeout: 30_000 });
+      await expect(receipt).toContainText('提交命令已完成；观测 HEAD：', { timeout: 30_000 });
       await capture(page, info, 'commit-receipt', receipt, receipt);
       const committed = await execFile('/usr/bin/git', [
         '-C',
