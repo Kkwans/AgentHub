@@ -25,14 +25,9 @@
 .workspace :global(.codex-rail-brand) {
   display: flex;
   align-items: center;
-  gap: 10px;
   min-height: 56px;
   padding: 12px 16px;
   color: var(--workspace-ink);
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
 }
 
 .workspace :global(.codex-rail-navigation) {

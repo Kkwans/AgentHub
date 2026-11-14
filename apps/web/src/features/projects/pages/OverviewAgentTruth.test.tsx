@@ -113,3 +113,35 @@ it('成功但缺记录与真正未分配不同', async () => {
   expect(screen.getByRole('link', { name: /未分配工作/ })).toHaveTextContent('尚未分配 Agent');
   noWrites();
 });
+
+it('confirmed empty sections remove duplicate heading help but retain recovery and navigation', async () => {
+  vi.mocked(api.get).mockResolvedValue([agent] as never);
+  const client = mount(true);
+  await act(async () => {
+    client.setQueryData(['tasks', 'p1'], []);
+    client.setQueryData(['sessions', 'p1'], []);
+  });
+  expect(screen.getByText('没有待审阅结果')).toBeVisible();
+  expect(await screen.findByText('没有进行中的工作')).toBeVisible();
+  expect(screen.getByText('还没有 Session')).toBeVisible();
+  expect(screen.queryByText('需要你做决策的工作结果。')).not.toBeInTheDocument();
+  expect(screen.queryByText('当前项目中的活跃工作。')).not.toBeInTheDocument();
+  expect(screen.queryByText('继续上一次对话或代码审阅。')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '新建工作' })).toHaveAttribute(
+    'href',
+    '/projects/p1/work/new',
+  );
+  expect(screen.getByRole('link', { name: '全部审阅 →' })).toHaveAttribute(
+    'href',
+    '/projects/p1/work?status=WAITING_REVIEW',
+  );
+  await act(async () => {
+    client.setQueryData(
+      ['tasks', 'p1'],
+      [{ id: 'review', title: '真实待审阅', status: 'WAITING_REVIEW' }],
+    );
+  });
+  expect(await screen.findByText('需要你做决策的工作结果。')).toBeVisible();
+  expect(screen.queryByText('没有待审阅结果')).not.toBeInTheDocument();
+  noWrites();
+});

@@ -615,7 +615,7 @@
 }
 .overviewMain {
   display: grid;
-  gap: 24px;
+  gap: 16px;
   min-width: 0;
 }
 .overviewAside {
@@ -627,7 +627,7 @@
   min-width: 0;
 }
 .overviewPanel .panelHeader {
-  padding: 14px 0;
+  padding: 10px 0;
 }
 .overviewPanel .overviewList,
 .overviewPanel .healthStack {
@@ -638,7 +638,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 0;
+  padding: 12px 0;
   color: var(--ah-text-secondary);
 }
 .overviewEmpty h4 {
@@ -1912,5 +1912,92 @@
 @media (min-width: 768px) {
   .projectPage {
     padding: 24px;
+  }
+}
+
+/* Keep compact project navigation on one reading axis rather than stacking a
+ * separate details row above the tabs. Expanded details retain their full text. */
+.contextNavigation {
+  min-width: 0;
+}
+.contextNavigation[hidden] {
+  display: none;
+}
+@media (max-width: 767px) {
+  .projectPage {
+    gap: 16px;
+  }
+  .projectContext .identityRow {
+    gap: 10px 12px;
+  }
+  .projectContext .identityCopy {
+    min-width: 0;
+    flex-basis: calc(100% - 56px);
+  }
+  .projectContext .identityTitle {
+    gap: 6px;
+  }
+  .projectContext .identityTitle h1 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+  .projectContext .identityActions {
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .projectContext .identityActions > * {
+    flex: 0 0 auto;
+  }
+  .projectContext .identityActions > :first-child:not(:last-child) {
+    margin-right: auto;
+  }
+  .projectContext .identityActions button {
+    min-height: 44px;
+  }
+  .contextNavigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    gap: 0 8px;
+    margin-top: 4px;
+  }
+  .projectContext .contextNavigation .contextTabs {
+    flex: 1 1 auto;
+    order: 1;
+    margin-top: 0;
+  }
+  .contextNavigation .contextTab {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  .contextNavigation .projectDetails {
+    order: 2;
+    margin-top: 0;
+    flex: 0 0 auto;
+  }
+  .contextNavigation .projectDetails summary {
+    min-height: 44px;
+    padding-inline: 4px;
+  }
+  .contextNavigation .projectDetails[open] {
+    flex-basis: 100%;
+  }
+  .overviewPanel .panelHeader {
+    align-items: center;
+    padding: 6px 0;
+  }
+  .overviewPanel .panelHeader > a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+  .overviewEmpty {
+    gap: 12px;
+    padding: 10px 0;
+  }
+  .overviewEmpty p {
+    margin-top: 4px;
   }
 }

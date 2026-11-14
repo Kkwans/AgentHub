@@ -246,12 +246,31 @@ function AgentDetail({ agentId }: { agentId: string }) {
             </p>
             <p className={styles.secondary}>全局状态不代表每个项目都可运行。</p>
           </header>
+          <AgentAvailability
+            agent={agent}
+            onObserved={(value) => {
+              setAgent((previous) => {
+                if (
+                  !previous ||
+                  previous.id !== value.id ||
+                  previous.targetId !== value.targetId ||
+                  (previous.enabledRevision ?? -1) > value.enabledRevision
+                )
+                  return previous;
+                return {
+                  ...previous,
+                  enabled: value.enabled,
+                  enabledRevision: value.enabledRevision,
+                };
+              });
+            }}
+          />
           <section className={styles.panel}>
             <h2>默认设置</h2>
-            <p>
+            <p className={styles.defaultsDescription}>
               仅用于后续会话的默认选择，不修改现有会话。模型和模式名称由供应商决定，保存不保证供应商支持。
             </p>
-            <p>
+            <p className={styles.saveCaution}>
               当前服务没有版本冲突保护；其他管理员可能同时修改，最后一次保存会覆盖同名默认字段。
             </p>
             <fieldset className={styles.fields} disabled={busy || Boolean(pending)}>
@@ -335,25 +354,6 @@ function AgentDetail({ agentId }: { agentId: string }) {
               </section>
             ) : null}
           </section>
-          <AgentAvailability
-            agent={agent}
-            onObserved={(value) => {
-              setAgent((previous) => {
-                if (
-                  !previous ||
-                  previous.id !== value.id ||
-                  previous.targetId !== value.targetId ||
-                  (previous.enabledRevision ?? -1) > value.enabledRevision
-                )
-                  return previous;
-                return {
-                  ...previous,
-                  enabled: value.enabled,
-                  enabledRevision: value.enabledRevision,
-                };
-              });
-            }}
-          />
           <AgentConnectionCheck
             key={`${agent.id}:${agent.targetId}`}
             agent={agent}

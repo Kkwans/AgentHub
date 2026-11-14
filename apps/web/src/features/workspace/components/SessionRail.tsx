@@ -2,7 +2,7 @@ import { ChevronDown, Plus, Search, WorkbenchPanelHeader } from '@agenthub/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Folder, Settings, BookOpen } from 'lucide-react';
-import { AgentHubLogo } from '../../../components/AgentHubLogo';
+import { AgentHubWordmark } from '../../../components/AgentHubWordmark';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import type { ProjectRecord, SessionRecord } from '../../../lib/api';
 import { labelSessionBranch, resolveWorkspaceRunState } from '../../../presentation/domain-labels';
@@ -138,9 +138,8 @@ export function SessionRail({
       className={`${sessionRailStyles.owner} session-rail flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[hsl(var(--surface))]`}
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
-      <Link to="/home" className="codex-rail-brand" onClick={onSelect}>
-        <AgentHubLogo className="h-8 w-8 shrink-0 rounded-[9px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" />
-        <span>AgentHub</span>
+      <Link to="/home" className="codex-rail-brand" aria-label="AgentHub 首页" onClick={onSelect}>
+        <AgentHubWordmark />
       </Link>
       <nav className="codex-rail-navigation" aria-label="工作区导航">
         <Link to="/projects" onClick={onSelect}>

@@ -23,6 +23,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ReviewOperationStatus } from '../../features/projects/components/ReviewOperationStatus';
 import { realtime } from '../../lib/realtime';
 import { AgentHubLogo } from '../../components/AgentHubLogo';
+import { AgentHubWordmark } from '../../components/AgentHubWordmark';
 import { useAuthMode, useAuthUser } from '../../components/AccessGate';
 
 const CommandPalette = lazy(() =>
@@ -87,17 +88,14 @@ function Brand({
     >
       <Link
         to="/home"
-        className={`group flex items-center overflow-hidden ${collapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)] justify-center' : 'min-w-0 gap-2.5'}`}
+        className={`group flex items-center overflow-hidden ${collapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)] justify-center' : 'min-h-11 min-w-11'}`}
         aria-label="AgentHub 首页"
       >
-        <AgentHubLogo
-          className="h-8 w-8 shrink-0 rounded-[9px] border border-black/[0.04] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-opacity duration-[var(--motion-fast)] group-hover:opacity-90"
-          aria-label="AgentHub"
-        />
-        {!collapsed && (
-          <span className="truncate text-[16px] leading-6 font-semibold tracking-[-0.025em] text-[hsl(var(--foreground))]">
-            AgentHub
-          </span>
+        {collapsed ? (
+          // Provisional compact marker; expanded navigation uses the reference wordmark.
+          <AgentHubLogo className="h-8 w-8 shrink-0 rounded-[9px] border border-black/[0.04] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-opacity duration-[var(--motion-fast)] group-hover:opacity-90" />
+        ) : (
+          <AgentHubWordmark />
         )}
       </Link>
       {onToggle ? (

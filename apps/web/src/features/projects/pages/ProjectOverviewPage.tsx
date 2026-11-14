@@ -250,7 +250,9 @@ export function ProjectOverviewPage() {
           <div className={projectsStyles.panelHeader}>
             <div>
               <h3>待审阅</h3>
-              <p>需要你做决策的工作结果。</p>
+              {!(tasks.isSuccess && !tasks.isFetching && !reviewTasks.length) ? (
+                <p>需要你做决策的工作结果。</p>
+              ) : null}
             </div>
             <Link to={`/projects/${project.id}/work?status=WAITING_REVIEW`}>全部审阅 →</Link>
           </div>
@@ -297,7 +299,9 @@ export function ProjectOverviewPage() {
           <div className={projectsStyles.panelHeader}>
             <div>
               <h3>正在进行</h3>
-              <p>当前项目中的活跃工作。</p>
+              {!(tasks.isSuccess && !tasks.isFetching && !activeTasks.length) ? (
+                <p>当前项目中的活跃工作。</p>
+              ) : null}
             </div>
             <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
           </div>
@@ -351,7 +355,9 @@ export function ProjectOverviewPage() {
           <div className={projectsStyles.panelHeader}>
             <div>
               <h3>最近会话</h3>
-              <p>继续上一次对话或代码审阅。</p>
+              {!(sessions.isSuccess && !sessions.isFetching && !recentSessions.length) ? (
+                <p>继续上一次对话或代码审阅。</p>
+              ) : null}
             </div>
             <Link to={`/projects/${project.id}/sessions`}>全部会话 →</Link>
           </div>

@@ -33,8 +33,8 @@
 .panel {
   display: grid;
   gap: 16px;
-  padding: 24px 0;
-  border-block: 1px solid var(--ah-border-subtle);
+  padding: 24px 0 0;
+  border-top: 1px solid var(--ah-border-subtle);
 }
 .fields {
   display: grid;
@@ -110,7 +110,7 @@
 .connectionCheck {
   display: grid;
   gap: 12px;
-  padding-block: 24px;
+  padding-block: 24px 0;
   border-top: 1px solid var(--ah-border-default);
 }
 .connectionCheck > button {
@@ -175,4 +175,43 @@
 .page .secondary {
   font-size: 12px;
   line-height: 18px;
+}
+
+/* Settings read as a compact editorial section, not a full-width form slab. */
+.panel .defaultsDescription {
+  color: var(--ah-text-secondary);
+  max-width: 62ch;
+}
+.page .saveCaution {
+  padding-left: 12px;
+  border-left: 2px solid var(--ah-border-subtle);
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  max-width: 68ch;
+}
+.fields {
+  max-width: 560px;
+}
+.fields > button,
+.recovery > button {
+  justify-self: start;
+  min-height: 44px;
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+}
+.fields > small {
+  color: var(--ah-text-secondary);
+  line-height: 18px;
+}
+
+@media (max-width: 767px) {
+  .page {
+    gap: 16px;
+  }
+  .panel,
+  .connectionCheck {
+    padding-top: 20px;
+  }
 }

@@ -85,7 +85,7 @@ describe('SessionRail', () => {
         />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('link', { name: 'AgentHub' })).toHaveAttribute('href', '/home');
+    expect(screen.getByRole('link', { name: 'AgentHub 首页' })).toHaveAttribute('href', '/home');
     expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute('href', '/projects');
     expect(screen.getByRole('link', { name: 'Prompt 库' })).toHaveAttribute('href', '/prompts');
     expect(screen.getByRole('link', { name: '设置' })).toHaveAttribute(

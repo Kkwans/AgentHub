@@ -194,3 +194,33 @@ it.each(['pending', 'error'] as const)(
     }
   },
 );
+
+it('mobile groups details with navigation while keeping attention outside the collapsed disclosure', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: () => false,
+  }));
+  try {
+    mount();
+    const summary = await screen.findByText('项目详情');
+    const details = summary.closest('details')!;
+    const navigation = screen.getByRole('navigation', { name: '项目上下文' });
+    expect(details.parentElement).toBe(navigation.parentElement);
+    expect(details).not.toHaveAttribute('open');
+    const warning = screen.getByText('0 个登记可用 Agent');
+    expect(warning.closest('details')).toBeNull();
+    expect(warning.closest('[role="status"]')).toHaveAttribute('data-severity', 'warning');
+    expect(screen.getByRole('link', { name: '新建工作' })).toHaveAttribute(
+      'href',
+      '/projects/p1/work/new',
+    );
+  } finally {
+    media.mockRestore();
+  }
+});

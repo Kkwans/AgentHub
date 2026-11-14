@@ -167,7 +167,7 @@ export function MobileDrawerPanel({
         aria-modal="true"
         aria-label={ariaLabel}
         className={cn(
-          'mobile-drawer fixed inset-y-0 left-0 z-[90] flex w-[80vw] max-w-[320px] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--surface-elevated))] shadow-[var(--shadow-lg)] outline-none',
+          'mobile-drawer m-0 h-dvh max-h-dvh overflow-hidden fixed inset-y-0 left-0 z-[90] flex w-[80vw] max-w-[320px] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--surface-elevated))] shadow-[var(--shadow-lg)] outline-none',
           className,
         )}
         style={{

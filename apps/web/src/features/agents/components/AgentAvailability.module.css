@@ -4,7 +4,7 @@
   width: min(100%, 720px);
   max-width: 720px;
   min-width: 0;
-  padding-block: 24px;
+  padding-block: 24px 0;
   border-top: 1px solid var(--ah-border-subtle);
 }
 .heading {

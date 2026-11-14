@@ -351,3 +351,15 @@ it('availability update preserves unsaved model/mode draft and never posts a con
   });
   expect(api.post).not.toHaveBeenCalled();
 });
+
+it('places the operational state before defaults without hiding save cautions', async () => {
+  mount();
+  const defaults = await screen.findByRole('heading', { name: '默认设置' });
+  const availability = screen.getByRole('heading', { name: '接收新工作' });
+  expect(
+    availability.compareDocumentPosition(defaults) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(screen.getByText(/当前服务没有版本冲突保护/)).toBeVisible();
+  expect(screen.getByText(/不修改现有会话/)).toBeVisible();
+  expect(api.patch).not.toHaveBeenCalled();
+});

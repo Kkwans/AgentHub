@@ -280,37 +280,39 @@ export function ProjectContextLayout() {
             {renderFacts('warnings')}
           </div>
         ) : null}
-        {compact ? (
-          <>
-            <details className={projectsStyles.projectDetails} hidden={compactWorkDetail}>
-              <summary>项目详情</summary>
-              <p>{project.data.kind === 'TEST' ? '测试 Project' : '正式 Project'}</p>
-              {project.data.description ? <p>{project.data.description}</p> : null}
-              {renderFacts('secondary')}
-              <Link to={`${base}/overview?edit=kind`}>
-                <AhButton variant="default">编辑类型</AhButton>
-              </Link>
-            </details>
-          </>
-        ) : null}
-        <nav
-          className={projectsStyles.contextTabs}
-          aria-label="项目上下文"
-          hidden={compactWorkDetail}
-        >
-          {tabs.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              end={tab.to.endsWith('/overview')}
-              className={({ isActive }) =>
-                `${projectsStyles.contextTab} ${isActive ? projectsStyles.contextTabActive : ''}`
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-        </nav>
+        <div className={projectsStyles.contextNavigation} hidden={compactWorkDetail}>
+          {compact ? (
+            <>
+              <details className={projectsStyles.projectDetails} hidden={compactWorkDetail}>
+                <summary>项目详情</summary>
+                <p>{project.data.kind === 'TEST' ? '测试 Project' : '正式 Project'}</p>
+                {project.data.description ? <p>{project.data.description}</p> : null}
+                {renderFacts('secondary')}
+                <Link to={`${base}/overview?edit=kind`}>
+                  <AhButton variant="default">编辑类型</AhButton>
+                </Link>
+              </details>
+            </>
+          ) : null}
+          <nav
+            className={projectsStyles.contextTabs}
+            aria-label="项目上下文"
+            hidden={compactWorkDetail}
+          >
+            {tabs.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.to.endsWith('/overview')}
+                className={({ isActive }) =>
+                  `${projectsStyles.contextTab} ${isActive ? projectsStyles.contextTabActive : ''}`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
       </header>
       <Outlet context={project.data} />
       <AhDialog
