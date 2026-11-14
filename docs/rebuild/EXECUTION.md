@@ -1320,3 +1320,10 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 03:55 UTC取回43f453e精确fixture包14097416856，SHA256 65cda692735ab00bbfe519dbd66c24e38575ff2cea24cf6d47355ff6bae840ab匹配；从Playwright报告映射并实际查看390深色TSX截图，idle/ready保持暖色并保留红/绿字符背景，axe附件为[]。该verify与独立axe已成功，real job仍在跑；这是fixture真实浏览器画面，不称真实Agent业务证据。1fae727新增词法就绪门禁仍需其自身CI。
 - 03:58 UTC取回849f133真实服务包14096284963，SHA256 992ecf28b8edd73edff9c5b3fe940a988f75648b8f847003a515a86e2970d898匹配。实际查看1440/390隔离审阅图：新增行浅绿背景/前景及hunk层级生效，原+标记保留，mobile补丁内部横滚；此样本没有删除行，不声称删除色已人工验收。real/axe成功；03:59读取精确verify日志确认82通过/10跳过、4失败仍是Home旧Link正文断言（后续43f453e verify已成功）。
 - 03:52:53–03:59:33最终冻结全量完成：172文件通过/4跳过，1776测试通过/10跳过，400.73秒。最终99专项、lint/types/build、E2E显式类型、4例发现、CSS预算、独立CR通过；新增只读面板真实浏览器与截图仍待精确新CI。此前停止的运行均未计数。
+
+### 2026-11-14 04:06–04:09 UTC 修正词法门禁的隐藏节点误采样
+
+- 43f453e精确CI三个job全部成功；1fae727新增词法门禁失败，不能把后续分支称全绿。读取job132321389395并取回artifact14097960727，SHA256 4e6a2a6a9c3a347c48ccc5d62dcc9f2f7f00ebf0c5cdf05fddf34768ea44ae85匹配。
+- Trace确认采样混入display:none删除view-zone的灰色idle，同时original editor宽25px、文字容器left35px，即使CSS visible也可能完全裁切；故不能接受任意original暖色节点当绘制证据。实际失败截图已查看。
+- 修正门禁仅取modified pane：idle要求实际可见char-delete，ready要求实际可见词法span，节点须完整位于pane/viewport且尺寸非零；仍要求非空且全部命中F4C7AF，保留完整axe、只读请求、overflow与错误检查。若可见删除词实际仍灰色，门禁继续失败而非放宽。
+- 9项调色板专项/build通过，最后E2E显式类型/lint/diff-check通过，4例发现不是执行。产品代码未改，不冒领新的全量结果；最终门禁效果仍须精确CI。

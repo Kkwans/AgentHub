@@ -1313,17 +1313,33 @@ test('深色 TSX 选中 Diff 使用真实词法内容并保持可读', async ({ 
   // e0f10ea passed a retry after a real token contrast failure; do not let
   // a pre-tokenization fallback count as evidence of the syntax palette.
   // Require both actual changed string tokens to have the intended palette.
-  const stringTokens = page.locator('.git-diff-editor .view-line span[class*="mtk"]');
+  // Inline Monaco retains hidden original/deletion mirrors. Only inspect the
+  // visible modified pane, including its displayed inline deletion view zone.
   for (const word of ['idle', 'ready']) {
+    const stringTokens = page.locator(
+      word === 'idle'
+        ? '.git-diff-editor .editor.modified .view-line span.char-delete:visible'
+        : '.git-diff-editor .editor.modified .view-line span[class*="mtk"]:visible',
+    );
     await expect
       .poll(() =>
         stringTokens.evaluateAll((nodes, expectedWord) => {
           const colors = nodes
-            .filter(
-              (node) =>
+            .filter((node) => {
+              const rect = node.getBoundingClientRect();
+              const pane = node.closest('.editor.modified')?.getBoundingClientRect();
+              return (
                 node.children.length === 0 &&
-                node.textContent?.replace(/^['"]|['"]$/g, '') === expectedWord,
-            )
+                node.textContent?.replace(/^['"]|['"]$/g, '') === expectedWord &&
+                pane !== undefined &&
+                rect.width > 0 &&
+                rect.height > 0 &&
+                rect.left >= Math.max(pane.left, 0) &&
+                rect.right <= Math.min(pane.right, innerWidth) &&
+                rect.top >= Math.max(pane.top, 0) &&
+                rect.bottom <= Math.min(pane.bottom, innerHeight)
+              );
+            })
             .map((node) => getComputedStyle(node).color);
           return [...new Set(colors)];
         }, word),
