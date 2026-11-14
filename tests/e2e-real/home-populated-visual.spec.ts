@@ -211,13 +211,15 @@ async function collectChineseFontEvidence(page: Page) {
           ),
           'Agent must actually render with bundled Geist',
         ).toBe(true);
-      } else {
-        // CJK remains OS fallback; do not pin Linux's WenQuanYi on other platforms.
-        expect(
-          fonts.some((font) => font.glyphCount > 0 && !/Geist/i.test(font.familyName)),
-          'Chinese must retain a real CJK fallback',
-        ).toBe(true);
       }
+      // Also require custom CJK glyphs in the mixed Chinese/Agent sentence.
+      expect(
+        fonts.some(
+          (font) =>
+            font.glyphCount > 0 && font.isCustomFont && /Noto Sans SC/i.test(font.familyName),
+        ),
+        'Chinese must actually render with self-hosted Noto Sans SC',
+      ).toBe(true);
       samples.push({ ...target, computed, platformFonts: fonts });
     }
     return {
@@ -274,12 +276,40 @@ test.describe('Home populated real-service visual acceptance', () => {
           await page.goto('/home');
           await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', theme);
           await expect(page.getByRole('heading', { name: '继续工作', exact: true })).toBeVisible();
+          await page.evaluate(() => document.fonts.ready);
           const create = page.getByRole('link', { name: '新建工作', exact: true });
           await expect(create).toHaveAttribute('href', `/projects/${fixture.project.id}/work/new`);
           await expect(create).toBeInViewport();
           const attention = page.getByRole('region', { name: /^需要你处理/ });
           await expect(attention.getByRole('heading')).toContainText('7');
           await expect(attention.getByRole('link')).toHaveCount(5);
+          await page.evaluate(() => document.fonts.ready);
+          const fontResources = await page.evaluate(() =>
+            performance
+              .getEntriesByType('resource')
+              .filter((entry) => /\.woff2?(?:$|\?)/i.test(entry.name))
+              .map((entry) => {
+                const resource = entry as PerformanceResourceTiming;
+                return {
+                  url: resource.name,
+                  sameOrigin: new URL(resource.name).origin === location.origin,
+                  transferSize: resource.transferSize,
+                  encodedBodySize: resource.encodedBodySize,
+                  decodedBodySize: resource.decodedBodySize,
+                };
+              }),
+          );
+          expect(fontResources.every((resource) => resource.sameOrigin)).toBe(true);
+          const cjkResources = fontResources.filter((resource) =>
+            /noto-sans-sc/i.test(resource.url),
+          );
+          expect(cjkResources.length).toBeGreaterThan(0);
+          const cjkEncodedBytes = cjkResources.reduce((sum, item) => sum + item.encodedBodySize, 0);
+          expect(cjkEncodedBytes).toBeGreaterThan(0);
+          expect(
+            cjkEncodedBytes,
+            'cold Home must not eagerly load the complete CJK family',
+          ).toBeLessThan(2 * 1024 * 1024);
           const initialGeometry = await assertHomeGeometry(page);
           await capture(page, testInfo, `${name}-collapsed`);
           // The disclosure must be driven by actual clipped pixels, not string length.
@@ -373,6 +403,8 @@ test.describe('Home populated real-service visual acceptance', () => {
             theme,
             viewport,
             initialGeometry,
+            fontResources,
+            cjkEncodedBytes,
             expandedGeometry,
             chineseFonts,
             consoleErrors,
@@ -406,4 +438,52 @@ test.describe('Home populated real-service visual acceptance', () => {
       contentType: 'application/json',
     });
   });
+});
+
+test.use({ authMode: 'local_trusted' });
+
+test('中文字体网络失败时保留可读回退，不阻断首页主操作', async ({ page, context, app }, info) => {
+  const fixture = await seedPopulatedHome(context, app);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.route('**/*noto-sans-sc*.woff2', (route) => route.abort('failed'));
+  await page.goto('/home');
+  const heading = page.getByRole('heading', { name: '继续工作', exact: true });
+  await expect(heading).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const failedFonts = await page.evaluate(
+    () =>
+      Array.from(document.fonts).filter(
+        (face) => /Noto Sans SC/i.test(face.family) && face.status === 'error',
+      ).length,
+  );
+  expect(failedFonts).toBeGreaterThan(0);
+  const client = await context.newCDPSession(page);
+  try {
+    await client.send('DOM.enable');
+    await client.send('CSS.enable');
+    const { root } = await client.send('DOM.getDocument');
+    const { nodeId } = await client.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector: 'main h1',
+    });
+    const { fonts } = await client.send('CSS.getPlatformFontsForNode', { nodeId });
+    expect(
+      fonts.some((font) => font.glyphCount > 0 && !/Geist|Noto Sans SC/i.test(font.familyName)),
+    ).toBe(true);
+    await info.attach('cjk-network-fallback-fonts', {
+      body: JSON.stringify({ failedFonts, fonts }, null, 2),
+      contentType: 'application/json',
+    });
+  } finally {
+    await client.detach();
+  }
+  await expect(page.getByRole('link', { name: '新建工作', exact: true })).toHaveAttribute(
+    'href',
+    `/projects/${fixture.project.id}/work/new`,
+  );
+  await assertHomeGeometry(page);
+  await capture(page, info, 'home-cjk-network-fallback-390');
+  expect(pageErrors).toEqual([]);
 });

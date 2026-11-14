@@ -53,7 +53,8 @@
   --ah-radius-dialog: var(--ah-radius-overlay);
 
   --ah-font-sans:
-    'Geist Variable', 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans CJK SC', system-ui, sans-serif;
+    'Geist Variable', 'Noto Sans SC Variable', 'PingFang SC', 'Microsoft YaHei UI',
+    'Noto Sans CJK SC', system-ui, sans-serif;
   --ah-font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
   --ah-font-size-body: 14px;
   --ah-font-line-body: 1.55;

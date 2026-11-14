@@ -38,3 +38,9 @@ describe('AgentHub theme bridge', () => {
     expect(createAgentHubTheme('light').lineHeights?.md).toBe('1.55');
   });
 });
+
+it.each(['light', 'dark'] as const)('兼容主题 %s 保持共享的中英文字体顺序', (mode) => {
+  const theme = createAgentHubTheme(mode);
+  expect(theme.fontFamily).toMatch(/^Geist Variable, "Noto Sans SC Variable", "PingFang SC"/);
+  expect(theme.headings.fontFamily).toBe(theme.fontFamily);
+});

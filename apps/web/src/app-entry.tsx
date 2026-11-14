@@ -4,6 +4,8 @@ import { AgentHubProvider } from '@agenthub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import '@fontsource-variable/geist';
+// Self-hosted Unicode-range subsets load only for glyphs present in the UI.
+import '@fontsource-variable/noto-sans-sc';
 
 import { App } from './App';
 import '@agenthub/ui/styles.css';

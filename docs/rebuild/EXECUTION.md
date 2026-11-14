@@ -1251,3 +1251,11 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 8项定向通过（初次新测试链接选择歧义已精确修正）；全仓types/lint/Webbuild通过。冻结fcc238caa8a8cc5a4e540ed1f3de16fdf7b55011从01:48:09至01:55:01完成全量170文件通过/4跳过，1743测试通过/10跳过，411.29秒。
 - 独立CR发现真实spec新增列表名称定位也会匹配“编辑类型”链接；全量完成后仅修改不属于Vitest范围的browser spec为组内精确overview href，保留折叠DOM隐藏断言。生产与Vitest源码未变，类型/lint/8例发现重新检查；真实Enter/Space和新四宽双主题截图仍待精确CI，未冒称已运行。
 - 字体并行调查：从69精确HTML报告内嵌ZIP提取8档24个内容态Home CDP样本，中文实际WenQuanYi Zen Hei，英文Agent为自托管Geist；不能再猜成“CI缺中文黑体”。这不是空Home/Prompt节点的直接证据，跨平台自托管CJK方案暂未实施。
+
+### 2026-11-14 02:12 UTC 自托管CJK一致性候选
+
+- 基于精确69内容态Home字体样本，实施Geist后Noto Sans SC Variable本地分片，不再只依赖系统中文fallback。官方5.3.1包完整性已验证，锁文件仅该依赖新增，保留OFL许可；未在共享旧依赖目录执行install清理。
+- 12项QA、全仓types/lint/Webbuild通过，独立静态CR无阻塞。冻结4b6fa2c7276bfc8f401e7ddb7036639aa4496f21于02:05:06–02:11:51完成全量170文件通过/4跳过、1743测试通过/10跳过，404.68秒。
+- 全量完成后发现未被当前app调用但仍导出的兼容theme helper字体栈漂移，补同一Noto顺序及明暗回归。该小补丁后运行theme5项、全部QA、types/lint/build；未把全量结果冒称覆盖修改后的最终完整树。
+- 新真实门禁要求中文实际customNoto/英文Geist，8个冷context记录同源字体字节与<2MiB独立WOFF预算，另测字体请求失败时可读fallback。仅测试发现，不称浏览器已运行。成本/边界见CJK_FONT_PLAN.md。
+- 02:08已逐张查看ec443eb的8张新图并确认CI全绿：390初始合并按钮从此前底部截断移至约y720完整显示；桌面主按钮也明显提前。下一审阅UI重点是差异内容主体，而非继续只把按钮上移。

@@ -22,8 +22,7 @@
   overflow: hidden;
   color: var(--workspace-ink);
   background: var(--workspace-bg);
-  font-family:
-    'Geist Variable', 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans CJK SC', system-ui, sans-serif;
+  font-family: var(--ah-font-sans);
   font-optical-sizing: auto;
   isolation: isolate;
   position: relative;

@@ -85,7 +85,7 @@ export interface AgentHubTheme {
 
 export function createAgentHubTheme(mode: ResolvedThemeMode): AgentHubTheme {
   const fontFamily =
-    'Geist Variable, "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", system-ui, sans-serif';
+    'Geist Variable, "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", system-ui, sans-serif';
   const fontFamilyMonospace = '"JetBrains Mono", "SFMono-Regular", Consolas, monospace';
   return {
     primaryColor: 'aurora',
