@@ -76,11 +76,18 @@ for (const width of [390, 768, 1024, 1440])
       });
       page.on('request', (request) => {
         const url = new URL(request.url());
+        // Both are read-only despite POST: PromptService.resolve only reads bindings,
+        // prompt/version/label records and renders context (no Run/snapshot persistence).
+        // Workspace's promptContext useQuery invokes it when Session loads.
+        const readOnlyPost =
+          request.method() === 'POST' &&
+          (url.pathname === `/api/v1/sessions/${session.id}/messages/search` ||
+            url.pathname === '/api/v1/prompt-context/resolve');
         if (
           request.method() !== 'GET' &&
           request.method() !== 'HEAD' &&
           url.pathname.startsWith('/api/') &&
-          !url.pathname.endsWith('/messages/search')
+          !readOnlyPost
         )
           writes.push(request.method() + ' ' + url.pathname);
         if (url.pathname.endsWith('/messages') && url.searchParams.has('beforeSequence'))
