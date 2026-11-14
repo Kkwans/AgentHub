@@ -78,7 +78,8 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(page.getByText('PROMPT ASSETS', { exact: true })).toHaveCount(0);
       const introGeometry = await intro.evaluate((node) => {
         const bounds = node.getBoundingClientRect();
-        const header = document.querySelector('.page-title-group')!.getBoundingClientRect();
+        const header = document.querySelector('.page-header-row')!.getBoundingClientRect();
+        const divider = document.querySelector('.navigation-page-header')!.getBoundingClientRect();
         const heading = node.querySelector('h2')!.getBoundingClientRect();
         const action = node.querySelector('button')!.getBoundingClientRect();
         const style = getComputedStyle(node);
@@ -87,6 +88,7 @@ for (const width of [390, 768, 1024, 1440]) {
           height: bounds.height,
           left: bounds.left,
           headerLeft: header.left,
+          dividerGap: bounds.top - divider.bottom,
           headingLeft: heading.left,
           actionLeft: action.left,
           actionWidth: action.width,
@@ -97,6 +99,8 @@ for (const width of [390, 768, 1024, 1440]) {
         };
       });
       expect(introGeometry.width).toBeLessThanOrEqual(480);
+      expect(introGeometry.dividerGap).toBeGreaterThanOrEqual(23.99);
+      expect(introGeometry.dividerGap).toBeLessThanOrEqual(25);
       expect(introGeometry.height).toBeLessThanOrEqual(180);
       expect(Math.abs(introGeometry.left - introGeometry.headerLeft)).toBeLessThanOrEqual(1);
       expect(Math.abs(introGeometry.left - introGeometry.headingLeft)).toBeLessThanOrEqual(1);
@@ -166,7 +170,56 @@ for (const width of [390, 768, 1024, 1440]) {
       expect(versions[0].contentJson).toEqual({ text: actualBody });
       await editor.getByText(actualBody, { exact: true }).scrollIntoViewIfNeeded();
       await expect(editor.getByText(actualBody, { exact: true })).toBeInViewport({ ratio: 1 });
+      if (width === 390) {
+        await page.locator('main.app-main').evaluate((node) => {
+          node.scrollTop = 0;
+        });
+        await expect
+          .poll(() => page.locator('main.app-main').evaluate((node) => node.scrollTop))
+          .toBe(0);
+        await expect(
+          page.getByRole('heading', { name: 'Prompt 库', exact: true }),
+        ).toBeInViewport();
+        const readingGeometry = await editor.evaluate((node) => {
+          const body = node.querySelector('article')!.getBoundingClientRect();
+          const directory = document
+            .querySelector('[aria-label="Prompt 目录"]')!
+            .getBoundingClientRect();
+          const title = document.querySelector('h1')!.getBoundingClientRect();
+          const create = document
+            .querySelector('.page-header-actions button')!
+            .getBoundingClientRect();
+          return {
+            bodyTop: body.top,
+            directoryHeight: directory.height,
+            titleCenter: title.top + title.height / 2,
+            actionCenter: create.top + create.height / 2,
+            actionHeight: create.height,
+          };
+        });
+        expect(readingGeometry.directoryHeight).toBeLessThanOrEqual(45);
+        expect(readingGeometry.bodyTop).toBeLessThan(540);
+        expect(
+          Math.abs(readingGeometry.titleCenter - readingGeometry.actionCenter),
+        ).toBeLessThanOrEqual(4);
+        expect(readingGeometry.actionHeight).toBeGreaterThanOrEqual(43.99);
+        await info.attach('reading-first-geometry', {
+          body: JSON.stringify(readingGeometry),
+          contentType: 'application/json',
+        });
+      }
       await capture('first-version-saved');
+      const detailsToggle = editor.locator('summary').filter({ hasText: '资产详情与操作' });
+      await detailsToggle.focus();
+      await page.keyboard.press('Enter');
+      const lifecycleTrigger = editor.getByRole('button', { name: '版本与标签', exact: true });
+      await expect(lifecycleTrigger).toBeVisible();
+      await lifecycleTrigger.click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(lifecycleTrigger).toBeFocused();
+      await detailsToggle.click();
 
       // The asset-creation dialog has no Select. Exercise the real binding dialog,
       // which uses the same FormDialog and a labelled, portaled Radix Select.

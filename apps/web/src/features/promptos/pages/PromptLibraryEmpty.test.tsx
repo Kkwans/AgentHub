@@ -156,6 +156,7 @@ it('keeps mobile directory filters mounted while prioritizing the selected edito
     compact = false;
     mediaChanged?.();
   });
+  fireEvent.click(within(editor).getByText('资产详情与操作'));
   const editorAction = within(editor).getByRole('button', { name: '刷新' });
   editorAction.focus();
   act(() => {
@@ -170,3 +171,25 @@ vi.mock('../../../components/AccessGate', () => ({
   useAuthMode: () => 'local_trusted',
   useAuthUser: () => null,
 }));
+
+it('keeps secondary operations mounted and version dialog drafts while details stays open', async () => {
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(path: string) => (path === '/prompts' ? [asset] : []) as T,
+  );
+  mount();
+  await screen.findByRole('heading', { name: '真实模板' });
+  const editor = screen.getByRole('region', { name: 'Prompt 编辑器' });
+  const summary = within(editor).getByText('资产详情与操作');
+  const details = summary.closest('details')!;
+  expect(details.open).toBe(false);
+  fireEvent.click(summary);
+  expect(details.open).toBe(true);
+  expect(within(editor).getByRole('button', { name: '刷新' })).toBeVisible();
+  fireEvent.click(within(editor).getByRole('button', { name: '创建第一个版本' }));
+  expect(screen.getByRole('dialog')).toBeVisible();
+  expect(details.open).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: '取消' }));
+  expect(details.open).toBe(true);
+  expect(within(editor).getByRole('button', { name: '版本与标签' })).toBeVisible();
+  expect(api.post).not.toHaveBeenCalled();
+});

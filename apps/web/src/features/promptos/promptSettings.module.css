@@ -886,3 +886,142 @@
     margin-top: 12px;
   }
 }
+
+/* Library reading hierarchy: one page action, a compact directory, then the document. */
+.promptPage {
+  gap: 0;
+}
+.promptPage .libraryPageContent {
+  padding-top: 24px;
+}
+.promptPage .mainPane {
+  padding: 16px 24px 24px;
+}
+.promptPage .mainHeader {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+.promptPage .mainHeader h2 {
+  flex-basis: 100%;
+  font-size: 20px;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+.promptPage .editorActions {
+  align-items: flex-start;
+  margin-top: 0;
+}
+.promptPage .editorActions > button {
+  min-height: 44px;
+}
+.assetDetails {
+  min-width: 0;
+  flex: 1;
+}
+.assetDetails summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  width: fit-content;
+  padding: 0 12px;
+  color: var(--ah-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 6px;
+}
+.assetDetails summary::after {
+  content: '⌄';
+  margin-left: 8px;
+}
+.assetDetails[open] summary::after {
+  content: '⌃';
+}
+.assetDetails > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+.assetDetails > div > p {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+.assetDetails button {
+  min-height: 44px;
+}
+.promptPage .contentShell {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.promptPage .contentToolbar {
+  padding-inline: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.promptPage .prose {
+  padding: 16px 0;
+}
+.promptPage .tab {
+  min-height: 44px;
+}
+@media (max-width: 767px) {
+  .libraryPageHeader:global(.page-header-row) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+  }
+  .libraryPageHeader :global(.page-heading-icon) {
+    display: none;
+  }
+  .libraryPageHeader :global(.page-title-group),
+  .libraryPageHeader :global(.page-title-group) > :global(.min-w-0),
+  .libraryPageHeader :global(.page-title-group) > :global(.min-w-0) > div {
+    display: contents;
+  }
+  .libraryPageHeader :global(.page-title) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .libraryPageHeader :global(.page-subtitle) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .libraryPageHeader:global(.page-header-row) > :global(.page-header-actions):last-child {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+  }
+  .libraryPageHeader button {
+    min-height: 44px;
+  }
+  .promptPage .libraryPane {
+    padding: 0;
+    background: transparent;
+  }
+  .promptPage .libraryHeader {
+    padding: 0;
+    min-height: 44px;
+  }
+  .promptPage .libraryHeader > div {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .promptPage .libraryHeader small {
+    margin: 0;
+  }
+  .promptPage .mainPane {
+    padding: 16px 0 24px;
+  }
+  .promptPage .tabs {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .promptPage .searchField,
+  .promptPage .filterPill {
+    min-height: 44px;
+  }
+}

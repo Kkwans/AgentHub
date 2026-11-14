@@ -56,20 +56,8 @@ export function PromptEditor({ model }: { model: PromptLibraryModel }) {
                 <AhStatusPill status="ACTIVE" />
                 <AhStatusPill status={latestVersion ? 'READY' : 'PENDING'} />
               </div>
-              <p>
-                {selected.key} · {labelPromptKind(selected.kind)}
-                {latestVersion
-                  ? ` · v${latestVersion.version} · ${displayDate(latestVersion.createdAt)}`
-                  : ' · 尚未创建版本'}
-              </p>
             </div>
             <div className={promptSettingsStyles.editorActions}>
-              <AhButton size="sm" variant="default" onClick={refreshPrompt}>
-                刷新
-              </AhButton>
-              <AhButton size="sm" variant="default" onClick={() => setLifecycleOpen(true)}>
-                版本与标签
-              </AhButton>
               <AhButton
                 size="sm"
                 disabled={versions.isLoading || Boolean(versions.error)}
@@ -81,6 +69,23 @@ export function PromptEditor({ model }: { model: PromptLibraryModel }) {
               >
                 {noVersion ? '创建第一个版本' : '新建版本'}
               </AhButton>
+              <details className={promptSettingsStyles.assetDetails}>
+                <summary>资产详情与操作</summary>
+                <div>
+                  <p>
+                    {selected.key} · {labelPromptKind(selected.kind)}
+                    {latestVersion
+                      ? ` · v${latestVersion.version} · ${displayDate(latestVersion.createdAt)}`
+                      : ' · 尚未创建版本'}
+                  </p>
+                  <AhButton size="sm" variant="default" onClick={refreshPrompt}>
+                    刷新
+                  </AhButton>
+                  <AhButton size="sm" variant="default" onClick={() => setLifecycleOpen(true)}>
+                    版本与标签
+                  </AhButton>
+                </div>
+              </details>
             </div>
           </header>
           <nav className={promptSettingsStyles.tabs} aria-label="Prompt 资产分区" role="tablist">

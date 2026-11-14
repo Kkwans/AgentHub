@@ -23,9 +23,10 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
       className={`${promptSettingsStyles.promptPage} ${emptyLibrary ? promptSettingsStyles.emptyPage : ''} workspace-page min-h-full`}
     >
       <NavigationPageHeader
+        className={promptSettingsStyles.libraryPageHeader ?? ''}
         icon={Braces}
         title="Prompt 库"
-        description="集中管理 Prompt 内容、版本、变量、标签与绑定；主工作区保持单一焦点。"
+        description="管理模板正文、版本与绑定。"
         actions={
           emptyLibrary ? null : (
             <AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>
@@ -34,7 +35,9 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
           )
         }
       />
-      <div className="page-content page-shell min-h-full">
+      <div
+        className={`${promptSettingsStyles.libraryPageContent} page-content page-shell min-h-full`}
+      >
         <BindingOperationResults
           operations={model.bindingOperations}
           dismiss={model.dismissBindingOperation}
