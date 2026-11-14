@@ -270,3 +270,212 @@ it('explicit older pagination cancels an already queued follow-to-bottom frame b
   expect(f.element.scrollTop).toBe(6000);
   expect(screen.getByRole('button', { name: '回到最新' })).toBeInTheDocument();
 });
+
+it('preserves an owned anchor when the fetch promise settles before the prepended DOM commits', async () => {
+  const f = setupLongScroll();
+  const message = (sequence: number) => ({
+    id: `delayed-${sequence}`,
+    sessionId: props.session.id,
+    runId: null,
+    sequence,
+    role: 'USER' as const,
+    kind: 'TEXT' as const,
+    text: `message ${sequence}`,
+    createdAt: '2026-11-14T00:00:00Z',
+  });
+  let release!: () => void;
+  const load = () =>
+    new Promise<void>((resolve) => {
+      release = resolve;
+    });
+  const latest = [message(101), message(102)];
+  const renderRows = (data: typeof latest) => (
+    <ChatConversationView
+      {...props}
+      messages={{ ...props.messages, data }}
+      hasPreviousMessages
+      onLoadPreviousMessages={load}
+    />
+  );
+  f.rerender(renderRows(latest));
+  f.element.scrollTop = 4000;
+  fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+  await act(async () => release());
+  f.nextFrame(); // React Query's notification has not committed the new page yet.
+  expect(f.element.scrollTop).toBe(4000);
+  const prepended = [message(1), ...latest];
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7000 });
+  f.rerender(renderRows(prepended));
+  f.nextFrame();
+  expect(f.element.scrollTop).toBe(6000);
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 6832 });
+  f.rerender(renderRows(prepended)); // virtual measurements converge after the data commit.
+  f.nextFrame();
+  expect(f.element.scrollTop).toBe(5832);
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 6804 });
+  f.rerender(renderRows(prepended));
+  f.nextFrame();
+  expect(f.element.scrollTop).toBe(5804);
+  fireEvent.wheel(f.element, { deltaY: -120 });
+  f.element.scrollTop = 5300;
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 6780 });
+  f.rerender(renderRows(prepended));
+  f.nextFrame();
+  expect(f.element.scrollTop).toBe(5300);
+});
+
+it.each(['stable', 'tail', 'authorization'] as const)(
+  'ends committed history compensation on %s rather than reclaiming future scroll',
+  async (end) => {
+    const f = setupLongScroll();
+    const message = (sequence: number) => ({
+      id: `finish-${sequence}`,
+      sessionId: props.session.id,
+      runId: null,
+      sequence,
+      role: 'USER' as const,
+      kind: 'TEXT' as const,
+      text: `message ${sequence}`,
+      createdAt: '2026-11-14T00:00:00Z',
+    });
+    let release!: () => void;
+    const load = () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const latest = [message(101), message(102)];
+    const renderRows = (data: typeof latest) => (
+      <ChatConversationView
+        {...props}
+        messages={{ ...props.messages, data }}
+        hasPreviousMessages
+        onLoadPreviousMessages={load}
+      />
+    );
+    f.rerender(renderRows(latest));
+    f.element.scrollTop = 4000;
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    await act(async () => release());
+    f.nextFrame();
+    let data = [message(1), ...latest];
+    Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7000 });
+    f.rerender(renderRows(data));
+    expect(f.element.scrollTop).toBe(6000);
+    if (end === 'stable') for (let index = 0; index < 4; index++) f.nextFrame();
+    if (end === 'authorization') act(() => authSession.notifyAuthorizationRequired());
+    if (end === 'tail') data = [...data, message(103)];
+    f.element.scrollTop = 5500;
+    Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7400 });
+    f.rerender(renderRows(data));
+    f.nextFrame();
+    expect(f.element.scrollTop).toBe(5500);
+  },
+);
+
+it('does not resurrect abandoned prepend ownership when a tail update precedes late fetch completion', async () => {
+  const f = setupLongScroll();
+  const message = (sequence: number) => ({
+    id: `late-${sequence}`,
+    sessionId: props.session.id,
+    runId: null,
+    sequence,
+    role: 'USER' as const,
+    kind: 'TEXT' as const,
+    text: `message ${sequence}`,
+    createdAt: '2026-11-14T00:00:00Z',
+  });
+  let release!: () => void;
+  const load = () =>
+    new Promise<void>((resolve) => {
+      release = resolve;
+    });
+  const renderRows = (data: ReturnType<typeof message>[]) => (
+    <ChatConversationView
+      {...props}
+      messages={{ ...props.messages, data }}
+      hasPreviousMessages
+      onLoadPreviousMessages={load}
+    />
+  );
+  f.rerender(renderRows([message(101), message(102)]));
+  f.element.scrollTop = 4000;
+  fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+  const newer = [message(101), message(102), message(103)];
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 5200 });
+  f.rerender(renderRows(newer));
+  await act(async () => release());
+  f.nextFrame();
+  expect(f.element.scrollTop).toBe(4000);
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7200 });
+  f.rerender(renderRows([message(1), ...newer]));
+  f.nextFrame();
+  expect(f.element.scrollTop).toBe(4000);
+});
+
+it.each(['exhaust', 'wheel'] as const)(
+  'local window reveal owns only its commit and respects %s',
+  async (mode) => {
+    const f = setupLongScroll();
+    const data = Array.from({ length: 501 }, (_, index) => ({
+      id: `window-${index + 101}`,
+      sessionId: props.session.id,
+      runId: null,
+      sequence: index + 101,
+      role: 'USER' as const,
+      kind: 'TEXT' as const,
+      text: `window ${index + 101}`,
+      createdAt: '2026-11-14T00:00:00Z',
+    }));
+    let reject!: (reason: Error) => void;
+    const load = vi.fn(
+      () =>
+        new Promise<void>((_resolve, fail) => {
+          reject = fail;
+        }),
+    );
+    f.rerender(
+      <ChatConversationView
+        {...props}
+        messages={{ ...props.messages, data }}
+        hasPreviousMessages
+        onLoadPreviousMessages={load}
+      />,
+    );
+    f.element.scrollTop = 4000;
+    fireEvent.click(screen.getByRole('button', { name: /(?:加载|查看)更早消息/ }));
+    expect(load).not.toHaveBeenCalled();
+    if (mode === 'wheel') {
+      fireEvent.wheel(f.element, { deltaY: -120 });
+      f.element.scrollTop = 3900;
+      Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7000 });
+      f.nextFrame();
+      expect(f.element.scrollTop).toBe(3900);
+      expect(load).not.toHaveBeenCalled();
+      return;
+    }
+    Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7000 });
+    f.nextFrame();
+    expect(f.element.scrollTop).toBe(6000);
+    fireEvent.click(screen.getByRole('button', { name: /(?:加载|查看)更早消息/ }));
+    expect(load).toHaveBeenCalledTimes(1);
+    await act(async () => reject(new Error('remote failed')));
+    f.nextFrame();
+    expect(f.element.scrollTop).toBe(6000);
+    load.mockResolvedValueOnce(undefined);
+    fireEvent.click(screen.getByRole('button', { name: /(?:加载|查看)更早消息/ }));
+    await act(async () => {});
+    expect(load).toHaveBeenCalledTimes(2);
+    const older = { ...data[0]!, id: 'older-1', sequence: 1, text: 'older 1' };
+    Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 8000 });
+    f.rerender(
+      <ChatConversationView
+        {...props}
+        messages={{ ...props.messages, data: [older, ...data] }}
+        hasPreviousMessages
+        onLoadPreviousMessages={load}
+      />,
+    );
+    f.nextFrame();
+    expect(f.element.scrollTop).toBe(7000);
+  },
+);

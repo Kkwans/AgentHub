@@ -92,7 +92,8 @@ function ChatEntryRendererView({
   }
 
   const { message } = item;
-  const presentation = presentAgentMessage(message.text);
+  const presentation = presentAgentMessage(item.displayText ?? message.text);
+  const copyText = item.copyText ?? presentation.text;
   const isUser = message.role === 'USER';
   const author =
     message.role === 'USER'
@@ -162,8 +163,8 @@ function ChatEntryRendererView({
         showActions &&
         !item.streaming &&
         presentation.kind === 'TEXT' &&
-        presentation.text.trim() ? (
-          <ChatEntryActions text={presentation.text} />
+        copyText.trim() ? (
+          <ChatEntryActions text={copyText} />
         ) : null}
       </article>
     </div>
@@ -266,6 +267,9 @@ function sameTimelineItem(
     return (
       previous.streaming === next.streaming &&
       previous.persisted === next.persisted &&
+      previous.displayText === next.displayText &&
+      previous.copyText === next.copyText &&
+      previous.eventSequence === next.eventSequence &&
       previous.createdAt === next.createdAt &&
       previous.message.id === next.message.id &&
       previous.message.role === next.message.role &&

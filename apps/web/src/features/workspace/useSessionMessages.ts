@@ -1,6 +1,6 @@
 import { inspectLocationMessages, oldestMessageSequence, waitForLocation } from './messageLocation';
 import type { SavedMessageTarget } from './sessionMessageSearch';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -191,8 +191,12 @@ export function useSessionMessages(sessionId: string, enabled = true): MessageQu
     }
   };
 
+  const data = useMemo(
+    () => mergeSessionMessages([], query.data?.pages.flat() ?? []),
+    [query.data],
+  );
   return {
-    data: mergeSessionMessages([], query.data?.pages.flat() ?? []),
+    data,
     error: query.error ?? null,
     isLoading: query.isLoading,
     refetch: () =>

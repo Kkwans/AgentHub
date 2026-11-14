@@ -10,7 +10,16 @@ import { useApprovalResolution } from './useApprovalResolution';
  */
 
 import { Bot, ChevronDown } from '@agenthub/ui';
-import { Fragment, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { observeTimelineOffset } from '../lib/observe-timeline-offset';
 
@@ -178,16 +187,37 @@ export const ChatConversationView = memo(function ChatConversationView({
   const historyIntentRef = useRef(0);
   const historyFrameRef = useRef<number | null>(null);
   const loadingPreviousRef = useRef<symbol | null>(null);
+  const committedAnchorRef = useRef<{
+    oldest: number;
+    windowStart: number;
+    remote: boolean;
+    newest: number;
+    height: number;
+    top: number;
+    valid: () => boolean;
+    data?: MessageQueryState['data'];
+    events: typeof events.data;
+    stable: number;
+    samples: number;
+    measuredHeight: number;
+    expiry?: ReturnType<typeof setTimeout>;
+  } | null>(null);
+  const clearCommittedAnchor = useCallback(() => {
+    const anchor = committedAnchorRef.current;
+    if (anchor) clearTimeout(anchor.expiry);
+    committedAnchorRef.current = null;
+  }, []);
   if (historyIdentityRef.current !== session.id) {
     historyIdentityRef.current = session.id;
     historyGenerationRef.current += 1;
     loadingPreviousRef.current = null;
   }
   const invalidateHistoryAnchor = useCallback(() => {
+    clearCommittedAnchor();
     historyIntentRef.current += 1;
     if (historyFrameRef.current !== null) cancelAnimationFrame(historyFrameRef.current);
     historyFrameRef.current = null;
-  }, []);
+  }, [clearCommittedAnchor]);
   useAuthorizationRevocation(() => {
     historyAuthorizedRef.current = false;
     historyGenerationRef.current += 1;
@@ -441,6 +471,66 @@ export const ChatConversationView = memo(function ChatConversationView({
       });
     });
   };
+  // Query completion is not a React commit. Start correction only when the
+  // requested older rows have reached this view, then follow that one version's
+  // virtual measurements. Three stable frame samples avoid stopping between
+  // ResizeObserver/virtualizer commits; 12 samples bound ownership (~200ms at
+  // 60Hz). This is not a guarantee for fonts/media resolving after that budget.
+  const sampleCommittedAnchor = useCallback(() => {
+    historyFrameRef.current = null;
+    const anchor = committedAnchorRef.current;
+    const element = scrollRef.current;
+    if (!anchor?.data || !element || !anchor.valid()) {
+      clearCommittedAnchor();
+      return;
+    }
+    const height = element.scrollHeight;
+    anchor.stable = height === anchor.measuredHeight ? anchor.stable + 1 : 0;
+    anchor.measuredHeight = height;
+    markProgrammaticScroll();
+    element.scrollTop = height - anchor.height + anchor.top;
+    anchor.samples += 1;
+    if (anchor.stable >= 3 || anchor.samples >= 12) {
+      clearCommittedAnchor();
+      historyFrameRef.current = null;
+      return;
+    }
+    historyFrameRef.current = requestAnimationFrame(sampleCommittedAnchor);
+  }, [clearCommittedAnchor, markProgrammaticScroll]);
+  useLayoutEffect(() => {
+    const anchor = committedAnchorRef.current;
+    if (!anchor) return;
+    const newest = Math.max(...(messages.data ?? []).map((message) => message.sequence));
+    if (
+      !anchor.valid() ||
+      newest !== anchor.newest ||
+      anchor.events !== events.data ||
+      (anchor.data && anchor.data !== messages.data)
+    ) {
+      clearCommittedAnchor();
+      return;
+    }
+    const oldest = Math.min(...(messages.data ?? []).map((message) => message.sequence));
+    if (
+      !anchor.data &&
+      (anchor.remote ? oldest >= anchor.oldest : renderWindowStart >= anchor.windowStart)
+    )
+      return;
+    if (!anchor.data) {
+      anchor.data = messages.data;
+      clearTimeout(anchor.expiry);
+    }
+    // Apply at the actual commit, not a guessed number of frames after fetch.
+    // Count stability only on real frame callbacks, not incidental React renders.
+    const element = scrollRef.current;
+    if (!element) return;
+    if (element.scrollHeight !== anchor.measuredHeight) anchor.stable = 0;
+    anchor.measuredHeight = element.scrollHeight;
+    markProgrammaticScroll();
+    element.scrollTop = element.scrollHeight - anchor.height + anchor.top;
+    if (historyFrameRef.current === null)
+      historyFrameRef.current = requestAnimationFrame(sampleCommittedAnchor);
+  });
   const preserveScrollAnchor = (
     previousHeight: number,
     previousTop: number,
@@ -458,16 +548,20 @@ export const ChatConversationView = memo(function ChatConversationView({
   };
   const loadPreviousMessages = async () => {
     if (!historyAuthorizedRef.current || messages.isNavigatingHistory) return;
+    const canRevealOlderWindow = renderWindowStart > 0;
+    // Reveal already loaded rows first. A local window commit and a network
+    // page have independent failure/commit lifecycles and must not share a click.
     const canFetchPrevious = Boolean(
-      hasPreviousMessages && onLoadPreviousMessages && !isLoadingPreviousMessages,
+      !canRevealOlderWindow &&
+      hasPreviousMessages &&
+      onLoadPreviousMessages &&
+      !isLoadingPreviousMessages,
     );
-    const canRevealOlderWindow =
-      effectiveTimelineWindowStart > 0 ||
-      (userNavigatedTimelineRef.current && latestWindowStart > 0);
     if ((!canFetchPrevious && !canRevealOlderWindow) || loadingPreviousRef.current) return;
     // Explicit history reading owns the scroll now, even if invoked while the
     // initial follow animation or a ResizeObserver tail frame is still queued.
     // Cancelling smooth scroll can synchronously emit scroll in embedded hosts.
+    invalidateHistoryAnchor();
     markProgrammaticScroll();
     userIntentExitFollow();
     initialFollowPendingRef.current = false;
@@ -482,6 +576,26 @@ export const ChatConversationView = memo(function ChatConversationView({
       historyIntentRef.current === intent &&
       scrollRef.current === element;
     loadingPreviousRef.current = owner;
+    clearCommittedAnchor();
+    const oldest = Math.min(...(messages.data ?? []).map((message) => message.sequence));
+    const ownsCommittedAnchor =
+      (canFetchPrevious || canRevealOlderWindow) && Number.isFinite(oldest);
+    if (ownsCommittedAnchor) {
+      const anchor = {
+        oldest,
+        windowStart: renderWindowStart,
+        remote: canFetchPrevious,
+        newest: Math.max(...(messages.data ?? []).map((message) => message.sequence)),
+        height: previousHeight,
+        top: previousTop,
+        valid,
+        events: events.data,
+        stable: 0,
+        samples: 0,
+        measuredHeight: previousHeight,
+      };
+      committedAnchorRef.current = anchor;
+    }
     try {
       if (canRevealOlderWindow)
         setTimelineWindowStart((current) =>
@@ -493,8 +607,17 @@ export const ChatConversationView = memo(function ChatConversationView({
       if (canFetchPrevious) await onLoadPreviousMessages?.();
     } catch {
       // Query state owns the visible error. Never leak a rejected click promise.
+      if (valid()) clearCommittedAnchor();
     } finally {
-      preserveScrollAnchor(previousHeight, previousTop, valid);
+      if (!ownsCommittedAnchor) preserveScrollAnchor(previousHeight, previousTop, valid);
+      const anchor = committedAnchorRef.current;
+      if (ownsCommittedAnchor && anchor && valid() && !anchor.data) {
+        // Allow the completed query's notification to commit, but do not retain
+        // abandoned ownership forever. Expiry never initiates a delayed scroll.
+        anchor.expiry = setTimeout(() => {
+          if (committedAnchorRef.current === anchor) clearCommittedAnchor();
+        }, 2000);
+      }
       if (loadingPreviousRef.current === owner) loadingPreviousRef.current = null;
     }
   };
@@ -930,9 +1053,9 @@ function RoundBlock({ turn, ...itemProps }: ConversationTurnViewProps) {
         item.kind === 'message' &&
         item.message.role === 'ASSISTANT' &&
         !item.streaming &&
-        Boolean(item.message.text?.trim()),
+        Boolean(item.copyText ?? item.message.text?.trim()),
     )
-    .map((item) => (item.kind === 'message' ? item.message.text?.trim() : ''))
+    .map((item) => (item.kind === 'message' ? (item.copyText ?? item.message.text?.trim()) : ''))
     .filter((text): text is string => Boolean(text))
     .join('\n\n');
   const assistantStreaming = assistantEntries.some(

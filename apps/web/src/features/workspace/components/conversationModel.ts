@@ -19,6 +19,12 @@ export type ConversationMessageItem = {
   /** 事件流创建的临时消息在完整 MessageRecord 到达前为 true。 */
   streaming?: boolean;
   persisted?: boolean;
+  /** Exact causal slice for display; the original persisted record stays intact. */
+  displayText?: string;
+  /** Full saved text on the first slice, empty on its synthetic continuations. */
+  copyText?: string;
+  /** Causal event domain for a saved message displayed at its first delta. */
+  eventSequence?: number;
   turnId?: string;
 };
 
@@ -188,6 +194,7 @@ function itemKindOrder(kind: ConversationTimelineItem['kind']): number {
 function firstSequence(item: ConversationTimelineItem): number {
   switch (item.kind) {
     case 'message':
+      if (item.eventSequence !== undefined) return item.eventSequence;
       return Number.isFinite(item.message.sequence)
         ? item.message.sequence
         : Number.MAX_SAFE_INTEGER;
@@ -539,7 +546,52 @@ export function buildConversationTimeline(
   // message. This prevents a completed response from appearing twice while
   // still allowing delta-only sessions to render immediately.
   const persistedAssistantMessages = messages.filter((message) => message.role === 'ASSISTANT');
+  const reconciled = new Set<string>();
+  const runs = new Set(persistedAssistantMessages.map((message) => message.runId).filter(Boolean));
+  for (const runId of runs) {
+    const savedForRun = persistedAssistantMessages.filter((message) => message.runId === runId);
+    if (savedForRun.length !== 1) continue;
+    const saved = savedForRun[0]!;
+    const segments = [...assistantItems.values()]
+      .filter((item) => item.message.runId === runId)
+      .sort(compareTimelineItems);
+    if (segments.length < 2 || !saved.text) continue;
+    // Only an exact whole-answer match establishes that all these causal slices
+    // belong to this one saved record. Never infer ownership from a substring.
+    if (segments.map((item) => item.message.text ?? '').join('') !== saved.text) continue;
+    if (
+      !orderedEvents.some(
+        (event) =>
+          event.runId === runId &&
+          event.type === 'assistant.message.completed' &&
+          readEventText(event.payloadJson) === saved.text,
+      )
+    )
+      continue;
+    const savedIndex = timeline.findIndex(
+      (item) => item.kind === 'message' && item.message.id === saved.id,
+    );
+    if (savedIndex >= 0) timeline.splice(savedIndex, 1);
+    segments.forEach((item, index) => {
+      reconciled.add(item.id);
+      const settled: ConversationMessageItem =
+        index === 0
+          ? {
+              ...item,
+              id: saved.id,
+              message: saved,
+              persisted: true,
+              displayText: item.message.text ?? '',
+              copyText: saved.text!,
+              eventSequence: item.message.sequence,
+            }
+          : { ...item, copyText: '', persisted: false };
+      delete settled.streaming;
+      timeline.push(settled);
+    });
+  }
   for (const item of assistantItems.values()) {
+    if (reconciled.has(item.id)) continue;
     const duplicate = persistedAssistantMessages.some(
       (message) =>
         message.runId === item.message.runId &&
