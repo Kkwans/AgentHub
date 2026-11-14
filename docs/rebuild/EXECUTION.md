@@ -1804,3 +1804,13 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - focused工作流仅追加既有workspace-content-visual 8例，共85例/10文件、无重复、零重试与原fullreal不变；格式/list检查通过，不能宣称85例已执行。最终web+UI聚合及全仓build正在串行执行，新片尚未推送。
 - 15:12:25 UTC /北京时间23:12:25：b6c202e128cd5599a93e6189215d401fd2c7548f已推/fetch核实，tree 0cf34e3ebe3e7f0ebda6c0e5e83064d601b55848与独立index一致。最终冻结web+UI129文件1373测试通过196.50s，随后全仓build成功，7文件hash一致。新85例focused和实际美学均待新CI，未main/部署。
 - 已重取并hash核对b80仅export390light trace：下载完成→Escape后dialog关闭，同时更多菜单aria-expanded=false，随后导出按钮找不到；trace未记录activeElement/keydown target/path，因此body焦点假设仍未直接证实，902新增事件诊断才可区分。没有把jsdom模拟当真实浏览器成因。
+
+### 2026-11-14 15:15–15:18 UTC / 北京时间23:15–23:18：新实际图与文件预览真实缺陷
+- 902focused132487532849最终75通过2失败，导出/rename已通过；390 reference两例末console出现两次400，完整review图已产出但case不通过。artifact14119348742 sha256 4441000a1071e623ee834939644fd308cc1782d8af9cc185e8f00729a15c1ad1；共享包在workspace大盘，保留trace避免重复下载。
+- 精确trace两次GET files/content?path=<绝对项目路径>/runner.ts均响应PATH_ABSOLUTE_FORBIDDEN。原URL身份正确，但fileContent直接把绝对selectedFile传给只接受相对路径的API；这是实际功能缺陷，不忽略400。正在做读取边界严格项目root内的相对转换并新增200/真实文件内容门禁，服务端realpath/symlink安全不放宽。
+- 主工程及视觉审查共同实际看902浅色390opening，视觉另看深色/390review/1440dark：Composer约100px（之前约134），让结论进入首屏，basename可辨；2px边界仍较重但不继续牺牲AA。后续重点转全页目录审美，非继续无止境微调输入区。390review代码仍有横向长行，b6可发现性新图待验。
+- 15:26:28 UTC / 北京时间23:26:28：8e11e79c470812800a3261890673fdf8767cbb69（文件读取边界）及67329973718b9ae9a83661693d44f6abfdc00a15（Prompt空库引导）已按逻辑分片推送/fetch核实。分别tree ce1b049214939bd5647c9754fe52d3df32e4fe79/fec6a3304636ab50b02f4319776deccb3fdcbbaf匹配独立index。
+- 最终冻结web+UI130文件1403测试199.19s及全仓build通过，10文件hash一致、两片独立CR无阻断。新真实files/content 200/内容与Prompt几何截图待精确新CI，不以mock或旧图代替。
+- focused复用原Prompt spec共11例（8完整视觉主流程+3绑定回归），当前合计96例/11文件无重复；原fullreal仍另做完整矩阵。不是96个新用例，也不是已跑96通过。
+- b6精确focused132489406814最终83通过2失败，仍是390已知文件400；新增workspace-content8例通过，1440浅深阅读入口44/grip>=3门禁通过。artifact14120140255 sha256 02f0747cef5c1454a17598a5e4c7c541b78ca91a88854fe63ecdf0b4ee1fbc02。902 verify已成功：全仓2363过11条件skip、词法9过、完整fixture111过13条件skip；focused另有2失败，不混称整个CI成功。
+- 已实看并核源码的Agent/Prompt目录改版方案保存DIRECTORY_UI_REDESIGN.md；Agent实现尚未开始，不把规划算完成。新Prompt原图尚待验。
