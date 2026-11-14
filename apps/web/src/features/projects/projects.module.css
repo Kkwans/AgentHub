@@ -2001,3 +2001,71 @@
     margin-top: 4px;
   }
 }
+
+/* Confirmed empty collections are quiet status rows, not empty dashboard panels.
+ * Unknown/loading/error states keep their original query and recovery surfaces. */
+.overviewCompact {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px;
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+.overviewCompactCopy {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.overviewCompactCopy h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.overviewCompactCopy span {
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.overviewCompactActions {
+  max-width: 55%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.overviewCompactActions > a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .overviewCompactCopy {
+    display: grid;
+    gap: 2px;
+  }
+  .overviewCompactActions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .overviewCompactActions button {
+    min-height: 44px;
+  }
+}
+
+.overviewCompactActions > button {
+  min-height: 44px;
+}
+.overviewCompactCopy [role='alert'] {
+  color: var(--ah-warning);
+  overflow-wrap: anywhere;
+}

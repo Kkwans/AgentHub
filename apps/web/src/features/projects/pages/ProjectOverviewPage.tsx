@@ -177,6 +177,9 @@ export function ProjectOverviewPage() {
         .slice(0, 4),
     [sessions.data],
   );
+  const reviewEmpty = tasks.data !== undefined && reviewTasks.length === 0;
+  const workEmpty = tasks.data !== undefined && activeTasks.length === 0;
+  const sessionsEmpty = sessions.data !== undefined && recentSessions.length === 0;
   const preflightKnown = preflight.isSuccess && !preflight.isFetching;
   const eligibilityKnown = eligibility.isSuccess && !eligibility.isFetching;
   const healthItems: Array<{ label: string; detail: string; ok: boolean | null }> = [
@@ -246,165 +249,219 @@ export function ProjectOverviewPage() {
             ) : null}
           </div>
         ) : null}
-        <section className={projectsStyles.overviewPanel}>
-          <div className={projectsStyles.panelHeader}>
-            <div>
+        {reviewEmpty ? (
+          <section className={projectsStyles.overviewCompact} aria-label="待审阅">
+            <div className={projectsStyles.overviewCompactCopy}>
               <h3>待审阅</h3>
-              {!(tasks.isSuccess && !tasks.isFetching && !reviewTasks.length) ? (
+              <span role={tasks.isError ? 'alert' : tasks.isFetching ? 'status' : undefined}>
+                {tasks.isFetching
+                  ? '正在核对待审阅工作…'
+                  : tasks.isError
+                    ? tasks.error.message
+                    : '没有待审阅结果'}
+              </span>
+            </div>
+            <div className={projectsStyles.overviewCompactActions}>
+              {tasks.isError ? (
+                <AhButton
+                  size="sm"
+                  variant="subtle"
+                  disabled={tasks.isFetching}
+                  onClick={() => void tasks.refetch()}
+                >
+                  重新读取待审阅工作
+                </AhButton>
+              ) : null}
+              <Link to={`/projects/${project.id}/work?status=WAITING_REVIEW`}>全部审阅 →</Link>
+            </div>
+          </section>
+        ) : (
+          <section className={projectsStyles.overviewPanel}>
+            <div className={projectsStyles.panelHeader}>
+              <div>
+                <h3>待审阅</h3>
                 <p>需要你做决策的工作结果。</p>
-              ) : null}
-            </div>
-            <Link to={`/projects/${project.id}/work?status=WAITING_REVIEW`}>全部审阅 →</Link>
-          </div>
-          <div className={projectsStyles.overviewList}>
-            <QueryMessage
-              loading={tasks.isFetching}
-              error={tasks.error}
-              retry={() => void tasks.refetch()}
-              label={
-                tasks.data && !tasks.isError
-                  ? '正在更新待审阅工作，下方为上次读取结果'
-                  : '正在读取待审阅工作'
-              }
-            />
-            {(!tasks.isError ? reviewTasks : []).map((task) => (
-              <Link
-                className={projectsStyles.reviewQueueRow}
-                key={task.id}
-                to={`/projects/${project.id}/work?task=${task.id}`}
-              >
-                <span className={projectsStyles.reviewMark} aria-hidden="true">
-                  ✓
-                </span>
-                <span className={projectsStyles.overviewCopy}>
-                  <strong>{task.title}</strong>
-                  <small>
-                    {task.branch ?? '尚未创建分支'} · {displayDate(task.updatedAt)}
-                  </small>
-                </span>
-                <span className={projectsStyles.reviewAction}>查看结果</span>
-              </Link>
-            ))}
-            {tasks.isSuccess && !tasks.isFetching && !reviewTasks.length ? (
-              <div className={projectsStyles.overviewEmpty}>
-                <div>
-                  <h4>没有待审阅结果</h4>
-                  <p>Agent 完成工作后，会在这里等待你的决策。</p>
-                </div>
               </div>
-            ) : null}
-          </div>
-        </section>
-        <section className={projectsStyles.overviewPanel}>
-          <div className={projectsStyles.panelHeader}>
-            <div>
-              <h3>正在进行</h3>
-              {!(tasks.isSuccess && !tasks.isFetching && !activeTasks.length) ? (
-                <p>当前项目中的活跃工作。</p>
-              ) : null}
+              <Link to={`/projects/${project.id}/work?status=WAITING_REVIEW`}>全部审阅 →</Link>
             </div>
-            <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
-          </div>
-          <div className={projectsStyles.overviewList}>
-            <QueryMessage
-              loading={tasks.isFetching}
-              error={tasks.error}
-              retry={() => void tasks.refetch()}
-              label={
-                tasks.data && !tasks.isError ? '正在更新工作，下方为上次读取结果' : '正在读取工作'
-              }
-            />
-            {(!tasks.isError ? activeTasks : []).map((task) => {
-              return (
+            <div className={projectsStyles.overviewList}>
+              <QueryMessage
+                loading={tasks.isFetching}
+                error={tasks.error}
+                retry={() => void tasks.refetch()}
+                label={
+                  tasks.data && !tasks.isError
+                    ? '正在更新待审阅工作，下方为上次读取结果'
+                    : '正在读取待审阅工作'
+                }
+              />
+              {(!tasks.isError ? reviewTasks : []).map((task) => (
                 <Link
-                  className={projectsStyles.overviewWorkRow}
+                  className={projectsStyles.reviewQueueRow}
                   key={task.id}
                   to={`/projects/${project.id}/work?task=${task.id}`}
                 >
-                  <span
-                    className={`${projectsStyles.workStateDot} ${taskStateClass(task.status)}`}
-                    aria-hidden="true"
-                  />
+                  <span className={projectsStyles.reviewMark} aria-hidden="true">
+                    ✓
+                  </span>
                   <span className={projectsStyles.overviewCopy}>
                     <strong>{task.title}</strong>
                     <small>
-                      {agentLabel(task.assignedAgentId, '尚未分配 Agent')}
-                      {task.branch ? ` · ${task.branch}` : ''} · {displayDate(task.updatedAt)}
+                      {task.branch ?? '尚未创建分支'} · {displayDate(task.updatedAt)}
                     </small>
                   </span>
-                  <AhStatusPill status={task.status} />
+                  <span className={projectsStyles.reviewAction}>查看结果</span>
                 </Link>
-              );
-            })}
-            {tasks.isSuccess && !tasks.isFetching && !activeTasks.length ? (
-              <div className={projectsStyles.overviewEmpty}>
-                <div>
-                  <h4>没有进行中的工作</h4>
-                  <p>创建并开始一项工作。</p>
-                </div>
-                <Link to={`/projects/${project.id}/work/new`}>
-                  <AhButton size="sm" variant="default">
-                    新建工作
-                  </AhButton>
-                </Link>
-              </div>
-            ) : null}
-          </div>
-        </section>
-        <section className={projectsStyles.overviewPanel}>
-          <div className={projectsStyles.panelHeader}>
-            <div>
-              <h3>最近会话</h3>
-              {!(sessions.isSuccess && !sessions.isFetching && !recentSessions.length) ? (
-                <p>继续上一次对话或代码审阅。</p>
-              ) : null}
+              ))}
             </div>
-            <Link to={`/projects/${project.id}/sessions`}>全部会话 →</Link>
-          </div>
-          <div className={projectsStyles.overviewList}>
-            <QueryMessage
-              loading={sessions.isFetching}
-              error={sessions.error}
-              retry={() => void sessions.refetch()}
-              label={
-                sessions.data && !sessions.isError
-                  ? '正在更新会话，下方为上次读取结果'
-                  : '正在读取会话'
-              }
-            />
-            {(!sessions.isError ? recentSessions : []).map((session) => {
-              const agent = agentById.get(session.agentId);
-              return (
-                <Link
-                  className={projectsStyles.overviewSessionRow}
-                  key={session.id}
-                  to={`/workspace/${session.id}`}
+          </section>
+        )}
+        {workEmpty ? (
+          <section className={projectsStyles.overviewCompact} aria-label="正在进行">
+            <div className={projectsStyles.overviewCompactCopy}>
+              <h3>正在进行</h3>
+              <span role={tasks.isError ? 'alert' : tasks.isFetching ? 'status' : undefined}>
+                {tasks.isFetching
+                  ? '正在核对工作…'
+                  : tasks.isError
+                    ? tasks.error.message
+                    : '没有进行中的工作'}
+              </span>
+            </div>
+            <div className={projectsStyles.overviewCompactActions}>
+              {tasks.isError ? (
+                <AhButton
+                  size="sm"
+                  variant="subtle"
+                  disabled={tasks.isFetching}
+                  onClick={() => void tasks.refetch()}
                 >
-                  <span className={projectsStyles.agentAvatar} aria-hidden="true">
-                    {agent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
-                  </span>
-                  <span className={projectsStyles.overviewCopy}>
-                    <strong>{session.title}</strong>
-                    <small>
-                      {agentLabel(session.agentId, 'Agent 未记录')}
-                      {session.model ? ` · ${session.model}` : ''} ·{' '}
-                      {displayDate(session.lastActiveAt)}
-                    </small>
-                  </span>
-                  <AhStatusPill status={session.status} />
-                </Link>
-              );
-            })}
-            {sessions.isSuccess && !sessions.isFetching && !recentSessions.length ? (
-              <div className={projectsStyles.overviewEmpty}>
-                <div>
-                  <h4>还没有 Session</h4>
-                  <p>创建第一项工作，再选择 Agent 运行。</p>
-                </div>
+                  重新读取工作
+                </AhButton>
+              ) : null}
+              <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
+              <Link to={`/projects/${project.id}/work/new`}>
+                <AhButton size="sm" variant="default">
+                  新建工作
+                </AhButton>
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <section className={projectsStyles.overviewPanel}>
+            <div className={projectsStyles.panelHeader}>
+              <div>
+                <h3>正在进行</h3>
+                <p>当前项目中的活跃工作。</p>
               </div>
-            ) : null}
-          </div>
-        </section>
+              <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
+            </div>
+            <div className={projectsStyles.overviewList}>
+              <QueryMessage
+                loading={tasks.isFetching}
+                error={tasks.error}
+                retry={() => void tasks.refetch()}
+                label={
+                  tasks.data && !tasks.isError ? '正在更新工作，下方为上次读取结果' : '正在读取工作'
+                }
+              />
+              {(!tasks.isError ? activeTasks : []).map((task) => {
+                return (
+                  <Link
+                    className={projectsStyles.overviewWorkRow}
+                    key={task.id}
+                    to={`/projects/${project.id}/work?task=${task.id}`}
+                  >
+                    <span
+                      className={`${projectsStyles.workStateDot} ${taskStateClass(task.status)}`}
+                      aria-hidden="true"
+                    />
+                    <span className={projectsStyles.overviewCopy}>
+                      <strong>{task.title}</strong>
+                      <small>
+                        {agentLabel(task.assignedAgentId, '尚未分配 Agent')}
+                        {task.branch ? ` · ${task.branch}` : ''} · {displayDate(task.updatedAt)}
+                      </small>
+                    </span>
+                    <AhStatusPill status={task.status} />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+        {sessionsEmpty ? (
+          <section className={projectsStyles.overviewCompact} aria-label="最近会话">
+            <div className={projectsStyles.overviewCompactCopy}>
+              <h3>最近会话</h3>
+              <span role={sessions.isError ? 'alert' : sessions.isFetching ? 'status' : undefined}>
+                {sessions.isFetching
+                  ? '正在核对会话…'
+                  : sessions.isError
+                    ? sessions.error.message
+                    : '还没有 Session'}
+              </span>
+            </div>
+            <div className={projectsStyles.overviewCompactActions}>
+              {sessions.isError ? (
+                <AhButton
+                  size="sm"
+                  variant="subtle"
+                  disabled={sessions.isFetching}
+                  onClick={() => void sessions.refetch()}
+                >
+                  重新读取会话
+                </AhButton>
+              ) : null}
+              <Link to={`/projects/${project.id}/sessions`}>全部会话 →</Link>
+            </div>
+          </section>
+        ) : (
+          <section className={projectsStyles.overviewPanel}>
+            <div className={projectsStyles.panelHeader}>
+              <div>
+                <h3>最近会话</h3>
+                <p>继续上一次对话或代码审阅。</p>
+              </div>
+              <Link to={`/projects/${project.id}/sessions`}>全部会话 →</Link>
+            </div>
+            <div className={projectsStyles.overviewList}>
+              <QueryMessage
+                loading={sessions.isFetching}
+                error={sessions.error}
+                retry={() => void sessions.refetch()}
+                label={
+                  sessions.data && !sessions.isError
+                    ? '正在更新会话，下方为上次读取结果'
+                    : '正在读取会话'
+                }
+              />
+              {(!sessions.isError ? recentSessions : []).map((session) => {
+                const agent = agentById.get(session.agentId);
+                return (
+                  <Link
+                    className={projectsStyles.overviewSessionRow}
+                    key={session.id}
+                    to={`/workspace/${session.id}`}
+                  >
+                    <span className={projectsStyles.agentAvatar} aria-hidden="true">
+                      {agent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
+                    </span>
+                    <span className={projectsStyles.overviewCopy}>
+                      <strong>{session.title}</strong>
+                      <small>
+                        {agentLabel(session.agentId, 'Agent 未记录')}
+                        {session.model ? ` · ${session.model}` : ''} ·{' '}
+                        {displayDate(session.lastActiveAt)}
+                      </small>
+                    </span>
+                    <AhStatusPill status={session.status} />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
       <aside className={projectsStyles.overviewAside} aria-label="项目环境状态">
         <section className={projectsStyles.overviewPanel}>

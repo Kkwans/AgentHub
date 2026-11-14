@@ -273,7 +273,9 @@
    not a second rectangular frame inside the surface. Buttons keep their rings. */
 .workspace :global(.chat-command-card:has(textarea:focus-visible)) {
   outline: 2px solid hsl(var(--foreground-muted));
-  outline-offset: 2px;
+  outline-offset: -1px;
+  border-color: transparent;
+  box-shadow: none;
 }
 .workspace :global(.chat-command-card textarea:focus-visible) {
   outline: none;

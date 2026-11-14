@@ -124,6 +124,19 @@ it('confirmed empty sections remove duplicate heading help but retain recovery a
   expect(screen.getByText('没有待审阅结果')).toBeVisible();
   expect(await screen.findByText('没有进行中的工作')).toBeVisible();
   expect(screen.getByText('还没有 Session')).toBeVisible();
+  for (const name of ['待审阅', '正在进行', '最近会话']) {
+    const row = screen.getByRole('region', { name });
+    expect(within(row).getAllByRole('heading')).toHaveLength(1);
+    expect(row.querySelectorAll('p, h4')).toHaveLength(0);
+  }
+  expect(screen.getByRole('link', { name: '查看工作 →' })).toHaveAttribute(
+    'href',
+    '/projects/p1/work',
+  );
+  expect(screen.getByRole('link', { name: '全部会话 →' })).toHaveAttribute(
+    'href',
+    '/projects/p1/sessions',
+  );
   expect(screen.queryByText('需要你做决策的工作结果。')).not.toBeInTheDocument();
   expect(screen.queryByText('当前项目中的活跃工作。')).not.toBeInTheDocument();
   expect(screen.queryByText('继续上一次对话或代码审阅。')).not.toBeInTheDocument();
@@ -143,5 +156,46 @@ it('confirmed empty sections remove duplicate heading help but retain recovery a
   });
   expect(await screen.findByText('需要你做决策的工作结果。')).toBeVisible();
   expect(screen.queryByText('没有待审阅结果')).not.toBeInTheDocument();
+  noWrites();
+});
+
+it('empty cached work returns to query feedback during refresh and does not claim empty after failure', async () => {
+  vi.mocked(api.get).mockResolvedValue([agent] as never);
+  const client = mount(true);
+  await act(async () => {
+    client.setQueryData(['tasks', 'p1'], []);
+  });
+  const compact = await screen.findByRole('region', { name: '正在进行' });
+  const stableClass = compact.className;
+  let reject!: (error: Error) => void;
+  vi.mocked(api.get).mockImplementation(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      }) as never,
+  );
+  let refresh!: Promise<void>;
+  await act(async () => {
+    refresh = client.refetchQueries({ queryKey: ['tasks', 'p1'], exact: true });
+  });
+  await waitFor(() => expect(screen.getByText('正在核对工作…')).toBeVisible());
+  expect(screen.getByRole('region', { name: '正在进行' })).toHaveClass(stableClass);
+  expect(screen.queryByText('没有进行中的工作')).not.toBeInTheDocument();
+  expect(screen.getByText('正在核对工作…')).toBeVisible();
+  await act(async () => {
+    reject(new Error('读取工作失败'));
+    await refresh;
+  });
+  await waitFor(() => expect(screen.getAllByText('读取工作失败').length).toBeGreaterThan(0));
+  expect(screen.getByRole('region', { name: '正在进行' })).toHaveClass(stableClass);
+  expect(screen.getByRole('button', { name: /^重新读取工作$/ })).toBeEnabled();
+  vi.mocked(api.get).mockResolvedValue([] as never);
+  fireEvent.click(screen.getByRole('button', { name: /^重新读取工作$/ }));
+  expect(await screen.findByText('没有进行中的工作')).toBeVisible();
+  expect(screen.getByRole('region', { name: '正在进行' })).toHaveClass(stableClass);
+  expect(screen.getByRole('link', { name: '查看工作 →' })).toHaveAttribute(
+    'href',
+    '/projects/p1/work',
+  );
   noWrites();
 });
