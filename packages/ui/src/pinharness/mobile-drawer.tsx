@@ -143,6 +143,7 @@ export function MobileDrawerPanel({
       ref={drawer.drawerRef}
       aria-modal="true"
       aria-label={ariaLabel}
+      tabIndex={-1}
       className={cn(
         'mobile-drawer m-0 h-dvh max-h-dvh overflow-hidden fixed inset-y-0 left-0 z-[90] flex w-[80vw] max-w-[320px] flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--surface-elevated))] shadow-[var(--shadow-lg)] outline-none',
         className,
@@ -150,6 +151,50 @@ export function MobileDrawerPanel({
       style={{
         transform: `translateX(-${drawer.dragOffset}px)`,
         transition: drawer.dragOffset ? 'none' : undefined,
+      }}
+      onKeyDown={(event) => {
+        if (
+          event.key !== 'Tab' ||
+          event.defaultPrevented ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey
+        )
+          return;
+        const dialog = event.currentTarget;
+        const targets = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'a[href], button, input, select, textarea, summary, [contenteditable="true"], [tabindex]',
+          ),
+        )
+          .filter(
+            (node) =>
+              node.tabIndex >= 0 &&
+              !node.matches(':disabled') &&
+              !node.closest('[hidden], [inert]') &&
+              node.getClientRects().length > 0 &&
+              !['hidden', 'collapse'].includes(getComputedStyle(node).visibility),
+          )
+          .sort(
+            (left, right) =>
+              (left.tabIndex > 0 ? left.tabIndex : Infinity) -
+              (right.tabIndex > 0 ? right.tabIndex : Infinity),
+          );
+        const first = targets[0];
+        const last = targets.at(-1);
+        const active = dialog.ownerDocument.activeElement;
+        if (!first || !last) {
+          event.preventDefault();
+          dialog.focus();
+        } else if (
+          !targets.includes(active as HTMLElement) ||
+          (event.shiftKey ? active === first : active === last)
+        ) {
+          // Native modal inertness remains authoritative. Explicit edge cycling
+          // keeps boundary traversal deterministic across browser hosts.
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        }
       }}
       onCancel={(event) => {
         event.preventDefault();

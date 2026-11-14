@@ -34,8 +34,31 @@ for (const theme of ['light', 'dark']) {
     const last = focusables.last();
     await first.focus();
     await page.keyboard.press('Shift+Tab');
+    await info.attach('reverse-tab-focus', {
+      body: JSON.stringify(
+        await page.evaluate(() => ({
+          tag: document.activeElement?.tagName,
+          label: document.activeElement?.getAttribute('aria-label'),
+          text: document.activeElement?.textContent,
+          inModal: Boolean(document.activeElement?.closest('dialog:modal')),
+          documentFocused: document.hasFocus(),
+        })),
+      ),
+      contentType: 'application/json',
+    });
     await expect(last).toBeFocused();
     await page.keyboard.press('Tab');
+    await info.attach('forward-tab-focus', {
+      body: JSON.stringify(
+        await page.evaluate(() => ({
+          tag: document.activeElement?.tagName,
+          label: document.activeElement?.getAttribute('aria-label'),
+          inModal: Boolean(document.activeElement?.closest('dialog:modal')),
+          documentFocused: document.hasFocus(),
+        })),
+      ),
+      contentType: 'application/json',
+    });
     await expect(first).toBeFocused();
     await info.attach(`native-navigation-${theme}`, {
       body: await page.screenshot(),

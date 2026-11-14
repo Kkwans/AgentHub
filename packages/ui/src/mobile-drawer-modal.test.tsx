@@ -125,3 +125,74 @@ it('does not erase a different route history marker on cleanup', () => {
   view.rerender(content(false, vi.fn()));
   expect(window.history.state).toEqual({ mobileDrawer: 'another-owner', route: 'new' });
 });
+
+function exposeRects(root: HTMLElement) {
+  for (const node of root.querySelectorAll<HTMLElement>('*'))
+    Object.defineProperty(node, 'getClientRects', {
+      configurable: true,
+      value: () => [{ width: 44, height: 44 }],
+    });
+}
+it('wraps reverse and forward Tab only at visible focusable boundaries', () => {
+  render(content(true, vi.fn()));
+  const dialog = screen.getByRole('dialog');
+  exposeRects(dialog);
+  const first = screen.getByRole('button', { name: '第一项' });
+  const last = screen.getByRole('button', { name: '末项' });
+  first.focus();
+  fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+  expect(document.activeElement).toBe(last);
+  fireEvent.keyDown(last, { key: 'Tab' });
+  expect(document.activeElement).toBe(first);
+  const interior = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+  fireEvent(first, interior);
+  expect(interior.defaultPrevented).toBe(false);
+});
+it('ignores disabled, hidden, inert, non-tab and layout-invisible endpoints', () => {
+  render(
+    <MobileDrawerPanel open onClose={() => {}} ariaLabel="测试导航">
+      <button disabled>disabled first</button>
+      <div hidden>
+        <button>hidden first</button>
+      </div>
+      <button>有效首项</button>
+      <button style={{ visibility: 'hidden' }}>invisible</button>
+      <div inert>
+        <button>inert last</button>
+      </div>
+      <button tabIndex={-1}>not tab</button>
+      <button>有效末项</button>
+      <button data-no-layout>no layout</button>
+    </MobileDrawerPanel>,
+  );
+  const dialog = screen.getByRole('dialog');
+  exposeRects(dialog);
+  Object.defineProperty(dialog.querySelector('[data-no-layout]')!, 'getClientRects', {
+    value: () => [],
+  });
+  const first = screen.getByRole('button', { name: '有效首项' }),
+    last = screen.getByRole('button', { name: '有效末项' });
+  first.focus();
+  fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+  expect(document.activeElement).toBe(last);
+  fireEvent.keyDown(last, { key: 'Tab' });
+  expect(document.activeElement).toBe(first);
+});
+it('keeps an empty focus set on the dialog and leaves Escape to native cancellation', () => {
+  const onClose = vi.fn();
+  render(
+    <MobileDrawerPanel open onClose={onClose} ariaLabel="测试导航">
+      <button disabled>不可用</button>
+    </MobileDrawerPanel>,
+  );
+  const dialog = screen.getByRole('dialog');
+  exposeRects(dialog);
+  const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+  fireEvent(dialog, tab);
+  expect(tab.defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(dialog);
+  const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  fireEvent(dialog, escape);
+  expect(escape.defaultPrevented).toBe(false);
+  expect(onClose).not.toHaveBeenCalled();
+});
