@@ -527,3 +527,69 @@ it('返工失败反馈独立于合并分区，仍位于返工输入前且保留�
   expect(screen.getByText(/请先核对原隔离执行和实际 Git 结果/)).toBeVisible();
   expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
 });
+
+it('文本差异默认展开，完整纯文本在技术信息和提交表单之前', async () => {
+  const patch =
+    'diff --git a/file b/file\n-旧行\n+<script>不是HTML</script>\n' + '保留长行'.repeat(200);
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, patch, truncated: false });
+  const post = vi.spyOn(api, 'post');
+  mount();
+  await load();
+  const content = screen.getByRole('region', { name: '隔离工作区差异' });
+  expect(content).toBeVisible();
+  expect(content.textContent).toBe(patch);
+  expect(content.querySelector('script')).toBeNull();
+  expect(content.closest('details')).toHaveAttribute('open');
+  content.focus();
+  expect(content).toHaveFocus();
+  const tech = screen.getByText('Git 技术信息').closest('details')!;
+  expect(tech).not.toHaveAttribute('open');
+  expect(
+    screen.getByText('src/example.ts').compareDocumentPosition(content) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(content.compareDocumentPosition(tech) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(
+    tech.compareDocumentPosition(screen.getByRole('textbox', { name: '合并提交说明' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+  expect(post).not.toHaveBeenCalled();
+});
+
+it('收起再展开差异保留草稿和明确确认，不发送操作且不因输入重绘自动展开', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  const post = vi.spyOn(api, 'post');
+  mount();
+  await load();
+  const summary = screen.getByText('查看隔离工作区差异');
+  const commit = screen.getByRole('textbox', { name: '合并提交说明' });
+  const feedback = screen.getByRole('textbox', { name: '隔离工作区修改说明' });
+  fireEvent.change(commit, { target: { value: '审阅后的提交' } });
+  fireEvent.change(feedback, { target: { value: '待修改建议' } });
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(summary);
+  expect(summary.closest('details')).not.toHaveAttribute('open');
+  fireEvent.change(commit, { target: { value: '保留新的提交说明' } });
+  expect(summary.closest('details')).not.toHaveAttribute('open');
+  expect(screen.getByText(review.patch)).not.toBeVisible();
+  fireEvent.click(summary);
+  expect(screen.getByRole('region', { name: '隔离工作区差异' })).toBeVisible();
+  expect(commit).toHaveValue('保留新的提交说明');
+  expect(feedback).toHaveValue('待修改建议');
+  expect(screen.getByRole('checkbox')).toBeChecked();
+  expect(post).not.toHaveBeenCalled();
+});
+
+it('空文本差异保留文件和截断警告，不宣称无改动或允许合并', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, patch: '' });
+  mount();
+  await load();
+  expect(screen.getByText(/这不代表没有改动/)).toBeVisible();
+  expect(screen.getByText('src/example.ts')).toBeVisible();
+  fireEvent.click(screen.getByText('查看隔离工作区差异'));
+  expect(screen.getByText(/差异已截断/)).toBeVisible();
+  expect(screen.getByRole('checkbox')).toBeDisabled();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+});

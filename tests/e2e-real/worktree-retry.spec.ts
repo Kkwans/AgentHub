@@ -115,7 +115,7 @@ for (const width of [390, 768, 1024, 1440]) {
       { agentId: agent.id },
     );
     const execution = await finishTurn(context, queued.execution.id);
-    const review = await apiData<{ mergeAdmission: Admission }>(
+    const review = await apiData<{ mergeAdmission: Admission; patch: string }>(
       context,
       'get',
       `/worktree-executions/${execution.id}/review`,
@@ -180,10 +180,30 @@ for (const width of [390, 768, 1024, 1440]) {
     const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
     const heading = inspector.getByRole('heading', { name: '真实 Git 重试', exact: true });
     // Audit the initial review as well as the later scrolled confirmation state.
+    const diff = inspector.locator('details').filter({
+      has: page.locator('summary', { hasText: '查看隔离工作区差异' }),
+    });
+    const patch = inspector.getByRole('region', { name: '隔离工作区差异', exact: true });
+    await expect(diff).toHaveAttribute('open', '');
+    expect(review.patch.length).toBeGreaterThan(0);
+    await expect(patch).toBeVisible();
+    expect(await patch.textContent()).toBe(review.patch);
+    expect(await patch.evaluate((node) => node.clientHeight)).toBeLessThanOrEqual(320);
+    await diff.locator('summary').click();
+    await expect(patch).toBeHidden();
+    await expect(confirm).not.toBeChecked();
+    expect(mergeRequests).toHaveLength(0);
+    await diff.locator('summary').click();
+    await expect(patch).toBeVisible();
     const technical = inspector.locator('details').filter({
       has: page.locator('summary', { hasText: 'Git 技术信息' }),
     });
     await expect(technical).not.toHaveAttribute('open', '');
+    const diffBox = await diff.boundingBox();
+    const technicalBox = await technical.boundingBox();
+    expect(diffBox).not.toBeNull();
+    expect(technicalBox).not.toBeNull();
+    expect(diffBox!.y + diffBox!.height).toBeLessThanOrEqual(technicalBox!.y);
     await technical.locator('summary').click();
     await expect(technical).toHaveAttribute('open', '');
     await expect(technical).toContainText(originalWorktreeHead);

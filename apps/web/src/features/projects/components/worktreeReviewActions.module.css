@@ -61,3 +61,48 @@
   overflow-wrap: anywhere;
   user-select: text;
 }
+
+.patchDetails {
+  min-width: 0;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 6px;
+  background: var(--ah-surface);
+}
+
+.patchDetails summary {
+  padding: 10px 12px;
+  color: var(--ah-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.patchDetails summary:focus-visible,
+.patchContent:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: -2px;
+}
+
+.patchContent {
+  max-height: 320px;
+  max-width: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border-top: 1px solid var(--ah-border-subtle);
+  color: var(--ah-text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.patchEmpty {
+  margin: 0;
+  padding: 12px;
+  border-top: 1px solid var(--ah-border-subtle);
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}

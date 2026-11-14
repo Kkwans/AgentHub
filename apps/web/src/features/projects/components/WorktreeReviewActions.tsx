@@ -414,23 +414,6 @@ export function WorktreeReviewActions({
               ? '工作区没有未提交改动；仍需检查分支提交差异。'
               : '工作区包含未提交改动。'}
           </p>
-          <details className={styles.technicalDetails}>
-            <summary>Git 技术信息</summary>
-            <dl>
-              <div>
-                <dt>基础 SHA</dt>
-                <dd>
-                  <code>{shown.baseSha}</code>
-                </dd>
-              </div>
-              <div>
-                <dt>HEAD</dt>
-                <dd>
-                  <code>{shown.headSha}</code>
-                </dd>
-              </div>
-            </dl>
-          </details>
           {shown.entries.length ? (
             <ul>
               {shown.entries.map((entry, i) => (
@@ -451,11 +434,40 @@ export function WorktreeReviewActions({
               差异已截断，不能把当前预览视为全部改动；此入口暂不允许合并，仍可反馈返工。
             </p>
           ) : null}
-          <details>
+          <details className={styles.patchDetails} open>
             <summary>查看隔离工作区差异</summary>
-            <pre className="max-h-96 max-w-full overflow-auto whitespace-pre-wrap break-words">
-              {shown.patch || '没有可显示的文本差异。'}
-            </pre>
+            {shown.patch ? (
+              <pre
+                className={styles.patchContent}
+                role="region"
+                aria-label="隔离工作区差异"
+                tabIndex={0}
+              >
+                {shown.patch}
+              </pre>
+            ) : (
+              <p className={styles.patchEmpty}>
+                没有可显示的文本差异。这不代表没有改动，请核对变更文件和 Git
+                状态；二进制或不支持的内容无法作为文本审阅。
+              </p>
+            )}
+          </details>
+          <details className={styles.technicalDetails}>
+            <summary>Git 技术信息</summary>
+            <dl>
+              <div>
+                <dt>基础 SHA</dt>
+                <dd>
+                  <code>{shown.baseSha}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>HEAD</dt>
+                <dd>
+                  <code>{shown.headSha}</code>
+                </dd>
+              </div>
+            </dl>
           </details>
         </>
       ) : null}
