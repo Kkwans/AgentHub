@@ -622,7 +622,8 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   const thought = page.locator('.thinking-event-row');
   await expect(thought).toHaveCount(1);
   await expect(thought).not.toHaveAttribute('open', '');
-  await expect(thought.getByText('思考了 32 秒')).toBeVisible();
+  await expect(thought.getByText('Agent 思考内容', { exact: true })).toBeVisible();
+  await expect(thought.getByText('思考了 32 秒', { exact: true })).toHaveCount(0);
   const thoughtSummary = thought.locator('summary');
   await expect(
     thoughtSummary.locator('button, a, input, select, textarea, [tabindex]'),
@@ -632,12 +633,12 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   await page.keyboard.press('Enter');
   await expect(thought).toHaveAttribute('open', '');
   await expect(thoughtSummary).toHaveAttribute('aria-expanded', 'true');
-  await expect(thoughtSummary).toHaveAttribute('aria-label', /收起思考过程/);
+  await expect(thoughtSummary).toHaveAttribute('aria-label', /收起思考内容/);
   await expect(thought.getByText(/先对照 Codex 的主舞台宽度/)).toBeVisible();
   await page.keyboard.press('Space');
   await expect(thought).not.toHaveAttribute('open', '');
   await expect(thoughtSummary).toBeFocused();
-  await expect(thoughtSummary).toHaveAttribute('aria-label', /展开思考过程/);
+  await expect(thoughtSummary).toHaveAttribute('aria-label', /展开思考内容/);
   const firstTool = page.locator('.tool-event-row').first();
   const firstToolTrigger = firstTool.getByRole('button', { name: /工具调用完成/ });
   await expect(firstToolTrigger).toHaveAttribute('aria-expanded', 'false');

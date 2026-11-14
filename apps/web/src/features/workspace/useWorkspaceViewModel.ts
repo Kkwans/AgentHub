@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   api,
+  ApiError,
   type AgentRecord,
   type ApprovalRecord,
   type EventRecord,
@@ -241,8 +242,20 @@ export function useWorkspaceViewModel() {
   });
   const session = useQuery({
     queryKey: ['session', id],
-    queryFn: () => api.get<SessionRecord>(`/sessions/${id}`),
+    queryFn: ({ signal }) => api.get<SessionRecord>(`/sessions/${id}`, { signal }),
     enabled: Boolean(id),
+    // A terminal Run event can precede the final persisted Session transition.
+    // Reconcile only transitional states from the authority; never infer READY
+    // from Run completion. Inactive observers stop polling automatically.
+    refetchInterval: (query) => {
+      const error = query.state.error;
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return false;
+      return ['CREATED', 'STARTING', 'RUNNING', 'WAITING_APPROVAL'].includes(
+        query.state.data?.status ?? '',
+      )
+        ? 3_000
+        : false;
+    },
   });
   const configuration = useQuery({
     queryKey: ['session-configuration', id],
