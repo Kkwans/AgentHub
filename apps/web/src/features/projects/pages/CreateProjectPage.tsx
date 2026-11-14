@@ -159,13 +159,6 @@ export function CreateProjectPage() {
         }
       >
         <div className={layout.dialogBody} data-testid="create-project-dialog">
-          <div className={layout.dialogIntro}>
-            <span className={layout.dialogStep}>1</span>
-            <div>
-              <strong>选择 Project 目录</strong>
-              <p>先确认运行环境和可访问根目录，AgentHub 会自动识别 Git 与工作区信息。</p>
-            </div>
-          </div>
           <div className={layout.fieldGrid}>
             <AhSelect
               label="运行环境"
@@ -210,13 +203,7 @@ export function CreateProjectPage() {
             <code style={{ overflowWrap: 'anywhere' }}>{rootPath || '尚未选择'}</code>
           </p>
           <div className={layout.dialogSection}>
-            <div className={layout.dialogIntro}>
-              <span className={layout.dialogStep}>2</span>
-              <div>
-                <strong>确认 Project 身份</strong>
-                <p>名称默认取目录名，可按团队习惯调整。</p>
-              </div>
-            </div>
+            <p>名称默认取目录名，可按团队习惯调整。</p>
             <div className={layout.fieldGrid}>
               <AhInput
                 disabled={locked}

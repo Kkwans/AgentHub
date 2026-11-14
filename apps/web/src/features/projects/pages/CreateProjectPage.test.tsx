@@ -107,7 +107,13 @@ async function chooseTargetB() {
   fireEvent.keyDown(screen.getByRole('combobox', { name: '运行环境' }), { key: 'ArrowDown' });
   fireEvent.click(await screen.findByRole('option', { name: '环境 B · linux/arm64' }));
 }
+async function openCandidates() {
+  const summary = await screen.findByText('已发现的项目');
+  const details = summary.closest('details')!;
+  if (!details.open) fireEvent.click(summary);
+}
 async function chooseCandidate() {
+  await openCandidates();
   fireEvent.click(await screen.findByRole('button', { name: /repo-a.*选择/ }));
   await waitFor(() => expect(screen.getByRole('button', { name: '预检并创建' })).toBeEnabled());
 }
@@ -125,6 +131,20 @@ afterEach(() => {
 });
 
 describe('创建项目的授权目录选择', () => {
+  it('单授权根目录显示一次完整路径，发现候选默认收起且不提交', async () => {
+    mount();
+    const summary = await screen.findByText('已发现的项目');
+    expect(summary.closest('details')).not.toHaveAttribute('open');
+    expect(screen.queryByRole('combobox', { name: '授权根目录' })).not.toBeInTheDocument();
+    expect(screen.getByText('/allowed', { exact: true })).toBeVisible();
+    expect(screen.getByText('工作区', { exact: true })).toBeVisible();
+    expect(screen.getByText('当前位置：授权根目录')).toBeVisible();
+    expect(post).not.toHaveBeenCalled();
+    fireEvent.click(summary);
+    expect(await screen.findByRole('button', { name: /repo-a.*选择/ })).toBeVisible();
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('选择发现的嵌套仓库，以准确路径预检并创建，而不是授权父目录', async () => {
     mount();
     await chooseCandidate();
@@ -183,6 +203,7 @@ describe('创建项目的授权目录选择', () => {
     const oldPreflight = deferred<unknown>();
     post.mockImplementation(() => oldPreflight.promise);
     mount();
+    await openCandidates();
     fireEvent.click(await screen.findByRole('button', { name: /repo-a.*选择/ }));
     await waitFor(() => expect(post).toHaveBeenCalled());
     await chooseTargetB();
@@ -233,6 +254,7 @@ describe('创建项目的授权目录选择', () => {
       checks: [{ id: 'path', status: 'FAIL', message: '目录不可访问' }],
     });
     mount();
+    await openCandidates();
     fireEvent.click(await screen.findByRole('button', { name: /repo-a.*选择/ }));
     await screen.findByText('目录不可访问');
     expect(screen.getByRole('button', { name: '预检并创建' })).toBeDisabled();
@@ -345,6 +367,7 @@ describe('创建项目的授权目录选择', () => {
       return { status: 'READY', checks: [] };
     });
     mount();
+    await openCandidates();
     fireEvent.click(await screen.findByRole('button', { name: /repo-a.*选择/ }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('目录预检失败');

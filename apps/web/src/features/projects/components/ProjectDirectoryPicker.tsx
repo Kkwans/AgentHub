@@ -40,22 +40,30 @@ export function ProjectDirectoryPicker(props: PickerProps) {
   if (!root) return <p role="status">当前运行环境没有可访问的授权目录，请先检查工作区配置。</p>;
   return (
     <div className={styles.picker}>
-      <AhSelect
-        label="授权根目录"
-        value={root.rootId}
-        data={(roots.data ?? []).map((item) => ({
-          value: item.rootId,
-          label: `${item.label} · ${item.path}`,
-        }))}
-        clearable={false}
-        disabled={props.disabled || roots.isFetching}
-        onChange={(value) => {
-          if (value && value !== root.rootId) {
-            props.onSelect('');
-            setRootId(value);
-          }
-        }}
-      />
+      {(roots.data?.length ?? 0) > 1 ? (
+        <AhSelect
+          label="授权根目录"
+          value={root.rootId}
+          data={(roots.data ?? []).map((item) => ({
+            value: item.rootId,
+            label: `${item.label} · ${item.path}`,
+          }))}
+          clearable={false}
+          disabled={props.disabled || roots.isFetching}
+          onChange={(value) => {
+            if (value && value !== root.rootId) {
+              props.onSelect('');
+              setRootId(value);
+            }
+          }}
+        />
+      ) : (
+        <div className={styles.rootHeading}>
+          <span>授权根目录</span>
+          <strong>{root.label}</strong>
+        </div>
+      )}
+      <code className={styles.path}>{root.path}</code>
       <RootBrowser
         key={`${props.targetId}:${root.rootId}`}
         {...props}
@@ -105,7 +113,11 @@ function RootBrowser({
             返回上一级
           </AhButton>
         </div>
-        <code className={styles.path}>{path}</code>
+        {path !== root.path ? (
+          <code className={styles.path}>{path}</code>
+        ) : (
+          <span className={styles.currentRoot}>当前位置：授权根目录</span>
+        )}
         {directories.isLoading ? <AhLoadingState label="正在读取子目录" rows={1} /> : null}
         {directories.error ? (
           <AhErrorState
@@ -149,8 +161,6 @@ function RootBrowser({
         ) : null}
       </section>
       <section aria-label="已发现项目" className={styles.section}>
-        <strong>已发现的项目</strong>
-        <p>可以直接选择已识别的仓库；未发现的工程可在上方逐级浏览。</p>
         {candidates.isLoading ? <AhLoadingState label="正在发现项目" rows={1} /> : null}
         {candidates.error ? (
           <AhErrorState
@@ -160,25 +170,31 @@ function RootBrowser({
           />
         ) : candidates.data ? (
           candidates.data.length ? (
-            <ul className={styles.list}>
-              {candidates.data.map((candidate) => (
-                <li key={candidate.rootPath}>
-                  <AhButton
-                    variant={selectedPath === candidate.rootPath ? 'light' : 'default'}
-                    aria-pressed={selectedPath === candidate.rootPath}
-                    className={styles.entry}
-                    disabled={disabled || candidates.isFetching || !candidate.readable}
-                    onClick={() => onSelect(candidate.rootPath)}
-                  >
-                    <span>
-                      {candidate.name}
-                      <small>{candidate.relativePath || candidate.rootPath}</small>
-                    </span>
-                    <span>{candidate.readable ? '选择' : '不可读取'}</span>
-                  </AhButton>
-                </li>
-              ))}
-            </ul>
+            <details className={styles.discovered}>
+              <summary>
+                已发现的项目 <span>（{candidates.data.length}）</span>
+              </summary>
+              <p>可以直接选择已识别的仓库；其他工程可在上方逐级浏览。</p>
+              <ul className={styles.list}>
+                {candidates.data.map((candidate) => (
+                  <li key={candidate.rootPath}>
+                    <AhButton
+                      variant={selectedPath === candidate.rootPath ? 'light' : 'default'}
+                      aria-pressed={selectedPath === candidate.rootPath}
+                      className={styles.entry}
+                      disabled={disabled || candidates.isFetching || !candidate.readable}
+                      onClick={() => onSelect(candidate.rootPath)}
+                    >
+                      <span>
+                        {candidate.name}
+                        <small>{candidate.relativePath || candidate.rootPath}</small>
+                      </span>
+                      <span>{candidate.readable ? '选择' : '不可读取'}</span>
+                    </AhButton>
+                  </li>
+                ))}
+              </ul>
+            </details>
           ) : (
             <p role="status">此授权目录尚未发现项目。</p>
           )
