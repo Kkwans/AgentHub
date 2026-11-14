@@ -168,3 +168,54 @@ describe('ACP 事件归一化', () => {
     expect(JSON.stringify(capabilities)).not.toMatch(/ACP|Docker|OpenClaw/i);
   });
 });
+
+it('projects only standard public ACP text content and keeps raw diagnostics private', () => {
+  const normalized = normalizeAcpSessionUpdate({
+    sessionUpdate: 'tool_call',
+    toolCallId: 'public-text',
+    title: 'Command',
+    status: 'in_progress',
+    rawInput: { token: 'private-input' },
+    rawOutput: { message: 'private-output' },
+    content: [
+      { type: 'content', content: { type: 'text', text: 'Public failure\nDetails' } },
+      { type: 'content', content: { type: 'image', data: 'private-image', mimeType: 'image/png' } },
+      { type: 'diff', path: '/private/path', oldText: 'private-old', newText: 'private-new' },
+    ],
+  });
+  expect(normalized[0]?.payload.output).toBe('Public failure\nDetails');
+  expect(JSON.stringify(normalized)).not.toContain('private-');
+});
+it('bounds public tool text with an explicit truncation marker', () => {
+  const normalized = normalizeAcpSessionUpdate({
+    sessionUpdate: 'tool_call_update',
+    toolCallId: 'long',
+    status: 'completed',
+    content: [{ type: 'content', content: { type: 'text', text: 'x'.repeat(70_000) } }],
+  });
+  expect(normalized[0]?.payload.output).toBe(`${'x'.repeat(65_536)}\n[AgentHub：工具输出已截断]`);
+});
+
+it('keeps bounded public text replacement semantics and ignores absent/raw-only updates', () => {
+  const missing = normalizeAcpSessionUpdate({
+    sessionUpdate: 'tool_call_update',
+    toolCallId: 'x',
+    status: 'failed',
+    rawOutput: { message: 'secret-only' },
+  });
+  expect(missing[0]?.payload).not.toHaveProperty('output');
+  expect(JSON.stringify(missing)).not.toContain('secret-only');
+  const blocks = Array.from({ length: 65 }, (_, index) => ({
+    type: 'content' as const,
+    content: { type: 'text' as const, text: String(index) },
+  }));
+  const output = normalizeAcpSessionUpdate({
+    sessionUpdate: 'tool_call_update',
+    toolCallId: 'x',
+    status: 'failed',
+    content: blocks,
+  })[0]?.payload.output;
+  expect(output).toBe(
+    `${Array.from({ length: 64 }, (_, index) => String(index)).join('\n')}\n[AgentHub：工具输出已截断]`,
+  );
+});

@@ -107,7 +107,8 @@ for (const width of [390, 768, 1024, 1440])
         await expect(thought).toContainText('这是合成测试数据，不是模型隐藏推理。');
         const thoughtToggle = thought.getByRole('button');
         await expect(thoughtToggle).toHaveAttribute('aria-expanded', 'true');
-        expect((await thoughtToggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        // CSS target is 44px; tolerate subpixel rounding, not a smaller hit target.
+        expect((await thoughtToggle.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
         await capture(page, info, `process-thought-streaming-${theme}-${width}`, thought);
         await thoughtToggle.focus();
         await page.keyboard.press('Enter');
@@ -128,7 +129,7 @@ for (const width of [390, 768, 1024, 1440])
         );
         await capture(page, info, `process-tools-running-${theme}-${width}`, running);
         const outputToggle = success.locator('button[aria-expanded]').first();
-        expect((await outputToggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        expect((await outputToggle.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
         await expect(outputToggle).toHaveAttribute('aria-expanded', 'false');
         await outputToggle.focus();
         await page.keyboard.press('Enter');

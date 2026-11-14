@@ -6,7 +6,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { EventRecord } from '../../../lib/api';
-import type { ConversationToolItem } from './conversationModel';
+import { buildConversationTimeline, type ConversationToolItem } from './conversationModel';
+import { normalizeAcpSessionUpdate } from '../../../../../../packages/adapter-acp/dist/normalization.js';
 import { ChatEntryRenderer } from './ChatEntryRenderer';
 
 afterEach(() => {
@@ -159,4 +160,39 @@ it('keeps the provider failure summary visible while details remain collapsed', 
   expect(view.container.querySelector('.tool-entry-failure-preview')).toHaveTextContent(
     'Test command failed',
   );
+});
+
+it('renders standard ACP text output through normalization and started/failed timeline merging', async () => {
+  const text = 'Fixture 预期失败：演示错误状态，不是实际服务故障。';
+  const updates = [
+    ...normalizeAcpSessionUpdate({
+      sessionUpdate: 'tool_call',
+      toolCallId: 'wire-failed',
+      title: 'Fixture 失败工具',
+      kind: 'other',
+      status: 'in_progress',
+      rawOutput: { secret: 'private-raw' },
+      content: [{ type: 'content', content: { type: 'text', text } }],
+    }),
+    ...normalizeAcpSessionUpdate({
+      sessionUpdate: 'tool_call_update',
+      toolCallId: 'wire-failed',
+      status: 'failed',
+      rawOutput: { secret: 'private-raw-update' },
+    }),
+  ];
+  const timeline = buildConversationTimeline(
+    [],
+    updates.map((update, index) =>
+      event(update.payload, { id: `wire-${index}`, type: update.type, seq: index + 1 }),
+    ),
+  );
+  expect(timeline).toHaveLength(1);
+  const item = timeline[0];
+  if (item?.kind !== 'tool') throw new Error('Expected normalized tool');
+  const view = renderTool(item.event);
+  expect(view.container.querySelector('.tool-entry-failure-preview')).toHaveTextContent(text);
+  expect(view.container).not.toHaveTextContent('private-raw');
+  fireEvent.click(screen.getByRole('button', { name: 'Fixture 失败工具，工具调用失败，展开详情' }));
+  await waitFor(() => expect(screen.getAllByText(text).length).toBeGreaterThan(1));
 });

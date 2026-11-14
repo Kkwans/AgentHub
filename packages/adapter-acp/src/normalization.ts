@@ -259,9 +259,12 @@ function toolPayload(update: {
   kind?: string | null;
   status?: string | null;
   locations?: Array<{ path: string; line?: number | null }> | null;
+  content?: unknown;
 }): Record<string, unknown> {
+  const output = publicToolText(update.content);
   return {
     toolCallId: update.toolCallId,
+    ...(output ? { output } : {}),
     ...(update.title ? { title: update.title } : {}),
     ...(update.name ? { name: update.name } : {}),
     ...(update.kind ? { kind: update.kind } : {}),
@@ -277,6 +280,50 @@ function toolPayload(update: {
         }
       : {}),
   };
+}
+
+/** ACP content/text is explicitly displayable output. Raw input/output and
+ * non-text resource/image/diff objects remain outside this public projection. */
+function publicToolText(content: unknown): string | undefined {
+  if (!Array.isArray(content)) return undefined;
+  const limit = 65_536;
+  let result = '';
+  let truncated = false;
+  for (let index = 0; index < content.length; index++) {
+    if (index >= 64) {
+      truncated = true;
+      break;
+    }
+    const block: unknown = content[index];
+    if (
+      !block ||
+      typeof block !== 'object' ||
+      !('type' in block) ||
+      block.type !== 'content' ||
+      !('content' in block)
+    )
+      continue;
+    const textBlock = block.content;
+    if (
+      !textBlock ||
+      typeof textBlock !== 'object' ||
+      !('type' in textBlock) ||
+      textBlock.type !== 'text' ||
+      !('text' in textBlock) ||
+      typeof textBlock.text !== 'string'
+    )
+      continue;
+    if (!textBlock.text) continue;
+    if (result && result.length < limit) result += '\n';
+    const remaining = limit - result.length;
+    result += textBlock.text.slice(0, remaining);
+    if (textBlock.text.length > remaining) {
+      truncated = true;
+      break;
+    }
+  }
+  if (!result) return undefined;
+  return truncated ? `${result}\n[AgentHub：工具输出已截断]` : result;
 }
 
 function sanitizePlanUpdate(
