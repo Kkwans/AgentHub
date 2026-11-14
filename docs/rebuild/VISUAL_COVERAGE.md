@@ -318,3 +318,9 @@ f40a420 focused artifact14126762903，hash fb1e7…68a59 核验；八宽主题�
 - finally观测8组GET均allowed、WS同源/protocol正确、errors空；末尾assert因回焦失败未到，不说全部安全断言通过。
 - a87 focused同147/8（发现回焦），诊断真实Tab进入focus-visible、Enter后2px/2px合同8例过；不推断旧3px样式成因已确证，不称整run全绿。
 - 发现真正祖先壳保留修片新增original ElementHandle连接/焦点门禁；实际新回焦及新图仍待。
+
+### 2026-11-14 19:50 UTC 初始化入口补图与创建表单覆盖更正
+
+361的AccessGate仅单元/静态验收：旧exception spec并未在CI显式清单，不能假设新登录图自动产出。独立access-gate-visual候选8例覆盖真实token空库初始化（四宽双主题），仅GET状态、不输入/提交/建账号；不覆盖真实登录和认证后页面。实际首尾图与触点待CI，不能将list8计作已过。
+
+只读重新核对当前创建项目/新建工作spec：两主矩阵已四宽双主题，共32基础PNG+390短高2图和条件底图；此前17:36表中“非双主题”已过时。还未取得这些精确最新图片作人工审阅，源码覆盖不等于像素接受。下一步先取现有图；真正缺口是目录展开/校验状态/无Agent仅保存等，不重复补主题或增加真实Provider动作。

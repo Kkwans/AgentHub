@@ -2021,3 +2021,9 @@ ae8精确focused139过8失败：390仅诊断summary21px；768/1024/1440还含三
 
 19:44新核a87精确focused同为147过8发现回焦失败，诊断真实Tab及原2px/2px合同8例通过；不把整run说成功。来源折叠焦点间距P2仍单列待办，不混进此次祖先壳修复。
 - 19:47:36 UTC最终132文件1445测试通过198.36秒，三文件冻结hash一致；19:47:51全仓build成功。39专项/类型/lint/CR通过，8浏览器仅发现未本地执行。准备仅发布祖先壳六文件（含三台账），后续AccessGate只读spec/workflow另片，不混入。
+
+### 2026-11-14 19:50 UTC 初始化入口品牌只读图证（测试候选）
+
+纠正覆盖边界：旧v1-exception-states未在当前CI显式清单，不能说361完整矩阵自动覆盖AccessGate。新增独立token空库8例，仅真实同源无query GET auth/status；不填入/提交凭据、不seed账号、不接Provider，明确只初始化页而非已有账号登录。真实响应硬验setupRequired，完整AgentHub/noAH图形、空字段、44触点、页面无溢出，记录实际滚动宿主首尾并复位；明确主题等待/reduced motion，finally附观察与安全断言执行标记，硬保零业务write/noWS/error。局部44为soft只保失败图仍判用例失败，未为可能小眼睛按钮放宽。
+
+类型/lint/prettier/list8/diff与独立CR通过；19:50:23全仓build成功。主工首次类型命令误用了不存在的临时配置名，已改用实际access-gate-visual配置重跑通过，不隐藏该失败。8例仅发现未本地浏览器执行，无新PNG；未重跑产品1445，不计作本片验证。focused工作流只加一行，原其它覆盖不删。
