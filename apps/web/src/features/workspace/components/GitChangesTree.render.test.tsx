@@ -463,3 +463,47 @@ it('清单收起不隐藏pending与UNKNOWN，不解锁重试或提交草稿', as
   expect(screen.getByRole('checkbox', { name: '选择 src/one.ts' })).toBeChecked();
   expect(props.onCommit).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  'clean',
+  'loading',
+  'error',
+  'retained-clean',
+  'retained-loading',
+  'retained-error',
+] as const)('文件清单controls始终引用实际挂载目标：%s', (state) => {
+  const props = reviewProps();
+  const retained = state.startsWith('retained-');
+  const loading = state.endsWith('loading');
+  const error = state.endsWith('error');
+  const view = render(
+    <GitChangesTree
+      {...props}
+      selectedPath={retained ? 'src/one.ts' : undefined}
+      status={{
+        ...props.status,
+        data: { ...props.status.data!, clean: true, entries: [] },
+        isLoading: loading,
+        error: error ? new Error('状态读取失败') : null,
+      }}
+    />,
+  );
+  for (const control of view.container.querySelectorAll('.git-file-list-toggle[aria-controls]')) {
+    const target = control.getAttribute('aria-controls');
+    expect(target).toBeTruthy();
+    expect(document.getElementById(target!)).not.toBeNull();
+  }
+  const toggle = screen.queryByRole('button', { name: /^(展开|收起)文件清单$/ });
+  if (retained && !loading && !error) {
+    expect(toggle).toBeInTheDocument();
+    expect(screen.getByLabelText('src/one.ts', { selector: 'code' })).toBeVisible();
+    expect(screen.getByText('当前文件不在最新变更清单中，请展开清单选择文件。')).toBeVisible();
+    expect(screen.getByRole('button', { name: '下一个变更文件' })).toBeDisabled();
+  } else {
+    expect(toggle).not.toBeInTheDocument();
+    if (!loading && !error)
+      expect(screen.getByRole('heading', { name: '工作区干净' })).toBeVisible();
+  }
+  expect(props.onSelectPath).not.toHaveBeenCalled();
+  expect(props.onCommit).not.toHaveBeenCalled();
+});

@@ -124,7 +124,7 @@ export function ChatCommandBar({
   });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composingRef = useRef(false);
-  const [inputHeight, setInputHeight] = useState(40);
+  const [inputHeight, setInputHeight] = useState(44);
   const [focused, setFocused] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const resizeStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
@@ -144,7 +144,7 @@ export function ChatCommandBar({
     } catch {
       setText('');
     }
-    setInputHeight(40);
+    setInputHeight(44);
   }, [draftKey]);
 
   useEffect(() => {
@@ -177,7 +177,7 @@ export function ChatCommandBar({
     const resizeState = resizeStateRef.current;
     if (!resizeState) return;
     const nextHeight = resizeState.startHeight + resizeState.startY - event.clientY;
-    setInputHeight(Math.min(320, Math.max(40, nextHeight)));
+    setInputHeight(Math.min(320, Math.max(44, nextHeight)));
   }, []);
 
   const handleResizeEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {

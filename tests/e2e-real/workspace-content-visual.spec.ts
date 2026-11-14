@@ -180,7 +180,44 @@ for (const width of [390, 768, 1024, 1440]) {
       await page.goto(`/workspace/${session.id}`);
       const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令', exact: true });
       await expect(composer).toBeVisible({ timeout: 30_000 });
-      await composer.fill('请修改隔离测试项目的 Fixture 文件，等待批准，再汇报结果。');
+      const compactInput = (await composer.boundingBox())!;
+      expect(compactInput.height).toBeGreaterThanOrEqual(43.99);
+      expect(compactInput.height).toBeLessThanOrEqual(48);
+      await composer.fill('检查取消状态');
+      expect(
+        await composer.evaluate((node) => node.scrollHeight - node.clientHeight),
+      ).toBeLessThanOrEqual(1);
+      const compactCard = (await page.locator('.chat-command-card').boundingBox())!;
+      expect(compactCard.height).toBeLessThanOrEqual(110);
+      await composer.fill(
+        Array.from({ length: 12 }, (_, i) => `第 ${i + 1} 行：保留长文与手动调整。`).join('\n'),
+      );
+      expect(
+        await composer.evaluate((node) => node.scrollHeight - node.clientHeight),
+      ).toBeGreaterThan(100);
+      expect((await composer.boundingBox())!.height).toBeLessThanOrEqual(48);
+      await composer.press('ControlOrMeta+End');
+      await expect.poll(() => composer.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+      const resize = page.getByRole('separator', { name: '调整输入框高度', exact: true });
+      const handle = (await resize.boundingBox())!;
+      await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2 - 80);
+      await page.mouse.up();
+      expect((await composer.boundingBox())!.height).toBeGreaterThanOrEqual(
+        compactInput.height + 79,
+      );
+      const grown = (await resize.boundingBox())!;
+      await page.mouse.move(grown.x + grown.width / 2, grown.y + grown.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(grown.x + grown.width / 2, grown.y + grown.height / 2 + 80);
+      await page.mouse.up();
+      expect((await composer.boundingBox())!.height).toBeLessThanOrEqual(48);
+      await info.attach('composer-compact-geometry', {
+        body: JSON.stringify({ compactInput, compactCard }),
+        contentType: 'application/json',
+      });
+      await composer.fill('检查取消状态');
       // Capture the enabled input before sending: completion can still leave
       // the run settling, which is not evidence of keyboard-focus treatment.
       await expect(composer).toBeFocused();
@@ -195,10 +232,10 @@ for (const width of [390, 768, 1024, 1440]) {
           paddingBottom: parseFloat(style.paddingBottom),
         };
       });
-      expect(inputGeometry.paddingTop).toBeGreaterThanOrEqual(12);
+      expect(inputGeometry.paddingTop).toBe(10);
       expect(inputGeometry.scrollTop).toBeLessThanOrEqual(1);
       expect(inputGeometry.clientHeight).toBeGreaterThanOrEqual(
-        inputGeometry.lineHeight * 2 + inputGeometry.paddingTop + inputGeometry.paddingBottom - 1,
+        inputGeometry.lineHeight + inputGeometry.paddingTop + inputGeometry.paddingBottom - 1,
       );
       await assertComposerLabels(page, width);
       const focusedCard = page.locator('.chat-command-card');
@@ -266,6 +303,7 @@ for (const width of [390, 768, 1024, 1440]) {
         contentType: 'application/json',
       });
       await capture(page, info, 'composer-focused', composer, focusedCard);
+      await composer.fill('请修改隔离测试项目的 Fixture 文件，等待批准，再汇报结果。');
       await page.getByRole('button', { name: '发送', exact: true }).click();
       const approve = page.getByRole('button', { name: '允许一次', exact: true });
       await expect(approve).toBeVisible({ timeout: 30_000 });

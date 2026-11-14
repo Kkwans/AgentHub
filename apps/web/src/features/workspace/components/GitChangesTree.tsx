@@ -347,7 +347,11 @@ export function GitChangesTree({
       <div className="git-viewbar git-review-toolbar">
         <div className="git-review-count">
           {' '}
-          {view === 'changes' && status.data && !status.isLoading && !status.error ? (
+          {view === 'changes' &&
+          status.data &&
+          !status.isLoading &&
+          !status.error &&
+          (!status.data.clean || Boolean(selectedPath)) ? (
             <button
               type="button"
               className="git-file-list-toggle"

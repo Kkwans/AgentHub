@@ -110,7 +110,7 @@ export function ComposerSurface({
             onCompositionStart={onCompositionStart}
             onCompositionEnd={onCompositionEnd}
             placeholder={placeholder}
-            rows={2}
+            rows={1}
             disabled={inputDisabled}
             readOnly={readOnly}
             data-active-run={activeRun ? 'true' : undefined}
