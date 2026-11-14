@@ -1531,3 +1531,13 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 08:43:11开始的全量08:50:45失败：204文件通过/6跳过，2098测试通过/9跳过但1worker退出；task-prompt单独20/20复验通过，不能拼算成全量通过。同时进行的build曾exit137，未确认OOM根因；后改串行build，08:51:06通过。工具文本修复合入后08:52:56全仓lint/types/串行build再次通过、格式检查通过。
 - 08:53:35重新冻结并启动最终全仓，09:00仍运行。此轮候选不先推送。无main合并、部署、真实Agent认证或用户数据库操作。
 - 09:01:12最终冻结全仓完整exit0：205文件通过/6跳过、2108测试通过/9跳过，455.48秒。包含会话改名、后端通知和ACP公开工具文本；不把前一轮失败算通过。代码分三逻辑提交，临时索引逐树核对；准备发布开发分支，真实新截图仍待该提交CI。
+
+### 2026-11-14 09:03–09:09 UTC 干净构建门禁修复
+
+- 09:03:32已push/fetch 6fdff69，代码三片4104ff1/b623328/2df73e7与台账6fdff69；最终树1b2cba8db7d01768e3e5278e405bf20f46862946与冻结本地逐树一致，工作区当时干净。精确CI43578701568启动。
+- 09:04核实三项real/PG/a11y均在构建失败：web内跨包回归测试直接import adapter-acp/dist，干净CI按依赖图先编web，adapter产物尚不存在。本地已有dist掩盖缺陷；此前本地build成功不能替代冷构建。浏览器和PG测试未开始，无新截图或PG结论。
+- 09:05本地暂移adapter生成物后复现同一TS2307。修正仅测试组织：真实normalizer→timeline→renderer断言移到根tests/integration并读取normalizer源码，web测试保留其它断言，未给前端产品增加Node适配器依赖。首次集成测试因jsdom把import.meta.url变http失败，改node:path绝对定位；公开React/Router入口复验1/1通过。独立测试类型检查初次NodeNext配置不适合web重导出，改与web一致Bundler后通过。
+- 09:08开始备份/移走全部工作区生成产物后按原pnpm依赖图冷构建，尚未完成，不提前记通过。导出文字记录仅独立目录草稿，未混入本次源码或构建。
+- 09:09收到fb607精确real artifact14107298958哈希核对结果：workspace-content四视口浅深8例全部passed/retry0；新conversation图人工看390浅/1440深，顶部就绪且输入框恢复，手机提示/Terminal完整。只证明fb对应8例，不把其process已知失败说成全real通过，也不是6fd截图。
+- 09:09:04所有workspace生成dist/tsbuildinfo移到临时备份后的完整冷构建exit0，保持原pnpm依赖图，仅限制并发避免本机资源争用；并未靠预先构建adapter或新增web生产依赖绕过。新集成测试独立Bundler类型配置已纳入CI verify显式步骤，默认tests/**/*.test.ts会发现真实跨链回归。产品代码未更改；本轮不把上一提交2108全量当作重新跑过。
+- 09:10:27最终测试组织修复冻结：三专项15/15（4.14秒）、根类型/独立集成类型/全仓eslint/格式/diff均通过，默认vitest discovery确认新root真实链测试被发现。首次lint的内联import类型规则错误已改为import type并重新验证。没有重跑完整web或全仓2108，不把上一轮计数当本轮。准备4文件测试/CI修复及计划/台账提交。
