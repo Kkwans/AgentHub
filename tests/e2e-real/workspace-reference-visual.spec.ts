@@ -334,10 +334,31 @@ for (const width of [390, 768, 1024, 1440]) {
           const summary = card.locator('.tool-entry-summary');
           if (await summary.count()) {
             await expect(summary).toHaveCSS('text-overflow', 'ellipsis');
-            const summaryBox = (await summary.boundingBox())!;
-            const titleBox = (await card.locator('.tool-entry-badge').boundingBox())!;
-            expect(summaryBox.width).toBeGreaterThan(0);
-            expect(summaryBox.x).toBeGreaterThanOrEqual(titleBox.x + titleBox.width);
+            const geometry = await card.evaluate((node) => {
+              const summary = node.querySelector<HTMLElement>('.tool-entry-summary')!;
+              const title = node.querySelector<HTMLElement>('.tool-entry-badge')!;
+              const toggle = node.querySelector<HTMLElement>('button[aria-expanded]')!;
+              const rect = (element: HTMLElement) => {
+                const box = element.getBoundingClientRect();
+                return {
+                  x: box.x,
+                  y: box.y,
+                  right: box.right,
+                  bottom: box.bottom,
+                  width: box.width,
+                };
+              };
+              return { summary: rect(summary), title: rect(title), toggle: rect(toggle) };
+            });
+            expect(geometry.summary.width).toBeGreaterThan(0);
+            expect(Math.abs(geometry.summary.x - geometry.title.x)).toBeLessThanOrEqual(1);
+            expect(geometry.summary.y).toBeGreaterThanOrEqual(geometry.title.bottom);
+            for (const text of [geometry.title, geometry.summary]) {
+              expect(text.x).toBeGreaterThanOrEqual(geometry.toggle.x);
+              expect(text.y).toBeGreaterThanOrEqual(geometry.toggle.y);
+              expect(text.right).toBeLessThanOrEqual(geometry.toggle.right);
+              expect(text.bottom).toBeLessThanOrEqual(geometry.toggle.bottom);
+            }
           }
           const file = card.getByRole('button', { name: /^在文件面板中打开：/ });
           if (await file.count()) {
@@ -346,6 +367,26 @@ for (const width of [390, 768, 1024, 1440]) {
             expect(fileBox.height).toBeGreaterThanOrEqual(43.99);
             expect(fileBox.x).toBeGreaterThanOrEqual(toggleBox.x + toggleBox.width);
           }
+        }
+      }
+      if (width >= 768) {
+        for (const card of await tools.all()) {
+          if (!(await card.locator('.tool-entry-summary').count())) continue;
+          const geometry = await card.evaluate((node) => {
+            const summary = node.querySelector('.tool-entry-summary')!.getBoundingClientRect();
+            const title = node.querySelector('.tool-entry-badge')!.getBoundingClientRect();
+            return {
+              summaryX: summary.x,
+              summaryY: summary.y,
+              summaryBottom: summary.bottom,
+              titleRight: title.right,
+              titleY: title.y,
+              titleBottom: title.bottom,
+            };
+          });
+          expect(geometry.summaryX).toBeGreaterThanOrEqual(geometry.titleRight);
+          expect(geometry.summaryY).toBeLessThan(geometry.titleBottom);
+          expect(geometry.titleY).toBeLessThan(geometry.summaryBottom);
         }
       }
       if (width === 390) {
