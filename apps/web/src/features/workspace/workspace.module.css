@@ -602,3 +602,35 @@
     position: relative;
   }
 }
+
+/* Keep every 44px session action without compressing the phone title. */
+.sessionTools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.sessionToolsLabel {
+  display: none;
+}
+@media (max-width: 767px) {
+  .searchableContextbar {
+    align-items: flex-start;
+    padding-top: 6px;
+    padding-bottom: 48px;
+    min-height: 98px;
+  }
+  .sessionTools {
+    position: absolute;
+    inset-inline: 10px;
+    bottom: 2px;
+    height: 44px;
+    justify-content: flex-end;
+  }
+  .sessionToolsLabel {
+    display: block;
+    margin-right: auto;
+    font-size: 11px;
+    color: hsl(var(--foreground-muted));
+  }
+}

@@ -1,3 +1,4 @@
+import type { SavedMessageTarget } from './sessionMessageSearch';
 import type {
   AgentRecord,
   ApprovalRecord,
@@ -24,6 +25,14 @@ export type MessageQueryState = QueryState<MessageRecord[]> & {
   hasPrevious: boolean;
   isFetchingPrevious: boolean;
   fetchPrevious: () => Promise<unknown>;
+  isNavigatingHistory?: boolean;
+  cancelHistoryNavigation?: () => void;
+  locateMessage?: (
+    target: SavedMessageTarget,
+    signal: AbortSignal,
+    reveal: (signal: AbortSignal) => Promise<void>,
+    onProgress: (pages: number) => void,
+  ) => Promise<'located' | 'budget'>;
 };
 
 export type GitStatusRecord = {

@@ -128,6 +128,9 @@ function ChatEntryRendererView({
             ? 'message user message-user min-w-0 max-w-[88%] sm:max-w-[78%]'
             : `message ${message.role.toLowerCase()} message-assistant min-w-0 text-[13px] leading-relaxed text-[hsl(var(--foreground))]`
         }
+        data-message-id={item.persisted ? message.id : undefined}
+        data-message-sequence={item.persisted ? message.sequence : undefined}
+        tabIndex={item.persisted ? -1 : undefined}
         data-streaming={item.streaming ? 'true' : undefined}
       >
         {!isUser && message.role !== 'ASSISTANT' ? (
@@ -262,6 +265,7 @@ function sameTimelineItem(
   if (previous.kind === 'message' && next.kind === 'message') {
     return (
       previous.streaming === next.streaming &&
+      previous.persisted === next.persisted &&
       previous.createdAt === next.createdAt &&
       previous.message.id === next.message.id &&
       previous.message.role === next.message.role &&

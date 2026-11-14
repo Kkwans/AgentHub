@@ -1,3 +1,5 @@
+import { SessionMessageSearch } from '../components/SessionMessageSearch';
+import type { MessageLocationRequest } from '../messageLocation';
 import {
   Bot,
   ChevronRight,
@@ -30,6 +32,8 @@ import codexStyles from '../codexWorkbench.module.css';
 import type { WorkspacePageModel } from '../useWorkspaceViewModel';
 
 export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
+  const [searchHost, setSearchHost] = useState<HTMLDivElement | null>(null);
+  const [locationRequest, setLocationRequest] = useState<MessageLocationRequest | null>(null);
   const [immersive, setImmersive] = useState(false);
   const [focusedSession, setFocusedSession] = useState<string | null>(null);
   const reviewFocusRef = useRef<HTMLButtonElement>(null);
@@ -162,7 +166,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
   const contextBar = (
     <div
       inert={mediumAuxiliaryOpen ? true : undefined}
-      className="workspace-contextbar relative z-10 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] px-3 sm:px-4 lg:px-5"
+      className={`${workspaceStyles.searchableContextbar} workspace-contextbar relative z-10 flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] px-3 sm:px-4 lg:px-5`}
     >
       <button
         type="button"
@@ -178,7 +182,7 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <Menu size={17} />
         <span>辅助栏</span>
       </button>
-      <div className="codex-session-title flex min-w-0 items-center gap-2">
+      <div className="codex-session-title flex min-h-11 min-w-0 items-center gap-2">
         <Link
           className="whitespace-nowrap text-[12px] font-medium text-[hsl(var(--foreground-muted))] transition-colors hover:text-[hsl(var(--foreground))]"
           to="/sessions"
@@ -189,8 +193,41 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
         <strong className="min-w-0 truncate text-[14px] font-semibold tracking-[-0.02em] text-[hsl(var(--foreground))]">
           {currentSession.title}
         </strong>
-        <SessionRename session={currentSession} />
-        <SessionTranscriptExport session={currentSession} />
+        <div className={workspaceStyles.sessionTools}>
+          <span className={workspaceStyles.sessionToolsLabel}>会话工具</span>
+          <SessionRename session={currentSession} />
+          <SessionTranscriptExport session={currentSession} />
+          <SessionMessageSearch
+            sessionId={id}
+            messages={messages}
+            host={searchHost}
+            onLocate={(target, signal) =>
+              new Promise<void>((resolve, reject) => {
+                if (signal.aborted) {
+                  reject(new Error('定位已取消。'));
+                  return;
+                }
+                const request: MessageLocationRequest = {
+                  target,
+                  signal,
+                  complete: (error) => {
+                    signal.removeEventListener('abort', cancelled);
+                    setLocationRequest((current) => (current === request ? null : current));
+                    if (signal.aborted) return;
+                    if (error) reject(error);
+                    else resolve();
+                  },
+                };
+                const cancelled = () => {
+                  setLocationRequest((current) => (current === request ? null : current));
+                  reject(new Error('定位已取消。'));
+                };
+                signal.addEventListener('abort', cancelled, { once: true });
+                setLocationRequest(request);
+              })
+            }
+          />
+        </div>
         <span className={`${workspaceStyles.sessionStatus} inline-flex items-center gap-1.5`}>
           <StatusBadge status={currentSession.status} />
         </span>
@@ -358,9 +395,11 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           middle={
             <section className="workspace-panel workbench-panel conversation-panel flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
               {!inspectorActsAsDrawer && contextBar}
+              <div ref={setSearchHost} className="min-w-0 shrink-0" />
               <div className="relative grid flex-1 min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[hsl(var(--surface))]">
                 <ChatConversationView
                   session={currentSession}
+                  locationRequest={locationRequest}
                   messages={messages}
                   events={events}
                   approvals={approvals}

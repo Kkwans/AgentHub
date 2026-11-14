@@ -18,6 +18,7 @@ export type ConversationMessageItem = {
   message: MessageRecord;
   /** 事件流创建的临时消息在完整 MessageRecord 到达前为 true。 */
   streaming?: boolean;
+  persisted?: boolean;
   turnId?: string;
 };
 
@@ -262,12 +263,17 @@ function approvalSequence(
     : Number.MAX_SAFE_INTEGER;
 }
 
-function makeMessageItem(message: MessageRecord, streaming = false): ConversationMessageItem {
+function makeMessageItem(
+  message: MessageRecord,
+  streaming = false,
+  persisted = true,
+): ConversationMessageItem {
   return {
     kind: 'message',
     id: message.id,
     createdAt: message.createdAt,
     message,
+    persisted,
     ...(streaming ? { streaming: true } : {}),
   };
 }
@@ -415,6 +421,7 @@ export function buildConversationTimeline(
         const item = makeMessageItem(
           syntheticAssistantMessage(id, event.runId, text, event.seq, event.createdAt),
           isDelta,
+          false,
         );
         assistantItems.set(id, item);
         assistantActive.set(identity, id);

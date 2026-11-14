@@ -306,8 +306,9 @@ export const api = {
   get<T>(path: string, options?: { signal?: AbortSignal }): Promise<T> {
     return request<T>(path, options);
   },
-  post<T>(path: string, body?: unknown): Promise<T> {
+  post<T>(path: string, body?: unknown, options?: { signal?: AbortSignal }): Promise<T> {
     return request<T>(path, {
+      ...options,
       method: 'POST',
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });

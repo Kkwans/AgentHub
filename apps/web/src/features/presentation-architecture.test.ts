@@ -50,6 +50,7 @@ describe('presentation architecture boundaries', () => {
       'ActivityPanel',
       'RunPanel',
       'SessionRail',
+      'SessionMessageSearch',
       'WorkspaceInspector',
     ]) {
       const path =

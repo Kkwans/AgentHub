@@ -1,3 +1,4 @@
+import type { MessageLocationRequest } from '../messageLocation';
 import { useApprovalResolution } from './useApprovalResolution';
 /**
  * ChatConversationView — direct AgentHub port of
@@ -112,6 +113,7 @@ export const ChatConversationView = memo(function ChatConversationView({
   isLoadingPreviousMessages,
   onLoadPreviousMessages,
   composer,
+  locationRequest,
 }: {
   session: SessionRecord;
   messages: MessageQueryState;
@@ -131,6 +133,7 @@ export const ChatConversationView = memo(function ChatConversationView({
   onLoadPreviousMessages?: () => Promise<unknown>;
   /** PinHarness keeps the CommandBar adjacent to the conversation in this source shell. */
   composer?: ReactNode;
+  locationRequest?: MessageLocationRequest | null;
 }) {
   const {
     approvalFeedback,
@@ -167,6 +170,8 @@ export const ChatConversationView = memo(function ChatConversationView({
   // window during the first data render.
   const userNavigatedTimelineRef = useRef(false);
   const userScrollIntentTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const cancelLocationRef = useRef(messages.cancelHistoryNavigation);
+  cancelLocationRef.current = messages.cancelHistoryNavigation;
   const historyIdentityRef = useRef(session.id);
   const historyAuthorizedRef = useRef(true);
   const historyGenerationRef = useRef(0);
@@ -287,6 +292,7 @@ export const ChatConversationView = memo(function ChatConversationView({
     }
   }, []);
   const markUserScrollIntent = useCallback(() => {
+    cancelLocationRef.current?.();
     invalidateHistoryAnchor();
     userNavigatedTimelineRef.current = true;
     userScrollIntentRef.current = true;
@@ -428,7 +434,7 @@ export const ChatConversationView = memo(function ChatConversationView({
     });
   };
   const loadPreviousMessages = async () => {
-    if (!historyAuthorizedRef.current) return;
+    if (!historyAuthorizedRef.current || messages.isNavigatingHistory) return;
     const canFetchPrevious = Boolean(
       hasPreviousMessages && onLoadPreviousMessages && !isLoadingPreviousMessages,
     );
@@ -464,6 +470,7 @@ export const ChatConversationView = memo(function ChatConversationView({
     }
   };
   const jumpToLatest = () => {
+    cancelLocationRef.current?.();
     invalidateHistoryAnchor();
     initialFollowPendingRef.current = false;
     clearUserScrollIntent();
@@ -472,6 +479,171 @@ export const ChatConversationView = memo(function ChatConversationView({
     setTimelineWindowStart(latestWindowStart);
     scheduleLatestScroll();
   };
+  useEffect(() => {
+    if (messages.isNavigatingHistory) {
+      invalidateHistoryAnchor();
+      userIntentExitFollow();
+      initialFollowPendingRef.current = false;
+    }
+  }, [messages.isNavigatingHistory, invalidateHistoryAnchor, userIntentExitFollow]);
+
+  const locatorView = useRef({
+    turns,
+    renderWindowStart,
+    renderWindowSize,
+    shouldVirtualize,
+    timelineVirtualizer,
+  });
+  locatorView.current = {
+    turns,
+    renderWindowStart,
+    renderWindowSize,
+    shouldVirtualize,
+    timelineVirtualizer,
+  };
+  const consumedLocations = useRef(new WeakSet<MessageLocationRequest>());
+  const clearLocationHighlight = useRef<() => void>(() => {});
+  useEffect(() => () => clearLocationHighlight.current(), [session.id]);
+  useEffect(() => {
+    const request = locationRequest;
+    if (
+      !request ||
+      consumedLocations.current.has(request) ||
+      request.target.sessionId !== session.id ||
+      request.signal.aborted
+    )
+      return;
+    clearLocationHighlight.current();
+    let completed = false;
+    const finish = (error?: Error) => {
+      consumedLocations.current.add(request);
+      completed = !error;
+      if (error) request.complete(error);
+      else request.complete();
+    };
+    const generation = historyGenerationRef.current;
+    let cancelled = false;
+    let frame: number | undefined;
+    let attempts = 0;
+    let scrolledIndex: number | undefined;
+
+    const valid = () =>
+      !cancelled &&
+      !request.signal.aborted &&
+      historyAuthorizedRef.current &&
+      historyGenerationRef.current === generation &&
+      request.target.sessionId === session.id;
+    const stop = () => {
+      cancelled = true;
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+    request.signal.addEventListener('abort', stop, { once: true });
+    invalidateHistoryAnchor();
+    userIntentExitFollow();
+    initialFollowPendingRef.current = false;
+    const intent = historyIntentRef.current;
+    const locate = () => {
+      if (historyIntentRef.current !== intent && valid()) {
+        finish(new Error('定位已取消，已保留你的滚动位置。'));
+        return;
+      }
+      if (!valid()) return;
+      const view = locatorView.current;
+      const index = view.turns.findIndex((turn) =>
+        turn.entries.some(
+          (item) =>
+            item.kind === 'message' &&
+            item.persisted &&
+            item.message.id === request.target.id &&
+            item.message.sequence === request.target.sequence,
+        ),
+      );
+      if (++attempts > 90) {
+        finish(new Error('消息已加载，但未能确认可见位置；请重试定位。'));
+        return;
+      }
+      if (index < 0) {
+        frame = requestAnimationFrame(locate);
+        return;
+      }
+      const desiredStart = Math.max(0, index - 5);
+      if (
+        index < view.renderWindowStart ||
+        index >= view.renderWindowStart + view.renderWindowSize
+      ) {
+        setTimelineWindowStart(desiredStart);
+        frame = requestAnimationFrame(locate);
+        return;
+      }
+      const relative = index - view.renderWindowStart;
+      if (view.shouldVirtualize && scrolledIndex !== relative) {
+        markProgrammaticScroll();
+        view.timelineVirtualizer.scrollToIndex(relative, { align: 'center', behavior: 'auto' });
+        scrolledIndex = relative;
+        frame = requestAnimationFrame(locate);
+        return;
+      }
+      const root = scrollRef.current;
+      const node =
+        root &&
+        Array.from(root.querySelectorAll<HTMLElement>('[data-message-id]')).find(
+          (element) =>
+            element.dataset.messageId === request.target.id &&
+            element.dataset.messageSequence === String(request.target.sequence),
+        );
+      if (!root || !node) {
+        if (attempts % 10 === 0) scrolledIndex = undefined;
+        frame = requestAnimationFrame(locate);
+        return;
+      }
+      const bounds = root.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+      if (bounds.height <= 0 || box.height <= 0) {
+        frame = requestAnimationFrame(locate);
+        return;
+      }
+      if (
+        box.bottom <= Math.max(0, bounds.top) ||
+        box.top >= Math.min(innerHeight, bounds.bottom)
+      ) {
+        markProgrammaticScroll();
+        root.scrollTo({ top: root.scrollTop + box.top - bounds.top - 24, behavior: 'auto' });
+        frame = requestAnimationFrame(locate);
+        return;
+      }
+      if (!valid()) return;
+      node.focus({ preventScroll: true });
+      if (document.activeElement !== node) {
+        frame = requestAnimationFrame(locate);
+        return;
+      }
+      node.style.outline = '2px solid hsl(var(--primary) / 0.45)';
+      node.style.outlineOffset = '4px';
+      node.dataset.messageLocated = 'true';
+      const clearHighlight = () => {
+        clearTimeout(highlightTimer);
+        node.style.removeProperty('outline');
+        node.style.removeProperty('outline-offset');
+        delete node.dataset.messageLocated;
+      };
+      const highlightTimer = setTimeout(clearHighlight, 2400);
+      clearLocationHighlight.current = clearHighlight;
+      finish();
+    };
+    frame = requestAnimationFrame(locate);
+    return () => {
+      stop();
+      request.signal.removeEventListener('abort', stop);
+      if (!completed) clearLocationHighlight.current();
+    };
+  }, [
+    locationRequest,
+    session.id,
+    invalidateHistoryAnchor,
+    userIntentExitFollow,
+    markProgrammaticScroll,
+  ]);
+
   const showEmpty =
     !messages.isLoading &&
     !events.isLoading &&
