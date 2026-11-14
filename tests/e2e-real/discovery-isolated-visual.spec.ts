@@ -120,7 +120,39 @@ for (const width of [390, 768, 1024, 1440]) {
         await expect(dialog.getByText('Codex', { exact: true })).toBeVisible();
         await expect(dialog.getByText('OpenCode', { exact: true })).toBeVisible();
         await expect(dialog.getByText('暂时没有候选 Agent', { exact: true })).toHaveCount(0);
-        const controls = dialog.locator('button, a[href], input, [role="combobox"]');
+        const candidateGeometry = await dialog
+          .getByText('Codex', { exact: true })
+          .evaluate((element) => ({
+            box: element.getBoundingClientRect().toJSON(),
+            viewportHeight: innerHeight,
+          }));
+        await info.attach('candidate-first-layout.json', {
+          body: JSON.stringify(candidateGeometry),
+          contentType: 'application/json',
+        });
+        expect.soft(candidateGeometry.box.top).toBeGreaterThanOrEqual(0);
+        expect
+          .soft(candidateGeometry.box.bottom)
+          .toBeLessThanOrEqual(candidateGeometry.viewportHeight);
+        const expectedAdd = rows.filter(
+          (row) => row.adoptable && row.state !== 'AUTH_REQUIRED',
+        ).length;
+        const expectedAuth = rows.filter(
+          (row) => row.adoptable && row.state === 'AUTH_REQUIRED',
+        ).length;
+        await expect(dialog.getByRole('button', { name: '添加', exact: true })).toHaveCount(
+          expectedAdd,
+        );
+        await expect(dialog.getByRole('button', { name: '去授权', exact: true })).toHaveCount(
+          expectedAuth,
+        );
+        await expect(
+          dialog.getByText(
+            `${rows.filter((row) => row.candidateId.startsWith('host:')).length} 个候选 · ${expectedAdd} 个可添加 · ${expectedAuth} 个需授权`,
+            { exact: true },
+          ),
+        ).toBeVisible();
+        const controls = dialog.locator('button, a[href], input, [role="combobox"], summary');
         for (let index = 0; index < (await controls.count()); index++) {
           const control = controls.nth(index);
           if (await control.isVisible()) await measureTouch(control);
@@ -172,6 +204,26 @@ for (const width of [390, 768, 1024, 1440]) {
           });
           await expect.poll(() => target.evaluate((element) => element.scrollTop)).toBe(0);
         }
+        const sources = dialog.locator('summary').filter({ hasText: '来源与隐私说明' });
+        await sources.focus();
+        await sources.press('Enter');
+        const sourceDetails = sources.locator('..');
+        await expect(sourceDetails).toHaveAttribute('open', '');
+        await expect(
+          sourceDetails.getByText(
+            '只读取已授权的本机、Remote Node 和 NAS Docker 来源，不会静默修改认证或配置。',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        await expect(sourceDetails.getByText('不可用', { exact: true })).toHaveCount(0);
+        await expect(sourceDetails.getByText('就绪', { exact: true })).toHaveCount(0);
+        await sourceDetails.scrollIntoViewIfNeeded();
+        const sourceImage = info.outputPath(`discovery-sources-${width}-${theme}.png`);
+        await page.screenshot({ path: sourceImage, animations: 'disabled' });
+        await info.attach('discovery-sources', { path: sourceImage, contentType: 'image/png' });
+        await sources.press('Space');
+        await expect(sourceDetails).not.toHaveAttribute('open', '');
+        await expect(sources).toBeFocused();
         // Only close the read-only dialog. Never activate scan/adopt/authentication controls.
         const done = dialog.getByRole('button', { name: '完成', exact: true });
         await measureTouch(done);

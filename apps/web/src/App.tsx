@@ -46,9 +46,9 @@ const ProjectSessionsPage = lazy(() =>
     default: module.ProjectSessionsPage,
   })),
 );
-const AgentCenterPage = lazy(() =>
-  import('./features/agents/pages/AgentCenterPage').then((module) => ({
-    default: module.AgentCenterPage,
+const AgentDiscoveryLayout = lazy(() =>
+  import('./features/agents/pages/AgentDiscoveryLayout').then((module) => ({
+    default: module.AgentDiscoveryLayout,
   })),
 );
 const AgentDetailPage = lazy(() =>
@@ -277,21 +277,22 @@ export function App() {
           </Route>
           <Route path="tasks" element={<TasksRedirect />} />
           <Route
-            path="agents"
             element={
               <DeferredPage>
-                <AgentCenterPage />
+                <AgentDiscoveryLayout />
               </DeferredPage>
             }
-          />
-          <Route
-            path="agents/agents/discover"
-            element={
-              <DeferredPage>
-                <DiscoverAgentsPage />
-              </DeferredPage>
-            }
-          />
+          >
+            <Route path="agents" element={null} />
+            <Route
+              path="agents/agents/discover"
+              element={
+                <DeferredPage>
+                  <DiscoverAgentsPage />
+                </DeferredPage>
+              }
+            />
+          </Route>
           <Route
             path="agents/:agentId"
             element={

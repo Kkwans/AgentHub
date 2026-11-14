@@ -235,7 +235,12 @@ export function AgentCenterPage() {
         title="Agent 中心"
         description="管理 Agent 身份与已登记能力。"
         actions={
-          <Link className={styles.discoveryLink} to="/agents/agents/discover">
+          <Link
+            className={styles.discoveryLink}
+            to="/agents/agents/discover"
+            state={{ fromAgentDirectory: true }}
+            data-discovery-trigger="primary"
+          >
             <RefreshCw size={16} aria-hidden="true" />
             发现 Agent
           </Link>
@@ -351,7 +356,11 @@ export function AgentCenterPage() {
                     清除筛选
                   </AhButton>
                 ) : (
-                  <Link className={styles.discoveryLink} to="/agents/agents/discover">
+                  <Link
+                    className={styles.discoveryLink}
+                    to="/agents/agents/discover"
+                    state={{ fromAgentDirectory: true }}
+                  >
                     开始发现
                   </Link>
                 )

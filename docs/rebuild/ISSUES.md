@@ -622,3 +622,17 @@ Remote资源请求明确未知、超时/断线/发送不确定现已有fail-clos
 | Nodes页头中文化漏同步旧fixture | 主动跨spec CR发现web-shell仍找Remote Nodes；33de2f6改exact中文level1 | 静态/独立CR/build过，4例只发现未本地执行；未放宽NAS01/导航/溢出断言 |
 | 历史分页pending旧内容reflow使同消息上移100 | f534d5f旧页layoutcommit更新等待基线；d76/f534 verify各24历史例全过 | 原gap2px+同消息2px通过，契约fixture不是DB E2E或所有媒体晚加载保证 |
 | Agent发现真实页面视觉缺口 | 自动GET含hostDiagnostics/runtimeDocker，不是纯DB读取；5c私有absent socket与空PATH前置已测试 | 尚未执行发现页；待当前Nodes/注册/诊断闭环后纳入独立只读图证，不接入/重扫/登录 |
+
+## 2026-11-14 19:10 UTC 发现页新实图问题（未修完）
+
+b2bc69c 精确focused147通过8失败，首次真实发现弹窗图不放行：
+
+| 问题 | 实际证据 | 处理方向/边界 |
+| --- | --- | --- |
+| 发现候选主任务被摘要挤出首屏 | 390扫描巨卡约446px，候选需滚动；1440左摘要挤右候选约334px | 单列候选优先，扫描状态紧凑、来源次级折叠，保权限/隐私原意 |
+| “可添加0”与Codex添加按钮矛盾 | 隔离实图Codex INSTALLED且adoptable，摘要按READY计数 | 计数按实际按钮能力，AUTH_REQUIRED单独去授权；已安装不等于认证/Ready |
+| 状态徽章泛化“状态” | INSTALLED未映射为可读标签 | 本地候选状态清楚展示，不轻改全局运行状态语义 |
+| 完成关闭后入口失焦 | 8例真实toBeFocused失败；兄弟路由卸载原目录DOM | 持续挂载目录壳+子弹窗，保同一opener与快速导航防抢焦，直链安全回目录 |
+| 触点过小 | 宽32/高34、26、18px真实bbox失败 | 仅发现弹窗局部44，不为了截图隐藏焦点或放宽测试 |
+
+finally附件观测8例均4允许GET、同源/ws且errors=[]，无写请求记录；因为回焦hard先失败，末尾安全assert未执行，不称整例或末尾assert通过。数据是隔离候选而非供应商账户联调。新整体候选正在实现，未发布/未新图验收。

@@ -249,7 +249,7 @@ describe('AgentHub App', () => {
     expect(screen.queryByRole('link', { name: '工作', current: 'page' })).not.toBeInTheDocument();
   });
 
-  it('presents Agent discovery as a two-zone modal with real candidate state', async () => {
+  it('presents Agent discovery as a candidate-first modal with disclosed sources', async () => {
     stubApi();
     const { container } = renderApp(['/agents/agents/discover']);
     const dialog = await screen.findByRole('dialog', { name: '发现 Agent' });
@@ -264,6 +264,7 @@ describe('AgentHub App', () => {
         .closest('[aria-hidden="true"]'),
     ).not.toBeNull();
     expect(screen.getByTestId('discover-agents-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('来源与隐私说明'));
     expect(screen.getByText('Local Host')).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: '候选 Agent' }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('heading', { name: 'Agent 中心', hidden: true })).toBeInTheDocument();
