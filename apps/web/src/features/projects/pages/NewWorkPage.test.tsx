@@ -133,7 +133,11 @@ function workflow(
 }
 async function submitTask() {
   fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '修复登录' } });
-  await screen.findByText('测试 Agent 可选择，启动时检查');
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+      '测试 Agent · 可选择，启动时检查',
+    ),
+  );
   fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
 }
 afterEach(() => {
@@ -169,7 +173,11 @@ describe('新建工作部分成功恢复', () => {
     });
     show(fetchMock);
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '修复登录' } });
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
     await screen.findByText(/Agent 尚未预检就绪/);
     fireEvent.click(screen.getByRole('button', { name: /^(创建并开始|重试启动)$/ }));
@@ -277,7 +285,11 @@ describe('新建工作部分成功恢复', () => {
     const { calls, fetchMock } = workflow({ create: () => pending.promise });
     show(fetchMock);
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '修复登录' } });
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     const submit = screen.getByRole('button', { name: '创建并开始' });
     act(() => {
       submit.click();
@@ -791,7 +803,11 @@ describe('项目作用域 Agent 资格', () => {
   it('服务端认可的跨环境映射可选，同时展示停止状态而不声称可用', async () => {
     const f = withEligibility(() => json(eligibility()));
     show(f.fetchMock);
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     fireEvent.click(screen.getByLabelText('推荐 Agent'));
     expect(await screen.findByRole('option', { name: /环境记录：STOPPED/ })).toBeInTheDocument();
     expect(screen.queryByText('测试 Agent 可用')).not.toBeInTheDocument();
@@ -799,7 +815,11 @@ describe('项目作用域 Agent 资格', () => {
   it('显式稍后选择在资格刷新后保持，不再次自动分配', async () => {
     const f = withEligibility(() => json(eligibility()));
     show(f.fetchMock);
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     await chooseLater();
     fireEvent.click(screen.getByRole('button', { name: '刷新 Agent 资格' }));
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '仅保存任务' } });
@@ -823,7 +843,9 @@ describe('项目作用域 Agent 资格', () => {
       show(f.fetchMock);
       if (mode === 'loading') await screen.findByText(/正在确认项目 Agent 资格/);
       else await screen.findByText('无法确认项目 Agent 资格，不会自动选择 Agent。');
-      expect(screen.queryByText('测试 Agent 可选择，启动时检查')).not.toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).not.toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      );
       expect(screen.getByRole('button', { name: '创建任务' })).toBeInTheDocument();
     },
   );
@@ -852,11 +874,15 @@ describe('项目作用域 Agent 资格', () => {
       }),
     );
     show(f.fetchMock);
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '保留任务' } });
     disabled = true;
     fireEvent.click(screen.getByRole('button', { name: '刷新 Agent 资格' }));
-    await screen.findByText('测试 Agent 当前资格不满足，请重新选择或仅创建任务');
+    await screen.findByText('当前资格不满足，请重新选择或仅创建任务');
     expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
     await chooseLater();
     expect(screen.getByRole('button', { name: '创建任务' })).toBeEnabled();
@@ -878,7 +904,11 @@ describe('完整工作要求与短标题', () => {
     fireEvent.change(screen.getByLabelText('任务短标题（可编辑）'), {
       target: { value: '人工短标题' },
     });
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     fireEvent.click(screen.getByRole('button', { name: '创建并开始' }));
     await screen.findByRole('button', { name: '重试启动' });
     const create = f.fetchMock.mock.calls.find(
@@ -899,8 +929,22 @@ describe('完整工作要求与短标题', () => {
     const tooLong = '文'.repeat(100000);
     fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: tooLong } });
     expect(screen.getByText(/任务说明（含分节标题）不能超过/)).toBeInTheDocument();
+    const validation = screen.getByText(/任务说明（含分节标题）不能超过/);
+    expect(validation).toHaveAttribute('role', 'alert');
+    expect(
+      screen.getByLabelText('你想完成什么？').compareDocumentPosition(validation) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      validation.compareDocumentPosition(screen.getByRole('combobox', { name: '推荐 Agent' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByLabelText('你想完成什么？')).toHaveValue(tooLong);
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
     fireEvent.click(screen.getByText('高级设置'));
     fireEvent.click(screen.getByRole('button', { name: 'Goal' }));
@@ -1004,7 +1048,11 @@ describe('跨刷新任务创建恢复', () => {
   it('首次存储失败不发创建请求，损坏记录必须明确确认后才可移除', async () => {
     const f = workflow();
     show(f.fetchMock);
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('quota');
     });
@@ -1086,7 +1134,11 @@ describe('跨刷新任务创建恢复', () => {
   it('其他标签页写入未决记录后阻止本页新建，移除失败不隐瞒', async () => {
     const f = workflow();
     show(f.fetchMock);
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     store();
     fireEvent(window, new StorageEvent('storage', { key: storageKey }));
     await screen.findByRole('alert');
@@ -1149,7 +1201,11 @@ describe('继承 Binding 的变量输入', () => {
     fireEvent.change(screen.getByLabelText('你想完成什么？'), {
       target: { value: '继承模板任务' },
     });
-    await screen.findByText('测试 Agent 可选择，启动时检查');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+        '测试 Agent · 可选择，启动时检查',
+      ),
+    );
     fireEvent.click(screen.getByText('高级设置'));
     fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
       target: { value: '{"subject":"继承变量"}' },
@@ -1198,7 +1254,11 @@ describe('继承变量的保存与校验边界', () => {
       const f = workflow();
       show(f.fetchMock);
       fireEvent.change(screen.getByLabelText('你想完成什么？'), { target: { value: '目标内容' } });
-      await screen.findByText('测试 Agent 可选择，启动时检查');
+      await waitFor(() =>
+        expect(screen.getByRole('combobox', { name: '推荐 Agent' })).toHaveTextContent(
+          '测试 Agent · 可选择，启动时检查',
+        ),
+      );
       fireEvent.click(screen.getByText('高级设置'));
       fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), { target: { value } });
       expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
@@ -1221,4 +1281,48 @@ describe('继承变量的保存与校验边界', () => {
       expect(f.calls.create).toBe(0);
     },
   );
+});
+
+describe('新工作阅读优先层级', () => {
+  it('完整要求后立即选择Agent，短标题与恢复同组且恢复不清正文', async () => {
+    show(vi.fn(async (input) => base(String(input))));
+    const requirement = await screen.findByLabelText('你想完成什么？');
+    const agentChoice = screen.getByRole('combobox', { name: '推荐 Agent' });
+    const shortTitle = screen.getByLabelText('任务短标题（可编辑）');
+    expect(
+      requirement.compareDocumentPosition(agentChoice) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      agentChoice.compareDocumentPosition(shortTitle) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const restore = screen.getByRole('button', { name: '恢复自动标题' });
+    expect(restore.parentElement).toContainElement(shortTitle);
+    fireEvent.change(requirement, { target: { value: '完整目标第一行\n保留后续验收细节' } });
+    fireEvent.change(shortTitle, { target: { value: '手动标题' } });
+    fireEvent.click(restore);
+    expect(shortTitle).toHaveValue('完整目标第一行');
+    expect(requirement).toHaveValue('完整目标第一行\n保留后续验收细节');
+    await screen.findByText(
+      '选择依据是已登记状态与工作区映射，不代表实时登录、进程或容器健康。启动时仍会检查。',
+    );
+    expect(screen.getByRole('region', { name: '执行 Agent' }).closest('details')).toBeNull();
+  });
+
+  it('项目全路径可展开，快速意图在持续挂载高级区，补充上下文保持直达', async () => {
+    show(vi.fn(async (input) => base(String(input))));
+    await screen.findByLabelText('你想完成什么？');
+    const pathSummary = screen.getByText('项目目录', { exact: true });
+    const pathDetails = pathSummary.closest('details')!;
+    expect(pathDetails).not.toHaveAttribute('open');
+    expect(pathDetails).toHaveTextContent(context.project.rootPath);
+    fireEvent.click(pathSummary);
+    expect(pathDetails).toHaveAttribute('open');
+    expect(screen.getByLabelText('补充上下文（可选）').closest('details')).toBeNull();
+    const advanced = screen.getByText('高级设置', { exact: true }).closest('details')!;
+    expect(advanced).not.toHaveAttribute('open');
+    expect(advanced.querySelector('[aria-label="快速意图"]')).not.toBeNull();
+    fireEvent.click(screen.getByText('高级设置', { exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bug' }));
+    expect(screen.getByLabelText('你想完成什么？')).toHaveValue('Bug：');
+  });
 });

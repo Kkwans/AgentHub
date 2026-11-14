@@ -116,6 +116,48 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(dialog.getByRole('textbox', { name: '你想完成什么？' })).toHaveValue('');
       await expect(dialog.getByRole('button', { name: '创建并开始', exact: true })).toBeDisabled();
       await captureForm(page, dialog, testInfo, `new-work-empty-${width}-${theme}`);
+      const requirement = dialog.getByRole('textbox', { name: '你想完成什么？' });
+      const agentChoice = dialog.getByRole('combobox', { name: '推荐 Agent', exact: true });
+      const shortTitle = dialog.getByRole('textbox', { name: '任务短标题（可编辑）' });
+      const resetTitle = dialog.getByRole('button', { name: '恢复自动标题', exact: true });
+      await expect(agentChoice).toBeInViewport({ ratio: 1 });
+      const initialGeometry = {
+        requirement: (await requirement.boundingBox())!,
+        agent: (await agentChoice.boundingBox())!,
+        shortTitle: (await shortTitle.boundingBox())!,
+        reset: (await resetTitle.boundingBox())!,
+      };
+      expect(initialGeometry.requirement.y + initialGeometry.requirement.height).toBeLessThan(
+        initialGeometry.agent.y,
+      );
+      expect(initialGeometry.agent.y + initialGeometry.agent.height).toBeLessThan(
+        initialGeometry.shortTitle.y,
+      );
+      expect(initialGeometry.reset.width).toBeLessThan(220);
+      expect(initialGeometry.reset.width).toBeGreaterThanOrEqual(43.99);
+      expect(initialGeometry.reset.height).toBeGreaterThanOrEqual(43.99);
+      await testInfo.attach('new-work-primary-reading-order', {
+        body: JSON.stringify(initialGeometry),
+        contentType: 'application/json',
+      });
+      const projectDirectory = dialog.locator('details').filter({
+        has: page.locator('summary', { hasText: '项目目录' }),
+      });
+      const projectSummary = projectDirectory.locator('summary');
+      await expect(projectDirectory).not.toHaveAttribute('open', '');
+      const summaryBox = (await projectSummary.boundingBox())!;
+      expect(summaryBox.width).toBeGreaterThanOrEqual(43.99);
+      expect(summaryBox.height).toBeGreaterThanOrEqual(43.99);
+      await projectSummary.focus();
+      await expect(projectSummary).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(projectDirectory).toHaveAttribute('open', '');
+      await expect(projectDirectory.getByText(app.projectRoot, { exact: true })).toBeVisible();
+      await captureForm(page, dialog, testInfo, `new-work-project-directory-${width}-${theme}`);
+      await projectSummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(projectDirectory).not.toHaveAttribute('open', '');
+
       await dialog.getByRole('textbox', { name: '你想完成什么？' }).fill('主目标必须保留');
       await dialog.getByRole('textbox', { name: '补充上下文（可选）' }).fill('补充验收细节');
       await dialog.getByText('高级设置', { exact: true }).click();

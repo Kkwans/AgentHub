@@ -20,6 +20,7 @@ import type {
 import { api, authSession } from '../../../lib/api';
 import { labelPromptKind, labelPromptType } from '../../../presentation/domain-labels';
 import layout from '../../shared/layout.module.css';
+import styles from './NewWorkPage.module.css';
 import { domainStatusLabel, useCompactViewport } from '../../shared/page-primitives';
 import { useNewTaskCreation } from '../hooks/useNewTaskCreation';
 import { useProjectContext } from './ProjectContextLayout';
@@ -290,10 +291,13 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
         }
       >
         <div className={layout.dialogBody} data-testid="new-work-dialog">
-          <div className={layout.dialogContext}>
-            <span>当前 Project</span>
+          <div className={styles.projectContext}>
+            <span>Project</span>
             <strong>{project.name}</strong>
-            <code title={project.rootPath}>{project.rootPath}</code>
+            <details className={styles.projectPath}>
+              <summary>项目目录</summary>
+              <code>{project.rootPath}</code>
+            </details>
           </div>
           <TaskCreationRecoveryPanel
             recovery={recovery}
@@ -321,16 +325,85 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
               required
               minRows={5}
             />
+            {prepared.error && title.trim() ? <p role="alert">{prepared.error}</p> : null}
+            <section className={styles.agentChoice} aria-label="执行 Agent">
+              <AhSelect
+                label="推荐 Agent"
+                value={agentId || '__later__'}
+                disabled={locked}
+                onChange={(value) => {
+                  agentChoiceMade.current = true;
+                  setAgentId(value === '__later__' ? '' : (value ?? ''));
+                }}
+                data={[
+                  { value: '__later__', label: '稍后选择，仅创建任务' },
+                  ...(agents.data ?? []).map((agent) => {
+                    const entry = eligibility.data?.find((item) => item.agentId === agent.id);
+                    const selectable = selectableAgents.some((item) => item.id === agent.id);
+                    const reason = !agent.enabled
+                      ? '已禁用'
+                      : agent.status !== 'READY'
+                        ? '尚未就绪'
+                        : !eligibilityKnown
+                          ? '资格待确认'
+                          : entry?.reason
+                            ? eligibilityReasons[entry.reason]
+                            : !entry
+                              ? '资格未返回'
+                              : '';
+                    return {
+                      value: agent.id,
+                      label: `${agent.name} · ${selectable ? '可选择，启动时检查' : reason} · 环境记录：${entry?.targetStatus ?? '未知'}`,
+                      disabled: !selectable,
+                    };
+                  }),
+                ]}
+                placeholder="稍后在 Work Inspector 中选择"
+              />
+              <div className={styles.agentGuidance}>
+                {selectedAgent ? (
+                  <>
+                    {!selectedEligible ? (
+                      <p role="alert">当前资格不满足，请重新选择或仅创建任务</p>
+                    ) : null}
+                    <div>
+                      选择依据是已登记状态与工作区映射，不代表实时登录、进程或容器健康。启动时仍会检查。
+                    </div>
+                  </>
+                ) : (
+                  '还没有选择 Agent；创建后仍可在 Work Inspector 中选择并开始。'
+                )}
+              </div>
+              {eligibility.isPending || eligibility.isFetching ? (
+                <p role="status">正在确认项目 Agent 资格；也可选择仅创建任务。</p>
+              ) : null}
+              {eligibility.isError || agents.isError ? (
+                <p role="alert">无法确认项目 Agent 资格，不会自动选择 Agent。</p>
+              ) : null}
+              <AhButton
+                variant="default"
+                className={styles.refreshAgent}
+                onClick={() => {
+                  void eligibility.refetch();
+                  void agents.refetch();
+                }}
+                disabled={locked}
+              >
+                刷新 Agent 资格
+              </AhButton>
+            </section>
             {kind === 'task' ? (
               <>
-                <AhInput
-                  label="任务短标题（可编辑）"
-                  value={shortTitle ?? suggestTaskTitle(title)}
-                  onChange={(event) => setShortTitle(event.currentTarget.value)}
-                />
-                <AhButton variant="default" size="xs" onClick={() => setShortTitle(undefined)}>
-                  恢复自动标题
-                </AhButton>
+                <div className={styles.titleGroup}>
+                  <AhInput
+                    label="任务短标题（可编辑）"
+                    value={shortTitle ?? suggestTaskTitle(title)}
+                    onChange={(event) => setShortTitle(event.currentTarget.value)}
+                  />
+                  <AhButton variant="default" size="xs" onClick={() => setShortTitle(undefined)}>
+                    恢复自动标题
+                  </AhButton>
+                </div>
                 <p className={layout.subtle}>
                   标题用于列表；以上完整要求会保留在任务说明。自动标题仅摘要首行，不会截断完整要求。
                 </p>
@@ -341,24 +414,6 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
             ) : (
               <p className={layout.subtle}>Goal 标题上限 240 字符，补充上下文上限 20000 字符。</p>
             )}
-            {prepared.error && title.trim() ? <p role="alert">{prepared.error}</p> : null}
-            <div className={layout.quickIntents} aria-label="快速意图">
-              <span className={layout.subtle}>快速意图（可选）</span>
-              {quickIntents.map((value) => (
-                <AhButton
-                  key={value}
-                  size="xs"
-                  variant={intent === value ? 'light' : 'default'}
-                  aria-pressed={intent === value}
-                  onClick={() => {
-                    setIntent(value);
-                    if (!title.trim()) setTitle(`${value}：`);
-                  }}
-                >
-                  {value}
-                </AhButton>
-              ))}
-            </div>
             <AhTextarea
               label="补充上下文（可选）"
               value={description}
@@ -366,72 +421,6 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
               placeholder="验收标准、约束或参考资料"
               minRows={3}
             />
-            <AhSelect
-              label="推荐 Agent"
-              value={agentId || '__later__'}
-              disabled={locked}
-              onChange={(value) => {
-                agentChoiceMade.current = true;
-                setAgentId(value === '__later__' ? '' : (value ?? ''));
-              }}
-              data={[
-                { value: '__later__', label: '稍后选择，仅创建任务' },
-                ...(agents.data ?? []).map((agent) => {
-                  const entry = eligibility.data?.find((item) => item.agentId === agent.id);
-                  const selectable = selectableAgents.some((item) => item.id === agent.id);
-                  const reason = !agent.enabled
-                    ? '已禁用'
-                    : agent.status !== 'READY'
-                      ? '尚未就绪'
-                      : !eligibilityKnown
-                        ? '资格待确认'
-                        : entry?.reason
-                          ? eligibilityReasons[entry.reason]
-                          : !entry
-                            ? '资格未返回'
-                            : '';
-                  return {
-                    value: agent.id,
-                    label: `${agent.name} · ${selectable ? '可选择，启动时检查' : reason} · 环境记录：${entry?.targetStatus ?? '未知'}`,
-                    disabled: !selectable,
-                  };
-                }),
-              ]}
-              placeholder="稍后在 Work Inspector 中选择"
-            />
-            <div className={layout.mutedBox}>
-              {selectedAgent ? (
-                <>
-                  <strong>
-                    {selectedAgent.name}{' '}
-                    {selectedEligible
-                      ? '可选择，启动时检查'
-                      : '当前资格不满足，请重新选择或仅创建任务'}
-                  </strong>
-                  <div>
-                    选择依据是已登记状态与工作区映射，不代表实时登录、进程或容器健康。启动时仍会检查。
-                  </div>
-                </>
-              ) : (
-                '还没有选择 Agent；创建后仍可在 Work Inspector 中选择并开始。'
-              )}
-            </div>
-            {eligibility.isPending || eligibility.isFetching ? (
-              <p role="status">正在确认项目 Agent 资格；也可选择仅创建任务。</p>
-            ) : null}
-            {eligibility.isError || agents.isError ? (
-              <p role="alert">无法确认项目 Agent 资格，不会自动选择 Agent。</p>
-            ) : null}
-            <AhButton
-              variant="default"
-              onClick={() => {
-                void eligibility.refetch();
-                void agents.refetch();
-              }}
-              disabled={locked}
-            >
-              刷新 Agent 资格
-            </AhButton>
             <details
               open={advancedOpen}
               onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
@@ -439,6 +428,24 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
             >
               <summary>高级设置</summary>
               <div className={layout.dialogSection}>
+                <div className={layout.quickIntents} aria-label="快速意图">
+                  <span className={layout.subtle}>快速意图（可选）</span>
+                  {quickIntents.map((value) => (
+                    <AhButton
+                      key={value}
+                      size="xs"
+                      variant={intent === value ? 'light' : 'default'}
+                      aria-pressed={intent === value}
+                      onClick={() => {
+                        setIntent(value);
+                        if (!title.trim()) setTitle(`${value}：`);
+                      }}
+                    >
+                      {value}
+                    </AhButton>
+                  ))}
+                </div>
+
                 <div className={layout.actions}>
                   <AhButton
                     size="xs"

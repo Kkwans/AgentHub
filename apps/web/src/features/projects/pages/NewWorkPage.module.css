@@ -1,0 +1,69 @@
+.projectContext {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+}
+
+.projectContext strong {
+  color: var(--ah-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.projectPath {
+  margin-left: auto;
+  min-width: 0;
+}
+
+.projectPath summary {
+  display: list-item;
+  align-content: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.projectPath[open] {
+  flex-basis: 100%;
+  margin-left: 0;
+}
+
+.projectPath code {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.agentChoice {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.agentGuidance {
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.agentGuidance p {
+  margin: 0;
+}
+
+.refreshAgent {
+  justify-self: start;
+  min-height: 44px;
+}
+
+.titleGroup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.titleGroup > button {
+  min-height: 44px;
+}
