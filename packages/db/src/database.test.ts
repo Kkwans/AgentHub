@@ -446,69 +446,82 @@ describe('数据库不变量', () => {
     expect(managed.execution.status).toBe('RUNNING');
   });
 
-  it('Worktree Execution 持久化队列并限制每 Project 单活跃项', async () => {
-    const { projectId, agentId } = await seedRun();
-    const firstTaskId = randomUUID();
-    const secondTaskId = randomUUID();
-    await client.db.insert(tasks).values([
-      {
-        id: firstTaskId,
-        projectId,
-        title: '第一项',
-        status: 'IN_PROGRESS',
-      },
-      {
-        id: secondTaskId,
-        projectId,
-        title: '第二项',
-        status: 'IN_PROGRESS',
-      },
-    ]);
-    const repository = new WorktreeExecutionRepository(client.db);
-    const first = await repository.create({
-      id: randomUUID(),
-      taskId: firstTaskId,
-      projectId,
-      agentId,
-      status: 'QUEUED',
-      baseBranch: 'main',
-      baseSha: 'a'.repeat(40),
-      taskBranch: `agenthub/task-${firstTaskId.slice(0, 8)}`,
-    });
-    const second = await repository.create({
-      id: randomUUID(),
-      taskId: secondTaskId,
-      projectId,
-      agentId,
-      status: 'QUEUED',
-      baseBranch: 'main',
-      baseSha: 'a'.repeat(40),
-      taskBranch: `agenthub/task-${secondTaskId.slice(0, 8)}`,
-    });
-
-    await expect(
-      repository.create({
-        id: randomUUID(),
+  it.each(['不同时间按 queuedAt', '相同时间按 id'] as const)(
+    'Worktree Execution 持久化队列并限制每 Project 单活跃项：%s',
+    async (ordering) => {
+      const { projectId, agentId } = await seedRun();
+      const firstTaskId = randomUUID();
+      const secondTaskId = randomUUID();
+      await client.db.insert(tasks).values([
+        {
+          id: firstTaskId,
+          projectId,
+          title: '第一项',
+          status: 'IN_PROGRESS',
+        },
+        {
+          id: secondTaskId,
+          projectId,
+          title: '第二项',
+          status: 'IN_PROGRESS',
+        },
+      ]);
+      const repository = new WorktreeExecutionRepository(client.db);
+      const first = await repository.create({
+        // Force ID order opposite to insertion order to test both sort keys.
+        id: `f${randomUUID().slice(1)}`,
+        queuedAt: new Date('2026-01-01T00:00:00.000Z'),
         taskId: firstTaskId,
         projectId,
         agentId,
         status: 'QUEUED',
         baseBranch: 'main',
         baseSha: 'a'.repeat(40),
-        taskBranch: `agenthub/retry-${firstTaskId.slice(0, 8)}`,
-      }),
-    ).rejects.toThrow();
+        taskBranch: `agenthub/task-${firstTaskId.slice(0, 8)}`,
+      });
+      const second = await repository.create({
+        id: `0${randomUUID().slice(1)}`,
+        queuedAt: new Date(
+          ordering === '相同时间按 id' ? '2026-01-01T00:00:00.000Z' : '2026-01-01T00:00:00.001Z',
+        ),
+        taskId: secondTaskId,
+        projectId,
+        agentId,
+        status: 'QUEUED',
+        baseBranch: 'main',
+        baseSha: 'a'.repeat(40),
+        taskBranch: `agenthub/task-${secondTaskId.slice(0, 8)}`,
+      });
 
-    expect((await repository.claimNext(projectId))?.id).toBe(first.id);
-    expect(await repository.claimNext(projectId)).toBeUndefined();
-    expect((await repository.get(second.id))?.status).toBe('QUEUED');
-    await expect(repository.transition(first.id, 'DONE')).rejects.toMatchObject({
-      code: 'INVALID_STATE_TRANSITION',
-    });
-    await repository.transition(first.id, 'RUNNING');
-    await repository.transition(first.id, 'REVIEW');
-    await repository.transition(first.id, 'MERGING');
-    await repository.transition(first.id, 'DONE');
-    expect((await repository.claimNext(projectId))?.id).toBe(second.id);
-  });
+      await expect(
+        repository.create({
+          id: randomUUID(),
+          taskId: firstTaskId,
+          projectId,
+          agentId,
+          status: 'QUEUED',
+          baseBranch: 'main',
+          baseSha: 'a'.repeat(40),
+          taskBranch: `agenthub/retry-${firstTaskId.slice(0, 8)}`,
+        }),
+      ).rejects.toThrow();
+
+      const [next, later] = ordering === '相同时间按 id' ? [second, first] : [first, second];
+      expect((await repository.list({ projectId })).map((item) => item.id)).toEqual([
+        next.id,
+        later.id,
+      ]);
+      expect((await repository.claimNext(projectId))?.id).toBe(next.id);
+      expect(await repository.claimNext(projectId)).toBeUndefined();
+      expect((await repository.get(later.id))?.status).toBe('QUEUED');
+      await expect(repository.transition(next.id, 'DONE')).rejects.toMatchObject({
+        code: 'INVALID_STATE_TRANSITION',
+      });
+      await repository.transition(next.id, 'RUNNING');
+      await repository.transition(next.id, 'REVIEW');
+      await repository.transition(next.id, 'MERGING');
+      await repository.transition(next.id, 'DONE');
+      expect((await repository.claimNext(projectId))?.id).toBe(later.id);
+    },
+  );
 });
