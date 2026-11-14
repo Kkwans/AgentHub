@@ -83,6 +83,17 @@ for (const width of [390, 768, 1024, 1440]) {
       await select(page, '项目状态', '已归档');
       await select(page, '项目排序', '名称 A-Z');
       await expect(page.getByText('1 个项目', { exact: true })).toBeVisible();
+      const testGroup = page.locator('details').filter({ hasText: '测试 Project（1）' });
+      // Exact overview target excludes the separate edit-kind link and remains
+      // locatable while its native details ancestor is collapsed.
+      const testProjectLink = testGroup.locator('a[href$="/overview"]');
+      await expect(testGroup).toHaveAttribute('open', '');
+      await expect(testProjectLink).toBeVisible();
+      await capture(page, testInfo, 'projects-test-only-list');
+      // Explicit collapse outranks the automatic test-only default, including
+      // responsive changes and view switches; keyboard activation can reopen it.
+      await testGroup.locator('summary').click();
+      await expect(testGroup).not.toHaveAttribute('open');
       if (width === 390) {
         await toggle.click();
         await expect(toggle).toHaveText('筛选和排序2');
@@ -104,6 +115,19 @@ for (const width of [390, 768, 1024, 1440]) {
       );
       await expect(page.getByRole('link', { name: /正式筛选项目/ })).toHaveCount(0);
       await capture(page, testInfo, 'projects-filtered');
+      await page.getByRole('button', { name: '列表', exact: true }).click();
+      await expect(testGroup).not.toHaveAttribute('open');
+      await expect(testProjectLink).toBeHidden();
+      await testGroup.locator('summary').focus();
+      await page.keyboard.press('Enter');
+      await expect(testGroup).toHaveAttribute('open', '');
+      await expect(testProjectLink).toBeVisible();
+      await page.keyboard.press('Space');
+      await expect(testGroup).not.toHaveAttribute('open');
+      await page.keyboard.press('Space');
+      await expect(testGroup).toHaveAttribute('open', '');
+      await expect(testProjectLink).toBeVisible();
+      await page.getByRole('button', { name: '卡片', exact: true }).click();
       await page.getByRole('button', { name: /清除条件/ }).click();
       await expect(page.getByText('2 个项目', { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: '卡片', exact: true })).toHaveAttribute(

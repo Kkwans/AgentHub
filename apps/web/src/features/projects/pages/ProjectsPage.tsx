@@ -124,6 +124,7 @@ export function ProjectsPage() {
   const [kind, setKind] = useState<'all' | 'STANDARD' | 'TEST'>('all');
   const [sort, setSort] = useState('updated');
   const [view, setView] = useState<'list' | 'grid'>('list');
+  const [testGroupPreference, setTestGroupPreference] = useState<boolean | null>(null);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const compact = useCompactViewport();
   const sourceDescriptionId = useId();
@@ -303,6 +304,7 @@ export function ProjectsPage() {
     (project) => (project.kind ?? 'STANDARD') === 'STANDARD',
   );
   const visibleTestProjects = visibleProjects.filter((project) => project.kind === 'TEST');
+  const testGroupOpen = testGroupPreference ?? visibleStandardProjects.length === 0;
   const standardProjectRows = visibleStandardProjects.map(renderProjectRow);
   const testProjectRows = visibleTestProjects.map(renderProjectRow);
   const projectCards = visibleProjects.map((project, index) => {
@@ -536,8 +538,18 @@ export function ProjectsPage() {
                   {standardProjectRows}
                   {kind === 'all' && testProjectRows.length ? (
                     <div className={projectsStyles.testProjectGroup}>
-                      <details>
-                        <summary>测试 Project（{testProjectRows.length}）</summary>
+                      <details open={testGroupOpen}>
+                        <summary
+                          onClick={(event) => {
+                            // Native summary activation (pointer, Enter or Space) emits click.
+                            // Do not persist onToggle: changing open also emits toggle without
+                            // a user choice, which would freeze the automatic default.
+                            event.preventDefault();
+                            setTestGroupPreference(!testGroupOpen);
+                          }}
+                        >
+                          测试 Project（{testProjectRows.length}）
+                        </summary>
                         <div className={projectsStyles.testProjectRows}>{testProjectRows}</div>
                       </details>
                     </div>
