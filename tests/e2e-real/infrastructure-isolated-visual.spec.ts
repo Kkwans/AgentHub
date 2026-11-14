@@ -339,6 +339,26 @@ for (const width of [390, 768, 1024, 1440]) {
         await summary.press('Enter');
         await expect(details).toHaveAttribute('open', '');
         await expect(details.locator('pre')).toBeVisible();
+        await expect(summary).toBeFocused();
+        const focusGeometry = await summary.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          const hint = element.nextElementSibling!.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            hintGap: hint.top - box.bottom,
+            outlineWidth: style.outlineWidth,
+            outlineOffset: style.outlineOffset,
+            borderRadius: style.borderRadius,
+          };
+        });
+        await info.attach('diagnostic-focus-spacing.json', {
+          body: JSON.stringify(focusGeometry),
+          contentType: 'application/json',
+        });
+        expect.soft(focusGeometry.hintGap).toBeGreaterThanOrEqual(7.99);
+        expect.soft(focusGeometry.outlineWidth).toBe('2px');
+        expect.soft(focusGeometry.outlineOffset).toBe('2px');
+        expect.soft(focusGeometry.borderRadius).toBe('6px');
         await capture('diagnostics-expanded');
         const pre = details.locator('pre');
         const jsonGeometry = await pre.evaluate((element) => ({

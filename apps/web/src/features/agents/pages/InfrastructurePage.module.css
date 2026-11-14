@@ -119,6 +119,8 @@
 }
 .diagnosticSummary {
   min-height: 44px;
+  margin-bottom: 8px;
+  border-radius: 6px;
   padding-block: 11px;
   line-height: 22px;
   cursor: pointer;

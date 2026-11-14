@@ -1988,3 +1988,8 @@ ae8精确focused139过8失败：390仅诊断summary21px；768/1024/1440还含三
 不改产品；新增独立discovery-isolated-visual四宽双主题8例，仅focused接线。复用已验证private HOME/空PATH/absent Docker socket child，4确切GET白名单、所有业务write拒绝；真实Codex/OpenCode候选与空注册目录分别断言，不mock空候选。只发现导航/完成，不点重扫、添加、授权，不登录Provider。WebSocket仅path+同源/protocol布尔，不记URL query/帧。真实扫描完成heading硬等待后采顶部与内部滚动到底/复位图；44双轴soft门禁仍会令case失败，关闭回焦/数据/安全门禁hard，不主动focus伪造恢复。
 
 主工程18:50:06复跑独立环境+生命周期opt-in16/16通过5.23秒，仅health；18:50:09 Docker HTTPmock2/2通过，无真实Docker/发现GET。最后spec8f225c38双类型/lint/list8/diff与独立CR通过，18:50:41全仓build成功。新8例浏览器未在本地执行、尚无截图，可能揭露路由卸载后的回焦缺口；不把list当通过，也不重复报旧产品1432为此次重跑。
+
+### 2026-11-14 19:01 UTC 注册/诊断主体实图接受及焦点间距P2
+
+851精确focused147通过+独立Prompt4通过；artifact hash192f7…c7186核验。人工实际看390浅注册/诊断展开、1440深注册、768浅展开、1024深折叠：注册640/无外卡/返回同行、诊断单标题/完整范围/JSON320阅读盒主体接受。不是仅看测试几何。残余P2展开summary焦点框贴住横滑提示（主工程也看390证实），新小片仅加8px下间距与6px圆角，保2px outline/2px offset、44触点、原生键盘。真实spec保持Enter后聚焦再附原始gap/computed样式、截图不blur，原安全/数据不改。9专项/双类型/lint/CR过，最终聚合进行中；新间距图未验。
+- 19:04:28 UTC焦点间距最终131文件1432测试通过193.94秒，冻结hash不变，随后全仓build成功；9专项/类型/lint/独立CR已过。新实际间隔图待CI，未把旧851接受范围扩成新候选已验。
