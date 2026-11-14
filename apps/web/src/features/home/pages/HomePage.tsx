@@ -214,7 +214,9 @@ export function HomePage() {
     return () => window.clearTimeout(timer);
   }, [detailsReady, queryClient]);
   return (
-    <div className={`${homeStyles.homePage} page-content page-shell workspace-page`}>
+    <div
+      className={`${homeStyles.homePage} ${!loading && !error && !hasProjects ? homeStyles.emptyHome : ''} page-content page-shell workspace-page`}
+    >
       <QueryMessage
         loading={loading}
         error={error}
@@ -231,7 +233,7 @@ export function HomePage() {
         <>
           <header className={homeStyles.header}>
             <div>
-              <span className={homeStyles.eyebrow}>工作台</span>
+              {hasProjects ? <span className={homeStyles.eyebrow}>工作台</span> : null}
               <h1>{hasProjects ? '继续工作' : '从你的项目，开始第一项工作'}</h1>
               <p>
                 {hasProjects
@@ -290,9 +292,8 @@ export function HomePage() {
               {!hasProjects ? (
                 <section className={homeStyles.onboarding} aria-labelledby="home-start-title">
                   <div className={homeStyles.intro}>
-                    <span className={homeStyles.eyebrow}>开始之前</span>
-                    <h2 id="home-start-title">让工作有一个落脚点</h2>
-                    <p>项目连接已有目录，不必搬动你的代码。权限与执行环境会在开始工作前核验。</p>
+                    <h2 id="home-start-title">准备第一个普通项目</h2>
+                    <p>连接已有目录，不搬动代码；开始工作前仍会核验权限与执行环境。</p>
                   </div>
                   <ol className={homeStyles.steps}>
                     <li>
@@ -306,7 +307,7 @@ export function HomePage() {
                       <span>02</span>
                       <div>
                         <h3>检查 Agent 接入</h3>
-                        <p>确认执行位置和认证，再选择适合这个项目的 Agent。</p>
+                        <p>确认执行位置与认证，再选择 Agent。</p>
                         <Link to="/agents">
                           查看 Agent 中心 <ArrowRight size={14} aria-hidden="true" />
                         </Link>
@@ -316,7 +317,7 @@ export function HomePage() {
                       <span>03</span>
                       <div>
                         <h3>描述要完成的目标</h3>
-                        <p>开始一项工作，在会话中跟进进度、批准操作和审阅结果。</p>
+                        <p>在会话中跟进进度、批准操作和审阅结果。</p>
                       </div>
                     </li>
                   </ol>

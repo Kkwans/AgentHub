@@ -92,8 +92,16 @@ describe('首页行动优先', () => {
 
   it('首次进入只提供一个创建入口与紧凑指南，不渲染重复空卡', async () => {
     mount();
-    expect(await screen.findByRole('heading', { name: '让工作有一个落脚点' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '准备第一个普通项目' })).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: '创建项目' })).toHaveLength(1);
+    expect(screen.queryByText('开始之前')).not.toBeInTheDocument();
+    const guide = screen.getByRole('region', { name: '准备第一个普通项目' });
+    expect(guide.querySelectorAll('li')).toHaveLength(3);
+    expect(guide).toHaveTextContent('开始工作前仍会核验权限与执行环境');
+    expect(within(guide).getByRole('link', { name: '查看 Agent 中心' })).toHaveAttribute(
+      'href',
+      '/agents',
+    );
     expect(screen.getByRole('link', { name: '创建项目' })).toHaveAttribute('href', '/projects/new');
     expect(screen.queryByText('还没有最近工作')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /需要你处理/ })).not.toBeInTheDocument();
@@ -126,7 +134,7 @@ describe('首页行动优先', () => {
       '/projects/p1/work/new',
     );
     expect(screen.getByText('1 个 Agent 全局就绪，项目可用性需单独检查。')).toBeInTheDocument();
-    expect(screen.queryByText('让工作有一个落脚点')).not.toBeInTheDocument();
+    expect(screen.queryByText('准备第一个普通项目')).not.toBeInTheDocument();
   });
   it('没有项目时仍展示可处理的受阻任务', async () => {
     mount({
@@ -152,6 +160,13 @@ describe('首页行动优先', () => {
   it('测试项目可展开访问但不混入正式工作', async () => {
     mount({ projects: [{ ...project, kind: 'TEST' }] });
     expect(await screen.findByText('测试项目（1）')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '准备第一个普通项目' })).toBeVisible();
+    fireEvent.click(screen.getByText('测试项目（1）', { selector: 'summary' }));
+    expect(screen.getByRole('link', { name: /真实项目/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: /真实项目/ })).toHaveAttribute(
+      'href',
+      '/projects/p1/overview',
+    );
     expect(screen.getByText('0 个活跃项目 · 0 个运行中会话')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '创建项目' })).toBeInTheDocument();
   });

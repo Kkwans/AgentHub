@@ -471,3 +471,54 @@
     max-width: none;
   }
 }
+
+/* Only the no-standard-project guide changes; active work panels retain their layout. */
+.onboarding {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.onboarding .intro {
+  max-width: none;
+}
+.onboarding .intro h2 {
+  font-size: 18px;
+  line-height: 26px;
+}
+.onboarding .intro p {
+  margin: 6px 0 0;
+}
+.onboarding .steps {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.onboarding .steps li {
+  gap: 10px;
+  min-width: 0;
+}
+.onboarding .steps li > span {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  color: var(--ah-text-secondary);
+}
+.onboarding .steps h3 {
+  margin: 0 0 4px;
+}
+.onboarding .steps a {
+  min-height: 44px;
+  margin-top: 0;
+}
+@media (max-width: 860px) {
+  .onboarding .steps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+.emptyHome:global(.page-content) {
+  max-width: none;
+}

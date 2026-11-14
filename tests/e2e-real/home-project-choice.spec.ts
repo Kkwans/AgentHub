@@ -11,7 +11,7 @@ for (const width of [390, 768, 1024, 1440]) {
       page.on('console', (message) => {
         if (message.type() === 'error') errors.push(message.text());
       });
-      await page.setViewportSize({ width, height: 900 });
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
       await context.addInitScript((theme) => localStorage.setItem('agenthub-theme', theme), theme);
       const post = async (path: string, data?: Record<string, unknown>) => {
         const response = await context.request.post(`/api/v1${path}`, { data });
@@ -25,8 +25,67 @@ for (const width of [390, 768, 1024, 1440]) {
         os: process.platform,
         arch: process.arch,
       });
+      const captureGuide = async (state: string) => {
+        const guide = page.getByRole('region', { name: '准备第一个普通项目' });
+        await expect(guide).toBeVisible();
+        await expect(guide.getByRole('listitem')).toHaveCount(3);
+        await expect(guide).toContainText('开始工作前仍会核验权限与执行环境');
+        const create = page.getByRole('link', { name: '创建项目', exact: true });
+        await expect(create).toHaveCount(1);
+        await expect(create).toHaveAttribute('href', '/projects/new');
+        const agent = guide.getByRole('link', { name: '查看 Agent 中心' });
+        await expect(agent).toHaveAttribute('href', '/agents');
+        const geometry = await guide.evaluate((node) => {
+          const b = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          const heading = document.querySelector('h1')!.getBoundingClientRect();
+          return {
+            height: b.height,
+            left: b.left,
+            headingLeft: heading.left,
+            border: style.borderTopWidth,
+          };
+        });
+        expect(geometry.border).toBe('0px');
+        expect(Math.abs(geometry.left - geometry.headingLeft)).toBeLessThanOrEqual(1);
+        if (width === 390) expect(geometry.height).toBeLessThan(360);
+        expect((await agent.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+        ).toBeLessThanOrEqual(1);
+        const path = info.outputPath(`home-guide-${state}-${width}-${theme}.png`);
+        await page.screenshot({ path, fullPage: true });
+        await info.attach(`home-guide-${state}`, { path, contentType: 'image/png' });
+        await info.attach(`home-guide-${state}-geometry`, {
+          body: JSON.stringify(geometry),
+          contentType: 'application/json',
+        });
+      };
+      await page.goto('/home');
+      await captureGuide('empty');
+      const testRoot = join(app.projectRoot, 'test');
+      await mkdir(testRoot, { recursive: true });
+      const testProject = await post('/projects', {
+        name: '同名正式项目：确认目录后再创建工作',
+        kind: 'TEST',
+        rootPath: testRoot,
+        targetId: target.id,
+      });
+      await page.reload();
+      await captureGuide('test-only');
+      const testProjects = page.locator('details').filter({ hasText: '测试项目（1）' });
+      await expect(testProjects).toBeVisible();
+      await testProjects.locator('summary').focus();
+      await page.keyboard.press('Enter');
+      await expect(
+        testProjects.locator(`a[href="/projects/${testProject.id}/overview"]`),
+      ).toBeVisible();
       const ids: string[] = [];
       for (const folder of ['one', 'two', 'test', 'archived']) {
+        if (folder === 'test') {
+          ids.push(testProject.id);
+          continue;
+        }
         const rootPath = join(app.projectRoot, folder);
         await mkdir(rootPath, { recursive: true });
         const project = await post('/projects', {
