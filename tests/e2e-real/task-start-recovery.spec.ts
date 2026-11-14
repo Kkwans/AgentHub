@@ -107,6 +107,41 @@ async function checkOnly(
   else await expect(link).toHaveCount(0);
   return panel;
 }
+async function assertRecoveryPlacement(page: Page, firstUnknown = false) {
+  const panel = page.getByRole('region', { name: '原任务启动核对' });
+  const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
+  const title = inspector.getByRole('heading', { level: 2 });
+  const agent = page.getByRole('combobox', { name: '运行 Agent' });
+  const boxes = await Promise.all([
+    panel.boundingBox(),
+    inspector.boundingBox(),
+    title.boundingBox(),
+    agent.boundingBox(),
+  ]);
+  const [card, container, heading, control] = boxes;
+  expect(card).not.toBeNull();
+  expect(container).not.toBeNull();
+  expect(heading).not.toBeNull();
+  expect(control).not.toBeNull();
+  expect(card!.y).toBeGreaterThanOrEqual(heading!.y + heading!.height);
+  expect(card!.y + card!.height).toBeLessThanOrEqual(control!.y);
+  // Existing Inspector contexts define 16px phone / 20px ordinary / 24px review.
+  const inset = await inspector.evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).getPropertyValue('--task-inspector-inset')),
+  );
+  expect([16, 20, 24]).toContain(inset);
+  if (page.viewportSize()!.width === 390) expect(inset).toBe(16);
+  expect(Math.abs(card!.x - container!.x - inset)).toBeLessThanOrEqual(1);
+  expect(
+    Math.abs(container!.x + container!.width - card!.x - card!.width - inset),
+  ).toBeLessThanOrEqual(1);
+  if (firstUnknown) {
+    await expect(
+      panel.getByRole('button', { name: '核对原任务启动', exact: true }),
+    ).toBeInViewport();
+    await expect(panel.getByText('待核对', { exact: true })).toBeInViewport();
+  }
+}
 async function capture(page: Page, info: TestInfo, name: string) {
   const panel = page.getByRole('region', { name: '原任务启动核对' });
   await panel.scrollIntoViewIfNeeded();
@@ -173,10 +208,18 @@ for (const width of [390, 768, 1024, 1440]) {
       await page.goto(path);
       const start = page.getByRole('button', { name: '启动 Session', exact: true });
       await expect(start).toBeEnabled();
-      await start.click();
+      await start.evaluate((element) => element.focus({ preventScroll: true }));
+      await page.keyboard.press('Enter');
       const panel = page.getByRole('region', { name: '原任务启动核对' });
       await expect(panel).toContainText('原操作结果未知');
       await expect(start).toBeDisabled();
+      await assertRecoveryPlacement(page, true);
+      const initialPath = info.outputPath(`task-start-first-unknown-${width}-${theme}.png`);
+      await page.screenshot({ path: initialPath });
+      await info.attach('first-unknown-before-scroll', {
+        path: initialPath,
+        contentType: 'image/png',
+      });
       const committed = observed.committed() as Started;
       expect(committed.task.id).toBe(task.id);
       const stored = await apiData<Task>(context, 'get', `/tasks/${task.id}`);
@@ -197,6 +240,7 @@ for (const width of [390, 768, 1024, 1440]) {
       await checkOnly(reopened, observed, committed.session.id);
       await marker(reopened, project.id, task.id, 'start');
       await expect(reopened.locator('html')).toHaveAttribute('data-agenthub-theme', theme);
+      await assertRecoveryPlacement(reopened);
       await capture(reopened, info, `task-start-unknown-${width}-${theme}`);
       const attempts = await apiData<Attempt[]>(context, 'get', `/tasks/${task.id}/start-attempts`);
       expect(attempts).toHaveLength(1);

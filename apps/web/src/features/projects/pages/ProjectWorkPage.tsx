@@ -775,6 +775,11 @@ export function ProjectWorkPage() {
                         <p>{selected.description}</p>
                       ) : null}
                     </header>
+                    <TaskStartRecoveryPanel
+                      state={start.state}
+                      checking={start.checking}
+                      onCheck={() => void start.check()}
+                    />
                     {selected.description && primaryReviewCanvas ? (
                       <section className={projectsStyles.inspectorSection}>
                         <p>{selected.description}</p>
@@ -1094,11 +1099,6 @@ export function ProjectWorkPage() {
                         <p>此任务由隔离 Worktree 管理，不使用普通任务启动或取消入口。</p>
                       </section>
                     ) : null}
-                    <TaskStartRecoveryPanel
-                      state={start.state}
-                      checking={start.checking}
-                      onCheck={() => void start.check()}
-                    />
                     {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
                     <div className={projectsStyles.inspectorActions}>
                       <AhButton

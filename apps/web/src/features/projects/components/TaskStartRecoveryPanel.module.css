@@ -3,6 +3,7 @@
   display: grid;
   gap: 10px;
   margin-block: 12px;
+  margin-inline: var(--task-inspector-inset, 20px);
   padding: 16px;
   border: 1px solid var(--ah-border-subtle);
   border-radius: 10px;

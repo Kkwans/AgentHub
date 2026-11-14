@@ -1575,3 +1575,10 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 只读CR确认任务E2E持久化attempt/session/run唯一，但未计外部ACP调用；客户端丢响应不等于服务端UNKNOWN，重开只在同BrowserContext。未提前放宽任何门禁。
 - Agent启停基础仅新增未接线AgentAdmissionCoordinator及12测试：同Agent FIFO/不同Agent独立、异常不毒队列、ownership checkpoint、嵌套拒绝与ALS延迟回调。10:04:40专项12/12、server类型/scoped lint/格式通过；独立CR无基础模块阻断。未DB迁移、未API/UI、未生产接线，不声称禁用功能已可用。10:05:39冻结后开始完整server验证，未提前记通过。
 - 10:09:23完整server冻结验证完成：56文件599测试通过，222.86秒exit0。不是全仓测试；前一版本web1140未重复算本轮。10:10:50核实0a29精确verify成功，PG/axe/focused均成功，full-real仍运行。
+
+### 2026-11-14 10:14 UTC 起 启停闭环候选与任务恢复UI
+
+- 10:12:21前一窗口da786c2已push/fetch核实；本窗口不重复算提交。10:18核实其PG/axe/focused成功，verify/full-real仍运行；0a29的完整real仍运行，不能称全绿。
+- 实际看0a29手机unknown图，恢复卡约632px才出现且贴左边，虽然门禁通过仍属层级问题。移动唯一面板到标题后、执行控件前，以16/20/24px变量对齐手机/普通桌面/Review正文；不改hook/registry/请求语义。页面102专项通过，10:19:10冻结完整web94文件1140测试通过，161.36秒。新E2E仍10例，保留原请求/资源断言并新增首次未滚动可见/实际bbox/边距与新截图；list通过不是浏览器通过。
+- Agent DB启停候选0015 migration保留enabled并新增revision，专用单SQL CAS、同值递增、默认/预检不旁路。10:18:29冻结：本地DB17文件184测试、旧迁移6例及新综合迁移/CAS均通过，db类型/build/lint/Drizzle检查成功、独立CR无阻断。5个旧schema fixture改显式旧列，不删迁移覆盖。未发布，不是PG多连接验收。
+- Server全入口准入接线/禁用CAS与shutdown drain仍在验证，首轮新专项5失1过因DB dist未build新方法，已等待DB build后重验，不能拼算通过。create/restore与每次新Run分别准入，已创建Session不代表后续Run永久放行。启停UI尚未开放，无真实Provider/main/deploy。

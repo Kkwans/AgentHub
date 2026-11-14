@@ -989,6 +989,7 @@
 }
 
 .workInspector {
+  --task-inspector-inset: 20px;
   position: sticky;
   top: 88px;
 }
@@ -1464,6 +1465,10 @@
     display: block;
   }
 
+  .workInspector {
+    --task-inspector-inset: 16px;
+  }
+
   .inspectorHeader,
   .inspectorSection,
   .inspectorActions {
@@ -1870,6 +1875,7 @@
   }
 
   .workReviewLayout > .workInspector {
+    --task-inspector-inset: 24px;
     position: static;
     overflow: visible;
   }

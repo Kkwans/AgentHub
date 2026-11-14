@@ -195,8 +195,20 @@ it('Agent启动前转换失败可见且不继续start', async () => {
 it('Agent启动失败可见且不自动重试', async () => {
   vi.mocked(api.post).mockRejectedValue(new Error('任务 Prompt 缺少必填变量，尚未启动 Agent'));
   mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
-  fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
+  const start = await screen.findByRole('button', { name: '启动 Session' });
+  expect(screen.queryByRole('region', { name: '原任务启动核对' })).not.toBeInTheDocument();
+  fireEvent.click(start);
   expect(await screen.findByText('原操作结果未知。请只读核对，不要重复启动。')).toBeVisible();
+  const panels = screen.getAllByRole('region', { name: '原任务启动核对' });
+  expect(panels).toHaveLength(1);
+  const panel = panels[0]!;
+  const title = screen.getByRole('heading', { name: task.title, level: 2 });
+  expect(title.closest('header')?.nextElementSibling).toBe(panel);
+  expect(
+    panel.compareDocumentPosition(screen.getByRole('combobox', { name: '运行 Agent' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(start).toBeDisabled();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
 it.each(['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'])(
