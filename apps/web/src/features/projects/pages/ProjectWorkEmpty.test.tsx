@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ProjectContextLayout } from './ProjectContextLayout';
+import { resetExistingStartForTests } from '../lib/existing-task-start-state';
 import { ProjectWorkPage } from './ProjectWorkPage';
 import { api } from '../../../lib/api';
 import { ApiError } from '../../../lib/api-error';
@@ -20,6 +21,7 @@ vi.mock('../../../components/AccessGate', () => ({
 const clients: QueryClient[] = [];
 afterEach(() => {
   cleanup();
+  resetExistingStartForTests();
   clients.splice(0).forEach((client) => client.clear());
   vi.resetAllMocks();
 });
@@ -39,6 +41,13 @@ const task = {
   status: 'BACKLOG',
   updatedAt: '2026-11-12T00:00:00Z',
 };
+function startResult() {
+  return {
+    task: { ...task, sessionId: 'session-1' },
+    session: { id: 'session-1', taskId: task.id, projectId: project.id },
+    run: { id: 'run-1', sessionId: 'session-1' },
+  };
+}
 function registeredEligibility(agents = selectableAgents, projectId = project.id) {
   return {
     projectId,
@@ -161,7 +170,11 @@ it('无Agent手工开始从BACKLOG先READY再IN_PROGRESS，不启动Session', as
 });
 
 it.each(['BACKLOG', 'BLOCKED', 'READY'])('Agent启动%s遵守READY前置合同', async (status) => {
-  vi.mocked(api.post).mockResolvedValue({ session: { id: 'session-1' } } as never);
+  vi.mocked(api.post).mockImplementation(async (path) =>
+    path.endsWith('/transition')
+      ? ({ ...task, status: 'READY' } as never)
+      : (startResult() as never),
+  );
   mount([{ ...task, status }], '?agentId=agent-1');
   fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
   await waitFor(() =>
@@ -176,14 +189,14 @@ it('Agent启动前转换失败可见且不继续start', async () => {
   vi.mocked(api.post).mockRejectedValue(new Error('任务状态已变化，请刷新'));
   mount([{ ...task, status: 'BACKLOG' }], '?agentId=agent-1');
   fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
-  expect(await screen.findByText('任务状态已变化，请刷新')).toBeVisible();
+  expect(await screen.findByText('原操作结果未知。请只读核对，不要重复启动。')).toBeVisible();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
 it('Agent启动失败可见且不自动重试', async () => {
   vi.mocked(api.post).mockRejectedValue(new Error('任务 Prompt 缺少必填变量，尚未启动 Agent'));
   mount([{ ...task, status: 'READY' }], '?agentId=agent-1');
   fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
-  expect(await screen.findByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).toBeVisible();
+  expect(await screen.findByText('原操作结果未知。请只读核对，不要重复启动。')).toBeVisible();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
 it.each(['IN_PROGRESS', 'WAITING_REVIEW', 'DONE', 'CANCELED'])(
@@ -347,8 +360,8 @@ it('READY转换期间锁定运行Agent选择，失败结束后恢复选择', asy
     expect(api.post).toHaveBeenCalledWith('/tasks/task-1/transition', { status: 'READY' }),
   );
   expect(selector).toBeDisabled();
-  await act(async () => reject(new Error('转换失败')));
-  await screen.findByText('转换失败');
+  await act(async () => reject(new ApiError('TASK_NOT_READY', '转换失败', 409)));
+  await screen.findByText('服务器明确拒绝本次操作；修正后可手动重新启动。');
   expect(selector).not.toBeDisabled();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
@@ -358,7 +371,11 @@ const selectableAgents = [
   { id: 'agent-2', name: '执行者二', status: 'READY', enabled: true },
 ];
 it('已分配Agent的任务默认显示与实际启动一致', async () => {
-  vi.mocked(api.post).mockResolvedValue({ session: { id: 'session-1' } } as never);
+  vi.mocked(api.post).mockImplementation(async (path) =>
+    path.endsWith('/transition')
+      ? ({ ...task, status: 'READY' } as never)
+      : (startResult() as never),
+  );
   mount([{ ...task, status: 'READY', assignedAgentId: 'agent-1' }], '', selectableAgents);
   const selector = await screen.findByRole('combobox', { name: '运行 Agent' });
   await waitFor(() => expect(selector).toHaveTextContent('执行者一'));
@@ -408,7 +425,11 @@ it('任务切换不沿用上个任务明确选择的Agent', async () => {
 });
 
 it('URL明确Agent覆盖已分配默认并用于请求', async () => {
-  vi.mocked(api.post).mockResolvedValue({ session: { id: 'session-1' } } as never);
+  vi.mocked(api.post).mockImplementation(async (path) =>
+    path.endsWith('/transition')
+      ? ({ ...task, status: 'READY' } as never)
+      : (startResult() as never),
+  );
   mount(
     [{ ...task, status: 'READY', assignedAgentId: 'agent-1' }],
     '?agentId=agent-2',
@@ -642,20 +663,24 @@ it('错误任务的保存响应不冒称成功并保留草稿', async () => {
 
 it('修复变量后清除旧启动错误但不自动再次启动', async () => {
   const stored = { ...task, status: 'READY', sessionId: null, promptVariablesJson: {} };
-  vi.mocked(api.post).mockRejectedValue(new Error('任务 Prompt 缺少必填变量，尚未启动 Agent'));
+  vi.mocked(api.post).mockRejectedValue(
+    new ApiError('TASK_PROMPT_VARIABLES_MISSING', '任务 Prompt 缺少必填变量，尚未启动 Agent', 400),
+  );
   vi.mocked(api.patch).mockResolvedValue({
     ...stored,
     promptVariablesJson: { subject: '修复' },
   } as never);
   mount([stored], '?agentId=agent-1', selectableAgents);
   fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
-  expect(await screen.findByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).toBeVisible();
+  expect(await screen.findByText('服务器明确拒绝本次操作；修正后可手动重新启动。')).toBeVisible();
   fireEvent.change(screen.getByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' }), {
     target: { value: '{"subject":"修复"}' },
   });
   fireEvent.click(screen.getByRole('button', { name: '保存变量' }));
   expect(await screen.findByText('变量已保存。')).toBeVisible();
-  expect(screen.queryByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('服务器明确拒绝本次操作；修正后可手动重新启动。'),
+  ).not.toBeInTheDocument();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
 
@@ -861,12 +886,11 @@ it.each(['success', 'failure'] as const)(
       expect(screen.queryByText(/所选 Agent 不可用于当前项目/)).not.toBeInTheDocument(),
     );
     await act(async () =>
-      outcome === 'success'
-        ? finish({ session: { id: 'session-1' } })
-        : fail(new Error('已发出的启动失败')),
+      outcome === 'success' ? finish(startResult()) : fail(new Error('已发出的启动失败')),
     );
     if (outcome === 'success') expect(await screen.findByText('已进入工作区')).toBeVisible();
-    else expect(await screen.findByText('已发出的启动失败')).toBeVisible();
+    else
+      expect(await screen.findByText('原操作结果未知。请只读核对，不要重复启动。')).toBeVisible();
     expect(api.post).toHaveBeenCalledTimes(1);
   },
 );

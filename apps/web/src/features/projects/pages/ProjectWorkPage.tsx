@@ -1,3 +1,5 @@
+import { useExistingTaskStart } from '../hooks/useExistingTaskStart';
+import { TaskStartRecoveryPanel } from '../components/TaskStartRecoveryPanel';
 import { TaskStartAttemptsPanel } from '../components/TaskStartAttemptsPanel';
 import { useWorkViewport } from '../hooks/useWorkViewport';
 import { useReviewOperations } from '../components/ReviewOperationProvider';
@@ -393,61 +395,28 @@ export function ProjectWorkPage() {
     }) => api.post(`/tasks/${id}/transition`, { status }),
     onSettled: () => void client.invalidateQueries({ queryKey: ['tasks', project.id] }),
   });
-  const start = useMutation({
-    mutationFn: async ({
-      id,
-      agentId,
-      status,
-      generation,
-      eligibilityGeneration,
-    }: {
-      id: string;
-      agentId: string;
-      status: TaskRecord['status'];
-      generation: number;
-      eligibilityGeneration: number;
-    }) => {
-      if (!selectedEligible) throw new Error('所选 Agent 的项目资格尚未确认，未启动。');
-      if (!['BACKLOG', 'BLOCKED', 'READY'].includes(status))
-        throw new Error('当前任务状态不支持启动，请刷新后核对。');
-      if (
-        !currentOperation(generation) ||
-        startEligibility.current.generation !== eligibilityGeneration
-      )
-        return null;
-      if (status === 'BACKLOG' || status === 'BLOCKED')
-        await api.post(`/tasks/${id}/transition`, { status: 'READY' });
-      // A new selection or navigation must not continue the old multi-step action.
-      if (
-        !currentOperation(generation) ||
-        startEligibility.current.generation !== eligibilityGeneration
-      )
-        return null;
-      return api.post<{ session: { id: string } }>(`/tasks/${id}/start`, { agentId });
-    },
-    onSuccess: (result, variables) => {
-      if (result && currentOperation(variables.generation))
-        navigate(`/workspace/${result.session.id}`);
-    },
-    onSettled: () => {
+  const manualScope = browserCreationScope(useAuthMode(), useAuthUser());
+  const start = useExistingTaskStart({
+    projectId: project.id,
+    task: selected,
+    scope: manualScope,
+    agentId: runAgentId,
+    eligible: selectedEligible,
+    onChanged: () => {
       void client.invalidateQueries({ queryKey: ['tasks', project.id] });
       void client.invalidateQueries({ queryKey: ['sessions', project.id] });
     },
+    onStarted: (id) => navigate(`/workspace/${id}`),
   });
   const actionError =
-    start.error && start.variables && currentOperation(start.variables.generation)
-      ? start.error
-      : transition.error &&
-          transition.variables &&
-          currentOperation(transition.variables.generation)
-        ? transition.error
-        : null;
-  const manualScope = browserCreationScope(useAuthMode(), useAuthUser());
+    transition.error && transition.variables && currentOperation(transition.variables.generation)
+      ? transition.error
+      : null;
   const manual = useManualTaskStart(project.id, selected?.id, manualScope, () => {
     void client.invalidateQueries({ queryKey: ['tasks', project.id] });
   });
   const selectionLocked =
-    start.isPending ||
+    start.locked ||
     transition.isPending ||
     manual.busy ||
     manual.unknown ||
@@ -863,7 +832,7 @@ export function ProjectWorkPage() {
                           })}
                           disabled={
                             worktrees.isFetching ||
-                            start.isPending ||
+                            start.locked ||
                             transition.isPending ||
                             manual.busy ||
                             manual.unknown ||
@@ -893,7 +862,7 @@ export function ProjectWorkPage() {
                           })}
                           disabled={
                             worktrees.isFetching ||
-                            start.isPending ||
+                            start.locked ||
                             transition.isPending ||
                             manual.busy ||
                             variablesSaving ||
@@ -923,7 +892,7 @@ export function ProjectWorkPage() {
                       <AhSelect
                         aria-label="运行 Agent"
                         disabled={
-                          start.isPending ||
+                          start.locked ||
                           transition.isPending ||
                           manual.busy ||
                           variablesSaving ||
@@ -967,7 +936,7 @@ export function ProjectWorkPage() {
                         size="xs"
                         variant="default"
                         disabled={
-                          start.isPending ||
+                          start.locked ||
                           transition.isPending ||
                           manual.busy ||
                           variablesSaving ||
@@ -1024,7 +993,7 @@ export function ProjectWorkPage() {
                           key={`${project.id}:${selected.id}`}
                           task={selected}
                           disabled={
-                            start.isPending ||
+                            start.locked ||
                             transition.isPending ||
                             manual.busy ||
                             manual.unknown ||
@@ -1055,7 +1024,7 @@ export function ProjectWorkPage() {
                           agentId={runAgentId}
                           eligible={queueEligible}
                           disabled={
-                            start.isPending ||
+                            start.locked ||
                             transition.isPending ||
                             manual.busy ||
                             manual.unknown ||
@@ -1107,7 +1076,7 @@ export function ProjectWorkPage() {
                           state={cancelState}
                           disabled={
                             worktrees.isFetching ||
-                            start.isPending ||
+                            start.locked ||
                             transition.isPending ||
                             manual.busy ||
                             variablesSaving ||
@@ -1125,22 +1094,17 @@ export function ProjectWorkPage() {
                         <p>此任务由隔离 Worktree 管理，不使用普通任务启动或取消入口。</p>
                       </section>
                     ) : null}
+                    <TaskStartRecoveryPanel
+                      state={start.state}
+                      checking={start.checking}
+                      onCheck={() => void start.check()}
+                    />
                     {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
                     <div className={projectsStyles.inspectorActions}>
                       <AhButton
                         size="xs"
                         variant="light"
-                        onClick={() =>
-                          runAgentId
-                            ? start.mutate({
-                                id: selected.id,
-                                agentId: runAgentId,
-                                status: selected.status,
-                                generation: operationContext.current.generation,
-                                eligibilityGeneration: startEligibility.current.generation,
-                              })
-                            : void manual.begin()
-                        }
+                        onClick={() => (runAgentId ? void start.begin() : void manual.begin())}
                         loading={transition.isPending || start.isPending || manual.busy}
                         disabled={
                           Boolean(selectedWorktree) ||
@@ -1148,13 +1112,14 @@ export function ProjectWorkPage() {
                             selected.status,
                           ) ||
                           (Boolean(runAgentId) && !selectedEligible) ||
+                          (Boolean(runAgentId) && start.unavailable) ||
                           (!runAgentId && manual.unavailable) ||
                           manual.busy ||
                           variablesSaving ||
                           reviewLocked ||
                           queueLocked ||
                           transition.isPending ||
-                          start.isPending ||
+                          start.locked ||
                           (manual.unknown && (Boolean(runAgentId) || !manual.status)) ||
                           (!runAgentId && !['BACKLOG', 'READY'].includes(selected.status))
                         }
@@ -1186,7 +1151,7 @@ export function ProjectWorkPage() {
                           task={selected}
                           pending={
                             transition.isPending ||
-                            start.isPending ||
+                            start.locked ||
                             manual.busy ||
                             manual.unknown ||
                             variablesSaving ||

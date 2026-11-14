@@ -1,0 +1,61 @@
+.panel {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  margin-block: 12px;
+  padding: 16px;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 10px;
+  background: var(--ah-surface);
+  overflow-wrap: anywhere;
+}
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+.header h4 {
+  margin: 0;
+  color: var(--ah-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.header span,
+.hint {
+  color: var(--ah-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.panel p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  min-width: 0;
+}
+.actions button,
+.actions a {
+  min-height: 44px;
+  max-width: 100%;
+  width: fit-content;
+  font-size: 13px;
+  white-space: normal;
+}
+.actions a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ah-text-primary);
+  text-underline-offset: 3px;
+  border-radius: 4px;
+}
+.actions a:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 3px;
+}
