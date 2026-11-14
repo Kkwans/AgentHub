@@ -544,7 +544,7 @@ test('Agent Center 收敛 Discovery、Runtime 与 Remote Nodes', async ({ page }
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'agent-runtime');
   await page.goto('/agents/nodes');
-  await expect(page.getByRole('heading', { name: 'Remote Nodes' })).toBeVisible({
+  await expect(page.getByRole('heading', { name: '远程节点', exact: true, level: 1 })).toBeVisible({
     timeout: SHELL_READY_TIMEOUT,
   });
   await expect(page.getByText('NAS-01')).toBeVisible({ timeout: SHELL_READY_TIMEOUT });
