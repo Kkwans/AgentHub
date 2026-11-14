@@ -72,7 +72,11 @@ it('0014 upgrades existing titles without activity changes; CAS has one winner a
     database = undefined;
     database = await createPgliteDatabase({ dataDir });
     const sessions = new SessionRepository(database.db);
-    expect(await sessions.get(original.id)).toEqual({ ...original, titleRevision: 0 });
+    expect(await sessions.get(original.id)).toEqual({
+      ...original,
+      titleRevision: 0,
+      archiveRevision: 0,
+    });
     const result = await Promise.all([
       sessions.renameTitle(original.id, '新名称 A', 0),
       sessions.renameTitle(original.id, '新名称 B', 0),
@@ -80,9 +84,10 @@ it('0014 upgrades existing titles without activity changes; CAS has one winner a
     expect(result.filter(Boolean)).toHaveLength(1);
     const winner = result.find(Boolean)!;
     expect(winner.titleRevision).toBe(1);
-    const { title, titleRevision, ...rest } = winner;
+    const { title, titleRevision, archiveRevision, ...rest } = winner;
     void title;
     void titleRevision;
+    expect(archiveRevision).toBe(0);
     const { title: oldTitle, ...before } = original;
     void oldTitle;
     expect(rest).toEqual(before);

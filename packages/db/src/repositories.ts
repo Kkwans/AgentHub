@@ -2825,10 +2825,39 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
     return session;
   }
 
-  async create(input: typeof agentSessions.$inferInsert) {
+  async create(input: Omit<typeof agentSessions.$inferInsert, 'archivedAt' | 'archiveRevision'>) {
+    this.assertArchiveProtected(input);
     const [created] = await this.db.insert(agentSessions).values(input).returning();
     if (!created) throw new DatabaseInvariantError('SESSION_CREATE_FAILED', 'Session 创建失败');
     return created;
+  }
+
+  private assertArchiveProtected(input: object) {
+    if (Object.hasOwn(input, 'archivedAt') || Object.hasOwn(input, 'archiveRevision'))
+      throw new DatabaseInvariantError(
+        'SESSION_ARCHIVE_PROTECTED',
+        '归档状态只能通过专用版本校验更新',
+      );
+  }
+
+  /** Classification-only CAS. Does not authorize lifecycle changes or clear UNKNOWN. */
+  async compareAndSetArchive(id: string, archived: boolean, expectedRevision: number) {
+    if (
+      typeof archived !== 'boolean' ||
+      !Number.isInteger(expectedRevision) ||
+      expectedRevision < 0 ||
+      expectedRevision > 2_147_483_646
+    )
+      throw new DatabaseInvariantError('SESSION_ARCHIVE_INPUT_INVALID', '归档状态或版本无效');
+    const [updated] = await this.db
+      .update(agentSessions)
+      .set({
+        archivedAt: archived ? sql`coalesce(${agentSessions.archivedAt}, now())` : null,
+        archiveRevision: sql`${agentSessions.archiveRevision} + 1`,
+      })
+      .where(and(eq(agentSessions.id, id), eq(agentSessions.archiveRevision, expectedRevision)))
+      .returning();
+    return updated;
   }
 
   /** Title-only CAS: activity ordering and runtime state are deliberately untouched. */
@@ -2846,6 +2875,7 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
     patch: Pick<typeof agentSessions.$inferInsert, 'model' | 'mode' | 'reasoningEffort'>,
     options?: { expectedFrom: SessionStatus },
   ) {
+    this.assertArchiveProtected(patch);
     const [updated] = await this.db
       .update(agentSessions)
       .set({ ...patch, lastActiveAt: new Date() })
@@ -2863,9 +2893,10 @@ export class SessionRepository<TDatabase extends AgentHubDatabase> {
   async transition(
     id: string,
     to: SessionStatus,
-    patch: Partial<typeof agentSessions.$inferInsert> = {},
+    patch: Partial<Omit<typeof agentSessions.$inferInsert, 'archivedAt' | 'archiveRevision'>> = {},
     options?: { expectedFrom: SessionStatus },
   ) {
+    this.assertArchiveProtected(patch);
     return this.db.transaction(async (transaction) => {
       const [current] = await transaction
         .select({ status: agentSessions.status })

@@ -37,8 +37,9 @@ export async function createLegacySession(
 ) {
   await db.execute(sql`insert into agent_sessions(id,project_id,agent_id,task_id,title,cwd,status)
     values(${input.id},${input.projectId},${input.agentId},${input.taskId ?? null},${input.title},${input.cwd},${input.status})`);
-  const { titleRevision, ...columns } = getTableColumns(agentSessions);
+  const { titleRevision, archiveRevision, ...columns } = getTableColumns(agentSessions);
   void titleRevision;
+  void archiveRevision;
   const [row] = await db.select(columns).from(agentSessions).where(eq(agentSessions.id, input.id));
   if (!row) throw new Error('Legacy session fixture missing');
   return row;

@@ -197,7 +197,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: mkdir -p artifacts
-      - name: Verify real independent connections and ownership loss in a disposable database
+      - name: Verify real ownership, availability and archive CAS on independent disposable PostgreSQL connections
         env:
           # Dedicated job service only; tests never consult DATABASE_URL or contact a deployed host.
           AGENTHUB_PG_OWNERSHIP_TEST: '1'

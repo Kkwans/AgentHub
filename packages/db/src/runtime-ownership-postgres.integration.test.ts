@@ -4,7 +4,14 @@ import { join } from 'node:path';
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema.js';
-import { AgentRepository, ExecutionTargetRepository } from './repositories.js';
+import {
+  AgentRepository,
+  ExecutionTargetRepository,
+  ProjectRepository,
+  SessionRepository,
+  MessageRepository,
+  RunRepository,
+} from './repositories.js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createPostgresDatabase } from './client.js';
 import {
@@ -259,6 +266,157 @@ describe.skipIf(!enabled)('真实PostgreSQL运行归属（隔离临时数据库�
       assertClosed(cleanup);
       // No FORCE, wildcard, existing schema reset, or reference to DATABASE_URL.
       if (casCreated) await admin!.query(`DROP DATABASE "${casName}"`);
+    }
+  });
+  it('归档CAS在两个独立PG连接真实锁竞争后仅一方提交，恢复与同值写不改历史', async () => {
+    const archiveName = `agenthub_archive_${randomUUID().replaceAll('-', '')}`;
+    const archiveUrl = new URL(databaseUrl);
+    archiveUrl.pathname = `/${archiveName}`;
+    let archiveCreated = false;
+    let migration: Awaited<ReturnType<typeof createPostgresDatabase>> | undefined;
+    const clients: pg.Client[] = [];
+    const connect = async () => {
+      const client = new pg.Client({
+        connectionString: archiveUrl.toString(),
+        connectionTimeoutMillis: 5_000,
+        query_timeout: 5_000,
+      });
+      clients.push(client);
+      await client.connect();
+      return client;
+    };
+    try {
+      await admin!.query(`CREATE DATABASE "${archiveName}"`);
+      archiveCreated = true;
+      migration = await createPostgresDatabase(archiveUrl.toString());
+      await migration.close();
+      migration = undefined;
+      const first = await connect(),
+        second = await connect();
+      const firstDb = drizzle(first, { schema }),
+        secondDb = drizzle(second, { schema });
+      const a = new SessionRepository(firstDb),
+        b = new SessionRepository(secondDb);
+      const target = await new ExecutionTargetRepository(firstDb).create({
+        id: randomUUID(),
+        name: 'archive fixture',
+        kind: 'LOCAL_HOST',
+        hostname: 'fixture',
+        os: 'linux',
+        arch: 'x64',
+        status: 'READY',
+      });
+      const agent = await new AgentRepository(firstDb).create({
+        id: randomUUID(),
+        targetId: target.id,
+        name: 'archive fixture',
+        agentKind: 'CUSTOM_ACP',
+        adapterKind: 'ACP_STDIO',
+        executable: '/fixture/never-launched',
+        status: 'READY',
+      });
+      const project = await new ProjectRepository(firstDb).create({
+        id: randomUUID(),
+        targetId: target.id,
+        name: 'archive fixture',
+        rootPath: '/fixture',
+        realRootPath: '/fixture',
+        repoKind: 'NONE',
+        status: 'ACTIVE',
+      });
+      const session = await a.create({
+        id: randomUUID(),
+        projectId: project.id,
+        agentId: agent.id,
+        title: '历史保持',
+        cwd: '/fixture',
+        status: 'RUNNING',
+      });
+      const runId = randomUUID();
+      await first.query('INSERT INTO agent_runs(id,session_id,status) VALUES($1,$2,$3)', [
+        runId,
+        session.id,
+        'RUNNING',
+      ]);
+      const run = await new RunRepository(firstDb).get(runId);
+      const message = await new MessageRepository(firstDb).append({
+        sessionId: session.id,
+        role: 'USER',
+        kind: 'TEXT',
+        text: '归档不是删除',
+      });
+      const firstPid = (await first.query<{ pid: number }>('SELECT pg_backend_pid() AS pid'))
+        .rows[0]!.pid;
+      const secondPid = (await second.query<{ pid: number }>('SELECT pg_backend_pid() AS pid'))
+        .rows[0]!.pid;
+      expect(firstPid).not.toBe(secondPid);
+      await first.query('BEGIN');
+      let archivedAt: Date | null = null;
+      try {
+        const winner = await a.compareAndSetArchive(session.id, true, 0);
+        expect(winner).toMatchObject({ archiveRevision: 1 });
+        archivedAt = winner!.archivedAt;
+        expect(archivedAt).toBeInstanceOf(Date);
+        const competing = b.compareAndSetArchive(session.id, false, 0);
+        void competing.catch(() => undefined);
+        await vi.waitFor(
+          async () => {
+            const state = await admin!.query<{ wait_event_type: string | null }>(
+              'SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',
+              [secondPid],
+            );
+            expect(state.rows[0]?.wait_event_type).toBe('Lock');
+          },
+          { timeout: 2_000 },
+        );
+        await first.query('COMMIT');
+        expect(await competing).toBeUndefined();
+      } finally {
+        await first.query('ROLLBACK');
+      }
+      expect(await b.get(session.id)).toEqual({ ...session, archivedAt, archiveRevision: 1 });
+      expect(await b.compareAndSetArchive(session.id, true, 1)).toEqual({
+        ...session,
+        archivedAt,
+        archiveRevision: 2,
+      });
+      expect(await a.compareAndSetArchive(session.id, false, 2)).toEqual({
+        ...session,
+        archivedAt: null,
+        archiveRevision: 3,
+      });
+      expect(await b.compareAndSetArchive(session.id, false, 3)).toEqual({
+        ...session,
+        archivedAt: null,
+        archiveRevision: 4,
+      });
+      const archived = await a.compareAndSetArchive(session.id, true, 4);
+      await expect(
+        b.transition(session.id, 'DISCONNECTED', { archiveRevision: 0 } as never),
+      ).rejects.toMatchObject({ code: 'SESSION_ARCHIVE_PROTECTED' });
+      await expect(
+        b.updateConfiguration(session.id, { archivedAt: null } as never),
+      ).rejects.toMatchObject({ code: 'SESSION_ARCHIVE_PROTECTED' });
+      const reopened = await connect(),
+        reopenedDb = drizzle(reopened, { schema });
+      expect(await new SessionRepository(reopenedDb).get(session.id)).toEqual({
+        ...session,
+        archivedAt: archived!.archivedAt,
+        archiveRevision: 5,
+      });
+      expect(await new RunRepository(reopenedDb).get(runId)).toEqual(run);
+      expect(await new MessageRepository(reopenedDb).list(session.id)).toEqual([message]);
+      expect(await new SessionRepository(reopenedDb).list(project.id)).toEqual([
+        { ...session, archivedAt: archived!.archivedAt, archiveRevision: 5 },
+      ]);
+    } finally {
+      assertClosed(
+        await Promise.allSettled([
+          ...(migration ? [Promise.resolve().then(() => migration!.close())] : []),
+          ...clients.map((client) => Promise.resolve().then(() => client.end())),
+        ]),
+      );
+      if (archiveCreated) await admin!.query(`DROP DATABASE "${archiveName}"`);
     }
   });
 });

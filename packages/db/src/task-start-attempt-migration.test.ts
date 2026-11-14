@@ -87,6 +87,7 @@ it('0010升级保留历史Task/Session，不猜创建证据，启动尝试跨重
       expect(await new SessionRepository(database.db).get(session.id)).toEqual({
         ...session,
         titleRevision: 0,
+        archiveRevision: 0,
       });
     expect(await database.db.select().from(taskStartAttempts)).toEqual([]);
     const input = {
@@ -154,6 +155,7 @@ it('0010升级保留历史Task/Session，不猜创建证据，启动尝试跨重
       expect(await new SessionRepository(database.db).get(session.id)).toEqual({
         ...session,
         titleRevision: 0,
+        archiveRevision: 0,
       });
   } finally {
     await database?.close();
