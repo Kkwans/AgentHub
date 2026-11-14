@@ -76,8 +76,7 @@ jobs:
         run: >-
           pnpm exec playwright test --config=playwright.real.config.ts
           tests/e2e-real/workbench.spec.ts
-          tests/e2e-real/workspace-content-visual.spec.ts tests/e2e-real/workspace-process-visual.spec.ts
-          tests/e2e-real/session-rename.spec.ts tests/e2e-real/session-export.spec.ts
+          tests/e2e-real/workspace-content-visual.spec.ts
           tests/e2e-real/workspace-send-ownership.spec.ts
           tests/e2e-real/project-directory-picker.spec.ts
           tests/e2e-real/new-work-prompt.spec.ts
@@ -210,5 +209,45 @@ jobs:
         with:
           name: postgres-runtime-ownership-${{ github.sha }}-${{ github.run_attempt }}
           path: artifacts/postgres-runtime-ownership.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  focused-interactions:
+    name: Focused interaction evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      # Same real loopback/PGlite/controlled ACP fixtures; no paid providers.
+      AGENTHUB_E2E_LIVE: '0'
+      AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-focused-interactions
+      PLAYWRIGHT_JSON_OUTPUT_NAME: focused-test-results/results.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify focused workflows without retries
+        run: >-
+          pnpm exec playwright test --config=playwright.real.config.ts
+          tests/e2e-real/workspace-process-visual.spec.ts
+          tests/e2e-real/session-rename.spec.ts
+          tests/e2e-real/session-export.spec.ts
+          tests/e2e-real/task-start-recovery.spec.ts
+          --retries=0 --output=focused-test-results --reporter=line,json
+      - name: Preserve focused evidence before the larger matrix finishes
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: focused-interaction-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: focused-test-results/
           if-no-files-found: warn
           retention-days: 7
