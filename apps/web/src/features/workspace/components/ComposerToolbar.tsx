@@ -83,7 +83,7 @@ export function ComposerToolbar({
       data-running={activeRun || undefined}
       data-locked={sessionLocked || undefined}
     >
-      <div className="composer-toolbar-start flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+      <div className="composer-toolbar-start flex min-w-0 flex-1 items-center gap-1">
         <div className="composer-toolbar-context-group flex min-w-0 shrink items-center gap-1">
           <Button
             type="button"
@@ -93,11 +93,15 @@ export function ComposerToolbar({
             onClick={onToggleContext}
             aria-expanded={contextOpen}
             aria-label={`PromptOS ${contextStatus.label}`}
+            title={`PromptOS ${contextStatus.label}`}
             data-open={contextOpen || undefined}
           >
             <AtSign aria-hidden size={15} strokeWidth={1.8} />
+            <span className="composer-context-mobile-label sm:hidden" aria-hidden="true">
+              提示
+            </span>
             <span className="hidden sm:inline">PromptOS</span>
-            <small className="max-w-24 truncate text-[11px] text-[hsl(var(--foreground-faint))]">
+            <small className="hidden max-w-24 truncate text-[11px] text-[hsl(var(--foreground-faint))] sm:inline">
               {contextStatus.label}
             </small>
           </Button>
@@ -140,6 +144,7 @@ export function ComposerToolbar({
             <span
               ref={terminalLauncherSlotRef}
               className="composer-toolbar-fact composer-terminal-launcher-slot inline-flex min-w-0 shrink-0 items-center rounded-lg"
+              role="group"
               aria-label="Terminal 操作"
             />
           ) : null}

@@ -77,6 +77,8 @@ describe('TerminalDock', () => {
       '当前环境缺少 node-pty native binding',
     );
     expect(screen.getByRole('button', { name: /打开 Terminal/ })).toBeDisabled();
+    expect(document.querySelector('.terminal-launcher-label')).toHaveTextContent(/^Terminal$/);
+    expect(actions.openTerminal).not.toHaveBeenCalled();
   });
 
   it('关闭态入口可以直接渲染到 Composer 工具栏 slot，不再占用独立网格行', async () => {

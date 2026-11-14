@@ -190,6 +190,13 @@ describe('ChatCommandBar PinHarness composer interactions', () => {
 
     fireEvent.change(textarea, { target: { value: '下一条' } });
     const contextButton = screen.getByRole('button', { name: /PromptOS/ });
+    expect(contextButton).toHaveAttribute('title', contextButton.getAttribute('aria-label'));
+    expect(contextButton.querySelector('.composer-context-mobile-label')).toHaveTextContent('提示');
+    expect(contextButton.querySelector('.composer-context-mobile-label')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    expect(document.querySelector('.composer-toolbar-start')).not.toHaveClass('overflow-hidden');
     fireEvent.focus(contextButton);
     fireEvent.blur(textarea, { relatedTarget: contextButton });
     expect(card).toHaveAttribute('data-focused', 'true');

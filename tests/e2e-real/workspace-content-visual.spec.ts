@@ -49,6 +49,60 @@ async function capture(
   await region.screenshot({ path: regionPath });
   await info.attach(`${state}-region`, { path: regionPath, contentType: 'image/png' });
 }
+async function assertComposerLabels(page: Page, width: number) {
+  const prompt = page.getByRole('button', { name: /^PromptOS / });
+  const terminal = page.getByRole('button', { name: /^打开 Terminal/ });
+  await expect(prompt).toBeVisible();
+  await expect(terminal).toBeVisible();
+  await expect(terminal.locator('.terminal-launcher-label')).toHaveText('Terminal');
+  await expect(prompt).toHaveAttribute('title', (await prompt.getAttribute('aria-label'))!);
+  const labels = [terminal.locator('.terminal-launcher-label')];
+  if (width < 640) {
+    const short = prompt.locator('.composer-context-mobile-label');
+    await expect(short).toHaveText('提示');
+    await expect(short).toBeVisible();
+    labels.push(short);
+    for (const control of [prompt, terminal]) {
+      const box = await control.boundingBox();
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+  for (const label of labels) {
+    // Intersect every clipping ancestor, not just the label's own clientWidth.
+    const visible = await label.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      let left = 0,
+        right = innerWidth;
+      for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = getComputedStyle(ancestor);
+        if (['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowX)) {
+          const bounds = ancestor.getBoundingClientRect();
+          left = Math.max(left, bounds.left);
+          right = Math.min(right, bounds.right);
+        }
+      }
+      return (
+        rect.left >= left - 1 && rect.right <= right + 1 && node.scrollWidth <= node.clientWidth + 1
+      );
+    });
+    expect(visible).toBe(true);
+  }
+  const controls = await Promise.all(
+    [prompt, terminal, page.locator('.composer-toolbar-end')].map((node) => node.boundingBox()),
+  );
+  for (let i = 0; i < controls.length; i++)
+    for (let j = i + 1; j < controls.length; j++) {
+      const a = controls[i]!,
+        b = controls[j]!;
+      expect(
+        a.x + a.width <= b.x + 1 ||
+          b.x + b.width <= a.x + 1 ||
+          a.y + a.height <= b.y + 1 ||
+          b.y + b.height <= a.y + 1,
+      ).toBe(true);
+    }
+}
 async function showInspector(page: Page, width: number, tab: 'files' | 'changes') {
   if (width < 768 && !(await page.getByRole('tablist', { name: '检查器视图' }).isVisible())) {
     await page
@@ -146,6 +200,7 @@ for (const width of [390, 768, 1024, 1440]) {
       expect(inputGeometry.clientHeight).toBeGreaterThanOrEqual(
         inputGeometry.lineHeight * 2 + inputGeometry.paddingTop + inputGeometry.paddingBottom - 1,
       );
+      await assertComposerLabels(page, width);
       await capture(page, info, 'composer-focused', composer, page.locator('.chat-command-card'));
       await page.getByRole('button', { name: '发送', exact: true }).click();
       const approve = page.getByRole('button', { name: '允许一次', exact: true });
@@ -181,6 +236,28 @@ for (const width of [390, 768, 1024, 1440]) {
       const completed = page.getByText('Fixture 已完成', { exact: true });
       await expect(completed).toBeVisible({ timeout: 30_000 });
       await expect(page.locator('.tool-event-row')).toHaveCount(1);
+      await expect
+        .poll(
+          async () =>
+            (await apiData<{ status: string }>(context, 'get', `/sessions/${session.id}`)).status,
+          { timeout: 30_000 },
+        )
+        .toBe('READY');
+      await expect
+        .poll(
+          async () =>
+            (
+              await apiData<Array<{ status: string }>>(
+                context,
+                'get',
+                `/sessions/${session.id}/runs`,
+              )
+            ).map((run) => run.status),
+          { timeout: 30_000 },
+        )
+        .toEqual(['COMPLETED']);
+      await expect(composer).toBeEnabled();
+      await assertComposerLabels(page, width);
       await capture(
         page,
         info,

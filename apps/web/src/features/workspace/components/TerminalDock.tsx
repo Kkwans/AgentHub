@@ -300,7 +300,7 @@ export function TerminalDock({
         aria-label={canOpen ? '打开 Terminal' : `打开 Terminal，不可用：${unavailableReason}`}
       >
         <SquareTerminal size={14} aria-hidden="true" />
-        <span>Terminal</span>
+        <span className="terminal-launcher-label">Terminal</span>
       </button>
     );
 

@@ -2912,8 +2912,30 @@ html {
     padding-inline: 0.75rem;
   }
 
+  .composer-toolbar {
+    flex-wrap: wrap;
+  }
+
   .composer-toolbar-start {
-    max-width: 58%;
+    max-width: none;
+    min-width: max-content;
+    flex: 1 1 auto;
+  }
+
+  .composer-toolbar-context-group,
+  .composer-toolbar-facts,
+  .composer-context-control {
+    flex-shrink: 0;
+  }
+
+  .composer-context-control,
+  .composer-terminal-launcher-slot .terminal-launcher {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .composer-terminal-launcher-slot .terminal-launcher {
+    padding-inline: 6px;
   }
 
   .composer-toolbar-context-group,
@@ -2928,6 +2950,7 @@ html {
 
   .composer-toolbar-end {
     gap: 0.125rem;
+    margin-left: auto;
   }
 
   .composer-plan-status {
