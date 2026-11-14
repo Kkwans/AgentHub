@@ -189,6 +189,31 @@ for (const width of [390, 768, 1024, 1440]) {
           (message) => message.role === 'ASSISTANT' && message.text.includes('具体计划'),
         ),
       ).toBe(true);
+      const intro = page.locator('article.message-assistant').filter({ hasText: '具体计划：' });
+      const conclusion = page.getByText(
+        '演示改动已准备好。右侧展示临时 Git 项目的实际差异，请检查取消分支与示例用例。',
+        { exact: true },
+      );
+      await expect(intro).toHaveCount(1);
+      await expect(conclusion).toHaveCount(1);
+      await expect(page.locator('article.message-assistant[data-message-id]')).toHaveCount(1);
+      const causalOrder = await page.evaluate(() => {
+        const messages = [...document.querySelectorAll('article.message-assistant')];
+        const tools = [...document.querySelectorAll('.tool-event-row')];
+        const first = messages.find((node) => node.textContent?.includes('具体计划：'))!;
+        const last = messages.find((node) => node.textContent?.includes('演示改动已准备好。'))!;
+        return {
+          introBeforeTools: Boolean(
+            first.compareDocumentPosition(tools[0]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+          ),
+          conclusionAfterTools: Boolean(
+            tools.at(-1)!.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_FOLLOWING,
+          ),
+        };
+      });
+      expect(causalOrder).toEqual({ introBeforeTools: true, conclusionAfterTools: true });
+      await intro.scrollIntoViewIfNeeded();
+      await capture(page, info, `reference-opening-${theme}-${width}`);
       const diff = await apiData<{ patch: string }>(
         context,
         'get',
@@ -204,8 +229,48 @@ for (const width of [390, 768, 1024, 1440]) {
       await page.getByRole('button', { name: '查看 runner.ts Diff', exact: true }).click();
       const review = page.getByRole('region', { name: '已选择 runner.ts 的 Diff', exact: true });
       await expect(review).toBeVisible({ timeout: 30_000 });
-      await expect(review.locator('.monaco-editor').first()).toBeVisible({ timeout: 30_000 });
-      await expect(review).toContainText('cancelled');
+      // Monaco also gives its non-code gutter a .monaco-editor class. Assert
+      // the real modified code layer, not whichever shared-class node comes first.
+      const modified = review.locator('.git-diff-editor .editor.modified');
+      const code = modified.locator('.view-lines[role="presentation"]');
+      await expect(code).toBeVisible({ timeout: 30_000 });
+      await expect(code).toContainText('if (cancelled)');
+      await expect(code).toContainText('"stopped"');
+      await code.scrollIntoViewIfNeeded();
+      const codeGeometry = await code.evaluate((element) => {
+        const code = element.getBoundingClientRect();
+        const pane = element.closest('.editor.modified')!.getBoundingClientRect();
+        let left = Math.max(pane.left, 0),
+          right = Math.min(pane.right, innerWidth);
+        let top = Math.max(pane.top, 0),
+          bottom = Math.min(pane.bottom, innerHeight);
+        for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+          const css = getComputedStyle(parent),
+            bounds = parent.getBoundingClientRect();
+          if (['auto', 'scroll', 'hidden', 'clip'].includes(css.overflowX)) {
+            left = Math.max(left, bounds.left);
+            right = Math.min(right, bounds.right);
+          }
+          if (['auto', 'scroll', 'hidden', 'clip'].includes(css.overflowY)) {
+            top = Math.max(top, bounds.top);
+            bottom = Math.min(bottom, bounds.bottom);
+          }
+        }
+        return {
+          paneWidth: pane.width,
+          paneHeight: pane.height,
+          visibleWidth: Math.min(code.right, right) - Math.max(code.left, left),
+          visibleHeight: Math.min(code.bottom, bottom) - Math.max(code.top, top),
+        };
+      });
+      expect(codeGeometry.paneWidth).toBeGreaterThan(0);
+      expect(codeGeometry.paneHeight).toBeGreaterThan(0);
+      expect(codeGeometry.visibleWidth).toBeGreaterThan(0);
+      expect(codeGeometry.visibleHeight).toBeGreaterThan(0);
+      await info.attach('reference-modified-code-geometry', {
+        body: JSON.stringify(codeGeometry),
+        contentType: 'application/json',
+      });
       await capture(page, info, `reference-review-${theme}-${width}`);
       expect(errors).toEqual([]);
       expect((await apiData<Id[]>(context, 'get', `/sessions/${session.id}/runs`)).length).toBe(1);

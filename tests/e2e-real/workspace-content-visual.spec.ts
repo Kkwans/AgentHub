@@ -201,7 +201,13 @@ for (const width of [390, 768, 1024, 1440]) {
         inputGeometry.lineHeight * 2 + inputGeometry.paddingTop + inputGeometry.paddingBottom - 1,
       );
       await assertComposerLabels(page, width);
-      await capture(page, info, 'composer-focused', composer, page.locator('.chat-command-card'));
+      const focusedCard = page.locator('.chat-command-card');
+      await expect(focusedCard).toHaveCSS('outline-style', 'solid');
+      await expect(focusedCard).toHaveCSS('outline-width', '2px');
+      await expect(focusedCard).toHaveCSS('outline-offset', '-1px');
+      await expect(focusedCard).toHaveCSS('box-shadow', 'none');
+      await expect(composer).toHaveCSS('outline-style', 'none');
+      await capture(page, info, 'composer-focused', composer, focusedCard);
       await page.getByRole('button', { name: '发送', exact: true }).click();
       const approve = page.getByRole('button', { name: '允许一次', exact: true });
       await expect(approve).toBeVisible({ timeout: 30_000 });

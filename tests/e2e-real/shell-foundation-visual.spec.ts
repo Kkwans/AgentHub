@@ -218,6 +218,32 @@ for (const width of [390, 768, 1024, 1440])
         const axis = (await projectHeader.locator('[class*="_identityRow_"]').boundingBox())!;
         expect(Math.abs(axis.x - main.x - 24)).toBeLessThanOrEqual(1);
       }
+      if (width < 768) {
+        const emptyRows = [
+          page.getByRole('region', { name: '待审阅', exact: true }),
+          page.getByRole('region', { name: '正在进行', exact: true }),
+        ];
+        const emptyGeometry = [];
+        for (const row of emptyRows) {
+          await expect(row).toBeVisible();
+          const box = (await row.boundingBox())!;
+          expect(box.height).toBeLessThanOrEqual(64);
+          emptyGeometry.push(box);
+        }
+        const recent = (await page
+          .getByRole('heading', { name: '最近会话', exact: true })
+          .boundingBox())!;
+        const tabs = (await projectTabs.boundingBox())!;
+        await info.attach('project-mobile-empty-density', {
+          body: JSON.stringify({
+            emptyGeometry,
+            recentHeading: recent,
+            tabs,
+            recentOffset: recent.y - tabs.y - tabs.height,
+          }),
+          contentType: 'application/json',
+        });
+      }
       await capture(page, projectHeader, info, 'project');
 
       await page.goto(`/agents/${agent.id}`);
@@ -259,10 +285,25 @@ for (const width of [390, 768, 1024, 1440])
       // Below the persistent-rail breakpoint, open explicitly: a collapsed rail
       // can retain a 1px transparent box that still passes visibility checks.
       if (width < 768) {
-        const sessionsTab = page
-          .getByRole('tablist', { name: 'Workspace 视图' })
-          .getByRole('tab', { name: '会话', exact: true });
-        await touchTarget(sessionsTab);
+        const views = page.getByRole('tablist', { name: 'Workspace 视图' });
+        for (const name of ['会话', '对话', '文件', 'Git', '活动', '运行']) {
+          await touchTarget(views.getByRole('tab', { name, exact: true }));
+        }
+        const tabsBox = (await views.boundingBox())!;
+        const tabBoxes = await views.getByRole('tab').evaluateAll((tabs) =>
+          tabs.map((tab) => {
+            const box = tab.getBoundingClientRect();
+            return { left: box.left, right: box.right };
+          }),
+        );
+        for (let index = 0; index < tabBoxes.length; index += 1) {
+          expect(tabBoxes[index]!.left).toBeGreaterThanOrEqual(tabsBox.x - 1);
+          expect(tabBoxes[index]!.right).toBeLessThanOrEqual(tabsBox.x + tabsBox.width + 1);
+          if (index > 0)
+            expect(tabBoxes[index]!.left).toBeGreaterThanOrEqual(tabBoxes[index - 1]!.right);
+        }
+        await noOverflow(page);
+        const sessionsTab = views.getByRole('tab', { name: '会话', exact: true });
         await sessionsTab.click();
       } else if (width < 1180) {
         await page.getByRole('button', { name: '打开辅助栏', exact: true }).click();
