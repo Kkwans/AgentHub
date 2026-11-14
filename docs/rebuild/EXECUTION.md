@@ -1379,3 +1379,14 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 以实际b12普通审阅截图和现有源码定位右侧窄Inspector/中央空白问题，普通可操作WAITING_REVIEW在桌面复用既有宽审阅画布与紧凑sticky列表。Worktree优先、归属查询未知、移动单pane、任务key和pending/unknown返工草稿保护不变；只改布局选择，不改状态或请求。
 - 05:35:04开始100专项全部通过，11.73秒，05:35:20冻结；独立CR无阻断。真实E2E补1024/1440宽度比例、滚动后列表仍在视口及主画布截图；该文件类型检查/5例发现通过，发现不等于执行。新像素结果待精确CI。
 - 05:35:33最后全repo lint/types/build通过。开发分支推送用于真实几何和截图验收，不合main/不部署。
+- 05:37:54普通审阅布局已推6f757aa（树7c40604fd121147f84d2cacea65a2c529a5a1efa与本地一致），精确CI43562451847进行中。05:39:49核查96d9fe3的严格token步骤：05:39:17–05:39:48 success，完整E2E和真实服务矩阵仍运行，尚未取回最终artifact。6f新主画布截图和实际比例仍待自己的CI。
+- 05:38:39精读2468510 verify日志：冻结全量1842/12skip复验通过，browser仍85passed/1flaky/10skip；因此旧preloader的verify success不等于稳定无竞态。新patch使用独立零重试重复门禁，不沿用此宽松结论。
+
+### 2026-11-14 05:47–05:49 UTC 精确门禁修复与下一阶段规划
+
+- 05:47查得6f757aa verify失败；读取日志定位旧集成契约遗漏，不盲目重跑。05:47:40–43本地复现普通task预期work-list实际task-review，Worktree对照通过。
+- 仅修ReviewOperationIntegration测试契约并加强无自动POST/PATCH、unknown保留主布局和当前草稿。05:48:23冻结，144/144组合通过，scoped lint/webtsc/diff-check通过。05:48:55启动新冻结全量，未完成前不计通过。
+- 05:48核实96d9fe3日志：1843/12skip；零重试重复token6/6；完整浏览器86/10skip无flaky。6f PG/axe成功，真实视觉矩阵仍运行。此处是本窗口新核查的既有CI结果，不称本窗口重新跑过。
+- 新增NEXT_PRODUCT_PLAN.md并在PLAN置顶链接：以实际源码区分已有功能和待办，列五Agent真实联调证据矩阵、管理生命周期、Session重命名/归档/导出/搜索验收、五候选协议研究、UI与NAS发布边界；待审计/官方研究补充后发布，不冒称实现。
+- 05:53取回96d9fe3 fixture artifact14100988526并校验SHA256 a3d6460a4b6d249d1f80d042f5f48e3fa0f9c1ac2b4e7fd3bd819bb0d10e58c7；严格JSON expected6/unexpected0/flaky0/skipped0且全部retry0。实际查看新深色390 TSX图，删除区字符串/关键字/函数词法可见，未再以b12旧图作新证据。CSS三轮像素一致；仅覆盖此Diff回归，不称全产品视觉验收。05:49:15全repo lint/types/build通过，新全量仍运行。
+- 05:55:50最终冻结全量完成，413.23秒：181文件通过/5跳过，1857测试通过/12跳过，exit0。05:56:18已推并fetch验证5bbbc8e4fd7b441181718343f39cbfc87a2d95fe，树1da1885847af8360b62c7f6ea915f23cb46a8163与本地75efe65一致；只修集成测试契约，没有生产代码更改。新精确CI待核查。
