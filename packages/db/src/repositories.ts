@@ -3418,8 +3418,131 @@ export class RunRepository<TDatabase extends AgentHubDatabase> {
   }
 }
 
+export interface MessageTextSearchOptions {
+  query: string;
+  upperSequence?: number | undefined;
+  beforeSequence?: number | undefined;
+}
+export interface MessageTextSearchHit {
+  id: string;
+  sessionId: string;
+  role: 'USER' | 'ASSISTANT';
+  createdAt: Date;
+  sequence: number;
+  snippet: string;
+}
+export interface MessageTextSearchWindow {
+  hits: MessageTextSearchHit[];
+  upperSequence: number;
+  nextBeforeSequence: number | null;
+  scannedCount: number;
+  exhausted: boolean;
+}
+
 export class MessageRepository<TDatabase extends AgentHubDatabase> {
   constructor(private readonly db: TDatabase) {}
+
+  /** Bounded saved-text scan, not full-text indexing or a whole-session search. */
+  async searchTextWindow(
+    sessionId: string,
+    options: MessageTextSearchOptions,
+  ): Promise<MessageTextSearchWindow> {
+    const query = typeof options.query === 'string' ? options.query.trim() : '';
+    if (
+      !query ||
+      query.length > 200 ||
+      (options.upperSequence !== undefined &&
+        (!Number.isSafeInteger(options.upperSequence) || options.upperSequence < 0)) ||
+      (options.beforeSequence !== undefined &&
+        (!Number.isSafeInteger(options.beforeSequence) ||
+          options.beforeSequence <= 0 ||
+          options.upperSequence === undefined))
+    )
+      throw new DatabaseInvariantError('MESSAGE_SEARCH_INPUT_INVALID', '文字搜索条件或游标无效');
+    let upperSequence = options.upperSequence;
+    if (upperSequence === undefined) {
+      const [latest] = await this.db
+        .select({ sequence: max(messages.sequence) })
+        .from(messages)
+        .where(eq(messages.sessionId, sessionId));
+      upperSequence = Number(latest?.sequence ?? 0);
+      if (!Number.isSafeInteger(upperSequence) || upperSequence < 0)
+        throw new DatabaseInvariantError('MESSAGE_SEARCH_DATA_INVALID', '消息序号无法安全表示');
+    }
+    // LIMIT belongs inside the raw-message subquery, before role/text predicates.
+    // The (session_id, sequence) unique index bounds this range, not substring CPU.
+    const window = this.db
+      .select({
+        id: messages.id,
+        sessionId: messages.sessionId,
+        role: messages.role,
+        createdAt: messages.createdAt,
+        sequence: messages.sequence,
+        text: messages.text,
+      })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.sessionId, sessionId),
+          sql`${messages.sequence} <= ${upperSequence}`,
+          ...(options.beforeSequence === undefined
+            ? []
+            : [lt(messages.sequence, options.beforeSequence)]),
+        ),
+      )
+      .orderBy(desc(messages.sequence))
+      .limit(101)
+      .as('message_search_window');
+    // Text stays in the database. Return only a bounded excerpt for eligible hits.
+    // SQL lower() defines case behavior; '%'/'_' and HTML are literal text, not patterns.
+    const position = sql`strpos(lower(${window.text}), lower(${query}))`;
+    const rows = await this.db
+      .select({
+        id: window.id,
+        sessionId: window.sessionId,
+        role: window.role,
+        createdAt: window.createdAt,
+        sequence: window.sequence,
+        snippet: sql<
+          string | null
+        >`case when ${window.role} in ('USER', 'ASSISTANT') and ${position} > 0
+        then substring(${window.text} from greatest(${position} - 80, 1) for 400) else null end`,
+      })
+      .from(window)
+      .orderBy(desc(window.sequence));
+    const raw = rows.slice(0, 100);
+    if (raw.some((row) => !Number.isSafeInteger(row.sequence) || row.sequence <= 0))
+      throw new DatabaseInvariantError('MESSAGE_SEARCH_DATA_INVALID', '消息序号无法安全表示');
+    const hits: MessageTextSearchHit[] = [];
+    let twentiethIndex = -1;
+    let overflow = false;
+    for (let index = 0; index < raw.length; index += 1) {
+      const row = raw[index]!;
+      if (row.snippet === null || (row.role !== 'USER' && row.role !== 'ASSISTANT')) continue;
+      if (hits.length === 20) {
+        overflow = true;
+        break;
+      }
+      hits.push({ ...row, role: row.role, snippet: row.snippet });
+      if (hits.length === 20) twentiethIndex = index;
+    }
+    if (overflow)
+      return {
+        hits,
+        upperSequence,
+        nextBeforeSequence: hits[19]!.sequence,
+        scannedCount: twentiethIndex + 1,
+        exhausted: false,
+      };
+    const exhausted = rows.length <= 100;
+    return {
+      hits,
+      upperSequence,
+      nextBeforeSequence: exhausted ? null : raw.at(-1)!.sequence,
+      scannedCount: raw.length,
+      exhausted,
+    };
+  }
 
   list(sessionId: string, options?: MessageListOptions) {
     const baseCondition = eq(messages.sessionId, sessionId);

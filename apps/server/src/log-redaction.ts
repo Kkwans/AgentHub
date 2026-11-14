@@ -2,6 +2,8 @@
 // loggers must not accidentally expose authentication headers or issued cookies.
 export const logRedaction = {
   paths: [
+    'req.body.query',
+    'request.body.query',
     'req.headers.authorization',
     'request.headers.authorization',
     'headers.authorization',

@@ -26,10 +26,28 @@ export const notFoundHandler: RequestHandler = (request, _response, next) => {
 
 export const errorHandler: ErrorRequestHandler = (error, request, response, _next) => {
   const requestId = String(request.id);
-  const normalized = normalizeError(error);
+  // JSON parser errors can include the private search body before route validation runs.
+  const privateSearch =
+    request.method === 'POST' &&
+    /^\/api\/v1\/sessions\/[^/]+\/messages\/search\/?$/i.test(request.path);
+  let publicError = error;
+  if (privateSearch && error instanceof ZodError) {
+    // Strict-schema unknown-key messages may themselves contain private user text.
+    publicError = new AppError(400, 'VALIDATION_FAILED', '请求参数不符合要求');
+  } else if (privateSearch && !(error instanceof AppError)) {
+    const status =
+      typeof error === 'object' &&
+      error !== null &&
+      'status' in error &&
+      (error.status === 400 || error.status === 413 || error.status === 415)
+        ? error.status
+        : 500;
+    publicError = new AppError(status, 'SESSION_MESSAGE_SEARCH_FAILED', '无法处理文字搜索请求。');
+  }
+  const normalized = normalizeError(publicError);
 
   if (normalized.status >= 500) {
-    request.log.error({ err: error, code: normalized.code }, 'request failed');
+    request.log.error({ err: publicError, code: normalized.code }, 'request failed');
   } else {
     request.log.warn({ code: normalized.code }, 'request rejected');
   }

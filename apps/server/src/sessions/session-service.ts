@@ -335,6 +335,37 @@ export class SessionService {
     return operation;
   }
 
+  async searchMessages(
+    sessionId: string,
+    input: {
+      query: string;
+      upperSequence?: number | undefined;
+      beforeSequence?: number | undefined;
+    },
+  ) {
+    await this.get(sessionId);
+    try {
+      const result = await this.messages.searchTextWindow(sessionId, input);
+      return {
+        hits: result.hits.map((hit) => ({
+          id: hit.id,
+          sessionId: hit.sessionId,
+          role: hit.role,
+          createdAt: hit.createdAt,
+          sequence: hit.sequence,
+          snippet: hit.snippet,
+        })),
+        upperSequence: result.upperSequence,
+        nextBeforeSequence: result.nextBeforeSequence,
+        scannedCount: result.scannedCount,
+        exhausted: result.exhausted,
+      };
+    } catch {
+      // SQL diagnostics can contain the private query; do not log/return the original cause.
+      throw new AppError(500, 'SESSION_MESSAGE_SEARCH_FAILED', '搜索已保存文字失败，请稍后重试。');
+    }
+  }
+
   listMessages(sessionId: string, options?: MessageListOptions) {
     return this.messages.list(sessionId, options);
   }

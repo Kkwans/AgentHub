@@ -13,6 +13,17 @@ const messageQuery = z
     limit: z.coerce.number().int().min(1).max(200).optional(),
   })
   .strict();
+const messageSearchSchema = z
+  .object({
+    query: z.string().trim().min(1).max(200),
+    upperSequence: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+    beforeSequence: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional(),
+  })
+  .strict()
+  .refine((value) => value.beforeSequence === undefined || value.upperSequence !== undefined, {
+    message: '继续搜索必须保留首次查询的序号上界',
+    path: ['upperSequence'],
+  });
 const createSchema = z.object({
   projectId: z.string().uuid(),
   agentId: z.string().uuid(),
@@ -118,6 +129,23 @@ export function createSessionRouter(service: SessionService): Router {
               ? { reasoningEffort: parsed.reasoningEffort }
               : {}),
           }),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  // POST keeps private search text out of access-log URLs. This is a read-only operation.
+  router.post(
+    '/:id/messages/search',
+    validate({ params: idParams, body: messageSearchSchema }),
+    async (request, response, next) => {
+      try {
+        const { id } = idParams.parse(request.params);
+        response.json({
+          data: await service.searchMessages(id, messageSearchSchema.parse(request.body)),
           requestId: String(request.id),
         });
       } catch (error) {
