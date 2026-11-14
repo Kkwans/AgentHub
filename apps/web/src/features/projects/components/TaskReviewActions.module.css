@@ -1,0 +1,24 @@
+.reviewActions {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.reviewActions > button {
+  justify-self: start;
+  max-width: 100%;
+  min-height: 36px;
+  white-space: normal;
+  height: auto;
+}
+
+.reviewActions .feedback {
+  min-height: 64px;
+  resize: vertical;
+}
+
+@media (max-width: 767px) {
+  .reviewActions > button {
+    min-height: 44px;
+  }
+}

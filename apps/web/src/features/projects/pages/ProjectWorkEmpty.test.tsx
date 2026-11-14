@@ -1824,3 +1824,39 @@ it('REVIEW中性反馈标签不掩盖新合并UNKNOWN或解除重复提交保护
   expect(screen.queryByText(/旧操作已确认未写入/)).not.toBeInTheDocument();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
+
+it('普通审阅先呈现原任务结果与验收标准，不借用临时 Agent 的 Session', async () => {
+  mount(
+    [
+      {
+        ...task,
+        status: 'WAITING_REVIEW',
+        sessionId: 'original/session',
+        assignedAgentId: 'agent-1',
+        acceptanceCriteria: '- 核对真实产出\n- 回归通过',
+      },
+    ],
+    '?task=task-1&agentId=agent-2',
+  );
+  const approve = await screen.findByRole('button', { name: '确认达到验收标准' });
+  const result = screen.getByRole('link', { name: '查看本次任务的工作区结果' });
+  const criteria = screen.getByRole('heading', { name: '验收标准' });
+  expect(result).toHaveAttribute('href', '/workspace/original%2Fsession');
+  expect(result.compareDocumentPosition(criteria) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(criteria.compareDocumentPosition(approve) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getAllByRole('heading', { name: '验收标准' })).toHaveLength(1);
+  expect(screen.getByRole('textbox', { name: '继续修改说明' })).toHaveAttribute('rows', '2');
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it('普通审阅无 Session 时明确提示没有结果入口，不伪造产出', async () => {
+  mount([{ ...task, status: 'WAITING_REVIEW', sessionId: null }]);
+  const approve = await screen.findByRole('button', { name: '确认达到验收标准' });
+  const missing = screen.getByText(
+    '任务尚未关联 Session，暂无可打开的工作区结果。请先核实实际产出。',
+  );
+  expect(missing.compareDocumentPosition(approve) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole('link', { name: '查看本次任务的工作区结果' })).not.toBeInTheDocument();
+  expect(approve).toBeEnabled();
+  expect(api.post).not.toHaveBeenCalled();
+});

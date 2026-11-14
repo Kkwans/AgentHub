@@ -517,6 +517,9 @@ export function ProjectWorkPage() {
       ?.split(/\r?\n/)
       .map((item) => item.replace(/^[-*]\s*/, '').trim())
       .filter(Boolean) ?? [];
+  const ordinaryReviewVisible =
+    !selectedWorktree &&
+    (reviewPending || (selected?.status === 'WAITING_REVIEW' && worktrees.isSuccess));
   const workError = tasks.error ?? goals.error ?? worktrees.error;
   const workLoading = tasks.isLoading || goals.isLoading || worktrees.isLoading;
   const emptyWork = tasks.isSuccess && tasks.data.length === 0 && !workLoading && !workError;
@@ -820,10 +823,35 @@ export function ProjectWorkPage() {
                         <p>{selectedWorktree.errorMessage}</p>
                       </section>
                     ) : null}
-                    {(reviewPending && !selectedWorktree) ||
-                    (selected.status === 'WAITING_REVIEW' &&
-                      worktrees.isSuccess &&
-                      !selectedWorktree) ? (
+                    {ordinaryReviewVisible ? (
+                      <section
+                        className={projectsStyles.inspectorSection}
+                        aria-label="本次任务结果"
+                      >
+                        <h4>本次任务结果</h4>
+                        {selected.sessionId ? (
+                          <Link
+                            className={layout.link}
+                            to={`/workspace/${encodeURIComponent(selected.sessionId)}`}
+                          >
+                            查看本次任务的工作区结果
+                          </Link>
+                        ) : (
+                          <p>任务尚未关联 Session，暂无可打开的工作区结果。请先核实实际产出。</p>
+                        )}
+                      </section>
+                    ) : null}
+                    {ordinaryReviewVisible && acceptanceCriteria.length ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <h4>验收标准</h4>
+                        <ul className={projectsStyles.criteriaList}>
+                          {acceptanceCriteria.map((criterion) => (
+                            <li key={criterion}>{criterion}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
+                    {ordinaryReviewVisible ? (
                       <section className={projectsStyles.inspectorSection}>
                         <h4>审阅结果</h4>
                         <TaskReviewActions
@@ -880,7 +908,7 @@ export function ProjectWorkPage() {
                         />
                       </section>
                     ) : null}
-                    {acceptanceCriteria.length ? (
+                    {!ordinaryReviewVisible && acceptanceCriteria.length ? (
                       <section className={projectsStyles.inspectorSection}>
                         <h4>验收标准</h4>
                         <ul className={projectsStyles.criteriaList}>

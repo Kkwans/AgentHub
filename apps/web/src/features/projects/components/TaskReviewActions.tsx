@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { createReviewOperation, type ReviewOperationProps } from './review-operation';
 import { api, type TaskRecord } from '../../../lib/api';
 import { ApiError } from '../../../lib/api-error';
+import styles from './TaskReviewActions.module.css';
 
 type ReviewResult = {
   task: TaskRecord;
@@ -182,7 +183,7 @@ export function TaskReviewActions({
   };
   const locked = disabled || pending || unknown || checking || settled;
   return (
-    <>
+    <div className={styles.reviewActions}>
       <p>请核对工作区结果与验收标准，再确认完成或提交修改意见。</p>
       <AhButton
         size="xs"
@@ -196,13 +197,14 @@ export function TaskReviewActions({
       <AhTextarea
         label="继续修改说明"
         value={feedback}
-        minRows={3}
+        minRows={2}
+        className={styles.feedback}
         disabled={locked || !task.assignedAgentId}
         onChange={(event) => setFeedback(event.currentTarget.value)}
       />
       <p>
         {task.assignedAgentId
-          ? '继续修改会沿用任务原 Agent 并创建新工作区，不使用上方临时选择。'
+          ? '继续修改会沿用任务原 Agent 并创建新工作区，不使用临时选择。'
           : '任务未分配 Agent，暂时不能请求继续修改；仍可确认完成。'}
       </p>
       {feedback.trim().length > 100_000 ? (
@@ -236,6 +238,6 @@ export function TaskReviewActions({
       ) : null}
       {notice ? <p role="status">{notice}</p> : null}
       {resultHref ? <Link to={resultHref}>打开已提交的工作区</Link> : null}
-    </>
+    </div>
   );
 }
