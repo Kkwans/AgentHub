@@ -227,3 +227,4 @@
 - 2026-11-14 03:08 UTC：根据b293真实图实施隔离patch逐行显示层级，方案WORKTREE_PATCH_TONES_PLAN.md。CR对比度/大patch成本问题已修正；38专项通过，最终types/lint/build通过、冻结全量运行中。后续核验新精确CI与实际图，不动Git安全逻辑，不合main/部署。
 
 - 2026-11-14 03:34 UTC：恢复发布的 patch tones 用相同 tree 从本地690b12c映射到远端849f133，等待CI43552239654实际视觉；独立修复旧Home fixture语义及深色TSX字符串对比，保持四宽/axe门禁，不用重试通过掩盖缺陷。
+- 2026-11-14 03:48 UTC：Home e0f10ea新证据首次人工核对，mobile首屏密度改善已见；深色TSX增加实际词法就绪门禁，仍待新CI。核实S66持久Task启动已上线，旧缺claim描述不能作为现状；下一核心可用性片为启动尝试只读核对出口，后端跨实例startup恢复归属问题单独设计，不用强制释放UNKNOWN解锁。

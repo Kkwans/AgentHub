@@ -1309,6 +1309,27 @@ test('深色 TSX 选中 Diff 使用真实词法内容并保持可读', async ({ 
         expect.stringContaining(`更改后：${path}`),
       ]),
     );
+  // Monaco can expose the right text before asynchronous syntax tokenization.
+  // e0f10ea passed a retry after a real token contrast failure; do not let
+  // a pre-tokenization fallback count as evidence of the syntax palette.
+  // Require both actual changed string tokens to have the intended palette.
+  const stringTokens = page.locator('.git-diff-editor .view-line span[class*="mtk"]');
+  for (const word of ['idle', 'ready']) {
+    await expect
+      .poll(() =>
+        stringTokens.evaluateAll((nodes, expectedWord) => {
+          const colors = nodes
+            .filter(
+              (node) =>
+                node.children.length === 0 &&
+                node.textContent?.replace(/^['"]|['"]$/g, '') === expectedWord,
+            )
+            .map((node) => getComputedStyle(node).color);
+          return [...new Set(colors)];
+        }, word),
+      )
+      .toEqual(['rgb(244, 199, 175)']);
+  }
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'workspace-diff-dark-tsx');
   const audit = await new AxeBuilder({ page })
