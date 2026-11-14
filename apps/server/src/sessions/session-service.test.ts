@@ -4855,6 +4855,275 @@ describe('Session/Run/Approval 持久化闭环', () => {
     await fixture.service.shutdown();
   });
 
+  it('readiness: final READY notification follows Git barrier and has a fresh replayable sequence', async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const f = await createFixture(
+      'complete',
+      undefined,
+      {},
+      {
+        git: {
+          readHead: async () => undefined,
+          capture: async (_run, _project, _cwd, type) => {
+            if (type === 'AFTER') {
+              entered();
+              await barrier;
+            }
+          },
+        },
+      },
+    );
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'readiness barrier',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: 'finish' });
+    try {
+      await reached;
+      const early = f.published.find(
+        (item) => item.topic === `session:${session.id}` && item.event.type === 'run.completed',
+      )!;
+      expect(early).toBeDefined();
+      expect((await f.service.get(session.id)).status).toBe('RUNNING');
+      expect(
+        f.published.some(
+          (item) =>
+            item.event.type === 'session.state_changed' &&
+            (item.event.payloadJson as Record<string, unknown>)?.status === 'READY',
+        ),
+      ).toBe(false);
+      release();
+      await waitFor(async () =>
+        f.published.some(
+          (item) =>
+            item.event.type === 'session.state_changed' &&
+            (item.event.payloadJson as Record<string, unknown>)?.status === 'READY',
+        ),
+      );
+      const final = f.published.find(
+        (item) =>
+          item.topic === `session:${session.id}` &&
+          item.event.type === 'session.state_changed' &&
+          (item.event.payloadJson as Record<string, unknown>)?.status === 'READY',
+      )!;
+      expect(final.event.payloadJson).toEqual({ from: 'RUNNING', status: 'READY' });
+      expect(Number(final.event.seq)).toBeGreaterThan(Number(early.event.seq));
+      expect((await f.service.get(session.id)).status).toBe('READY');
+      expect((await f.repositories.runs.get(run.id))?.status).toBe('COMPLETED');
+      expect(
+        f.published.some(
+          (item) => item.topic === `project:${f.projectId}` && item.event.id === final.event.id,
+        ),
+      ).toBe(true);
+      expect(
+        (await f.repositories.events.listAfter(session.id, 0)).some(
+          (event) => event.id === final.event.id,
+        ),
+      ).toBe(true);
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['CANCELED', 'FAILED'] as const)(
+    'readiness: %s final commit publishes READY, duplicate terminal does not',
+    async (outcome) => {
+      const adapter = new ControlledAdapter('never');
+      const f = await createFixture(
+        'idle',
+        undefined,
+        {},
+        { adapter, git: { readHead: async () => undefined } },
+      );
+      const session = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: 'terminal readiness',
+        cwd: '/tmp',
+      });
+      const run = await f.service.startRun(session.id, { text: 'run' });
+      const ready = () =>
+        f.published.filter(
+          (item) =>
+            item.topic === `session:${session.id}` &&
+            item.event.type === 'session.state_changed' &&
+            (item.event.payloadJson as Record<string, unknown>)?.status === 'READY',
+        );
+      try {
+        adapter.handles[0]!.terminal(run.id, outcome);
+        await waitFor(async () => ready().length === 1);
+        expect((await f.service.get(session.id)).status).toBe('READY');
+        expect((await f.repositories.runs.get(run.id))?.status).toBe(outcome);
+        adapter.handles[0]!.terminal(run.id, outcome);
+        await waitFor(
+          async () =>
+            f.published.filter(
+              (item) =>
+                item.topic === `session:${session.id}` &&
+                item.event.type === (outcome === 'FAILED' ? 'run.failed' : 'run.cancelled'),
+            ).length === 2,
+        );
+        expect(ready()).toHaveLength(1);
+      } finally {
+        await f.service.shutdown();
+      }
+    },
+  );
+
+  it('readiness: retired activation and older Run terminal cannot announce READY for a current Run', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture(
+      'idle',
+      undefined,
+      {},
+      { adapter, git: { readHead: async () => undefined } },
+    );
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'stale readiness',
+      cwd: '/tmp',
+    });
+    const first = await f.service.startRun(session.id, { text: 'first' });
+    try {
+      adapter.handles[0]!.complete(first.id);
+      await waitFor(async () => (await f.service.get(session.id)).status === 'READY');
+      const second = await f.service.startRun(session.id, { text: 'second' });
+      const count = () =>
+        f.published.filter(
+          (item) =>
+            item.event.type === 'session.state_changed' &&
+            (item.event.payloadJson as Record<string, unknown>)?.status === 'READY',
+        ).length;
+      const baseline = count();
+      adapter.handles[0]!.complete(first.id);
+      await (
+        f.service as unknown as {
+          persistEvent(
+            event: NormalizedAgentEvent,
+            projectId: string,
+            activationId: string,
+          ): Promise<void>;
+        }
+      ).persistEvent(
+        {
+          eventId: randomUUID(),
+          sessionId: session.id,
+          runId: second.id,
+          seq: 1,
+          emittedAt: new Date().toISOString(),
+          adapterKind: 'CONTROLLED',
+          type: 'run.completed',
+          payload: {},
+        },
+        f.projectId,
+        'retired-activation',
+      );
+      expect((await f.service.get(session.id)).status).toBe('RUNNING');
+      expect((await f.repositories.runs.get(second.id))?.status).toBe('RUNNING');
+      expect(count()).toBe(baseline);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('readiness: notification append failure is not swallowed as a successful READY announcement', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture(
+      'idle',
+      undefined,
+      {},
+      { adapter, git: { readHead: async () => undefined } },
+    );
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'notification failure',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: 'run' });
+    const append = f.repositories.events.append.bind(f.repositories.events);
+    const spy = vi.spyOn(f.repositories.events, 'append').mockImplementation(async (input) => {
+      if (input.type === 'session.state_changed' && input.payload.status === 'READY')
+        throw new Error('fixture append failed');
+      return append(input);
+    });
+    try {
+      adapter.handles[0]!.complete(run.id);
+      await waitFor(async () => (await f.service.get(session.id)).status === 'DISCONNECTED');
+      expect(
+        f.published.some(
+          (item) =>
+            item.event.type === 'session.state_changed' &&
+            (item.event.payloadJson as Record<string, unknown>)?.status === 'READY',
+        ),
+      ).toBe(false);
+      expect((await f.repositories.runs.get(run.id))?.status).toBe('COMPLETED');
+    } finally {
+      spy.mockRestore();
+      await f.service.shutdown();
+    }
+  });
+
+  it('readiness: shutdown drains an admitted postcommit notification write', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture(
+      'idle',
+      undefined,
+      {},
+      { adapter, git: { readHead: async () => undefined } },
+    );
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'notification drain',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: 'run' });
+    let release!: () => void, entered!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const append = f.repositories.events.append.bind(f.repositories.events);
+    const spy = vi.spyOn(f.repositories.events, 'append').mockImplementation(async (input) => {
+      if (input.type === 'session.state_changed' && input.payload.status === 'READY') {
+        entered();
+        await barrier;
+      }
+      return append(input);
+    });
+    try {
+      adapter.handles[0]!.complete(run.id);
+      await reached;
+      let stopped = false;
+      const stopping = f.service.shutdown().then(() => {
+        stopped = true;
+      });
+      await Promise.resolve();
+      expect(stopped).toBe(false);
+      release();
+      await stopping;
+      expect(stopped).toBe(true);
+    } finally {
+      release();
+      spy.mockRestore();
+      await f.service.shutdown();
+    }
+  });
+
   it('Git诊断快照读取失败不把正常Run改为失败', async () => {
     const capture = vi.fn(
       async (
@@ -5408,8 +5677,16 @@ class ControlledHandle implements AgentSessionHandle {
     this.emit('run.completed', {}, runId);
   }
 
-  terminal(runId: string, outcome: 'COMPLETED' | 'CANCELED') {
-    this.emit(outcome === 'COMPLETED' ? 'run.completed' : 'run.cancelled', {}, runId);
+  terminal(runId: string, outcome: 'COMPLETED' | 'CANCELED' | 'FAILED') {
+    this.emit(
+      outcome === 'COMPLETED'
+        ? 'run.completed'
+        : outcome === 'FAILED'
+          ? 'run.failed'
+          : 'run.cancelled',
+      {},
+      runId,
+    );
   }
 
   private emit(

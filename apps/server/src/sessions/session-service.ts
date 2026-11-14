@@ -2460,14 +2460,29 @@ export class SessionService {
     to: SessionStatus,
     patch: Record<string, unknown> = {},
   ): Promise<void> {
-    const current = await this.sessions.get(id);
-    if (!current || current.status === to || current.status === 'CLOSED') return;
-    try {
-      await this.sessions.transition(id, to, patch);
-    } catch {
-      // Another activation may have already converged the Session. State
-      // transitions are intentionally best effort at this side-effect edge.
-    }
+    return this.trackAdmission(async () => {
+      const current = await this.sessions.get(id);
+      if (!current || current.status === to || current.status === 'CLOSED') return;
+      let updated: Awaited<ReturnType<typeof this.sessions.transition>>;
+      try {
+        updated = await this.sessions.transition(id, to, patch, {
+          expectedFrom: current.status as SessionStatus,
+        });
+      } catch {
+        // Another activation may have already converged the Session. A failed
+        // transition is not evidence for a new state notification.
+        return;
+      }
+      // Adapter terminal events precede Git/state convergence. Persist a fresh
+      // replayable notification only after the authoritative Session commit.
+      // Keep notification errors outside the best-effort transition catch.
+      const event = await this.events.append({
+        sessionId: updated.id,
+        type: 'session.state_changed',
+        payload: { from: current.status, status: updated.status },
+      });
+      this.publishPersistedSessionEvent(event, updated.projectId);
+    });
   }
 
   private async safeRunTransition(
