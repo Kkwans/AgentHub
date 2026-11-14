@@ -1383,3 +1383,76 @@
     min-height: 44px;
   }
 }
+
+/* A definite pane height bounds the tree instead of letting deep descendants
+ * grow the percentage grid track and push the read-only preview off screen. */
+:global(.workspace) :global(.file-inspector:not(.file-inspector--tree-state)) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: minmax(0, min(30%, 220px)) minmax(0, 1fr);
+}
+:global(.workspace) :global(.file-preview-heading-block) {
+  flex: none;
+  min-width: 0;
+}
+:global(.workspace) :global(.file-preview-header) {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  min-height: 48px;
+}
+:global(.workspace) :global(.file-preview-header h3) {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ah-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+:global(.workspace) :global(.file-reading-link) {
+  margin-left: auto;
+}
+:global(.workspace) :global(.file-reading-link),
+:global(.workspace) :global(.file-directory-link),
+:global(.workspace) :global(.file-path-toggle) {
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  align-content: center;
+}
+:global(.workspace) :global(.file-preview-header h3:focus),
+:global(.workspace) :global(.file-reading-link:focus-visible),
+:global(.workspace) :global(.file-directory-link:focus-visible),
+:global(.workspace) :global(.file-path-toggle:focus-visible) {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: -2px;
+}
+:global(.workspace) :global(.file-preview-path) {
+  padding-inline: 12px;
+  border-bottom: 1px solid var(--workspace-line);
+}
+:global(.workspace) :global(.file-preview-path code) {
+  display: block;
+  max-height: 80px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 12px;
+  padding-bottom: 8px;
+}
+@media (max-width: 767px) {
+  :global(.workspace) :global(.file-inspector:not(.file-inspector--tree-state)) {
+    grid-template-rows: minmax(0, min(26%, 190px)) minmax(0, 1fr);
+  }
+}
+
+/* Deep descendants must scroll, not shrink the heading around its 44px action. */
+:global(.workspace) :global(.file-tree > .mini-heading) {
+  flex: 0 0 auto;
+  min-height: 48px;
+}

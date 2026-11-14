@@ -192,3 +192,54 @@ it('cannot insert a previous project response after its keyed tree is replaced',
   expect(screen.queryByRole('button', { name: 'private-old.txt' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'src' })).toHaveAttribute('aria-expanded', 'false');
 });
+
+it('keeps basename and exact keyboard-disclosed identity through loading/error and returns to the expanded tree', () => {
+  const path = 'parent/中文 # &/report.ts';
+  const props = {
+    onSelect: vi.fn(),
+    files: queryState<FileEntry[]>({
+      data: [
+        {
+          name: 'parent',
+          path: 'parent',
+          type: 'DIRECTORY',
+          children: [{ name: 'report.ts', path, type: 'FILE' }],
+        },
+      ],
+    }),
+    content: queryState<{ content: string; path: string }>({ isLoading: true }),
+  };
+  const view = render(<FileInspector {...props} selected={undefined} />);
+  fireEvent.click(screen.getByRole('button', { name: 'report.ts' }));
+  view.rerender(<FileInspector {...props} selected={path} />);
+  const heading = screen.getByRole('heading', { name: 'report.ts' });
+  expect(heading).toHaveFocus();
+  expect(heading).toHaveAttribute('title', path);
+  const disclosure = screen.getByRole('button', { name: '完整路径' });
+  expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(disclosure);
+  expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+  expect(
+    document.getElementById(disclosure.getAttribute('aria-controls')!)?.querySelector('code'),
+  ).toHaveTextContent(path);
+  fireEvent.click(screen.getByRole('button', { name: '目录' }));
+  expect(screen.getByRole('button', { name: 'report.ts' })).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'parent' })).toHaveAttribute('aria-expanded', 'true');
+  fireEvent.click(screen.getByRole('button', { name: '阅读文件' }));
+  expect(heading).toHaveFocus();
+  view.rerender(
+    <FileInspector
+      {...props}
+      selected="other/report.ts"
+      content={queryState({ error: new Error('读取失败') })}
+    />,
+  );
+  expect(screen.getByRole('heading', { name: 'report.ts' })).toHaveAttribute(
+    'title',
+    'other/report.ts',
+  );
+  expect(screen.getByRole('button', { name: '完整路径' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+});

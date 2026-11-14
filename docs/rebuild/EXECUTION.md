@@ -2143,3 +2143,5 @@ aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spe
 - 2026-11-14 22:26 UTC：530a21a工作区真实短链24/24、focused147+repair4、PG/axe均已成功，完整verify/full尚未全部结束。下载artifact14134613114并审18张实图：深树读取正确但手机内容首屏外、basename被长路径挤掉，已记录下一片。手机Inspector单行头部候选完成、34专项/类型/lint与独立CR过；全仓pnpm test243文件2480例通过但1个worker意外退出，不能称全绿，候选未push；apps/web verbose及后续串行build重验中。
 
 - 2026-11-14 22:30 UTC：手机页头候选apps/web重验116文件1386例全过、串行build成功、冻结哈希一致；此前全仓worker意外退出未判通过。推送范围为手机单行导航与相应验证/文档，后续精确CI与实图待验。
+
+- 2026-11-14 22:42 UTC：深树阅读候选最终冻结（含mini-heading shrink修补）后lint/types、web116文件1387例、串行build成功，四文件哈希一致；独立CR无剩余源码阻断。固定树/正文分区、basename单行及按需路径、键盘往返与真实视口160px门禁准备推送，未将真实新图计作已验。另783e464已推全量workbench旧Diff锚点修复；530full185/1事实已记，尚待新运行验证。

@@ -6,7 +6,7 @@ import {
   Files,
   Skeleton,
 } from '@agenthub/ui';
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import Editor from '@monaco-editor/react';
 
 import { EmptyState, ErrorState } from '../../../components/Feedback';
@@ -33,6 +33,41 @@ export function FileInspector({
     (typeof document !== 'undefined' && document.documentElement.dataset.agenthubTheme === 'dark'
       ? 'dark'
       : 'light');
+  const pathId = useId();
+  const [pathOpen, setPathOpen] = useState(false);
+  useEffect(() => {
+    setPathOpen(false);
+  }, [selected]);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const readingRef = useRef<HTMLHeadingElement>(null);
+  const pendingReading = useRef(false);
+  const focusReading = () => readingRef.current?.focus({ preventScroll: true });
+  const chooseFile = (path: string) => {
+    pendingReading.current = true;
+    onSelect(path);
+    if (path === selected) {
+      pendingReading.current = false;
+      focusReading();
+    }
+  };
+  useEffect(() => {
+    if (selected && pendingReading.current) {
+      pendingReading.current = false;
+      readingRef.current?.focus({ preventScroll: true });
+    }
+  }, [selected]);
+  const returnToTree = () => {
+    const node = Array.from(
+      treeRef.current?.querySelectorAll<HTMLButtonElement>('[data-file-path]') ?? [],
+    ).find((button) => button.dataset.filePath === selected);
+    if (node && treeRef.current) {
+      const treeBox = treeRef.current.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+      treeRef.current.scrollTop += box.top - treeBox.top - treeBox.height / 2 + box.height / 2;
+      node.focus({ preventScroll: true });
+    } else treeRef.current?.focus({ preventScroll: true });
+  };
+  const basename = selected?.replaceAll('\\', '/').split('/').at(-1) ?? '';
   const [monacoReady, setMonacoReady] = useState(false);
   const contentErrorTitle = content.error ? fileErrorTitle(content.error) : undefined;
   useEffect(() => {
@@ -64,18 +99,50 @@ export function FileInspector({
 
   return (
     <div className="file-inspector">
-      <div className="file-tree">
+      <div className="file-tree" ref={treeRef} tabIndex={-1} aria-label="项目文件树">
         <div className="mini-heading">
           <Files size={14} /> 文件树
+          {selected && (
+            <button type="button" className="file-reading-link" onClick={focusReading}>
+              阅读文件
+            </button>
+          )}
         </div>
         <FileNodes
           entries={files.data ?? []}
           selected={selected}
-          onSelect={onSelect}
+          onSelect={chooseFile}
           loadDirectory={loadDirectory}
         />
       </div>
       <div className="editor-frame">
+        {selected && (
+          <div className="file-preview-heading-block">
+            <div className="file-preview-header">
+              <button type="button" className="file-directory-link" onClick={returnToTree}>
+                目录
+              </button>
+              <h3 ref={readingRef} tabIndex={-1} title={selected}>
+                {basename}
+              </h3>
+              <button
+                type="button"
+                className="file-path-toggle"
+                aria-label="完整路径"
+                aria-expanded={pathOpen}
+                aria-controls={pathId}
+                onClick={() => setPathOpen((open) => !open)}
+              >
+                路径
+              </button>
+              <small>只读</small>
+            </div>
+            <div className="file-preview-path" id={pathId} hidden={!pathOpen}>
+              <code>{selected}</code>
+            </div>
+          </div>
+        )}
+
         {!selected ? (
           <InspectorState>
             <EmptyState title="选择文件" description="文件内容以只读方式显示。" />
@@ -98,11 +165,6 @@ export function FileInspector({
           </InspectorState>
         ) : (
           <>
-            <div className="file-preview-header">
-              <FileCode2 size={13} aria-hidden="true" />
-              <span title={content.data?.path ?? selected}>{content.data?.path ?? selected}</span>
-              <small>只读</small>
-            </div>
             <div className="file-preview-editor">
               <Editor
                 height="100%"
@@ -262,6 +324,7 @@ function FileNode({
     <div className="file-node">
       <button
         className={entry.path === selected ? 'selected' : ''}
+        data-file-path={directory ? undefined : entry.path}
         title={entry.path}
         disabled={entry.blocked}
         aria-expanded={directory ? expanded : undefined}

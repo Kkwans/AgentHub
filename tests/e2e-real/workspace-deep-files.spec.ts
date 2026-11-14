@@ -78,7 +78,7 @@ for (const width of [390, 768, 1024, 1440]) {
 
       const touches = [];
       for (let i = 0; i < segments.length; i++) {
-        const directory = tree.getByRole('button', { name: segments[i], exact: true });
+        const directory = tree.getByRole('button', { name: segments[i]!, exact: true });
         await expect(directory).toHaveAttribute('aria-expanded', 'false');
         await directory.scrollIntoViewIfNeeded();
         const box = (await directory.boundingBox())!;
@@ -119,6 +119,78 @@ for (const width of [390, 768, 1024, 1440]) {
       });
       await expect(page.locator('.file-preview-header')).toContainText(leaf);
       await expect.poll(() => contentReads.includes([...segments, leaf].join('/'))).toBe(true);
+      const heading = page.getByRole('heading', { name: leaf, exact: true });
+      await expect(heading).toBeFocused();
+      await expect(heading).toBeInViewport({ ratio: 1 });
+      const assertReadingViewport = async () => {
+        const geometry = await page
+          .locator('.file-preview-editor')
+          .evaluate((node, expectedMarker) => {
+            const rect = node.getBoundingClientRect();
+            const line = Array.from(node.querySelectorAll<HTMLElement>('.view-line')).find((item) =>
+              item.textContent?.includes(expectedMarker),
+            );
+            const lineRect = line?.getBoundingClientRect();
+            return {
+              top: rect.top,
+              height: Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0)),
+              lineVisible: Boolean(
+                lineRect &&
+                lineRect.top >= Math.max(rect.top, 0) &&
+                lineRect.bottom <= Math.min(rect.bottom, innerHeight) &&
+                lineRect.right > rect.left &&
+                lineRect.left < rect.right,
+              ),
+            };
+          }, marker);
+        expect(geometry.height).toBeGreaterThanOrEqual(160);
+        expect(geometry.lineVisible).toBe(true);
+        return geometry;
+      };
+      const readingGeometry = await assertReadingViewport();
+      const treeHeading = tree.locator(':scope > .mini-heading');
+      await expect(treeHeading).toHaveCSS('flex-shrink', '0');
+      const treeHeadingBox = (await treeHeading.boundingBox())!;
+      const readLinkBox = (await page
+        .getByRole('button', { name: '阅读文件', exact: true })
+        .boundingBox())!;
+      const firstTreeRow = (await tree
+        .locator(':scope > .file-nodes > .file-node > button')
+        .first()
+        .boundingBox())!;
+      expect(readLinkBox.height).toBeGreaterThanOrEqual(44);
+      expect(readLinkBox.y).toBeGreaterThanOrEqual(treeHeadingBox.y);
+      expect(readLinkBox.y + readLinkBox.height).toBeLessThanOrEqual(
+        treeHeadingBox.y + treeHeadingBox.height,
+      );
+      expect(firstTreeRow.y).toBeGreaterThanOrEqual(treeHeadingBox.y + treeHeadingBox.height - 1);
+
+      const fullPath = page.getByRole('button', { name: '完整路径', exact: true });
+      await expect(fullPath).toHaveAttribute('aria-expanded', 'false');
+      const pathBox = (await fullPath.boundingBox())!;
+      expect(pathBox.width).toBeGreaterThanOrEqual(44);
+      expect(pathBox.height).toBeGreaterThanOrEqual(44);
+      await fullPath.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.file-preview-path code')).toHaveText(
+        [...segments, leaf].join('/'),
+      );
+      await page.keyboard.press('Enter');
+      const returnToDirectory = page.getByRole('button', { name: '目录', exact: true });
+      await returnToDirectory.focus();
+      await page.keyboard.press('Enter');
+      await expect(tree.getByRole('button', { name: leaf, exact: true })).toBeFocused();
+      for (const segment of segments)
+        await expect(tree.getByRole('button', { name: segment, exact: true })).toHaveAttribute(
+          'aria-expanded',
+          'true',
+        );
+      const readAgain = page.getByRole('button', { name: '阅读文件', exact: true });
+      await readAgain.focus();
+      await page.keyboard.press('Enter');
+      await expect(heading).toBeFocused();
+      await assertReadingViewport();
+
       const capture = async (name: string) => {
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
@@ -143,6 +215,8 @@ for (const width of [390, 768, 1024, 1440]) {
           .locator('p')
           .filter({ hasText: /^空目录$/ }),
       ).toBeVisible();
+      const afterEmpty = await assertReadingViewport();
+      expect(Math.abs(afterEmpty.top - readingGeometry.top)).toBeLessThanOrEqual(1);
       await capture('deep-file-empty-directory');
       const allowed = new Set([
         '',
