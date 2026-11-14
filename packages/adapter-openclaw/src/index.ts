@@ -1,5 +1,6 @@
 import {
   NO_AGENT_CAPABILITIES,
+  isResourceCleanupUnconfirmed,
   type AgentCapabilities,
   type AgentProfile,
   type AgentRunRef,
@@ -202,6 +203,10 @@ class OpenClawExecSession implements AgentSessionHandle {
   private sequence = 0;
   private active: { runId: string; process: OpenClawExecProcess } | undefined;
   private closed = false;
+  private pendingLaunch: Promise<OpenClawExecProcess> | undefined;
+  private closePromise: Promise<void> | undefined;
+  private cleanupFailure: unknown;
+  private readonly terminations = new WeakMap<OpenClawExecProcess, Promise<ProcessResult>>();
 
   constructor(
     private readonly input: CreateAgentSessionInput,
@@ -217,34 +222,57 @@ class OpenClawExecSession implements AgentSessionHandle {
 
   async sendTurn(input: AgentTurnInput): Promise<AgentRunRef> {
     if (this.closed) throw new OpenClawAdapterError('SESSION_CLOSED', 'Session 已关闭');
-    if (this.active) throw new OpenClawAdapterError('RUN_ALREADY_ACTIVE', '当前已有运行中的 Run');
-    const process = await this.launcher.launch(this.input.profile, this.input.cwd, input.text);
+    if (this.cleanupFailure)
+      throw new OpenClawAdapterError(
+        'OPENCLAW_EXEC_CLEANUP_UNCONFIRMED',
+        '先前执行资源尚未确认停止。',
+      );
+    if (this.active || this.pendingLaunch)
+      throw new OpenClawAdapterError('RUN_ALREADY_ACTIVE', '当前已有运行中的 Run');
+    // Publish admission before invoking the launcher; close owns any late result.
+    const launch = Promise.resolve().then(() => {
+      if (this.closed) throw new OpenClawAdapterError('SESSION_CLOSED', 'Session 已关闭');
+      return this.launcher.launch(this.input.profile, this.input.cwd, input.text);
+    });
+    this.pendingLaunch = launch;
+    let process: OpenClawExecProcess;
+    try {
+      process = await launch;
+    } catch (error) {
+      if (isResourceCleanupUnconfirmed(error)) this.cleanupFailure = error;
+      throw error;
+    } finally {
+      if (!this.closed && this.pendingLaunch === launch) this.pendingLaunch = undefined;
+    }
+    if (this.closed) throw new OpenClawAdapterError('SESSION_CLOSED', 'Session 已关闭');
     this.active = { runId: input.runId, process };
     this.emit('run.started', { transport: 'openclaw-agent-exec' }, input.runId);
-    void process.wait().then(
-      (result) => {
-        if (!this.active || this.active.runId !== input.runId) return;
-        if (result.canceled) {
-          this.emit('run.cancelled', {}, input.runId);
-        } else if (result.exitCode === 0) {
-          const text = extractExecText(result.stdout);
-          if (text) this.emit('assistant.message.completed', { text }, input.runId);
-          this.emit('run.completed', { exitCode: result.exitCode }, input.runId);
-        } else {
-          this.emit(
-            'run.failed',
-            { code: 'OPENCLAW_EXEC_FAILED', exitCode: result.exitCode },
-            input.runId,
-          );
-        }
-        this.active = undefined;
-      },
-      () => {
-        if (!this.active || this.active.runId !== input.runId) return;
-        this.emit('run.failed', { code: 'OPENCLAW_EXEC_FAILED' }, input.runId);
-        this.active = undefined;
-      },
-    );
+    void Promise.resolve()
+      .then(() => process.wait())
+      .then(
+        (result) => {
+          if (this.closed || this.active?.process !== process) return;
+          if (result.canceled) {
+            this.emit('run.failed', { code: 'OPENCLAW_EXEC_TERMINATED' }, input.runId);
+          } else if (result.exitCode === 0) {
+            const text = extractExecText(result.stdout);
+            if (text) this.emit('assistant.message.completed', { text }, input.runId);
+            this.emit('run.completed', { exitCode: result.exitCode }, input.runId);
+          } else {
+            this.emit(
+              'run.failed',
+              { code: 'OPENCLAW_EXEC_FAILED', exitCode: result.exitCode },
+              input.runId,
+            );
+          }
+          this.active = undefined;
+        },
+        () => {
+          if (this.closed || this.active?.process !== process) return;
+          this.emit('run.failed', { code: 'OPENCLAW_EXEC_FAILED' }, input.runId);
+          // A rejected wait is not proof of exit. Retain the process for close.
+        },
+      );
     return { runId: input.runId };
   }
 
@@ -259,15 +287,58 @@ class OpenClawExecSession implements AgentSessionHandle {
     if (!this.active || (runId && runId !== this.active.runId)) {
       throw new OpenClawAdapterError('RUN_NOT_ACTIVE', '没有可取消的 Run');
     }
-    await this.active.process.cancel();
+    await this.terminate(this.active.process);
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return;
-    this.closed = true;
-    if (this.active) await this.active.process.cancel();
-    this.emit('session.closed', {});
-    this.queue.close();
+  close(): Promise<void> {
+    if (!this.closePromise) {
+      this.closed = true;
+      this.closePromise = Promise.resolve().then(() => this.closeRuntime());
+    }
+    return this.closePromise;
+  }
+
+  private async closeRuntime(): Promise<void> {
+    const pending = this.pendingLaunch;
+    let late: OpenClawExecProcess | undefined;
+    try {
+      if (pending) {
+        try {
+          late = await pending;
+        } catch (error) {
+          if (isResourceCleanupUnconfirmed(error)) this.cleanupFailure = error;
+          // Ordinary launch rejection transferred no process; generic unknown
+          // explicitly prevents healthy close even without an active handle.
+        }
+      }
+      const process = this.active?.process ?? late;
+      if (process) await this.terminate(process);
+      if (this.cleanupFailure) throw this.cleanupFailure;
+      this.active = undefined;
+      this.emit('session.closed', {});
+    } catch (error) {
+      throw new OpenClawAdapterError(
+        'OPENCLAW_EXEC_CLEANUP_UNCONFIRMED',
+        'OpenClaw 执行进程尚未确认停止，不能重复启动。',
+        { cause: error },
+      );
+    } finally {
+      this.queue.close();
+    }
+  }
+
+  private terminate(process: OpenClawExecProcess): Promise<ProcessResult> {
+    let termination = this.terminations.get(process);
+    if (!termination) {
+      termination = Promise.resolve()
+        .then(() => process.cancel())
+        .catch((error: unknown) => {
+          this.cleanupFailure = new Error('Exec termination unconfirmed', { cause: error });
+          throw error;
+        });
+      this.terminations.set(process, termination);
+    }
+    return termination;
   }
 
   private emit(
@@ -324,8 +395,9 @@ export class OpenClawAdapterError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = 'OpenClawAdapterError';
   }
 }
