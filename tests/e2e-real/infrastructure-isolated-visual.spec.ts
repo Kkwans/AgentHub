@@ -54,12 +54,29 @@ for (const width of [390, 768, 1024, 1440]) {
         page.on('console', (message) => {
           if (message.type() === 'error') errors.push(message.text());
         });
+        let touchIndex = 0;
         const touch = async (control: Locator) => {
           await expect(control).toBeVisible();
           const box = await control.boundingBox();
           expect(box).not.toBeNull();
-          expect(box!.height).toBeGreaterThanOrEqual(43.99);
-          expect(box!.width).toBeGreaterThanOrEqual(43.99);
+          const identity = await control.evaluate((element) => ({
+            tag: element.tagName,
+            text: element.textContent?.trim(),
+            ariaLabel: element.getAttribute('aria-label'),
+            labels:
+              'labels' in element
+                ? Array.from((element as HTMLInputElement).labels ?? []).map((label) =>
+                    label.textContent?.trim(),
+                  )
+                : [],
+          }));
+          await info.attach(`touch-${++touchIndex}.json`, {
+            body: JSON.stringify({ ...identity, box }, null, 2),
+            contentType: 'application/json',
+          });
+          // Keep this case red for undersized controls, but collect the remaining safe page evidence.
+          expect.soft(box!.height).toBeGreaterThanOrEqual(43.99);
+          expect.soft(box!.width).toBeGreaterThanOrEqual(43.99);
         };
         const capture = async (state: string) => {
           expect(
@@ -182,9 +199,52 @@ for (const width of [390, 768, 1024, 1440]) {
         const nodes = await nodesResponse;
         expect(nodes.status()).toBe(200);
         expect((await nodes.json()).data).toEqual([]);
-        await expect(page.getByText('还没有 Remote Node', { exact: true })).toBeVisible();
-        const authorize = page.getByRole('link', { name: '授权 Node', exact: true }).first();
+        await expect(page.getByText('还没有远程节点', { exact: true })).toBeVisible();
+        const authorize = page.getByRole('link', { name: '授权 Node', exact: true });
+        await expect(authorize).toHaveCount(1);
+        await expect(page.getByRole('heading', { name: '远程节点', level: 1 })).toBeVisible();
+        await expect(page.getByText('Agent Infrastructure', { exact: true })).toHaveCount(0);
         await touch(authorize);
+        const nodesGeometry = await page.evaluate(() => {
+          const title = document.querySelector('h1')!.getBoundingClientRect();
+          const content = document.querySelector('.page-content')!;
+          const empty = content.querySelector('h2')!.getBoundingClientRect();
+          const link = document
+            .querySelector('a[href="/agents/nodes/register"]')!
+            .getBoundingClientRect();
+          const box = content.getBoundingClientRect();
+          return {
+            title: title.toJSON(),
+            empty: empty.toJSON(),
+            link: link.toJSON(),
+            content: box.toJSON(),
+            paddingLeft: parseFloat(getComputedStyle(content).paddingLeft),
+          };
+        });
+        await info.attach('nodes-reading-layout.json', {
+          body: JSON.stringify(nodesGeometry, null, 2),
+          contentType: 'application/json',
+        });
+        expect
+          .soft(
+            Math.abs(
+              nodesGeometry.empty.left - nodesGeometry.content.left - nodesGeometry.paddingLeft,
+            ),
+          )
+          .toBeLessThanOrEqual(1);
+        expect.soft(nodesGeometry.empty.width).toBeLessThanOrEqual(480);
+        if (width === 390) {
+          expect
+            .soft(
+              Math.abs(
+                nodesGeometry.title.top +
+                  nodesGeometry.title.height / 2 -
+                  nodesGeometry.link.top -
+                  nodesGeometry.link.height / 2,
+              ),
+            )
+            .toBeLessThanOrEqual(1);
+        }
         await capture('nodes-empty');
         await authorize.click();
         await expect(page).toHaveURL(`${app.origin}/agents/nodes/register`);
@@ -207,7 +267,7 @@ for (const width of [390, 768, 1024, 1440]) {
         await touch(back);
         await back.click();
         await expect(page).toHaveURL(`${app.origin}/agents/nodes`);
-        await expect(page.getByText('还没有 Remote Node', { exact: true })).toBeVisible();
+        await expect(page.getByText('还没有远程节点', { exact: true })).toBeVisible();
 
         const diagnosticResponse = page.waitForResponse(
           (response) => new URL(response.url()).pathname === '/api/v1/agents/diagnostics/host',

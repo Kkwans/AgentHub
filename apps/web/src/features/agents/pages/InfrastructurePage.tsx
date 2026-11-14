@@ -100,13 +100,19 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 
-/** Runtime-only chrome; node authorization and diagnostics retain their existing shell. */
-function RuntimeScreen({ title, description, actions, children }: ComponentProps<typeof Screen>) {
+/** Compact infrastructure chrome; diagnostics retain their existing shell. */
+function RuntimeScreen({
+  title,
+  description,
+  actions,
+  children,
+  icon = Server,
+}: ComponentProps<typeof Screen>) {
   return (
     <div className="min-h-full">
       <AhReveal>
         <NavigationPageHeader
-          icon={Server}
+          icon={icon}
           title={title}
           description={description ?? ''}
           className={runtimeStyles.header ?? ''}
@@ -181,7 +187,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
       api.post(`/execution-targets/${id}/${action}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['discovery-runtimes'] }),
   });
-  const title = kind === 'runtimes' ? 'Runtime' : kind === 'nodes' ? 'Remote Nodes' : '服务器诊断';
+  const title = kind === 'runtimes' ? 'Runtime' : kind === 'nodes' ? '远程节点' : '服务器诊断';
   const description =
     kind === 'runtimes'
       ? '管理本机与 Docker 执行环境，状态反馈与 Agent 可用性保持一致。'
@@ -193,7 +199,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
   const visibleRuntimeRows = showStoppedRuntimes
     ? runtimeRows
     : runtimeRows.filter((runtime) => runtime.state !== 'STOPPED');
-  const PageScreen = kind === 'runtimes' ? RuntimeScreen : Screen;
+  const PageScreen = kind !== 'diagnostics' ? RuntimeScreen : Screen;
   return (
     <PageScreen
       eyebrow="Agent Infrastructure"
@@ -211,8 +217,9 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
             重新扫描
           </AhButton>
         ) : kind === 'nodes' ? (
-          <Link to="/agents/nodes/register">
-            <AhButton leftSection={<Link2 size={16} />}>授权 Node</AhButton>
+          <Link className={runtimeStyles.authorizeLink} to="/agents/nodes/register">
+            <Link2 size={16} aria-hidden="true" />
+            授权 Node
           </Link>
         ) : undefined
       }
@@ -303,8 +310,8 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
           </div>
         </section>
       ) : kind === 'nodes' ? (
-        <section className={styles.infrastructure}>
-          <div className={styles.infrastructureBody}>
+        <section className={runtimeStyles.nodesSection}>
+          <div>
             <QueryMessage
               loading={nodes.isLoading}
               error={nodes.error}
@@ -331,15 +338,10 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
               </div>
             ))}
             {!nodes.isLoading && !nodes.error && !nodes.data?.length ? (
-              <AhEmptyState
-                title="还没有 Remote Node"
-                description="生成一次性注册码并在目标设备运行 Node daemon。"
-                action={
-                  <Link to="/agents/nodes/register">
-                    <AhButton>授权 Node</AhButton>
-                  </Link>
-                }
-              />
+              <div className={runtimeStyles.nodesEmpty}>
+                <h2>还没有远程节点</h2>
+                <p>从上方授权 Node，生成一次性注册码，再在目标设备运行 Node daemon。</p>
+              </div>
             ) : null}
           </div>
         </section>

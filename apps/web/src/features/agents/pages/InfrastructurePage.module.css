@@ -35,3 +35,55 @@
     width: auto;
   }
 }
+
+/* The navigation anchor itself owns the full pointer and keyboard target. */
+.authorizeLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 16px;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary-hover) / 0.35);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.authorizeLink:hover {
+  background: hsl(var(--primary-hover));
+}
+.authorizeLink:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 3px;
+}
+.authorizeLink svg {
+  flex-shrink: 0;
+}
+
+.nodesSection {
+  min-width: 0;
+}
+.nodesEmpty {
+  max-width: 480px;
+  min-width: 0;
+  text-align: left;
+}
+.nodesEmpty h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--ah-text-primary);
+}
+.nodesEmpty p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ah-text-secondary);
+}
