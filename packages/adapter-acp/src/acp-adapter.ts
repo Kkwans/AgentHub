@@ -678,7 +678,8 @@ class AcpSessionHandle implements AgentSessionHandle {
   close(): Promise<void> {
     if (this.closePromise) return this.closePromise;
     this.closed = true;
-    this.closePromise = this.performClose();
+    // Publish the sticky promise before any protocol callback can re-enter close().
+    this.closePromise = Promise.resolve().then(() => this.performClose());
     return this.closePromise;
   }
 
@@ -688,28 +689,42 @@ class AcpSessionHandle implements AgentSessionHandle {
       pending.resolve({ outcome: { outcome: 'cancelled' } });
     }
     this.approvals.clear();
+    const failures: unknown[] = [];
     try {
-      const sessionId = this.sessionId;
-      if (sessionId && this.capabilities?.sessionCapabilities?.close) {
-        await requestWithGrace(
-          () => this.runtime.agent.request(AGENT_METHODS.session_close, { sessionId }),
-          this.sessionCloseGraceMs,
-        );
+      try {
+        const sessionId = this.sessionId;
+        if (sessionId && this.capabilities?.sessionCapabilities?.close) {
+          await requestWithGrace(
+            () => this.runtime.agent.request(AGENT_METHODS.session_close, { sessionId }),
+            this.sessionCloseGraceMs,
+            true,
+          );
+        }
+      } catch (error) {
+        failures.push(error);
       }
-    } finally {
-      this.emit('session.closed', {});
       try {
         this.runtime.connection.close();
-      } catch {
-        // Transport shutdown is best effort; process cancellation remains authoritative.
+      } catch (error) {
+        failures.push(error);
       }
       try {
         await this.runtime.process.cancel();
-      } catch {
-        // A process termination timeout is reported by the supervisor; the queue still closes.
-      } finally {
-        this.queue.close();
+      } catch (error) {
+        throw new AcpAdapterError('ACP_PROCESS_CLEANUP_UNCONFIRMED', 'ACP 进程尚未确认停止', {
+          cause: new AggregateError([...failures, error], 'ACP close cleanup failed'),
+        });
       }
+      // This event confirms process termination, not successful Run cancellation.
+      // In particular, never synthesize run.cancelled from a process kill.
+      this.emit('session.closed', {});
+      if (failures.length) {
+        throw new AcpAdapterError('ACP_SESSION_CLOSE_FAILED', 'ACP 会话关闭未完整确认', {
+          cause: new AggregateError(failures, 'ACP session close failed'),
+        });
+      }
+    } finally {
+      this.queue.close();
     }
   }
 
@@ -747,7 +762,7 @@ class AcpSessionHandle implements AgentSessionHandle {
         'run.failed',
         {
           code: 'ACP_PROMPT_TIMEOUT',
-          message: 'Agent 在限定时间内未完成响应，连接已关闭',
+          message: 'Agent 在限定时间内未完成响应，正在尝试关闭连接',
         },
         runId,
       );
@@ -757,7 +772,9 @@ class AcpSessionHandle implements AgentSessionHandle {
           .notify(AGENT_METHODS.session_cancel, { sessionId })
           .catch(() => undefined);
       }
-      void this.close();
+      // Observe the background rejection without replacing the sticky close promise.
+      // A later owner close must still receive an unconfirmed-cleanup failure.
+      void this.close().catch(() => undefined);
     }, this.promptTimeoutMs);
     timer.unref?.();
     this.promptTimer = timer;
@@ -1201,14 +1218,19 @@ async function closeRuntime(runtime: AcpRuntime, strictCleanup = false): Promise
 async function requestWithGrace<T>(
   request: () => Promise<T>,
   graceMs: number,
+  strict = false,
 ): Promise<T | undefined> {
   let timer: ReturnType<typeof setTimeout> | number | undefined;
   try {
     return await Promise.race([
       Promise.resolve()
         .then(request)
-        .catch(() => undefined),
+        .catch((error: unknown) => {
+          if (strict) throw error;
+          return undefined;
+        }),
       new Promise<undefined>((resolve) => {
+        // Grace expiry defers to authoritative process termination, not protocol success.
         timer = setTimeout(resolve, graceMs);
       }),
     ]);

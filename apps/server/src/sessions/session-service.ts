@@ -1864,33 +1864,52 @@ export class SessionService {
   }
 
   private async handleActivationDisconnected(sessionId: string, activationId: string) {
-    const result = await this.withActivationCommit(sessionId, async () => {
-      if (!this.isCurrentActivation(sessionId, activationId)) return;
-      // Disconnect is connection-wide. An event's runId is audit metadata and
-      // may reference a completed turn; select the current Run at commit time.
-      const activeRun = await this.runs.findActiveForSession(sessionId);
-      const result = activeRun
-        ? await this.runs.tryTransition(
-            activeRun.id,
-            ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
+    const active = this.active.get(sessionId);
+    const disconnectedHandle = active?.activationId === activationId ? active.handle : undefined;
+    // Register ownership before any DB await or detach. Iterator termination is
+    // not proof that the provider process stopped, and shutdown must drain this
+    // cleanup even after the activation disappears from the active map.
+    if (disconnectedHandle) this.unconfirmedHandles.add(disconnectedHandle);
+    return this.trackAdmission(async () => {
+      try {
+        const result = await this.withActivationCommit(sessionId, async () => {
+          if (!this.isCurrentActivation(sessionId, activationId)) return;
+          // Disconnect is connection-wide. An event's runId is audit metadata and
+          // may reference a completed turn; select the current Run at commit time.
+          const activeRun = await this.runs.findActiveForSession(sessionId);
+          const result = activeRun
+            ? await this.runs.tryTransition(
+                activeRun.id,
+                ['STARTING', 'RUNNING', 'WAITING_APPROVAL', 'CANCELING'],
+                'DISCONNECTED',
+                {
+                  finishedAt: new Date(),
+                  errorCode: 'ADAPTER_DISCONNECTED',
+                  errorMessage: 'Agent 连接已断开',
+                },
+              )
+            : undefined;
+          if (result?.changed) this.clearCancellationTimer(result.run.id, activationId);
+          await this.safeSessionTransition(sessionId, 'DISCONNECTED');
+          this.detachActive(sessionId, activationId);
+          return result;
+        });
+        // The deliberate detach above retires this activation. Task persistence
+        // checks durable Run ownership and must not be skipped because of detach.
+        if (result?.changed && result.run.taskId) {
+          await this.taskLifecycle?.onRunStopped?.(
+            result.run.taskId,
+            result.run.id,
             'DISCONNECTED',
-            {
-              finishedAt: new Date(),
-              errorCode: 'ADAPTER_DISCONNECTED',
-              errorMessage: 'Agent 连接已断开',
-            },
-          )
-        : undefined;
-      if (result?.changed) this.clearCancellationTimer(result.run.id, activationId);
-      await this.safeSessionTransition(sessionId, 'DISCONNECTED');
-      this.detachActive(sessionId, activationId);
-      return result;
+          );
+        }
+      } finally {
+        // Failure remains in unconfirmedHandles for sticky shutdown rejection;
+        // avoid turning an event-consumer failure into an unhandled rejection.
+        if (disconnectedHandle)
+          await this.closeHandleStrictly(disconnectedHandle).catch(() => undefined);
+      }
     });
-    // The deliberate detach above retires this activation. Task persistence
-    // checks durable Run ownership and must not be skipped because of detach.
-    if (result?.changed && result.run.taskId) {
-      await this.taskLifecycle?.onRunStopped?.(result.run.taskId, result.run.id, 'DISCONNECTED');
-    }
   }
 
   private async persistEvent(

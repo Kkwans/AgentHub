@@ -630,6 +630,77 @@ describe('Session/Run/Approval 持久化闭环', () => {
     },
   );
 
+  it('事件流结束后 close 拒绝仍保留清理未知，shutdown 不能健康释放', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture(
+      'idle',
+      undefined,
+      {},
+      { adapter, cancelConvergenceTimeoutMs: 1_000 },
+    );
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '流结束清理未知',
+      cwd: '/tmp',
+    });
+    const run = await f.service.startRun(session.id, { text: '等待流结束' });
+    const handle = adapter.handles[0]!;
+    const endStream = handle.close.bind(handle);
+    const close = vi.spyOn(handle, 'close').mockRejectedValue(new Error('cleanup unconfirmed'));
+    await endStream();
+    await waitFor(async () => close.mock.calls.length > 0);
+    await waitFor(async () => (await f.service.get(session.id)).status === 'DISCONNECTED');
+    const release = vi.fn();
+    await f.service.shutdown().then(release, () => undefined);
+    expect(release).not.toHaveBeenCalled();
+    await expect(f.service.shutdown()).rejects.toMatchObject({
+      code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+    });
+    expect((await f.repositories.runs.get(run.id))?.status).toBe('DISCONNECTED');
+    expect(
+      (await f.repositories.events.listAfter(session.id, 0, 100)).some(
+        (event) => event.type === 'run.cancelled',
+      ),
+    ).toBe(false);
+    close.mockRestore();
+  });
+
+  it('事件流已 detach 但 close 仍挂起时 shutdown 等待受跟踪清理', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture(
+      'idle',
+      undefined,
+      {},
+      { adapter, cancelConvergenceTimeoutMs: 1000 },
+    );
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '流结束竞态',
+      cwd: '/tmp',
+    });
+    const handle = adapter.handles[0]!;
+    const endStream = handle.close.bind(handle);
+    let finish!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const close = vi.spyOn(handle, 'close').mockImplementation(() => barrier);
+    await endStream();
+    await waitFor(async () => close.mock.calls.length === 1);
+    expect((await f.service.get(session.id)).status).toBe('DISCONNECTED');
+    const released = vi.fn();
+    const stopping = f.service.shutdown().then(released);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(released).not.toHaveBeenCalled();
+    finish();
+    await stopping;
+    expect(released).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
+    close.mockRestore();
+  });
+
   it('shutdown撤销普通创建，迟到handle只清理且不能激活或派发', async () => {
     const f = await taskAdmissionFixture();
     const input = { projectId: f.projectId, agentId: f.agentId, title: '普通创建', cwd: '/tmp' };
