@@ -978,6 +978,85 @@ it('自身返工状态后台刷新先于响应时仍进入本次新工作区', a
   );
   expect(await screen.findByText('已进入工作区')).toBeVisible();
 });
+it.each(['BACKLOG', 'READY', 'IN_PROGRESS', 'WAITING_REVIEW', 'BLOCKED', 'DONE', 'CANCELED'])(
+  '宽屏普通任务%s仅待审阅进入主审阅画布，不自动写入',
+  async (status) => {
+    mount([{ ...task, status }]);
+    const list = await screen.findByRole('region', { name: '工作列表' });
+    await waitFor(() =>
+      expect(list.parentElement).toHaveAttribute(
+        'data-layout',
+        status === 'WAITING_REVIEW' ? 'task-review' : 'work-list',
+      ),
+    );
+    expect(list).toBeVisible();
+    expect(screen.getByRole('complementary', { name: '工作 Inspector' })).toBeVisible();
+    expect(api.post).not.toHaveBeenCalled();
+    expect(api.patch).not.toHaveBeenCalled();
+  },
+);
+
+it('待审阅但Worktree归属未返回前不把ordinary当成主审阅画布', async () => {
+  let finish!: (value: unknown[]) => void;
+  const worktrees = new Promise<unknown[]>((resolve) => {
+    finish = resolve;
+  });
+  const client = mount(
+    [{ ...task, status: 'WAITING_REVIEW' }],
+    '',
+    selectableAgents,
+    registeredEligibility(),
+    worktrees,
+  );
+  await waitFor(() => expect(client.getQueryState(['tasks', project.id])?.status).toBe('success'));
+  expect(document.querySelector('[data-layout="task-review"]')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
+  await act(async () => finish([]));
+  const list = await screen.findByRole('region', { name: '工作列表' });
+  await waitFor(() => expect(list.parentElement).toHaveAttribute('data-layout', 'task-review'));
+});
+
+it.each(['RUNNING', 'QUEUED', 'FAILED', 'REVIEW'])(
+  '隔离任务%s不误用ordinary主审阅画布',
+  async (status) => {
+    mount([{ ...task, status: 'WAITING_REVIEW' }], '', selectableAgents, registeredEligibility(), [
+      { id: 'execution-a', taskId: task.id, projectId: project.id, status },
+    ]);
+    const list = await screen.findByRole('region', { name: '工作列表' });
+    await screen.findByText('此任务由隔离 Worktree 管理，不使用普通任务启动或取消入口。');
+    expect(list.parentElement).toHaveAttribute(
+      'data-layout',
+      status === 'REVIEW' ? 'worktree-review' : 'work-list',
+    );
+    expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
+  },
+);
+
+it.each(['phone', 'tablet'])('%s普通审阅保持单栏详情，不启用宽屏主画布', async (band) => {
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches:
+      query === '(max-width: 1023px)' || (band === 'phone' && query === '(max-width: 767px)'),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+  try {
+    mount([{ ...task, status: 'WAITING_REVIEW' }], '?task=task-1');
+    await screen.findByRole('button', { name: '确认达到验收标准' });
+    const inspector = screen.getByRole('complementary', { name: '工作 Inspector' });
+    expect(inspector).toBeVisible();
+    expect(inspector.parentElement).toHaveAttribute('data-layout', 'work-list');
+    expect(screen.queryByRole('region', { name: '工作列表' })).not.toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  } finally {
+    media.mockRestore();
+  }
+});
+
 it('审阅重复点击不重复提交且pending锁定取消和Agent切换', async () => {
   const reviewTask = {
     ...task,
@@ -995,9 +1074,17 @@ it('审阅重复点击不重复提交且pending锁定取消和Agent切换', asyn
   );
   mount([reviewTask]);
   const approve = await screen.findByRole('button', { name: '确认达到验收标准' });
+  expect(screen.getByRole('region', { name: '工作列表' }).parentElement).toHaveAttribute(
+    'data-layout',
+    'task-review',
+  );
   fireEvent.click(approve);
   fireEvent.click(approve);
   await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole('region', { name: '工作列表' }).parentElement).toHaveAttribute(
+    'data-layout',
+    'task-review',
+  );
   expect(screen.getByRole('combobox', { name: '运行 Agent' })).toBeDisabled();
   expect(screen.getByRole('button', { name: '取消' })).toBeDisabled();
   await act(async () =>
@@ -1016,6 +1103,10 @@ it('返工失败保留反馈，未知结果不允许直接重放', async () => {
   fireEvent.click(screen.getByRole('button', { name: '提交继续修改' }));
   expect(await screen.findByText('网络响应丢失')).toBeVisible();
   expect(feedback).toHaveValue('保留修改意见');
+  expect(screen.getByRole('region', { name: '工作列表' }).parentElement).toHaveAttribute(
+    'data-layout',
+    'task-review',
+  );
   expect(screen.getByRole('button', { name: '提交继续修改' })).toBeDisabled();
   expect(screen.getByRole('button', { name: '核对原任务' })).toBeEnabled();
   expect(api.post).toHaveBeenCalledTimes(1);
@@ -1045,6 +1136,7 @@ it('Worktree查询失败不开放普通审阅入口', async () => {
     worktrees,
   );
   expect(await screen.findByText('隔离执行读取失败')).toBeVisible();
+  expect(document.querySelector('[data-layout="task-review"]')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '确认达到验收标准' })).not.toBeInTheDocument();
 });
 it('切换任务后旧返工响应不跳走、不污染新任务反馈', async () => {
@@ -1636,18 +1728,16 @@ it('手机Agent启动pending暂禁返回列表，避免旧启动自动导航隐�
 });
 
 it.each([768, 1023])('%spx详情保留资格失败警告，不藏在phone专用分支', async (width) => {
-  const media = vi
-    .spyOn(window, 'matchMedia')
-    .mockImplementation((query) => ({
-      matches: width <= Number(query.match(/max-width: (\d+)px/)?.[1] ?? 0),
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
+  const media = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: width <= Number(query.match(/max-width: (\d+)px/)?.[1] ?? 0),
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
   try {
     let fail!: (error: unknown) => void;
     const pending = new Promise((_resolve, reject) => {

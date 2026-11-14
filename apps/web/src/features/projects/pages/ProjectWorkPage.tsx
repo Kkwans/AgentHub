@@ -330,6 +330,11 @@ export function ProjectWorkPage() {
   const primaryWorktreeReview =
     !singlePane &&
     Boolean(selectedWorktree && (selectedWorktree.status === 'REVIEW' || reviewLocked));
+  const primaryTaskReview =
+    !singlePane &&
+    !selectedWorktree &&
+    Boolean((selected?.status === 'WAITING_REVIEW' && worktrees.isSuccess) || reviewLocked);
+  const primaryReviewCanvas = primaryWorktreeReview || primaryTaskReview;
   const [queuePendingKeys, setQueuePendingKeys] = useState<Record<string, boolean>>({});
   const [queueUnknownKeys, setQueueUnknownKeys] = useState<Record<string, boolean>>({});
   const queueKey = `${project.id}:${selected?.id}`;
@@ -701,8 +706,14 @@ export function ProjectWorkPage() {
           ) : null}
           {(singlePane || view === 'list') && (
             <div
-              className={`${projectsStyles.workLayout} ${primaryWorktreeReview ? projectsStyles.workReviewLayout : ''}`}
-              data-layout={primaryWorktreeReview ? 'worktree-review' : 'work-list'}
+              className={`${projectsStyles.workLayout} ${primaryReviewCanvas ? projectsStyles.workReviewLayout : ''}`}
+              data-layout={
+                primaryWorktreeReview
+                  ? 'worktree-review'
+                  : primaryTaskReview
+                    ? 'task-review'
+                    : 'work-list'
+              }
               hidden={singlePane && (view === 'board' || invalidDetail)}
             >
               <section
@@ -788,11 +799,11 @@ export function ProjectWorkPage() {
                       <h2 ref={detailTitleRef} tabIndex={-1}>
                         {selected.title}
                       </h2>
-                      {selected.description && !primaryWorktreeReview ? (
+                      {selected.description && !primaryReviewCanvas ? (
                         <p>{selected.description}</p>
                       ) : null}
                     </header>
-                    {selected.description && primaryWorktreeReview ? (
+                    {selected.description && primaryReviewCanvas ? (
                       <section className={projectsStyles.inspectorSection}>
                         <p>{selected.description}</p>
                       </section>

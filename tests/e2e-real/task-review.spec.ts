@@ -99,6 +99,20 @@ for (const width of [390, 768, 1024, 1440]) {
         reviews.push(request.postDataJSON());
     });
     await page.goto(`/projects/${project.id}/work?task=${task.id}`);
+    if (width >= 1024) {
+      const layout = page.locator('[data-layout="task-review"]');
+      await expect(layout).toBeVisible();
+      const list = layout.getByRole('region', { name: '工作列表' });
+      const inspector = layout.getByRole('complementary', { name: '工作 Inspector' });
+      const listBox = await list.boundingBox();
+      const inspectorBox = await inspector.boundingBox();
+      expect(listBox).not.toBeNull();
+      expect(inspectorBox).not.toBeNull();
+      expect(inspectorBox!.width).toBeGreaterThan(listBox!.width * 1.5);
+      const reviewShot = info.outputPath(`ordinary-review-primary-${width}.png`);
+      await page.screenshot({ path: reviewShot });
+      await info.attach('普通任务审阅主画布', { path: reviewShot, contentType: 'image/png' });
+    }
     const attemptsPanel = page.getByRole('region', { name: '任务启动记录' });
     await expect(attemptsPanel).toBeVisible();
     const writesBeforeCheck = pageWrites;
@@ -120,6 +134,9 @@ for (const width of [390, 768, 1024, 1440]) {
       'WAITING_REVIEW',
     );
     await attemptsPanel.scrollIntoViewIfNeeded();
+    if (width >= 1024) {
+      await expect(page.getByRole('region', { name: '工作列表' })).toBeInViewport();
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);

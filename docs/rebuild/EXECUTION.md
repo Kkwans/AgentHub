@@ -1372,3 +1372,10 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - b12精确trace/源码确认旧observable把token事件映射成Completed布尔，状态不变时事件被strict equality过滤；仅预加载grammar不足。固定Monaco0.56.0最小pnpm补丁改为每个真实token事件revision，保留普通读取缓存、model替换/销毁行为，不覆盖词法颜色、不改文档内容。
 - installed-source回归通过，独立CR未见阻断；既有与独立干净临时目录frozen/offline install均通过，后者源码字节相同。大Diff每次token更新重建inline删除zone的性能仍待真实验证，不称性能提升。
 - 05:29专项15通过；05:30:00全repo lint/types/build通过；CI新增2个mobile深色Diff各repeat3/retries0，共6条，结果单独保存token-test-results，原token断言不变。真实重复浏览器结果待推送后验收，不以旧1flaky的success替代。
+
+### 2026-11-14 05:32–05:36 UTC 普通任务审阅主画布
+
+- 05:32:04已推Monaco补丁96d9fe3，树1e222222f171aa3fe10f2fba38f35777137129a2一致，精确CI43561977816进行中；05:30:18最后28专项通过，仍待零重试重复浏览器门禁，不称视觉验收完成。
+- 以实际b12普通审阅截图和现有源码定位右侧窄Inspector/中央空白问题，普通可操作WAITING_REVIEW在桌面复用既有宽审阅画布与紧凑sticky列表。Worktree优先、归属查询未知、移动单pane、任务key和pending/unknown返工草稿保护不变；只改布局选择，不改状态或请求。
+- 05:35:04开始100专项全部通过，11.73秒，05:35:20冻结；独立CR无阻断。真实E2E补1024/1440宽度比例、滚动后列表仍在视口及主画布截图；该文件类型检查/5例发现通过，发现不等于执行。新像素结果待精确CI。
+- 05:35:33最后全repo lint/types/build通过。开发分支推送用于真实几何和截图验收，不合main/不部署。
