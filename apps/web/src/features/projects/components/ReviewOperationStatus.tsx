@@ -132,6 +132,7 @@ function OwnedReviewOperationStatus({
         report({
           ...record,
           phase: safeRetry ? 'retryable' : 'unknown',
+          ...(safeRetry ? { gitMergeRetryProof: record.gitMergeAttempt } : {}),
           message: safeRetry
             ? '原合并已确认前置拒绝，请重新读取差异并再次确认。'
             : '原请求结果仍需核对，已阻止重复提交。',

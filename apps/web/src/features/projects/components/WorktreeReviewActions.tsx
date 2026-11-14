@@ -3,6 +3,9 @@ import { AhButton, AhErrorState, AhInput, AhTextarea } from '@agenthub/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useReviewOperations } from './ReviewOperationProvider';
+import { useReviewOperationOwner } from '../hooks/useReviewOperationOwner';
+import type { ReviewOperationOwner } from '../lib/review-operation-owner';
 import { createReviewOperation, type ReviewOperationProps } from './review-operation';
 import {
   api,
@@ -24,6 +27,10 @@ export function WorktreeReviewActions({
   onPendingChange: (key: string, pending: boolean) => void;
 } & ReviewOperationProps) {
   const client = useQueryClient();
+  const owner = useReviewOperations()?.owner ?? null;
+  const records = useReviewOperationOwner(owner);
+  const submittedOwner = useRef<ReviewOperationOwner | null>(null);
+  const submittedOperationId = useRef<string | null>(null);
   const navigate = useNavigate();
   const [review, setReview] = useState<{ identity: string; value: WorktreeReviewRecord }>();
   const [feedback, setFeedback] = useState('');
@@ -51,6 +58,39 @@ export function WorktreeReviewActions({
     execution.sessionId,
     execution.baseBranch,
     execution.worktreePath,
+  ]);
+  // Only an explicit proof for this exact submitted attempt may synchronize
+  // global recovery into the still-mounted local form. Missing records and
+  // generic retryable outcomes are not evidence.
+  useEffect(() => {
+    const attempted = lastMerge.current;
+    if (!unknown || pending || !owner || submittedOwner.current !== owner || !attempted) return;
+    const verified = records.some(
+      (record) =>
+        record.projectId === execution.projectId &&
+        record.taskId === execution.taskId &&
+        record.executionId === execution.id &&
+        record.operationId === submittedOperationId.current &&
+        record.phase === 'retryable' &&
+        record.gitMergeRetryProof?.runId === attempted.runId &&
+        record.gitMergeRetryProof.operationId === attempted.operationId &&
+        execution.runId === attempted.runId,
+    );
+    if (!verified) return;
+    setUnknown(false);
+    setReview(undefined);
+    setConfirmation(false);
+    setError('');
+    setNotice('原合并操作已确认未写入。请重新读取差异并再次确认，才会创建新的合并尝试。');
+  }, [
+    records,
+    owner,
+    unknown,
+    pending,
+    execution.projectId,
+    execution.taskId,
+    execution.id,
+    execution.runId,
   ]);
   const latestIdentity = useRef(identity);
   latestIdentity.current = identity;
@@ -166,7 +206,13 @@ export function WorktreeReviewActions({
             }
           : {}),
       },
-      onOperationChange,
+      (snapshot) => {
+        if (snapshot.phase === 'pending') {
+          submittedOwner.current = owner;
+          submittedOperationId.current = snapshot.operationId;
+        }
+        onOperationChange?.(snapshot);
+      },
     );
     operation.current = report;
     const navigationGate = captureNavigationGate?.() ?? canAutoNavigate;

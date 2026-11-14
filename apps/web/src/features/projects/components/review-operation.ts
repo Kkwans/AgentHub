@@ -7,6 +7,8 @@ export type ReviewOperationSnapshot = {
   operationId: string;
   /** Exact planned merge target captured before POST, never a retry predecessor. */
   gitMergeAttempt?: Readonly<{ runId: string; operationId: string }>;
+  /** Exact target validated by an authoritative recovery check, not a generic rejection. */
+  gitMergeRetryProof?: Readonly<{ runId: string; operationId: string }>;
   phase: ReviewOperationPhase;
   message: string;
   /** Only present on resolved snapshots, after response identity validation. */

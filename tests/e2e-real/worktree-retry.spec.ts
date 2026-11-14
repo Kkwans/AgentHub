@@ -244,9 +244,18 @@ for (const width of [390, 768, 1024, 1440]) {
     if (!holderOutcome) throw new Error('Git holder request did not settle');
     if ('error' in holderOutcome) throw holderOutcome.error;
     expect(holderOutcome.response.status(), await holderOutcome.response.text()).toBe(201);
-    await page.getByRole('button', { name: '核对原隔离执行', exact: true }).click();
+    // Desktop uses the route-independent recovery surface while the form stays
+    // mounted; smaller widths retain the local recovery path. Both must unlock
+    // fresh review after one authoritative check, never dispatch automatically.
+    await page
+      .getByRole('button', {
+        name: width >= 1024 ? '核对原操作' : '核对原隔离执行',
+        exact: true,
+      })
+      .click();
     await expect(page.getByText(/原合并操作已确认未写入/)).toBeVisible();
     await expect(merge).toBeDisabled();
+    await expect(load).toBeEnabled();
     await load.click();
     await expect(page.getByText(/旧操作已确认未写入；本次确认将创建新的合并尝试/)).toBeVisible();
     expect(mergeRequests).toEqual([

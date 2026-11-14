@@ -182,3 +182,34 @@ it('captures immutable merge target only on initial pending, ignores later proof
   );
   expect(owner.getSnapshot()[1]?.gitMergeAttempt).toBeUndefined();
 });
+
+it.each(['exact', 'wrong-run', 'wrong-target', 'absent', 'not-checking', 'auth-aba'])(
+  'only retains an explicit matching recovery proof: %s',
+  (kind) => {
+    const owner = setup();
+    const bound = owner.bind({ ...identity, executionId: 'e1' });
+    const attempt = { runId: 'r1', operationId: 'git1' };
+    const extra = { executionId: 'e1', gitMergeAttempt: attempt };
+    bound.onOperationChange(snapshot('a', 'pending', extra));
+    bound.onOperationChange(snapshot('a', kind === 'not-checking' ? 'unknown' : 'checking', extra));
+    if (kind === 'auth-aba') {
+      owner.setScope(null);
+      owner.setScope('restored');
+      owner
+        .bind({ ...identity, executionId: 'e1' })
+        .onOperationChange(snapshot('a', 'pending', extra));
+    }
+    const proof =
+      kind === 'absent'
+        ? undefined
+        : {
+            runId: kind === 'wrong-run' ? 'r2' : 'r1',
+            operationId: kind === 'wrong-target' ? 'git2' : 'git1',
+          };
+    bound.onOperationChange(snapshot('a', 'retryable', { ...extra, gitMergeRetryProof: proof }));
+    expect(owner.getSnapshot()[0]?.gitMergeRetryProof).toEqual(
+      kind === 'exact' ? attempt : undefined,
+    );
+    if (kind === 'auth-aba') expect(owner.getSnapshot()[0]?.phase).toBe('pending');
+  },
+);

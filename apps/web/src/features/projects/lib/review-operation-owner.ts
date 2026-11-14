@@ -127,6 +127,13 @@ export function createReviewOperationOwner() {
             ...original,
             operationId: snapshot.operationId,
             ...(gitMergeAttempt ? { gitMergeAttempt } : {}),
+            ...(previous?.phase === 'checking' &&
+            snapshot.phase === 'retryable' &&
+            gitMergeAttempt &&
+            snapshot.gitMergeRetryProof?.runId === gitMergeAttempt.runId &&
+            snapshot.gitMergeRetryProof.operationId === gitMergeAttempt.operationId
+              ? { gitMergeRetryProof: gitMergeAttempt }
+              : {}),
             phase: snapshot.phase,
             message: snapshot.message,
             // Only resolved results from the validated child contract can expose a local workspace link.
