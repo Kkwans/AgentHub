@@ -140,10 +140,8 @@ it('confirmed empty sections remove duplicate heading help but retain recovery a
   expect(screen.queryByText('需要你做决策的工作结果。')).not.toBeInTheDocument();
   expect(screen.queryByText('当前项目中的活跃工作。')).not.toBeInTheDocument();
   expect(screen.queryByText('继续上一次对话或代码审阅。')).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '新建工作' })).toHaveAttribute(
-    'href',
-    '/projects/p1/work/new',
-  );
+  // ProjectContextLayout owns the sole primary CTA; an empty status row does not repeat it.
+  expect(screen.queryByRole('link', { name: '新建工作' })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: '全部审阅 →' })).toHaveAttribute(
     'href',
     '/projects/p1/work?status=WAITING_REVIEW',

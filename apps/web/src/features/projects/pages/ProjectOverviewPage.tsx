@@ -340,11 +340,6 @@ export function ProjectOverviewPage() {
                 </AhButton>
               ) : null}
               <Link to={`/projects/${project.id}/work`}>查看工作 →</Link>
-              <Link to={`/projects/${project.id}/work/new`}>
-                <AhButton size="sm" variant="default">
-                  新建工作
-                </AhButton>
-              </Link>
             </div>
           </section>
         ) : (
