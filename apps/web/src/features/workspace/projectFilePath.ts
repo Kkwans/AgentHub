@@ -30,7 +30,8 @@ export function projectFileRequestPath(root: string, original: string): string {
     if (
       candidate.includes('\0') ||
       candidate.replaceAll('\\', '/').startsWith('/') ||
-      /^[A-Za-z]:/.test(candidate) ||
+      // Match the server's absolute-drive rule; a:report.txt is a valid POSIX filename.
+      /^[A-Za-z]:[\\/]/.test(candidate) ||
       candidate.replaceAll('\\', '/').split('/').includes('..')
     )
       throw invalid();

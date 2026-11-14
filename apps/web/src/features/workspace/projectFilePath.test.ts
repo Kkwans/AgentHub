@@ -38,3 +38,18 @@ it.each([
     expect.objectContaining({ code: 'PROJECT_FILE_PATH_INVALID' }),
   );
 });
+
+it.each(['a:report.txt', 'C:notes.txt', 'a%3Areport.txt', 'a%253Areport.txt'])(
+  'preserves server-supported POSIX relative filename %s without decoding its identity',
+  (path) => {
+    expect(projectFileRequestPath('/repo/project', path)).toBe(path);
+  },
+);
+it.each(['C:/outside.txt', 'C:\\outside.txt', 'C%3A%2Foutside.txt', 'C%253A%252Foutside.txt'])(
+  'still rejects an absolute drive path or encoded drive separator %s',
+  (path) => {
+    expect(() => projectFileRequestPath('/repo/project', path)).toThrow(
+      expect.objectContaining({ code: 'PROJECT_FILE_PATH_INVALID' }),
+    );
+  },
+);
