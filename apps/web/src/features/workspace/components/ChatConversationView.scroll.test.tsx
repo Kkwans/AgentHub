@@ -522,3 +522,144 @@ it.each(['exhaust', 'wheel'] as const)(
     expect(f.element.scrollTop).toBe(7000);
   },
 );
+
+it.each(
+  (
+    ['late-measurement', 'below-anchor-growth', 'target-remount', 'pending-measurement'] as const
+  ).flatMap((change) => [false, true].map((takeover) => ({ change, takeover }))),
+)(
+  'preserves message identity for $change (user takeover=$takeover)',
+  async ({ change, takeover }) => {
+    const f = setupLongScroll();
+    const message = (sequence: number) => ({
+      id: `visible-anchor-${sequence}`,
+      sessionId: props.session.id,
+      runId: null,
+      sequence,
+      role: 'USER' as const,
+      kind: 'TEXT' as const,
+      text: `message ${sequence}`,
+      createdAt: '2026-11-14T00:00:00Z',
+    });
+    let release!: () => void;
+    const load = () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const latest = [message(101), message(102)];
+    const renderRows = (data: typeof latest) => (
+      <ChatConversationView
+        {...props}
+        messages={{ ...props.messages, data }}
+        hasPreviousMessages
+        onLoadPreviousMessages={load}
+      />
+    );
+    f.rerender(renderRows(latest));
+    f.element.scrollTop = 4000;
+    let insertedHeight = 0;
+    let measuredShift = 0;
+    const originalRect = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this === f.element) return new DOMRect(0, 0, 390, 500);
+      if (this.dataset.messageId === 'visible-anchor-101') {
+        return new DOMRect(0, 4064 + insertedHeight + measuredShift - f.element.scrollTop, 350, 80);
+      }
+      return originalRect.call(this);
+    });
+    const offset = () =>
+      f.element
+        .querySelector<HTMLElement>('[data-message-id="visible-anchor-101"]')!
+        .getBoundingClientRect().top;
+    expect(offset()).toBe(64);
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    if (change === 'pending-measurement') {
+      // The older-page response is still blocked. An existing row can be
+      // remeasured now, before the prepend establishes its committed owner.
+      measuredShift = 50;
+      f.rerender(renderRows(latest));
+      f.nextFrame();
+      expect(offset()).toBe(64);
+      expect(f.element.scrollTop).toBe(4050);
+      if (takeover) {
+        fireEvent.wheel(f.element, { deltaY: -120 });
+        f.element.scrollTop = 3500;
+      }
+      await act(async () => release());
+      insertedHeight = 2000;
+      Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7000 });
+      f.rerender(renderRows([message(1), ...latest]));
+      for (let frame = 0; frame < 14; frame += 1) f.nextFrame();
+      if (takeover) expect(f.element.scrollTop).toBe(3500);
+      else {
+        expect(offset()).toBe(64);
+        expect(f.element.scrollTop).toBe(6050);
+      }
+      return;
+    }
+    await act(async () => release());
+    insertedHeight = 2000;
+    Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7000 });
+    const prepended = [message(1), ...latest];
+    f.rerender(renderRows(prepended));
+    f.nextFrame();
+    expect(f.element.scrollTop).toBe(6000);
+    expect(offset()).toBe(64);
+    if (takeover && change !== 'target-remount') {
+      fireEvent.wheel(f.element, { deltaY: -120 });
+      f.element.scrollTop = 5500;
+    }
+    if (change === 'target-remount') {
+      // Model virtual DOM eviction without deleting the persisted message from
+      // the data/window. A fresh DOM node with the same identity must be found.
+      const node = f.element.querySelector<HTMLElement>('[data-message-id="visible-anchor-101"]')!;
+      const parent = node.parentNode!;
+      const sibling = node.nextSibling;
+      const replacement = node.cloneNode(true) as HTMLElement;
+      node.remove();
+      try {
+        f.nextFrame();
+        if (takeover) {
+          // Cancel while the target is absent: remount must not resurrect it.
+          fireEvent.wheel(f.element, { deltaY: -120 });
+          f.element.scrollTop = 5500;
+        }
+        f.nextFrame();
+        expect(f.element.scrollTop).toBe(takeover ? 5500 : 6000);
+        measuredShift = 50;
+        parent.insertBefore(replacement, sibling);
+        f.nextFrame();
+        if (takeover) expect(f.element.scrollTop).toBe(5500);
+        else expect(offset()).toBe(64);
+      } finally {
+        // Restore React's owned node even if an assertion fails, so cleanup
+        // cannot hide the actual contract failure behind a DOM removal error.
+        replacement.remove();
+        parent.insertBefore(node, sibling);
+      }
+    } else {
+      if (change === 'below-anchor-growth') {
+        // A newly measured row BELOW the reader changes total height only.
+        // Compensating that delta would incorrectly move the current message.
+        Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7144 });
+      } else {
+        // Virtual estimates redistribute above/below the reader at unchanged
+        // total height, but the actual reading row moves 50px.
+        measuredShift = 50;
+      }
+      f.rerender(renderRows(prepended));
+      f.nextFrame();
+      if (takeover) expect(f.element.scrollTop).toBe(5500);
+      else {
+        expect(offset()).toBe(64);
+        expect(f.element.scrollTop).toBe(change === 'below-anchor-growth' ? 6000 : 6050);
+      }
+    }
+    // Settling frames must not revive an anchor after manual scroll takeover.
+    for (let frame = 0; frame < 12; frame += 1) f.nextFrame();
+    if (takeover) expect(f.element.scrollTop).toBe(5500);
+    else expect(offset()).toBe(64);
+  },
+);

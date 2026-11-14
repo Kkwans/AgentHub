@@ -200,9 +200,14 @@ export const ChatConversationView = memo(function ChatConversationView({
     stable: number;
     samples: number;
     measuredHeight: number;
+    message?: { id: string; sequence: string; offset: number };
+    remountIndex?: number;
     expiry?: ReturnType<typeof setTimeout>;
   } | null>(null);
+  const restoreVirtualAdjustmentRef = useRef<(() => void) | null>(null);
   const clearCommittedAnchor = useCallback(() => {
+    restoreVirtualAdjustmentRef.current?.();
+    restoreVirtualAdjustmentRef.current = null;
     const anchor = committedAnchorRef.current;
     if (anchor) clearTimeout(anchor.expiry);
     committedAnchorRef.current = null;
@@ -279,6 +284,20 @@ export const ChatConversationView = memo(function ChatConversationView({
   // viewport measurement; this prevents a synthetic zero-height viewport from
   // rendering only the first turn and hiding the newest response.
   const shouldVirtualize = displayTurns.length > 15 && viewportMeasured;
+  const locatorView = useRef({
+    turns,
+    renderWindowStart,
+    renderWindowSize,
+    shouldVirtualize,
+    timelineVirtualizer,
+  });
+  locatorView.current = {
+    turns,
+    renderWindowStart,
+    renderWindowSize,
+    shouldVirtualize,
+    timelineVirtualizer,
+  };
   const activeThoughtId = activeRun
     ? [...timeline].reverse().find((item) => item.kind === 'thought' && item.runId === activeRun.id)
         ?.id
@@ -471,6 +490,74 @@ export const ChatConversationView = memo(function ChatConversationView({
       });
     });
   };
+  // Only the captured persisted message owns a real reading position. A total
+  // height change can occur below it, so it is not an interchangeable anchor.
+  const correctCommittedAnchor = useCallback(() => {
+    const anchor = committedAnchorRef.current;
+    const root = scrollRef.current;
+    if (!anchor || !root || !anchor.valid()) return false;
+    if (!anchor.message) {
+      markProgrammaticScroll();
+      root.scrollTop = root.scrollHeight - anchor.height + anchor.top;
+      return true;
+    }
+    const target = anchor.message;
+    const node = Array.from(root.querySelectorAll<HTMLElement>('[data-message-id]')).find(
+      (candidate) =>
+        candidate.dataset.messageId === target.id &&
+        candidate.dataset.messageSequence === target.sequence,
+    );
+    if (
+      node &&
+      root.getBoundingClientRect().height > 0 &&
+      node.getBoundingClientRect().height > 0
+    ) {
+      delete anchor.remountIndex;
+      const delta =
+        node.getBoundingClientRect().top - root.getBoundingClientRect().top - target.offset;
+      if (Math.abs(delta) > 0.5) {
+        anchor.stable = 0;
+        markProgrammaticScroll();
+        root.scrollTop += delta;
+        return false;
+      }
+      return true;
+    }
+    // Prepending moves indexes, not persisted identity. Resolve against the
+    // current window before asking the virtualizer to mount the missing row.
+    const view = locatorView.current;
+    const index = view.turns.findIndex((turn) =>
+      turn.entries.some(
+        (item) =>
+          item.kind === 'message' &&
+          item.persisted &&
+          item.message.id === target.id &&
+          String(item.message.sequence) === target.sequence,
+      ),
+    );
+    if (index < 0) {
+      clearCommittedAnchor();
+      return false;
+    }
+    if (index < view.renderWindowStart || index >= view.renderWindowStart + view.renderWindowSize) {
+      setTimelineWindowStart(Math.max(0, index - 5));
+      delete anchor.remountIndex;
+      return false;
+    }
+    const relative = index - view.renderWindowStart;
+    if (view.shouldVirtualize && anchor.remountIndex !== relative) {
+      // Read its current estimate without starting the virtualizer's separate
+      // multi-frame scrollToIndex reconciler, which could outlive our owner.
+      const offset = view.timelineVirtualizer.getOffsetForIndex(relative, 'start');
+      if (offset && anchor.valid()) {
+        anchor.remountIndex = relative;
+        markProgrammaticScroll();
+        root.scrollTop = offset[0];
+      }
+    }
+    return false;
+  }, [clearCommittedAnchor, markProgrammaticScroll]);
+
   // Query completion is not a React commit. Start correction only when the
   // requested older rows have reached this view, then follow that one version's
   // virtual measurements. Three stable frame samples avoid stopping between
@@ -487,8 +574,9 @@ export const ChatConversationView = memo(function ChatConversationView({
     const height = element.scrollHeight;
     anchor.stable = height === anchor.measuredHeight ? anchor.stable + 1 : 0;
     anchor.measuredHeight = height;
-    markProgrammaticScroll();
-    element.scrollTop = height - anchor.height + anchor.top;
+    const aligned = correctCommittedAnchor();
+    if (committedAnchorRef.current !== anchor) return;
+    if (!aligned) anchor.stable = 0;
     anchor.samples += 1;
     if (anchor.stable >= 3 || anchor.samples >= 12) {
       clearCommittedAnchor();
@@ -496,7 +584,7 @@ export const ChatConversationView = memo(function ChatConversationView({
       return;
     }
     historyFrameRef.current = requestAnimationFrame(sampleCommittedAnchor);
-  }, [clearCommittedAnchor, markProgrammaticScroll]);
+  }, [clearCommittedAnchor, correctCommittedAnchor]);
   useLayoutEffect(() => {
     const anchor = committedAnchorRef.current;
     if (!anchor) return;
@@ -517,12 +605,17 @@ export const ChatConversationView = memo(function ChatConversationView({
     ) {
       // The old page can still reflow while the requested page is pending
       // (for example the virtualizer measures existing rows after leaving
-      // follow mode). Keep the baseline at that committed reading position;
-      // replaying the click-time gap would apply this old-page change twice.
-      // Do not scroll here: only the requested prepend/window commit owns a
-      // correction. User/session/tail invalidation above still wins.
+      // follow mode). Preserve a real visible anchor across that reflow. The
+      // geometry-free fallback instead refreshes its baseline without scrolling,
+      // so the later prepend does not count old-page height changes twice.
+      // User/session/tail invalidation above still wins.
       const element = scrollRef.current;
-      if (element) {
+      if (anchor.message) {
+        // Existing virtual rows may finish measuring while the network waits.
+        // Keep the captured reading row in place here too: the virtualizer's
+        // own adjustment is suspended for this owner, not just after prepend.
+        correctCommittedAnchor();
+      } else if (element) {
         anchor.height = element.scrollHeight;
         anchor.top = element.scrollTop;
         anchor.measuredHeight = element.scrollHeight;
@@ -539,8 +632,8 @@ export const ChatConversationView = memo(function ChatConversationView({
     if (!element) return;
     if (element.scrollHeight !== anchor.measuredHeight) anchor.stable = 0;
     anchor.measuredHeight = element.scrollHeight;
-    markProgrammaticScroll();
-    element.scrollTop = element.scrollHeight - anchor.height + anchor.top;
+    correctCommittedAnchor();
+    if (committedAnchorRef.current !== anchor) return;
     if (historyFrameRef.current === null)
       historyFrameRef.current = requestAnimationFrame(sampleCommittedAnchor);
   });
@@ -594,6 +687,26 @@ export const ChatConversationView = memo(function ChatConversationView({
     const ownsCommittedAnchor =
       (canFetchPrevious || canRevealOlderWindow) && Number.isFinite(oldest);
     if (ownsCommittedAnchor) {
+      const viewport = element?.getBoundingClientRect();
+      const candidates =
+        element && viewport && viewport.height > 0
+          ? Array.from(element.querySelectorAll<HTMLElement>('[data-message-id]')).filter(
+              (node) => {
+                const box = node.getBoundingClientRect();
+                return (
+                  node.dataset.messageSequence !== undefined &&
+                  box.height > 0 &&
+                  box.bottom > viewport.top &&
+                  box.top < viewport.bottom
+                );
+              },
+            )
+          : [];
+      const visible =
+        candidates.find((node) => {
+          const box = node.getBoundingClientRect();
+          return box.top >= viewport!.top && box.bottom <= viewport!.bottom;
+        }) ?? candidates[0];
       const anchor = {
         oldest,
         windowStart: renderWindowStart,
@@ -606,8 +719,26 @@ export const ChatConversationView = memo(function ChatConversationView({
         stable: 0,
         samples: 0,
         measuredHeight: previousHeight,
+        ...(visible && viewport
+          ? {
+              message: {
+                id: visible.dataset.messageId!,
+                sequence: visible.dataset.messageSequence!,
+                offset: visible.getBoundingClientRect().top - viewport.top,
+              },
+            }
+          : {}),
       };
       committedAnchorRef.current = anchor;
+      if (anchor.message) {
+        const previous = timelineVirtualizer.shouldAdjustScrollPositionOnItemSizeChange;
+        const suppressAdjustment = () => false;
+        timelineVirtualizer.shouldAdjustScrollPositionOnItemSizeChange = suppressAdjustment;
+        restoreVirtualAdjustmentRef.current = () => {
+          if (timelineVirtualizer.shouldAdjustScrollPositionOnItemSizeChange === suppressAdjustment)
+            timelineVirtualizer.shouldAdjustScrollPositionOnItemSizeChange = previous;
+        };
+      }
     }
     try {
       if (canRevealOlderWindow)
@@ -652,20 +783,6 @@ export const ChatConversationView = memo(function ChatConversationView({
     }
   }, [messages.isNavigatingHistory, invalidateHistoryAnchor, userIntentExitFollow]);
 
-  const locatorView = useRef({
-    turns,
-    renderWindowStart,
-    renderWindowSize,
-    shouldVirtualize,
-    timelineVirtualizer,
-  });
-  locatorView.current = {
-    turns,
-    renderWindowStart,
-    renderWindowSize,
-    shouldVirtualize,
-    timelineVirtualizer,
-  };
   const consumedLocations = useRef(new WeakSet<MessageLocationRequest>());
   const clearLocationHighlight = useRef<() => void>(() => {});
   useEffect(() => () => clearLocationHighlight.current(), [session.id]);

@@ -2171,3 +2171,12 @@ aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spe
 - 新小片仅弱化不可点击progressbar按钮式底/边框/圆角，保原尺寸与进度/ARIA/实际按钮44px。
 - 新5专项通过；UI全量+组件20文件94例，全lint/types/build通过，独立CR通过。真实浏览器16场景新增0/1和3/3的computed样式/track/ARIA门禁，发现成功，实跑待精确CI。
 - 前片52补跑web完整116文件1397测试通过，不把该结果冒算新CSS片的web全量。
+
+## 2026-11-14 23:36 UTC：历史分页阅读锚点阻断（开放）
+- 查出d677、782完整verify的fixture history不同失败（50px消息偏移、144px总高补偿差），不是工具行旧断言。对应unit/token通过不能掩盖失败。
+- 已取失败trace+before/committed数据，独立审查确认总高度不等价于可见消息锚；新增21例中20过1预期红测复现50px晚测量偏移，用户接管配对过。
+- 实施稳定消息身份+视口offset候选中，详HISTORY_READING_ANCHOR.md；原浏览器阈值/重试/timeout不变，未宣称已修好或可合并。
+
+23:39 UTC：分页锚点候选已冻结，27/27专项及独立CR无阻断，完整web验证运行中。be55精确Workspace24/24过，已看390浅深图，输入器进度去按钮式表面已落地；其他完整CI仍待结果。
+
+23:46 UTC：分页最终小修后完整重验通过（lint/types、web117文件1408测试、build、冻结SHA一致），准备推分支并用原<=2px真实浏览器合同验收，不修改容差/重试。be55精确CI已有5项过，仅full矩阵待完；verify246文件2498测试、词法9、fixture111过13跳过。
