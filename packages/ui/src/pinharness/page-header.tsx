@@ -40,12 +40,12 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        'page-heading page-header-row flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between',
-        bordered && 'border-b border-[hsl(var(--border))] pb-5',
+        'page-heading page-header-row flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between',
+        bordered && 'border-b border-[hsl(var(--border))] pb-4',
         className,
       )}
     >
-      <div className="page-title-group flex min-w-0 items-start gap-3.5">
+      <div className="page-title-group flex min-w-0 items-start gap-3">
         {leading}
         <div className="page-heading-icon h-10 w-10">
           <Icon className="h-5 w-5" aria-hidden />
@@ -73,11 +73,11 @@ export function NavigationPageHeader({
   return (
     <div
       className={cn(
-        'navigation-page-header projects-dashboard-header workspace-header shrink-0 px-4 sm:px-6 lg:px-8',
+        'navigation-page-header projects-dashboard-header workspace-header shrink-0 px-4 sm:px-6',
         containerClassName,
       )}
     >
-      <PageHeader {...props} bordered={false} className={cn('content-grid py-5', className)} />
+      <PageHeader {...props} bordered={false} className={cn('content-grid py-4', className)} />
     </div>
   );
 }

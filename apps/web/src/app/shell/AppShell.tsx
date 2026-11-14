@@ -83,7 +83,7 @@ function Brand({
 }) {
   return (
     <div
-      className={`flex items-center ${collapsed ? 'flex-col gap-1.5 px-2 pt-3 pb-1' : 'justify-between px-3 pt-3 pb-1 2xl:px-4 2xl:pt-4'}`}
+      className={`flex items-center ${collapsed ? 'min-h-14 flex-col gap-2 px-2 py-3' : 'min-h-14 justify-between px-4 py-3'}`}
     >
       <Link
         to="/home"
@@ -91,11 +91,11 @@ function Brand({
         aria-label="AgentHub 首页"
       >
         <AgentHubLogo
-          className="h-7 w-7 shrink-0 rounded-[9px] border border-black/[0.04] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[var(--shadow-sm)] transition-opacity duration-[var(--motion-fast)] group-hover:opacity-90 2xl:h-8 2xl:w-8"
+          className="h-8 w-8 shrink-0 rounded-[9px] border border-black/[0.04] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-opacity duration-[var(--motion-fast)] group-hover:opacity-90"
           aria-label="AgentHub"
         />
         {!collapsed && (
-          <span className="truncate text-[15px] font-semibold tracking-[-0.025em] text-[hsl(var(--foreground))] 2xl:text-[16px]">
+          <span className="truncate text-[16px] leading-6 font-semibold tracking-[-0.025em] text-[hsl(var(--foreground))]">
             AgentHub
           </span>
         )}

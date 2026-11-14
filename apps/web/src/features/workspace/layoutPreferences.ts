@@ -22,7 +22,7 @@ export const HISTORIC_WORKSPACE_LAYOUT_STORAGE_KEYS = {
 } as const;
 
 export const WORKSPACE_PANEL_LIMITS = {
-  left: { defaultSize: 256, min: 216, max: 380 },
+  left: { defaultSize: 240, min: 216, max: 380 },
   right: { defaultSize: 380, min: 320, max: 520 },
 } as const;
 

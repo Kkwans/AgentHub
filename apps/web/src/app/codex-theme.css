@@ -2,6 +2,25 @@
  * Both token families are mapped here while the legacy components migrate.
  * Semantic success / warning / danger colors deliberately remain unchanged. */
 :root {
+  /* One geometry contract for the app shell, domain pages and workbench. */
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-control-size: 36px;
+  --sidebar-item-height: 36px;
+  --sidebar-icon-size: 18px;
+  --sidebar-font-size: 14px;
+  --ah-sidebar-w: var(--sidebar-width);
+  --ah-sidebar-collapsed-w: var(--sidebar-collapsed-width);
+  --ah-topbar-h: 56px;
+  --page-gutter: 24px;
+  --ah-page-gutter-lg: var(--page-gutter);
+  --ah-page-gutter-md: var(--page-gutter);
+  --ah-page-gutter-sm: 16px;
+  --page-max-width: 1440px;
+  --ah-page-standard-width: var(--page-max-width);
+  --ah-font-size-body: 14px;
+  --ah-font-line-body: 1.428571;
+
   --background: 0 0% 100%;
   --surface: 0 0% 100%;
   --surface-elevated: 0 0% 100%;
@@ -79,4 +98,12 @@
   --ah-accent-pressed: #d1d1d1;
   --ah-accent-soft: #383838;
   --ah-accent-soft-hover: #424242;
+}
+
+/* Touch geometry remains larger than the desktop density contract. */
+@media (max-width: 767px) {
+  :root {
+    --sidebar-control-size: 44px;
+    --sidebar-item-height: 44px;
+  }
 }

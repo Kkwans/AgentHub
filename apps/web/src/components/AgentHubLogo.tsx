@@ -1,14 +1,14 @@
-import { ShareNetwork } from '@agenthub/ui';
 import type { HTMLAttributes } from 'react';
+import styles from './AgentHubLogo.module.css';
 
 export function AgentHubLogo({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={['agenthub-logo', className].filter(Boolean).join(' ')}
+      className={['agenthub-logo', styles.mark, className].filter(Boolean).join(' ')}
       aria-hidden="true"
       {...props}
     >
-      <ShareNetwork size="64%" weight="duotone" />
+      <span className={styles.glyph} data-brand-glyph="true" />
     </span>
   );
 }

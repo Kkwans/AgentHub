@@ -1,0 +1,17 @@
+.mark {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  aspect-ratio: 1;
+  line-height: 0;
+}
+
+.glyph {
+  display: block;
+  width: 64%;
+  height: 64%;
+  background: currentColor;
+  /* The generated source retains a transparent artboard. Compensate for its
+   * measured 67% ink bounds so the visible mark, not the canvas, is 20px. */
+  mask: url('../assets/brand/agenthub-hub-mark.png') center / 149% no-repeat;
+}

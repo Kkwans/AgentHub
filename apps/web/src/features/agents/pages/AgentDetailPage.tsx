@@ -3,7 +3,7 @@ import { AgentConnectionCheck } from '../components/AgentConnectionCheck';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { AhButton, AhInput, AhLoadingState, AhStatusPill, Card } from '@agenthub/ui';
+import { AhButton, AhInput, AhLoadingState, AhStatusPill } from '@agenthub/ui';
 import { useAuthMode, useAuthUser } from '../../../components/AccessGate';
 import { api, authSession, type AgentRecord, type ExecutionTargetRecord } from '../../../lib/api';
 import { displayDate } from '../../shared/page-primitives';
@@ -246,7 +246,7 @@ function AgentDetail({ agentId }: { agentId: string }) {
             </p>
             <p className={styles.secondary}>全局状态不代表每个项目都可运行。</p>
           </header>
-          <Card className={styles.panel}>
+          <section className={styles.panel}>
             <h2>默认设置</h2>
             <p>
               仅用于后续会话的默认选择，不修改现有会话。模型和模式名称由供应商决定，保存不保证供应商支持。
@@ -334,7 +334,7 @@ function AgentDetail({ agentId }: { agentId: string }) {
                 </p>
               </section>
             ) : null}
-          </Card>
+          </section>
           <AgentAvailability
             agent={agent}
             onObserved={(value) => {

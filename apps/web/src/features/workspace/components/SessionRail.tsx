@@ -139,7 +139,7 @@ export function SessionRail({
       style={{ width: '100%', minWidth: 0, flex: '1 1 auto' }}
     >
       <Link to="/home" className="codex-rail-brand" onClick={onSelect}>
-        <AgentHubLogo className="h-7 w-7 shrink-0 rounded-[9px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" />
+        <AgentHubLogo className="h-8 w-8 shrink-0 rounded-[9px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]" />
         <span>AgentHub</span>
       </Link>
       <nav className="codex-rail-navigation" aria-label="工作区导航">

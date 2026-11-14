@@ -1285,16 +1285,16 @@ html {
   z-index: 10;
   border-bottom: 1px solid hsl(var(--border) / 0.78);
   background: hsl(var(--surface));
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .page-header-row {
   display: flex;
-  min-height: 5.5rem;
-  align-items: flex-end;
+  min-height: 56px;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding-block: 1.25rem;
+  padding-block: 16px;
 }
 
 .page-title-group {
@@ -1306,10 +1306,10 @@ html {
 
 .page-title {
   color: hsl(var(--foreground));
-  font-size: 1.25rem;
+  font-size: 24px;
   font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: normal;
+  line-height: 28px;
+  letter-spacing: -0.025em;
 }
 
 .page-subtitle {
@@ -1336,7 +1336,7 @@ html {
 .page-content-wide {
   margin-inline: auto;
   width: 100%;
-  padding: 1.25rem clamp(1rem, 1.8vw, 3rem) 2rem;
+  padding: 24px var(--page-gutter, 24px) 32px;
 }
 
 .page-content {
@@ -2334,7 +2334,7 @@ html {
   .workspace-header,
   .page-content,
   .page-content-wide {
-    padding-inline: 0.75rem;
+    padding-inline: 1rem;
   }
 
   .page-heading-icon {

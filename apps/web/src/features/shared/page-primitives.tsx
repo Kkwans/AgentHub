@@ -45,7 +45,7 @@ export function Screen({
           {...(actions ? { actions } : {})}
         />
       </AhReveal>
-      <div className="page-content page-shell min-h-full">{children}</div>
+      <div className="page-content page-shell">{children}</div>
     </div>
   );
 }

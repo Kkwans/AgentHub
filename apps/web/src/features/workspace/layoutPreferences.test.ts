@@ -23,7 +23,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
 describe('Workspace layout preferences', () => {
   it('uses v2 defaults and clamps stale widths', () => {
     expect(readWorkspaceLayout(memoryStorage())).toEqual({
-      leftWidth: 256,
+      leftWidth: 240,
       leftCollapsed: false,
       rightWidth: 380,
       rightCollapsed: false,

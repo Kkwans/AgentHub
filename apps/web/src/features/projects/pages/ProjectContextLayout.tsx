@@ -225,7 +225,7 @@ export function ProjectContextLayout() {
     { to: `${base}/sessions`, label: '会话' },
   ];
   return (
-    <div className={`${layout.stack} ${projectsStyles.projectPage}`}>
+    <div className={projectsStyles.projectPage}>
       <header
         className={projectsStyles.projectContext}
         hidden={compactWorkDetail && !hasHeaderWarning}
