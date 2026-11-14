@@ -173,7 +173,7 @@ export function useExistingTaskStart(options: {
       update(
         safe ? 'retryable' : 'unknown',
         safe
-          ? '服务器明确拒绝本次操作；修正后可手动重新启动。'
+          ? error.message || '服务器明确拒绝本次操作；修正后可手动重新启动。'
           : '原操作结果未知。请只读核对，不要重复启动。',
       );
       if (active()) latest.current.onChanged();

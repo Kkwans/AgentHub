@@ -373,7 +373,7 @@ it('READY转换期间锁定运行Agent选择，失败结束后恢复选择', asy
   );
   expect(selector).toBeDisabled();
   await act(async () => reject(new ApiError('TASK_NOT_READY', '转换失败', 409)));
-  await screen.findByText('服务器明确拒绝本次操作；修正后可手动重新启动。');
+  await screen.findByText('转换失败');
   expect(selector).not.toBeDisabled();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
@@ -684,15 +684,13 @@ it('修复变量后清除旧启动错误但不自动再次启动', async () => {
   } as never);
   mount([stored], '?agentId=agent-1', selectableAgents);
   fireEvent.click(await screen.findByRole('button', { name: '启动 Session' }));
-  expect(await screen.findByText('服务器明确拒绝本次操作；修正后可手动重新启动。')).toBeVisible();
+  expect(await screen.findByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).toBeVisible();
   fireEvent.change(screen.getByRole('textbox', { name: '任务 Prompt 变量（JSON 对象）' }), {
     target: { value: '{"subject":"修复"}' },
   });
   fireEvent.click(screen.getByRole('button', { name: '保存变量' }));
   expect(await screen.findByText('变量已保存。')).toBeVisible();
-  expect(
-    screen.queryByText('服务器明确拒绝本次操作；修正后可手动重新启动。'),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText('任务 Prompt 缺少必填变量，尚未启动 Agent')).not.toBeInTheDocument();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
 

@@ -244,11 +244,22 @@ jobs:
           tests/e2e-real/session-export.spec.ts
           tests/e2e-real/task-start-recovery.spec.ts
           --retries=0 --output=focused-test-results --reporter=line,json
+      - name: Verify saved-task Prompt repair regression without retries
+        env:
+          AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-prompt-repair
+          PLAYWRIGHT_JSON_OUTPUT_NAME: prompt-repair-results/results.json
+        run: >-
+          pnpm exec playwright test --config=playwright.real.config.ts
+          tests/e2e-real/new-work-prompt.spec.ts
+          --grep '已保存任务缺变量后原地修复并启动'
+          --retries=0 --output=prompt-repair-results --reporter=line,json
       - name: Preserve focused evidence before the larger matrix finishes
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: focused-interaction-evidence-${{ github.sha }}-${{ github.run_attempt }}
-          path: focused-test-results/
+          path: |
+            focused-test-results/
+            prompt-repair-results/
           if-no-files-found: warn
           retention-days: 7
