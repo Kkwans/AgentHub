@@ -1,0 +1,29 @@
+diff --git a/esm/vs/editor/browser/widget/diffEditor/components/diffEditorViewZones/diffEditorViewZones.js b/esm/vs/editor/browser/widget/diffEditor/components/diffEditorViewZones/diffEditorViewZones.js
+index 2b7d86cbd1d3d910cd1b4b3ad0afe1225e93641f..5947a168f5f01f6eccd9e5cd9b3a15e9c25b2c1f 100644
+--- a/esm/vs/editor/browser/widget/diffEditor/components/diffEditorViewZones/diffEditorViewZones.js
++++ b/esm/vs/editor/browser/widget/diffEditor/components/diffEditorViewZones/diffEditorViewZones.js
+@@ -82,7 +82,14 @@ let DiffEditorViewZones = class DiffEditorViewZones extends Disposable {
+                 updateImmediately.schedule();
+             }
+         }));
+-        const originalModelTokenizationCompleted = this._diffModel.map(m => m ? observableFromEvent(this, m.model.original.onDidChangeTokens, () => m.model.original.tokenization.backgroundTokenizationState === 2 /* BackgroundTokenizationState.Completed */) : undefined).map((m, reader) => m?.read(reader));
++        // AgentHub: token changes can arrive without changing the background-complete
++        // boolean (lazy grammar, semantic tokens, theme). Invalidate deleted-line
++        // zones for each real token event, rather than leaving cached plain text.
++        const originalModelTokens = this._diffModel.map(m => {
++            if (!m) { return undefined; }
++            let revision = 0;
++            return observableFromEvent(this, m.model.original.onDidChangeTokens, () => ++revision);
++        }).map((m, reader) => m?.read(reader));
+         const alignments = derived((reader) => {
+             /** @description alignments */
+             const diffModel = this._diffModel.read(reader);
+@@ -173,7 +180,7 @@ let DiffEditorViewZones = class DiffEditorViewZones extends Disposable {
+             for (const a of alignmentsVal) {
+                 if (a.diff && !renderSideBySide && (!this._options.useTrueInlineDiffRendering.read(reader) || !allowsTrueInlineDiffRendering(a.diff))) {
+                     if (!a.originalRange.isEmpty) {
+-                        originalModelTokenizationCompleted.read(reader); // Update view-zones once tokenization completes
++                        originalModelTokens.read(reader); // Refresh cached deleted lines after any token update
+                         const deletedCodeDomNode = document.createElement('div');
+                         deletedCodeDomNode.classList.add('view-lines', 'line-delete', 'line-delete-selectable', 'monaco-mouse-cursor-text');
+                         const originalModel = this._editors.original.getModel();

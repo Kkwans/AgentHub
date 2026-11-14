@@ -1358,3 +1358,17 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 04:46:36最终全量重开；04:46:58 lint/types/build通过。04:48:01将独立UI切片推为b12b8fc（树db98dc1d65871e2ee1b7eab9fe5839a9d9cfad44与本地一致），精确CI43558415448进行中。该提交不含运行归属候选，后者仍待最终全量；未合main/未部署。
 - 04:50:46隔离子进程补查编译后的shutdown helper：移除模拟服务原存活timer后注入close失败，仅失败keeper维持进程；重复SIGTERM/SIGINT仍只close一次，最后清理测试子进程。未运行真实Agent，也不把此替代真实CLI/main集成或SIGKILL安全保证。
 - 最终冻结全量04:46:36启动，403.73秒完成：180文件通过/5跳过，1842测试通过/12跳过，exit0。新增PG隔离2例默认跳过，明确不算真实PG通过；此前三轮中止不计通过。最终lint/types/build、专项、独立CR均完成，准备仅推开发分支触发真实PG/浏览器CI，不合main/不部署。
+
+### 2026-11-14 05:20–05:24 UTC 发布恢复与精确CI核查
+
+- 04:54已本地提交runtime候选8671ee2，发布准备工具随后挂起至05:20被中断；该区间没有可确认新增开发/测试，未声称持续工作或已push。05:20:54重新核对本地干净、既有1842/12skip结果；远端Git和API均仍b12b8fc，故只重做未完成发布。
+- 05:23:02成功推送runtime为246851005a8932c89dbf3613627aefef5de21928，树527a53c461633f29e7500140e74a80b702050a81与已测本地一致。新CI43561255137启动，真实PG待该运行验证，未main/部署。
+- 05:21查得b12b8fc三CI job success；05:24继续读日志/fixture artifact14100090879（SHA256 2b13d3a68c42fef2670f00f998a7a1c90b198e88983651719b72f86d4e5508f8匹配）发现verify实际85passed/1flaky/10skip：mobile TSX初次与retry1仍D4D4D4失败，retry2才通过。因此不能称语法预载已稳定修复，继续根因修正，不降低可见token门禁。
+- 05:25读取2468510精确CI43561255137的PostgreSQL job132345207254日志：05:24:07真实隔离服务2/2通过（1文件，1.04秒），覆盖迁移前拒绝、正常重获、专用backend终止后的永久撤销。其余job尚未结束，不称整轮全绿。
+- 05:25取回b12真实服务artifact14099738950，首轮下载HTTP/2中断，重取后SHA256 a58adb3d0feff116443b037e7b4741c11e49cf92f33fefed1ac73f8e06004a5a匹配。实际查看1440/390启动记录图：内距、完整内容宽焦点环、细灰字段框生效，旧贴边/裁切横线消除。这不是全流程现场交互审计，也不证明整个UI达到最终要求。
+
+### 2026-11-14 05:25–05:30 UTC 修正Monaco inline token事件失效
+
+- b12精确trace/源码确认旧observable把token事件映射成Completed布尔，状态不变时事件被strict equality过滤；仅预加载grammar不足。固定Monaco0.56.0最小pnpm补丁改为每个真实token事件revision，保留普通读取缓存、model替换/销毁行为，不覆盖词法颜色、不改文档内容。
+- installed-source回归通过，独立CR未见阻断；既有与独立干净临时目录frozen/offline install均通过，后者源码字节相同。大Diff每次token更新重建inline删除zone的性能仍待真实验证，不称性能提升。
+- 05:29专项15通过；05:30:00全repo lint/types/build通过；CI新增2个mobile深色Diff各repeat3/retries0，共6条，结果单独保存token-test-results，原token断言不变。真实重复浏览器结果待推送后验收，不以旧1flaky的success替代。

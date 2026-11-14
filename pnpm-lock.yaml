@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  monaco-editor@0.56.0: 456569ada760bcba0a4c696b897c589f5cbf7bbef1ac9d7b3e3171bd342af51a
+
 importers:
 
   .:
@@ -156,7 +159,7 @@ importers:
         version: 5.2.2(react-hook-form@7.62.0(react@19.2.8))
       '@monaco-editor/react':
         specifier: 4.7.0
-        version: 4.7.0(monaco-editor@0.56.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 4.7.0(monaco-editor@0.56.0(patch_hash=456569ada760bcba0a4c696b897c589f5cbf7bbef1ac9d7b3e3171bd342af51a))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-query':
         specifier: 5.101.4
         version: 5.101.4(react@19.2.8)
@@ -183,7 +186,7 @@ importers:
         version: 0.400.0(react@19.2.8)
       monaco-editor:
         specifier: 0.56.0
-        version: 0.56.0
+        version: 0.56.0(patch_hash=456569ada760bcba0a4c696b897c589f5cbf7bbef1ac9d7b3e3171bd342af51a)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -291,18 +294,15 @@ importers:
 
   packages/ui:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: 2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@radix-ui/react-dismissable-layer':
         specifier: 1.1.11
         version: 1.1.11(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@radix-ui/react-focus-scope':
         specifier: 1.1.7
         version: 1.1.7(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      aria-hidden:
-        specifier: 1.2.6
-        version: 1.2.6
-      '@phosphor-icons/react':
-        specifier: 2.1.10
-        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@radix-ui/react-select':
         specifier: 2.2.6
         version: 2.2.6(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -312,6 +312,9 @@ importers:
       '@radix-ui/react-tabs':
         specifier: 1.1.13
         version: 1.1.13(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      aria-hidden:
+        specifier: 1.2.6
+        version: 1.2.6
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
@@ -4398,10 +4401,10 @@ snapshots:
     dependencies:
       state-local: 1.0.7
 
-  '@monaco-editor/react@4.7.0(monaco-editor@0.56.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@monaco-editor/react@4.7.0(monaco-editor@0.56.0(patch_hash=456569ada760bcba0a4c696b897c589f5cbf7bbef1ac9d7b3e3171bd342af51a))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@monaco-editor/loader': 1.7.0
-      monaco-editor: 0.56.0
+      monaco-editor: 0.56.0(patch_hash=456569ada760bcba0a4c696b897c589f5cbf7bbef1ac9d7b3e3171bd342af51a)
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
@@ -6446,7 +6449,7 @@ snapshots:
     dependencies:
       brace-expansion: 5.0.9
 
-  monaco-editor@0.56.0:
+  monaco-editor@0.56.0(patch_hash=456569ada760bcba0a4c696b897c589f5cbf7bbef1ac9d7b3e3171bd342af51a):
     dependencies:
       dompurify: 3.4.8
       marked: 14.0.0

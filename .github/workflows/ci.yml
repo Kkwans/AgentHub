@@ -22,6 +22,12 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
+      - name: Repeat visible dark diff token gates without retries
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: token-test-results/results.json
+        run: >-
+          pnpm exec playwright test --project=mobile-390 --grep '深色.*Diff'
+          --repeat-each=3 --retries=0 --output=token-test-results --reporter=line,json
       - run: pnpm test:e2e
       - name: Preserve fixture browser evidence
         if: ${{ always() }}
@@ -31,6 +37,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            token-test-results/
           if-no-files-found: warn
           retention-days: 7
           compression-level: 6

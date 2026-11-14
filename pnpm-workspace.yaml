@@ -5,3 +5,6 @@ packages:
 allowBuilds:
   esbuild: true
   node-pty: false
+
+patchedDependencies:
+  monaco-editor@0.56.0: patches/monaco-editor@0.56.0.patch

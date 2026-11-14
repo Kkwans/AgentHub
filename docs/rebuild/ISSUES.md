@@ -462,3 +462,7 @@ S66已接入持久启动预留，旧“缺claim”描述是历史设计依据，
 - 单权威runtime候选已经覆盖启动前排他、失效撤销、健康关闭失败保锁，但仍未提交；CR继续发现并修复在途provider/Approval/Worktree merge生命周期空隙。不能以关闭HTTP socket代替业务Promise退出。真实PG隔离CI刚添加，尚未执行；网络分区/外部进程fencing不在本片承诺。
 - 精确82c5421 CI表明可见mobile TSX删除token实际仍灰色，原先门禁修正不是产品修复。Monaco原pane已词法着色而inline删除view-zone仍旧token；候选通过公开colorize预载语法器再挂载Diff，未放宽颜色门禁，真实CI待验。
 - 实际698fc01启动记录1440/390截图发现面板贴边及焦点轮廓裁切，候选补内距/焦点几何与字段层级。新截图未产出前不标记视觉完成。
+
+### 2026-11-14 05:24 UTC Monaco预载仍有竞态
+
+b12b8fc的verify结论success但含1flaky：真实可见删除字符串首次及retry1仍为D4D4D4，retry2才F4C7AF通过。保留为未解决问题，不以CI重试成功充当稳定修复；下一步继续检查inline view-zone tokenization更新时序，并补不能由重试掩盖的验收。
