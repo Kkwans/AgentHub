@@ -514,8 +514,21 @@ export const ChatConversationView = memo(function ChatConversationView({
     if (
       !anchor.data &&
       (anchor.remote ? oldest >= anchor.oldest : renderWindowStart >= anchor.windowStart)
-    )
+    ) {
+      // The old page can still reflow while the requested page is pending
+      // (for example the virtualizer measures existing rows after leaving
+      // follow mode). Keep the baseline at that committed reading position;
+      // replaying the click-time gap would apply this old-page change twice.
+      // Do not scroll here: only the requested prepend/window commit owns a
+      // correction. User/session/tail invalidation above still wins.
+      const element = scrollRef.current;
+      if (element) {
+        anchor.height = element.scrollHeight;
+        anchor.top = element.scrollTop;
+        anchor.measuredHeight = element.scrollHeight;
+      }
       return;
+    }
     if (!anchor.data) {
       anchor.data = messages.data;
       clearTimeout(anchor.expiry);

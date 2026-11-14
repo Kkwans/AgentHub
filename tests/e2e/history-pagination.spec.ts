@@ -142,15 +142,48 @@ for (const theme of ['light', 'dark']) {
     await olderClick(page);
     await expect.poll(() => requested).toBe(1);
     const scroll = page.locator('.conversation-scroll');
-    const before = await scroll.evaluate((node) => ({
-      height: node.scrollHeight,
-      top: node.scrollTop,
-    }));
+    const before = await scroll.evaluate((node) => {
+      const viewport = node.getBoundingClientRect();
+      const message = Array.from(node.querySelectorAll<HTMLElement>('[data-message-id]')).find(
+        (candidate) => {
+          const box = candidate.getBoundingClientRect();
+          return box.top >= viewport.top && box.bottom <= viewport.bottom;
+        },
+      );
+      if (!message) throw new Error('No fully visible persisted message before history release');
+      return {
+        height: node.scrollHeight,
+        top: node.scrollTop,
+        clientHeight: node.clientHeight,
+        messageId: message.dataset.messageId!,
+        messageOffset: message.getBoundingClientRect().top - viewport.top,
+      };
+    });
     release();
     await expect(page.getByRole('button', { name: '加载更早消息', exact: true })).toBeEnabled();
     await expect
       .poll(() => scroll.evaluate((node) => node.scrollHeight))
       .toBeGreaterThan(before.height);
+    await info.attach('history-anchor-before-and-committed', {
+      body: JSON.stringify({
+        before,
+        committed: await scroll.evaluate((node, messageId) => {
+          const message = Array.from(node.querySelectorAll<HTMLElement>('[data-message-id]')).find(
+            (candidate) => candidate.dataset.messageId === messageId,
+          );
+          return {
+            height: node.scrollHeight,
+            top: node.scrollTop,
+            clientHeight: node.clientHeight,
+            messageId,
+            messageOffset: message
+              ? message.getBoundingClientRect().top - node.getBoundingClientRect().top
+              : null,
+          };
+        }, before.messageId),
+      }),
+      contentType: 'application/json',
+    });
     await expect
       .poll(async () =>
         scroll.evaluate(
@@ -158,6 +191,22 @@ for (const theme of ['light', 'dark']) {
             Math.abs(node.scrollTop - (node.scrollHeight - previous.height + previous.top)),
           before,
         ),
+      )
+      .toBeLessThanOrEqual(2);
+    await expect
+      .poll(() =>
+        scroll.evaluate((node, previous) => {
+          const message = Array.from(node.querySelectorAll<HTMLElement>('[data-message-id]')).find(
+            (candidate) => candidate.dataset.messageId === previous.messageId,
+          );
+          return message
+            ? Math.abs(
+                message.getBoundingClientRect().top -
+                  node.getBoundingClientRect().top -
+                  previous.messageOffset,
+              )
+            : Number.MAX_SAFE_INTEGER;
+        }, before),
       )
       .toBeLessThanOrEqual(2);
     await expect(composer(page)).toHaveValue('A 未发送草稿');

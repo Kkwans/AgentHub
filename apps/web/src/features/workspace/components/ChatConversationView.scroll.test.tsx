@@ -324,6 +324,49 @@ it('preserves an owned anchor when the fetch promise settles before the prepende
   expect(f.element.scrollTop).toBe(5300);
 });
 
+it('does not replay the pre-request gap after pending old rows change geometry', async () => {
+  const f = setupLongScroll();
+  const message = (sequence: number) => ({
+    id: `pending-geometry-${sequence}`,
+    sessionId: props.session.id,
+    runId: null,
+    sequence,
+    role: 'USER' as const,
+    kind: 'TEXT' as const,
+    text: `message ${sequence}`,
+    createdAt: '2026-11-14T00:00:00Z',
+  });
+  let release!: () => void;
+  const load = () =>
+    new Promise<void>((resolve) => {
+      release = resolve;
+    });
+  const latest = [message(101), message(102)];
+  const renderRows = (data: typeof latest) => (
+    <ChatConversationView
+      {...props}
+      messages={{ ...props.messages, data }}
+      hasPreviousMessages
+      onLoadPreviousMessages={load}
+    />
+  );
+  f.rerender(renderRows(latest));
+  f.element.scrollTop = 4000;
+  fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+  // The same old page reflows while the network barrier remains held. This is
+  // not user navigation, a new tail message or the requested prepend commit.
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 5100 });
+  f.rerender(renderRows(latest));
+  expect(f.element.scrollTop).toBe(4000);
+  await act(async () => release());
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7100 });
+  f.rerender(renderRows([message(1), ...latest]));
+  f.nextFrame();
+  // Only the new page's 2000px belongs to this prepend; replaying the stale
+  // entry gap instead adds the already-visible 100px a second time.
+  expect(f.element.scrollTop).toBe(6000);
+});
+
 it.each(['stable', 'tail', 'authorization'] as const)(
   'ends committed history compensation on %s rather than reclaiming future scroll',
   async (end) => {
