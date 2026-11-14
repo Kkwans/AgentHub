@@ -163,9 +163,18 @@ for (const width of [390, 768, 1024, 1440]) {
         )
         .toBe('READY');
       await expect(composer).toBeEnabled();
-      await expect(page.locator('.tool-entry-card')).toHaveCount(4);
-      for (const label of ['读取代码', '编辑文件', '测试结果（合成）', '静态检查（合成）'])
-        await expect(page.locator('.tool-entry-card').filter({ hasText: label })).toHaveCount(1);
+      // Plans share the card surface, but are not tool executions. Count only
+      // the renderer's actual tool-event rows and verify every exact title.
+      const tools = page.locator('.tool-event-row .tool-entry-card');
+      await expect(tools).toHaveCount(4);
+      await expect(page.locator('.plan-event-row')).toHaveCount(1);
+      for (const label of ['读取代码', '编辑文件', '测试结果（合成）', '静态检查（合成）']) {
+        const heading = tools
+          .locator('.tool-entry-badge')
+          .filter({ hasText: new RegExp(`^${label}$`) });
+        await expect(heading).toHaveCount(1);
+        await expect(heading).toHaveText(label);
+      }
       await expect(page.locator('.thinking-event-row')).toHaveCount(0);
       await expect(
         page.getByText('合成演示数据，非真实 Agent 执行。', { exact: true }),

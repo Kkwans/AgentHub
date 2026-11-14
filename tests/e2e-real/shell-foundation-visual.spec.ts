@@ -253,10 +253,14 @@ for (const width of [390, 768, 1024, 1440])
       await composer.fill('壳层验收草稿，不发送');
       // Below the persistent-rail breakpoint, open explicitly: a collapsed rail
       // can retain a 1px transparent box that still passes visibility checks.
-      if (width < 1180) {
-        const auxiliary = page.getByRole('button', { name: '打开辅助栏', exact: true });
-        if (width < 768) await touchTarget(auxiliary);
-        await auxiliary.click();
+      if (width < 768) {
+        const sessionsTab = page
+          .getByRole('tablist', { name: 'Workspace 视图' })
+          .getByRole('tab', { name: '会话', exact: true });
+        await touchTarget(sessionsTab);
+        await sessionsTab.click();
+      } else if (width < 1180) {
+        await page.getByRole('button', { name: '打开辅助栏', exact: true }).click();
       }
       await brandGeometry(
         page.locator('.codex-rail-brand').filter({ visible: true }),
