@@ -1,8 +1,9 @@
 import styles from './worktreeReviewActions.module.css';
+import { worktreePatchLines } from './worktree-patch-lines';
 import { ApiError } from '../../../lib/api-error';
 import { AhButton, AhErrorState, AhInput, AhTextarea } from '@agenthub/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useReviewOperations } from './ReviewOperationProvider';
 import { useReviewOperationOwner } from '../hooks/useReviewOperationOwner';
@@ -437,14 +438,7 @@ export function WorktreeReviewActions({
           <details className={styles.patchDetails} open>
             <summary>查看隔离工作区差异</summary>
             {shown.patch ? (
-              <pre
-                className={styles.patchContent}
-                role="region"
-                aria-label="隔离工作区差异"
-                tabIndex={0}
-              >
-                {shown.patch}
-              </pre>
+              <ReviewPatch patch={shown.patch} />
             ) : (
               <p className={styles.patchEmpty}>
                 没有可显示的文本差异。这不代表没有改动，请核对变更文件和 Git
@@ -566,5 +560,23 @@ export function WorktreeReviewActions({
         <p>返工复用原 Session，在隔离工作区继续修改，不创建普通 Task 审阅。</p>
       </section>
     </>
+  );
+}
+
+function ReviewPatch({ patch }: { patch: string }) {
+  const content = useMemo(() => {
+    const lines = worktreePatchLines(patch);
+    return lines
+      ? lines.map((line, index) => (
+          <span key={index} data-diff-kind={line.kind}>
+            {line.text}
+          </span>
+        ))
+      : patch;
+  }, [patch]);
+  return (
+    <pre className={styles.patchContent} role="region" aria-label="隔离工作区差异" tabIndex={0}>
+      {content}
+    </pre>
   );
 }

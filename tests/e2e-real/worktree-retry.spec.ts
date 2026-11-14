@@ -188,6 +188,17 @@ for (const width of [390, 768, 1024, 1440]) {
     expect(review.patch.length).toBeGreaterThan(0);
     await expect(patch).toBeVisible();
     expect(await patch.textContent()).toBe(review.patch);
+    const addition = patch.locator('[data-diff-kind="addition"]').first();
+    const hunk = patch.locator('[data-diff-kind="hunk"]').first();
+    await expect(addition).toBeVisible();
+    await expect(hunk).toBeVisible();
+    const colors = await patch.evaluate((node) => ({
+      base: getComputedStyle(node).color,
+      addition: getComputedStyle(node.querySelector('[data-diff-kind="addition"]')!).color,
+      hunk: getComputedStyle(node.querySelector('[data-diff-kind="hunk"]')!).color,
+    }));
+    expect(colors.addition).not.toBe(colors.base);
+    expect(colors.hunk).not.toBe(colors.base);
     expect(await patch.evaluate((node) => node.clientHeight)).toBeLessThanOrEqual(320);
     await diff.locator('summary').click();
     await expect(patch).toBeHidden();

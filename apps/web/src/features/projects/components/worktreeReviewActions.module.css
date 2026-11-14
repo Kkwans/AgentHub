@@ -106,3 +106,19 @@
   font-size: 12px;
   line-height: 1.6;
 }
+
+/* Inline spans retain the original patch text and native selection/newline behavior. */
+.patchContent > [data-diff-kind='addition'] {
+  color: var(--ah-success);
+  background: var(--ah-success-soft);
+}
+
+.patchContent > [data-diff-kind='deletion'] {
+  color: var(--ah-text-primary);
+  background: var(--ah-danger-soft);
+}
+
+.patchContent > [data-diff-kind='hunk'] {
+  color: var(--ah-accent-primary);
+  background: var(--ah-accent-soft);
+}

@@ -593,3 +593,18 @@ it('空文本差异保留文件和截断警告，不宣称无改动或允许合�
   expect(screen.getByRole('checkbox')).toBeDisabled();
   expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
 });
+
+it('大型patch保留完整纯文本，不创建逐行DOM或改变确认', async () => {
+  const patch = '@@ -1 +1 @@\n' + '+x\n'.repeat(5000);
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, patch, truncated: false });
+  mount();
+  await load();
+  const region = screen.getByRole('region', { name: '隔离工作区差异' });
+  expect(region.textContent).toBe(patch);
+  expect(region.querySelectorAll('span')).toHaveLength(0);
+  fireEvent.change(screen.getByRole('textbox', { name: '合并提交说明' }), {
+    target: { value: '保留差异' },
+  });
+  expect(region.textContent).toBe(patch);
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+});
