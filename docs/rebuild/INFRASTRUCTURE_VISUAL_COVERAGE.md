@@ -57,3 +57,7 @@ hostDiagnostics发现codex可执行时会运行版本与login status。当前fix
 发现结果固定含Codex/OpenCode候选；pinned adapter可能仅文件access就显示INSTALLED/adoptable，不可伪造“候选为空”或把它说成已登录。真正可验证的是注册目录为空、真实候选与缺依赖状态。其GET会诊断和尝试Docker列表，必须保绝对空PATH、私有不存在socket及preimport验证，不笼统称纯数据库读或OS沙箱。
 
 四宽双主题需拍发现弹窗顶部与自身/内部滚动到底，保44px、console/overflow和零写入门禁；仅“完成”关闭/回焦，不点击重扫、添加或授权。Node详情离线合成态和实际远程节点接通仍另行覆盖，不能由空态图推断。
+
+### 2026-11-14 18:51 UTC 发现页新spec接线，实际图尚待
+
+独立discovery-isolated-visual.spec.ts已准备四宽双主题8例，真实扫描完成再截图；允许auth/status、agents、execution-targets、discovery/agents四GET，不新增注册/扫描POST。完整触点bbox与内部滚动范围附证据；只完成关闭，回焦严格验证可能暴露既有缺口。隔离18前置复跑通过，类型/lint/build/CR通过；本地浏览器受限，没有新发现GET或截图执行。只focused追加，不改变普通fixture或140full截图baseline。

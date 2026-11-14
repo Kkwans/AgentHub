@@ -242,6 +242,7 @@ jobs:
         run: >-
           pnpm exec playwright test --config=playwright.real.config.ts
           tests/e2e-real/infrastructure-isolated-visual.spec.ts
+          tests/e2e-real/discovery-isolated-visual.spec.ts
           tests/e2e-real/workspace-process-visual.spec.ts
           tests/e2e-real/workspace-content-visual.spec.ts
           tests/e2e-real/prompt-library-empty.spec.ts

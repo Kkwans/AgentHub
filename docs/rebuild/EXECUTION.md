@@ -1982,3 +1982,9 @@ ae8精确focused139过8失败：390仅诊断summary21px；768/1024/1440还含三
 
 新五文件候选18:38:28冻结：注册中文紧凑头与返回同排、24起点/640上限、未提交form去外卡和内容宽主按钮；诊断单标题/刷新、完整scope、一行如实读取状态、原生44summary、完整JSON限320内部滚动与横滑提示。原JSON本来可横滑，不称修了数据丢失。token成功内容/权限/API/handler未改，新成功态仅mock测试，无真实生成注册码。19专项/双类型/lint通过，8浏览器仅发现，独立最终CR与131文件聚合进行中；新像素未验。
 - 18:41:56 UTC注册/诊断五文件最终冻结131文件1432测试通过188.71秒；最终独立CR无阻断，hash不变，随后全仓build成功。此片尚无新实际图，不能称视觉门禁通过。f40精确focused139过8旧注册/诊断触点失败，Runtime8例含新44硬门禁通过，原始bbox/像素人工复核待。
+
+### 2026-11-14 18:51 UTC 发现页独立只读图证接线
+
+不改产品；新增独立discovery-isolated-visual四宽双主题8例，仅focused接线。复用已验证private HOME/空PATH/absent Docker socket child，4确切GET白名单、所有业务write拒绝；真实Codex/OpenCode候选与空注册目录分别断言，不mock空候选。只发现导航/完成，不点重扫、添加、授权，不登录Provider。WebSocket仅path+同源/protocol布尔，不记URL query/帧。真实扫描完成heading硬等待后采顶部与内部滚动到底/复位图；44双轴soft门禁仍会令case失败，关闭回焦/数据/安全门禁hard，不主动focus伪造恢复。
+
+主工程18:50:06复跑独立环境+生命周期opt-in16/16通过5.23秒，仅health；18:50:09 Docker HTTPmock2/2通过，无真实Docker/发现GET。最后spec8f225c38双类型/lint/list8/diff与独立CR通过，18:50:41全仓build成功。新8例浏览器未在本地执行、尚无截图，可能揭露路由卸载后的回焦缺口；不把list当通过，也不重复报旧产品1432为此次重跑。
