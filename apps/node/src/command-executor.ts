@@ -126,8 +126,8 @@ export class AgentHubNodeCommandExecutor implements NodeCommandExecutor {
       case 'session.close': {
         const input = sessionIdInput.parse(payload);
         const session = this.requireSession(input.sessionId);
-        this.sessions.delete(input.sessionId);
         await session.handle.close();
+        if (this.sessions.get(input.sessionId) === session) this.sessions.delete(input.sessionId);
         return { closed: true };
       }
     }

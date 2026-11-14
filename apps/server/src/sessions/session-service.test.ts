@@ -1,3 +1,5 @@
+import { RemoteAgentAdapter } from '../remote-nodes/remote-agent-adapter.js';
+import { RemoteNodeRpcError, type RemoteNodeGateway } from '../remote-nodes/remote-node-gateway.js';
 import { AppError } from '../errors.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, rm, stat, symlink } from 'node:fs/promises';
@@ -700,6 +702,49 @@ describe('Session/Run/Approval 持久化闭环', () => {
     expect(released).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
     close.mockRestore();
+  });
+
+  it('Remote handle close 失败后消费流结束与重复清理不能清掉未知账本', async () => {
+    const failure = new RemoteNodeRpcError('REMOTE_NODE_RPC_TIMEOUT', 'fixture close timeout');
+    const request = vi.fn(async (_node: string, command: string) => {
+      if (command === 'session.create') return {};
+      throw failure;
+    });
+    const unsubscribe = vi.fn();
+    const remote = new RemoteAgentAdapter({
+      request,
+      subscribeSession: () => unsubscribe,
+    } as unknown as RemoteNodeGateway);
+    const adapter = new FakeAgentAdapter({ scenario: 'idle' });
+    let handle!: AgentSessionHandle;
+    vi.spyOn(adapter, 'createSession').mockImplementation(async (input) => {
+      handle = await remote.createSession({
+        ...input,
+        profile: {
+          ...input.profile,
+          launchSpec: { kind: 'REMOTE_AGENT', nodeId: 'fixture-node', inventoryKey: 'fixture' },
+        },
+      });
+      return handle;
+    });
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'Remote close未知',
+      cwd: '/tmp',
+    });
+    await expect(handle.close()).rejects.toBe(failure);
+    await waitFor(async () => (await f.service.get(session.id)).status === 'DISCONNECTED');
+    // Event-consumer cleanup calls close again. Its original failure must stick.
+    const release = vi.fn();
+    await f.service.shutdown().then(release, () => undefined);
+    expect(release).not.toHaveBeenCalled();
+    await expect(f.service.shutdown()).rejects.toMatchObject({
+      code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+    });
+    expect(request.mock.calls.filter((call) => call[1] === 'session.close')).toHaveLength(1);
+    expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
   it('shutdown撤销普通创建，迟到handle只清理且不能激活或派发', async () => {

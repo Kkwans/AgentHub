@@ -106,6 +106,7 @@ export class RemoteAgentAdapter implements AgentRuntimeAdapter {
 
 class RemoteAgentSessionHandle implements AgentSessionHandle {
   private closed = false;
+  private closePromise: Promise<void> | undefined;
 
   constructor(
     private readonly gateway: RemoteNodeGateway,
@@ -150,15 +151,23 @@ class RemoteAgentSessionHandle implements AgentSessionHandle {
     });
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return;
-    this.closed = true;
-    try {
-      await this.gateway.request(this.nodeId, 'session.close', { sessionId: this.sessionId });
-    } finally {
-      this.unsubscribe();
-      this.stream.end();
+  close(): Promise<void> {
+    if (!this.closePromise) {
+      this.closed = true;
+      // Publish the stable promise before any RPC or event-consumer re-entry.
+      this.closePromise = Promise.resolve().then(async () => {
+        try {
+          await this.gateway.request(this.nodeId, 'session.close', { sessionId: this.sessionId });
+        } finally {
+          try {
+            this.unsubscribe();
+          } finally {
+            this.stream.end();
+          }
+        }
+      });
     }
+    return this.closePromise;
   }
 }
 

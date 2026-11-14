@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { FakeAgentAdapter } from '@agenthub/agent-core';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AgentHubNodeCommandExecutor } from './command-executor.js';
 
@@ -61,6 +61,40 @@ describe('AgentHub Node 固定 RPC executor', () => {
     await executor.execute('session.run', { sessionId, runId, text: '测试远程事件' });
     await waitFor(() => events.some((event) => event.type === 'run.completed'));
     expect(events.some((event) => event.type === 'assistant.message.completed')).toBe(true);
+    await executor.disconnect();
+  });
+
+  it('session.close失败保留原handle，重复RPC仍返回原失败而非notfound', async () => {
+    const adapter = new FakeAgentAdapter();
+    const original = adapter.createSession.bind(adapter);
+    const failure = new Error('fixture cleanup unknown');
+    let originalClose!: () => Promise<void>;
+    const close = vi.fn(async (): Promise<void> => {
+      throw failure;
+    });
+    vi.spyOn(adapter, 'createSession').mockImplementation(async (input) => {
+      const handle = await original(input);
+      originalClose = handle.close.bind(handle);
+      handle.close = close;
+      return handle;
+    });
+    const executor = new AgentHubNodeCommandExecutor([fixtureRoot], adapter);
+    const sessionId = '55555555-5555-4555-8555-555555555555';
+    await executor.execute('session.create', {
+      ...agent(sessionId),
+      sessionId,
+      projectId: '33333333-3333-4333-8333-333333333333',
+    });
+    await expect(executor.execute('session.close', { sessionId })).rejects.toBe(failure);
+    await expect(executor.execute('session.close', { sessionId })).rejects.toBe(failure);
+    expect(close).toHaveBeenCalledTimes(2);
+    close.mockImplementation(originalClose);
+    await expect(executor.execute('session.close', { sessionId })).resolves.toEqual({
+      closed: true,
+    });
+    await expect(executor.execute('session.close', { sessionId })).rejects.toMatchObject({
+      code: 'REMOTE_SESSION_NOT_FOUND',
+    });
     await executor.disconnect();
   });
 
