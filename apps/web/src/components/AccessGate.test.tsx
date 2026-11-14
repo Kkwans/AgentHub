@@ -162,6 +162,14 @@ it('44触点和密码留白只约束本页，不改变共享控件', () => {
   expect(css).toMatch(/\.passwordControl input\s*\{[^}]*padding-right: 48px/s);
   expect(css).toMatch(/\.passwordControl > span > button\s*\{[^}]*width: 44px;[^}]*height: 44px/s);
   expect(css).toMatch(/\.card\s*\{[^}]*box-shadow: none/s);
+  const sharedCss = readFileSync(
+    new NodeURL('../../../../packages/ui/src/pinharness.css', import.meta.url),
+    'utf8',
+  );
+  const accessCardRule = sharedCss.match(/^\.app-access-card\s*\{([^}]*)\}/m)?.[1];
+  expect(accessCardRule).toBeDefined();
+  expect(accessCardRule).toMatch(/(?:^|;)\s*box-shadow:\s*none\s*;/);
+
   expect(css).toMatch(/\.card > button\s*\{\s*min-height: 44px;\s*\}/s);
 });
 

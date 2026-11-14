@@ -4788,7 +4788,7 @@ a:focus-visible {
   background: hsl(var(--surface));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   backdrop-filter: none;
 }
 
