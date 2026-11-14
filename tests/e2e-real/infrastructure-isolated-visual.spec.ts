@@ -335,11 +335,20 @@ for (const width of [390, 768, 1024, 1440]) {
         await touch(summary);
         await capture('diagnostics-collapsed');
         const requestCount = requests.length;
-        await summary.focus();
+        // Enter through the real keyboard sequence, not script focus whose UA modality can differ.
+        await page.getByRole('button', { name: '刷新', exact: true }).focus();
+        await page.keyboard.press('Tab');
+        await expect(summary).toBeFocused();
+        await expect
+          .poll(() => summary.evaluate((element) => element.matches(':focus-visible')))
+          .toBe(true);
         await summary.press('Enter');
         await expect(details).toHaveAttribute('open', '');
         await expect(details.locator('pre')).toBeVisible();
         await expect(summary).toBeFocused();
+        await expect
+          .poll(() => summary.evaluate((element) => element.matches(':focus-visible')))
+          .toBe(true);
         const focusGeometry = await summary.evaluate((element) => {
           const box = element.getBoundingClientRect();
           const hint = element.nextElementSibling!.getBoundingClientRect();
@@ -348,6 +357,11 @@ for (const width of [390, 768, 1024, 1440]) {
             hintGap: hint.top - box.bottom,
             outlineWidth: style.outlineWidth,
             outlineOffset: style.outlineOffset,
+            outlineStyle: style.outlineStyle,
+            outlineColor: style.outlineColor,
+            focusVisible: element.matches(':focus-visible'),
+            activeElementMatches: document.activeElement === element,
+            documentHasFocus: document.hasFocus(),
             borderRadius: style.borderRadius,
           };
         });

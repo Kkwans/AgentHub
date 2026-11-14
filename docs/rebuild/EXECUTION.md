@@ -2002,3 +2002,6 @@ ae8精确focused139过8失败：390仅诊断summary21px；768/1024/1440还含三
 
 初34专项虽过，独立CR发现关闭后清opener会让次级入口Forward重开再关回错primary，暂停最终验证。新增真实Router navigate(-1)/(1)两例有效红（完成/Escape，不点测试按钮）后，仅保留仍connected实际opener至新入口替换/壳卸载，既有新焦点守卫不变；最终36专项/类型/lint通过，CR阻断关闭，19:17:23冻结，最终聚合运行。早期其他5红混有mock定位错误，不算5个产品红回归；真实b2八例回焦失败与新Forward两红是有效证据。新版浏览器/首屏候选实图未执行，仍待CI。
 - 19:20:59 UTC发现页最终132文件1441测试通过188.28秒，8文件hash冻结匹配；随后全仓build成功。36专项/类型/lint/独立CR通过。将发布以运行新的真实CI，当前未有新版发现图，不能称回焦浏览器或视觉已验。
+- 19:23:24 UTC已fetch核3bc7ab9发现页整体提交，run43631827605；一次GitHub建树大请求422超时，改分批树对象构建后与本地预期tree精确一致再建commit/移ref，无重复发布。最终1441/build/CR过，新图与真实回焦仍待。
+- 19:24精确d04 focused146通过9失败，不仅旧发现8：另1440深诊断outlineWidth3px/offset0，预期2/2，gap8/radius6未失败。作者CSS两处都是focus-visible 2/2，因此只读审查更疑似脚本focus与浏览器modality，尚未证实产品或测试根因。新test-only从刷新按钮真实Tab进入summary，前后硬验焦点与focus-visible，再保持原2/2精确门禁并补outlineStyle/color/activeElement/documentHasFocus证据；不改CSS、不blur、不sleep、不放宽。
+- 19:25:52 UTC该test-only类型/lint/list8/diff与全仓build成功；8例仅发现未本地运行，需新CI证实。上次产品1441未重复当此次重跑。
