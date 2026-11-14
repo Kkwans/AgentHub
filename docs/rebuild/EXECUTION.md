@@ -1924,3 +1924,9 @@ Home四文件最终冻结聚合17:17:32结束130文件1420通过/190.38秒，14�
 
 两新增隔离test文件独立冻结，17:15复跑3/3通过：白名单环境排除合成宿主凭据、空PATH真实诊断零命令，以及受控无效文件哨兵正控制恰两次runProcess mock证明导入边界真实拦截、launcher0。独立CR无阻断；仅返回launch描述、不spawn，不是已启动子进程/HTTP/浏览器隔离或OS沙箱。它们不在上述web/UI聚合include内，不能合并声称被1420测试覆盖。
 - 17:18:05 UTC全仓build成功，Home局部间距与未接线隔离测试基础准备发布，新图/独立server进程仍未运行。
+- 17:19:00 UTC已fetch核5274dd7推送，精确run43620423510启动；Home新间距实图待验。8d Runtime focused139通过/14.3分钟+独立Prompt4通过，新图已交人工审阅，full仍运行。
+- 下一测试专用独立子进程生命周期候选开始：先验证受控环境、loopback readiness与严格退出后清理，仅一次隔离健康起停；尚不连接浏览器/新增诊断请求/注册或Provider，不改现普通Git/ACP fixture。
+- 17:23 UTC 新增两片未发布候选：Runtime实图发现Infrastructure选中背景贴两侧，源码证实副导航缺主导航gutter，三文件统一内边距并增加真实链接边界/焦点门禁，29专项通过；最终web/UI聚合与独立CR进行中。接入按钮仅新增真实hitbox记录，不凭截图估值冒称缺陷已确认。
+- 独立child生命周期三新增测试文件已实际健康起停：显式7/7通过（仅GET health，PGlite/web就绪与close ack+exit0后清理），默认6通过1显式跳过；没有诊断GET、浏览器、节点注册或Provider。仍待独立CR，不称生产隔离或OS沙箱。
+- 17:25 UTC Sidebar与child两片独立CR分别无阻断，代码保持冻结。c952 focused实际139通过/13.8分钟+独立Prompt4通过26.3秒，artifact14123797951已交人工审阅；完整视觉仍运行，不能宣布全产品美学通过。
+- 17:27:00 UTC Sidebar最终冻结web/UI聚合130文件1422测试通过/191.31秒，三文件hash不变；29专项与独立CR通过。全仓build继续。独立child 7测试不属于1422聚合，保持分别报告，新Sidebar像素仍待。

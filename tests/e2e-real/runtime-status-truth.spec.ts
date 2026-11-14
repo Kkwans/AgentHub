@@ -71,6 +71,38 @@ for (const theme of ['light', 'dark']) {
         body: JSON.stringify(geometry),
         contentType: 'application/json',
       });
+      // Measure the actual link surfaces; a shared icon size alone does not prove gutters.
+      if (width >= 768) {
+        const primary = page.getByRole('navigation', { name: '主导航' });
+        const infrastructure = page.getByRole('navigation', { name: 'Infrastructure' });
+        const home = primary.getByRole('link', { name: '首页', exact: true });
+        const runtime = infrastructure.getByRole('link', { name: '运行环境', exact: true });
+        await expect(runtime).toHaveAttribute('aria-current', 'page');
+        const primaryBox = (await home.boundingBox())!;
+        const runtimeBox = (await runtime.boundingBox())!;
+        expect(Math.abs(primaryBox.x - runtimeBox.x)).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs(primaryBox.x + primaryBox.width - runtimeBox.x - runtimeBox.width),
+        ).toBeLessThanOrEqual(1);
+        const navBox = (await infrastructure.boundingBox())!;
+        expect(runtimeBox.x - navBox.x).toBeGreaterThanOrEqual(7.99);
+        expect(navBox.x + navBox.width - runtimeBox.x - runtimeBox.width).toBeGreaterThanOrEqual(
+          7.99,
+        );
+        await runtime.focus();
+        await expect(runtime).toBeFocused();
+        await info.attach(`runtime-sidebar-geometry-${theme}-${width}`, {
+          body: JSON.stringify({ primaryBox, runtimeBox, navBox }),
+          contentType: 'application/json',
+        });
+      }
+      const adopt = page.getByRole('button', { name: '接入', exact: true });
+      if (await adopt.count()) {
+        await info.attach(`runtime-adopt-hitbox-${theme}-${width}`, {
+          body: JSON.stringify(await adopt.boundingBox()),
+          contentType: 'application/json',
+        });
+      }
       const path = info.outputPath(`runtime-status-${theme}-${width}.png`);
       await page.screenshot({ path, fullPage: true });
       await info.attach(`runtime-status-${theme}-${width}`, { path, contentType: 'image/png' });

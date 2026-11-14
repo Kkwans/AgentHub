@@ -27,3 +27,9 @@ hostDiagnostics发现codex可执行时会运行版本与login status。当前fix
 ## 2026-11-14 17:18 UTC 首层测试基础
 
 纯环境构造与absolute Node launch描述、空PATH零命令诊断回归已实现。正控制使用仅供PATH/access识别的临时无效文件哨兵，真实hostDiagnostics的版本/登录状态调用必须恰被两次mock拦住，并核绝对路径/隔离环境/参数，Provider launcher零调用。3个专项通过及独立审查通过。尚未创建目录验证/启动子进程/连接HTTP/浏览器；下一片必须补readiness、严格退出清理及运行前白名单/空目录核验，不能把当前描述对象称为已隔离运行。
+
+### 2026-11-14 17:26 UTC 独立健康起停基础
+
+新增测试专用独立Node child：导入真实server前检查环境白名单、空PATH与自有canonical目录，使用IPC报告固定就绪证明。父进程只请求loopback health确认PGlite/web。关闭必须收到close确认和正常exit后才清理自有目录，异常/超时保留；强杀不作健康关闭证据。
+
+默认生命周期6通过1显式跳过；opt-in实际健康起停7通过，独立CR无阻断。仍未连接浏览器、执行诊断GET、注册节点或调用Provider；普通Git/ACP fixture未改，也不是OS沙箱。启动期IPC断开和强杀后未exit两分支尚缺直接测试，接线下一片先补，不用健康成功替代这些故障门禁。

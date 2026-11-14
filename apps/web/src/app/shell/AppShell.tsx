@@ -130,6 +130,8 @@ function sidebarItemClass(active: boolean, collapsed: boolean): string {
   ].join(' ');
 }
 
+const navigationGutterClass = 'px-2 2xl:px-3';
+
 function Navigation({
   onNavigate,
   collapsed = false,
@@ -148,7 +150,7 @@ function Navigation({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <nav
-        className={`mt-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 2xl:mt-2 2xl:gap-1 2xl:px-3 ${collapsed ? 'items-center' : ''}`}
+        className={`mt-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto 2xl:mt-2 2xl:gap-1 ${navigationGutterClass} ${collapsed ? 'items-center' : ''}`}
         aria-label="主导航"
       >
         {primaryNavigation.map(({ to, label, icon: Icon, shortcut }) => (
@@ -171,7 +173,7 @@ function Navigation({
         ))}
       </nav>
       <div className="my-3 h-px w-full bg-[hsl(var(--sidebar-border))]/70" aria-hidden="true" />
-      <nav aria-label="Infrastructure" className="flex flex-col gap-0.5">
+      <nav aria-label="Infrastructure" className={`flex flex-col gap-0.5 ${navigationGutterClass}`}>
         {!collapsed && (
           <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--sidebar-section-label))]">
             Infrastructure

@@ -68,6 +68,23 @@ function renderShell(initialEntries: string[] = ['/projects/p-1/overview'], widt
 }
 
 describe('AppShell', () => {
+  it.each([1440, 768])('基础设施与主导航在 %i 共享内边距且保留唯一当前路由', (width) => {
+    renderShell(['/agents/runtime'], width);
+    const primary = screen.getByRole('navigation', { name: '主导航' });
+    const infrastructure = screen.getByRole('navigation', { name: 'Infrastructure' });
+    for (const navigation of [primary, infrastructure]) {
+      expect(navigation).toHaveClass('px-2', '2xl:px-3');
+    }
+    const runtime = within(infrastructure).getByRole('link', { name: '运行环境' });
+    expect(runtime).toHaveAttribute('href', '/agents/runtime');
+    expect(runtime).toHaveAttribute('aria-current', 'page');
+    runtime.focus();
+    expect(runtime).toHaveFocus();
+    expect(within(primary).getByRole('link', { name: 'Agent 中心' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
   it.each([
     ['/projects/p1/work/new', '项目'],
     ['/projects/p1/sessions', '项目'],
