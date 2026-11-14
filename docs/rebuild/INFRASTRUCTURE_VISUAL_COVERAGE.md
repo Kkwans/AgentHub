@@ -49,3 +49,11 @@ hostDiagnostics发现codex可执行时会运行版本与login status。当前fix
 ### 2026-11-14 17:52 UTC Docker socket 前置冻结
 
 专用child白名单新增DOCKER_SOCKET_PATH=自有root/absent-docker.sock，preimport拒外部路径、普通文件和悬空symlink；默认17通过1显式跳过，主工程opt-in18/18通过5.57秒。真实DockerSocketEngineClient在HTTP mock边界验证成功空响应/ENOENT都只传受控socket，未连接任何真实Docker。真实child仍仅GET health；发现页/Runtime尚未访问，不将这些回归称发现页截图验收。
+
+### 2026-11-14 18:28 UTC 下一发现页只读覆盖边界（尚未执行）
+
+先等待ae8b919的新Nodes/注册空表单/诊断闭环，不将新入口修复等同于后续页面已跑。发现页下一片仍用独立child，不回到普通Git/ACP fixture；增加确切GET /discovery/agents、/agents、/execution-targets白名单，保所有业务写入拒绝和严格清理。
+
+发现结果固定含Codex/OpenCode候选；pinned adapter可能仅文件access就显示INSTALLED/adoptable，不可伪造“候选为空”或把它说成已登录。真正可验证的是注册目录为空、真实候选与缺依赖状态。其GET会诊断和尝试Docker列表，必须保绝对空PATH、私有不存在socket及preimport验证，不笼统称纯数据库读或OS沙箱。
+
+四宽双主题需拍发现弹窗顶部与自身/内部滚动到底，保44px、console/overflow和零写入门禁；仅“完成”关闭/回焦，不点击重扫、添加或授权。Node详情离线合成态和实际远程节点接通仍另行覆盖，不能由空态图推断。

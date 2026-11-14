@@ -258,12 +258,43 @@ for (const width of [390, 768, 1024, 1440]) {
         await expect(
           page.getByRole('button', { name: '生成一次性注册码', exact: true }),
         ).toBeDisabled();
+        await expect(page.getByRole('heading', { name: '授权远程节点', level: 1 })).toBeVisible();
+        await expect(page.getByText('Remote Nodes', { exact: true })).toHaveCount(0);
+        await expect(
+          page.getByText(
+            '只授权 Agent 实际需要访问的目录。注册码为一次性凭据，生成后只展示一次。',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        const formGeometry = await name.evaluate((element) => {
+          const content = element.closest('.page-content')!;
+          const area = content.firstElementChild!;
+          const box = area.getBoundingClientRect();
+          const parent = content.getBoundingClientRect();
+          return {
+            area: box.toJSON(),
+            content: parent.toJSON(),
+            paddingLeft: parseFloat(getComputedStyle(content).paddingLeft),
+            paddingTop: parseFloat(getComputedStyle(content).paddingTop),
+          };
+        });
+        await info.attach('registration-layout.json', {
+          body: JSON.stringify(formGeometry),
+          contentType: 'application/json',
+        });
+        expect.soft(formGeometry.area.width).toBeLessThanOrEqual(640);
+        expect
+          .soft(
+            Math.abs(formGeometry.area.left - formGeometry.content.left - formGeometry.paddingLeft),
+          )
+          .toBeLessThanOrEqual(1);
+        expect.soft(formGeometry.paddingTop).toBe(24);
         await name.focus();
         await expect(name).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(page.getByRole('combobox', { name: '有效期', exact: true })).toBeFocused();
         await capture('register-unsubmitted');
-        const back = page.getByRole('button', { name: '返回 Nodes', exact: true });
+        const back = page.getByRole('button', { name: '返回节点', exact: true });
         await touch(back);
         await back.click();
         await expect(page).toHaveURL(`${app.origin}/agents/nodes`);
@@ -280,6 +311,24 @@ for (const width of [390, 768, 1024, 1440]) {
         expect(data.codex).not.toHaveProperty('auth');
         expect(data.codex).not.toHaveProperty('runtimeExecutable');
         // A bundled adapter may be INSTALLED; that is not CLI login or Provider connectivity.
+        await expect(page.getByRole('heading', { name: '服务器诊断', exact: true })).toHaveCount(1);
+        await expect(page.getByText('Agent Infrastructure', { exact: true })).toHaveCount(0);
+        const scope = page.getByText(
+          '检查当前 AgentHub 服务器的进程与供应商环境，不代表某个 Agent 或远程执行环境的专属诊断。',
+          { exact: true },
+        );
+        await expect(scope).toBeVisible();
+        const scopeGeometry = await scope.evaluate((element) => ({
+          height: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+          lineClamp: getComputedStyle(element).webkitLineClamp,
+        }));
+        await info.attach('diagnostic-scope.json', {
+          body: JSON.stringify(scopeGeometry),
+          contentType: 'application/json',
+        });
+        expect.soft(scopeGeometry.scrollHeight).toBeLessThanOrEqual(scopeGeometry.height + 1);
+        await touch(page.getByRole('button', { name: '刷新', exact: true }));
         const summary = page.locator('summary').filter({ hasText: '查看详细诊断' });
         const details = summary.locator('..');
         await expect(details).not.toHaveAttribute('open', '');
@@ -292,6 +341,22 @@ for (const width of [390, 768, 1024, 1440]) {
         await expect(details.locator('pre')).toBeVisible();
         await capture('diagnostics-expanded');
         const pre = details.locator('pre');
+        const jsonGeometry = await pre.evaluate((element) => ({
+          height: element.getBoundingClientRect().height,
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          overflowY: getComputedStyle(element).overflowY,
+          text: element.textContent,
+        }));
+        await info.attach('diagnostic-json-scroll.json', {
+          body: JSON.stringify({ ...jsonGeometry, text: undefined }),
+          contentType: 'application/json',
+        });
+        expect(jsonGeometry.text).toBe(JSON.stringify(data, null, 2));
+        expect.soft(jsonGeometry.height).toBeLessThanOrEqual(320);
+        expect.soft(jsonGeometry.overflowY).toBe('auto');
         await pre.evaluate((element) => {
           element.scrollTop = element.scrollHeight;
           element.scrollLeft = element.scrollWidth;

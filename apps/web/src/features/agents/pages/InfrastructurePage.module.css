@@ -93,3 +93,63 @@
   min-height: 44px;
   min-width: 44px;
 }
+
+/* This scope affects only the unsubmitted Node authorization form. */
+.registrationArea {
+  max-width: 640px;
+  min-width: 0;
+}
+.registrationForm {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.registrationForm input,
+.registrationForm [role='combobox'],
+.registrationForm button {
+  min-height: 44px;
+}
+.registrationForm > button {
+  justify-self: start;
+  min-width: 44px;
+}
+.registrationForm button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.diagnosticSummary {
+  min-height: 44px;
+  padding-block: 11px;
+  line-height: 22px;
+  cursor: pointer;
+}
+.diagnosticSummary:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+.header :global(.page-subtitle) {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.diagnosticStatus {
+  margin: 0 0 8px;
+  color: var(--ah-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.diagnosticJson {
+  max-height: 320px;
+  overflow: auto;
+}
+
+.diagnosticHint {
+  margin: 0 0 8px;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}

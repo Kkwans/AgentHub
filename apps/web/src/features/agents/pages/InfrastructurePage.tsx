@@ -89,7 +89,7 @@ import layout from '../../shared/layout.module.css';
 import styles from './AgentDirectory.module.css';
 import runtimeStyles from './InfrastructurePage.module.css';
 import {
-  Screen,
+  type Screen,
   QueryMessage,
   displayDate,
   useCompactViewport,
@@ -100,14 +100,14 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 
-/** Compact infrastructure chrome; diagnostics retain their existing shell. */
-function RuntimeScreen({
+/** Shared compact chrome; business state remains owned by each page. */
+export function InfrastructureScreen({
   title,
   description,
   actions,
   children,
   icon = Server,
-}: ComponentProps<typeof Screen>) {
+}: Omit<ComponentProps<typeof Screen>, 'eyebrow'>) {
   return (
     <div className="min-h-full">
       <AhReveal>
@@ -199,10 +199,9 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
   const visibleRuntimeRows = showStoppedRuntimes
     ? runtimeRows
     : runtimeRows.filter((runtime) => runtime.state !== 'STOPPED');
-  const PageScreen = kind !== 'diagnostics' ? RuntimeScreen : Screen;
+  const PageScreen = InfrastructureScreen;
   return (
     <PageScreen
-      eyebrow="Agent Infrastructure"
       title={title}
       icon={kind === 'runtimes' ? Server : kind === 'nodes' ? Network : Bot}
       description={description}
@@ -221,7 +220,15 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
             <Link2 size={16} aria-hidden="true" />
             授权 Node
           </Link>
-        ) : undefined
+        ) : (
+          <AhButton
+            variant="default"
+            onClick={() => void host.refetch()}
+            leftSection={<RefreshCw size={14} />}
+          >
+            刷新
+          </AhButton>
+        )
       }
     >
       {kind === 'runtimes' ? (
@@ -348,21 +355,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
         </section>
       ) : (
         <section className={styles.infrastructure}>
-          <div className={`${layout.surfaceHeader} ${styles.infrastructureHeader}`}>
-            <div>
-              <h3>服务器诊断</h3>
-              <p>以下信息来自当前 AgentHub 服务器，详细结果可按需展开。</p>
-            </div>
-            <AhButton
-              variant="default"
-              size="xs"
-              onClick={() => void host.refetch()}
-              leftSection={<RefreshCw size={14} />}
-            >
-              刷新
-            </AhButton>
-          </div>
-          <div className={styles.infrastructureBody}>
+          <div>
             <QueryMessage
               loading={host.isLoading}
               error={host.error}
@@ -371,17 +364,19 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
             />
             {host.data ? (
               <>
-                <div className={layout.mutedBox}>
-                  <strong>结论</strong>
-                  <p>
-                    {typeof host.data.message === 'string'
-                      ? host.data.message
-                      : '服务诊断已返回，请展开详细信息。'}
-                  </p>
-                </div>
+                <p className={runtimeStyles.diagnosticStatus}>
+                  {typeof host.data.message === 'string'
+                    ? host.data.message
+                    : '服务诊断已返回，可展开查看原始信息。'}
+                </p>
                 <details>
-                  <summary>查看详细诊断</summary>
-                  <pre className={layout.codeBlock}>{JSON.stringify(host.data, null, 2)}</pre>
+                  <summary className={runtimeStyles.diagnosticSummary}>查看详细诊断</summary>
+                  <p className={runtimeStyles.diagnosticHint}>
+                    原始信息保留完整内容，长行可横向滚动查看。
+                  </p>
+                  <pre className={`${layout.codeBlock} ${runtimeStyles.diagnosticJson}`}>
+                    {JSON.stringify(host.data, null, 2)}
+                  </pre>
                 </details>
               </>
             ) : null}
