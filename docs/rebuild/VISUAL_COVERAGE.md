@@ -311,3 +311,10 @@ f40a420 focused artifact14126762903，hash fb1e7…68a59 核验；八宽主题�
 - 新实现：折叠AH文字缩写（32透明槽/16px600，44首页入口），展开/AccessGate完整AgentHub；不称新图形logo或品牌定稿。
 - shell-foundation四宽双主题8例新增真实computed/Range/触点/无mask门禁并保页面及品牌截图；目前仅类型/lint/list8通过，未跑本地浏览器。
 - 发布后必须人工审768/1024折叠明暗及390/1440展开页面；AccessGate认证状态依赖完整真实矩阵，不以单元测试替代像素。
+
+### 2026-11-14 19:44 UTC 3bc发现实际图与a87焦点合同
+
+- 3bc artifact精确hash a17de3…24528；实际看390浅顶部、1440深，候选首屏/单列/计数与已安装非登录说明改善，短候选主体可接受，不覆盖长名/异常。8例仍最后回焦失败，147过8失败。
+- finally观测8组GET均allowed、WS同源/protocol正确、errors空；末尾assert因回焦失败未到，不说全部安全断言通过。
+- a87 focused同147/8（发现回焦），诊断真实Tab进入focus-visible、Enter后2px/2px合同8例过；不推断旧3px样式成因已确证，不称整run全绿。
+- 发现真正祖先壳保留修片新增original ElementHandle连接/焦点门禁；实际新回焦及新图仍待。

@@ -107,12 +107,16 @@ for (const width of [390, 768, 1024, 1440]) {
         expect((await agents.json()).data).toEqual([]);
         const trigger = page.getByRole('link', { name: '发现 Agent', exact: true }).first();
         await measureTouch(trigger);
+        const originalTrigger = await trigger.elementHandle();
+        expect(originalTrigger).not.toBeNull();
         await trigger.focus();
         await expect(trigger).toBeFocused();
         await trigger.press('Enter');
         await expect(page).toHaveURL(`${app.origin}/agents/agents/discover`);
         const dialog = page.getByRole('dialog', { name: '发现 Agent', exact: true });
         await expect(dialog).toBeVisible();
+        // The actual AppShell must preserve the directory DOM across the nested route.
+        expect(await originalTrigger!.evaluate((element) => element.isConnected)).toBe(true);
         await expect(
           dialog.getByRole('heading', { name: '扫描已完成', exact: true }),
         ).toBeVisible();
@@ -231,6 +235,10 @@ for (const width of [390, 768, 1024, 1440]) {
         await done.press('Enter');
         await expect(page).toHaveURL(`${app.origin}/agents`);
         await expect(dialog).toHaveCount(0);
+        expect(await originalTrigger!.evaluate((element) => element.isConnected)).toBe(true);
+        await expect
+          .poll(() => originalTrigger!.evaluate((element) => element === document.activeElement))
+          .toBe(true);
         await expect(
           page.getByRole('link', { name: '发现 Agent', exact: true }).first(),
         ).toBeFocused();

@@ -4,9 +4,16 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
+import { AgentHubProvider } from '@agenthub/ui';
+import { AppShell } from '../../../app/shell/AppShell';
 import { api } from '../../../lib/api';
 import { AgentDiscoveryLayout } from './AgentDiscoveryLayout';
 import { DiscoverAgentsPage } from './DiscoverAgentsPage';
+vi.mock('../../../components/AccessGate', () => ({
+  useAuthUser: () => null,
+  useAuthMode: () => 'local_trusted',
+}));
+vi.mock('../../../lib/realtime', () => ({ realtime: { onState: () => () => undefined } }));
 const clients: QueryClient[] = [];
 afterEach(() => {
   cleanup();
@@ -36,16 +43,20 @@ function mount(direct = false, rows: unknown[] = []) {
   const post = vi.spyOn(api, 'post').mockResolvedValue({});
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[direct ? '/agents/agents/discover' : '/agents']}>
-        <Navigation />
-        <Routes>
-          <Route element={<AgentDiscoveryLayout />}>
-            <Route path="/agents" element={null} />
-            <Route path="/agents/agents/discover" element={<DiscoverAgentsPage />} />
-          </Route>
-          <Route path="/other" element={<input aria-label="新页面输入" autoFocus />} />
-        </Routes>
-      </MemoryRouter>
+      <AgentHubProvider initialPreference="light">
+        <MemoryRouter initialEntries={[direct ? '/agents/agents/discover' : '/agents']}>
+          <Navigation />
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route element={<AgentDiscoveryLayout />}>
+                <Route path="/agents" element={null} />
+                <Route path="/agents/agents/discover" element={<DiscoverAgentsPage />} />
+              </Route>
+              <Route path="/other" element={<input aria-label="新页面输入" autoFocus />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AgentHubProvider>
     </QueryClientProvider>,
   );
   return post;

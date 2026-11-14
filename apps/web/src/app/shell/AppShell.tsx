@@ -485,7 +485,14 @@ export function AppShell() {
             tabIndex={-1}
           >
             <ReviewOperationStatus />
-            <div key={location.pathname} className="route-stage h-full min-h-0">
+            <div
+              key={
+                location.pathname === '/agents' || location.pathname === '/agents/agents/discover'
+                  ? '/agents'
+                  : location.pathname
+              }
+              className="route-stage h-full min-h-0"
+            >
               <Outlet />
             </div>
           </main>
