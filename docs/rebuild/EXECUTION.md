@@ -1703,3 +1703,13 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 13:12:35第二片23文件冻结聚合121文件1296测试通过178.35s，指纹未变；root lint/types、integration与单独foundation types通过。一次误用不存在的E2E配置TS5058，纠正独立配置后通过；并行build在Vite阶段被137终止，已等全量结束后单独重跑，结果未定时不称build通过。
 - 8011精确CI最新：PG/axe通过，verify3通过1失败116未运行（1440深色历史位置偏370px），focused63通过10失败：foundation390浅深缺实际辅助栏入口、reference8个card数期望4实5。源码确认PlanRenderer也使用tool-entry-card，后者需限定真实工具行并独立保留计划断言；不是删除第5项或放宽工具数。完整real仍运行，新UI尚未美学签核。
 - 13:12:56独立串行build重跑成功。13:14:07 push/fetch确认dfd6d92ec116a6ef155793ed3b35d25823b1c7be：c0833f9历史修复、ede058b第二片UI、dfd6d92独立实际入口/工具范围测试修正。手机真实入口由精确artifact确认是Workspace视图的会话tab；中屏才是辅助栏button。原4工具严格门禁保留，计划单独验证1。最后两测试文件types/lint通过，新真实浏览器未执行，未宣称视觉达标。
+
+### 2026-11-14 13:15–13:22 UTC：新图等待与手机导航交互候选
+
+- 13:15:12文档76464df push/fetch确认，工作区当时干净；精确CI43598807265启动。此文档push属于21:14之后窗口，不算上一窗口。
+- 重新只读核对reference四宽审阅入口、4工具/1计划和Agent断言真实DOM，无新增必然选择器失败；原图仍待本SHA。
+- 手机抽屉原dialog仅open而非showModal，aria-modal不能证明背景隔离。独立候选改原生modal/backdrop，取消额外focus rAF；关闭去重、只清自身history marker、保持新路由已聚焦元素。账号是普通Link，不存在假设的Portal菜单冲突；但确实发现全局Ctrl/CmdK会在抽屉外开命令面板，补先关闭抽屉协调。
+- modal生命周期先4红再绿；CtrlK独立1红后绿。最终3文件35专项通过，web/UI types、lint、E2E types/list2通过；独立CR无新增阻断并加强fill前自动焦点断言。jsdom只模拟缺失dialog方法，不是原生toplayer/inert证据；2例真实浏览器已加入focused，尚未执行。
+- 新Agent外section宽度源码720/800不一致，候选统一外边界800、说明内部64ch，并补实际DOM同轴同宽断言；不以源码推断冒充新像素结论。全量冻结测试正在执行，未推本候选。
+- 13:25:10确认最终冻结web+UI 122文件1304测试通过183.35s，10文件指纹未变；root lint/types、integration types、两项E2E独立types/lint通过。fill前自动焦点断言已补；串行build独立开始，未与全量抢资源。真实浏览器待本片发布后的精确CI。
+- 13:25:47产品8b5b6b1d042088468ca1d6c2c2a94c4cfe4c9151 push/fetch核实；独立串行build全部成功。浏览器/新原图未完成，功能扩展仍暂停，未合main/未部署。
