@@ -292,7 +292,7 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
       >
         <div className={layout.dialogBody} data-testid="new-work-dialog">
           <div className={styles.projectContext}>
-            <span>Project</span>
+            <span>项目</span>
             <strong>{project.name}</strong>
             <details className={styles.projectPath}>
               <summary>项目目录</summary>
@@ -366,12 +366,15 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                     {!selectedEligible ? (
                       <p role="alert">当前资格不满足，请重新选择或仅创建任务</p>
                     ) : null}
-                    <div>
-                      选择依据是已登记状态与工作区映射，不代表实时登录、进程或容器健康。启动时仍会检查。
-                    </div>
+                    <details className={styles.eligibilityDetails}>
+                      <summary>启动时复核</summary>
+                      <p>
+                        选择依据是已登记状态与工作区映射，不代表实时登录、进程或容器健康。启动时仍会检查。
+                      </p>
+                    </details>
                   </>
                 ) : (
-                  '还没有选择 Agent；创建后仍可在 Work Inspector 中选择并开始。'
+                  '暂不启动，创建后可在任务详情中选择 Agent。'
                 )}
               </div>
               {eligibility.isPending || eligibility.isFetching ? (
@@ -381,7 +384,7 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                 <p role="alert">无法确认项目 Agent 资格，不会自动选择 Agent。</p>
               ) : null}
               <AhButton
-                variant="default"
+                variant="subtle"
                 className={styles.refreshAgent}
                 onClick={() => {
                   void eligibility.refetch();
@@ -393,7 +396,14 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
               </AhButton>
             </section>
             {kind === 'task' ? (
-              <>
+              <details className={styles.titleDetails}>
+                <summary>
+                  <span>任务标题</span>
+                  <span className={styles.titlePreview}>
+                    {shortTitle ?? (suggestTaskTitle(title) || '根据工作内容自动生成')}
+                  </span>
+                  <span className={styles.editTitle}>编辑</span>
+                </summary>
                 <div className={styles.titleGroup}>
                   <AhInput
                     label="任务短标题（可编辑）"
@@ -407,13 +417,15 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                 <p className={layout.subtle}>
                   标题用于列表；以上完整要求会保留在任务说明。自动标题仅摘要首行，不会截断完整要求。
                 </p>
-                <p className={layout.subtle}>
-                  任务说明：{prepared.description.length} / 100000 字符（含分节标题）
-                </p>
-              </>
+              </details>
             ) : (
               <p className={layout.subtle}>Goal 标题上限 240 字符，补充上下文上限 20000 字符。</p>
             )}
+            {kind === 'task' && prepared.description.length >= 90000 ? (
+              <p className={layout.subtle}>
+                任务说明：{prepared.description.length} / 100000 字符（含分节标题）
+              </p>
+            ) : null}
             <AhTextarea
               label="补充上下文（可选）"
               value={description}

@@ -1284,6 +1284,37 @@ describe('继承变量的保存与校验边界', () => {
 });
 
 describe('新工作阅读优先层级', () => {
+  it.each(['', '长'.repeat(241)])('收起无效手动标题后仍外显错误并禁用提交：%s', async (value) => {
+    show(vi.fn(async (input) => base(String(input))));
+    fireEvent.change(await screen.findByLabelText('你想完成什么？'), {
+      target: { value: '保留完整要求' },
+    });
+    fireEvent.click(screen.getByText('任务标题', { exact: true }));
+    fireEvent.change(screen.getByLabelText('任务短标题（可编辑）'), { target: { value } });
+    fireEvent.click(screen.getByText('任务标题', { exact: true }));
+    const error = screen.getByText(
+      value ? '任务短标题不能超过 240 个字符。' : '请填写任务短标题，或恢复自动标题。',
+    );
+    expect(error.closest('details')).toBeNull();
+    expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+    fireEvent.click(screen.getByText('任务标题', { exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: '恢复自动标题' }));
+    expect(screen.getByLabelText('任务短标题（可编辑）')).toHaveValue('保留完整要求');
+  });
+
+  it.each([89999, 90000, 100001])('仅接近上限显示实际完整任务说明计数：%i', async (length) => {
+    show(vi.fn(async (input) => base(String(input))));
+    fireEvent.change(await screen.findByLabelText('你想完成什么？'), {
+      target: { value: '文'.repeat(length - 6) },
+    });
+    if (length < 90000) expect(screen.queryByText(/任务说明：/)).not.toBeInTheDocument();
+    else
+      expect(
+        screen.getByText(`任务说明：${length} / 100000 字符（含分节标题）`),
+      ).toBeInTheDocument();
+    if (length > 100000) expect(screen.getByRole('button', { name: '创建并开始' })).toBeDisabled();
+  });
+
   it('完整要求后立即选择Agent，短标题与恢复同组且恢复不清正文', async () => {
     show(vi.fn(async (input) => base(String(input))));
     const requirement = await screen.findByLabelText('你想完成什么？');
@@ -1295,6 +1326,10 @@ describe('新工作阅读优先层级', () => {
     expect(
       agentChoice.compareDocumentPosition(shortTitle) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    const titleDetails = shortTitle.closest('details')!;
+    expect(titleDetails).not.toHaveAttribute('open');
+    expect(titleDetails).toHaveTextContent('根据工作内容自动生成');
+    fireEvent.click(screen.getByText('任务标题', { exact: true }));
     const restore = screen.getByRole('button', { name: '恢复自动标题' });
     expect(restore.parentElement).toContainElement(shortTitle);
     fireEvent.change(requirement, { target: { value: '完整目标第一行\n保留后续验收细节' } });
@@ -1302,6 +1337,10 @@ describe('新工作阅读优先层级', () => {
     fireEvent.click(restore);
     expect(shortTitle).toHaveValue('完整目标第一行');
     expect(requirement).toHaveValue('完整目标第一行\n保留后续验收细节');
+    fireEvent.click(screen.getByText('任务标题', { exact: true }));
+    expect(titleDetails).not.toHaveAttribute('open');
+    expect(titleDetails.querySelector('summary')).toHaveTextContent('完整目标第一行');
+    expect(screen.queryByText(/任务说明：/)).not.toBeInTheDocument();
     await screen.findByText(
       '选择依据是已登记状态与工作区映射，不代表实时登录、进程或容器健康。启动时仍会检查。',
     );

@@ -38,11 +38,20 @@
 
 .agentChoice {
   display: grid;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
   min-width: 0;
 }
 
+.agentChoice > :first-child,
+.agentChoice > p {
+  grid-column: 1 / -1;
+}
+
 .agentGuidance {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
   color: var(--ah-text-secondary);
   font-size: 13px;
   line-height: 1.6;
@@ -53,7 +62,9 @@
 }
 
 .refreshAgent {
-  justify-self: start;
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
   min-height: 44px;
 }
 
@@ -66,4 +77,57 @@
 
 .titleGroup > button {
   min-height: 44px;
+}
+
+.eligibilityDetails summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+}
+
+.titleDetails {
+  min-width: 0;
+  border-top: 1px solid var(--ah-border-subtle);
+  border-bottom: 1px solid var(--ah-border-subtle);
+}
+
+.titleDetails > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ah-text-secondary);
+}
+
+.titleDetails > summary::-webkit-details-marker {
+  display: none;
+}
+
+.titleDetails > summary > :first-child,
+.editTitle {
+  flex-shrink: 0;
+}
+
+.titlePreview {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ah-text-primary);
+}
+
+.titleDetails[open] > summary {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 420px) {
+  .titleGroup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .titleGroup > button {
+    justify-self: start;
+  }
 }

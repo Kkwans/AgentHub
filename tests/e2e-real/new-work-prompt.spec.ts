@@ -120,6 +120,18 @@ for (const theme of ['light', 'dark'] as const) {
       const agentChoice = dialog.getByRole('combobox', { name: '推荐 Agent', exact: true });
       const shortTitle = dialog.getByRole('textbox', { name: '任务短标题（可编辑）' });
       const resetTitle = dialog.getByRole('button', { name: '恢复自动标题', exact: true });
+      const titleSummary = dialog.locator('summary').filter({ hasText: '任务标题' });
+      await expect(shortTitle).not.toBeVisible();
+      await expect(titleSummary).toContainText('根据工作内容自动生成');
+      await titleSummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(shortTitle).toBeVisible();
+      await requirement.fill('保留完整要求\n第二行验收细节');
+      await shortTitle.fill('手动短标题');
+      await resetTitle.click();
+      await expect(shortTitle).toHaveValue('保留完整要求');
+      await expect(requirement).toHaveValue('保留完整要求\n第二行验收细节');
+      await requirement.fill('');
       await expect(agentChoice).toBeInViewport({ ratio: 1 });
       const initialGeometry = {
         requirement: (await requirement.boundingBox())!,
@@ -140,6 +152,9 @@ for (const theme of ['light', 'dark'] as const) {
         body: JSON.stringify(initialGeometry),
         contentType: 'application/json',
       });
+      await titleSummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(shortTitle).not.toBeVisible();
       const projectDirectory = dialog.locator('details').filter({
         has: page.locator('summary', { hasText: '项目目录' }),
       });
