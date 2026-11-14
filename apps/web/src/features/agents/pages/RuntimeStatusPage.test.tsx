@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,20 @@ const runtime = (
   adoptable: false,
 });
 describe('Runtime page status consistency', () => {
+  it('keeps one Runtime heading and the original explicit rescan action without an infrastructure badge', async () => {
+    const post = vi.spyOn(api, 'post').mockResolvedValue({});
+    mount([runtime('READY')]);
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Runtime', level: 1 })).toBeVisible(),
+    );
+    expect(screen.queryByText('Agent Infrastructure')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: '重新扫描' })).toHaveLength(1);
+    expect(post).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '重新扫描' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/discovery/runtimes/rescan'));
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Local Host · 就绪')).toBeVisible();
+  });
   it('renders known state instead of contradictory unknown detail', () => {
     mount([runtime('READY'), runtime('UNAVAILABLE'), runtime('BROKEN'), runtime('UNSUPPORTED')]);
     for (const label of ['就绪', '不可用', '异常', '不支持']) {

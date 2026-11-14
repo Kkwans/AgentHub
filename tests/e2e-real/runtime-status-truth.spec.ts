@@ -31,6 +31,46 @@ for (const theme of ['light', 'dark']) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
       ).toBeLessThanOrEqual(1);
+      await expect(page.getByText('Agent Infrastructure', { exact: true })).toHaveCount(0);
+      const geometry = await page
+        .getByRole('heading', { name: 'Runtime', exact: true })
+        .evaluate((heading) => {
+          const header = heading.closest('.page-header-row')!;
+          const scan = header.querySelector('button')!;
+          const content = document.querySelector('.page-content')!;
+          const box = (element: Element) => {
+            const rect = element.getBoundingClientRect();
+            return {
+              left: rect.left,
+              right: rect.right,
+              top: rect.top,
+              height: rect.height,
+              width: rect.width,
+            };
+          };
+          return {
+            heading: box(heading),
+            scan: box(scan),
+            contentPaddingTop: getComputedStyle(content).paddingTop,
+          };
+        });
+      expect(geometry.scan.height).toBeGreaterThanOrEqual(43.99);
+      expect(geometry.contentPaddingTop).toBe('24px');
+      if (width === 390) {
+        expect(
+          Math.abs(
+            geometry.heading.top +
+              geometry.heading.height / 2 -
+              geometry.scan.top -
+              geometry.scan.height / 2,
+          ),
+        ).toBeLessThanOrEqual(4);
+        expect(geometry.heading.right).toBeLessThanOrEqual(geometry.scan.left);
+      }
+      await info.attach(`runtime-header-geometry-${theme}-${width}`, {
+        body: JSON.stringify(geometry),
+        contentType: 'application/json',
+      });
       const path = info.outputPath(`runtime-status-${theme}-${width}.png`);
       await page.screenshot({ path, fullPage: true });
       await info.attach(`runtime-status-${theme}-${width}`, { path, contentType: 'image/png' });

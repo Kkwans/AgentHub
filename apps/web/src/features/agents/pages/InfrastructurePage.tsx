@@ -25,6 +25,7 @@ import {
   GitBranch,
   Link2,
   Network,
+  NavigationPageHeader,
   Play,
   Plus,
   RefreshCw,
@@ -38,7 +39,7 @@ import {
 } from '@agenthub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import {
   Link,
   NavLink,
@@ -86,6 +87,7 @@ import {
 } from '../../../presentation/domain-labels';
 import layout from '../../shared/layout.module.css';
 import styles from './AgentDirectory.module.css';
+import runtimeStyles from './InfrastructurePage.module.css';
 import {
   Screen,
   QueryMessage,
@@ -97,6 +99,24 @@ import {
   taskStateClass,
   sessionGroupKey,
 } from '../../shared/page-primitives';
+
+/** Runtime-only chrome; node authorization and diagnostics retain their existing shell. */
+function RuntimeScreen({ title, description, actions, children }: ComponentProps<typeof Screen>) {
+  return (
+    <div className="min-h-full">
+      <AhReveal>
+        <NavigationPageHeader
+          icon={Server}
+          title={title}
+          description={description ?? ''}
+          className={runtimeStyles.header ?? ''}
+          {...(actions ? { actions } : {})}
+        />
+      </AhReveal>
+      <div className={`page-content page-shell ${runtimeStyles.content}`}>{children}</div>
+    </div>
+  );
+}
 
 /** Keep provider/container digests in Diagnostics instead of the primary list row. */
 export function runtimeImageLabel(runtime: Pick<RuntimeCandidateRecord, 'image' | 'kind'>): string {
@@ -173,8 +193,9 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
   const visibleRuntimeRows = showStoppedRuntimes
     ? runtimeRows
     : runtimeRows.filter((runtime) => runtime.state !== 'STOPPED');
+  const PageScreen = kind === 'runtimes' ? RuntimeScreen : Screen;
   return (
-    <Screen
+    <PageScreen
       eyebrow="Agent Infrastructure"
       title={title}
       icon={kind === 'runtimes' ? Server : kind === 'nodes' ? Network : Bot}
@@ -364,6 +385,6 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
           </div>
         </section>
       )}
-    </Screen>
+    </PageScreen>
   );
 }
