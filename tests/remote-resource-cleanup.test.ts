@@ -34,7 +34,7 @@ import { AgentService } from '../apps/server/src/agents/agent-service.js';
 let root: string, db: DatabaseClient, server: Server, router: WebSocketUpgradeRouter;
 let nodes: RemoteNodeService, gateway: RemoteNodeGateway;
 const clients: RemoteNodeClient[] = [],
-  loops: Promise<void>[] = [],
+  loops: Promise<{ error?: unknown }>[] = [],
   nodeIds: string[] = [];
 const received: Array<{ requestId: string; command: string }> = [];
 let execute: (command: RemoteNodeCommandName) => Promise<Record<string, unknown>>;
@@ -50,42 +50,10 @@ beforeAll(async () => {
   router = new WebSocketUpgradeRouter(server);
   gateway = new RemoteNodeGateway(router, nodes);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('fixture bind failed');
-  for (let index = 0; index < 2; index += 1) {
-    const token = await nodes.createRegistrationToken({
-      name: `resource-${index}`,
-      allowedRoots: [root],
-    });
-    const client = new RemoteNodeClient(
-      {
-        serverUrl: `ws://127.0.0.1:${address.port}/node/ws`,
-        dataDir: join(root, `identity-${index}`),
-        name: `resource-${index}`,
-        roots: [root],
-        registrationToken: token.token,
-      },
-      { execute: async (command) => execute(command) },
-      async () => [],
-    );
-    clients.push(client);
-    loops.push(client.run());
-    await waitFor(async () =>
-      (await nodes.list()).some(
-        (node) => node.name === `resource-${index}` && node.status === 'ONLINE',
-      ),
-    );
-    nodeIds.push((await nodes.list()).find((node) => node.name === `resource-${index}`)!.id);
-  }
-  socket(0).on('message', (data) => {
-    const message = JSON.parse(data.toString());
-    if (message.type === 'node.command') received.push(message);
-  });
-  sent = vi.spyOn(socket(0), 'send');
 });
 afterAll(async () => {
   for (const client of clients) client.stop();
-  await Promise.all(loops);
+  await observeNodeOutcomes();
   sent?.mockRestore();
   await gateway?.close();
   router?.close();
@@ -96,13 +64,70 @@ afterAll(async () => {
   await db?.close();
   if (root) await rm(root, { recursive: true, force: true });
 });
-beforeEach(() => {
+let generation = 0;
+beforeEach(async () => {
+  for (const client of clients) client.stop();
+  await observeNodeOutcomes();
+  sent?.mockRestore();
+  clients.length = 0;
+  loops.length = 0;
+  nodeIds.length = 0;
+  generation += 1;
   execute = async () => {
     throw unknown();
   };
   received.length = 0;
-  sent.mockClear();
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('fixture bind failed');
+  for (let index = 0; index < 2; index += 1) {
+    const token = await nodes.createRegistrationToken({
+      name: `resource-${generation}-${index}`,
+      allowedRoots: [root],
+    });
+    const client = new RemoteNodeClient(
+      {
+        serverUrl: `ws://127.0.0.1:${address.port}/node/ws`,
+        dataDir: join(root, `identity-${generation}-${index}`),
+        name: `resource-${generation}-${index}`,
+        roots: [root],
+        registrationToken: token.token,
+      },
+      { execute: async (command) => execute(command) },
+      async () => [],
+    );
+    clients.push(client);
+    // Observe immediately, then assert every rejected lifecycle before replacing fixtures.
+    loops.push(
+      client.run().then(
+        () => ({}),
+        (error: unknown) => ({ error }),
+      ),
+    );
+    await waitFor(async () =>
+      (await nodes.list()).some(
+        (node) => node.name === `resource-${generation}-${index}` && node.status === 'ONLINE',
+      ),
+    );
+    nodeIds.push(
+      (await nodes.list()).find((node) => node.name === `resource-${generation}-${index}`)!.id,
+    );
+  }
+  socket(0).on('message', (data) => {
+    const message = JSON.parse(data.toString());
+    if (message.type === 'node.command') received.push(message);
+  });
+  sent = vi.spyOn(socket(0), 'send');
 });
+
+async function observeNodeOutcomes() {
+  for (const outcome of await Promise.all(loops)) {
+    if ('error' in outcome) {
+      expect(outcome.error).toBeInstanceOf(ResourceCleanupUnconfirmedError);
+      expect((outcome.error as Error).cause).toBeUndefined();
+    }
+  }
+}
+
 function socket(index: number): WebSocketType {
   return (clients[index] as unknown as { socket: WebSocketType }).socket;
 }

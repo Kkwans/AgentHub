@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { FakeAgentAdapter } from '@agenthub/agent-core';
+import { FakeAgentAdapter, ResourceCleanupUnconfirmedError } from '@agenthub/agent-core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AgentHubNodeCommandExecutor } from './command-executor.js';
@@ -64,7 +64,7 @@ describe('AgentHub Node 固定 RPC executor', () => {
     await executor.disconnect();
   });
 
-  it('session.close失败保留原handle，重复RPC仍返回原失败而非notfound', async () => {
+  it('session.close失败保留原handle且封闭准入，disconnect不得翻成功', async () => {
     const adapter = new FakeAgentAdapter();
     const original = adapter.createSession.bind(adapter);
     const failure = new Error('fixture cleanup unknown');
@@ -85,17 +85,16 @@ describe('AgentHub Node 固定 RPC executor', () => {
       sessionId,
       projectId: '33333333-3333-4333-8333-333333333333',
     });
-    await expect(executor.execute('session.close', { sessionId })).rejects.toBe(failure);
-    await expect(executor.execute('session.close', { sessionId })).rejects.toBe(failure);
-    expect(close).toHaveBeenCalledTimes(2);
-    close.mockImplementation(originalClose);
-    await expect(executor.execute('session.close', { sessionId })).resolves.toEqual({
-      closed: true,
-    });
+    await expect(executor.execute('session.close', { sessionId })).rejects.toBeInstanceOf(
+      ResourceCleanupUnconfirmedError,
+    );
     await expect(executor.execute('session.close', { sessionId })).rejects.toMatchObject({
-      code: 'REMOTE_SESSION_NOT_FOUND',
+      code: 'NODE_EXECUTOR_STOPPING',
     });
-    await executor.disconnect();
+    expect(close).toHaveBeenCalledOnce();
+    await expect(executor.disconnect()).rejects.toBeInstanceOf(ResourceCleanupUnconfirmedError);
+    expect(close).toHaveBeenCalledOnce();
+    await originalClose(); // fake fixture teardown only; production ledger remains failed.
   });
 
   function agent(_id: string) {

@@ -5,6 +5,8 @@ import { delimiter, isAbsolute, join } from 'node:path';
 
 import { AcpAdapter, resolvePinnedAcpAdapter } from '@agenthub/adapter-acp';
 import {
+  isResourceCleanupUnconfirmed,
+  ResourceCleanupUnconfirmedError,
   type AgentRuntimeAdapter,
   type AgentKind,
   type AgentProfile,
@@ -54,16 +56,26 @@ const cancelInput = sessionIdInput.extend({ runId: z.string().uuid().optional() 
 interface ManagedSession {
   handle: AgentSessionHandle;
   lastSeq: number;
+  epoch: number;
 }
 
 export class AgentHubNodeCommandExecutor implements NodeCommandExecutor {
   private readonly workspace: NodeWorkspace;
   private readonly sessions = new Map<string, ManagedSession>();
+  private readonly reservations = new Map<string, symbol>();
+  private readonly pending = new Set<Promise<void>>();
+  private readonly unconfirmed = new Set<AgentSessionHandle>();
+  private readonly closes = new WeakMap<AgentSessionHandle, Promise<void>>();
+  private accepting = true;
+  private epoch = 0;
+  private cleanupUnconfirmed = false;
+  private disconnectPromise: Promise<void> | undefined;
   private eventSink: ((sessionId: string, event: Record<string, unknown>) => void) | undefined;
 
   constructor(
     allowedRoots: string[],
     private readonly adapter: AgentRuntimeAdapter = new AcpAdapter(),
+    private readonly disconnectTimeoutMs = 5_000,
   ) {
     this.workspace = new NodeWorkspace(allowedRoots);
   }
@@ -74,14 +86,119 @@ export class AgentHubNodeCommandExecutor implements NodeCommandExecutor {
     this.eventSink = sink;
   }
 
-  async disconnect(): Promise<void> {
-    const sessions = [...this.sessions.values()];
-    this.sessions.clear();
-    this.eventSink = undefined;
-    await Promise.allSettled(sessions.map((session) => session.handle.close()));
+  async beginConnection(): Promise<void> {
+    if (this.disconnectPromise) await this.disconnectPromise;
+    if (this.cleanupUnconfirmed) throw new ResourceCleanupUnconfirmedError();
+    this.disconnectPromise = undefined;
+    this.accepting = true;
+  }
+
+  disconnect(): Promise<void> {
+    if (!this.disconnectPromise) {
+      this.accepting = false;
+      this.epoch += 1;
+      this.eventSink = undefined;
+      this.disconnectPromise = Promise.resolve().then(() => this.drain());
+    }
+    return this.disconnectPromise;
+  }
+
+  private async drain(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cleanup = async () => {
+      const closes = [...this.sessions.entries()].map(async ([id, session]) => {
+        await this.closeHandle(session.handle);
+        if (this.sessions.get(id) === session) this.sessions.delete(id);
+      });
+      const results = Promise.allSettled(closes);
+      while (this.pending.size) await Promise.all([...this.pending]);
+      if (
+        (await results).some((result) => result.status === 'rejected') ||
+        this.cleanupUnconfirmed ||
+        this.unconfirmed.size
+      )
+        throw new ResourceCleanupUnconfirmedError();
+    };
+    try {
+      await Promise.race([
+        cleanup(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new ResourceCleanupUnconfirmedError()),
+            Math.max(1, this.disconnectTimeoutMs),
+          );
+        }),
+      ]);
+    } catch {
+      this.cleanupUnconfirmed = true;
+      throw new ResourceCleanupUnconfirmedError();
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  private assertAdmission(epoch: number): void {
+    if (!this.accepting || this.epoch !== epoch)
+      throw new NodeCommandError('NODE_EXECUTOR_STOPPING', 'Node 正在清理，不能执行新命令。');
+  }
+
+  private closeHandle(handle: AgentSessionHandle): Promise<void> {
+    let close = this.closes.get(handle);
+    if (!close) {
+      this.unconfirmed.add(handle);
+      close = Promise.resolve()
+        .then(() => handle.close())
+        .then(
+          () => {
+            this.unconfirmed.delete(handle);
+          },
+          () => {
+            this.cleanupUnconfirmed = true;
+            this.accepting = false;
+            throw new ResourceCleanupUnconfirmedError();
+          },
+        );
+      this.closes.set(handle, close);
+    }
+    return close;
   }
 
   async execute(command: RemoteNodeCommandName, payload: Record<string, unknown>) {
+    const epoch = this.epoch;
+    this.assertAdmission(epoch);
+    let done!: () => void;
+    const settled = new Promise<void>((resolve) => {
+      done = resolve;
+    });
+    this.pending.add(settled);
+    try {
+      const result = await this.executeAdmitted(command, payload, epoch);
+      this.assertAdmission(epoch);
+      return result;
+    } catch (error) {
+      if (
+        isResourceCleanupUnconfirmed(error) ||
+        (error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'ACP_PROCESS_CLEANUP_UNCONFIRMED')
+      ) {
+        this.cleanupUnconfirmed = true;
+        this.accepting = false;
+        throw new ResourceCleanupUnconfirmedError();
+      }
+      throw error;
+    } finally {
+      this.pending.delete(settled);
+      done();
+    }
+  }
+
+  private async executeAdmitted(
+    command: RemoteNodeCommandName,
+    payload: Record<string, unknown>,
+    epoch: number,
+  ) {
     switch (command) {
       case 'project.preflight': {
         const input = projectInput.parse(payload);
@@ -100,15 +217,22 @@ export class AgentHubNodeCommandExecutor implements NodeCommandExecutor {
       case 'agent.preflight': {
         const input = agentInput.parse(payload);
         const profile = await this.profile(input);
-        return asRecord(await this.adapter.preflight(profile));
+        this.assertAdmission(epoch);
+        return asRecord(
+          await this.adapter.preflight({
+            ...profile,
+            config: { ...profile.config, preflightStrictCleanup: true },
+          }),
+        );
       }
       case 'agent.capabilities': {
         const input = agentInput.parse(payload);
         const profile = await this.profile(input);
+        this.assertAdmission(epoch);
         return asRecord(await this.adapter.getCapabilities(profile));
       }
       case 'session.create':
-        return this.createSession(sessionCreateInput.parse(payload));
+        return this.createSession(sessionCreateInput.parse(payload), epoch);
       case 'session.run':
         return this.run(sessionRunInput.parse(payload));
       case 'session.approval': {
@@ -126,32 +250,41 @@ export class AgentHubNodeCommandExecutor implements NodeCommandExecutor {
       case 'session.close': {
         const input = sessionIdInput.parse(payload);
         const session = this.requireSession(input.sessionId);
-        await session.handle.close();
+        await this.closeHandle(session.handle);
         if (this.sessions.get(input.sessionId) === session) this.sessions.delete(input.sessionId);
         return { closed: true };
       }
     }
   }
 
-  private async createSession(input: z.infer<typeof sessionCreateInput>) {
-    if (this.sessions.has(input.sessionId)) {
-      throw new NodeCommandError('REMOTE_SESSION_EXISTS', '远程 Session 已存在');
+  private async createSession(input: z.infer<typeof sessionCreateInput>, epoch: number) {
+    if (this.sessions.has(input.sessionId) || this.reservations.has(input.sessionId))
+      throw new NodeCommandError('REMOTE_SESSION_EXISTS', '远程 Session 已存在或正在创建');
+    const reservation = Symbol();
+    this.reservations.set(input.sessionId, reservation);
+    try {
+      const profile = await this.profile(input);
+      this.assertAdmission(epoch);
+      const handle = await this.adapter.createSession({
+        sessionId: input.sessionId,
+        profile,
+        projectId: input.projectId,
+        cwd: input.cwd,
+        ...(input.model ? { model: input.model } : {}),
+        ...(input.mode ? { mode: input.mode } : {}),
+      });
+      if (!this.accepting || this.epoch !== epoch) {
+        await this.closeHandle(handle);
+        throw new NodeCommandError('NODE_EXECUTOR_STOPPING', '迟到会话已清理，未激活。');
+      }
+      const managed: ManagedSession = { handle, lastSeq: 0, epoch };
+      this.sessions.set(input.sessionId, managed);
+      void this.forwardEvents(input.sessionId, managed);
+      return { externalSessionId: handle.externalSessionId ?? '' };
+    } finally {
+      if (this.reservations.get(input.sessionId) === reservation)
+        this.reservations.delete(input.sessionId);
     }
-    const profile = await this.profile(input);
-    const handle = await this.adapter.createSession({
-      sessionId: input.sessionId,
-      profile,
-      projectId: input.projectId,
-      cwd: input.cwd,
-      ...(input.model ? { model: input.model } : {}),
-      ...(input.mode ? { mode: input.mode } : {}),
-    });
-    const managed: ManagedSession = { handle, lastSeq: 0 };
-    this.sessions.set(input.sessionId, managed);
-    void this.forwardEvents(input.sessionId, managed);
-    return {
-      externalSessionId: handle.externalSessionId ?? '',
-    };
   }
 
   private async run(input: z.infer<typeof sessionRunInput>) {
@@ -198,10 +331,22 @@ export class AgentHubNodeCommandExecutor implements NodeCommandExecutor {
   private async forwardEvents(sessionId: string, session: ManagedSession): Promise<void> {
     try {
       for await (const event of session.handle.events()) {
+        if (
+          !this.accepting ||
+          session.epoch !== this.epoch ||
+          this.sessions.get(sessionId) !== session
+        )
+          continue;
         session.lastSeq = Math.max(session.lastSeq, event.seq);
         this.eventSink?.(sessionId, event as unknown as Record<string, unknown>);
       }
     } catch {
+      if (
+        !this.accepting ||
+        session.epoch !== this.epoch ||
+        this.sessions.get(sessionId) !== session
+      )
+        return;
       const disconnected: NormalizedAgentEvent = {
         eventId: randomUUID(),
         sessionId,

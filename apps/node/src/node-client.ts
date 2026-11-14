@@ -25,6 +25,7 @@ export interface NodeCommandExecutor {
     sink: ((sessionId: string, event: Record<string, unknown>) => void) | undefined,
   ): void;
   disconnect?(): Promise<void>;
+  beginConnection?(): Promise<void>;
 }
 
 const unsupportedExecutor: NodeCommandExecutor = {
@@ -45,7 +46,9 @@ export class NodeCommandError extends Error {
 
 export class RemoteNodeClient {
   private stopped = false;
+  private cleanupUnconfirmed = false;
   private socket: WebSocket | undefined;
+  private endConnection: (() => void) | undefined;
 
   constructor(
     private readonly config: NodeDaemonConfig,
@@ -56,14 +59,19 @@ export class RemoteNodeClient {
   ) {}
 
   async run(): Promise<void> {
+    if (this.cleanupUnconfirmed) throw new ResourceCleanupUnconfirmedError();
+    if (this.stopped) return;
     const identity = await NodeIdentity.loadOrCreate(this.config.dataDir);
+    if (this.stopped) return;
     const roots = await resolveNodeRoots(this.config.roots);
+    if (this.stopped) return;
     let attempt = 0;
     while (!this.stopped) {
       try {
         await this.connect(identity, roots);
         attempt = 0;
       } catch (error) {
+        if (isResourceCleanupUnconfirmed(error)) throw new ResourceCleanupUnconfirmedError();
         if (this.stopped) return;
         const waitMs = Math.min(30_000, 1_000 * 2 ** Math.min(attempt, 5)) + Math.random() * 500;
         attempt += 1;
@@ -75,12 +83,20 @@ export class RemoteNodeClient {
 
   stop(): void {
     this.stopped = true;
+    this.endConnection?.();
     this.socket?.close(1000, 'Node daemon 正在停止');
   }
 
   private async connect(identity: NodeIdentity, roots: string[]): Promise<void> {
     let device = await identity.readDeviceRecord();
+    if (this.stopped) return;
     const inventory = await this.inventoryProvider();
+    if (this.stopped) return;
+    await this.executor.beginConnection?.();
+    if (this.stopped) {
+      await this.disconnectExecutor();
+      return;
+    }
     const socket = new WebSocket(this.config.serverUrl, {
       maxPayload: 1024 * 1024,
       handshakeTimeout: 15_000,
@@ -91,37 +107,101 @@ export class RemoteNodeClient {
       }
     });
     this.socket = socket;
-    await new Promise<void>((resolve, reject) => {
-      let authenticated = false;
-      let heartbeat: NodeJS.Timeout | undefined;
-      socket.once('error', reject);
-      socket.on('message', (data, isBinary) => {
-        if (isBinary) {
-          socket.close(4002, '不支持二进制消息');
-          return;
-        }
-        void this.handleServerMessage(socket, data.toString(), identity, roots, inventory, device)
-          .then((nextDevice) => {
-            if (nextDevice) device = nextDevice;
-            if (!authenticated && nextDevice) {
-              authenticated = true;
-              heartbeat = this.startHeartbeat(socket, nextDevice, roots, inventory);
+    let ended = false;
+    let heartbeat: NodeJS.Timeout | undefined;
+    let finishConnection: (() => void) | undefined;
+    // Normalize the immediately-started cleanup into an owned outcome: stop can
+    // revoke synchronously without creating an unobserved rejected promise.
+    let cleanup: Promise<{ error?: unknown }> | undefined;
+    const startCleanup = () =>
+      (cleanup ??= this.disconnectExecutor().then(
+        () => ({}),
+        (error: unknown) => ({ error }),
+      ));
+    try {
+      await new Promise<void>((resolve, reject) => {
+        let authenticated = false;
+        finishConnection = () => {
+          ended = true;
+          startCleanup();
+          resolve();
+        };
+        this.endConnection = finishConnection;
+        socket.once('error', (error) => {
+          ended = true;
+          startCleanup();
+          reject(error);
+        });
+        socket.on('message', (data, isBinary) => {
+          if (ended || this.stopped || this.socket !== socket) return;
+          if (isBinary) {
+            ended = true;
+            startCleanup();
+            try {
+              socket.close(4002, '不支持二进制消息');
+            } catch {
+              /* cleanup must not depend on the close handshake */
             }
-          })
-          .catch((error) => {
-            socket.close(4002, 'Node 消息处理失败');
-            reject(error);
-          });
+            reject(new Error('不支持二进制消息'));
+            return;
+          }
+          void this.handleServerMessage(socket, data.toString(), identity, roots, inventory, device)
+            .then((nextDevice) => {
+              if (ended || this.stopped || this.socket !== socket) return;
+              if (nextDevice) device = nextDevice;
+              if (!authenticated && nextDevice) {
+                authenticated = true;
+                heartbeat = this.startHeartbeat(socket, nextDevice, roots, inventory);
+              }
+            })
+            .catch((error) => {
+              if (ended || this.socket !== socket) return;
+              try {
+                socket.close(4002, 'Node 消息处理失败');
+              } catch {
+                /* finally still drains */
+              }
+              startCleanup();
+              reject(error);
+            });
+        });
+        socket.once('close', (code, reason) => {
+          ended = true;
+          startCleanup();
+          if (heartbeat) clearInterval(heartbeat);
+          if (this.stopped || code === 1000) resolve();
+          else reject(new Error(`连接关闭 ${String(code)} ${reason.toString()}`));
+        });
       });
-      socket.once('close', (code, reason) => {
-        if (heartbeat) clearInterval(heartbeat);
-        this.socket = undefined;
+    } finally {
+      ended = true;
+      if (heartbeat) clearInterval(heartbeat);
+      if (this.socket === socket) this.socket = undefined;
+      if (this.endConnection === finishConnection) this.endConnection = undefined;
+      try {
         this.executor.setEventSink?.(undefined);
-        void this.executor.disconnect?.();
-        if (this.stopped || code === 1000) resolve();
-        else reject(new Error(`连接关闭 ${String(code)} ${reason.toString()}`));
-      });
-    });
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+          socket.close(1000, 'Node 连接清理');
+      } finally {
+        await this.requireCleanup(startCleanup());
+      }
+    }
+  }
+
+  private async requireCleanup(cleanup: Promise<{ error?: unknown }>): Promise<void> {
+    const outcome = await cleanup;
+    if ('error' in outcome) throw outcome.error;
+  }
+
+  private async disconnectExecutor(): Promise<void> {
+    try {
+      await this.executor.disconnect?.();
+      if (this.cleanupUnconfirmed) throw new ResourceCleanupUnconfirmedError();
+    } catch {
+      this.stopped = true;
+      this.cleanupUnconfirmed = true;
+      throw new ResourceCleanupUnconfirmedError();
+    }
   }
 
   private async handleServerMessage(
@@ -231,14 +311,31 @@ export class RemoteNodeClient {
         : error instanceof NodeCommandError && error.code !== 'RESOURCE_CLEANUP_UNCONFIRMED'
           ? error
           : new NodeCommandError('REMOTE_NODE_COMMAND_FAILED', safeErrorMessage(error));
-      socket.send(
-        JSON.stringify({
-          type: 'node.result',
-          requestId,
-          ok: false,
-          error: { code: failure.code, message: failure.message },
-        }),
-      );
+      const resourceUnknown = isResourceCleanupUnconfirmed(error);
+      if (resourceUnknown) {
+        this.cleanupUnconfirmed = true;
+        this.stopped = true;
+      }
+      const response = JSON.stringify({
+        type: 'node.result',
+        requestId,
+        ok: false,
+        error: { code: failure.code, message: failure.message },
+      });
+      if (resourceUnknown) {
+        try {
+          socket.send(response);
+        } catch {
+          /* uncertainty already sticky */
+        }
+        try {
+          socket.close(1011, 'Node 资源清理待核对');
+        } catch {
+          /* drain must not wait for handshake */
+        }
+        throw new ResourceCleanupUnconfirmedError();
+      }
+      socket.send(response);
     }
   }
 }
