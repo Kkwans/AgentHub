@@ -1857,3 +1857,12 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 4fd verify单测2404通过/11条件跳过，token9通过；旧fixture Prompt生命周期仍直接点击已收入details的版本按钮而超时。fixture24通过/1失败/3条件跳过/96未运行。仅适配真实新入口与关闭回焦，不删旧版本/绑定断言；另发现并一起适配v1-prompt-lifecycle同类入口，尚未发布。
 
 - 16:05:44 UTC全仓build成功；同窗两处旧Prompt生命周期E2E适配已独立类型/lint/list和CR通过，保原版本/标签/布局断言，无force或增大timeout。它们不在前述Vitest include内，只作独立静态验证，尚未实际浏览器复跑。
+
+### 2026-11-14 16:17 UTC（北京时间11月15日00:17）设置阅读布局与精确回归
+
+- Settings候选去重复页头标记、统一页面轴，只将外观偏好标签/44px控件在手机合理同行；六分区导航和账户/安全语义保留。switch单测强化为两次真实往返切换、ARIA同步且无服务端写入，独立最终CR无阻断。首轮1416通过但单测在freeze后变化，明确不算最终冻结验收，已16:16重新冻结聚合。
+- focused新增已有Settings两spec共18例，完整清单已静态验证115 tests/14files；这不是浏览器执行结果。尚无新Settings截图或审美放行。
+- fc622精确focused97通过及独立Prompt修复4通过；verify2405单测/11条件跳过、token9通过后，旧Prompt fixture直接点隐藏版本入口失败，24通过/1失败/3跳过/96未运行。入口已在b3适配，等待其精确CI。
+- 4fd完整real于16:15结束169通过/1失败，唯一仍为旧Agent链接18px门禁，geometry140通过。不能以Prompt局部改善宣布整run绿。
+- 16:19:22 UTC最终冻结聚合130文件1416测试通过/198.50秒，6个产品/测试/workflow文件hash逐一未变。全仓build继续，仍未将本地通过当新Settings截图通过。
+- 16:19:37 UTC全仓build通过，候选准备发布；Settings实际18例浏览器与人工审美仍待新SHA。

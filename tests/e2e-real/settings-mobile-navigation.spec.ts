@@ -76,6 +76,16 @@ for (const width of [390, 760, 768, 1024, 1440]) {
         await expect(link).toHaveAttribute('aria-current', 'page');
         await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
       }
+      await page.getByRole('link', { name: /^集成/ }).click();
+      const createToken = page.getByRole('button', { name: '创建 token', exact: true });
+      await createToken.focus();
+      await page.keyboard.press('Enter');
+      const tokenDialog = page.getByRole('dialog', { name: '创建 API token' });
+      await expect(tokenDialog).toBeVisible();
+      await tokenDialog.getByRole('textbox', { name: 'token 名称' }).fill('仅测试取消，不创建凭据');
+      await tokenDialog.getByRole('button', { name: '取消', exact: true }).click();
+      await expect(tokenDialog).toHaveCount(0);
+      await expect(createToken).toBeFocused();
       await page.goto('/settings/appearance');
       const advanced = nav.getByRole('link', { name: /高级/ });
       await advanced.focus();

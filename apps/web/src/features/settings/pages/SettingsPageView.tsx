@@ -52,15 +52,18 @@ function SettingSection({
   description,
   children,
   tone,
+  preferences = false,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   tone?: 'warning';
+  preferences?: boolean;
 }) {
   return (
     <section
-      className={`${styles.section} workspace-settings-panel ${tone === 'warning' ? styles.warningSection : ''}`}
+      className={`${styles.section} workspace-settings-panel ${tone === 'warning' ? styles.warningSection : ''} ${preferences ? styles.preferences : ''}`}
+      aria-label={title}
     >
       <header className={styles.sectionHeader}>
         <div>
@@ -343,17 +346,7 @@ export function SettingsPage() {
       <NavigationPageHeader
         icon={ActiveIcon}
         title="设置"
-        description="管理 AgentHub 的外观、账号、安全与集成。运行环境和远程节点请前往 Infrastructure。"
-        badge={
-          <span className="rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--foreground-faint))]">
-            SETTINGS
-          </span>
-        }
-        actions={
-          <span className={styles.sectionHint}>
-            <ActiveIcon size={15} /> {activeMeta.label}
-          </span>
-        }
+        description="管理外观、账户与工作台偏好。"
       />
 
       <div
@@ -392,7 +385,7 @@ export function SettingsPage() {
         <main className={`${styles.content} grid min-w-0 gap-4`}>
           {activeSection === 'appearance' ? (
             <>
-              <SettingSection title="外观偏好" description="让工作台适应你的工作节奏。">
+              <SettingSection title="外观偏好" preferences>
                 <SettingRow label="主题" description="选择浅色、深色或跟随系统。">
                   <AhSelect
                     aria-label="主题"
@@ -426,11 +419,14 @@ export function SettingsPage() {
                   />
                 </SettingRow>
                 <SettingRow label="减少动效" description="关闭过渡和动画，降低视觉干扰。">
-                  <AhSwitch
-                    aria-label="减少动效"
-                    checked={reducedMotion}
-                    onChange={(event) => setReducedMotion(event.currentTarget.checked)}
-                  />
+                  <label className={styles.switchTouch} htmlFor="settings-reduced-motion">
+                    <AhSwitch
+                      id="settings-reduced-motion"
+                      aria-label="减少动效"
+                      checked={reducedMotion}
+                      onChange={(event) => setReducedMotion(event.currentTarget.checked)}
+                    />
+                  </label>
                 </SettingRow>
                 <SettingRow label="侧边栏" description="记住上次状态，或固定展开/折叠。">
                   <AhSelect

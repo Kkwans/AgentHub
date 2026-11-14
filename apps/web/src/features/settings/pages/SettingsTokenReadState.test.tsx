@@ -26,13 +26,13 @@ const allowed = {
   user: null,
 };
 const token = { id: 'token-1', name: '现有集成', revokedAt: null, lastUsedAt: null };
-function mount() {
+function mount(section = 'integrations') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);
   render(
     <AgentHubProvider>
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/settings/integrations']}>
+        <MemoryRouter initialEntries={[`/settings/${section}`]}>
           <Routes>
             <Route path="/settings/:section" element={<SettingsPage />} />
           </Routes>
@@ -136,5 +136,27 @@ it('认证状态读取失败不展示空列表，重试认证后再读取token',
   failed = false;
   fireEvent.click(screen.getByRole('button', { name: '重新加载' }));
   await waitFor(() => expect(screen.getByText('现有集成')).toBeVisible());
+  noWrites();
+});
+
+it('settings hierarchy keeps six routes and preferences without duplicate badge or current chip', async () => {
+  vi.mocked(api.get).mockResolvedValue({});
+  mount('appearance');
+  expect(screen.queryByText('SETTINGS')).not.toBeInTheDocument();
+  expect(screen.getAllByText('外观', { exact: true })).toHaveLength(1);
+  expect(screen.getByRole('navigation', { name: '设置分区' }).querySelectorAll('a')).toHaveLength(
+    6,
+  );
+  expect(screen.getByRole('region', { name: '外观偏好' })).toBeVisible();
+  expect(screen.getByRole('combobox', { name: '主题' })).toBeVisible();
+  const motion = screen.getByRole('switch', { name: '减少动效' });
+  expect(motion.closest('label')).toHaveAttribute('for', motion.id);
+  const before = (motion as HTMLInputElement).checked;
+  fireEvent.click(motion.closest('label')!);
+  expect((motion as HTMLInputElement).checked).toBe(!before);
+  expect(motion).toHaveAttribute('aria-checked', String(!before));
+  fireEvent.click(motion.closest('label')!);
+  expect((motion as HTMLInputElement).checked).toBe(before);
+  expect(motion).toHaveAttribute('aria-checked', String(before));
   noWrites();
 });
