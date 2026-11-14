@@ -278,8 +278,15 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(options).toHaveCount(1);
       await expect(review.locator(':scope > .git-diff-toolbar')).toHaveCount(0);
       await expect(review.locator('.git-selected-diff-heading code')).toHaveText('runner.ts');
+      // `has` locators are evaluated from each candidate, not from the page.
+      // Keep the label scoped once, then verify its actual named checkbox.
+      const stagedToggle = options.locator('label.git-diff-toggle');
+      await expect(stagedToggle).toHaveCount(1);
+      const stagedCheckbox = stagedToggle.getByRole('checkbox', { name: 'staged', exact: true });
+      await expect(stagedCheckbox).toHaveCount(1);
+      await expect(stagedCheckbox).toBeVisible();
       const controls = [
-        options.locator('label').filter({ has: options.getByRole('checkbox', { name: 'staged' }) }),
+        stagedToggle,
         options.getByRole('combobox', { name: 'Diff 空白处理' }),
         options.getByRole('button', { name: '切换为分栏 Diff' }),
       ];
