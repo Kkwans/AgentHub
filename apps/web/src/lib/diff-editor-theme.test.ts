@@ -49,7 +49,7 @@ describe('review-specific syntax contrast', () => {
       }
       expect(theme.inherit).toBe(true);
       expect(theme.colors).toEqual({}); // Never remove insertion/deletion highlights.
-      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 2 : 3);
+      expect(theme.rules).toHaveLength(name === AGENTHUB_DIFF_LIGHT ? 2 : 4);
     },
   );
   it('keeps CSS identifier values readable on actual dark CI inserted/deleted character backgrounds', () => {
@@ -78,6 +78,7 @@ describe('review-specific syntax contrast', () => {
       'attribute.name',
       'attribute.value.css',
       'keyword.ts',
+      'string.ts',
     ]);
     expect(diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules.map((rule) => rule.token)).toEqual([
       'attribute.name',
@@ -115,7 +116,7 @@ describe('review-specific syntax contrast', () => {
       )!.foreground,
     ).toBe('F4C7AF');
   });
-  it('fixes the actual TSX const contrast without broadening to JS, strings or numbers', () => {
+  it('fixes the actual TSX const contrast without broadening to JS or numbers', () => {
     const theme = diffEditorThemes[AGENTHUB_DIFF_DARK]!;
     const color = theme.rules.find((rule) => rule.token === 'keyword.ts')!.foreground!;
     const base = rgb('1e1e1e');
@@ -135,7 +136,7 @@ describe('review-specific syntax contrast', () => {
     }
     expect(
       theme.rules.some((rule) =>
-        ['keyword', 'keyword.js', 'string.ts', 'number.ts'].includes(rule.token),
+        ['keyword', 'keyword.js', 'number.ts'].includes(rule.token),
       ),
     ).toBe(false);
     expect(theme.colors).toEqual({});
@@ -143,6 +144,15 @@ describe('review-specific syntax contrast', () => {
       'attribute.name',
       'attribute.value.css',
     ]);
+  });
+  it('keeps TSX strings readable on exact dark deleted and inserted character backgrounds', () => {
+    const theme = diffEditorThemes[AGENTHUB_DIFF_DARK]!;
+    const color = theme.rules.find((rule) => rule.token === 'string.ts')!.foreground!;
+    expect(contrast('CE9178', rgb('6f1313'))).toBeLessThan(4.5);
+    for (const bg of ['1e1e1e', '6f1313', '4b5a2a', '373d29'])
+      expect(contrast(color, rgb(bg))).toBeGreaterThanOrEqual(4.5);
+    expect(theme.rules.some((rule) => ['string', 'string.js'].includes(rule.token))).toBe(false);
+    expect(theme.colors).toEqual({});
   });
   it('covers the exact light axe backgrounds and preserves distinct property hue', () => {
     const color = diffEditorThemes[AGENTHUB_DIFF_LIGHT]!.rules[0]!.foreground!;

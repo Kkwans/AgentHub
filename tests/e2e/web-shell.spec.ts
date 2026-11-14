@@ -450,8 +450,9 @@ test('Home 以工作续接为主舞台', async ({ page }, testInfo) => {
   await expect(attention).toBeVisible();
   const reviewLink = attention.getByRole('link');
   await expect(reviewLink).toHaveCount(1);
-  await expect(reviewLink).toContainText(task.title);
-  await expect(reviewLink).toContainText(task.description);
+  await expect(attention).toContainText(task.title);
+  await expect(attention).toContainText(task.description);
+  await expect(reviewLink).toHaveAccessibleName(`审阅：${task.title}`);
   await expect(reviewLink).toContainText('审阅');
   await expect(reviewLink).toHaveAttribute('href', `/workspace/${task.sessionId}`);
   await expectNoHorizontalOverflow(page);

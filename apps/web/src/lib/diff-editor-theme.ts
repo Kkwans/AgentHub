@@ -27,6 +27,8 @@ export const diffEditorThemes: Record<string, editor.IStandaloneThemeData> = {
       { token: 'attribute.value.css', foreground: 'F4C7AF' },
       // TS/TSX keywords need a lighter blue on inserted lines and characters.
       { token: 'keyword.ts', foreground: 'B1D3FF' },
+      // Actual inline TSX deletion: idle on #6f1313 fails with default CE9178.
+      { token: 'string.ts', foreground: 'F4C7AF' },
     ],
     colors: {},
   },
