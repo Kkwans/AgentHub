@@ -522,3 +522,17 @@
 .emptyHome:global(.page-content) {
   max-width: none;
 }
+
+/* A minimum-height mobile page must not distribute spare height into guide rows. */
+.emptyHome {
+  align-content: start;
+}
+@media (max-width: 860px) {
+  .emptyHome .header {
+    justify-content: flex-start;
+  }
+}
+.emptyHome .onboarding,
+.emptyHome .steps {
+  align-content: start;
+}

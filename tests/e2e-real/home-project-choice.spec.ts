@@ -35,20 +35,63 @@ for (const width of [390, 768, 1024, 1440]) {
         await expect(create).toHaveAttribute('href', '/projects/new');
         const agent = guide.getByRole('link', { name: '查看 Agent 中心' });
         await expect(agent).toHaveAttribute('href', '/agents');
+        await expect(page.locator('.workspace-page a[href="/agents"]')).toHaveCount(1);
+        await expect(page.getByRole('contentinfo', { name: '工作台状态' })).toHaveCount(0);
+        const animationEvidence = await guide.evaluate(async (node) => {
+          const root = node.closest('.workspace-page')!;
+          const animations = document.getAnimations().filter((animation) => {
+            const target = (animation.effect as KeyframeEffect | null)?.target;
+            return target instanceof Element && (root.contains(target) || target.contains(root));
+          });
+          const states = animations.map((animation) => ({
+            playState: animation.playState,
+            currentTime: animation.currentTime,
+          }));
+          await Promise.all(
+            animations.map((animation) => animation.finished.catch(() => undefined)),
+          );
+          const ancestors = [];
+          for (let element: Element | null = node; element; element = element.parentElement) {
+            ancestors.push({ tag: element.tagName, opacity: getComputedStyle(element).opacity });
+          }
+          const heading = root.querySelector('h1')!;
+          return {
+            states,
+            ancestors,
+            headingColor: getComputedStyle(heading).color,
+            guideColor: getComputedStyle(node).color,
+          };
+        });
+        for (const ancestor of animationEvidence.ancestors)
+          expect(Number(ancestor.opacity)).toBe(1);
+        await info.attach(`home-guide-${state}-animation`, {
+          body: JSON.stringify(animationEvidence),
+          contentType: 'application/json',
+        });
         const geometry = await guide.evaluate((node) => {
           const b = node.getBoundingClientRect();
           const style = getComputedStyle(node);
-          const heading = document.querySelector('h1')!.getBoundingClientRect();
+          const root = node.closest('.workspace-page')!;
+          const heading = root.querySelector('h1')!.getBoundingClientRect();
           return {
             height: b.height,
             left: b.left,
             headingLeft: heading.left,
             border: style.borderTopWidth,
+            ctaGap:
+              root.querySelector('header a[href="/projects/new"]')!.getBoundingClientRect().top -
+              root.querySelector('header p')!.getBoundingClientRect().bottom,
+            rowGap: getComputedStyle(node.querySelector('ol')!).rowGap,
           };
         });
         expect(geometry.border).toBe('0px');
         expect(Math.abs(geometry.left - geometry.headingLeft)).toBeLessThanOrEqual(1);
-        if (width === 390) expect(geometry.height).toBeLessThan(360);
+        if (width === 390) {
+          expect(geometry.height).toBeLessThan(360);
+          expect(geometry.ctaGap).toBeGreaterThanOrEqual(23.99);
+          expect(geometry.ctaGap).toBeLessThanOrEqual(24.01);
+          expect(geometry.rowGap).toBe('14px');
+        }
         expect((await agent.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),

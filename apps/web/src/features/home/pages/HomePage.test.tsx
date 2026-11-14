@@ -105,7 +105,17 @@ describe('首页行动优先', () => {
     expect(screen.getByRole('link', { name: '创建项目' })).toHaveAttribute('href', '/projects/new');
     expect(screen.queryByText('还没有最近工作')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /需要你处理/ })).not.toBeInTheDocument();
-    expect(screen.getByText('0 个 Agent 全局就绪，项目可用性需单独检查。')).toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo', { name: '工作台状态' })).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link').filter((link) => link.getAttribute('href') === '/agents'),
+    ).toHaveLength(1);
+  });
+  it('无普通项目但有真实就绪 Agent 时保留非零摘要且不重复入口', async () => {
+    mount({ agents: [{ id: 'a1', status: 'READY', enabled: true }] });
+    expect(await screen.findByText('1 个 Agent 全局就绪，项目可用性需单独检查。')).toBeVisible();
+    expect(
+      screen.getAllByRole('link').filter((link) => link.getAttribute('href') === '/agents'),
+    ).toHaveLength(1);
   });
   it('已有项目保留工作和会话入口，全局就绪不包含禁用的 Agent', async () => {
     mount({
@@ -167,7 +177,7 @@ describe('首页行动优先', () => {
       'href',
       '/projects/p1/overview',
     );
-    expect(screen.getByText('0 个活跃项目 · 0 个运行中会话')).toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo', { name: '工作台状态' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '创建项目' })).toBeInTheDocument();
   });
   it('仅有归档项目时不提供不可执行的新建工作入口', async () => {

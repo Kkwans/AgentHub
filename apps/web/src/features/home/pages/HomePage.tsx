@@ -186,6 +186,12 @@ export function HomePage() {
     };
   });
   const hasProjects = standardProjects.length > 0;
+  const showStatusSummary =
+    hasProjects ||
+    activeProjectCount > 0 ||
+    running.length > 0 ||
+    attention.length > 0 ||
+    (readyAgentCount ?? 0) > 0;
   // Keep the route shell interactive while the summary sections wait for their
   // first post-data frame. This also prevents a cached Home remount from
   // competing with the next client-side navigation.
@@ -378,14 +384,18 @@ export function HomePage() {
                   </div>
                 </section>
               ) : null}
-              <footer className={homeStyles.statusLine} aria-label="工作台状态">
-                <span>
-                  {activeProjectCount} 个活跃项目 · {running.length} 个运行中会话
-                </span>
-                <span>{readyAgentCount ?? 0} 个 Agent 全局就绪，项目可用性需单独检查。</span>
-                {!readyAgentCount ? <Link to="/agents">检查 Agent 接入</Link> : null}
-                {!attention.length ? <span>暂无待批准或待审阅事项</span> : null}
-              </footer>
+              {showStatusSummary ? (
+                <footer className={homeStyles.statusLine} aria-label="工作台状态">
+                  <span>
+                    {activeProjectCount} 个活跃项目 · {running.length} 个运行中会话
+                  </span>
+                  <span>{readyAgentCount ?? 0} 个 Agent 全局就绪，项目可用性需单独检查。</span>
+                  {hasProjects && !readyAgentCount ? (
+                    <Link to="/agents">检查 Agent 接入</Link>
+                  ) : null}
+                  {!attention.length ? <span>暂无待批准或待审阅事项</span> : null}
+                </footer>
+              ) : null}
               {testProjects.length ? (
                 <details className={homeStyles.testProjects}>
                   <summary>测试项目（{testProjects.length}）</summary>

@@ -1914,3 +1914,13 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 17:03:11 UTC项目裁切两文件候选冻结：中宽主列改可收缩，辅助列保留，编辑入口min44；新增真实链接/文字Range位于卡片内的门禁。卡片/列表双pressed与内容分支断言、computed样式与实际控件动画finished证据，不改view状态/fixture数据。21专项、类型/lint/list8通过，最终聚合运行，尚未新浏览器证实或推送。
 - 17:07:19 UTC项目裁切候选最终冻结130文件1419测试通过/196.97秒，两文件hash不变，独立CR无阻断，全仓build继续。尚未以单测宣称768像素修复或390过渡原因已证实。
 - 17:07:38 UTC全仓build成功，准备发布项目局部裁切与视图证据片；新浏览器与实图仍待。
+- 17:08:35 UTC已fetch核c95247d推送，精确run43619466493启动；项目裁切与390稳定视图图证待新CI。80 Home focused131通过/12.4分钟+独立Prompt4通过，新图已交人工审阅；86已五项全成功（full170/geometry140），但不能覆盖其人工发现的项目内部裁切。
+- 开始独立测试专用Infrastructure诊断隔离候选，先纯环境白名单哨兵与空PATH零命令调用证明，不改普通Git/ACP fixture，不执行真实Provider/注册；真实页面截图在隔离验证后再补。
+- 80 Home实际390真空图再次人工审阅：标题到创建CTA有约78px空洞，步骤与全零摘要重复占首屏。根因候选有源码证据：mobile min-height与Home grid默认stretch，header改column后仍space-between分配剩余高度；仅空态改align-content/start及手机header定位，保桌面已接受右轴。截图发灰不凭PNG判定配色，新增祖先computed opacity与实际route动画完成证据；Home本身没有AhReveal，不把它错误归因于AhReveal。候选尚未push/新图。
+
+### 2026-11-14 17:18 UTC Home 间距与诊断隔离基础
+
+Home四文件最终冻结聚合17:17:32结束130文件1420通过/190.38秒，14专项/类型/lint/独立CR通过，手机header限制≤860保桌面原右轴，真实gap与祖先opacity测量已限定当前页面，未证明新像素。全仓build继续。
+
+两新增隔离test文件独立冻结，17:15复跑3/3通过：白名单环境排除合成宿主凭据、空PATH真实诊断零命令，以及受控无效文件哨兵正控制恰两次runProcess mock证明导入边界真实拦截、launcher0。独立CR无阻断；仅返回launch描述、不spawn，不是已启动子进程/HTTP/浏览器隔离或OS沙箱。它们不在上述web/UI聚合include内，不能合并声称被1420测试覆盖。
+- 17:18:05 UTC全仓build成功，Home局部间距与未接线隔离测试基础准备发布，新图/独立server进程仍未运行。

@@ -23,3 +23,7 @@ hostDiagnostics发现codex可执行时会运行版本与login status。当前fix
 ## 2026-11-14 17:06 UTC 隔离设计进一步核实
 
 现有fixtures在Playwright worker内startServer，服务器再合并process.env；只覆盖PATH/HOME不能称完全隔绝宿主凭据。新增独立、默认关闭的基础设施fixture应以process.execPath启动子进程，环境显式白名单、受控空bin PATH、临时HOME/XDG_CONFIG_HOME/XDG_CACHE_HOME/XDG_DATA_HOME/CODEX_HOME，不改全局process.env，不影响原Git/ACP fixture。不seedWorkspace、不注册Agent、不初始化Git。主诊断只从PATH找codex/opencode；空PATH可以阻断该路径启动CLI，但固定ACP adapter仍可能通过文件access显示INSTALLED，不能断言全部MISSING或将安装状态说成已认证/已连通。后续应验证子进程环境白名单与探测边界，再截图。
+
+## 2026-11-14 17:18 UTC 首层测试基础
+
+纯环境构造与absolute Node launch描述、空PATH零命令诊断回归已实现。正控制使用仅供PATH/access识别的临时无效文件哨兵，真实hostDiagnostics的版本/登录状态调用必须恰被两次mock拦住，并核绝对路径/隔离环境/参数，Provider launcher零调用。3个专项通过及独立审查通过。尚未创建目录验证/启动子进程/连接HTTP/浏览器；下一片必须补readiness、严格退出清理及运行前白名单/空目录核验，不能把当前描述对象称为已隔离运行。
