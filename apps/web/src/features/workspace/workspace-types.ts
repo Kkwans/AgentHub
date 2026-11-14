@@ -94,6 +94,8 @@ export type WorkspaceData = {
 
 export type WorkspaceGitData = {
   files: QueryState<FileEntry[]>;
+  loadDirectory?: ((path: string) => Promise<FileEntry[]>) | undefined;
+  fileTreeKey?: string | undefined;
   fileContent: QueryState<{ content: string; path: string }>;
   gitStatus: QueryState<GitStatusRecord>;
   gitDiff: QueryState<GitDiffRecord>;

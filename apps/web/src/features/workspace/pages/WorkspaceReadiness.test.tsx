@@ -129,7 +129,7 @@ function baseFetch(path: string, method?: string) {
     return jsonResponse([]);
   }
   if (path === `/api/v1/approvals?sessionId=${session.id}`) return jsonResponse([]);
-  if (path === `/api/v1/projects/${project.id}/files?depth=4`) return jsonResponse([]);
+  if (path === `/api/v1/projects/${project.id}/files?depth=0`) return jsonResponse([]);
   if (path === `/api/v1/projects/${project.id}/git/diff`) {
     return jsonResponse({ patch: '', truncated: false });
   }

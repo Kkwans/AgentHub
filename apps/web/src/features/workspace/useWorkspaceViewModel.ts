@@ -28,6 +28,7 @@ import type {
   GitStatusRecord,
 } from './workspace-types';
 import { useSessionMessages } from './useSessionMessages';
+import { useProjectDirectoryLoader } from './useProjectDirectoryLoader';
 
 export const EVENT_PAGE_SIZE = 500;
 export type DiffWhitespace =
@@ -344,14 +345,28 @@ export function useWorkspaceViewModel() {
   });
   const project = projects.data?.find((item) => item.id === session.data?.projectId);
   const agent = agents.data?.find((item) => item.id === session.data?.agentId);
-  const files = useQuery({
-    queryKey: ['files', project?.id],
-    queryFn: () => api.get<FileEntry[]>(`/projects/${project?.id ?? ''}/files?depth=4`),
+  const filesQuery = useQuery({
+    queryKey: ['files', project?.id, project?.realRootPath, ''],
+    queryFn: ({ signal }) =>
+      api.get<FileEntry[]>(`/projects/${project?.id ?? ''}/files?depth=0`, { signal }),
     // PinHarness loads expensive diagnostics on demand. Do not request an
     // entire repository tree while the conversation or Git view is active;
     // large repositories can legitimately answer FILE_TREE_TOO_LARGE (413).
     enabled: Boolean(project?.id && tab === 'files'),
   });
+  const loadDirectory = useProjectDirectoryLoader(project?.id, project?.realRootPath);
+  const files = {
+    ...filesQuery,
+    refetch: async () => {
+      await client.cancelQueries({ queryKey: ['files', project?.id, project?.realRootPath] });
+      await client.invalidateQueries({
+        queryKey: ['files', project?.id, project?.realRootPath],
+        refetchType: 'none',
+      });
+      return filesQuery.refetch();
+    },
+  };
+  const fileTreeKey = `${project?.id ?? ''}:${project?.realRootPath ?? ''}:${filesQuery.dataUpdatedAt}`;
   const fileContent = useQuery({
     queryKey: ['file', project?.id, project?.realRootPath, selectedFile],
     queryFn: ({ signal }) =>
@@ -632,6 +647,8 @@ export function useWorkspaceViewModel() {
     project,
     agent,
     files,
+    loadDirectory,
+    fileTreeKey,
     fileContent,
     gitStatus,
     gitDiff,

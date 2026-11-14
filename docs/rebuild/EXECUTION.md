@@ -2113,3 +2113,17 @@ aaa精确focused已成功163+4；下载70.1MiB产物并逐张查看四宽明暗8
 ### 2026-11-14 21:38 UTC 全量旧根目录断言修正
 
 aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spec.ts97仍假设单授权根有combobox，与897产品单根静态全路径展示不符。仅改测试：校验授权根标签、code完整app.projectRoot、当前位置授权根、单根无冗余combobox；选择目录/preflight/create/进入项目上下文后续完整保留。搜索其它同类假设，仅多根单测仍应使用combobox。该文件严格类型/scoped lint/list4/diff过，不冒称实际浏览器或full全绿。0067 focused成功但只覆盖4个变量修复新工作spec例；新建工作八图在其仍运行full，未据focused关问题。
+
+### 2026-11-14 21:52 UTC 新工作精确实图与深树冻结
+
+0067 full已结束177通过1失败，仍仅旧workbench单根combobox假设；新建工作四宽明暗八例实际通过。下载精确artifact14133437546（SHA256 e55a284375848efbbe85fff5c6b6b6f5f3f2b905f6cdcda960733154adff3b90），人工查看8张empty首图+390底图，标题单行与资格折叠/刷新同排真实生效，同轴与主次局部接受；Agent长标签与术语仍待优化，不称全产品完成。手机/桌面代表实图已按要求存Library。
+
+深树候选完成根/子depth0按需、项目根路径缓存隔离、局部空/忙/错与重试、手机44/桌面31、只读预览。独立CR发现inactive fetchQuery旧授权响应可能落缓存，发布前已补owner/epoch隔离、auth/owner撤销cancel+remove与await后验证，延迟auth/切项目/卸载回访测试明确旧缓存为空且重新请求；二次CR无当前单Workspace阻断。若将来同项目多个Workspace并存需收窄共享前缀清理，此片不声称该场景覆盖。
+
+新增真实9层特殊字符路径、未展开兄弟零读、空目录、外逃symlink禁用、不触发prompt/Git写入、四宽明暗截图/焦点/无溢出E2E并接入focused/full。list8、类型/scopedlint过不是浏览器通过。十三代码/测试/CI文件冻结，全web/UI聚合进行；当前没有真实九层新图。
+
+21:54 UTC：8c48精确fixture新图已核，代码区净增加39px（源起点390:395.5→356.5、1440:338.5→299.5），不夸称原工具行52px全部转为内容；默认入口/文件切换与已暂存摘要局部接受，真实服务矩阵仍待。
+
+深树冻结完整web/UI134文件1475测试通过196.24秒。最终静态与串行构建进行；发布前无真实九层浏览器结果，不将已完成专项/源码检查当端到端。
+
+21:55 UTC：最终lint/typecheck/integration类型及聚合完成后串行全仓build均exit0；十三实现/测试/CI文件hash全部匹配冻结。授权生命周期修正后独立CR无当前单Workspace阻断。准备提交深树片；实际9层浏览器与新截图继续待精确CI。

@@ -2,7 +2,7 @@
 
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '../../../lib/api-error';
@@ -83,4 +83,112 @@ describe('FileInspector pane states', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('文件路径不在当前 Project 内');
     expect(screen.getByRole('alert')).toHaveTextContent('路径不能越过当前 Project 根目录。');
   });
+});
+
+it('loads only an opened directory, deduplicates pending requests, and retains loaded children', async () => {
+  let resolve!: (entries: FileEntry[]) => void;
+  const load = vi.fn(
+    () =>
+      new Promise<FileEntry[]>((done) => {
+        resolve = done;
+      }),
+  );
+  const select = vi.fn();
+  render(
+    <FileInspector
+      selected={undefined}
+      onSelect={select}
+      files={queryState({ data: [{ name: 'src', path: 'src', type: 'DIRECTORY' }] })}
+      content={queryState()}
+      loadDirectory={load}
+    />,
+  );
+  expect(load).not.toHaveBeenCalled();
+  const directory = screen.getByRole('button', { name: 'src' });
+  fireEvent.click(directory);
+  expect(screen.getByRole('status', { name: '正在读取目录 src' })).toBeVisible();
+  fireEvent.click(directory);
+  fireEvent.click(directory);
+  expect(load).toHaveBeenCalledTimes(1);
+  await act(async () =>
+    resolve([
+      { name: 'deep', path: 'src/deep', type: 'DIRECTORY' },
+      { name: 'a.ts', path: 'src/a.ts', type: 'FILE' },
+    ]),
+  );
+  expect(load).toHaveBeenCalledWith('src');
+  expect(screen.getByRole('button', { name: 'deep' })).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(screen.getByRole('button', { name: 'a.ts' }));
+  expect(select).toHaveBeenCalledWith('src/a.ts');
+  fireEvent.click(directory);
+  fireEvent.click(directory);
+  expect(load).toHaveBeenCalledTimes(1);
+});
+
+it('separates directory errors from empty results and retries in place', async () => {
+  const load = vi.fn().mockRejectedValueOnce(new Error('目录读取失败')).mockResolvedValue([]);
+  render(
+    <FileInspector
+      selected={undefined}
+      onSelect={vi.fn()}
+      files={queryState({ data: [{ name: 'src', path: 'src', type: 'DIRECTORY' }] })}
+      content={queryState()}
+      loadDirectory={load}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'src' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('目录读取失败');
+  expect(screen.queryByText('空目录')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '重试读取目录 src' }));
+  expect(await screen.findByText('空目录')).toBeVisible();
+  expect(load).toHaveBeenCalledTimes(2);
+});
+
+it('does not recurse into symlinks or blocked directories', () => {
+  const load = vi.fn();
+  const select = vi.fn();
+  render(
+    <FileInspector
+      selected={undefined}
+      onSelect={select}
+      files={queryState({
+        data: [
+          { name: 'link', path: 'link', type: 'SYMLINK' },
+          { name: 'blocked', path: 'blocked', type: 'DIRECTORY', blocked: true },
+        ],
+      })}
+      content={queryState()}
+      loadDirectory={load}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'link' }));
+  expect(select).toHaveBeenCalledWith('link');
+  expect(screen.getByRole('button', { name: 'blocked已阻止' })).toBeDisabled();
+  expect(load).not.toHaveBeenCalled();
+});
+
+it('cannot insert a previous project response after its keyed tree is replaced', async () => {
+  let finish!: (entries: FileEntry[]) => void;
+  const oldLoad = vi.fn(
+    () =>
+      new Promise<FileEntry[]>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const props = {
+    selected: undefined,
+    onSelect: vi.fn(),
+    files: queryState<FileEntry[]>({ data: [{ name: 'src', path: 'src', type: 'DIRECTORY' }] }),
+    content: queryState<{ content: string; path: string }>(),
+  };
+  const view = render(<FileInspector key="project-a" {...props} loadDirectory={oldLoad} />);
+  fireEvent.click(screen.getByRole('button', { name: 'src' }));
+  view.rerender(
+    <FileInspector key="project-b" {...props} loadDirectory={vi.fn().mockResolvedValue([])} />,
+  );
+  await act(async () =>
+    finish([{ name: 'private-old.txt', path: 'src/private-old.txt', type: 'FILE' }]),
+  );
+  expect(screen.queryByRole('button', { name: 'private-old.txt' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'src' })).toHaveAttribute('aria-expanded', 'false');
 });

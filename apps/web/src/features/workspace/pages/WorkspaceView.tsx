@@ -98,6 +98,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
     diffWhitespace,
     setDiffWhitespace,
     files,
+    loadDirectory,
+    fileTreeKey,
     fileContent,
     gitStatus,
     gitDiff,
@@ -542,6 +544,8 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
                 runs={runs}
                 events={events}
                 files={files}
+                loadDirectory={loadDirectory}
+                fileTreeKey={fileTreeKey}
                 fileContent={fileContent}
                 gitStatus={gitStatus}
                 gitDiff={gitDiff}

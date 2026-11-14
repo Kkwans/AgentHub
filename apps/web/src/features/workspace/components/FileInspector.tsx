@@ -6,7 +6,7 @@ import {
   Files,
   Skeleton,
 } from '@agenthub/ui';
-import { useContext, useEffect, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import Editor from '@monaco-editor/react';
 
 import { EmptyState, ErrorState } from '../../../components/Feedback';
@@ -18,11 +18,13 @@ export function FileInspector({
   selected,
   onSelect,
   files,
+  loadDirectory,
   content,
 }: {
   selected: string | undefined;
   onSelect: (path: string) => void;
   files: QueryState<FileEntry[]>;
+  loadDirectory?: ((path: string) => Promise<FileEntry[]>) | undefined;
   content: QueryState<{ content: string; path: string }>;
 }) {
   const theme = useContext(AgentHubThemeContext);
@@ -66,7 +68,12 @@ export function FileInspector({
         <div className="mini-heading">
           <Files size={14} /> 文件树
         </div>
-        <FileNodes entries={files.data ?? []} selected={selected} onSelect={onSelect} />
+        <FileNodes
+          entries={files.data ?? []}
+          selected={selected}
+          onSelect={onSelect}
+          loadDirectory={loadDirectory}
+        />
       </div>
       <div className="editor-frame">
         {!selected ? (
@@ -190,15 +197,23 @@ function FileNodes({
   entries,
   selected,
   onSelect,
+  loadDirectory,
 }: {
   entries: FileEntry[];
   selected: string | undefined;
   onSelect: (path: string) => void;
+  loadDirectory?: ((path: string) => Promise<FileEntry[]>) | undefined;
 }) {
   return (
     <div className="file-nodes">
       {entries.map((entry) => (
-        <FileNode key={entry.path} entry={entry} selected={selected} onSelect={onSelect} />
+        <FileNode
+          key={entry.path}
+          entry={entry}
+          selected={selected}
+          onSelect={onSelect}
+          loadDirectory={loadDirectory}
+        />
       ))}
     </div>
   );
@@ -208,22 +223,53 @@ function FileNode({
   entry,
   selected,
   onSelect,
+  loadDirectory,
 }: {
   entry: FileEntry;
   selected: string | undefined;
   onSelect: (path: string) => void;
+  loadDirectory?: ((path: string) => Promise<FileEntry[]>) | undefined;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(entry.children !== undefined);
+  const [children, setChildren] = useState(entry.children);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error>();
+  const pending = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  const load = async () => {
+    if (!loadDirectory || pending.current || entry.blocked || entry.type !== 'DIRECTORY') return;
+    pending.current = true;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await loadDirectory(entry.path);
+      if (alive.current) setChildren(result);
+    } catch (cause) {
+      if (alive.current) setError(cause instanceof Error ? cause : new Error('无法读取目录'));
+    } finally {
+      pending.current = false;
+      if (alive.current) setLoading(false);
+    }
+  };
   const directory = entry.type === 'DIRECTORY';
   return (
     <div className="file-node">
       <button
         className={entry.path === selected ? 'selected' : ''}
+        title={entry.path}
         disabled={entry.blocked}
         aria-expanded={directory ? expanded : undefined}
         onClick={() => {
-          if (directory) setExpanded((value) => !value);
-          else onSelect(entry.path);
+          if (directory) {
+            if (!expanded && children === undefined) void load();
+            setExpanded((value) => !value);
+          } else onSelect(entry.path);
         }}
       >
         {directory ? (
@@ -238,9 +284,33 @@ function FileNode({
         <span>{entry.name}</span>
         {entry.blocked && <small>已阻止</small>}
       </button>
-      {directory && expanded && entry.children?.length ? (
-        <FileNodes entries={entry.children} selected={selected} onSelect={onSelect} />
-      ) : null}
+      {directory &&
+        expanded &&
+        (loading ? (
+          <p
+            className="file-directory-state"
+            role="status"
+            aria-label={`正在读取目录 ${entry.path}`}
+          >
+            正在读取目录…
+          </p>
+        ) : error ? (
+          <div className="file-directory-state" role="alert">
+            <p>{error.message}</p>
+            <button type="button" className="file-directory-retry" onClick={() => void load()}>
+              <span>重试读取目录 {entry.name}</span>
+            </button>
+          </div>
+        ) : children?.length ? (
+          <FileNodes
+            entries={children}
+            selected={selected}
+            onSelect={onSelect}
+            loadDirectory={loadDirectory}
+          />
+        ) : children !== undefined ? (
+          <p className="file-directory-state">空目录</p>
+        ) : null)}
     </div>
   );
 }

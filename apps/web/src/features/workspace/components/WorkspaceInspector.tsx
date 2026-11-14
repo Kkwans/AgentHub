@@ -43,6 +43,8 @@ export function WorkspaceInspector({
   runs,
   events,
   files,
+  loadDirectory,
+  fileTreeKey,
   fileContent,
   gitStatus,
   gitDiff,
@@ -72,6 +74,8 @@ export function WorkspaceInspector({
   runs: QueryState<RunRecord[]>;
   events: QueryState<EventRecord[]>;
   files: QueryState<FileEntry[]>;
+  loadDirectory?: ((path: string) => Promise<FileEntry[]>) | undefined;
+  fileTreeKey?: string | undefined;
   fileContent: QueryState<{ content: string; path: string }>;
   gitStatus: QueryState<GitStatusRecord>;
   gitDiff: QueryState<GitDiffRecord>;
@@ -159,7 +163,9 @@ export function WorkspaceInspector({
           <FileInspector
             selected={selectedFile}
             onSelect={setSelectedFile}
+            key={fileTreeKey}
             files={files}
+            loadDirectory={loadDirectory}
             content={fileContent}
           />
         ) : tab === 'changes' ? (

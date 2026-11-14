@@ -1360,3 +1360,26 @@
   :global(.git-selected-diff .git-diff-embedded[data-truncated='true']:not(.git-diff-binary)) {
   grid-template-rows: minmax(0, 1fr) auto;
 }
+
+:global(.workspace) :global(.file-node),
+:global(.workspace) :global(.file-nodes) {
+  min-width: 0;
+}
+:global(.workspace) :global(.file-directory-state) {
+  margin: 4px 6px 6px 20px;
+  color: var(--ah-text-tertiary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+:global(.workspace) :global(.file-directory-state p) {
+  margin: 0;
+}
+:global(.workspace) :global(.file-nodes button:focus-visible) {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: -2px;
+}
+@media (max-width: 767px) {
+  :global(.workspace) :global(.file-nodes button) {
+    min-height: 44px;
+  }
+}
