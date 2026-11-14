@@ -2137,3 +2137,5 @@ aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spe
 ### 2026-11-14 22:08 UTC 保覆盖的工作区独立图证job
 
 先发布dd3f616修复遗漏真实截图锚点，再做小范围CI分拆：3个工作区spec单独24例，full未动，其余focused/Prompt repair未动；独立runner/临时目录、1 worker、0 retry、always精确SHA附件、失败不吞。前后spec集合22=19+3精确相同且无重叠，YAML/list24/diff通过，未改任何产品或单例timeout。原8c48/a486长job的旧定位问题不可能被新配置追溯修正，仍按旧失败/取消报告；新短链实际执行待。
+
+- 2026-11-14 22:13 UTC：`9ff965c` 分拆图证配置首跑失败且没有任何 job，定位新 job env 的 `runner.temp` 上下文；`530a21a` 移至 step env 后，run43646874561 六个 job 实际启动。完整覆盖仍保留。当前窗口完成测试定位与 CI 链路修复，没有新增产品 UI 或新图证，不将前一窗口深树提交重复计入。

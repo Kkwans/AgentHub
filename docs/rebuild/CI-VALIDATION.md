@@ -63,3 +63,7 @@
 ## 2026-11-14 22:08 UTC 工作区短链证据
 
 将3个工作区spec（content/reference/deep-files）从focused移到独立Workspace interaction evidence job，24例，单worker、零重试、隔离runner/TMP/output、always上传精确SHA产物，失败独立可见。原full完全不变；其余focused与Prompt repair不变。未改变单例timeout或断言，新job20分钟上限，原focused25分钟不加大。集合校验：原focused含22个spec，现19+3且无交叉、无遗漏；YAML解析与list24通过。该调整用于先拿会话/文件/差异真实图，不是实际运行已通过。
+
+### 2026-11-14 22:13 UTC：短链配置首跑失败与修复
+
+`9ff965c` / run `43646764329` 在创建 job 前即失败（jobs=0）。新 job 级 env 不应引用 `runner.temp`；已在 `530a21a` 将临时目录配置移至执行 step 的 env，与既有 job 用法一致。run `43646874561` 已实际启动全部六个 job（含 Workspace interaction evidence），当前仍运行，不能据此宣称 24 例、截图或完整 CI 通过。YAML 可解析和用例可枚举不能代替 GitHub Actions 表达式上下文校验，前一次预检漏掉此错误。
