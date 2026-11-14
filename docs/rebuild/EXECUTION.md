@@ -1477,3 +1477,34 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 
 - 07:26:52 Remote/EXEC最终冻结全仓完成：194文件通过/6跳过，2008测试通过/9跳过，434.99秒exit0；07:20:00全仓lint/types/build通过，格式和交叉CR通过。按Remote请求未知、EXEC迟到进程、Remote/Node关闭引用分三逻辑提交，准备开发分支发布。
 - 07:27核实3bc连接检查新布局精确四CI全绿；artifact14104019029 SHA256 1b09c5a902eb6ca498c7593fbd66ec8b66e475b7bfc5d0186961d1ade695de87匹配，8例全retry0。我亲看新390深色page，状态卡前置、技术信息收起、实按钮内容宽，四宽浅深也由截图复核。展开行为经测试通过，但无单独展开截图，不冒称展开像素验收。195fb51 verify为1968/9skip+token6+浏览器86/10skip，PG/axe绿，real仍运行。
+
+### 2026-11-14 07:28–07:30 UTC 发布与下一片
+
+- 07:28:31已push/fetch核实ddd9515ddc89c53972a8ea2aa5cc6d08e48820b7（Remote请求未知）、8b971e6b48417091ef9fad607cd5f3e6eb3d0768（EXEC迟到启动）、f98c045a04d478a8097fcaaac37cf72540a42386（关闭失败句柄）、7e5c59bc3812fa2c18677b3def67c15926d895c6（台账方案）。最终树79ce8f24898c8c2c724567a164698d1a40af6986与已测本地一致、工作区当时干净；精确CI43571253251运行中。
+- 07:29开始按已入库方案实施Node断连epoch/drain/sticky与等待清理再重连，及Composite capability/Docker probe未知不降级；两片文件范围分离。当前未冻结、未测试完成/提交；没有真实Agent/容器调用。
+
+- 07:31:10 Composite/Docker probe四文件冻结，37/37专项及类型/lint通过，独立产品/测试CR无阻断；未定mode严格capability、明确未知禁止fallback/第二probe，普通preflight/cached不改，尚未最终全仓/发布。
+- 07:35 Node片预审发现generic错误回包后仍ONLINE且准入已关闭，旧资源无人清理；正在加sticky client未知→受控断连/drain/no reconnect，并覆盖发送错误不能抹掉generic。此前“无阻断”初读已被该发现修正，不作为最终CR结论。产品/tests继续收敛，尚未冻结。
+
+- 07:38–07:39继续收敛Node client：明确未知不能只等待WebSocket关闭握手才清理，需立即结束本连接等待并进入统一drain；stop同样主动撤销，旧迟到消息不得重建heartbeat。发送响应异常必须保留sticky未知。旧真实WS fixture按新fatal生命周期显式观察run拒绝，保留认证/timeout/late等断言；尚未最终冻结或全仓。
+
+- 07:40:45 Node相关6测试文件45/45通过，07:41:07类型/独立集成类型/lint通过；但07:42最终CR发现binary frame分支仍只等close握手，正在补立即撤销与迟到关闭回归，故45不是最终冻结证据。测试中barrier过早reject造成的unhandled与测试地址可空类型已修复并复验，不隐去失败轮次。
+- 07:43:19精确核实7e5c59b verify132375953180通过：2008/9skip、严格token6、浏览器86/10skip且无flaky条目；PG/axe绿，真实视觉仍运行。没有新的commit/push，不将上述旧提交CI算作当前Node候选通过。
+
+- 07:43:58 Node六文件最终冻结，46/46专项（18.49秒）及Node/独立集成types/lint/diff通过；新增binary延迟握手测试证实立即drain且后续命令零execute。07:45最终独立CR确认此前阻断闭合，无新增阻断。
+- 07:44:44启动Node+Composite冻结全仓，07:44:46启动全仓lint/types/build；尚未完成，未commit/push。本窗口不将46/37专项当全仓。
+- 用户最新明确优先Agent/任务/会话管理及实际思考/工具调用的现代美观展示；安全收尾后转向会话显示/管理，先只读核对真实事件能力与实际截图。候选Agent保持规划标签，不伪造reasoning或宣称全接入。
+- 07:45:08 全仓lint/typecheck/build已成功；07:49恢复核实冻结全量仍未完成，未将专项替代全量或提前发布。精确7e5c59b的verify/PG/axe成功，real仍运行。
+- 07:49–07:50亲看3bc会话390深色原图：Composer左侧Prompt状态与Terminal文字确有截断；完成文本已出现时截图仍显示运行中，需用稳定生命周期断言区分截图时序与实际状态错误。当前图无思考块或展开工具证据。下一片只读定位到移动toolbar58%硬限及overflow裁切，计划收敛可读标签/布局；思考必须来自Agent事件，工具详情保留原文，不推测隐藏内容。
+- 07:54–07:58 最终全量超出此前基线且无结论，独立旧workflow诊断正文通过，但插桩显示clientRun/server.close均返回后目录清理停滞、heartbeat也不执行；原诊断随后worker unexpected exit，不能记为通过。仅在/tmp副本替换markOffline DB写的A/B为1/1、5.13秒正常完成，源码发现Gateway socket.close异步离线写未纳入close drain，支持关闭竞争嫌疑但尚未确证全部根因。
+- 07:58:07主动停止冻结全量，exit130，未commit/push；Node/Composite已准备树但未移动远端ref。启动最小Gateway异步写drain及有界延迟回归验证，不能用mock/删除测试作为修复。7e5c59b精确CI43571253251四项已全绿，与当前候选分开记录。
+
+### 2026-11-14 08:00–08:05 UTC 独立UI发布与关闭写修正
+
+- Composer可读性6文件08:00:57冻结，13专项、web类型/独立E2E类型/lint/build与格式通过；08:01:21→08:03:47完整web87文件1062测试通过145.44秒。移除手机左栏58%裁切、保留Terminal原文与完整PromptOS可访问名、44px入口；四宽明暗E2E补祖先裁切/重叠及Session READY+Run COMPLETED后截图，尚待浏览器实际执行。
+- 08:04:43独立提交b8c9a8d0034958a2f07308df9f54406aef22b0ec已push/fetch核实，父7e5c59b、树b8d66ce8fb859691178ed5fde268ccc5eb24ea05，与隔离index一致。仅6个web/测试文件+COMPOSER_READABILITY.md，未混入Node/Composite/Gateway候选。精确CI43574060531运行中，未声称新像素验收。
+- Gateway三文件08:03:33冻结：追踪准入message及异步离线写、同步封准入、sticky close结果、5秒总drain期限；串行状态写防旧OFFLINE覆盖新ONLINE，迟到认证不覆盖替代连接。两个独立CR发现并修正迟到认证身份边界后无阻断。最终4文件28/28、server类型/lint通过，包含原始未mock workflow与真实WS/PGlite延迟后仍执行原始markOffline落库回归，关闭在释放写入前不得完成。
+- 这证明具体关闭等待漏洞已被回归覆盖；此前worker异常退出的所有成因未单独确证，不把A/B等同完整根因报告。状态写暂用单Gateway队列，慢DB可延迟其他节点状态操作；RPC结果/事件不入队，未宣称跨进程fencing或每node隔离。
+- 08:04:21启动Node+Composite+Gateway最终冻结全仓；08:04:45全仓lint/typecheck/build通过，最终全仓仍运行。安全片未commit/push；无main合并、部署或真实Agent调用。
+
+- 08:11:51 Node+Composite+Gateway最终冻结全仓完成：199文件通过/6跳过、2055测试通过/9跳过，448.36秒exit0；08:04:45全仓lint/types/build通过。首轮exit130不计通过，修正后的原始workflow与延迟落库回归及全量均通过。准备三逻辑代码提交+台账提交，不包含隔离思考/工具UI。

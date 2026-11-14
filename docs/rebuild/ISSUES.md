@@ -522,3 +522,10 @@ b12b8fc的verify结论success但含1flaky：真实可见删除字符串首次及
 Remote资源请求明确未知、超时/断线/发送不确定现已有fail-closed候选；EXEC pending launch/sticky close、RemoteHandle重复close与Node session.close确认后删除已有候选，专项/CR通过，全仓正在验证，未发布。
 
 剩余Node `disconnect()` 仍先清sessions map再allSettled handle.close，可能丢失关闭未知引用，不能因中央目前fail-closed就宣称Node重连后无孤儿资源。下一片需保留未确认资源及拒绝不安全新准入、明确重复disconnect结果；不隐式杀用户容器或自动重试。另OpenClaw composite capability/Docker EXEC probe证明边界仍开放。
+
+### 2026-11-14 08:08 UTC 当前修正与待验证边界
+
+- 移动Composer标签裁切：b8c9a8d独立web片已发布，完整web1062通过；精确CI43574060531进行中，真实截图仍待验收。不以旧3bc图证明新布局。
+- Node断连/Composite/Docker probe：专项与静态验证通过，但首轮全量中止，仍未发布。Gateway异步离线写未纳入shutdown drain已补最小候选，真实延迟落库/原workflow等28专项通过，08:04:21合并全量仍进行中。
+- Gateway状态写暂用单进程串行队列，慢DB可能延迟其他节点状态更新，需后续评估队列容量与按node隔离/条件写。当前不称多节点隔离或分布式fencing；RPC结果/事件不走该队列。
+- 思考与工具详情实际截图缺口：新隔离工作树开始中性紧凑过程UI与可控fixture，未发布、未像素验收。仅Agent实际提供的思考事件可显示，EXEC不凭空补造同等能力。
