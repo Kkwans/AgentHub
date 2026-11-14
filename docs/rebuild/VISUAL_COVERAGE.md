@@ -80,3 +80,12 @@ artifact `14108933174`，SHA256 `050d8ca724537ed114fc26e255363f241eb921be8b97187
 - `39362a4f1b531d30e31545e858b084e8e6faeeae`，CI43584844213，focused artifact14110017386，SHA256 `52ad6eaf717a325a643c404db873459f90b2d9206bcc6e7097eaef6e2c6125a9`匹配；38通过/0skip/0flaky/逐例retry0，其中任务恢复10。人工看first-unknown390浅深、1440深：卡片已在标题后执行前，手机左右16px，首次未滚动截图核对按钮完整可见，无重叠且UNKNOWN不冒称成功。原0a29卡片靠下/贴边问题已有新图确认改善。verify/PG/axe/focused成功，完整real仍待。
 - `ca88877d1df62b5c1c4afa70bbdc5cf5e5856119`，CI43585415542，focused日志确认10:32:27原38项通过/3.1分钟；10:32:51独立Prompt修复四宽4项通过/23.2秒，配置零重试。它修复0a29完整real的四个失败，实际浏览器流程已复验，不仅单测；此处尚未逐例读新artifact或人工看Prompt新图。verify/full-real仍运行，PG/axe/focused成功。
 - 启停候选8个E2E（四宽浅深、每例4状态section及整页，预期64图）仅类型/lint/list通过，尚无新精确CI或截图，不标为视觉完成。
+
+## c508907 Agent 启停精确证据（2026-11-14 11:07 UTC）
+
+- SHA `c50890706ede9085287dc5b4c10388f68d2d0400`，CI43586498468；focused artifact14110882209，SHA256 `4386d8f4bcc210dca40d39682ede6fe26afeef25de06664945b7bd67df05e262`下载核对一致。46主流程+独立Prompt4全passed、retry0、0skip/flaky，Agent启停8例四宽浅深通过。
+- 64原图（32 section、32 page）来自受控真实HTTP/隔离服务测试，并非真实供应商。人工抽样覆盖四宽浅深与disabled/current/unknown/reconciled：草稿保留、unknown禁操作可只读核对、更高revision后新意图可用，未见重叠/横溢。
+- page图是滚动后的页面视口，嵌套滚动上方内容可能被裁，不是“完整Agent详情全页”。尚有非阻断设计问题：说明重复、revision技术信息较多、unknown/reconciled层级相似、默认设置保存整行宽。
+- 截至此时verify/PG/axe/focused成功，完整real仍运行。真实PG3例含跨连接启停CAS，不包括新正文搜索候选。
+- 旧ca88877完整real已170通过、geometry140、五job成功；39362a4旧full-real因其尚未包含Prompt修复而失败，不再记为运行。历史成功不能替代c508或下一候选。
+- 11:10 UTC更新：c508完整real已于11:08:33完成170 passed /25.2m，geometry于11:08:34通过140 page snapshots，五job全success。完整artifact人工抽样核查另记，不从自动通过声称每张都已人工看过。
