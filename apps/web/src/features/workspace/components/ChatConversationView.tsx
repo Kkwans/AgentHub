@@ -14,6 +14,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { observeTimelineOffset } from '../lib/observe-timeline-offset';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
+import { useAuthorizationRevocation } from '../useAuthorizationRevocation';
 import type {
   ApprovalRecord,
   EventRecord,
@@ -166,7 +167,35 @@ export const ChatConversationView = memo(function ChatConversationView({
   // window during the first data render.
   const userNavigatedTimelineRef = useRef(false);
   const userScrollIntentTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const loadingPreviousRef = useRef(false);
+  const historyIdentityRef = useRef(session.id);
+  const historyAuthorizedRef = useRef(true);
+  const historyGenerationRef = useRef(0);
+  const historyIntentRef = useRef(0);
+  const historyFrameRef = useRef<number | null>(null);
+  const loadingPreviousRef = useRef<symbol | null>(null);
+  if (historyIdentityRef.current !== session.id) {
+    historyIdentityRef.current = session.id;
+    historyGenerationRef.current += 1;
+    loadingPreviousRef.current = null;
+  }
+  const invalidateHistoryAnchor = useCallback(() => {
+    historyIntentRef.current += 1;
+    if (historyFrameRef.current !== null) cancelAnimationFrame(historyFrameRef.current);
+    historyFrameRef.current = null;
+  }, []);
+  useAuthorizationRevocation(() => {
+    historyAuthorizedRef.current = false;
+    historyGenerationRef.current += 1;
+    loadingPreviousRef.current = null;
+    invalidateHistoryAnchor();
+  });
+  useEffect(() => {
+    return () => {
+      historyGenerationRef.current += 1;
+      loadingPreviousRef.current = null;
+      invalidateHistoryAnchor();
+    };
+  }, [invalidateHistoryAnchor, session.id]);
   const [timelineWindowStart, setTimelineWindowStart] = useState(0);
   const [isFollowingTimeline, setIsFollowingTimeline] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -258,6 +287,7 @@ export const ChatConversationView = memo(function ChatConversationView({
     }
   }, []);
   const markUserScrollIntent = useCallback(() => {
+    invalidateHistoryAnchor();
     userNavigatedTimelineRef.current = true;
     userScrollIntentRef.current = true;
     if (userScrollIntentTimerRef.current !== undefined) {
@@ -267,7 +297,7 @@ export const ChatConversationView = memo(function ChatConversationView({
       userScrollIntentRef.current = false;
       userScrollIntentTimerRef.current = undefined;
     }, 240);
-  }, []);
+  }, [invalidateHistoryAnchor]);
   useEffect(() => {
     initialFollowPendingRef.current = true;
     followingRef.current = true;
@@ -382,16 +412,23 @@ export const ChatConversationView = memo(function ChatConversationView({
       });
     });
   };
-  const preserveScrollAnchor = (previousHeight: number, previousTop: number) => {
-    requestAnimationFrame(() => {
+  const preserveScrollAnchor = (
+    previousHeight: number,
+    previousTop: number,
+    valid: () => boolean,
+  ) => {
+    if (!valid()) return;
+    historyFrameRef.current = requestAnimationFrame(() => {
+      historyFrameRef.current = null;
       const current = scrollRef.current;
-      if (current) {
+      if (current && valid()) {
         markProgrammaticScroll();
         current.scrollTop = current.scrollHeight - previousHeight + previousTop;
       }
     });
   };
   const loadPreviousMessages = async () => {
+    if (!historyAuthorizedRef.current) return;
     const canFetchPrevious = Boolean(
       hasPreviousMessages && onLoadPreviousMessages && !isLoadingPreviousMessages,
     );
@@ -402,7 +439,14 @@ export const ChatConversationView = memo(function ChatConversationView({
     const element = scrollRef.current;
     const previousHeight = element?.scrollHeight ?? 0;
     const previousTop = element?.scrollTop ?? 0;
-    loadingPreviousRef.current = true;
+    const owner = Symbol('history-page');
+    const generation = historyGenerationRef.current;
+    const intent = historyIntentRef.current;
+    const valid = () =>
+      historyGenerationRef.current === generation &&
+      historyIntentRef.current === intent &&
+      scrollRef.current === element;
+    loadingPreviousRef.current = owner;
     try {
       if (canRevealOlderWindow)
         setTimelineWindowStart((current) =>
@@ -412,12 +456,15 @@ export const ChatConversationView = memo(function ChatConversationView({
           ),
         );
       if (canFetchPrevious) await onLoadPreviousMessages?.();
+    } catch {
+      // Query state owns the visible error. Never leak a rejected click promise.
     } finally {
-      preserveScrollAnchor(previousHeight, previousTop);
-      loadingPreviousRef.current = false;
+      preserveScrollAnchor(previousHeight, previousTop, valid);
+      if (loadingPreviousRef.current === owner) loadingPreviousRef.current = null;
     }
   };
   const jumpToLatest = () => {
+    invalidateHistoryAnchor();
     initialFollowPendingRef.current = false;
     clearUserScrollIntent();
     updateFollowing(true);

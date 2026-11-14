@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { authSession } from '../../../lib/api';
 import { ChatConversationView } from './ChatConversationView';
 
 const props: ComponentProps<typeof ChatConversationView> = {
@@ -105,5 +106,96 @@ describe('streaming scroll frame ownership', () => {
     );
     nextFrame();
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+describe('history anchor ownership', () => {
+  function setupHistory() {
+    const frames = new Map<number, FrameRequestCallback>();
+    let frame = 0;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++frame, callback);
+      return frame;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+    const pending: Array<() => void> = [];
+    const load = vi.fn(() => new Promise<void>((resolve) => pending.push(resolve)));
+    const renderProps = { ...props, hasPreviousMessages: true, onLoadPreviousMessages: load };
+    const view = render(<ChatConversationView {...renderProps} hasPreviousMessages={false} />);
+    const element = screen.getByRole('log');
+    Object.defineProperties(element, {
+      scrollHeight: { configurable: true, value: 2000 },
+      clientHeight: { configurable: true, value: 500 },
+    });
+    const flush = () =>
+      act(() => {
+        const current = [...frames.values()];
+        frames.clear();
+        current.forEach((callback) => callback(0));
+      });
+    element.scrollTop = 200;
+    fireEvent.wheel(element, { deltaY: -120 });
+    frames.clear();
+    view.rerender(<ChatConversationView {...renderProps} />);
+    expect(load).not.toHaveBeenCalled();
+    return { ...view, element, flush, pending, load, renderProps, frames };
+  }
+  it.each(['success', 'failure'])(
+    'normal history %s preserves anchor and releases its guard',
+    async (outcome) => {
+      const f = setupHistory();
+      if (outcome === 'failure') f.load.mockRejectedValueOnce(new Error('read failed'));
+      const previousHeight = f.element.scrollHeight;
+      const previousTop = f.element.scrollTop;
+      fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+      if (outcome === 'success') await act(async () => f.pending[0]!());
+      else await act(async () => {});
+      Object.defineProperty(f.element, 'scrollHeight', {
+        configurable: true,
+        value: previousHeight + 1000,
+      });
+      f.flush();
+      expect(f.element.scrollTop).toBe(previousTop + 1000);
+      fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+      expect(f.load).toHaveBeenCalledTimes(2);
+    },
+  );
+  it('authorization loss discards pending history anchor and denies another load', async () => {
+    const f = setupHistory();
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    act(() => authSession.notifyAuthorizationRequired());
+    f.element.scrollTop = 85;
+    await act(async () => f.pending[0]!());
+    f.flush();
+    expect(f.element.scrollTop).toBe(85);
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    expect(f.load).toHaveBeenCalledTimes(1);
+  });
+  it('A→B→A cannot apply A old history anchor or block a new history request', async () => {
+    const f = setupHistory();
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    f.rerender(<ChatConversationView {...f.renderProps} session={{ ...props.session, id: 'B' }} />);
+    f.rerender(<ChatConversationView {...f.renderProps} />);
+    fireEvent.wheel(f.element, { deltaY: -120 });
+    f.frames.clear();
+    f.element.scrollTop = 40;
+    Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 3000 });
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    expect(f.load).toHaveBeenCalledTimes(2);
+    await act(async () => f.pending[0]!());
+    f.flush();
+    expect(f.element.scrollTop).toBe(40);
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    expect(f.load).toHaveBeenCalledTimes(2); // Old finally must not clear the newer request guard.
+  });
+  it('new user scroll intent invalidates an already queued history anchor frame', async () => {
+    const f = setupHistory();
+    fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+    await act(async () => f.pending[0]!());
+    Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 3000 });
+    fireEvent.wheel(f.element, { deltaY: -120 });
+    f.element.scrollTop = 70;
+    f.flush();
+    expect(f.element.scrollTop).toBe(70);
   });
 });
