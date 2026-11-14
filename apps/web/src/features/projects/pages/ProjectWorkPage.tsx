@@ -324,6 +324,11 @@ export function ProjectWorkPage() {
   const [reviewPendingKey, setReviewPendingKey] = useState<string | null>(null);
   const reviewPending = reviewPendingKey === `${project.id}:${selected?.id}`;
   const reviewLocked = reviewPending || ownedReviewLock;
+  // The active review is the primary reading surface, not a narrow inspector.
+  // Preserve that layout while the same owned operation is pending/unknown.
+  const primaryWorktreeReview =
+    !singlePane &&
+    Boolean(selectedWorktree && (selectedWorktree.status === 'REVIEW' || reviewLocked));
   const [queuePendingKeys, setQueuePendingKeys] = useState<Record<string, boolean>>({});
   const [queueUnknownKeys, setQueueUnknownKeys] = useState<Record<string, boolean>>({});
   const queueKey = `${project.id}:${selected?.id}`;
@@ -695,7 +700,8 @@ export function ProjectWorkPage() {
           ) : null}
           {(singlePane || view === 'list') && (
             <div
-              className={projectsStyles.workLayout}
+              className={`${projectsStyles.workLayout} ${primaryWorktreeReview ? projectsStyles.workReviewLayout : ''}`}
+              data-layout={primaryWorktreeReview ? 'worktree-review' : 'work-list'}
               hidden={singlePane && (view === 'board' || invalidDetail)}
             >
               <section
@@ -781,8 +787,15 @@ export function ProjectWorkPage() {
                       <h2 ref={detailTitleRef} tabIndex={-1}>
                         {selected.title}
                       </h2>
-                      {selected.description ? <p>{selected.description}</p> : null}
+                      {selected.description && !primaryWorktreeReview ? (
+                        <p>{selected.description}</p>
+                      ) : null}
                     </header>
+                    {selected.description && primaryWorktreeReview ? (
+                      <section className={projectsStyles.inspectorSection}>
+                        <p>{selected.description}</p>
+                      </section>
+                    ) : null}
                     {manual.message ? <p role="status">{manual.message}</p> : null}
                     {actionError ? (
                       <AhErrorState title="任务操作失败" description={actionError.message} />

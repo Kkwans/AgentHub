@@ -1831,3 +1831,68 @@
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* An active Worktree review is the main canvas. Keep the short list as a compact
+   navigation rail, rather than reserving most of the page for empty list space.
+   Single-pane phone/tablet navigation and ordinary task layouts are unchanged. */
+@media (min-width: 1024px) {
+  .workReviewLayout {
+    grid-template-columns: clamp(240px, 22vw, 280px) minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .workReviewLayout > .workListPanel {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .workReviewLayout .workListHeader,
+  .workReviewLayout .workRow {
+    grid-template-columns: 8px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .workReviewLayout .workRow {
+    min-height: 64px;
+  }
+
+  .workReviewLayout .workListHeader > :nth-child(3),
+  .workReviewLayout .workListHeader > :nth-child(4),
+  .workReviewLayout .workListHeader > :nth-child(6),
+  .workReviewLayout .workRow > :nth-child(3),
+  .workReviewLayout .workRow > :nth-child(4),
+  .workReviewLayout .workRow > :nth-child(6) {
+    display: none;
+  }
+
+  .workReviewLayout > .workInspector {
+    position: static;
+    overflow: visible;
+  }
+
+  .workReviewLayout .inspectorHeader {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: var(--ah-surface);
+    border-radius: 8px 8px 0 0;
+  }
+
+  .workReviewLayout .inspectorHeader h2 {
+    font-size: 20px;
+    white-space: nowrap;
+  }
+
+  .workReviewLayout .inspectorSection,
+  .workReviewLayout .inspectorActions {
+    padding-inline: 24px;
+  }
+}

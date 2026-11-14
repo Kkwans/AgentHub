@@ -637,6 +637,19 @@ it('平板同页URL切到看板后隐藏编辑器焦点移到可见列表切换�
   }
 });
 
+it.each(['task', 'worktree'] as const)('只有 Worktree 审阅进入主阅读布局：%s', async (kind) => {
+  mount(kind);
+  const inspector = await screen.findByRole('complementary', { name: '工作 Inspector' });
+  await screen.findByRole('button', {
+    name: kind === 'worktree' ? '读取隔离工作区审阅' : '确认达到验收标准',
+  });
+  expect(inspector.parentElement).toHaveAttribute(
+    'data-layout',
+    kind === 'worktree' ? 'worktree-review' : 'work-list',
+  );
+  expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
+});
+
 it('MERGING缓存与失败刷新交错不能丢失原合并的只读核对入口', async () => {
   const h = mount('worktree');
   let reject!: (error: unknown) => void;
@@ -651,6 +664,8 @@ it('MERGING缓存与失败刷新交错不能丢失原合并的只读核对入口
   fireEvent.click(screen.getByRole('checkbox', { name: '我已审阅改动，确认提交并合并到基础分支' }));
   fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
   await waitFor(() => expect(h.getOperations()?.at(-1)?.phase).toBe('pending'));
+  const inspector = screen.getByRole('complementary', { name: '工作 Inspector' });
+  expect(inspector.parentElement).toHaveAttribute('data-layout', 'worktree-review');
   const original = vi.mocked(api.get).getMockImplementation()!;
   const rows = h.client.getQueryData<Array<Record<string, unknown>>>(['worktrees', 'p1'])!;
   let finishRefresh!: (value: unknown) => void;
@@ -670,6 +685,8 @@ it('MERGING缓存与失败刷新交错不能丢失原合并的只读核对入口
     reject(new ApiError('WORKTREE_GIT_PREWRITE_REJECTED', '明确前置拒绝', 409)),
   );
   expect(h.getOperations()?.at(-1)?.phase).toBe('unknown');
+  expect(screen.getByRole('complementary', { name: '工作 Inspector' })).toBe(inspector);
+  expect(inspector.parentElement).toHaveAttribute('data-layout', 'worktree-review');
   await act(async () => finishRefresh(rows));
   await screen.findByRole('button', { name: '读取隔离工作区审阅' });
   expect(screen.getByRole('button', { name: '核对原隔离执行' })).toBeVisible();
@@ -776,5 +793,26 @@ it.each(['foreign-ui', 'wrong-run', 'wrong-target', 'generic', 'disappeared', 'c
     expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '核对原隔离执行' })).toBeVisible();
     expect(api.post).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each([390, 768, 1023])(
+  '%spx Worktree保持单栏详情和返回列表，不启用桌面审阅布局',
+  async (width) => {
+    const viewport = responsiveViewport(width);
+    try {
+      mount('worktree');
+      await screen.findByRole('button', { name: '读取隔离工作区审阅' });
+      const inspector = screen.getByRole('complementary', { name: '工作 Inspector' });
+      expect(inspector.parentElement).toHaveAttribute('data-layout', 'work-list');
+      expect(screen.queryByRole('region', { name: '工作列表' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: '返回工作列表' }));
+      expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
+      expect(
+        screen.queryByRole('complementary', { name: '工作 Inspector' }),
+      ).not.toBeInTheDocument();
+    } finally {
+      viewport.restore();
+    }
   },
 );

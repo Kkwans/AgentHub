@@ -177,6 +177,24 @@ for (const width of [390, 768, 1024, 1440]) {
     });
     await load.click();
     await expect(page.getByText('fixture-output.md', { exact: true })).toBeVisible();
+    const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
+    const heading = inspector.getByRole('heading', { name: '真实 Git 重试', exact: true });
+    // Audit the initial review as well as the later scrolled confirmation state.
+    await heading.scrollIntoViewIfNeeded();
+    if (width >= 1024) {
+      const list = page.getByRole('region', { name: '工作列表' });
+      await expect(list).toBeVisible();
+      const listBox = await list.boundingBox();
+      const reviewBox = await inspector.boundingBox();
+      expect(listBox).not.toBeNull();
+      expect(reviewBox).not.toBeNull();
+      expect(listBox!.width).toBeGreaterThanOrEqual(230);
+      expect(listBox!.width).toBeLessThanOrEqual(290);
+      expect(reviewBox!.width).toBeGreaterThanOrEqual(listBox!.width * 2);
+    }
+    const initialShot = info.outputPath(`worktree-review-primary-${width}.png`);
+    await page.screenshot({ path: initialShot, fullPage: true });
+    await info.attach('隔离审阅主内容布局', { path: initialShot, contentType: 'image/png' });
     await confirm.check();
     const holderId = randomUUID();
     const holder = context.request.post(`/api/v1/projects/${holderProject.id}/git/commit`, {
@@ -267,6 +285,14 @@ for (const width of [390, 768, 1024, 1440]) {
     const shot = info.outputPath(`worktree-explicit-retry-${width}.png`);
     await expect(merge).toBeEnabled();
     await merge.scrollIntoViewIfNeeded();
+    if (width >= 1024) {
+      await expect(heading).toBeInViewport();
+      const titleBox = await heading.boundingBox();
+      const buttonBox = await merge.boundingBox();
+      expect(titleBox).not.toBeNull();
+      expect(buttonBox).not.toBeNull();
+      expect(titleBox!.y + titleBox!.height).toBeLessThanOrEqual(buttonBox!.y);
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);

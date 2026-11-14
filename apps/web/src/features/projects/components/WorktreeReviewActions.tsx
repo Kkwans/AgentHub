@@ -491,7 +491,7 @@ export function WorktreeReviewActions({
       </label>
       <AhButton
         size="xs"
-        variant="light"
+        variant="filled"
         disabled={
           !ready ||
           !shown?.mergeAdmission?.mergeAllowed ||
