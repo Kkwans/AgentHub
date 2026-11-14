@@ -162,11 +162,28 @@ for (const width of [390, 768, 1024, 1440]) {
       await second.focus();
       await page.keyboard.press('Enter');
       await expect(page).toHaveURL(new RegExp(`/projects/${ids[1]}/work/new$`));
+      const workDialog = page.getByTestId('new-work-dialog');
+      const projectDirectory = workDialog.locator('details').filter({
+        has: page.locator('summary', { hasText: '项目目录' }),
+      });
+      const directoryToggle = projectDirectory.locator('summary');
+      await expect(projectDirectory).not.toHaveAttribute('open', '');
+      expect((await directoryToggle.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
+      await directoryToggle.focus();
+      await page.keyboard.press('Enter');
+      await expect(directoryToggle).toBeFocused();
+      await expect(projectDirectory).toHaveAttribute('open', '');
       await expect(
-        page
-          .getByTestId('new-work-dialog')
-          .getByText(join(app.projectRoot, 'two'), { exact: true }),
+        projectDirectory.getByText(join(app.projectRoot, 'two'), { exact: true }),
       ).toBeVisible();
+      const directoryPath = info.outputPath(
+        `home-selected-project-directory-${width}-${theme}.png`,
+      );
+      await page.screenshot({ path: directoryPath, fullPage: true, animations: 'disabled' });
+      await info.attach('selected-project-directory', {
+        path: directoryPath,
+        contentType: 'image/png',
+      });
       await page.goto('/home');
       await post(`/projects/${ids[1]}/archive`);
       await page.reload();
