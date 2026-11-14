@@ -688,3 +688,7 @@ aaa full177/1的唯一失败为workbench旧combobox假设，不是preflight/crea
 ### 2026-11-14 22:04 UTC 真实Diff截图锚点遗漏
 
 8c48重排显示选项后workspace-content真实spec仍找selected Diff内group，导致4例180秒超时与focused25分钟取消，后续用例未跑。候选同步外部group键盘展开及默认文件标题截图锚点，保capture区域/几何/后续Git提交，不提高timeout。新真实结果未出，不能称8c48整矩阵通过。
+
+### 2026-11-14 22:17 UTC 手机检查器重复标题
+
+实看8c48 fixture390：代码首行约356.5px，独立“审阅更改”标题与已选tab重复占高。候选仅手机标题视觉隐藏并合并tab/关闭第一行，保h2语义/44触点/Git状态及768+，详COMPACT_INSPECTOR_HEADER.md。34单测和独立源码CR通过；完整聚合及精确真实图证待验，不提前关闭。

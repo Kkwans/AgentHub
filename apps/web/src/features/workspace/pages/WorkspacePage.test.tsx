@@ -210,6 +210,12 @@ describe('WorkspacePage 数据分区可靠性', () => {
       await screen.findByRole('heading', { name: '审阅更改' });
       await waitFor(() => expect(screen.getByRole('button', { name: '关闭检查器' })).toHaveFocus());
       expect(screen.getByRole('heading', { name: '审阅更改' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: '审阅更改' }).closest('.inspector-panel'),
+      ).toContainElement(screen.getByRole('tablist', { name: '检查器视图' }));
+      expect(screen.getByRole('tab', { name: '变更', selected: true })).toHaveAttribute(
+        'aria-controls',
+      );
       await act(async () => {
         client
           .getQueryCache()
