@@ -106,9 +106,27 @@ export function createReviewOperationOwner() {
           if (previous && !lockedPhases.has(previous.phase)) return;
           // Retrying creates a NEW operationId; it must not reset an uncertain attempt.
           if (previous && snapshot.phase === 'pending') return;
+          // Only the first pending event may establish evidence identity. Later
+          // callbacks cannot replace it, or invent it for an older operation.
+          const initialAttempt =
+            !previous &&
+            snapshot.phase === 'pending' &&
+            original.executionId &&
+            snapshot.gitMergeAttempt &&
+            typeof snapshot.gitMergeAttempt.runId === 'string' &&
+            snapshot.gitMergeAttempt.runId &&
+            typeof snapshot.gitMergeAttempt.operationId === 'string' &&
+            snapshot.gitMergeAttempt.operationId
+              ? Object.freeze({
+                  runId: snapshot.gitMergeAttempt.runId,
+                  operationId: snapshot.gitMergeAttempt.operationId,
+                })
+              : undefined;
+          const gitMergeAttempt = previous?.gitMergeAttempt ?? initialAttempt;
           const next = Object.freeze({
             ...original,
             operationId: snapshot.operationId,
+            ...(gitMergeAttempt ? { gitMergeAttempt } : {}),
             phase: snapshot.phase,
             message: snapshot.message,
             // Only resolved results from the validated child contract can expose a local workspace link.

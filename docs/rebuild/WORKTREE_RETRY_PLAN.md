@@ -41,3 +41,5 @@
 最终冻结tree7d78d9f：1698测试通过/10跳过，168文件通过/4跳过，402.81s；DB55、server66、UI61定向、types/lint/build通过。测试包括磁盘重开generation、事务提交后回执丢失模拟、真实PGlite/coordinator预写拒绝与一次Git回调、UI晚到响应。Git回调为替身，不称真实Git retry浏览器验证；PostgreSQL多进程与断电未验收。现有四视口真实Worktree流程已更新CAS协议，待精确CI；本地Chromium启动仍受socket限制。optional live协议已同步但未运行真实外部Agent。
 
 00:12 UTC新增真实HTTP/Git验收已通过：双仓库实际hook竞争、目标实际merge、重开后旧key不能提交后续草稿。Agent审阅链条seed。四视口浏览器实际Git测试已纳CI，执行仍待远端结果，不能从静态/list推定通过。
+
+00:34 UTC 增补实际目标键与生命周期：admission.expectedOperationId仍表示CAS前驱，dispatchOperationId表示即将领取的实际目标（连续retry下一代）。owner在首次pending保存不可变run/目标key；跨路由全局核对必须匹配此目标的权威PREWRITE，auth ABA/晚到结果无效。MERGING缓存交错保留组件防止局部入口丢失；完整回归1715通过/10跳过。单页全局/局部核对的重复操作体验仍为后续项。

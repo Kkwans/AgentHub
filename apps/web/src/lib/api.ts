@@ -632,6 +632,7 @@ export interface WorktreeReviewRecord {
   mergeAdmission: {
     expectedRunId: string;
     expectedOperationId: string;
+    dispatchOperationId: string | null;
     retryEligible: boolean;
     mergeAllowed: boolean;
   } | null;

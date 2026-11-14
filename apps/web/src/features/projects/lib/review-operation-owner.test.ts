@@ -159,3 +159,26 @@ it.each([
   expect(original.canAutoNavigate()).toBe(false);
   expect(owner.bind(identity).canAutoNavigate()).toBe(true);
 });
+
+it('captures immutable merge target only on initial pending, ignores later proof replacement', () => {
+  const owner = setup();
+  const bound = owner.bind({ ...identity, executionId: 'e1' });
+  const attempt = { runId: 'run1', operationId: 'git1' };
+  bound.onOperationChange(
+    snapshot('a', 'pending', { executionId: 'e1', gitMergeAttempt: attempt }),
+  );
+  attempt.operationId = 'mutated';
+  bound.onOperationChange(
+    snapshot('a', 'unknown', {
+      executionId: 'e1',
+      gitMergeAttempt: { runId: 'run2', operationId: 'git2' },
+    }),
+  );
+  expect(owner.getSnapshot()[0]?.gitMergeAttempt).toEqual({ runId: 'run1', operationId: 'git1' });
+  expect(Object.isFrozen(owner.getSnapshot()[0]?.gitMergeAttempt)).toBe(true);
+  bound.onOperationChange(snapshot('b', 'pending', { executionId: 'e1' }));
+  bound.onOperationChange(
+    snapshot('b', 'unknown', { executionId: 'e1', gitMergeAttempt: attempt }),
+  );
+  expect(owner.getSnapshot()[1]?.gitMergeAttempt).toBeUndefined();
+});

@@ -1199,3 +1199,13 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 新增四视口浏览器同流程，使用实际第二仓库Git hook而非伪造目标ledger，保留核对按钮、重新读取/勾选、POST计数、真实Git文件/HEAD、旧key与旧ledger断言。fixture第二根目录默认关闭；CI显式纳入该spec。types/lint/actionlint与4项Playwright发现通过，但实际390启动仍因AF_UNIX socket EPERM导致Chromium SIGABRT，没有页面或有效截图。另核实Dot云电脑仍同一受限主机，不是可用替代；未访问用户TX5Pro。
 
 00:12 UTC冻结tree2b8fe2b全量：169文件通过/4跳过，1699测试通过/10跳过，406.39s。HTTP实际Git证据已通过，浏览器证据仅实现、待本提交精确CI，不混淆二者。发现父组件在MERGING轮询与pending结束交错时可能卸载审阅组件的生命周期风险，尚未复现，测试保留严格断言不规避；列入后续核验。
+
+### 2026-11-14 00:15–00:34 UTC 审阅卸载与实际attempt恢复
+
+00:15 UTC用真实ProjectWorkPage、ReviewOperationProvider和受控异步请求稳定复现：工作树缓存为MERGING、POST失败及刷新延迟交错，组件卸载后回到REVIEW丢失“核对原隔离执行”入口，owner仍unknown。修复保留存在owner锁的审阅组件；回归从失败转通过。跨路由场景另将初次pending的真实Git目标run/key不可变保存在owner，后续回调不能替换或补造；全局核对只在原目标权威PREWRITE与归属匹配时释放，再次读取与确认仍必要。auth ABA、旧记录、晚到响应不发旧第二GET、不改新记录。
+
+审查同时发现显式retry捕获前驱CAS键而不是实际新attempt，第二次PREWRITE会永久匹配失败。DB admission新增dispatchOperationId预告当前/下一代实际目标，expectedOperationId仍是CAS前驱；UI与owner捕获真实目标，MAX代际不计算溢出键、不发许可。DB57、UI64、owner/status23定向通过，独立CR无安全阻塞。
+
+首轮全量1690通过/25失败/10跳过；25失败同在AppShell隔离测试，原因恢复组件在无owner时也要求QueryClient。已拆外层无owner返回null与有owner子组件，保持原独立壳层契约，未改安全门禁；Shell/status/integration68通过。00:34 UTC最终冻结treef45b411全量：170文件通过/4跳过、1715测试通过/10跳过，415.87s。types/lint/Web build与最终CR通过。精确新CI/真实浏览器仍待发布后验证，本地socket限制未消失。
+
+00:28 UTC确认18bc872精确CI43531416663三job成功，旧视觉断言问题闭环；89ae0b7的verify/154无障碍成功，真实retry浏览器矩阵仍运行，不能借用旧结果。非安全UX待办：组件仍挂载时点全局核对，owner释放后局部unknown可能仍需再核对一次；跨路由重挂载恢复正常。

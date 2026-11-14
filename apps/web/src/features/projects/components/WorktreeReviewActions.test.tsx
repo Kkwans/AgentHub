@@ -27,6 +27,7 @@ const review = {
   mergeAdmission: {
     expectedRunId: 'run-a',
     expectedOperationId: 'operation-a',
+    dispatchOperationId: 'operation-a',
     retryEligible: false,
     mergeAllowed: true,
   },
@@ -408,4 +409,45 @@ it('读取差异在途时 generation 变化，晚到旧差异不恢复合并权�
   await act(async () => resolve({ ...review, truncated: false }));
   expect(screen.queryByText('1 file changed')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+});
+
+it('显式retry再次前置拒绝时核对新实际key，而非复用旧拒绝证明', async () => {
+  let attempt = 0;
+  vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (!path.endsWith('/review')) return execution as never;
+    return {
+      ...review,
+      truncated: false,
+      mergeAdmission: {
+        expectedRunId: 'run-a',
+        expectedOperationId: attempt < 2 ? 'operation-a' : 'operation-b',
+        dispatchOperationId:
+          attempt === 0 ? 'operation-a' : attempt === 1 ? 'operation-b' : 'operation-c',
+        retryEligible: attempt > 0,
+        mergeAllowed: true,
+      },
+    } as never;
+  });
+  const post = vi.spyOn(api, 'post').mockImplementation(async () => {
+    attempt += 1;
+    throw new ApiError('WORKTREE_GIT_PREWRITE_REJECTED', '未写入', 409);
+  });
+  mount();
+  for (let i = 0; i < 2; i += 1) {
+    await load();
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+    await screen.findByRole('button', { name: '核对原隔离执行' });
+    fireEvent.click(screen.getByRole('button', { name: '核对原隔离执行' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeEnabled(),
+    );
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+  }
+  expect(post).toHaveBeenCalledTimes(2);
+  expect(post).toHaveBeenLastCalledWith('/worktree-executions/execution-a/merge', {
+    expectedRunId: 'run-a',
+    expectedOperationId: 'operation-a',
+    retryOfOperationId: 'operation-a',
+  });
 });

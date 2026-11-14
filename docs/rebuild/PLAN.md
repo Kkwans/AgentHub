@@ -212,3 +212,5 @@
 23:52 UTC Worktree retry计划已落地代码与本地回归（见WORKTREE_RETRY_PLAN.md），最终1698通过/10跳过。下一步核对精确CI和真实四视口正常流，补真实Git/browser的竞争败方显式retry端到端证据；不得把mock Git回调回归称真实Git验证。
 
 00:12 UTC真实HTTP/Git retry与服务重开证据通过，全量1699通过/10跳过；四视口browser同流程已显式加入CI，但本地启动受限。下一片核验精确CI，并复现审阅组件在MERGING/pending交错卸载、跨路由恢复是否丢失核对上下文；不要跳过核对按钮/重新确认断言。
+
+00:34 UTC 审阅卸载风险复现→修复、跨路由真实attempt恢复、连续retry目标键区分已验收本地全量1715通过/10跳过。下一步核验精确CI及真实browser retry矩阵，随后统一同页全局/局部核对状态，避免重复核对但不得仅按owner锁消失猜测安全结果。

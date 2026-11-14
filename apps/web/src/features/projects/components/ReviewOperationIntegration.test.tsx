@@ -14,6 +14,7 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import { api } from '../../../lib/api';
+import { ApiError } from '../../../lib/api-error';
 import { ProjectWorkPage } from '../pages/ProjectWorkPage';
 import { ReviewOperationProvider, useReviewOperations } from './ReviewOperationProvider';
 import type { ReviewOperationOwner } from '../lib/review-operation-owner';
@@ -94,6 +95,7 @@ function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task
         mergeAdmission: {
           expectedRunId: 'old-run',
           expectedOperationId: 'operation-a',
+          dispatchOperationId: 'operation-a',
           retryEligible: false,
           mergeAllowed: true,
         },
@@ -161,6 +163,7 @@ function mount(kind: 'task' | 'worktree' = 'task', warm = false, search = '?task
     go: (path: string) => go?.(path),
     refreshTasks: () => client.invalidateQueries({ queryKey: ['tasks', 'p1'] }),
     getOperations: () => observedOwner?.getSnapshot(),
+    client,
     setRows: (next: typeof rows) => {
       rows = next;
     },
@@ -631,4 +634,93 @@ it('平板同页URL切到看板后隐藏编辑器焦点移到可见列表切换�
   } finally {
     viewport.restore();
   }
+});
+
+it('MERGING缓存与失败刷新交错不能丢失原合并的只读核对入口', async () => {
+  const h = mount('worktree');
+  let reject!: (error: unknown) => void;
+  vi.mocked(api.post).mockImplementation(
+    () =>
+      new Promise((_yes, no) => {
+        reject = no;
+      }) as never,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: '读取隔离工作区审阅' }));
+  await screen.findByText('已读取差异');
+  fireEvent.click(screen.getByRole('checkbox', { name: '我已审阅改动，确认提交并合并到基础分支' }));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await waitFor(() => expect(h.getOperations()?.at(-1)?.phase).toBe('pending'));
+  const original = vi.mocked(api.get).getMockImplementation()!;
+  const rows = h.client.getQueryData<Array<Record<string, unknown>>>(['worktrees', 'p1'])!;
+  let finishRefresh!: (value: unknown) => void;
+  const refresh = new Promise((yes) => {
+    finishRefresh = yes;
+  });
+  vi.mocked(api.get).mockImplementation((path) =>
+    path.startsWith('/worktree-executions?') ? (refresh as never) : original(path),
+  );
+  act(() =>
+    h.client.setQueryData(
+      ['worktrees', 'p1'],
+      rows.map((row) => ({ ...row, status: 'MERGING' })),
+    ),
+  );
+  await act(async () =>
+    reject(new ApiError('WORKTREE_GIT_PREWRITE_REJECTED', '明确前置拒绝', 409)),
+  );
+  expect(h.getOperations()?.at(-1)?.phase).toBe('unknown');
+  await act(async () => finishRefresh(rows));
+  await screen.findByRole('button', { name: '读取隔离工作区审阅' });
+  expect(screen.getByRole('button', { name: '核对原隔离执行' })).toBeVisible();
+  expect(vi.mocked(api.post)).toHaveBeenCalledTimes(1);
+});
+
+it('Worktree未知跨路由后按原实际attempt核对，仅明确拒绝可重新审阅', async () => {
+  const h = mount('worktree');
+  const original = vi.mocked(api.get).getMockImplementation()!;
+  let rejected = false;
+  vi.mocked(api.get).mockImplementation(async (path) => {
+    if (path === '/worktree-executions/execution-a')
+      return h.client.getQueryData<Array<unknown>>(['worktrees', 'p1'])?.[0] as never;
+    const value = await original(path);
+    if (path === '/worktree-executions/execution-a/review' && rejected)
+      return {
+        ...(value as object),
+        mergeAdmission: {
+          expectedRunId: 'old-run',
+          expectedOperationId: 'operation-a',
+          dispatchOperationId: 'operation-b',
+          retryEligible: true,
+          mergeAllowed: true,
+        },
+      } as never;
+    return value;
+  });
+  vi.mocked(api.post).mockImplementation(async () => {
+    rejected = true;
+    throw new ApiError('WORKTREE_GIT_PREWRITE_REJECTED', '明确前置拒绝', 409);
+  });
+  fireEvent.click(await screen.findByRole('button', { name: '读取隔离工作区审阅' }));
+  await screen.findByText('已读取差异');
+  fireEvent.click(screen.getByRole('checkbox', { name: '我已审阅改动，确认提交并合并到基础分支' }));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  await waitFor(() => expect(h.getOperations()?.at(-1)?.phase).toBe('unknown'));
+  expect(h.getOperations()?.at(-1)).toMatchObject({
+    gitMergeAttempt: { runId: 'old-run', operationId: 'operation-a' },
+  });
+  fireEvent.click(screen.getByRole('link', { name: '离开工作页' }));
+  await screen.findByRole('heading', { name: '其他页面' });
+  fireEvent.click(screen.getByRole('button', { name: '核对原操作' }));
+  await waitFor(() => expect(h.getOperations()?.at(-1)?.phase).toBe('retryable'));
+  expect(api.post).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('link', { name: '返回原任务' }));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeEnabled(),
+  );
+  fireEvent.click(screen.getByRole('button', { name: '读取隔离工作区审阅' }));
+  await screen.findByText('已读取差异');
+  expect(
+    screen.getByRole('checkbox', { name: '我已审阅改动，确认提交并合并到基础分支' }),
+  ).not.toBeChecked();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
 });

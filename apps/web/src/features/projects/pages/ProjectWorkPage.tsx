@@ -824,7 +824,8 @@ export function ProjectWorkPage() {
                         />
                       </section>
                     ) : null}
-                    {selectedWorktree && (selectedWorktree.status === 'REVIEW' || reviewPending) ? (
+                    {selectedWorktree &&
+                    (selectedWorktree.status === 'REVIEW' || reviewPending || ownedReviewLock) ? (
                       <section className={projectsStyles.inspectorSection}>
                         <h4>隔离工作区审阅</h4>
                         <WorktreeReviewActions

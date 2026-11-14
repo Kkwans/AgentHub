@@ -5,6 +5,8 @@ export type ReviewOperationSnapshot = {
   taskId: string;
   executionId?: string;
   operationId: string;
+  /** Exact planned merge target captured before POST, never a retry predecessor. */
+  gitMergeAttempt?: Readonly<{ runId: string; operationId: string }>;
   phase: ReviewOperationPhase;
   message: string;
   /** Only present on resolved snapshots, after response identity validation. */
@@ -20,7 +22,10 @@ export type ReviewOperationProps = {
 // Unique within this page lifetime even on non-secure LAN origins without randomUUID.
 let nextOperationId = 0;
 export function createReviewOperation(
-  identity: Pick<ReviewOperationSnapshot, 'projectId' | 'taskId' | 'executionId'>,
+  identity: Pick<
+    ReviewOperationSnapshot,
+    'projectId' | 'taskId' | 'executionId' | 'gitMergeAttempt'
+  >,
   notify: ReviewOperationProps['onOperationChange'],
 ) {
   const operationId = `review:${Date.now()}:${++nextOperationId}`;

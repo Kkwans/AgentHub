@@ -332,3 +332,64 @@ it('缺失ledger但已有失败记录时旧普通token不领取或清除错误',
   expect(await f.repo.get(f.execution.id)).toEqual(before);
   expect((await f.repo.get(f.execution.id))?.gitMergeGeneration).toBe(0);
 });
+
+it('admission分别返回CAS前驱与实际派发键，连续两次前置拒绝跟随新代际', async () => {
+  const f = await fixture();
+  expect(await f.repo.getMergeAdmission(f.execution.id, f.snapshot)).toMatchObject({
+    expectedOperationId: f.operationId,
+    dispatchOperationId: f.operationId,
+    retryEligible: false,
+    mergeAllowed: true,
+  });
+  await f.ledger('REJECTED_PREWRITE');
+  const next = deriveWorktreeMergeOperationId(f.execution.id, f.expected.runId, 1);
+  expect(await f.repo.getMergeAdmission(f.execution.id, f.snapshot)).toMatchObject({
+    expectedOperationId: f.operationId,
+    dispatchOperationId: next,
+    retryEligible: true,
+    mergeAllowed: true,
+  });
+  const claimed = await f.repo.claimReviewForMerge(f.execution.id, {
+    ...f.expected,
+    retryOfOperationId: f.operationId,
+  });
+  expect(claimed.operationId).toBe(next);
+  const [prior] = await database.db
+    .select()
+    .from(gitCommitOperations)
+    .where(eq(gitCommitOperations.operationId, f.operationId));
+  await database.db.insert(gitCommitOperations).values({ ...prior!, operationId: next });
+  await f.repo.patch(f.execution.id, {
+    status: 'REVIEW',
+    errorCode: 'WORKTREE_GIT_PREWRITE_REJECTED',
+  });
+  expect(
+    await f.repo.getMergeAdmission(f.execution.id, { ...f.snapshot, generation: 1 }),
+  ).toMatchObject({
+    expectedOperationId: next,
+    dispatchOperationId: deriveWorktreeMergeOperationId(f.execution.id, f.expected.runId, 2),
+    retryEligible: true,
+    mergeAllowed: true,
+  });
+});
+
+it('代际上限的拒绝没有可派发键且禁止重试，不计算溢出代际', async () => {
+  const f = await fixture();
+  await f.ledger('REJECTED_PREWRITE');
+  const max = 2147483647;
+  const key = deriveWorktreeMergeOperationId(f.execution.id, f.expected.runId, max);
+  const [prior] = await database.db
+    .select()
+    .from(gitCommitOperations)
+    .where(eq(gitCommitOperations.operationId, f.operationId));
+  await database.db.insert(gitCommitOperations).values({ ...prior!, operationId: key });
+  await f.repo.patch(f.execution.id, { gitMergeGeneration: max });
+  expect(
+    await f.repo.getMergeAdmission(f.execution.id, { ...f.snapshot, generation: max }),
+  ).toMatchObject({
+    expectedOperationId: key,
+    dispatchOperationId: null,
+    retryEligible: false,
+    mergeAllowed: false,
+  });
+});

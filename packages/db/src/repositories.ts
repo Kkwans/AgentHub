@@ -2269,11 +2269,23 @@ export class WorktreeExecutionRepository<TDatabase extends AgentHubDatabase> {
       prior?.projectId === execution.projectId &&
       prior.payloadJson.operationKind === 'WORKTREE_MERGE' &&
       prior.phase === 'REJECTED_PREWRITE';
+    const retryEligible = rejected && execution.gitMergeGeneration < 2147483647;
     return {
       expectedRunId: execution.runId,
       expectedOperationId: operationId,
-      retryEligible: rejected,
-      mergeAllowed: rejected || (!prior && execution.errorCode === null),
+      // The CAS predecessor and the attempt dispatched by an explicit retry are
+      // different identities. Recovery must follow the dispatched generation.
+      dispatchOperationId: retryEligible
+        ? deriveWorktreeMergeOperationId(
+            execution.id,
+            execution.runId,
+            execution.gitMergeGeneration + 1,
+          )
+        : rejected
+          ? null
+          : operationId,
+      retryEligible,
+      mergeAllowed: retryEligible || (!prior && execution.errorCode === null),
     };
   }
 

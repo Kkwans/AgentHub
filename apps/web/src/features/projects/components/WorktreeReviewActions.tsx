@@ -96,6 +96,9 @@ export function WorktreeReviewActions({
             result.mergeAdmission.expectedRunId !== execution.runId ||
             typeof result.mergeAdmission.expectedOperationId !== 'string' ||
             !result.mergeAdmission.expectedOperationId ||
+            (result.mergeAdmission.dispatchOperationId !== null &&
+              typeof result.mergeAdmission.dispatchOperationId !== 'string') ||
+            (result.mergeAdmission.mergeAllowed && !result.mergeAdmission.dispatchOperationId) ||
             typeof result.mergeAdmission.retryEligible !== 'boolean' ||
             typeof result.mergeAdmission.mergeAllowed !== 'boolean')) ||
         result.worktreePath !== execution.worktreePath ||
@@ -138,6 +141,7 @@ export function WorktreeReviewActions({
       action === 'merge' &&
       (!confirmation ||
         !shown.mergeAdmission?.mergeAllowed ||
+        !shown.mergeAdmission.dispatchOperationId ||
         shown.truncated ||
         commitMessage.trim().length > 240)
     )
@@ -148,7 +152,20 @@ export function WorktreeReviewActions({
     setNotice('');
     const key = `${execution.projectId}:${execution.taskId}`;
     const report = createReviewOperation(
-      { projectId: execution.projectId, taskId: execution.taskId, executionId: execution.id },
+      {
+        projectId: execution.projectId,
+        taskId: execution.taskId,
+        executionId: execution.id,
+        // Capture the actual planned target, not the retry predecessor CAS token.
+        ...(action === 'merge' && shown.mergeAdmission?.dispatchOperationId
+          ? {
+              gitMergeAttempt: {
+                runId: shown.mergeAdmission.expectedRunId,
+                operationId: shown.mergeAdmission.dispatchOperationId,
+              },
+            }
+          : {}),
+      },
       onOperationChange,
     );
     operation.current = report;
@@ -190,7 +207,7 @@ export function WorktreeReviewActions({
         const admission = shown.mergeAdmission!;
         lastMerge.current = {
           runId: admission.expectedRunId,
-          operationId: admission.expectedOperationId,
+          operationId: admission.dispatchOperationId!,
         };
         const result = await api.post<{ execution: WorktreeExecutionRecord; task: TaskRecord }>(
           `/worktree-executions/${encodeURIComponent(execution.id)}/merge`,

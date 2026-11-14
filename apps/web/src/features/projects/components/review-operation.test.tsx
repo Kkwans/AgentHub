@@ -40,6 +40,7 @@ const review = {
   mergeAdmission: {
     expectedRunId: 'run-a',
     expectedOperationId: 'operation-a',
+    dispatchOperationId: 'operation-a',
     retryEligible: false,
     mergeAllowed: true,
   },
