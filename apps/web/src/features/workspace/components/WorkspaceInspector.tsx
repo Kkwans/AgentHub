@@ -1,5 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from '@agenthub/ui';
 import { useId, type RefObject } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import type {
@@ -109,9 +110,17 @@ export function WorkspaceInspector({
             className="workspace-review-focus"
             ref={reviewFocus.buttonRef}
             aria-pressed={reviewFocus.active}
+            title={
+              reviewFocus.active ? '恢复原布局（Escape）' : '临时扩大代码阅读区，不改变保存的栏宽'
+            }
             onClick={reviewFocus.toggle}
           >
-            {reviewFocus.active ? '退出专注审阅' : '专注审阅'}
+            {reviewFocus.active ? (
+              <Minimize2 size={16} aria-hidden="true" />
+            ) : (
+              <Maximize2 size={16} aria-hidden="true" />
+            )}
+            <span>{reviewFocus.active ? '退出专注审阅' : '专注审阅'}</span>
           </button>
         )}
       </header>

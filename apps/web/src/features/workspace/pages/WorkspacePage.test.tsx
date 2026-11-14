@@ -844,6 +844,9 @@ describe('WorkspacePage 数据分区可靠性', () => {
     const conversation = screen.getByRole('textbox', { name: '给 Agent 发送工程指令' });
     fireEvent.change(conversation, { target: { value: '保留对话草稿' } });
     const focus = screen.getByRole('button', { name: '专注审阅' });
+    expect(focus.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(focus).toHaveAttribute('title', '临时扩大代码阅读区，不改变保存的栏宽');
+
     fireEvent.click(focus);
     expect(focus).toHaveAttribute('aria-pressed', 'true');
     const consumedEscape = new KeyboardEvent('keydown', {

@@ -314,6 +314,58 @@ for (const width of [390, 768, 1024, 1440]) {
         expect(new URL(page.url()).searchParams.get('view')).toBe('files');
       }
       await showChanges(page, width);
+      if (width >= 768) {
+        const focus = page.getByRole('button', { name: '专注审阅', exact: true });
+        await expect(focus).toHaveCount(1);
+        await expect(focus).toHaveAttribute('title', '临时扩大代码阅读区，不改变保存的栏宽');
+        await expect(focus.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+        const focusBox = (await focus.boundingBox())!;
+        expect(focusBox.width).toBeGreaterThanOrEqual(43.99);
+        expect(focusBox.height).toBeGreaterThanOrEqual(43.99);
+      }
+      if (width === 1440) {
+        const divider = page.getByRole('separator', { name: '调整右栏宽度', exact: true });
+        await expect(divider).toHaveAttribute(
+          'title',
+          '拖动调整右栏宽度；聚焦后使用左右方向键，Home 最窄，End 最宽',
+        );
+        // Read the resting affordance, not its hover/focus enhancement.
+        await page.mouse.move(300, 100);
+        const grip = divider.locator('[data-resize-grip="right"]');
+        await expect(grip).toBeVisible();
+        const appearance = await grip.evaluate((node) => {
+          const style = getComputedStyle(node);
+          const rgb = (color: string) => (color.match(/[\d.]+/g) ?? []).map(Number).slice(0, 3);
+          const luminance = (color: string) =>
+            rgb(color).reduce((sum, value, index) => {
+              const channel = value / 255;
+              return (
+                sum +
+                (index === 0 ? 0.2126 : index === 1 ? 0.7152 : 0.0722) *
+                  (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4)
+              );
+            }, 0);
+          const foreground = luminance(style.color),
+            background = luminance(style.backgroundColor);
+          return {
+            color: style.color,
+            background: style.backgroundColor,
+            opacity: style.opacity,
+            contrast:
+              (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05),
+            width: node.getBoundingClientRect().width,
+            height: node.getBoundingClientRect().height,
+          };
+        });
+        expect(Number(appearance.opacity)).toBe(1);
+        expect(appearance.contrast).toBeGreaterThanOrEqual(3);
+        expect(appearance.width).toBeGreaterThan(0);
+        expect(appearance.height).toBeGreaterThan(0);
+        await info.attach(`review-affordance-${theme}-${width}`, {
+          body: JSON.stringify(appearance),
+          contentType: 'application/json',
+        });
+      }
       const gitWrites: string[] = [];
       page.on('request', (request) => {
         if (

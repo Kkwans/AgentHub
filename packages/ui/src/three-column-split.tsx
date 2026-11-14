@@ -789,6 +789,7 @@ export function ThreeColumnSplit({
             onPointerDown={onPointerDownRight}
             onKeyDown={(event) => handleSeparatorKeyDown('R', event)}
             aria-label="调整右栏宽度"
+            title="拖动调整右栏宽度；聚焦后使用左右方向键，Home 最窄，End 最宽"
             className={cn(
               'group relative h-full w-full cursor-col-resize touch-none bg-transparent outline-none focus-visible:bg-[hsl(var(--primary))]/5',
               activeHandle === 'R' && 'z-20',
@@ -803,7 +804,11 @@ export function ThreeColumnSplit({
                   : 'w-px',
               )}
             />
-            <GripVertical className="absolute left-1/2 top-1/2 h-5 w-3 -translate-x-1/2 -translate-y-1/2 rounded bg-[hsl(var(--surface-elevated))] p-0.5 text-[hsl(var(--foreground-faint))] opacity-0 shadow-sm ring-1 ring-[hsl(var(--border))]/70 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+            <GripVertical
+              aria-hidden="true"
+              data-resize-grip="right"
+              className="absolute left-1/2 top-1/2 h-5 w-3 -translate-x-1/2 -translate-y-1/2 rounded bg-[hsl(var(--surface-elevated))] p-0.5 text-[hsl(var(--foreground-muted))] opacity-100 shadow-sm ring-1 ring-[hsl(var(--border))]/70 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+            />
           </div>
 
           {/* 右栏：折叠时不渲染 */}

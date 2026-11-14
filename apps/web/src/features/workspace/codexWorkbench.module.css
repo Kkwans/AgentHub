@@ -371,12 +371,19 @@
 }
 
 .workspace :global(.workspace-review-focus) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ah-text-primary);
+  background: var(--ah-surface-subtle);
+  border: 1px solid var(--ah-border-subtle);
   min-width: 44px;
   min-height: 44px;
   margin-left: auto;
   padding: 8px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   flex-shrink: 0;
 }
 .workspace :global(.workspace-review-focus:focus-visible) {

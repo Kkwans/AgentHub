@@ -38,6 +38,19 @@ it.each(['wide', 'medium'] as const)(
     fireEvent.change(right, { target: { value: 'pending draft' } });
     const host = view.container.querySelector('.three-column-split') as HTMLElement;
     const initialColumns = host.style.gridTemplateColumns;
+    if (mode === 'wide') {
+      const divider = screen.getByRole('separator', { name: '调整右栏宽度' });
+      expect(divider).toHaveAttribute(
+        'title',
+        '拖动调整右栏宽度；聚焦后使用左右方向键，Home 最窄，End 最宽',
+      );
+      expect(divider.querySelector('[data-resize-grip="right"]')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      );
+      expect(divider).toHaveAttribute('tabindex', '0');
+    }
+
     const dialog = mode === 'medium' ? screen.getByRole('dialog') : null;
     view.rerender(<ThreeColumnSplit {...props} rightFocused />);
     expect(host).toHaveAttribute('data-right-focused', 'true');
