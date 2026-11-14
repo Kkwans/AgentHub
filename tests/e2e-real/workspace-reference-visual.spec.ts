@@ -313,6 +313,19 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(tools).toHaveCount(4);
       await expect(page.locator('.plan-event-row')).toHaveCount(1);
       await expect(page.locator('.plan-event-row summary')).toHaveText('执行计划 · 3/3 完成');
+      const planProgress = page.getByRole('progressbar', { name: '执行计划 3/3 完成' });
+      await expect(planProgress).toHaveAttribute('aria-valuenow', '3');
+      await expect(planProgress).toHaveAttribute('data-complete', 'true');
+      await expect(planProgress).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await expect(planProgress).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
+      await expect(planProgress).toHaveCSS('box-shadow', 'none');
+      await expect(planProgress.locator('.composer-plan-track')).toBeVisible();
+      await expect(planProgress.locator('.composer-plan-track-fill')).toHaveCSS(
+        'transform',
+        'matrix(1, 0, 0, 1, 0, 0)',
+      );
+      expect(await planProgress.evaluate((node) => node.tabIndex)).toBe(-1);
+
       await expect(page.locator('.plan-event-row summary')).toHaveAccessibleName(
         '执行计划 · 3/3 完成，展开执行计划详情',
       );

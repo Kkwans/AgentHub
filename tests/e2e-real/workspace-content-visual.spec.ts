@@ -337,6 +337,17 @@ for (const width of [390, 768, 1024, 1440]) {
 
       const completed = page.getByText('Fixture 已完成', { exact: true });
       await expect(completed).toBeVisible({ timeout: 30_000 });
+      // The controlled agent leaves its plan pending; a finished run must not
+      // silently turn that independent plan progress into a completed button.
+      const planProgress = page.getByRole('progressbar', { name: '执行计划 0/1 完成' });
+      await expect(planProgress).toHaveAttribute('aria-valuenow', '0');
+      await expect(planProgress).not.toHaveAttribute('data-complete');
+      await expect(planProgress).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await expect(planProgress).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
+      await expect(planProgress).toHaveCSS('box-shadow', 'none');
+      await expect(planProgress.locator('.composer-plan-track')).toBeVisible();
+      expect(await planProgress.evaluate((node) => node.tabIndex)).toBe(-1);
+
       await expect(page.locator('.tool-event-row')).toHaveCount(1);
       await expect
         .poll(

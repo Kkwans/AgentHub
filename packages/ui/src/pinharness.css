@@ -2738,18 +2738,19 @@ html {
   color: hsl(var(--success));
 }
 
+/* Progress is a passive fact, not another toolbar button. Preserve its box
+ * metrics and track while removing the button-like surface in both themes. */
 .composer-plan-status {
   color: hsl(var(--foreground-muted));
-  transition:
-    color var(--motion-fast) var(--ease-standard),
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  transition: color var(--motion-fast) var(--ease-standard);
 }
 
 .composer-plan-status[data-complete='true'] {
   color: hsl(var(--success));
-  background: hsl(var(--success-soft) / 0.5);
-  border-color: hsl(var(--success) / 0.2);
 }
 
 /* PinHarness CommandBar motion primitives. The card remains a single surface;
