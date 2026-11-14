@@ -3,13 +3,10 @@ import {
   AhEmptyState,
   AhInput,
   AhSelect,
-  ArrowRight,
   Badge,
   Bot,
-  Link2,
   RefreshCw,
   Search,
-  Server,
   X,
 } from '@agenthub/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -19,7 +16,6 @@ import { Link } from 'react-router-dom';
 import { ErrorState, LoadingState } from '../../../components/Feedback';
 import type { AgentCandidateRecord, AgentRecord, ExecutionTargetRecord } from '../../../lib/api';
 import { api } from '../../../lib/api';
-import layout from '../../shared/layout.module.css';
 import styles from './AgentDirectory.module.css';
 import { NavigationPageHeader, displayDate } from '../../shared/page-primitives';
 
@@ -90,10 +86,12 @@ function AgentResourceCard({
           <dt>Provider</dt>
           <dd>{providerLabel(agent.adapterKind)}</dd>
         </div>
-        <div>
-          <dt>Model</dt>
-          <dd>{agent.defaultModel ?? 'Session 中选择'}</dd>
-        </div>
+        {agent.defaultModel ? (
+          <div>
+            <dt>Model</dt>
+            <dd>{agent.defaultModel}</dd>
+          </div>
+        ) : null}
       </dl>
       <div className={styles.agentFooter}>
         <div className={styles.capabilities}>
@@ -105,13 +103,6 @@ function AgentResourceCard({
         <span>最近检查 {displayDate(agent.lastPreflightAt)}</span>
         <Link className={styles.action} to={`/agents/${encodeURIComponent(agent.id)}`}>
           管理 Agent
-        </Link>
-        <Link
-          className={styles.action}
-          aria-description="当前 AgentHub 服务器，不是此 Agent 专属诊断"
-          to="/agents/diagnostics"
-        >
-          服务器诊断 <ArrowRight size={13} aria-hidden />
         </Link>
         <span className="sr-only">当前状态：{statusLabel(agent.status, agent.enabled)}</span>
       </div>
@@ -240,8 +231,9 @@ export function AgentCenterPage() {
     <div className="workspace-page flex h-full min-h-0 flex-col overflow-hidden">
       <NavigationPageHeader
         icon={Bot}
+        className={styles.directoryHeader ?? ''}
         title="Agent 中心"
-        description="发现和管理可用于 Project Work 的 Agent 身份。运行环境与远程节点诊断在 Infrastructure 中单独展示。"
+        description="管理 Agent 身份与已登记能力。"
         actions={
           <Link to="/agents/agents/discover">
             <AhButton leftSection={<RefreshCw size={16} />}>发现 Agent</AhButton>
@@ -249,7 +241,7 @@ export function AgentCenterPage() {
         }
       />
       <div className="page-content flex-1 overflow-y-auto">
-        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[hsl(var(--foreground-muted))]">
+        <div className={styles.directorySummary}>
           <span>
             <strong className="font-semibold text-[hsl(var(--foreground))]">
               {agents.isError ? '未知' : agents.isLoading ? '—' : (agents.data?.length ?? 0)}
@@ -263,22 +255,27 @@ export function AgentCenterPage() {
             登记就绪
           </span>
           <span>
-            发现结果待处理：
+            发现待处理：
             <strong className="font-semibold text-[hsl(var(--warning-fg))]">
               {candidates.isError ? '未知' : candidates.isLoading ? '加载中' : attentionCount}
             </strong>
           </span>
-          <Link
-            className={`${layout.link} ml-auto inline-flex items-center gap-1`}
-            to="/agents/runtime"
-          >
-            打开 Infrastructure <Link2 size={13} aria-hidden />
-          </Link>
+          <details className={styles.infrastructureMenu}>
+            <summary>基础设施</summary>
+            <nav aria-label="基础设施导航">
+              <Link to="/agents/runtime">运行环境</Link>
+              <Link to="/agents/nodes">远程节点</Link>
+              <Link
+                to="/agents/diagnostics"
+                aria-description="当前 AgentHub 服务器，不是此 Agent 专属诊断"
+              >
+                服务器诊断
+              </Link>
+              <p>服务器诊断不代表某个 Agent 的运行前检查。</p>
+            </nav>
+          </details>
         </div>
-
-        <p className="mb-4 text-xs text-[hsl(var(--foreground-muted))]">
-          登记状态不代表运行前预检结果。
-        </p>
+        <p className={styles.preflightNote}>登记状态不代表运行前预检结果。</p>
         {targets.isError ? (
           <section aria-label="运行环境读取状态">
             <ErrorState
@@ -311,7 +308,7 @@ export function AgentCenterPage() {
           refreshing={agents.isFetching || candidates.isFetching || targets.isFetching}
         />
 
-        <div className="mt-4">
+        <div className={styles.directoryResults}>
           {agents.isLoading ? <LoadingState label="正在加载 Agent" /> : null}
           {agents.error ? (
             <ErrorState error={agents.error} retry={() => void agents.refetch()} />
@@ -361,17 +358,6 @@ export function AgentCenterPage() {
               icon={<Bot size={22} aria-hidden />}
             />
           ) : null}
-        </div>
-
-        <div className="mt-4 flex items-center gap-2 border-t border-[hsl(var(--border))]/60 pt-3 text-xs text-[hsl(var(--foreground-faint))]">
-          <Server size={14} aria-hidden />
-          <span>Runtime 与 Remote Node 诊断已独立</span>
-          <Link
-            className={`${layout.link} ml-auto inline-flex items-center gap-1`}
-            to="/agents/diagnostics"
-          >
-            查看状态 <ArrowRight size={13} aria-hidden />
-          </Link>
         </div>
       </div>
     </div>

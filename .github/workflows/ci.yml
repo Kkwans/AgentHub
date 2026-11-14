@@ -248,6 +248,7 @@ jobs:
           tests/e2e-real/session-export.spec.ts
           tests/e2e-real/task-start-recovery.spec.ts
           tests/e2e-real/agent-availability.spec.ts
+          tests/e2e-real/agent-capability-truth.spec.ts
           tests/e2e-real/session-message-search.spec.ts
           tests/e2e-real/shell-foundation-visual.spec.ts
           tests/e2e-real/workspace-reference-visual.spec.ts

@@ -102,7 +102,8 @@ describe('Agent capability truthfulness', () => {
     expect(within(card).getByText('已启用')).toBeVisible();
     expect(card.querySelector('dl')).toHaveTextContent('Runtime');
     expect(card.querySelector('dl')).toHaveTextContent('Provider');
-    expect(card.querySelector('dl')).toHaveTextContent('Model');
+    expect(card.querySelector('dl')).not.toHaveTextContent('Model');
+    expect(within(card).queryByText('Session 中选择')).not.toBeInTheDocument();
     expect(within(card).getByText('未找到关联运行环境')).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: '管理 Agent' })).toHaveAttribute(
       'href',
@@ -112,7 +113,10 @@ describe('Agent capability truthfulness', () => {
     fireEvent.click(card);
     fireEvent.keyDown(card, { key: 'Enter' });
     expect(screen.getByTestId('route')).toHaveTextContent(/^\/$/);
-    const link = within(card).getByRole('link', { name: '服务器诊断' });
+    expect(within(card).queryByRole('link', { name: '服务器诊断' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('基础设施', { selector: 'summary' })).toHaveLength(1);
+    fireEvent.click(screen.getByText('基础设施', { selector: 'summary' }));
+    const link = screen.getByRole('link', { name: '服务器诊断' });
     expect(link).toHaveAttribute('href', '/agents/diagnostics');
     expect(link).toHaveAccessibleDescription('当前 AgentHub 服务器，不是此 Agent 专属诊断');
     fireEvent.click(link);
@@ -245,4 +249,55 @@ it.each([false, true])('主Agent源失败总数及登记就绪数均未知（旧
   fireEvent.click(screen.getByRole('button', { name: '重新加载' }));
   expect(await screen.findByRole('group', { name: 'Codex，Codex，登记就绪' })).toBeVisible();
   expect(screen.queryAllByText('未知', { exact: true })).toHaveLength(0);
+});
+
+it('首次加载不是空库，搜索无结果与真空库不同且刷新不丢查询', async () => {
+  let finish!: (value: unknown) => void;
+  let ready = false;
+  vi.mocked(api.get).mockImplementation(<T,>(path: string) => {
+    if (path !== '/agents') return Promise.resolve([] as T);
+    if (ready) return Promise.resolve([readyAgent] as T);
+    return new Promise<unknown>((resolve) => {
+      finish = resolve;
+    }) as Promise<T>;
+  });
+  mountSources();
+  expect(screen.queryByText('还没有接入 Agent')).not.toBeInTheDocument();
+  await act(async () => {
+    ready = true;
+    finish([readyAgent]);
+  });
+  await screen.findByRole('group', { name: 'Codex，Codex，登记就绪' });
+  const search = screen.getByRole('searchbox', { name: '搜索 Agent' });
+  fireEvent.change(search, { target: { value: '无匹配名称' } });
+  expect(screen.getByText('没有匹配的 Agent')).toBeVisible();
+  expect(screen.queryByText('还没有接入 Agent')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '刷新' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '刷新' })).toBeEnabled());
+  expect(search).toHaveValue('无匹配名称');
+  fireEvent.click(screen.getByRole('button', { name: '清除筛选' }));
+  expect(screen.getByRole('group', { name: 'Codex，Codex，登记就绪' })).toBeVisible();
+});
+it('真实默认Model保留且基础设施每个目标唯一，停用不变成登记就绪', async () => {
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(path: string) =>
+      (path === '/agents'
+        ? [{ ...readyAgent, name: '长名称'.repeat(20), enabled: false, defaultModel: '真实模型' }]
+        : []) as T,
+  );
+  mountSources();
+  const row = await screen.findByRole('group', { name: /需要处理/ });
+  expect(within(row).getByText('真实模型')).toBeVisible();
+  expect(within(row).getByText('已停用')).toBeVisible();
+  expect(within(row).queryByText('登记就绪')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText('基础设施', { selector: 'summary' }));
+  const nav = screen.getByRole('navigation', { name: '基础设施导航' });
+  for (const [name, href] of [
+    ['运行环境', '/agents/runtime'],
+    ['远程节点', '/agents/nodes'],
+    ['服务器诊断', '/agents/diagnostics'],
+  ] as const) {
+    expect(within(nav).getAllByRole('link', { name })).toHaveLength(1);
+    expect(within(nav).getByRole('link', { name })).toHaveAttribute('href', href);
+  }
 });
