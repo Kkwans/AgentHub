@@ -1,3 +1,4 @@
+import type { Page, Locator, TestInfo } from '@playwright/test';
 import { assertFullscreenScroll } from '../e2e-support/fullscreen-dialog.js';
 import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
@@ -20,157 +21,216 @@ type Task = Identified & {
   promptVariablesJson: Record<string, unknown>;
 };
 
-for (const width of [1440, 1024, 768, 390]) {
-  test(`新建工作固定 Prompt 版本并保留主目标与 Goal ${width}`, async ({
-    page,
-    context,
-    app,
-  }, testInfo) => {
-    const errors: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => {
-      if (message.type() === 'error') errors.push(message.text());
-    });
-    await page.setViewportSize({ width, height: 1000 });
-    const { project, agent } = await seedWorkspace(context, app);
-    const goal = await apiData<Identified>(context, 'post', '/goals', {
-      projectId: project.id,
-      title: '保留所属目标',
-    });
-    const prompt = await apiData<Identified>(context, 'post', '/prompts', {
-      projectId: project.id,
-      key: 'e2e/new-work',
-      name: '工作模板',
-      kind: 'TASK',
-      type: 'TEXT',
-    });
-    const version = await apiData<Version>(context, 'post', `/prompts/${prompt.id}/versions`, {
-      content: { text: '固定旧版本：处理 {{ subject }}' },
-      variables: {
-        type: 'object',
-        properties: { subject: { type: 'string' } },
-        required: ['subject'],
-      },
-    });
-    await page.goto(`/projects/${project.id}/work/new`);
-    const dialog = page.getByRole('dialog', { name: '描述一项工作' });
-    await dialog.getByRole('textbox', { name: '你想完成什么？' }).fill('主目标必须保留');
-    await dialog.getByRole('textbox', { name: '补充上下文（可选）' }).fill('补充验收细节');
-    await dialog.getByText('高级设置', { exact: true }).click();
-    await dialog.getByRole('combobox', { name: '所属 Goal（可选）' }).click();
-    await page.getByRole('option', { name: '保留所属目标' }).click();
-    await dialog.getByRole('combobox', { name: 'PromptOS 资产（可选）' }).click();
-    await page.getByRole('option', { name: /工作模板/ }).click();
-    const create = dialog.getByRole('button', { name: '创建并开始', exact: true });
-    await expect(create).toBeDisabled();
-    await dialog
-      .getByRole('textbox', { name: 'Prompt 变量（JSON 对象）' })
-      .fill('{"subject":"登录回归"}');
-    await dialog.getByRole('button', { name: '预览并固定版本' }).click();
-    const preview = dialog.getByRole('region', { name: 'Prompt 预览' });
-    await expect(preview).toContainText('已固定版本 v1');
-    await expect(preview).toContainText('固定旧版本：处理 登录回归');
-    // Publishing a newer version after preview must not change the selected version.
-    await apiData(context, 'post', `/prompts/${prompt.id}/versions`, {
-      content: { text: '错误的新版本内容' },
-    });
-    await expect(create).toBeEnabled();
-    if (width === 390) {
-      const originalViewport = page.viewportSize()!;
-      await page.setViewportSize({ width, height: 600 });
-      await preview.scrollIntoViewIfNeeded();
-      await expect(preview).toContainText('已固定版本 v1');
-      const geometry = await assertFullscreenScroll(page, dialog, true);
-      await expect(create).toBeInViewport();
-      await testInfo.attach('new-work-fullscreen-geometry', {
-        body: JSON.stringify(geometry),
-        contentType: 'application/json',
-      });
-      await page.screenshot({
-        path: testInfo.outputPath('new-work-fullscreen-short-390.png'),
-        fullPage: true,
-      });
-      await page.setViewportSize(originalViewport);
-    }
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
-    await page.screenshot({
-      path: testInfo.outputPath(`new-work-prompt-${width}.png`),
-      fullPage: true,
-    });
-    await create.click();
-    await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
-    const sessionId = new URL(page.url()).pathname.split('/').at(-1)!;
-    const tasks = await apiData<Task[]>(context, 'get', `/tasks?projectId=${project.id}`);
-    expect(tasks).toHaveLength(1);
-    const task = tasks[0]!;
-    expect(task).toMatchObject({
-      title: '主目标必须保留',
-      description: '任务要求：\n主目标必须保留\n\n补充上下文：\n补充验收细节',
-      goalId: goal.id,
-      sessionId,
-    });
-    const bindings = await apiData<unknown[]>(
-      context,
-      'get',
-      `/prompt-bindings?targetType=TASK&targetId=${task.id}`,
-    );
-    expect(bindings).toEqual([
-      expect.objectContaining({
-        promptId: prompt.id,
-        versionId: version.id,
-        selectorType: 'VERSION',
-        slot: 'TASK_PRIMER',
-      }),
-    ]);
-    const resolved = await apiData<{ finalContext: string; ready: boolean }>(
-      context,
-      'post',
-      '/prompt-context/resolve',
-      {
-        projectId: project.id,
-        taskId: task.id,
-        agentId: agent.id,
-        variables: { subject: '登录回归' },
-      },
-    );
-    expect(resolved.ready).toBe(true);
-    expect(resolved.finalContext).toContain('固定旧版本：处理 登录回归');
-    expect(resolved.finalContext).not.toContain('错误的新版本内容');
-    const runs = await apiData<Array<{ metadataJson: unknown }>>(
-      context,
-      'get',
-      `/sessions/${sessionId}/runs`,
-    );
-    expect(runs).toHaveLength(1);
-    expect(runs[0]?.metadataJson).toMatchObject({
-      promptContext: {
-        finalContextHash: createHash('sha256').update(resolved.finalContext).digest('hex'),
-        items: [
-          expect.objectContaining({
-            promptId: prompt.id,
-            versionId: version.id,
-            contentHash: version.contentHash,
-            targetType: 'TASK',
-            targetId: task.id,
-            slot: 'TASK_PRIMER',
-          }),
-        ],
-      },
-    });
-    const messages = await apiData<Array<{ role: string; text: string }>>(
-      context,
-      'get',
-      `/sessions/${sessionId}/messages`,
-    );
-    expect(
-      messages.filter((message) => message.role === 'USER').map((message) => message.text),
-    ).toEqual([
-      '主目标必须保留\n\n任务说明：\n任务要求：\n主目标必须保留\n\n补充上下文：\n补充验收细节',
-    ]);
-    expect(errors).toEqual([]);
+async function captureForm(page: Page, dialog: Locator, info: TestInfo, name: string) {
+  await expect(dialog).toBeVisible();
+  const scrollContainers = dialog.locator('*');
+  const scrolls = await dialog.evaluate((root) =>
+    [root, ...root.querySelectorAll('*')].flatMap((element, index) => {
+      const style = getComputedStyle(element);
+      if (!['auto', 'scroll'].includes(style.overflowY)) return [];
+      element.scrollTop = 0;
+      return [
+        {
+          index,
+          className: element.className,
+          scrollHeight: element.scrollHeight,
+          clientHeight: element.clientHeight,
+          scrollTop: element.scrollTop,
+        },
+      ];
+    }),
+  );
+  await info.attach(`${name}-scroll`, {
+    body: JSON.stringify(scrolls),
+    contentType: 'application/json',
   });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+  ).toBeLessThanOrEqual(1);
+  const path = info.outputPath(`${name}.png`);
+  await page.screenshot({ path, fullPage: true, animations: 'disabled' });
+  await info.attach(name, { path, contentType: 'image/png' });
+  for (const scroll of scrolls.filter((item) => item.scrollHeight > item.clientHeight + 1)) {
+    const container = scroll.index === 0 ? dialog : scrollContainers.nth(scroll.index - 1);
+    await container.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect
+      .poll(() =>
+        container.evaluate((element) =>
+          Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop),
+        ),
+      )
+      .toBeLessThanOrEqual(1);
+    const bottom = info.outputPath(`${name}-bottom-${scroll.index}.png`);
+    await page.screenshot({ path: bottom, fullPage: true, animations: 'disabled' });
+    await info.attach(`${name}-bottom-${scroll.index}`, { path: bottom, contentType: 'image/png' });
+    await container.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await expect.poll(() => container.evaluate((element) => element.scrollTop)).toBe(0);
+  }
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  for (const width of [1440, 1024, 768, 390]) {
+    test(`新建工作固定 Prompt 版本并保留主目标与 Goal ${width} ${theme}`, async ({
+      page,
+      context,
+      app,
+    }, testInfo) => {
+      const errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+      });
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      await context.addInitScript(
+        ({ theme, origin }) => {
+          if (location.origin === origin) localStorage.setItem('agenthub-theme', theme);
+        },
+        { theme, origin: app.origin },
+      );
+      const { project, agent } = await seedWorkspace(context, app);
+      const goal = await apiData<Identified>(context, 'post', '/goals', {
+        projectId: project.id,
+        title: '保留所属目标',
+      });
+      const prompt = await apiData<Identified>(context, 'post', '/prompts', {
+        projectId: project.id,
+        key: 'e2e/new-work',
+        name: '工作模板',
+        kind: 'TASK',
+        type: 'TEXT',
+      });
+      const version = await apiData<Version>(context, 'post', `/prompts/${prompt.id}/versions`, {
+        content: { text: '固定旧版本：处理 {{ subject }}' },
+        variables: {
+          type: 'object',
+          properties: { subject: { type: 'string' } },
+          required: ['subject'],
+        },
+      });
+      await page.goto(`/projects/${project.id}/work/new`);
+      const dialog = page.getByRole('dialog', { name: '描述一项工作' });
+      await expect(dialog.getByRole('textbox', { name: '你想完成什么？' })).toHaveValue('');
+      await expect(dialog.getByRole('button', { name: '创建并开始', exact: true })).toBeDisabled();
+      await captureForm(page, dialog, testInfo, `new-work-empty-${width}-${theme}`);
+      await dialog.getByRole('textbox', { name: '你想完成什么？' }).fill('主目标必须保留');
+      await dialog.getByRole('textbox', { name: '补充上下文（可选）' }).fill('补充验收细节');
+      await dialog.getByText('高级设置', { exact: true }).click();
+      await dialog.getByRole('combobox', { name: '所属 Goal（可选）' }).click();
+      await page.getByRole('option', { name: '保留所属目标' }).click();
+      await dialog.getByRole('combobox', { name: 'PromptOS 资产（可选）' }).click();
+      await page.getByRole('option', { name: /工作模板/ }).click();
+      const create = dialog.getByRole('button', { name: '创建并开始', exact: true });
+      await expect(create).toBeDisabled();
+      await dialog
+        .getByRole('textbox', { name: 'Prompt 变量（JSON 对象）' })
+        .fill('{"subject":"登录回归"}');
+      await dialog.getByRole('button', { name: '预览并固定版本' }).click();
+      const preview = dialog.getByRole('region', { name: 'Prompt 预览' });
+      await expect(preview).toContainText('已固定版本 v1');
+      await expect(preview).toContainText('固定旧版本：处理 登录回归');
+      // Publishing a newer version after preview must not change the selected version.
+      await apiData(context, 'post', `/prompts/${prompt.id}/versions`, {
+        content: { text: '错误的新版本内容' },
+      });
+      await expect(create).toBeEnabled();
+      if (width === 390) {
+        const originalViewport = page.viewportSize()!;
+        await page.setViewportSize({ width, height: 600 });
+        await preview.scrollIntoViewIfNeeded();
+        await expect(preview).toContainText('已固定版本 v1');
+        const geometry = await assertFullscreenScroll(page, dialog, true);
+        await expect(create).toBeInViewport();
+        await testInfo.attach('new-work-fullscreen-geometry', {
+          body: JSON.stringify(geometry),
+          contentType: 'application/json',
+        });
+        await page.screenshot({
+          path: testInfo.outputPath(`new-work-fullscreen-short-390-${theme}.png`),
+          fullPage: true,
+        });
+        await page.setViewportSize(originalViewport);
+      }
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+      await captureForm(page, dialog, testInfo, `new-work-prompt-${width}-${theme}`);
+      await create.click();
+      await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+      const sessionId = new URL(page.url()).pathname.split('/').at(-1)!;
+      const tasks = await apiData<Task[]>(context, 'get', `/tasks?projectId=${project.id}`);
+      expect(tasks).toHaveLength(1);
+      const task = tasks[0]!;
+      expect(task).toMatchObject({
+        title: '主目标必须保留',
+        description: '任务要求：\n主目标必须保留\n\n补充上下文：\n补充验收细节',
+        goalId: goal.id,
+        sessionId,
+      });
+      const bindings = await apiData<unknown[]>(
+        context,
+        'get',
+        `/prompt-bindings?targetType=TASK&targetId=${task.id}`,
+      );
+      expect(bindings).toEqual([
+        expect.objectContaining({
+          promptId: prompt.id,
+          versionId: version.id,
+          selectorType: 'VERSION',
+          slot: 'TASK_PRIMER',
+        }),
+      ]);
+      const resolved = await apiData<{ finalContext: string; ready: boolean }>(
+        context,
+        'post',
+        '/prompt-context/resolve',
+        {
+          projectId: project.id,
+          taskId: task.id,
+          agentId: agent.id,
+          variables: { subject: '登录回归' },
+        },
+      );
+      expect(resolved.ready).toBe(true);
+      expect(resolved.finalContext).toContain('固定旧版本：处理 登录回归');
+      expect(resolved.finalContext).not.toContain('错误的新版本内容');
+      const runs = await apiData<Array<{ metadataJson: unknown }>>(
+        context,
+        'get',
+        `/sessions/${sessionId}/runs`,
+      );
+      expect(runs).toHaveLength(1);
+      expect(runs[0]?.metadataJson).toMatchObject({
+        promptContext: {
+          finalContextHash: createHash('sha256').update(resolved.finalContext).digest('hex'),
+          items: [
+            expect.objectContaining({
+              promptId: prompt.id,
+              versionId: version.id,
+              contentHash: version.contentHash,
+              targetType: 'TASK',
+              targetId: task.id,
+              slot: 'TASK_PRIMER',
+            }),
+          ],
+        },
+      });
+      const messages = await apiData<Array<{ role: string; text: string }>>(
+        context,
+        'get',
+        `/sessions/${sessionId}/messages`,
+      );
+      expect(
+        messages.filter((message) => message.role === 'USER').map((message) => message.text),
+      ).toEqual([
+        '主目标必须保留\n\n任务说明：\n任务要求：\n主目标必须保留\n\n补充上下文：\n补充验收细节',
+      ]);
+      expect(errors).toEqual([]);
+    });
+  }
 }
 
 test('没有 Agent 时保存模板版本与变量，稍后启动使用固定输入', async ({ page, context, app }) => {

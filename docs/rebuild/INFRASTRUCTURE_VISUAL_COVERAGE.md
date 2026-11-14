@@ -33,3 +33,9 @@ hostDiagnostics发现codex可执行时会运行版本与login status。当前fix
 新增测试专用独立Node child：导入真实server前检查环境白名单、空PATH与自有canonical目录，使用IPC报告固定就绪证明。父进程只请求loopback health确认PGlite/web。关闭必须收到close确认和正常exit后才清理自有目录，异常/超时保留；强杀不作健康关闭证据。
 
 默认生命周期6通过1显式跳过；opt-in实际健康起停7通过，独立CR无阻断。仍未连接浏览器、执行诊断GET、注册节点或调用Provider；普通Git/ACP fixture未改，也不是OS沙箱。启动期IPC断开和强杀后未exit两分支尚缺直接测试，接线下一片先补，不用健康成功替代这些故障门禁。
+
+### 2026-11-14 17:41 UTC 独立真实页面门禁候选
+
+新增独立8例（四宽双主题）只在受控child访问Nodes空态、注册空表单未提交/返回、主诊断折叠展开。HTTP API限定auth/status、remote-nodes、agents/diagnostics/host三个GET；任何业务write或未知读取abort并失败。另有同源/ws，仅记录path和同源布尔，不记录帧/凭据，故不称全部网络只有三个GET。空PATH下源码已核不启动codex/opencode CLI，pinned adapter安装状态不代表认证或Provider已连通。
+
+保持44px、overflow、console硬门禁，主/页面真实滚动到底≤1并恢复原位置；context关闭失败仍在finally关闭child。仅focused接线，普通Git/ACP fixture及full baseline未改。类型/lint/list8/独立CR过；本地首例因浏览器启动socket权限受阻，正文未执行，诊断GET与截图尚未发生。待精确CI实际图后才能验收，不是OS沙箱或生产服务隔离。

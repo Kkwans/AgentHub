@@ -1938,3 +1938,6 @@ Home四文件最终冻结聚合17:17:32结束130文件1420通过/190.38秒，14�
 
 独立child候选默认9通过1显式跳过、opt-in10/10通过4.51秒，独立CR无阻断：新增import前validated/start握手，真实验证环境校验后断IPC正常退出且DB仍空；fake强杀无exit二次5秒期限拒绝并保留证据。这不是startServer内部await期间断开覆盖，后者仍无直接故障回归，不称通用孤儿回收/OS沙箱。
 - 17:32:02 UTC主工程复跑隔离基础+生命周期两个专项文件13/13通过5.67秒，实际服务仅GET health。Settings最终静态/独立CR通过，10个浏览器用例仍仅发现未本地执行；无产品改动，1422 web/UI是上次649验证，不冒称本片重跑。全仓build进行中。
+- 17:33:28 UTC已fetch核fa5b983推送，run43621745516排队；17:32:22最终build成功。仅test/docs变更，Settings真实图仍待。527首页focused139/0/0精确图已人工验收：CTA gap24、零摘要去除，祖先opacity全1，当前像素不泛灰；旧灰疑点归稳定截图证据，不冒称修了配色bug。
+- 17:40 UTC 三spec候选静态/30例发现及独立CR无阻断：独立Infrastructure8例仅接focused（不改full140 baseline），真实新图未执行；创建项目/新建工作主流程各补四宽双主题，原路径/固定版本/hash/Run/消息断言保留。CR发现capture漏dialog自身overflow，已纳入自身+后代稳定索引并补真实到底≤1/归零验证，未以过宽断言隐藏。
+- 17:40:19 UTC 尝试现有Chromium运行独立390浅色首例，browser fixture启动被本环境socket() Operation not permitted阻断，正文未进入，因此无新host diagnostics GET、无像素图，不算产品用例失败/通过。未绕过权限，继续已支持的CI浏览器验证。全仓build继续，尚未发布此三spec。
