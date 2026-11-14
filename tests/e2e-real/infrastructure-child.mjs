@@ -41,12 +41,18 @@ const close = () =>
   })());
 
 let closeRequested = false;
+let authorizeStart;
+const startPermission = new Promise((resolve) => {
+  authorizeStart = resolve;
+});
 const requestClose = () => {
   closeRequested = true;
+  authorizeStart(false);
   if (running) void close();
 };
 process.on('message', (message) => {
   if (message?.type === 'close') requestClose();
+  if (message?.type === 'start' && !closeRequested) authorizeStart(true);
 });
 process.on('disconnect', requestClose);
 
@@ -93,7 +99,9 @@ try {
     resolve(process.env.AGENTHUB_WEB_DIST) !== process.env.AGENTHUB_WEB_DIST
   )
     throw new Error();
-  // Validation precedes importing the actual server and all its dependencies.
+  await send({ type: 'validated' });
+  if (closeRequested || !process.connected || !(await startPermission)) await close();
+  // Validation and the parent handshake precede importing the actual server and its dependencies.
   const { startServer } = await import('../../apps/server/dist/index.js');
   running = await startServer(process.env);
   const address = running.server.address();

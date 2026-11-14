@@ -21,6 +21,7 @@ export function observeInfrastructureChild(child: ChildProcess, timeoutMs = 20_0
     exitedResolve = resolve;
   });
   let closed = false;
+  let startSent = false;
   let failure: string | undefined;
   let closePromise: Promise<void> | undefined;
   const timer = setTimeout(() => {
@@ -30,6 +31,17 @@ export function observeInfrastructureChild(child: ChildProcess, timeoutMs = 20_0
   child.on('message', (message: unknown) => {
     if (!message || typeof message !== 'object') return;
     const value = message as Record<string, unknown>;
+    if (value.type === 'validated' && !startSent && !closePromise) {
+      startSent = true;
+      try {
+        child.send({ type: 'start' }, () => undefined);
+      } catch {
+        failure = 'CHILD_START_SEND_FAILED';
+        clearTimeout(timer);
+        readyReject(new Error(failure));
+      }
+      return;
+    }
     if (
       value.type === 'ready' &&
       typeof value.origin === 'string' &&

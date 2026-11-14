@@ -1,6 +1,10 @@
 import { EventEmitter } from 'node:events';
-import type { ChildProcess } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { access, mkdtemp, mkdir, realpath, rm, readdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { infrastructureChildLaunch } from './e2e-real/infrastructure-isolation.js';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
   observeInfrastructureChild,
@@ -104,3 +108,106 @@ it.skipIf(process.env.AGENTHUB_INFRA_CHILD_SMOKE !== '1')(
   },
   60_000,
 );
+
+it('SIGKILL without an exit event remains unconfirmed after the second bounded deadline', async () => {
+  vi.useFakeTimers();
+  const child = fakeChild();
+  child.kill.mockImplementation(() => true);
+  const lifecycle = observeInfrastructureChild(child as unknown as ChildProcess, 100);
+  const closing = lifecycle.close();
+  const failed = expect(closing).rejects.toThrow('CHILD_TERMINATION_UNCONFIRMED');
+  await vi.advanceTimersByTimeAsync(5100);
+  await failed;
+  expect(child.kill).toHaveBeenCalledTimes(1);
+  expect(lifecycle.close()).toBe(closing);
+});
+it('parent authorizes validated startup once but never after close begins', async () => {
+  const child = fakeChild();
+  const lifecycle = observeInfrastructureChild(child as unknown as ChildProcess, 1000);
+  child.emit('message', { type: 'validated' });
+  child.emit('message', { type: 'validated' });
+  expect(child.send).toHaveBeenCalledTimes(1);
+  expect(child.send).toHaveBeenCalledWith({ type: 'start' }, expect.any(Function));
+  const closing = lifecycle.close();
+  child.emit('message', { type: 'validated' });
+  expect(child.send).toHaveBeenCalledTimes(2);
+  child.emit('message', { type: 'closed' });
+  child.emit('exit', 0, null);
+  await closing;
+});
+it('IPC disconnect during the validated pre-import startup barrier exits without creating DB data', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'agenthub-infra-disconnect-')));
+  for (const name of [
+    'empty-bin',
+    'home',
+    'config',
+    'cache',
+    'local-data',
+    'codex',
+    'tmp',
+    'database',
+    'worktrees',
+    'workspace',
+  ])
+    await mkdir(join(root, name));
+  const launch = infrastructureChildLaunch(
+    root,
+    fileURLToPath(new URL('../apps/web/dist', import.meta.url)),
+    fileURLToPath(new URL('./e2e-real/infrastructure-child.mjs', import.meta.url)),
+  );
+  const child = spawn(launch.executable, launch.args, {
+    cwd: root,
+    env: launch.env,
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+  });
+  let didExit = false;
+  let validated = false;
+  const messages: unknown[] = [];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+      (resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('STARTUP_DISCONNECT_TIMEOUT')), 5000);
+        child.on('message', (message: unknown) => {
+          messages.push(message);
+          if (
+            message &&
+            typeof message === 'object' &&
+            'type' in message &&
+            message.type === 'validated'
+          ) {
+            validated = true;
+            child.disconnect();
+          }
+        });
+        child.on('error', reject);
+        child.on('exit', (code, signal) => {
+          didExit = true;
+          resolve({ code, signal });
+        });
+      },
+    );
+    expect(validated).toBe(true);
+    expect(outcome).toEqual({ code: 0, signal: null });
+    expect(messages).toEqual([{ type: 'validated' }]);
+    await expect(access(root)).resolves.toBeUndefined();
+    expect(await readdir(join(root, 'database'))).toEqual([]);
+  } finally {
+    clearTimeout(timer);
+    if (!didExit) {
+      let killTimer: ReturnType<typeof setTimeout> | undefined;
+      const terminated = new Promise<void>((resolve) => {
+        child.once('exit', () => {
+          didExit = true;
+          resolve();
+        });
+        killTimer = setTimeout(resolve, 5000);
+      });
+      child.kill('SIGKILL');
+      await terminated;
+      clearTimeout(killTimer);
+    }
+    // Only confirmed process exit permits test-owned directory removal.
+    if (didExit) await rm(root, { recursive: true, force: false });
+  }
+});
