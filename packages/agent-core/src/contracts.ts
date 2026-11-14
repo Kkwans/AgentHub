@@ -189,3 +189,21 @@ export const NO_AGENT_CAPABILITIES: AgentCapabilities = {
   configuration: { models: false, modes: false, reasoningEffort: false },
   telemetry: { tokenUsage: false, cost: false },
 };
+
+/** A provider operation failed before transferring a handle and cannot confirm resource cleanup.
+ * This in-process contract is deliberately not inferred from vendor messages or nested causes.
+ */
+export class ResourceCleanupUnconfirmedError extends Error {
+  readonly code = 'RESOURCE_CLEANUP_UNCONFIRMED';
+
+  constructor(options?: ErrorOptions) {
+    super('Agent 资源尚未确认停止，不能重复启动。', options);
+    this.name = 'ResourceCleanupUnconfirmedError';
+  }
+}
+
+export function isResourceCleanupUnconfirmed(
+  error: unknown,
+): error is ResourceCleanupUnconfirmedError {
+  return error instanceof ResourceCleanupUnconfirmedError;
+}

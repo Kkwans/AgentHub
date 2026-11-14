@@ -101,7 +101,7 @@ it('strict successful initialize cannot report READY when process termination is
   });
   expect(f.requests).toEqual(['initialize']);
   await expect(f.adapter.getCapabilities(profile)).rejects.toMatchObject({
-    code: 'ACP_PROCESS_CLEANUP_UNCONFIRMED',
+    code: 'RESOURCE_CLEANUP_UNCONFIRMED',
   });
   expect(f.launch).toHaveBeenCalledTimes(2);
   expect(f.cancel).toHaveBeenCalledTimes(2);

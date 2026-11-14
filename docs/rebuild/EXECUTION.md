@@ -1442,3 +1442,17 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 06:57:06 开始完整apps/web回归，06:57:07开始web生产构建；后端pre-handle安全片并行开发中但不纳入本UI提交。UI仅按已冻结文件发布，新的布局需新CI截图核对。
 
 - 06:59:26 最终完整web回归87文件/1062测试全部通过，139.31秒，exit0；06:57:12 web生产构建通过。此为UI切片，后端并行候选未带入，不把旧1940全仓结果称为UI后端重跑。准备仅提交UI4文件及本执行记录，真实新布局待精确CI。
+
+### 2026-11-14 07:00 UTC UI发布与pre-handle冻结
+
+- 07:00:22 连接检查布局已单独推并fetch核对3bc9d2bd6d3b64de63d360899b0f38dd2089f984，树1dfeb95aade54a36b331930498eb4f0fd332c27b与前端冻结一致。精确CI43569012757 queued；未将并行后端候选带入UI提交，新像素仍待该提交CI。
+- 07:00:10 pre-handle安全9文件冻结：core通用未知合同、ACP acquisition/capability严格退出、Session原始promise登记与UNKNOWN、摘要本次资源未知目录保留；AgentService补READY后能力探测迟到generic拒绝的sticky保护。Session+core156/156、AgentService21/21、ACP42/42，类型/scopedlint/diff通过；独立CR无阻断。
+- 07:00:40 启动本片最终冻结全仓，07:00:41启动全仓lint/types/build。尚未完成、未提交，不能把专项称全量通过。
+- 边界：通用错误仅本进程显式合同；Remote跨JSON未扩展，OpenClaw composite/EXEC自己的能力预检不因本片获得强制strict保证。只声明直接ACP路径与实现该合同的调用被保护，不称所有供应商都完成。
+
+- 07:03 只读核实Session已有title存储/展示但无重命名API，新增SESSION_RENAME_PLAN.md：独立titleRevision原子CAS、轻对话框、未知只读核对与归属保护。仅方案，未实现；当前冻结产品没有变化。
+
+- 07:06 精确核实93b8f06 verify132367608981：1940/9skip、严格token6、浏览器86/10skip，PG/axe也成功，真实服务仍运行。只读新增Remote/EXEC/OpenClaw/Docker清理边界至ISSUES，按最小片优先排在Session重命名前，未改本次冻结产品。
+
+- 07:07:37 pre-handle最终冻结全仓 exit0：191文件通过/6跳过，1968测试通过/9跳过，416.35秒；07:01:10全仓lint/types/build通过，格式与独立CR通过。准备发布直接ACP/本进程安全片，其他adapter边界仍开放。
+- 07:07取得并人工查看f84普通审阅新版390深色图；artifact14102974483 SHA256 cbfb2dd397a5beb04debbdcfd25ee009aa05a502fa6973bde925268a0b7f470b匹配，9例全部retry0，桌面/移动多主题截图核对无阻断。成果入口/验收前置、内容宽按钮和约64px反馈框已实际生效；不替代3bc连接检查新布局证据。

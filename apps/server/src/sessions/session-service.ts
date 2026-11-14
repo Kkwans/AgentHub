@@ -14,7 +14,7 @@ import type {
   SessionConfigurationPatch,
   SessionStatus,
 } from '@agenthub/agent-core';
-import { runProcess } from '@agenthub/agent-core';
+import { isResourceCleanupUnconfirmed, runProcess } from '@agenthub/agent-core';
 import { DatabaseInvariantError } from '@agenthub/db';
 import type {
   AgentHubDatabase,
@@ -136,6 +136,7 @@ export class SessionService {
   private acceptingTaskStarts = true;
   private readonly pendingAdmissions = new Set<Promise<void>>();
   private readonly unconfirmedHandles = new Set<AgentSessionHandle>();
+  private resourceCleanupUnconfirmed = false;
   private shutdownPromise?: Promise<void>;
   private readonly approvalEpochs = new Map<string, ApprovalEffectEpoch>();
   private readonly active = new Map<string, ActiveSession>();
@@ -456,15 +457,17 @@ export class SessionService {
       attempted = true;
       if (!activationAllowed())
         throw new AppError(409, 'TASK_START_OWNERSHIP_CHANGED', '会话关闭已撤销创建，未调用 Agent');
-      ownedHandle = await adapter.createSession({
-        sessionId: id,
-        profile,
-        projectId: project.id,
-        cwd,
-        ...(model ? { model } : {}),
-        ...(mode ? { mode } : {}),
-        ...(reasoningEffort ? { reasoningEffort } : {}),
-      });
+      ownedHandle = await this.acquireResource(() =>
+        adapter.createSession({
+          sessionId: id,
+          profile,
+          projectId: project.id,
+          cwd,
+          ...(model ? { model } : {}),
+          ...(mode ? { mode } : {}),
+          ...(reasoningEffort ? { reasoningEffort } : {}),
+        }),
+      );
       const handle = ownedHandle;
       await this.persistEffectiveConfiguration(id, handle, {
         owned: activationAllowed,
@@ -487,7 +490,7 @@ export class SessionService {
       });
     } catch (error) {
       let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
-        'NOT_ACQUIRED';
+        isResourceCleanupUnconfirmed(error) ? 'UNKNOWN' : 'NOT_ACQUIRED';
       if (ownedHandle) {
         if (this.active.get(id)?.handle === ownedHandle) handleCleanup = 'ACTIVE_OWNED';
         else {
@@ -612,15 +615,17 @@ export class SessionService {
       let ownedHandle: AgentSessionHandle | undefined;
       try {
         assertOwned();
-        const handle = await adapter.createSession({
-          sessionId: id,
-          profile,
-          projectId,
-          cwd,
-          ...(model ? { model } : {}),
-          ...(mode ? { mode } : {}),
-          ...(reasoningEffort ? { reasoningEffort } : {}),
-        });
+        const handle = await this.acquireResource(() =>
+          adapter.createSession({
+            sessionId: id,
+            profile,
+            projectId,
+            cwd,
+            ...(model ? { model } : {}),
+            ...(mode ? { mode } : {}),
+            ...(reasoningEffort ? { reasoningEffort } : {}),
+          }),
+        );
         ownedHandle = handle;
         assertOwned();
         await this.persistEffectiveConfiguration(id, handle, { owned, expectedFrom: 'STARTING' });
@@ -642,7 +647,7 @@ export class SessionService {
         });
       } catch (error) {
         let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
-          'NOT_ACQUIRED';
+          isResourceCleanupUnconfirmed(error) ? 'UNKNOWN' : 'NOT_ACQUIRED';
         if (ownedHandle) {
           if (this.active.get(id)?.handle === ownedHandle) {
             // Never tear down a handle already handed to an activation from this catch.
@@ -772,9 +777,9 @@ export class SessionService {
         ...(session.reasoningEffort ? { reasoningEffort: session.reasoningEffort } : {}),
       };
       const handle = adapter.resumeSession
-        ? await adapter.resumeSession(base)
+        ? await this.acquireResource(() => adapter.resumeSession!(base))
         : adapter.loadSession
-          ? await adapter.loadSession(base)
+          ? await this.acquireResource(() => adapter.loadSession!(base))
           : undefined;
       if (!handle) throw new AppError(409, 'SESSION_NOT_RESUMABLE', '该 Agent 不支持恢复 Session');
       // A reused old handle is not a newly acquired resource, even if close revoked us.
@@ -815,7 +820,7 @@ export class SessionService {
     } catch (error) {
       if (!ownedHandle && error instanceof AppError) throw error;
       let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
-        'NOT_ACQUIRED';
+        isResourceCleanupUnconfirmed(error) ? 'UNKNOWN' : 'NOT_ACQUIRED';
       if (ownedHandle) {
         if (this.active.get(id)?.handle === ownedHandle) handleCleanup = 'ACTIVE_OWNED';
         else {
@@ -1339,7 +1344,10 @@ export class SessionService {
     let readOnlyMode: string | undefined;
     try {
       readOnlyMode = await withTimeout(
-        resolveReadOnlyMode(runtime.adapter, runtime.profile, source.mode),
+        resolveReadOnlyMode(
+          () => this.acquireResource(() => runtime.adapter.getCapabilities(runtime.profile)),
+          source.mode,
+        ),
         remaining(),
       );
     } catch {
@@ -1351,31 +1359,41 @@ export class SessionService {
     let handle: AgentSessionHandle | undefined;
     let expired = false;
     let acquiring = false;
+    let resourceUnconfirmed = false;
     try {
       this.assertRuntimeAdmission();
       tempDir = await mkdtemp(join(tmpdir(), 'agenthub-continuation-'));
       this.assertRuntimeAdmission();
       acquiring = true;
       const acquisition = this.trackAdmission(async () => {
+        let acquired: AgentSessionHandle | undefined;
         try {
-          const created = await runtime.adapter.createSession({
-            sessionId: randomUUID(),
-            profile: runtime.profile,
-            projectId: source.projectId,
-            cwd: tempDir!,
-            mode: readOnlyMode,
-            ...(source.model ? { model: source.model } : {}),
-            ...(source.reasoningEffort ? { reasoningEffort: source.reasoningEffort } : {}),
-            metadata: { purpose: 'SESSION_CONTINUATION_SUMMARY', readOnly: true },
-          });
+          const created = await this.acquireResource(() =>
+            runtime.adapter.createSession({
+              sessionId: randomUUID(),
+              profile: runtime.profile,
+              projectId: source.projectId,
+              cwd: tempDir!,
+              mode: readOnlyMode,
+              ...(source.model ? { model: source.model } : {}),
+              ...(source.reasoningEffort ? { reasoningEffort: source.reasoningEffort } : {}),
+              metadata: { purpose: 'SESSION_CONTINUATION_SUMMARY', readOnly: true },
+            }),
+          );
+          acquired = created;
           if (expired || !this.acceptingTaskStarts) {
             await this.closeHandleStrictly(created);
             throw new Error('summary admission revoked');
           }
           return created;
+        } catch (error) {
+          resourceUnconfirmed =
+            isResourceCleanupUnconfirmed(error) ||
+            Boolean(acquired && this.unconfirmedHandles.has(acquired));
+          throw error;
         } finally {
           acquiring = false;
-          if (expired && tempDir)
+          if (expired && tempDir && !resourceUnconfirmed)
             await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
         }
       });
@@ -1397,7 +1415,12 @@ export class SessionService {
     } finally {
       expired = true;
       if (handle) await this.closeHandleStrictly(handle).catch(() => undefined);
-      if (tempDir && !acquiring)
+      if (
+        tempDir &&
+        !acquiring &&
+        !resourceUnconfirmed &&
+        (!handle || !this.unconfirmedHandles.has(handle))
+      )
         await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
     }
   }
@@ -1768,7 +1791,11 @@ export class SessionService {
         Math.min(this.cancelConvergenceTimeoutMs, 1_000),
         true,
       );
-      if (results.some((result) => result.status === 'rejected') || this.unconfirmedHandles.size)
+      if (
+        results.some((result) => result.status === 'rejected') ||
+        this.unconfirmedHandles.size ||
+        this.resourceCleanupUnconfirmed
+      )
         throw new Error('cleanup unconfirmed');
     } catch {
       // Sticky failed shutdown: a second call must never release ownership on
@@ -1801,6 +1828,24 @@ export class SessionService {
       this.pendingAdmissions.delete(settled);
       done();
     }
+  }
+
+  /** Observe the original provider rejection before business wrapping or timeout fallback.
+   * Its own admission keeps late capability/acquisition promises in shutdown's drain.
+   */
+  private async acquireResource<T>(operation: () => Promise<T>): Promise<T> {
+    this.assertRuntimeAdmission();
+    return this.trackAdmission(async () => {
+      try {
+        return await operation();
+      } catch (error) {
+        if (isResourceCleanupUnconfirmed(error)) {
+          this.resourceCleanupUnconfirmed = true;
+          this.acceptingTaskStarts = false;
+        }
+        throw error;
+      }
+    });
   }
 
   private async closeHandleStrictly(handle: AgentSessionHandle): Promise<void> {
@@ -2771,12 +2816,11 @@ function deterministicContinuationSummary(snapshot: Record<string, unknown>): st
 }
 
 async function resolveReadOnlyMode(
-  adapter: AgentRuntimeAdapter,
-  profile: AgentProfile,
+  getCapabilities: () => ReturnType<AgentRuntimeAdapter['getCapabilities']>,
   currentMode: string | null,
 ): Promise<string | undefined> {
   try {
-    const capabilities = await adapter.getCapabilities(profile);
+    const capabilities = await getCapabilities();
     const options = capabilities.configuration.modeOptions ?? [];
     const option = options.find((candidate) =>
       /read[- _]?only|readonly|只读/i.test(
@@ -2792,7 +2836,6 @@ async function resolveReadOnlyMode(
   // the same label for a less restrictive mode. Only an explicitly declared
   // capability option is a safe mode for a temporary summary Session.
   void currentMode;
-  void profile;
   return undefined;
 }
 

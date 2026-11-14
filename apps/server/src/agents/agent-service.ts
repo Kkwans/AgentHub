@@ -15,7 +15,7 @@ import type {
   AgentRuntimeAdapter,
   PreflightReport,
 } from '@agenthub/agent-core';
-import { runProcess } from '@agenthub/agent-core';
+import { isResourceCleanupUnconfirmed, runProcess } from '@agenthub/agent-core';
 import type { AgentHubDatabase, AgentRepository, ExecutionTargetRepository } from '@agenthub/db';
 
 import { AppError } from '../errors.js';
@@ -132,10 +132,11 @@ export class AgentService {
       return await operation();
     } catch (error) {
       if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        error.code === 'ACP_PROCESS_CLEANUP_UNCONFIRMED'
+        isResourceCleanupUnconfirmed(error) ||
+        (error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'ACP_PROCESS_CLEANUP_UNCONFIRMED')
       )
         this.cleanupUnconfirmed = true;
       throw error;

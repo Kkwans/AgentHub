@@ -19,6 +19,7 @@ import {
 } from '@agentclientprotocol/sdk';
 import {
   NO_AGENT_CAPABILITIES,
+  ResourceCleanupUnconfirmedError,
   type AgentCapabilities,
   type AgentProfile,
   type AgentRunRef,
@@ -84,7 +85,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
   async preflight(profile: AgentProfile): Promise<PreflightReport> {
     const checkedAt = this.now().toISOString();
     // Server preflight flows explicitly select strict cleanup. Direct adapter
-    // callers and Session cleanup retain their default contract.
+    // callers retain their default preflight contract; Session acquisition is strict.
     const strictCleanup = profile.config.preflightStrictCleanup === true;
     const cwd =
       typeof profile.config.preflightCwd === 'string' ? profile.config.preflightCwd : '/tmp';
@@ -203,22 +204,27 @@ export class AcpAdapter implements AgentRuntimeAdapter {
   async getCapabilities(profile: AgentProfile): Promise<AgentCapabilities> {
     const cached = this.capabilityCache.get(profile.id);
     if (cached) return structuredClone(cached);
-    const report = await this.preflight(profile);
+    const report = await this.resourceAcquisition(() =>
+      this.preflight({
+        ...profile,
+        config: { ...profile.config, preflightStrictCleanup: true },
+      }),
+    );
     if (report.status !== 'READY') return structuredClone(NO_AGENT_CAPABILITIES);
     return structuredClone(this.capabilityCache.get(profile.id) ?? NO_AGENT_CAPABILITIES);
   }
 
   async createSession(input: CreateAgentSessionInput): Promise<AgentSessionHandle> {
-    const runtime = await this.open(input.profile, input.cwd);
-    const handle = new AcpSessionHandle(
-      input.sessionId,
-      runtime,
-      this.now,
-      this.sessionCloseGraceMs,
-      this.promptTimeoutMs,
-    );
-    runtime.route.handle = handle;
+    const runtime = await this.resourceAcquisition(() => this.open(input.profile, input.cwd, true));
     try {
+      const handle = new AcpSessionHandle(
+        input.sessionId,
+        runtime,
+        this.now,
+        this.sessionCloseGraceMs,
+        this.promptTimeoutMs,
+      );
+      runtime.route.handle = handle;
       const response = await runtime.agent.request(AGENT_METHODS.session_new, {
         cwd: input.cwd,
         mcpServers: [],
@@ -228,8 +234,7 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       await applyRequestedSessionConfiguration(handle, input);
       return handle;
     } catch (error) {
-      await closeRuntime(runtime);
-      throw error;
+      return this.cleanupFailedAcquisition(runtime, error);
     }
   }
 
@@ -245,32 +250,28 @@ export class AcpAdapter implements AgentRuntimeAdapter {
     input: LoadAgentSessionInput | ResumeAgentSessionInput,
     method: 'load' | 'resume',
   ): Promise<AgentSessionHandle> {
-    const runtime = await this.open(input.profile, input.cwd);
-    const capabilities = runtime.initialize.agentCapabilities;
-    if (method === 'load' && !capabilities?.loadSession) {
-      await closeRuntime(runtime);
-      throw new AcpAdapterError('CAPABILITY_UNSUPPORTED', 'Agent 不支持 session/load');
-    }
-    if (method === 'resume' && !capabilities?.sessionCapabilities?.resume) {
-      await closeRuntime(runtime);
-      throw new AcpAdapterError('CAPABILITY_UNSUPPORTED', 'Agent 不支持 session/resume');
-    }
-
-    const handle = new AcpSessionHandle(
-      input.sessionId,
-      runtime,
-      this.now,
-      this.sessionCloseGraceMs,
-      this.promptTimeoutMs,
-    );
-    runtime.route.handle = handle;
-    const request = {
-      sessionId: input.externalSessionId,
-      cwd: input.cwd,
-      mcpServers: [],
-      ...(input.additionalRoots?.length ? { additionalDirectories: input.additionalRoots } : {}),
-    };
+    const runtime = await this.resourceAcquisition(() => this.open(input.profile, input.cwd, true));
     try {
+      const capabilities = runtime.initialize.agentCapabilities;
+      if (method === 'load' && !capabilities?.loadSession)
+        throw new AcpAdapterError('CAPABILITY_UNSUPPORTED', 'Agent 不支持 session/load');
+      if (method === 'resume' && !capabilities?.sessionCapabilities?.resume)
+        throw new AcpAdapterError('CAPABILITY_UNSUPPORTED', 'Agent 不支持 session/resume');
+
+      const handle = new AcpSessionHandle(
+        input.sessionId,
+        runtime,
+        this.now,
+        this.sessionCloseGraceMs,
+        this.promptTimeoutMs,
+      );
+      runtime.route.handle = handle;
+      const request = {
+        sessionId: input.externalSessionId,
+        cwd: input.cwd,
+        mcpServers: [],
+        ...(input.additionalRoots?.length ? { additionalDirectories: input.additionalRoots } : {}),
+      };
       const response = (await (method === 'load'
         ? runtime.agent.request(AGENT_METHODS.session_load, request)
         : runtime.agent.request(AGENT_METHODS.session_resume, request))) as Pick<
@@ -281,9 +282,34 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       await applyRequestedSessionConfiguration(handle, input);
       return handle;
     } catch (error) {
-      await closeRuntime(runtime);
+      return this.cleanupFailedAcquisition(runtime, error);
+    }
+  }
+
+  /** Translate only our direct cleanup result at the public resource boundary. */
+  private async resourceAcquisition<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (errorCode(error) === 'ACP_PROCESS_CLEANUP_UNCONFIRMED')
+        throw new ResourceCleanupUnconfirmedError({ cause: error });
       throw error;
     }
+  }
+
+  private async cleanupFailedAcquisition(runtime: AcpRuntime, original: unknown): Promise<never> {
+    try {
+      await closeRuntime(runtime, true);
+    } catch (cleanupError) {
+      const cause = new AggregateError(
+        [original, cleanupError],
+        'Session setup and cleanup failed',
+      );
+      if (errorCode(cleanupError) === 'ACP_PROCESS_CLEANUP_UNCONFIRMED')
+        throw new ResourceCleanupUnconfirmedError({ cause });
+      throw new AcpAdapterError('ACP_SESSION_SETUP_FAILED', 'ACP 会话初始化失败', { cause });
+    }
+    throw original;
   }
 
   private async open(

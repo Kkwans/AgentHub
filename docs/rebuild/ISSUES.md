@@ -495,3 +495,14 @@ b12b8fc的verify结论success但含1flaky：真实可见删除字符串首次及
 
 - 已实现待发布：ACP prompt timer 观察后台 close 拒绝；Session 消费流结束不再直接遗失已 detach 的 handle，首个 await 前登记清理并让 shutdown 等待，失败保持 sticky 未确认资源。最终全量正在重跑，尚不关闭问题。
 - 后续开放：尚未返回 handle 的 create/restore/open/capability 失败必须跨 adapter/service 传播通用清理未知状态，禁止被 fallback 或 NOT_ACQUIRED 掩盖，并保留临时目录。当前 handle.close 修复不代表该路径已覆盖。
+
+### 2026-11-14 07:06 UTC 后续跨适配器资源证明缺口（只读源码确认）
+
+以下均为源码可达风险，不是实测用户事故；不纳入正在冻结验证的直接ACP pre-handle片，也不得据当前CI宣称全供应商安全。
+
+1. Remote：node-client把generic清理未知改成REMOTE_NODE_COMMAND_FAILED，Gateway重建RemoteNodeRpcError后中央instanceof失效。下一片白名单固定码、仅匹配已认证资源请求的响应边界重建generic，不传cause；JSON往返/普通失败/重复shutdown回归。超时/断线的未知结果另列，不把固定码当全链路证明。
+2. EXEC：sendTurn等待launcher.launch时close可能看到active空而成功，迟到进程无closed复核；首次close失败后再close也可能因closed标记成功。下一片跟踪pending launch、清理迟到进程、缓存sticky close promise；barrier/cancel拒绝/重复close回归。
+3. OpenClaw composite：mode未定getCapabilities调用自身preflight，primary未强制strict可把清理未知降为BROKEN再fallback。仅能力路径强制strict并转换明确未知，禁止未知fallback，保留已确认普通失败的降级。
+4. Docker EXEC probe：非AppError被降为available:false，包含supervisor终止未知。下一片仅明确未知转换generic；Docker CLI退出不等于容器内进程退出，必须保留该证明边界。
+
+优先1/2，再3/4；Session重命名已有方案但不能抢在这些具体资源风险前发布涉及运行行为的新闭环。

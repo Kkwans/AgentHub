@@ -1,11 +1,12 @@
 import { AppError } from '../errors.js';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, realpath, rm, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
 import {
   FakeAgentAdapter,
+  ResourceCleanupUnconfirmedError,
   type AgentRuntimeAdapter,
   type AgentSessionHandle,
   type AgentProfile,
@@ -4975,6 +4976,176 @@ describe('Session/Run/Approval 持久化闭环', () => {
     );
     await resolvedFixture.service.cancelRun(resolvedSession.id, run.id);
     await resolvedFixture.service.shutdown();
+  });
+
+  it.each(['ordinary', 'task'] as const)(
+    'pre-handle %s未知清理不能记录NOT_ACQUIRED或健康shutdown',
+    async (kind) => {
+      const f = await taskAdmissionFixture();
+      const create = vi
+        .spyOn(f.adapter, 'createSession')
+        .mockRejectedValue(
+          new ResourceCleanupUnconfirmedError({ cause: new Error('private provider detail') }),
+        );
+      const operation =
+        kind === 'task'
+          ? f.service.createForTask(f.input, f.admission)
+          : f.service.create({ ...f.input, taskId: undefined });
+      await expect(operation).rejects.toMatchObject({ details: { handleCleanup: 'UNKNOWN' } });
+      expect(create).toHaveBeenCalledTimes(1);
+      await expect(f.service.create({ ...f.input, taskId: undefined })).rejects.toMatchObject({
+        code: 'SESSION_SERVICE_STOPPING',
+      });
+      await expect(f.service.shutdown()).rejects.toMatchObject({
+        code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+      });
+      await expect(f.service.shutdown()).rejects.toMatchObject({
+        code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+      });
+      if (kind === 'task')
+        expect((await f.repositories.taskStartAttempts.getForTask(f.task.id))[0]?.phase).toBe(
+          'UNKNOWN',
+        );
+    },
+  );
+
+  it('普通创建失败但清理已确认不误设资源未知', async () => {
+    const f = await taskAdmissionFixture();
+    vi.spyOn(f.adapter, 'createSession').mockRejectedValue(new Error('confirmed failure'));
+    await expect(f.service.create({ ...f.input, taskId: undefined })).rejects.toMatchObject({
+      details: { handleCleanup: 'NOT_ACQUIRED' },
+    });
+    await expect(f.service.shutdown()).resolves.toBeUndefined();
+  });
+
+  it.each(['resumeSession', 'loadSession'] as const)(
+    'pre-handle %s未知清理在业务包装前保留',
+    async (method) => {
+      const adapter = Object.assign(new ControlledAdapter('never'), {
+        [method]: vi.fn().mockRejectedValue(new ResourceCleanupUnconfirmedError()),
+      });
+      const f = await createFixture('idle', undefined, {}, { adapter });
+      const source = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: 'restore',
+        cwd: '/tmp',
+      });
+      await adapter.handles[0]!.close();
+      await waitFor(async () => (await f.service.get(source.id)).status === 'DISCONNECTED');
+      await expect(f.service.resume(source.id)).rejects.toMatchObject({
+        details: { handleCleanup: 'UNKNOWN' },
+      });
+      await expect(f.service.shutdown()).rejects.toMatchObject({
+        code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+      });
+    },
+  );
+
+  async function summaryFixture() {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const source = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'summary',
+      cwd: '/tmp',
+    });
+    await f.service.close(source.id);
+    const capabilities = await adapter.getCapabilities({} as AgentProfile);
+    vi.spyOn(adapter, 'getCapabilities').mockResolvedValue({
+      ...capabilities,
+      configuration: {
+        ...capabilities.configuration,
+        modeOptions: [{ id: 'read-only', label: 'read only' }],
+      },
+    });
+    const summary = () =>
+      (
+        f.service as unknown as {
+          tryModelContinuationSummary(
+            sourceSession: typeof source,
+            snapshot: Record<string, unknown>,
+          ): Promise<string | undefined>;
+        }
+      ).tryModelContinuationSummary(source, {});
+    return { ...f, adapter, summary };
+  }
+
+  it('摘要capability探针未知失败即使fallback也阻止shutdown', async () => {
+    const f = await summaryFixture();
+    vi.mocked(f.adapter.getCapabilities).mockRejectedValue(new ResourceCleanupUnconfirmedError());
+    await expect(f.summary()).resolves.toBeUndefined();
+    await expect(f.service.shutdown()).rejects.toMatchObject({
+      code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+    });
+  });
+
+  it.each(['capability', 'create'] as const)(
+    '摘要%s超时后迟到未知仍被跟踪且不提前释放',
+    async (phase) => {
+      const f = await summaryFixture();
+      let reject!: (error: Error) => void;
+      let entered!: () => void;
+      let directory: string | undefined;
+      const started = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const pending = new Promise<never>((_, fail) => {
+        reject = fail;
+      });
+      if (phase === 'capability')
+        vi.mocked(f.adapter.getCapabilities).mockImplementation(() => {
+          entered();
+          return pending;
+        });
+      else
+        vi.spyOn(f.adapter, 'createSession').mockImplementation((input) => {
+          directory = input.cwd;
+          entered();
+          return pending;
+        });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const summary = f.summary();
+        await started;
+        await vi.advanceTimersByTimeAsync(30_001);
+        await expect(summary).resolves.toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+      const released = vi.fn();
+      const stopping = f.service.shutdown().then(released, (error) => error);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(released).not.toHaveBeenCalled();
+      reject(new ResourceCleanupUnconfirmedError());
+      await expect(stopping).resolves.toMatchObject({ code: 'SESSION_SHUTDOWN_UNCONFIRMED' });
+      expect(released).not.toHaveBeenCalled();
+      if (directory) {
+        expect((await stat(directory)).isDirectory()).toBe(true);
+        await rm(directory, { recursive: true, force: true }); // fixture has no actual resource
+      }
+    },
+  );
+
+  it('摘要已取得handle但close未知时保留本次目录', async () => {
+    const f = await summaryFixture();
+    let directory = '';
+    const create = f.adapter.createSession.bind(f.adapter);
+    const spy = vi.spyOn(f.adapter, 'createSession').mockImplementation(async (input) => {
+      directory = input.cwd;
+      const handle = await create(input);
+      vi.spyOn(handle, 'sendTurn').mockRejectedValue(new Error('summary unavailable'));
+      vi.spyOn(handle, 'close').mockRejectedValue(new Error('close unknown'));
+      return handle;
+    });
+    await expect(f.summary()).resolves.toBeUndefined();
+    expect(spy).toHaveBeenCalledOnce();
+    expect((await stat(directory)).isDirectory()).toBe(true);
+    await expect(f.service.shutdown()).rejects.toMatchObject({
+      code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+    });
+    await rm(directory, { recursive: true, force: true }); // in-memory fake handle only
   });
 
   it('仅 CLOSED Session 可以创建 continuation，并保留一次性、有界交接包', async () => {

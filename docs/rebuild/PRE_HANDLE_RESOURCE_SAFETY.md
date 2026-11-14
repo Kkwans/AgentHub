@@ -1,6 +1,6 @@
 # 未返回句柄的资源清理安全：下一切片
 
-2026-11-14 06:47 UTC。状态：只读 CR 后的实施计划，尚未实现。当前 Session handle.close 与消费者结束清理修复不能替代本计划。
+2026-11-14 07:00 UTC。状态：候选已实施并通过专项/独立CR，最终全仓1968/9skip通过，待发布。早期 Session handle.close 与消费者结束清理修复不能替代本片。
 
 ## 已确认风险
 
@@ -23,3 +23,9 @@ create/restore/open 或能力探测可能在返回 Session handle 前启动进�
 - 现有 activation 排序、任务终态和并发恢复不退化；独立 CR、冻结全仓 tests/lint/types/build 后开发分支发布并核对精确 CI。
 
 远程错误传输协议、其他 adapter 与自动恢复策略不在此最小片内；各自另列缺口，不声称已覆盖。
+
+## 2026-11-14 07:00 UTC 候选实施状态
+
+上述最小方案已实施，另补必须兼容的 AgentService generic 判定：READY 后能力缓存失效触发再次获取、迟到拒绝时同样进入 sticky ledger，不保存 READY。摘要目录保留覆盖未返回 handle 和已返回 handle 关闭未知，按本次资源判断而不是拿无关全局标志推断。
+
+9文件冻结；Session+core156/156、AgentService21/21、ACP42/42及类型/lint通过，独立CR无阻断；最终全仓1968/9skip、全仓lint/types/build通过，待发布。通用instanceof合同不跨JSON，Remote及OpenClaw composite/EXEC自身能力探测仍为明确边界，不声称所有adapter已强制strict。

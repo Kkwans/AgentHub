@@ -2,7 +2,7 @@ import { mkdtemp, realpath, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { FakeAgentAdapter } from '@agenthub/agent-core';
+import { FakeAgentAdapter, ResourceCleanupUnconfirmedError } from '@agenthub/agent-core';
 import { afterEach, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { AgentService } from './agent-service.js';
@@ -356,3 +356,40 @@ it.each(['1.2.3', 'private-version', '1.2.3-secret-token', '1.2.3\nsecret'])(
     expect(report.detectedVersion).toBe(version === '1.2.3' ? version : undefined);
   },
 );
+
+it.each(['legacy', 'new'])('READY后%s能力重新获取失败保持generic未知账本', async (kind) => {
+  const f = await fixture();
+  let entered!: () => void;
+  let fail!: (error: Error) => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const capability = vi.spyOn(f.adapter, 'getCapabilities').mockImplementation(() => {
+    entered();
+    return new Promise((_, reject) => {
+      fail = reject;
+    });
+  });
+  const check =
+    kind === 'new'
+      ? f.service.checkConnection(f.agent.id, f.target.id, f.project)
+      : f.service.preflight(f.agent.id, { cwd: f.path });
+  const rejection = expect(check).rejects.toBeInstanceOf(ResourceCleanupUnconfirmedError);
+  await started;
+  expect(f.probe).toHaveBeenCalledOnce();
+  const released = vi.fn();
+  const stop = f.service.shutdownConnectionChecks().then(released, (error) => error);
+  await Promise.resolve();
+  expect(released).not.toHaveBeenCalled();
+  fail(new ResourceCleanupUnconfirmedError({ cause: new Error('private capability diagnostic') }));
+  await rejection;
+  await expect(stop).resolves.toMatchObject({ code: 'AGENT_CHECK_SHUTDOWN_UNCONFIRMED' });
+  expect(f.repo.updatePreflight).not.toHaveBeenCalled();
+  await expect(f.service.shutdownConnectionChecks()).rejects.toMatchObject({
+    code: 'AGENT_CHECK_SHUTDOWN_UNCONFIRMED',
+  });
+  await expect(f.service.preflight(f.agent.id, { cwd: f.path })).rejects.toMatchObject({
+    code: 'AGENT_CHECK_UNAVAILABLE',
+  });
+  expect(capability).toHaveBeenCalledOnce();
+});
