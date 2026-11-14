@@ -1629,3 +1629,10 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 后端独立提交5afbea66：仅DB有界已保存USER/ASSISTANT文字窗口、POST读取与错误/日志隐私，真实PG搜索未验。新搜索UI/定位/E2E仍留工作区，不混入本后端切片。
 - 历史分页浏览器测试入口改为focus(preventScroll)+Enter，避免测试工具预滚动先触发自动翻页导致barrier死锁；类型/lint/list24通过，但实际浏览器仍待CI。
 - 正文搜索UI已落实候选；早期CR发现共享查询10秒不释放与新滚动意图竞争，作者正在修复与补回归。新增真实PGlite10例E2E types/list过，尚未运行；501turn数据为fixture构造，不是真实Agent501次对话。
+
+### 2026-11-14 11:30–11:35 UTC：搜索UI冻结验证
+
+- 成功后ABA问题红复现后按request identity清理与一次性消费；最终独立CR无阻断，9文件66专项通过。
+- 11:31开始全web冻结验证，101文件1209测试通过/155.40s；11:35:35 root lint/types、integration types、串行全部build成功，21文件指纹一致。
+- 产品7c35a358、真实E2E c0420974分开准备推送；11条E2E实际浏览器尚未执行，不能算功能/像素验收通过。
+- 移动端两行保持标题与三个44px入口；真实DOM定位、5页/10秒预算、取消及成功后SPA ABA均有可验证断言。

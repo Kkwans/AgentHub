@@ -89,3 +89,7 @@ artifact `14108933174`，SHA256 `050d8ca724537ed114fc26e255363f241eb921be8b97187
 - 截至此时verify/PG/axe/focused成功，完整real仍运行。真实PG3例含跨连接启停CAS，不包括新正文搜索候选。
 - 旧ca88877完整real已170通过、geometry140、五job成功；39362a4旧full-real因其尚未包含Prompt修复而失败，不再记为运行。历史成功不能替代c508或下一候选。
 - 11:10 UTC更新：c508完整real已于11:08:33完成170 passed /25.2m，geometry于11:08:34通过140 page snapshots，五job全success。完整artifact人工抽样核查另记，不从自动通过声称每张都已人工看过。
+
+## 搜索UI本批浏览器待验
+
+前端7c35a358、E2E c0420974：新增8宽主题真实持久搜索/定位截图，另501turn、迟到取消、成功后SPA ABA共11例。断言精确id/sequence/focus与conversation容器交集，390标题>=64/三按钮44px/不重叠。仅type/list通过，尚无artifact或人工像素结论。数据由隔离PGlite fixture构造，搜索及历史读取真实HTTP；不得称供应商对话验收。
