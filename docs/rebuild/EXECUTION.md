@@ -1551,3 +1551,17 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 09:17:17导出11个E2E候选完成：8个真实HTTP/PGlite/受控ACP下载和四宽浅深截图，2个取消/换Session迟到不下载，以及1个明确非DB端到端的201条浏览器分页契约fixture。类型/lint/list11通过，未运行浏览器。390另加标题>=60px、按钮44px且不重叠的验收，不只检查横向溢出。
 - 09:18:56修正后冻结完整web通过：93文件1116测试，149.87秒exit0。该结果来自新独立运行，不拼算前一轮混合树。09:19:01开始串行全仓lint/types/独立integration类型/build。
 - 09:19:25全仓lint/types、独立integration类型与串行build全部通过；独立CR复核整篇解析断言已闭环，原围栏阻断解除。格式/diff检查通过。准备发布导出代码与台账，真实下载截图仍待精确新提交CI，不把22专项或1116web当真实浏览器。
+
+### 2026-11-14 09:23 UTC 起 已有任务启动恢复候选与证据流水线
+
+- 只读审查确认已有任务详情启动是READY准备→start两步，失联后仅mutation错误/刷新，没有创建恢复同等级的持久unknown保护。Agent启停独立方案和Session逻辑关闭/资源确认独立方案已落文档，明确均未实施；不把逻辑CLOSED等同Agent进程已停止，不夸大为已证实锁释放或重复派发P0。
+- 任务候选新增scope/project/task持久marker，写前回读失败零写请求；unknown跨卸载/刷新仅GET核对，不凭空记录/READY/历史解锁。confirmed只由本次完整task/session/run响应生成，GET observed会话身份单独存放；不覆盖成功证据归属。
+- 独立CR修正confirmed永久锁合法后续操作、prepare期间身份/资格ABA、只读check晚响应以及confirmed/observed混用。localStorage重读/storage事件只是保守跨tab同步，不是原子分布式锁；同时竞争仍依赖原后端准入与启动记录。
+- 首轮旧ProjectWorkEmpty回归52失败/57通过，原因包括新持久状态测试隔离与旧响应fixture不完整，逐项修正而非删断言。09:33:02候选冻结：116/116专项与最后加强文案断言1/1，web类型/lint/格式通过；09:33:51启动完整web，运行期间禁止源码/单元测试并行修改。
+- 新真实E2E10例已完成types/lint/list，覆盖四宽浅深启动201响应丢失、刷新/重开只GET核对、真实attempt/session/run唯一及两种准备200响应丢失（空/有历史），未实际浏览器执行。
+- 为更早获得新交互图片并减轻单job40分钟超时风险，CI将process/rename/export/任务启动恢复移到独立Focused interaction evidence job，零重试/原始JSON与图片/trace归档；大矩阵保留原geometry。静态集合检查证明旧spec零删除、零重复，仅新增任务恢复spec；YAML解析与格式检查通过。以后需要分别核对5项job，focused成功不等于全CI通过。
+- 09:40核实c53精确CI43579386349四项成功：187真实服务/视觉用例、geometry140页；后续精确artifact哈希核对和人工样本审阅完成，process8/rename9/workspace8逐例零重试，40张过程图齐备。没有真实供应商运行证据。
+- 09:45:17第二轮冻结完整web94文件1137测试通过，但独立CR又发现reset提示会覆盖读失败期间的外部pending，不能据此放行。新增reset/GET成功/GET失败3个回归先全部失败，09:46:14窄修后126专项通过；所有纯展示出口改为仅内存，只有真实请求阶段更新持久phase，最终独立CR放行。
+- 09:47:50核实84精确real失败：390浅深两例标题实际54px，小于60px门禁；其余导出9例通过。新增小屏标题组gap8→4，不缩44px操作区、不降低60px门禁，实际新宽度待新CI，不作推算验收。
+- 09:48:54重新冻结任务恢复+手机间距修正；09:51:18完整web94文件1140测试通过，143.64秒exit0；09:52:21全仓lint/types、独立integration类型、串行build通过。旧1130/1137轮次不当作这轮结果。focused四spec discovery为38例，仅发现不是浏览器执行。
+- 新增VISUAL_COVERAGE按版本列页面与模块：直接解析c53 audit的10路由×7视口×2主题140图，并区分自动门禁、实际人工样本、未签核的其它页面/状态及纯fixture与真实Provider。准备按手机UI、任务恢复、CI分片、台账四逻辑提交发布。
