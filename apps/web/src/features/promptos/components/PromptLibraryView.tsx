@@ -29,7 +29,11 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
         description="管理模板正文、版本与绑定。"
         actions={
           emptyLibrary ? null : (
-            <AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>
+            <AhButton
+              variant={model.selected ? 'default' : 'filled'}
+              leftSection={<Plus size={16} />}
+              onClick={() => setNewOpen(true)}
+            >
               新建 Prompt
             </AhButton>
           )

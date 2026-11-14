@@ -48,6 +48,9 @@ describe('Prompt library empty state', () => {
     expect(screen.queryByText('PROMPT ASSETS')).not.toBeInTheDocument();
     expect(intro).not.toHaveClass('ah-card');
     expect(screen.getAllByRole('button', { name: '新建 Prompt' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '新建 Prompt' })).toHaveClass(
+      'bg-[hsl(var(--primary))]',
+    );
     expect(screen.queryByRole('complementary', { name: 'Prompt 目录' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Prompt 编辑器' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '新建 Prompt' }));
@@ -64,6 +67,14 @@ describe('Prompt library empty state', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '创建' }));
     expect(await screen.findByRole('heading', { name: '真实模板' })).toBeInTheDocument();
     expect(screen.queryByText('还没有 Prompt')).not.toBeInTheDocument();
+    const globalCreate = screen.getByRole('button', { name: '新建 Prompt' });
+    expect(globalCreate).toHaveClass('bg-[hsl(var(--surface))]');
+    expect(await screen.findByRole('button', { name: '创建第一个版本' })).toHaveClass(
+      'bg-[hsl(var(--primary))]',
+    );
+    fireEvent.click(globalCreate);
+    expect(screen.getByRole('dialog', { name: '新建 Prompt' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
     expect(api.post).toHaveBeenCalledTimes(1);
   });
   it('filtered no-results retains the selected editor and can return to the directory', async () => {
