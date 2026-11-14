@@ -1342,3 +1342,36 @@ it.each(['draft', 'unknown'])(
     );
   },
 );
+
+it('原绝对文件深链保持身份，读取API仅发送项目内相对路径', async () => {
+  const paths: string[] = [];
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input), 'http://localhost');
+    if (url.pathname.endsWith('/files/content')) {
+      paths.push(url.searchParams.get('path')!);
+      return jsonResponse({ path: 'src/runner.ts', content: 'export const originalFile = true;' });
+    }
+    return baseFetch(String(input), init?.method);
+  });
+  renderWorkspace(
+    fetchMock,
+    `/workspace/${session.id}?view=files&file=${encodeURIComponent(project.realRootPath + '/src/runner.ts')}`,
+  );
+  await waitFor(() => expect(paths).toHaveLength(1));
+  expect(paths).toEqual(['src/runner.ts']);
+});
+
+it('项目外绝对文件显示本地错误且不请求文件读取API', async () => {
+  const reads: string[] = [];
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input), 'http://localhost');
+    if (url.pathname.endsWith('/files/content')) reads.push(String(input));
+    return baseFetch(String(input), init?.method);
+  });
+  renderWorkspace(
+    fetchMock,
+    `/workspace/${session.id}?view=files&file=${encodeURIComponent(project.realRootPath + '-other/private.ts')}`,
+  );
+  await screen.findByText('文件路径不在当前 Project 范围内，或包含不安全的路径片段。未发起读取。');
+  expect(reads).toEqual([]);
+});

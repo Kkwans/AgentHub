@@ -301,6 +301,10 @@ for (const width of [390, 768, 1024, 1440]) {
       await capture(page, info, `reference-conversation-${theme}-${width}`);
       if (width === 390) {
         // The presentation basename must not replace the original action path.
+        const fileRead = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === `/api/v1/projects/${project.id}/files/content`,
+        );
         await tools
           .filter({ has: page.locator('.tool-entry-badge').filter({ hasText: /^读取代码$/ }) })
           .getByRole('button', {
@@ -312,6 +316,12 @@ for (const width of [390, 768, 1024, 1440]) {
           .poll(() => new URL(page.url()).searchParams.get('file'))
           .toBe(join(app.projectRoot, 'runner.ts'));
         expect(new URL(page.url()).searchParams.get('view')).toBe('files');
+        const response = await fileRead;
+        expect(response.status()).toBe(200);
+        expect(new URL(response.url()).searchParams.get('path')).toBe('runner.ts');
+        const loaded = (await response.json()) as { data: { path: string; content: string } };
+        expect(loaded.data.path).toBe('runner.ts');
+        expect(loaded.data.content).toContain('if (cancelled)');
       }
       await showChanges(page, width);
       if (width >= 768) {

@@ -17,6 +17,7 @@ import {
   type SessionRecord,
 } from '../../lib/api';
 import { realtime } from '../../lib/realtime';
+import { projectFileRequestPath } from './projectFilePath';
 import type { TerminalEvent, TerminalOpenInput, TerminalRecord } from './components/TerminalDock';
 import { readWorkspaceLayout, writeWorkspacePanel } from './layoutPreferences';
 import type { InspectorTab } from './components/WorkspaceInspector';
@@ -352,10 +353,11 @@ export function useWorkspaceViewModel() {
     enabled: Boolean(project?.id && tab === 'files'),
   });
   const fileContent = useQuery({
-    queryKey: ['file', project?.id, selectedFile],
-    queryFn: () =>
+    queryKey: ['file', project?.id, project?.realRootPath, selectedFile],
+    queryFn: ({ signal }) =>
       api.get<{ content: string; path: string }>(
-        `/projects/${project?.id ?? ''}/files/content?path=${encodeURIComponent(selectedFile ?? '')}`,
+        `/projects/${project?.id ?? ''}/files/content?path=${encodeURIComponent(projectFileRequestPath(project?.realRootPath ?? '', selectedFile ?? ''))}`,
+        { signal },
       ),
     enabled: Boolean(project?.id && selectedFile),
   });
