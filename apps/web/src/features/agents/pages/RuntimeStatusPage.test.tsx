@@ -76,3 +76,18 @@ describe('Runtime page status consistency', () => {
     expect(screen.getByRole('button', { name: '启动' })).toBeVisible();
   });
 });
+
+it('Runtime 接入使用局部完整触点，仍仅显式点击才接入原候选', async () => {
+  const post = vi.spyOn(api, 'post').mockResolvedValue({});
+  const candidate = runtime('READY');
+  delete candidate.targetId;
+  mount([{ ...candidate, candidateId: 'host:local', adoptable: true }]);
+  const adopt = screen.getByRole('button', { name: '接入' });
+  expect(adopt.className).toContain('adoptControl');
+  expect(post).not.toHaveBeenCalled();
+  adopt.focus();
+  expect(adopt).toHaveFocus();
+  fireEvent.click(adopt);
+  await waitFor(() => expect(post).toHaveBeenCalledWith('/discovery/runtimes/host%3Alocal/adopt'));
+  expect(post).toHaveBeenCalledTimes(1);
+});

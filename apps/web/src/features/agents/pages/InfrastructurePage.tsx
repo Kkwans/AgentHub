@@ -268,6 +268,7 @@ export function InfrastructurePage({ kind }: { kind: 'runtimes' | 'nodes' | 'dia
                 {!runtime.targetId && runtime.adoptable ? (
                   <AhButton
                     size="xs"
+                    className={runtimeStyles.adoptControl ?? ''}
                     onClick={() => adopt.mutate(runtime.candidateId)}
                     loading={adopt.isPending}
                   >

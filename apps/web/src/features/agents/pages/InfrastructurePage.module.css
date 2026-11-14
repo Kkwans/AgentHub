@@ -87,3 +87,9 @@
   line-height: 1.6;
   color: var(--ah-text-secondary);
 }
+
+/* Preserve the compact visual treatment, not a compact pointer target. */
+.adoptControl {
+  min-height: 44px;
+  min-width: 44px;
+}

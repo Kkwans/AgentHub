@@ -113,12 +113,16 @@ for (const theme of ['light', 'dark']) {
         await expect(runtime).toBeFocused();
       }
       const adopt = page.getByRole('button', { name: '接入', exact: true });
-      if (await adopt.count()) {
-        await info.attach(`runtime-adopt-hitbox-${theme}-${width}`, {
-          body: JSON.stringify(await adopt.boundingBox()),
-          contentType: 'application/json',
-        });
-      }
+      await expect(adopt).toHaveCount(1);
+      await expect(adopt).toBeVisible();
+      const adoptBox = await adopt.boundingBox();
+      await info.attach(`runtime-adopt-hitbox-${theme}-${width}`, {
+        body: JSON.stringify(adoptBox),
+        contentType: 'application/json',
+      });
+      expect(adoptBox).not.toBeNull();
+      expect(adoptBox!.height).toBeGreaterThanOrEqual(43.99);
+      expect(adoptBox!.width).toBeGreaterThanOrEqual(43.99);
       const path = info.outputPath(`runtime-status-${theme}-${width}.png`);
       await page.screenshot({ path, fullPage: true });
       await info.attach(`runtime-status-${theme}-${width}`, { path, contentType: 'image/png' });
