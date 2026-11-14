@@ -1567,3 +1567,11 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 新增VISUAL_COVERAGE按版本列页面与模块：直接解析c53 audit的10路由×7视口×2主题140图，并区分自动门禁、实际人工样本、未签核的其它页面/状态及纯fixture与真实Provider。准备按手机UI、任务恢复、CI分片、台账四逻辑提交发布。
 - 09:54:39四提交已push/fetch核实：ddc4e71（手机标题间距）、533289c（任务恢复）、ace218e（focused分片）、6720f30（台账/视觉覆盖），最终树545c2f423c5bb1ffc2106fe2f4cd1032f30cd2bb与冻结本地一致，工作区当时干净。
 - 精确CI43582749073工作流校验即失败，0个job，不能当成测试执行。新focused job误在job级env引用runner.temp；YAML语法检查没有识别上下文语义限制。已依据[GitHub官方上下文表](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability)移至step.env，保持38测试/零重试/输出路径不变，五job结构与上下文范围静态核对通过。此热修仅workflow与本台账，不重新声称产品测试重跑；将核对下一精确run确实有五个job。
+
+### 2026-11-14 09:59–10:05 UTC 精确CI与下一片基础
+
+- 09:56:54已push/fetch核对0a29d16工作流修复；新run43582917326确实启动5个job，消除前次0job校验失败。该push属于前一窗口，不计本窗口新提交。
+- 10:02:05 focused完成38 passed/3.9m，精确artifact14108933174哈希核对，0skip/0flaky/逐例retry0。10:05前PG/axe成功，verify/full-real仍运行。390标题新实测66px，两操作44px/间距4px，人工看移动导出窗、任务unknown/READY历史卡和桌面样本，详见视觉清单；不把focused当全CI或真实Provider通过。
+- 只读CR确认任务E2E持久化attempt/session/run唯一，但未计外部ACP调用；客户端丢响应不等于服务端UNKNOWN，重开只在同BrowserContext。未提前放宽任何门禁。
+- Agent启停基础仅新增未接线AgentAdmissionCoordinator及12测试：同Agent FIFO/不同Agent独立、异常不毒队列、ownership checkpoint、嵌套拒绝与ALS延迟回调。10:04:40专项12/12、server类型/scoped lint/格式通过；独立CR无基础模块阻断。未DB迁移、未API/UI、未生产接线，不声称禁用功能已可用。10:05:39冻结后开始完整server验证，未提前记通过。
+- 10:09:23完整server冻结验证完成：56文件599测试通过，222.86秒exit0。不是全仓测试；前一版本web1140未重复算本轮。10:10:50核实0a29精确verify成功，PG/axe/focused均成功，full-real仍运行。

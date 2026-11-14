@@ -1,6 +1,6 @@
 # Agent 禁用 / 启用：最小闭环方案
 
-状态：**只读设计，尚未实施或验收**。本方案不证明真实 Provider 已接入。
+状态：**完整启停闭环尚未实施或验收**。10:04 UTC 仅新增未接线的进程内准入基础模块和12项单测；没有DB CAS、HTTP启停端点或UI，现有生产入口不受该模块保护。本方案不证明真实 Provider 已接入。
 
 当前优先级：先修已有 Task start UNKNOWN 的前端保护缺口，再安排本方案。不能只发布一个开关，却遗漏后台新工作准入。
 
@@ -99,3 +99,9 @@ Agent 详情使用克制的次级操作，不新增仪表盘或巨大状态卡�
 禁用不是删除，因此无需拒绝被 Session / Task / Project 引用的 Agent，也不级联修改引用。未来“移除”须独立定义活动资源、历史引用、默认 Agent、排队任务与可恢复策略，不能借本片实现。
 
 本方案不修复已有 close best-effort 与进程退出认定差异，不解决跨非协作旧版本的分布式写入，不证明五家真实 Provider 或 NAS 已可用。
+
+## 10:04 UTC 基础模块候选边界
+
+`AgentAdmissionCoordinator.run(agentId, shortCriticalSection)` 只序列化短资格核对/持久准入/CAS阶段。同Agent FIFO、不同Agent独立；失败不毒队列，旧tail不删新tail；入队和实际进入均核对runtime，await后由caller显式checkpoint。嵌套准入拒绝；临界区结束后继承ALS上下文的延迟任务可独立申请。12专项通过；10:09:23完整server56文件599测试通过，尚未提交。
+
+正式接线时必须共享同一实例、跟踪整个排队Promise纳入既有shutdown drain，Provider生命周期放在临界区外。不会自动提供DB原子CAS、资源fencing或跨进程协调。额外确认易漏入口 `tryModelContinuationSummaryAdmitted()` 的模型摘要辅助会话也会调用capability/create/send，必须纳入，不能只接resolveRuntime。
