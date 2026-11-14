@@ -43,6 +43,10 @@ describe('Prompt library empty state', () => {
     });
     mount();
     await screen.findByText('还没有 Prompt');
+    const intro = screen.getByRole('region', { name: 'Prompt 库入门' });
+    expect(within(intro).getByRole('heading', { name: '还没有 Prompt', level: 2 })).toBeVisible();
+    expect(screen.queryByText('PROMPT ASSETS')).not.toBeInTheDocument();
+    expect(intro).not.toHaveClass('ah-card');
     expect(screen.getAllByRole('button', { name: '新建 Prompt' })).toHaveLength(1);
     expect(screen.queryByRole('complementary', { name: 'Prompt 目录' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Prompt 编辑器' })).not.toBeInTheDocument();

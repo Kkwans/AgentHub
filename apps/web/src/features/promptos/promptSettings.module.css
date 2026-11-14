@@ -790,10 +790,45 @@
   }
 }
 
-/* Empty libraries have one action, not two nested scrolling placeholders. */
+/* The parent content gutter owns alignment; an empty library is an introduction,
+   not a full-width card or a second padded surface. */
+.emptyPage {
+  gap: 0;
+}
+
 .emptyLibrary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
   min-width: 0;
-  padding: 24px 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.emptyLibrary h2 {
+  margin: 0;
+  color: var(--ah-text-primary);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+.emptyLibrary p {
+  margin: 0;
+  color: var(--ah-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.emptyLibrary > button {
+  min-width: 44px;
+  min-height: 44px;
+  margin-top: 4px;
 }
 
 /* Quiet document surfaces: rows, not cards nested inside the library frame. */

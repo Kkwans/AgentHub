@@ -73,6 +73,43 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(create).toBeInViewport();
       await expect(page.getByRole('complementary', { name: 'Prompt 目录' })).toHaveCount(0);
       await expect(page.getByRole('region', { name: 'Prompt 编辑器' })).toHaveCount(0);
+      const intro = page.getByRole('region', { name: 'Prompt 库入门', exact: true });
+      await expect(intro).toBeVisible();
+      await expect(page.getByText('PROMPT ASSETS', { exact: true })).toHaveCount(0);
+      const introGeometry = await intro.evaluate((node) => {
+        const bounds = node.getBoundingClientRect();
+        const header = document.querySelector('.page-title-group')!.getBoundingClientRect();
+        const heading = node.querySelector('h2')!.getBoundingClientRect();
+        const action = node.querySelector('button')!.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return {
+          width: bounds.width,
+          height: bounds.height,
+          left: bounds.left,
+          headerLeft: header.left,
+          headingLeft: heading.left,
+          actionLeft: action.left,
+          actionWidth: action.width,
+          actionHeight: action.height,
+          borderWidth: style.borderTopWidth,
+          shadow: style.boxShadow,
+          textAlign: style.textAlign,
+        };
+      });
+      expect(introGeometry.width).toBeLessThanOrEqual(480);
+      expect(introGeometry.height).toBeLessThanOrEqual(180);
+      expect(Math.abs(introGeometry.left - introGeometry.headerLeft)).toBeLessThanOrEqual(1);
+      expect(Math.abs(introGeometry.left - introGeometry.headingLeft)).toBeLessThanOrEqual(1);
+      expect(Math.abs(introGeometry.left - introGeometry.actionLeft)).toBeLessThanOrEqual(1);
+      expect(introGeometry.actionWidth).toBeGreaterThanOrEqual(43.99);
+      expect(introGeometry.actionHeight).toBeGreaterThanOrEqual(43.99);
+      expect(introGeometry.borderWidth).toBe('0px');
+      expect(introGeometry.shadow).toBe('none');
+      expect(introGeometry.textAlign).not.toBe('center');
+      await info.attach('prompt-empty-intro-geometry', {
+        body: JSON.stringify(introGeometry),
+        contentType: 'application/json',
+      });
       await capture('empty');
       await create.focus();
       await page.keyboard.press('Enter');

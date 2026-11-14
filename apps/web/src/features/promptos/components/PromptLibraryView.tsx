@@ -1,4 +1,4 @@
-import { AhButton, AhEmptyState, Braces, Card, NavigationPageHeader, Plus } from '@agenthub/ui';
+import { AhButton, Braces, Card, NavigationPageHeader, Plus } from '@agenthub/ui';
 
 import { useRef } from 'react';
 import { BindingOperationResults } from './BindingOperationResults';
@@ -18,16 +18,14 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
   const emptyLibrary = !prompts.isLoading && !prompts.error && prompts.data?.length === 0;
 
   return (
-    <div ref={pageRef} className={`${promptSettingsStyles.promptPage} workspace-page min-h-full`}>
+    <div
+      ref={pageRef}
+      className={`${promptSettingsStyles.promptPage} ${emptyLibrary ? promptSettingsStyles.emptyPage : ''} workspace-page min-h-full`}
+    >
       <NavigationPageHeader
         icon={Braces}
         title="Prompt 库"
         description="集中管理 Prompt 内容、版本、变量、标签与绑定；主工作区保持单一焦点。"
-        badge={
-          <span className="rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--foreground-faint))]">
-            PROMPT ASSETS
-          </span>
-        }
         actions={
           emptyLibrary ? null : (
             <AhButton leftSection={<Plus size={16} />} onClick={() => setNewOpen(true)}>
@@ -55,13 +53,11 @@ export function PromptLibraryView({ model }: { model: PromptLibraryModel }) {
           label="正在加载 Prompt 资产"
         />
         {emptyLibrary ? (
-          <Card className={promptSettingsStyles.emptyLibrary}>
-            <AhEmptyState
-              title="还没有 Prompt"
-              description="建立第一个模板，再添加版本、变量和绑定。"
-              action={<AhButton onClick={() => setNewOpen(true)}>新建 Prompt</AhButton>}
-            />
-          </Card>
+          <section className={promptSettingsStyles.emptyLibrary} aria-label="Prompt 库入门">
+            <h2>还没有 Prompt</h2>
+            <p>建立第一个模板，再添加版本、变量和绑定。</p>
+            <AhButton onClick={() => setNewOpen(true)}>新建 Prompt</AhButton>
+          </section>
         ) : !prompts.isLoading && !prompts.error ? (
           <Card
             className={`${promptSettingsStyles.promptLayout} two-pane min-h-[680px] overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)]`}
