@@ -290,7 +290,6 @@ jobs:
     env:
       # Independent loopback/PGlite/local ACP fixtures; no paid providers.
       AGENTHUB_E2E_LIVE: '0'
-      AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-workspace-interactions
       PLAYWRIGHT_JSON_OUTPUT_NAME: workspace-test-results/results.json
     steps:
       - uses: actions/checkout@v4
@@ -305,6 +304,8 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - name: Verify workspace interactions without retries
+        env:
+          AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-workspace-interactions
         run: >-
           pnpm exec playwright test --config=playwright.real.config.ts --workers=1
           tests/e2e-real/workspace-content-visual.spec.ts
