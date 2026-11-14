@@ -180,7 +180,22 @@ for (const width of [390, 768, 1024, 1440]) {
     const inspector = page.getByRole('complementary', { name: '工作 Inspector' });
     const heading = inspector.getByRole('heading', { name: '真实 Git 重试', exact: true });
     // Audit the initial review as well as the later scrolled confirmation state.
+    const technical = inspector.locator('details').filter({
+      has: page.locator('summary', { hasText: 'Git 技术信息' }),
+    });
+    await expect(technical).not.toHaveAttribute('open', '');
+    await technical.locator('summary').click();
+    await expect(technical).toHaveAttribute('open', '');
+    await expect(technical).toContainText(originalWorktreeHead);
+    await technical.locator('summary').click();
     await heading.scrollIntoViewIfNeeded();
+    const mergeBox = await merge.boundingBox();
+    const reworkBox = await page
+      .getByRole('textbox', { name: '隔离工作区修改说明', exact: true })
+      .boundingBox();
+    expect(mergeBox).not.toBeNull();
+    expect(reworkBox).not.toBeNull();
+    expect(mergeBox!.y + mergeBox!.height).toBeLessThan(reworkBox!.y);
     if (width >= 1024) {
       const list = page.getByRole('region', { name: '工作列表' });
       await expect(list).toBeVisible();

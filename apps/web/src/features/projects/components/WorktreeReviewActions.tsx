@@ -1,3 +1,4 @@
+import styles from './worktreeReviewActions.module.css';
 import { ApiError } from '../../../lib/api-error';
 import { AhButton, AhErrorState, AhInput, AhTextarea } from '@agenthub/ui';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +14,9 @@ import {
   type WorktreeExecutionRecord,
   type WorktreeReviewRecord,
 } from '../../../lib/api';
+
+const retryReviewNotice =
+  '原合并操作已确认未写入。请重新读取差异并再次确认，才会创建新的合并尝试。';
 
 export function WorktreeReviewActions({
   execution,
@@ -81,7 +85,7 @@ export function WorktreeReviewActions({
     setReview(undefined);
     setConfirmation(false);
     setError('');
-    setNotice('原合并操作已确认未写入。请重新读取差异并再次确认，才会创建新的合并尝试。');
+    setNotice(retryReviewNotice);
   }, [
     records,
     owner,
@@ -367,7 +371,7 @@ export function WorktreeReviewActions({
           setReview(undefined);
           setConfirmation(false);
           setError('');
-          setNotice('原合并操作已确认未写入。请重新读取差异并再次确认，才会创建新的合并尝试。');
+          setNotice(retryReviewNotice);
         }
       }
       if (current() && !safeRetry)
@@ -386,6 +390,8 @@ export function WorktreeReviewActions({
       if (current()) setLoading(false);
     }
   };
+  const visibleNotice =
+    shown?.mergeAdmission?.retryEligible && notice === retryReviewNotice ? '' : notice;
   return (
     <>
       <p>
@@ -403,13 +409,28 @@ export function WorktreeReviewActions({
       {shown ? (
         <>
           <p>
-            基础 SHA：{shown.baseSha}；HEAD：{shown.headSha}；领先提交：{shown.aheadBy}
-          </p>
-          <p>
+            领先提交：{shown.aheadBy} ·{' '}
             {shown.clean
               ? '工作区没有未提交改动；仍需检查分支提交差异。'
               : '工作区包含未提交改动。'}
           </p>
+          <details className={styles.technicalDetails}>
+            <summary>Git 技术信息</summary>
+            <dl>
+              <div>
+                <dt>基础 SHA</dt>
+                <dd>
+                  <code>{shown.baseSha}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>HEAD</dt>
+                <dd>
+                  <code>{shown.headSha}</code>
+                </dd>
+              </div>
+            </dl>
+          </details>
           {shown.entries.length ? (
             <ul>
               {shown.entries.map((entry, i) => (
@@ -438,88 +459,100 @@ export function WorktreeReviewActions({
           </details>
         </>
       ) : null}
-      <AhTextarea
-        label="隔离工作区修改说明"
-        value={feedback}
-        minRows={3}
-        disabled={!ready}
-        onChange={(event) => setFeedback(event.currentTarget.value)}
-      />
-      <AhButton
-        size="xs"
-        variant="light"
-        disabled={
-          !ready ||
-          !shown ||
-          !execution.sessionId ||
-          !feedback.trim() ||
-          feedback.trim().length > 1_000_000
-        }
-        loading={pending}
-        onClick={() => void submit('rework')}
-      >
-        提交隔离工作区返工
-      </AhButton>
-      <p>返工复用原 Session，在隔离工作区继续修改，不创建普通 Task 审阅。</p>
-      {shown && !shown.mergeAdmission?.mergeAllowed ? (
-        <p role="alert">当前合并操作没有新的写入许可，请只读核对原操作，勿重复提交。</p>
-      ) : null}
-      {shown?.mergeAdmission?.retryEligible ? (
-        <p role="status">旧操作已确认未写入；本次确认将创建新的合并尝试。</p>
-      ) : null}
-      <AhInput
-        label="合并提交说明"
-        value={commitMessage}
-        disabled={!ready}
-        placeholder="留空使用任务默认提交说明"
-        onChange={(event) => setCommitMessage(event.currentTarget.value)}
-      />
-      {commitMessage.trim().length > 240 ? <p role="alert">提交说明不能超过 240 个字符。</p> : null}
-      <p>
-        合并会自动提交全部改动，并将 {execution.taskBranch} 合并到 {execution.baseBranch}
-        ；不推送远端，不自动删除分支或工作区。预览不是不可变快照，合并时仍由服务器执行 Git
-        安全检查。
-      </p>
-      <label>
-        <input
-          type="checkbox"
-          checked={confirmation && Boolean(shown)}
-          disabled={!ready || !shown?.mergeAdmission?.mergeAllowed || shown.truncated}
-          onChange={(event) => setConfirmation(event.currentTarget.checked)}
+      <section className={styles.actionSection} aria-label="确认合并">
+        <h5 className={styles.sectionTitle}>确认合并</h5>
+        {shown && !shown.mergeAdmission?.mergeAllowed ? (
+          <p role="alert">当前合并操作没有新的写入许可，请只读核对原操作，勿重复提交。</p>
+        ) : null}
+        {shown?.mergeAdmission?.retryEligible ? (
+          <p role="status">旧操作已确认未写入；本次确认将创建新的合并尝试。</p>
+        ) : null}
+        <AhInput
+          label="合并提交说明"
+          value={commitMessage}
+          disabled={!ready}
+          placeholder="留空使用任务默认提交说明"
+          onChange={(event) => setCommitMessage(event.currentTarget.value)}
         />
-        我已审阅改动，确认提交并合并到基础分支
-      </label>
-      <AhButton
-        size="xs"
-        variant="filled"
-        disabled={
-          !ready ||
-          !shown?.mergeAdmission?.mergeAllowed ||
-          shown.truncated ||
-          !confirmation ||
-          commitMessage.trim().length > 240
-        }
-        loading={pending}
-        onClick={() => void submit('merge')}
-      >
-        提交并合并隔离工作区
-      </AhButton>
-      {error ? <AhErrorState title="隔离工作区操作未完成" description={error} /> : null}
-      {unknown ? (
-        <>
-          <p role="alert">请先核对原隔离执行和实际 Git 结果，勿重复提交。</p>
-          <AhButton
-            size="xs"
-            variant="light"
-            disabled={loading || pending}
-            onClick={() => void check()}
-          >
-            核对原隔离执行
-          </AhButton>
-        </>
+        {commitMessage.trim().length > 240 ? (
+          <p role="alert">提交说明不能超过 240 个字符。</p>
+        ) : null}
+        <p>
+          合并会自动提交全部改动，并将 {execution.taskBranch} 合并到 {execution.baseBranch}
+          ；不推送远端，不自动删除分支或工作区。预览不是不可变快照，合并时仍由服务器执行 Git
+          安全检查。
+        </p>
+        <label>
+          <input
+            type="checkbox"
+            checked={confirmation && Boolean(shown)}
+            disabled={!ready || !shown?.mergeAdmission?.mergeAllowed || shown.truncated}
+            onChange={(event) => setConfirmation(event.currentTarget.checked)}
+          />
+          我已审阅改动，确认提交并合并到基础分支
+        </label>
+        <AhButton
+          size="md"
+          variant="filled"
+          disabled={
+            !ready ||
+            !shown?.mergeAdmission?.mergeAllowed ||
+            shown.truncated ||
+            !confirmation ||
+            commitMessage.trim().length > 240
+          }
+          loading={pending}
+          onClick={() => void submit('merge')}
+        >
+          提交并合并隔离工作区
+        </AhButton>
+      </section>
+      {error || unknown || visibleNotice || resultHref ? (
+        <div className={styles.actionSection}>
+          {error ? <AhErrorState title="隔离工作区操作未完成" description={error} /> : null}
+          {unknown ? (
+            <>
+              <p role="alert">请先核对原隔离执行和实际 Git 结果，勿重复提交。</p>
+              <AhButton
+                size="xs"
+                variant="light"
+                disabled={loading || pending}
+                onClick={() => void check()}
+              >
+                核对原隔离执行
+              </AhButton>
+            </>
+          ) : null}
+          {visibleNotice ? <p role="status">{visibleNotice}</p> : null}
+          {resultHref ? <Link to={resultHref}>打开已提交的工作区</Link> : null}
+        </div>
       ) : null}
-      {notice ? <p role="status">{notice}</p> : null}
-      {resultHref ? <Link to={resultHref}>打开已提交的工作区</Link> : null}
+      <section className={`${styles.actionSection} ${styles.reworkSection}`} aria-label="继续修改">
+        <h5 className={styles.sectionTitle}>继续修改</h5>
+        <AhTextarea
+          label="隔离工作区修改说明"
+          value={feedback}
+          minRows={3}
+          disabled={!ready}
+          onChange={(event) => setFeedback(event.currentTarget.value)}
+        />
+        <AhButton
+          size="xs"
+          variant="light"
+          disabled={
+            !ready ||
+            !shown ||
+            !execution.sessionId ||
+            !feedback.trim() ||
+            feedback.trim().length > 1_000_000
+          }
+          loading={pending}
+          onClick={() => void submit('rework')}
+        >
+          提交隔离工作区返工
+        </AhButton>
+        <p>返工复用原 Session，在隔离工作区继续修改，不创建普通 Task 审阅。</p>
+      </section>
     </>
   );
 }

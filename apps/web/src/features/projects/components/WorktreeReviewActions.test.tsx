@@ -315,6 +315,8 @@ it('前置拒绝必须按原 attempt 只读核实、重新读取和确认才显�
   await screen.findByText(/原合并操作已确认未写入/);
   expect(post).toHaveBeenCalledTimes(1);
   await load();
+  expect(screen.queryByText(/原合并操作已确认未写入/)).not.toBeInTheDocument();
+  expect(screen.getByText(/旧操作已确认未写入；本次确认将创建新的合并尝试/)).toBeVisible();
   expect(screen.getByRole('checkbox')).not.toBeChecked();
   expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
   fireEvent.click(screen.getByRole('checkbox'));
@@ -353,6 +355,7 @@ it.each(['missing', 'other-attempt', 'unknown'])('未知恢复的 %s 证据不�
     expect(screen.getByRole('button', { name: '核对原隔离执行' })).not.toBeDisabled(),
   );
   expect(screen.getByRole('button', { name: '读取隔离工作区审阅' })).toBeDisabled();
+  expect(screen.getByText(/请先核对原隔离执行和实际 Git 结果/)).toBeVisible();
   expect(post).toHaveBeenCalledTimes(1);
 });
 
@@ -450,4 +453,77 @@ it('显式retry再次前置拒绝时核对新实际key，而非复用旧拒绝�
     expectedOperationId: 'operation-a',
     retryOfOperationId: 'operation-a',
   });
+});
+
+it('合并主操作与结果先于返工输入，两个动作分区保持可发现', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  mount();
+  await load();
+  const mergeSection = screen.getByRole('region', { name: '确认合并' });
+  const reworkSection = screen.getByRole('region', { name: '继续修改' });
+  const merge = screen.getByRole('button', { name: '提交并合并隔离工作区' });
+  const feedback = screen.getByRole('textbox', { name: '隔离工作区修改说明' });
+  expect(mergeSection).toContainElement(merge);
+  expect(reworkSection).toContainElement(feedback);
+  expect(merge.compareDocumentPosition(feedback) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByRole('heading', { name: '确认合并' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: '继续修改' })).toBeVisible();
+  expect(feedback).toBeVisible();
+  expect(merge).toBeDisabled();
+});
+
+it('Git技术信息默认折叠且可聚焦展开读取完整SHA，不隐藏状态或发送请求', async () => {
+  const base = 'a'.repeat(40);
+  const head = 'b'.repeat(40);
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, baseSha: base, headSha: head });
+  const post = vi.spyOn(api, 'post');
+  mount({ ...execution, baseSha: base });
+  await load();
+  const summary = screen.getByText('Git 技术信息');
+  const details = summary.closest('details')!;
+  expect(details).not.toHaveAttribute('open');
+  expect(screen.getByText(base)).not.toBeVisible();
+  expect(screen.getByText(head)).not.toBeVisible();
+  expect(screen.getByText(/领先提交：0/)).toBeVisible();
+  expect(screen.getByText(/工作区包含未提交改动/)).toBeVisible();
+  summary.focus();
+  expect(summary).toHaveFocus();
+  fireEvent.click(summary);
+  expect(details).toHaveAttribute('open');
+  expect(screen.getByText(base)).toBeVisible();
+  expect(screen.getByText(head)).toBeVisible();
+  expect(screen.getByText(base).textContent).toHaveLength(40);
+  fireEvent.click(summary);
+  expect(details).not.toHaveAttribute('open');
+  expect(post).not.toHaveBeenCalled();
+});
+
+it('技术折叠不折叠截断警告、合并影响说明和确认条件', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue(review);
+  mount();
+  await load();
+  expect(screen.getByText('Git 技术信息').closest('details')).not.toHaveAttribute('open');
+  expect(screen.getByText(/差异已截断/)).toBeVisible();
+  expect(screen.getByText(/不推送远端，不自动删除分支或工作区/)).toBeVisible();
+  const confirm = screen.getByRole('checkbox', { name: '我已审阅改动，确认提交并合并到基础分支' });
+  expect(confirm).toBeVisible();
+  expect(confirm).toBeDisabled();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+  expect(screen.getByRole('textbox', { name: '隔离工作区修改说明' })).toBeVisible();
+});
+
+it('返工失败反馈独立于合并分区，仍位于返工输入前且保留未知保护', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ ...review, truncated: false });
+  vi.spyOn(api, 'post').mockRejectedValue(new Error('返工回执丢失，请核对'));
+  mount();
+  await load();
+  const feedback = screen.getByRole('textbox', { name: '隔离工作区修改说明' });
+  fireEvent.change(feedback, { target: { value: '请补充测试' } });
+  fireEvent.click(screen.getByRole('button', { name: '提交隔离工作区返工' }));
+  const error = await screen.findByText('返工回执丢失，请核对');
+  expect(screen.getByRole('region', { name: '确认合并' })).not.toContainElement(error);
+  expect(screen.getByRole('region', { name: '继续修改' })).not.toContainElement(error);
+  expect(error.compareDocumentPosition(feedback) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByText(/请先核对原隔离执行和实际 Git 结果/)).toBeVisible();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
 });
