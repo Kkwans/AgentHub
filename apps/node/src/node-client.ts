@@ -1,3 +1,7 @@
+import {
+  isResourceCleanupUnconfirmed,
+  ResourceCleanupUnconfirmedError,
+} from '@agenthub/agent-core';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import {
@@ -219,8 +223,12 @@ export class RemoteNodeClient {
       const result = await this.executor.execute(command, payload);
       socket.send(JSON.stringify({ type: 'node.result', requestId, ok: true, result }));
     } catch (error) {
-      const failure =
-        error instanceof NodeCommandError
+      const failure = isResourceCleanupUnconfirmed(error)
+        ? new NodeCommandError(
+            'RESOURCE_CLEANUP_UNCONFIRMED',
+            new ResourceCleanupUnconfirmedError().message,
+          )
+        : error instanceof NodeCommandError && error.code !== 'RESOURCE_CLEANUP_UNCONFIRMED'
           ? error
           : new NodeCommandError('REMOTE_NODE_COMMAND_FAILED', safeErrorMessage(error));
       socket.send(

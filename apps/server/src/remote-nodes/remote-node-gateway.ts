@@ -1,3 +1,4 @@
+import { ResourceCleanupUnconfirmedError } from '@agenthub/agent-core';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import {
@@ -22,8 +23,9 @@ interface AuthenticatedConnection {
 
 interface PendingRequest {
   nodeId: string;
+  command: RemoteNodeCommandName;
   resolve(value: Record<string, unknown>): void;
-  reject(error: Error): void;
+  reject(error: unknown): void;
   timer: NodeJS.Timeout;
 }
 
@@ -87,15 +89,33 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
         () => {
           this.pending.delete(requestId);
           connection.pending.delete(requestId);
-          reject(new RemoteNodeRpcError('REMOTE_NODE_RPC_TIMEOUT', 'Remote Node 请求超时'));
+          reject(
+            resourceRequestFailure(
+              command,
+              new RemoteNodeRpcError('REMOTE_NODE_RPC_TIMEOUT', 'Remote Node 请求超时'),
+            ),
+          );
         },
         Math.min(Math.max(timeoutMs, 1_000), 120_000),
       );
       timer.unref();
-      this.pending.set(requestId, { nodeId, resolve, reject, timer });
+      this.pending.set(requestId, { nodeId, command, resolve, reject, timer });
       connection.pending.add(requestId);
     });
-    this.send(connection.socket, { type: 'node.command', requestId, command, payload });
+    try {
+      if (!this.send(connection.socket, { type: 'node.command', requestId, command, payload }))
+        throw new RemoteNodeRpcError('REMOTE_NODE_DISCONNECTED', 'Remote Node 发送时连接已断开');
+    } catch (error) {
+      // Reject the already-created result, not a separate async throw that leaves
+      // its timer/promise orphaned. A transport failure cannot prove non-delivery.
+      const pending = this.pending.get(requestId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        this.pending.delete(requestId);
+        connection.pending.delete(requestId);
+        pending.reject(resourceRequestFailure(command, error));
+      }
+    }
     return result;
   }
 
@@ -265,7 +285,14 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
     this.pending.delete(message.requestId);
     connection.pending.delete(message.requestId);
     if (message.ok) pending.resolve(message.result);
-    else pending.reject(new RemoteNodeRpcError(message.error.code, message.error.message));
+    else if (
+      message.error.code === 'RESOURCE_CLEANUP_UNCONFIRMED' &&
+      isResourceCommand(pending.command)
+    ) {
+      // Only a matched resource request from this authenticated Node can restore
+      // the in-process safety contract. Never trust remote diagnostic text/cause.
+      pending.reject(new ResourceCleanupUnconfirmedError());
+    } else pending.reject(new RemoteNodeRpcError(message.error.code, message.error.message));
   }
 
   private rejectPending(connection: AuthenticatedConnection, code: string, message: string): void {
@@ -273,7 +300,9 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
       const pending = this.pending.get(requestId);
       if (!pending) continue;
       clearTimeout(pending.timer);
-      pending.reject(new RemoteNodeRpcError(code, message));
+      pending.reject(
+        resourceRequestFailure(pending.command, new RemoteNodeRpcError(code, message)),
+      );
       this.pending.delete(requestId);
     }
     connection.pending.clear();
@@ -310,7 +339,20 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
     this.send(socket, { type: 'node.error', error: { code, message } });
   }
 
-  private send(socket: WebSocket, message: RemoteNodeServerMessage): void {
-    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+  private send(socket: WebSocket, message: RemoteNodeServerMessage): boolean {
+    if (socket.readyState !== WebSocket.OPEN) return false;
+    socket.send(JSON.stringify(message));
+    return true;
   }
+}
+
+function isResourceCommand(command: RemoteNodeCommandName): boolean {
+  return ['agent.preflight', 'agent.capabilities', 'session.create'].includes(command);
+}
+
+/** A registered resource request may have executed remotely even without a response.
+ * This is uncertainty, never proof of remote termination or permission to replay.
+ */
+function resourceRequestFailure(command: RemoteNodeCommandName, error: unknown): unknown {
+  return isResourceCommand(command) ? new ResourceCleanupUnconfirmedError() : error;
 }
