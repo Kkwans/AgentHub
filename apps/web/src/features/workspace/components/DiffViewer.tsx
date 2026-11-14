@@ -91,7 +91,9 @@ export function DiffViewer({
       <div className="git-diff-editor-toolbar" role="group" aria-label="文件 Diff 显示选项">
         {toolbarControls}
         <span className={toolbarControls ? 'sr-only' : undefined}>文件 Diff</span>
-        {!toolbarControls ? <small>{language === 'plaintext' ? '纯文本' : language}</small> : null}
+        <small className={toolbarControls ? 'sr-only' : undefined}>
+          {language === 'plaintext' ? '纯文本' : language}
+        </small>
         <button
           type="button"
           className="git-diff-mode-toggle"

@@ -134,6 +134,9 @@ it('keeps embedded staged/whitespace controls and explicit split choice across a
   const group = screen.getByRole('group', { name: '文件 Diff 显示选项' });
   const stagedControl = screen.getByRole('checkbox', { name: 'staged' });
   expect(group.contains(stagedControl)).toBe(true);
+  // Language remains available to assistive technology without adding a visual row.
+  expect(group.querySelector('small')?.textContent).toBe('typescript');
+  expect(group.querySelector('small')?.classList.contains('sr-only')).toBe(true);
   expect(group.contains(screen.getByRole('combobox', { name: 'Diff 空白处理' }))).toBe(true);
   fireEvent.click(stagedControl);
   expect(staged).toHaveBeenCalledWith(true);
