@@ -1456,3 +1456,24 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 
 - 07:07:37 pre-handle最终冻结全仓 exit0：191文件通过/6跳过，1968测试通过/9跳过，416.35秒；07:01:10全仓lint/types/build通过，格式与独立CR通过。准备发布直接ACP/本进程安全片，其他adapter边界仍开放。
 - 07:07取得并人工查看f84普通审阅新版390深色图；artifact14102974483 SHA256 cbfb2dd397a5beb04debbdcfd25ee009aa05a502fa6973bde925268a0b7f470b匹配，9例全部retry0，桌面/移动多主题截图核对无阻断。成果入口/验收前置、内容宽按钮和约64px反馈框已实际生效；不替代3bc连接检查新布局证据。
+
+### 2026-11-14 07:09–07:10 UTC pre-handle发布与后续安全片
+
+- 07:09:39已push/fetch核实b13e2637b9abf9373b99017a785f1508270641d0（pre-handle）与195fb51008d658f480374b1e23f1990b01ee6f6b（重命名规划）；最终树6dfa54a019d410deb67de6318cb09b69452c8d22与本地一致，工作区当时干净，精确CI43569756223运行中。
+- 07:10启动两个独立文件范围窄片：Remote明确未知固定码JSON传递；OpenClaw EXEC pending launch与sticky close。新建REMOTE_EXEC_RESOURCE_SAFETY合同；不调用真实Agent，不扩大composite capability/probe，不把未来风险规划说成已修复。
+- 3bc连接检查新UI精确CI43569012757的PG/axe通过，verify/真实视觉仍跑；93b8f06的verify/PG/axe通过、真实视觉仍跑。未用旧截图覆盖3bc新布局。
+
+### 2026-11-14 07:13–07:14 UTC Remote / EXEC 验证中
+
+- 07:13:56 EXEC两文件冻结，17/17专项、包类型/lint/diff通过。包括先close后launch resolve、先resolve同tick close、pre-launch close零启动、并发发送、普通/generic launch拒绝和4种falsey cancel拒绝sticky。CR收敛时发现deferred close可能错过已resolve后被清除的pending，已保留关闭期间pending所有权并加回归，不隐去中间风险。
+- Remote两产品文件与真实NodeClient/WebSocket/签名注册/PGlite回归已实现，初9例通过后正在补未认证伪响应/timeout；尚未最终冻结，不把初轮计成完整通过。仅agent.preflight、agent.capabilities、session.create；当前Remote无load/resume，不冒称新增支持。
+- 两片交叉只读CR进行中；尚未全仓/提交，未真实Provider调用。
+
+- 07:15:18 Remote原3文件10/10真实集成与types/lint通过，交叉CR无新增阻断，但继续确认资源RPC超时/断线与RemoteHandle重复close旧洞。07:16决定在全量前扩最小fail-closed规则并单独修sticky close；旧冻结作中间验证，不作为最终发布结论。正在加pending发送异常/late响应不解锁和重复关闭回归，无新commit/push。
+
+- 07:18:44 Remote扩展3文件重冻，20/20真实NodeClient/WebSocket/签名认证/PGlite集成通过（executor替身，无真实供应商），类型/lint通过；新增资源timeout/断线/send不确定fail-closed，发送前离线/非资源保留原合同，无自动重投。
+- 07:19:12 RemoteHandle/executor5文件冻结，adapter+executor8/8通过，真实SessionService consumer断流重复close账本专项通过；Node仅确认关闭且identity匹配后删引用。中间测试mock Promise<never>类型错已修复复验。类型/lint通过，独立CR无阻断。
+- EXEC17专项仍保持冻结，三片相互只读CR均无阻断。07:19:36启动最终冻结全仓，07:19:38启动全仓lint/types/build；尚未完成、未发布。Node disconnect原有clear map+allSettled未知引用问题仍单列下一片，不声称整体Node停服已安全。
+
+- 07:26:52 Remote/EXEC最终冻结全仓完成：194文件通过/6跳过，2008测试通过/9跳过，434.99秒exit0；07:20:00全仓lint/types/build通过，格式和交叉CR通过。按Remote请求未知、EXEC迟到进程、Remote/Node关闭引用分三逻辑提交，准备开发分支发布。
+- 07:27核实3bc连接检查新布局精确四CI全绿；artifact14104019029 SHA256 1b09c5a902eb6ca498c7593fbd66ec8b66e475b7bfc5d0186961d1ade695de87匹配，8例全retry0。我亲看新390深色page，状态卡前置、技术信息收起、实按钮内容宽，四宽浅深也由截图复核。展开行为经测试通过，但无单独展开截图，不冒称展开像素验收。195fb51 verify为1968/9skip+token6+浏览器86/10skip，PG/axe绿，real仍运行。

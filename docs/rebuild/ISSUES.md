@@ -5,8 +5,18 @@
 - 最新产品缺口与可验收任务见 [N01–N07](NEXT_PRODUCT_PLAN.md)。下方 AH 表与逐日补记保留历史，不代表当前提交快照。
 - AH-001 持久启动预留与恢复、运行归属和停服排空已有后续实现；仍不得自动重放未知结果，不是多活/外部进程 fencing。以 [运行归属方案](RUNTIME_OWNERSHIP_PLAN.md) 和最新执行记录为准。
 - AH-009 不再处于“方向重选”：用户已选择参考 Codex 的概念图；正在实现和逐图验收，未宣称设计完成。
-- 当前发布阻塞：6f757aa 的过期布局集成断言失败已在5bbbc8e修复，本地最终1857/12skip通过，待精确新提交CI；真实五Provider/NAS尚未在此基线验收。
-- Monaco96d9fe3零重试6/6和全浏览器86/10skip已核实，后续主画布截图尚待自己的证据。
+- 旧布局断言失败已修复；459ad0e、f84f5cc、93b8f06精确四项CI已全绿。当前仍未完成真实五Provider/NAS验收，不能称可部署。
+- Monaco96d9fe3零重试6/6、f84普通审阅9例零重试与新版截图已核对；3bc连接检查状态前置已精确四CI全绿，8例零重试及新图核对通过。
+
+### 当前安全与UI队列（07:24 UTC）
+
+| 项目 | 当前状态 | 尚需验证/后续 |
+| --- | --- | --- |
+| ACP返回handle前资源未知 | b13e263/195fb51已发布，全仓1968/9skip；精确CI进行中 | 当前直接ACP与显式合同范围，不覆盖所有供应商 |
+| Remote错误码、无结果RPC与sticky close；EXEC迟到启动 | 专项/独立CR与最终全仓2008/9skip通过，准备发布 | 全仓、精确CI；无实际Provider运行 |
+| Node断线清理/重连准入 | 已确认，方案完成，未实施 | NODE_DISCONNECT_PLAN；不可先清map吞失败 |
+| Composite capability / Docker probe | 已确认，方案完成，未实施 | COMPOSITE_PROBE_SAFETY；CLI退出不等于容器内进程停止 |
+| Session重命名 | 方案完成，未实现 | 安全片之后按SESSION_RENAME_PLAN做CAS/unknown/轻对话框 |
 
 状态：待复现 → 已确认 → 实施中 → 待验收 → 已关闭。源码证据与运行复现分开记录。P0 为数据/权限高风险；P1 为核心旅程阻塞；P2 为明显体验或维护缺陷。
 
@@ -506,3 +516,9 @@ b12b8fc的verify结论success但含1flaky：真实可见删除字符串首次及
 4. Docker EXEC probe：非AppError被降为available:false，包含supervisor终止未知。下一片仅明确未知转换generic；Docker CLI退出不等于容器内进程退出，必须保留该证明边界。
 
 优先1/2，再3/4；Session重命名已有方案但不能抢在这些具体资源风险前发布涉及运行行为的新闭环。
+
+### 2026-11-14 07:19 UTC Remote / EXEC 候选与剩余 Node 断连风险
+
+Remote资源请求明确未知、超时/断线/发送不确定现已有fail-closed候选；EXEC pending launch/sticky close、RemoteHandle重复close与Node session.close确认后删除已有候选，专项/CR通过，全仓正在验证，未发布。
+
+剩余Node `disconnect()` 仍先清sessions map再allSettled handle.close，可能丢失关闭未知引用，不能因中央目前fail-closed就宣称Node重连后无孤儿资源。下一片需保留未确认资源及拒绝不安全新准入、明确重复disconnect结果；不隐式杀用户容器或自动重试。另OpenClaw composite capability/Docker EXEC probe证明边界仍开放。
