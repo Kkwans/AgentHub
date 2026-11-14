@@ -330,57 +330,91 @@
   outline-offset: 4px;
 }
 
-/* Keep long attention items compact without making full text hover-only. */
+/* Keep full content reachable without a separate disclosure row. */
 .attentionItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 4px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+.attentionBody {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   min-width: 0;
 }
+.attentionText strong {
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.attentionText small {
+  line-height: 1.5;
+}
+.attentionText strong,
+.attentionText small {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.attentionItem[data-expanded='true'] .attentionText strong,
+.attentionItem[data-expanded='true'] .attentionText small {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.attentionActions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.attentionActions .rowAction,
 .attentionDetailsToggle {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  box-sizing: border-box;
+}
+.attentionDetailsToggle {
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ah-accent-primary);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.attentionDetailsToggle:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
 }
 @media (max-width: 860px) {
   .attentionItem {
-    border-top: 1px solid var(--ah-border-subtle);
+    gap: 8px;
+    padding-block: 10px;
   }
-  .attentionItem .attentionLink {
-    border-top: 0;
-    align-items: flex-start;
+  .attentionBody {
+    gap: 8px;
   }
-  .attentionItem[data-has-details='true'] .attentionLink {
-    padding-bottom: 0;
+  .attentionBody .icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
   }
-  .attentionText strong,
+  .attentionActions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
   .attentionText small {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-  }
-  .attentionItem[data-expanded='true'] .attentionText strong,
-  .attentionItem[data-expanded='true'] .attentionText small {
-    display: block;
-    -webkit-line-clamp: unset;
-    overflow: visible;
-  }
-  .attentionItem .rowAction {
-    min-height: 32px;
-    flex-shrink: 0;
-  }
-  .attentionDetailsToggle {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    margin-left: 48px;
-    padding: 4px 0;
-    border: 0;
-    background: transparent;
-    color: var(--ah-accent-primary);
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .attentionDetailsToggle:focus-visible {
-    outline: 2px solid var(--ah-accent-primary);
-    outline-offset: 2px;
+    -webkit-line-clamp: 1;
   }
 }
 

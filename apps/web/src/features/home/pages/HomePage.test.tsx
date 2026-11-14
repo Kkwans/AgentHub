@@ -209,6 +209,9 @@ describe('首页行动优先', () => {
     const toggle = await screen.findByRole('button', { name: `展开详情：${title}` });
     const link = screen.getByRole('link', { name: new RegExp(title) });
     expect(toggle.closest('a')).toBeNull();
+    expect(link).toHaveAccessibleName(`审阅：${title}`);
+    expect(link.querySelector('button')).toBeNull();
+    expect(link.closest('[data-expanded]')?.querySelectorAll('a')).toHaveLength(1);
     expect(link).toHaveAttribute('href', '/workspace/s1');
     expect(link).toHaveTextContent('审阅');
     expect(toggle).toHaveAttribute('aria-expanded', 'false');

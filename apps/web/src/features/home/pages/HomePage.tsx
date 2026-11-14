@@ -491,7 +491,7 @@ function AttentionItemRow({ item }: { item: AttentionItem }) {
       data-expanded={expanded}
       data-has-details={truncated || expanded}
     >
-      <Link className={`${homeStyles.row} ${homeStyles.attentionLink}`} to={item.href}>
+      <div className={homeStyles.attentionBody}>
         <span className={`${homeStyles.icon} ${toneClass}`} aria-hidden="true">
           {item.tone === 'warning' ? (
             <AlertTriangle size={18} />
@@ -512,22 +512,28 @@ function AttentionItemRow({ item }: { item: AttentionItem }) {
             {item.description ? ` · ${item.description}` : ''}
           </small>
         </span>
-        <span className={homeStyles.rowAction}>
-          {item.action} <ArrowRight size={14} aria-hidden="true" />
-        </span>
-      </Link>
-      {truncated || expanded ? (
-        <button
-          type="button"
-          className={homeStyles.attentionDetailsToggle}
-          aria-expanded={expanded}
-          aria-controls={detailsId}
-          aria-label={`${expanded ? '收起' : '展开'}详情：${item.title}`}
-          onClick={() => setExpanded((value) => !value)}
+      </div>
+      <div className={homeStyles.attentionActions}>
+        <Link
+          className={homeStyles.rowAction}
+          to={item.href}
+          aria-label={`${item.action}：${item.title}`}
         >
-          {expanded ? '收起详情' : '展开详情'}
-        </button>
-      ) : null}
+          {item.action} <ArrowRight size={14} aria-hidden="true" />
+        </Link>
+        {truncated || expanded ? (
+          <button
+            type="button"
+            className={homeStyles.attentionDetailsToggle}
+            aria-expanded={expanded}
+            aria-controls={detailsId}
+            aria-label={`${expanded ? '收起' : '展开'}详情：${item.title}`}
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? '收起详情' : '展开详情'}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
