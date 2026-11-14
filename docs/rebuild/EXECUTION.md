@@ -1390,3 +1390,17 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 新增NEXT_PRODUCT_PLAN.md并在PLAN置顶链接：以实际源码区分已有功能和待办，列五Agent真实联调证据矩阵、管理生命周期、Session重命名/归档/导出/搜索验收、五候选协议研究、UI与NAS发布边界；待审计/官方研究补充后发布，不冒称实现。
 - 05:53取回96d9fe3 fixture artifact14100988526并校验SHA256 a3d6460a4b6d249d1f80d042f5f48e3fa0f9c1ac2b4e7fd3bd819bb0d10e58c7；严格JSON expected6/unexpected0/flaky0/skipped0且全部retry0。实际查看新深色390 TSX图，删除区字符串/关键字/函数词法可见，未再以b12旧图作新证据。CSS三轮像素一致；仅覆盖此Diff回归，不称全产品视觉验收。05:49:15全repo lint/types/build通过，新全量仍运行。
 - 05:55:50最终冻结全量完成，413.23秒：181文件通过/5跳过，1857测试通过/12跳过，exit0。05:56:18已推并fetch验证5bbbc8e4fd7b441181718343f39cbfc87a2d95fe，树1da1885847af8360b62c7f6ea915f23cb46a8163与本地75efe65一致；只修集成测试契约，没有生产代码更改。新精确CI待核查。
+
+### 2026-11-14 05:59–06:03 UTC 新视觉证据与连接检查安全前置
+
+- 新测试修复5bbbc8e精确CI43563873728、规划7596de0精确CI43563997717已启动。05:57:55规划push/fetch树87dc272ccfded4b2f28d97efec3085e2a9864072与本地一致；4文档99新增行，未合main/部署。
+- 05:59读取96d9fe3真实job日志：158通过、geometry140页通过，4job均success。06:02读取6f757aa真实job日志：06:00:02完成158通过、geometry140页；旧unit失败不能抹去，由后续测试契约提交修复。
+- 06:03取回6f视觉artifact14101866068并校验SHA256 d8f240537af94f69ac483711dba848fbcc92119df98222d031edd582ca1d540f；实际查看普通审阅1024/1440新图，宽主区/窄列表生效、无横向挤压；代码测试的宽度>列表1.5倍与sticky滚动断言已实跑。图仍是隔离服务数据，不是真实Provider/NAS；返工长表单和成果优先级仍需改进，不称设计完成。
+- 新连接检查开始实施，新增AGENT_CONNECTION_CHECK_PLAN明确范围。独立审查发现Host launcher最后await后缺归属门禁、旧ACP预检吞终止失败；先补真正spawn前检查、严格退出未知错误及AgentService sticky shutdown，不直接给旧preflight套UI。新入口限定LOCAL_HOST ACP、同目标注册项目、服务端目录验证与固定非smoke；真实Agent/凭据未调用。实现/测试进行中，未验收、未发布。
+- 06:08精读7596de0 verify132353717285：1857/12skip、严格token6/6、完整浏览器86通过（无flaky条目）；PG/axe也成功，真实服务job仍运行，不称整轮全绿。
+- 连接检查adapter第一候选13专项通过后，继续CR发现post-launch构造/connection.close错误可漏cancel，已补所有launch后初始化清理；06:06:11五文件安全候选17/17通过，types/lint/diff通过。服务/UI50专项和build通过后，独立CR发现provider version经持久字段绕过POST白名单，继续修复并加持久层检查，不把中间专项当最终冻结。
+- 本地新UI四宽E2E普通与标准审批重试均在Chromium启动前socket EPERM，四例未进入页面，无截图，不计行为验证。正在补真实HTTP+PGlite+受控fake ACP子进程测试，仍非真实Provider。
+- 06:11:29候选冻结：66项服务/UI专项通过（含真正HTTP、内存PGlite、仓库受控ACP子进程；初次fixture缺repo_kind失败已修，不隐藏）；adapter17专项通过，两项独立CR阻断关闭。06:11:48启动最终全量及全repo lint/types/build，未完成前不计通过。补齐现有OpenCode/Hermes/自定义ACP真实名称，不把候选品牌冒称接入。
+- 发布前检查发现真实CI使用显式文件清单，新E2E尚未加入；正在补CI接线及浅/深×四视口8例、console与横溢出断言。仅调整被unit排除的E2E/CI，不改变已冻结产品代码；待CI执行，不以测试发现当通过。
+- 06:12:22最终全repo lint/types/build通过。06:13:19 E2E/CI收尾冻结：显式清单已接线，浅/深×四宽8例，主题、页面/区块横溢出与console/pageerror断言；仅豁免精准匹配的故意注入网络错误，route.fetch maxRetries=0。8例发现、E2E类型、lint、diff通过，不等于浏览器执行通过。产品代码未改，06:11:48全量继续。
+- 06:18:48最终冻结全量完成，419.30秒：187文件通过/5跳过，1907测试通过/12跳过，exit0。最终lint/types/build与独立CR已通过；本地浏览器未执行的8例待发布后精确CI和新截图，不能以全量unit通过替代视觉验收。准备仅推开发分支，不合main、不部署。

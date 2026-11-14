@@ -1,3 +1,4 @@
+import { AgentConnectionCheck } from '../components/AgentConnectionCheck';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -325,6 +326,19 @@ function AgentDetail({ agentId }: { agentId: string }) {
               </section>
             ) : null}
           </Card>
+          <AgentConnectionCheck
+            key={`${agent.id}:${agent.targetId}`}
+            agent={agent}
+            target={target}
+            disabled={busy || Boolean(pending)}
+            readSaved={async () => {
+              const token = generation.current;
+              const saved = await readAgent(agentId);
+              if (!current(token)) return;
+              if (saved.targetId !== agent.targetId) throw new Error('identity changed');
+              setAgent(saved); // Refresh evidence, never overwrite unsaved defaults.
+            }}
+          />
           <details className={styles.technical}>
             <summary>技术信息与能力报告</summary>
             <div className={styles.technicalBody}>

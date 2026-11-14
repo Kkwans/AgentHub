@@ -83,11 +83,15 @@ export class AcpAdapter implements AgentRuntimeAdapter {
 
   async preflight(profile: AgentProfile): Promise<PreflightReport> {
     const checkedAt = this.now().toISOString();
+    // Server preflight flows explicitly select strict cleanup. Direct adapter
+    // callers and Session cleanup retain their default contract.
+    const strictCleanup = profile.config.preflightStrictCleanup === true;
     const cwd =
       typeof profile.config.preflightCwd === 'string' ? profile.config.preflightCwd : '/tmp';
     let runtime: AcpRuntime | undefined;
+    let operationError: unknown;
     try {
-      runtime = await this.open(profile, cwd);
+      runtime = await this.open(profile, cwd, strictCleanup);
       const activeRuntime = runtime;
       const capabilities = mapAcpCapabilities(
         activeRuntime.initialize.agentCapabilities,
@@ -148,6 +152,11 @@ export class AcpAdapter implements AgentRuntimeAdapter {
         checks,
       };
     } catch (error) {
+      operationError = error;
+      if (errorCode(error) === 'ACP_PROCESS_CLEANUP_UNCONFIRMED') {
+        this.capabilityCache.delete(profile.id);
+        throw error;
+      }
       const status = preflightStatusForError(error);
       const message = preflightFailureMessage(status);
       return {
@@ -166,7 +175,28 @@ export class AcpAdapter implements AgentRuntimeAdapter {
         },
       };
     } finally {
-      if (runtime) await closeRuntime(runtime);
+      if (runtime)
+        await this.closePreflightRuntime(runtime, profile.id, strictCleanup, operationError);
+    }
+  }
+
+  private async closePreflightRuntime(
+    runtime: AcpRuntime,
+    profileId: string,
+    strictCleanup: boolean,
+    operationError: unknown,
+  ): Promise<void> {
+    try {
+      await closeRuntime(runtime, strictCleanup);
+    } catch (error) {
+      this.capabilityCache.delete(profileId);
+      if (operationError !== undefined && errorCode(error) === 'ACP_PROCESS_CLEANUP_UNCONFIRMED')
+        throw new AcpAdapterError(
+          'ACP_PROCESS_CLEANUP_UNCONFIRMED',
+          'ACP 检测进程尚未确认退出，请人工核对，不能重复检测。',
+          { cause: new AggregateError([operationError, error], 'Preflight and cleanup failed') },
+        );
+      throw error;
     }
   }
 
@@ -256,23 +286,28 @@ export class AcpAdapter implements AgentRuntimeAdapter {
     }
   }
 
-  private async open(profile: AgentProfile, cwd: string): Promise<AcpRuntime> {
+  private async open(
+    profile: AgentProfile,
+    cwd: string,
+    strictCleanup = false,
+  ): Promise<AcpRuntime> {
     const launched = await this.launcher.launch(profile, cwd);
-    const route: RouteTarget = {};
-    const app = client({ name: 'AgentHub' })
-      .onRequest(CLIENT_METHODS.session_request_permission, (context) => {
-        if (!route.handle) return { outcome: { outcome: 'cancelled' } };
-        return route.handle.onPermission(String(context.requestId), context.params);
-      })
-      .onNotification(CLIENT_METHODS.session_update, (context) => {
-        route.handle?.onSessionUpdate(context.params);
-      });
-    const stream = ndJsonStream(
-      Writable.toWeb(launched.stdin) as WritableStream<Uint8Array>,
-      Readable.toWeb(launched.stdout) as ReadableStream<Uint8Array>,
-    );
-    const connection = app.connect(stream);
+    let connection: ClientConnection | undefined;
     try {
+      const route: RouteTarget = {};
+      const app = client({ name: 'AgentHub' })
+        .onRequest(CLIENT_METHODS.session_request_permission, (context) => {
+          if (!route.handle) return { outcome: { outcome: 'cancelled' } };
+          return route.handle.onPermission(String(context.requestId), context.params);
+        })
+        .onNotification(CLIENT_METHODS.session_update, (context) => {
+          route.handle?.onSessionUpdate(context.params);
+        });
+      const stream = ndJsonStream(
+        Writable.toWeb(launched.stdin) as WritableStream<Uint8Array>,
+        Readable.toWeb(launched.stdout) as ReadableStream<Uint8Array>,
+      );
+      connection = app.connect(stream);
       const initialize = await connection.agent.request(AGENT_METHODS.initialize, {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: {
@@ -289,12 +324,28 @@ export class AcpAdapter implements AgentRuntimeAdapter {
       }
       return { process: launched, connection, agent: connection.agent, initialize, route };
     } catch (error) {
-      connection.close(error);
+      const failures: unknown[] = [error];
+      try {
+        connection?.close(error);
+      } catch (connectionError) {
+        failures.push(connectionError);
+      }
       let result: Awaited<ReturnType<LaunchedAcpProcess['cancel']>> | undefined;
       try {
         result = await launched.cancel();
-      } catch {
-        // Preserve the initialize/protocol error when process observation also fails.
+      } catch (cleanupError) {
+        if (strictCleanup)
+          throw new AcpAdapterError(
+            'ACP_PROCESS_CLEANUP_UNCONFIRMED',
+            'ACP 检测进程尚未确认退出，请人工核对，不能重复检测。',
+            {
+              cause: new AggregateError(
+                [...failures, cleanupError],
+                'Initialize and cleanup failed',
+              ),
+            },
+          );
+        // Preserve the legacy initialize/protocol error when observation fails.
       }
       if (
         result &&
@@ -302,8 +353,16 @@ export class AcpAdapter implements AgentRuntimeAdapter {
           result.stderr,
         )
       ) {
-        throw new AcpAdapterError('AUTH_REQUIRED', 'Agent 原生授权尚未完成');
+        throw new AcpAdapterError('AUTH_REQUIRED', 'Agent 原生授权尚未完成', {
+          cause: new AggregateError(failures, 'Initialize failed'),
+        });
       }
+      if (strictCleanup && failures.length > 1)
+        throw new AcpAdapterError(
+          errorCode(error) ?? 'ACP_INITIALIZE_FAILED',
+          error instanceof Error ? error.message : 'ACP 初始化失败',
+          { cause: new AggregateError(failures, 'Initialize and connection close failed') },
+        );
       throw error;
     }
   }
@@ -844,8 +903,9 @@ export class AcpAdapterError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = 'AcpAdapterError';
   }
 }
@@ -1109,16 +1169,33 @@ function flattenSelectOptions(
   return options.flatMap((option) => ('value' in option ? [option] : option.options));
 }
 
-async function closeRuntime(runtime: AcpRuntime): Promise<void> {
+async function closeRuntime(runtime: AcpRuntime, strictCleanup = false): Promise<void> {
+  let connectionError: unknown;
   try {
     runtime.connection.close();
-  } finally {
-    try {
-      await runtime.process.cancel();
-    } catch {
-      // Preserve the original ACP operation error while still attempting cleanup.
-    }
+  } catch (error) {
+    connectionError = error;
   }
+  try {
+    await runtime.process.cancel();
+  } catch (error) {
+    if (strictCleanup)
+      throw new AcpAdapterError(
+        'ACP_PROCESS_CLEANUP_UNCONFIRMED',
+        'ACP 检测进程尚未确认退出，请人工核对，不能重复检测。',
+        {
+          cause:
+            connectionError === undefined
+              ? error
+              : new AggregateError(
+                  [connectionError, error],
+                  'Connection and process cleanup failed',
+                ),
+        },
+      );
+    // Legacy callers preserve connection errors and best-effort process cleanup.
+  }
+  if (connectionError !== undefined) throw connectionError;
 }
 
 async function requestWithGrace<T>(

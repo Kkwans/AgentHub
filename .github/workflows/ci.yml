@@ -94,6 +94,7 @@ jobs:
           tests/e2e-real/worktree-queue.spec.ts
           tests/e2e-real/worktree-cancel.spec.ts
           tests/e2e-real/agent-defaults-management.spec.ts
+          tests/e2e-real/agent-connection-check.spec.ts
           tests/e2e-real/agent-capability-truth.spec.ts
           tests/e2e-real/prompt-library-empty.spec.ts
           tests/e2e-real/prompt-version-ownership.spec.ts

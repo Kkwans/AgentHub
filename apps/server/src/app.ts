@@ -153,7 +153,15 @@ export function createApp(options: AppOptions = {}): Express {
       createDiscoveryRouter(options.runtimeDiscovery, options.agentDiscovery),
     );
   }
-  if (options.agents) app.use('/api/v1/agents', createAgentRouter(options.agents));
+  if (options.agents)
+    app.use(
+      '/api/v1/agents',
+      createAgentRouter(
+        options.agents,
+        options.projects,
+        options.runtimeOperations?.wrapFunction(() => undefined),
+      ),
+    );
   if (options.sessions) {
     app.use('/api/v1/sessions', createSessionRouter(options.sessions));
     app.use('/api/v1/approvals', createApprovalRouter(options.sessions));

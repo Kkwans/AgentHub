@@ -20,6 +20,8 @@ export interface AcpProcessLauncher {
 }
 
 export interface HostProcessLauncherOptions {
+  /** Synchronous admission fence after all preparation awaits and before spawn. */
+  assertCanLaunch?: () => void;
   resolveEnvironment?: (profile: AgentProfile) => Promise<NodeJS.ProcessEnv>;
   /** Optional identity used for host Agent processes (the server may stay root). */
   runAs?: { uid: number; gid: number };
@@ -44,6 +46,7 @@ export class HostAcpProcessLauncher implements AcpProcessLauncher {
     const env = this.options.resolveEnvironment
       ? await this.options.resolveEnvironment(profile)
       : undefined;
+    this.options.assertCanLaunch?.();
     const supervised = spawnSupervisedProcess({
       executable: profile.launchSpec.executable,
       args: profile.launchSpec.args,

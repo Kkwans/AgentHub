@@ -15,7 +15,7 @@ vi.mock('../../../components/AccessGate', () => ({
 }));
 vi.mock('../../../lib/api', async (original) => ({
   ...(await original<{ api: typeof api; authSession: typeof authSession }>()),
-  api: { get: vi.fn(), patch: vi.fn() },
+  api: { get: vi.fn(), patch: vi.fn(), post: vi.fn() },
 }));
 const make = (id: string): AgentRecord => ({
   id,
@@ -284,5 +284,53 @@ it('prioritizes editable defaults and keeps technical identity in a native discl
   );
   fireEvent.click(summary);
   expect(details).not.toHaveAttribute('open');
+  expect(api.patch).not.toHaveBeenCalled();
+});
+
+it('连接检查读取已保存状态不覆盖默认设置草稿', async () => {
+  const agent = records[1]!;
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(path: string) =>
+      (path === '/agents'
+        ? records
+        : path === '/execution-targets'
+          ? [{ id: agent.targetId, kind: 'LOCAL_HOST', name: '本机' }]
+          : path === '/projects'
+            ? [
+                {
+                  id: 'project',
+                  name: '检查项目一',
+                  status: 'ACTIVE',
+                  targetId: agent.targetId,
+                  realRootPath: '/registered',
+                },
+              ]
+            : []) as T,
+  );
+  vi.mocked(api.post).mockResolvedValue({
+    agentId: agent.id,
+    targetId: agent.targetId,
+    projectId: 'project',
+    cwd: '/registered',
+    smokeSession: false,
+    status: 'READY',
+    checkedAt: '2026-11-14T06:00:00Z',
+    checks: [
+      { id: 'process', status: 'PASS' },
+      { id: 'initialize', status: 'PASS' },
+      { id: 'session', status: 'SKIP' },
+    ],
+  });
+  mount();
+  const model = await screen.findByRole('textbox', { name: '默认模型' });
+  fireEvent.change(model, { target: { value: 'unsaved-draft' } });
+  fireEvent.click(await screen.findByRole('combobox', { name: '检查项目' }));
+  fireEvent.click(await screen.findByRole('option', { name: '检查项目一' }));
+  fireEvent.click(screen.getByRole('button', { name: '检查连接' }));
+  await screen.findByText('连接检查通过');
+  records[1] = { ...agent, status: 'READY', defaultModel: 'server-other-value' };
+  fireEvent.click(screen.getByRole('button', { name: '读取已保存状态' }));
+  await screen.findByText('最近检查就绪');
+  expect(model).toHaveValue('unsaved-draft');
   expect(api.patch).not.toHaveBeenCalled();
 });

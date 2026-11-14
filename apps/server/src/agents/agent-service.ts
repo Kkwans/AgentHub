@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { access } from 'node:fs/promises';
+import { access, realpath, stat } from 'node:fs/promises';
 import { delimiter, isAbsolute, join, relative, resolve as resolvePath, sep } from 'node:path';
 
 import {
@@ -111,6 +111,72 @@ const BUILTIN_CATALOG: AgentCatalogEntry[] = [
 ];
 
 export class AgentService {
+  private checksAccepting = true;
+  private cleanupUnconfirmed = false;
+  private checkShutdown?: Promise<void>;
+  private readonly checksPending = new Map<string, Promise<void>>();
+
+  private async withConnectionAdmission<T>(id: string, operation: () => Promise<T>): Promise<T> {
+    if (!this.checksAccepting || this.cleanupUnconfirmed)
+      throw new AppError(503, 'AGENT_CHECK_UNAVAILABLE', '检查资源尚未确认停止，暂不接受新的检查');
+    if (this.checksPending.has(id))
+      throw new AppError(409, 'AGENT_CHECK_IN_PROGRESS', '此 Agent 已有检查进行中，请核对原操作');
+    let done!: () => void;
+    this.checksPending.set(
+      id,
+      new Promise<void>((resolve) => {
+        done = resolve;
+      }),
+    );
+    try {
+      return await operation();
+    } catch (error) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ACP_PROCESS_CLEANUP_UNCONFIRMED'
+      )
+        this.cleanupUnconfirmed = true;
+      throw error;
+    } finally {
+      this.checksPending.delete(id);
+      done();
+    }
+  }
+
+  shutdownConnectionChecks(): Promise<void> {
+    this.checkShutdown ??= this.stopConnectionChecks();
+    return this.checkShutdown;
+  }
+
+  private async stopConnectionChecks(): Promise<void> {
+    this.checksAccepting = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.all([...this.checksPending.values()]),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('pending check')), 5_000);
+        }),
+      ]);
+      if (this.cleanupUnconfirmed) throw new Error('cleanup unconfirmed');
+    } catch {
+      throw new AppError(
+        503,
+        'AGENT_CHECK_SHUTDOWN_UNCONFIRMED',
+        '检查进程尚未确认停止，必须保留运行归属',
+      );
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  private assertCheckAdmission(): void {
+    if (!this.checksAccepting || this.cleanupUnconfirmed)
+      throw new AppError(503, 'AGENT_CHECK_UNAVAILABLE', '服务正在停止，未启动检查');
+  }
+
   constructor(
     private readonly agents: AgentRepository<AgentHubDatabase>,
     private readonly targets: ExecutionTargetRepository<AgentHubDatabase>,
@@ -165,25 +231,104 @@ export class AgentService {
     });
   }
 
-  async preflight(id: string, input: AgentPreflightInput): Promise<PreflightReport> {
-    const agent = await this.agents.get(id);
-    if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
-    const target = await this.targets.get(agent.targetId);
-    if (!target)
-      throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
-    const profile = toAgentProfile(agent, target, input);
-    const adapter = this.adapterForTarget(target.kind, agent.adapterKind as AdapterKind);
-    const report = await adapter.preflight(profile);
-    const capabilities =
-      report.status === 'READY' ? await adapter.getCapabilities(profile) : undefined;
-    await this.agents.updatePreflight(id, {
-      status: report.status,
-      detectedVersion: report.detectedVersion ?? null,
-      ...(capabilities
-        ? { capabilitiesJson: capabilities as unknown as Record<string, unknown> }
-        : {}),
+  /** Explicit, project-bound non-smoke check. Legacy route shape is preserved; shared cleanup, admission and saved-evidence safety are tightened. */
+  async checkConnection(
+    id: string,
+    expectedTargetId: string,
+    project: {
+      id: string;
+      targetId: string;
+      status: string;
+      rootPath: string;
+      realRootPath: string;
+    },
+    assertCanLaunch: () => void = () => undefined,
+  ) {
+    return this.withConnectionAdmission(id, async () => {
+      const agent = await this.agents.get(id);
+      if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+      const target = await this.targets.get(agent.targetId);
+      if (!agent.enabled || agent.adapterKind !== 'ACP_STDIO' || target?.kind !== 'LOCAL_HOST')
+        throw new AppError(
+          409,
+          'CONNECTION_CHECK_UNSUPPORTED',
+          '此检查仅支持已启用的本机 ACP Agent',
+        );
+      if (
+        agent.targetId !== expectedTargetId ||
+        project.targetId !== expectedTargetId ||
+        project.status !== 'ACTIVE'
+      )
+        throw new AppError(
+          409,
+          'CONNECTION_CHECK_SCOPE_CHANGED',
+          '项目或执行环境已变化，未启动检查',
+        );
+      let cwd: string;
+      try {
+        cwd = await realpath(project.rootPath);
+        if (cwd !== project.realRootPath || !(await stat(cwd)).isDirectory())
+          throw new Error('changed');
+      } catch {
+        throw new AppError(
+          409,
+          'CONNECTION_CHECK_DIRECTORY_CHANGED',
+          '项目目录无法确认，未启动检查',
+        );
+      }
+      const profile = toAgentProfile(agent, target, { cwd, smokeSession: false });
+      const adapter = this.adapterForTarget(target.kind, 'ACP_STDIO');
+      profile.config.preflightStrictCleanup = true;
+      this.assertCheckAdmission();
+      assertCanLaunch();
+      const report = await adapter.preflight(profile);
+      const capabilities =
+        report.status === 'READY' ? await adapter.getCapabilities(profile) : undefined;
+      await this.agents.updatePreflight(id, {
+        status: report.status,
+        detectedVersion: safeDetectedVersion(report.detectedVersion),
+        ...(capabilities ? { capabilitiesJson: savedCapabilityFlags(capabilities) } : {}),
+      });
+      // Do not expose arbitrary provider messages, details, commands or configuration.
+      return {
+        agentId: id,
+        targetId: expectedTargetId,
+        projectId: project.id,
+        cwd,
+        smokeSession: false as const,
+        status: report.status,
+        checkedAt: report.checkedAt,
+        checks: report.checks
+          .filter((check) => ['process', 'initialize', 'session'].includes(check.id))
+          .map((check) => ({ id: check.id, status: check.status })),
+      };
     });
-    return report;
+  }
+
+  async preflight(id: string, input: AgentPreflightInput): Promise<PreflightReport> {
+    return this.withConnectionAdmission(id, async () => {
+      const agent = await this.agents.get(id);
+      if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+      const target = await this.targets.get(agent.targetId);
+      if (!target)
+        throw new AppError(500, 'AGENT_TARGET_MISSING', 'Agent 的 Execution Target 不存在');
+      const profile = toAgentProfile(agent, target, input);
+      profile.config.preflightStrictCleanup = true;
+      this.assertCheckAdmission();
+      const adapter = this.adapterForTarget(target.kind, agent.adapterKind as AdapterKind);
+      const report = await adapter.preflight(profile);
+      const capabilities =
+        report.status === 'READY' ? await adapter.getCapabilities(profile) : undefined;
+      await this.agents.updatePreflight(id, {
+        status: report.status,
+        detectedVersion: safeDetectedVersion(report.detectedVersion),
+        ...(capabilities ? { capabilitiesJson: savedCapabilityFlags(capabilities) } : {}),
+      });
+      const safeReport = { ...report };
+      delete safeReport.detectedVersion;
+      const detectedVersion = safeDetectedVersion(report.detectedVersion);
+      return { ...safeReport, ...(detectedVersion ? { detectedVersion } : {}) };
+    });
   }
 
   async getProfile(id: string, cwd: string): Promise<AgentProfile> {
@@ -673,4 +818,36 @@ export function capabilitiesForRecord(
   return value.sessions && value.prompts && value.interaction && value.workspace
     ? (value as unknown as AgentCapabilities)
     : undefined;
+}
+
+/** Provider version is informational, never arbitrary diagnostic text. */
+function safeDetectedVersion(value: unknown): string | null {
+  return typeof value === 'string' && /^\d{1,5}\.\d{1,5}\.\d{1,5}$/.test(value) ? value : null;
+}
+
+/** Saved global evidence contains flags only, not provider/config text or option labels. */
+function savedCapabilityFlags(value: AgentCapabilities): Record<string, unknown> {
+  const keys = {
+    sessions: ['create', 'load', 'resume', 'close'],
+    prompts: ['text', 'images', 'resources'],
+    interaction: ['streaming', 'approvals', 'questions', 'plan'],
+    workspace: ['files', 'terminal', 'additionalRoots', 'mcpStdio', 'mcpHttp'],
+    configuration: ['models', 'modes', 'reasoningEffort'],
+    telemetry: ['tokenUsage', 'cost'],
+  };
+  return Object.fromEntries(
+    Object.entries(keys).map(([group, fields]) => {
+      const candidate = (value as unknown as Record<string, unknown>)[group];
+      const source =
+        candidate && typeof candidate === 'object' ? (candidate as Record<string, unknown>) : {};
+      return [
+        group,
+        Object.fromEntries(
+          fields
+            .filter((field) => typeof source[field] === 'boolean')
+            .map((field) => [field, source[field]]),
+        ),
+      ];
+    }),
+  );
 }

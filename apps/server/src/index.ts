@@ -265,6 +265,7 @@ export async function startServer(
     const hostAgentIdentity = resolveHostAgentIdentity(environment);
     const acpLauncher = new RoutedAcpProcessLauncher(
       new HostAcpProcessLauncher({
+        assertCanLaunch: () => lifecycle.assertHeld(),
         resolveEnvironment: resolveHostAgentEnvironment,
         ...(hostAgentIdentity ? { runAs: hostAgentIdentity } : {}),
       }),
@@ -297,6 +298,7 @@ export async function startServer(
       remoteAgentAdapter,
       resolveEnvironment,
     );
+    lifecycle.addStop(() => agents.shutdownConnectionChecks());
     const agentDiscovery = new AgentDiscoveryService(
       agents,
       agentRepository,

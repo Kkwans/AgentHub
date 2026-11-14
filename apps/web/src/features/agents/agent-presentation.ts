@@ -1,7 +1,15 @@
 import type { AgentRecord } from '../../lib/api';
 
 export function agentKindLabel(kind: string): string {
-  return { CODEX: 'Codex', CLAUDE_CODE: 'Claude Code', OPENCLAW: 'OpenClaw' }[kind] ?? 'Agent';
+  const labels: Record<string, string> = {
+    CODEX: 'Codex',
+    CLAUDE_CODE: 'Claude Code',
+    OPENCODE: 'OpenCode',
+    HERMES: 'Hermes',
+    OPENCLAW: 'OpenClaw',
+    CUSTOM_ACP: '自定义 ACP',
+  };
+  return Object.hasOwn(labels, kind) ? labels[kind]! : 'Agent';
 }
 
 export function executionTargetKindLabel(kind: string | undefined): string {

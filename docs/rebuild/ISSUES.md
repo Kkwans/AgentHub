@@ -480,3 +480,7 @@ b12b8fc的verify结论success但含1flaky：真实可见删除字符串首次及
 - 6f757aa 的精确 verify 43562451847 在05:46:29失败：旧 ReviewOperationIntegration 仍断言“只有 Worktree 主阅读布局”，普通任务期望work-list与新需求冲突。1856通过/1失败/12跳过，不能称全绿。05:48:23本地修正并加强未知草稿/无额外写入保护，144专项通过；全量重验中，问题尚未关闭。
 - 96d9fe3的verify43561977816精确日志已核实：严格token6/6无重试，完整浏览器86通过/10跳过且无flaky；新真实视觉矩阵仍待完成及逐图复核。不是整个产品已验收。
 - 下一阶段产品缺口独立记录在[N01–N07](NEXT_PRODUCT_PLAN.md)：五Agent真实验证、管理生命周期、会话管理、候选扩展、UI/NAS。源码有入口或DB字段不等于可用闭环，均不能以规划替代实现。
+
+### 2026-11-14 06:03 UTC Agent预检存在未确认退出风险
+
+新增连接检查前置CR确认：Host launcher在异步access/env之后spawn，只有HTTP入口归属检查不足；ACP旧预检清理会吞cancel错误，可能把未知退出当READY，HTTP操作已settle后健康锁可能被释放。实施中：真正spawn前门禁、严格清理错误、服务层sticky未知台账与停服失败。不能用new UI pending锁替代后端保护；远程Node跨端清理合同尚未覆盖，新UI不开放远程。未关闭，见[连接检查实施合同](AGENT_CONNECTION_CHECK_PLAN.md)。

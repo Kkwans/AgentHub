@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import { validate } from '../validation.js';
 import type { AgentService } from './agent-service.js';
+import type { ProjectService } from '../projects/project-service.js';
+import { AppError } from '../errors.js';
 
 const idParams = z.object({ id: z.string().uuid() });
 const registrationSchema = z.object({
@@ -26,7 +28,11 @@ const defaultsSchema = z
   })
   .refine((value) => Object.keys(value).length > 0, { message: '至少提供一个默认设置字段' });
 
-export function createAgentRouter(service: AgentService): Router {
+export function createAgentRouter(
+  service: AgentService,
+  projects?: Pick<ProjectService, 'get'>,
+  assertCanLaunch: () => void = () => undefined,
+): Router {
   const router = Router();
 
   router.get('/', async (request, response, next) => {
@@ -59,6 +65,31 @@ export function createAgentRouter(service: AgentService): Router {
       next(error);
     }
   });
+
+  const connectionCheckSchema = z
+    .object({ projectId: z.string().uuid(), expectedTargetId: z.string().uuid() })
+    .strict();
+  router.post(
+    '/:id/connection-check',
+    validate({ params: idParams, body: connectionCheckSchema }),
+    async (request, response, next) => {
+      try {
+        if (!projects)
+          throw new AppError(503, 'CONNECTION_CHECK_UNAVAILABLE', '项目范围核验暂不可用');
+        const input = connectionCheckSchema.parse(request.body);
+        const project = await projects.get(input.projectId);
+        const report = await service.checkConnection(
+          idParams.parse(request.params).id,
+          input.expectedTargetId,
+          project,
+          assertCanLaunch,
+        );
+        response.json({ data: report, requestId: String(request.id) });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   router.post(
     '/:id/preflight',
