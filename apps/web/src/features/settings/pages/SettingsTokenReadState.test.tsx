@@ -166,3 +166,54 @@ it('settings hierarchy keeps six routes and preferences without duplicate badge 
   expect(motion).toHaveAttribute('aria-checked', String(before));
   noWrites();
 });
+
+it('高级设置将三条安全边界保留在 Docker 警示内，不新增操作', async () => {
+  vi.mocked(api.get).mockResolvedValue(allowed);
+  mount('advanced');
+  const boundaries = screen.getByRole('list', { name: 'Docker 操作安全边界' });
+  expect(boundaries.querySelectorAll('li')).toHaveLength(3);
+  expect(boundaries).toHaveTextContent('不会修改 Compose、镜像或 volume。');
+  expect(boundaries).toHaveTextContent('不提供通用 Docker 命令入口。');
+  expect(boundaries).toHaveTextContent('活动 Session 会阻止停止容器。');
+  expect(boundaries.parentElement).toHaveTextContent('Docker 权限等同主机高权限。');
+  expect(boundaries.parentElement).toHaveTextContent('完整 container ID 仍匹配的容器。');
+  expect(screen.getByRole('heading', { name: '危险操作' })).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole('button', { name: '退出登录' })).toBeDisabled());
+  noWrites();
+});
+
+it.each([true, false])(
+  '登录范围保留原状态分支，但使用中性范围标签（本地=%s）',
+  async (localTrusted) => {
+    vi.mocked(api.get).mockResolvedValue({ ...allowed, localTrusted });
+    mount('account');
+    const status = await screen.findByText(localTrusted ? '可用' : '使用中');
+    expect(status.className).toContain('scopeLabel');
+    expect(screen.queryByText(localTrusted ? '使用中' : '可用')).not.toBeInTheDocument();
+    expect(screen.getByText('本地可信模式只允许 loopback 访问。')).toBeInTheDocument();
+    noWrites();
+  },
+);
+
+it('系统基础设施标题中文化，原只读导航地址不变', async () => {
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(path: string) =>
+      (path === '/auth/status'
+        ? allowed
+        : {
+            terminal: { available: false, message: '不可用', platform: 'linux', arch: 'x64' },
+          }) as T,
+  );
+  mount('system');
+  expect(screen.getByRole('heading', { name: '基础设施' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /打开运行环境/ })).toHaveAttribute(
+    'href',
+    '/agents/runtime',
+  );
+  expect(screen.getByRole('link', { name: /打开远程节点/ })).toHaveAttribute(
+    'href',
+    '/agents/nodes',
+  );
+  await screen.findByText('不可用');
+  noWrites();
+});

@@ -470,7 +470,9 @@ export function SettingsPage() {
                     </div>
                   </SettingRow>
                   <SettingRow label="登录范围" description="本地可信模式只允许 loopback 访问。">
-                    <StatusBadge status={auth.data.localTrusted ? 'AVAILABLE' : 'ACTIVE'} />
+                    <span className={styles.scopeLabel}>
+                      {auth.data.localTrusted ? '可用' : '使用中'}
+                    </span>
                   </SettingRow>
                   <SettingRow label="安全设置" description="修改密码和管理当前登录会话。">
                     <SettingLink to="/settings/security">前往安全设置</SettingLink>
@@ -644,10 +646,7 @@ export function SettingsPage() {
                   </>
                 ) : null}
               </SettingSection>
-              <SettingSection
-                title="Infrastructure"
-                description="运行环境和远程节点使用独立的诊断页面。"
-              >
+              <SettingSection title="基础设施" description="运行环境和远程节点使用独立的诊断页面。">
                 <SettingRow label="运行环境" description="查看 Local、Docker 与远程执行环境。">
                   <SettingLink to="/agents/runtime">打开运行环境</SettingLink>
                 </SettingRow>
@@ -673,16 +672,16 @@ export function SettingsPage() {
                       Docker 权限等同主机高权限。AgentHub 只允许操作显式注册且完整 container ID
                       仍匹配的容器。
                     </p>
+                    <ul className={styles.riskList} aria-label="Docker 操作安全边界">
+                      <li>不会修改 Compose、镜像或 volume。</li>
+                      <li>不提供通用 Docker 命令入口。</li>
+                      <li>活动 Session 会阻止停止容器。</li>
+                    </ul>
                   </div>
                 </div>
-                <ul className={styles.riskList}>
-                  <li>不会修改 Compose、镜像或 volume。</li>
-                  <li>不提供通用 Docker 命令入口。</li>
-                  <li>活动 Session 会阻止停止容器。</li>
-                </ul>
               </SettingSection>
               <SettingSection
-                title="Danger Zone"
+                title="危险操作"
                 description="需要明确确认的账户操作。"
                 tone="warning"
               >

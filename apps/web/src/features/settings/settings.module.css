@@ -308,11 +308,24 @@
 
 .riskList {
   display: grid;
-  gap: 5px;
-  margin: 0 0 15px 28px;
-  padding: 0;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding-left: 16px;
+  list-style: disc;
   color: var(--ah-text-secondary);
   font-size: 12px;
+  line-height: 1.5;
+}
+
+.scopeLabel {
+  display: inline-flex;
+  padding: 2px 8px;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 6px;
+  color: var(--ah-text-secondary);
+  background: var(--ah-surface-subtle);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .integrationIntro {
