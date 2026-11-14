@@ -2052,3 +2052,12 @@ cd85精确focused155通过8新初始化触点失败，artifact hash71a418…13c3
 
 真实8例不填/提交账号，保零写/noWS/error硬断言，追加去重复文字/shadow none与密码留白/按钮不越输入边界的真实几何；8例仅发现未本地执行。四文件已冻结、最终聚合运行，尚未发布/新图待；异常重试状态只有单元覆盖，不扩称实图已验。
 - 20:22:49 UTC最终133文件1457测试通过194.38秒，四代码文件冻结hash一致；20:23:21全仓build成功。12专项/类型/lint/独立CR已过，准备发布，新44/留白与整体实图仍待，不称已真实验收。
+
+
+### 2026-11-14 20:31 UTC Select 与真实父 FormDialog 的回焦边界
+
+eb72 focused 精确结果 147 过 / 16 失败，其中新增 Prompt 绑定 8 例：Escape 关闭 listbox、原 dialog 保留，但原 trigger 5 秒未恢复焦点。trace 未记录 activeElement，不能断言其中焦点就是父根。受控真实 FormDialog + searchable Select 回归移除父状态节点，真实 FocusScope MutationObserver 自动落焦父根：原实现 1 红 / 6 绿。候选仅豁免本次打开时原 trigger 所属父 .ah-dialog 根本身；WeakMap 绑定旧 Content 生命周期，不豁免父内输入、新 dialog 根或外部 summary。修后新 9 + 原 Select 3 + FormDialog 9 共 21 过，类型/lint/独立 CR 过；未修改真实 E2E、计时等待或第三方 FocusScope。重建 UI dist 后最终聚合正在运行；尚未发布，精确浏览器回归仍待。创建项目视觉改造暂停，优先清除此共享回归。
+
+20:34 UTC：冻结两文件哈希仍匹配，重新构建 UI dist 后 web/UI 最终聚合 133 文件 / 1460 测试全过（198.53 秒）。全仓构建正在运行；此结果不是新浏览器回焦已恢复的证据。
+
+20:34 UTC：全仓构建通过，冻结哈希复核匹配。eb72 完整视觉另确认 170 过 / 8 失败，均为相同 Prompt 绑定关闭回焦（geometry 140 过），不是新候选验证。准备将最小窄修送精确 CI；不改原浏览器门禁。

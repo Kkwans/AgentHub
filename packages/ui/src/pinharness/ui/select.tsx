@@ -62,6 +62,8 @@ export function Select({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const ownerDialogs = useRef(new WeakMap<HTMLElement, HTMLElement | null>());
   const hasEmptyOption = options.some((option) => option.value === '');
   const optionsWithClear =
     clearable && value && !hasEmptyOption
@@ -101,6 +103,7 @@ export function Select({
       {...(disabled === undefined ? {} : { disabled })}
     >
       <RadixSelect.Trigger
+        ref={triggerRef}
         id={id}
         aria-label={ariaLabel}
         aria-describedby={describedBy ?? ariaDescribedBy}
@@ -118,6 +121,14 @@ export function Select({
       </RadixSelect.Trigger>
       <RadixSelect.Portal>
         <RadixSelect.Content
+          ref={(content) => {
+            if (content && !ownerDialogs.current.has(content)) {
+              ownerDialogs.current.set(
+                content,
+                triggerRef.current?.closest<HTMLElement>('.ah-dialog[role="dialog"]') ?? null,
+              );
+            }
+          }}
           onCloseAutoFocus={(event) => {
             // Radix dispatches this after unmount. The event target belongs to
             // this closing lifetime, not a newly opened Select or dialog.
@@ -127,6 +138,9 @@ export function Select({
             if (
               active instanceof HTMLElement &&
               active !== content.ownerDocument.body &&
+              // A parent FormDialog may automatically focus its own root when
+              // removed children leave focus on body. This is not a new control intent.
+              active !== ownerDialogs.current.get(content) &&
               active.isConnected &&
               !content.contains(active)
             ) {
