@@ -180,13 +180,18 @@ for (const theme of ['light', 'dark']) {
     });
     await composer(page).fill('失败也保留草稿');
     await olderClick(page);
-    await expect(page.getByText('历史页读取暂不可用', { exact: false })).toBeVisible();
+    // Unknown backend codes intentionally use the client's safe message, not raw server text.
+    const historyError = page
+      .getByRole('log')
+      .getByText('请求失败，请查看设置中的诊断信息。', { exact: true });
+    await expect(historyError).toBeVisible();
+    await expect(page.getByText('历史页读取暂不可用', { exact: true })).toHaveCount(0);
     await expect(composer(page)).toHaveValue('失败也保留草稿');
     const failures = requested;
     failing = false;
     await olderClick(page);
     await expect.poll(() => requested).toBeGreaterThan(failures);
-    await expect(page.getByText('历史页读取暂不可用', { exact: false })).toBeHidden();
+    await expect(historyError).toBeHidden();
     await expect
       .poll(() => page.locator('.conversation-scroll').evaluate((node) => node.scrollTop))
       .toBeGreaterThan(0);
