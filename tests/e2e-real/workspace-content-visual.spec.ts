@@ -318,7 +318,7 @@ for (const width of [390, 768, 1024, 1440]) {
         page,
         info,
         'diff',
-        diffRegion.getByText('文件 Diff', { exact: true }),
+        diffRegion.getByRole('group', { name: '文件 Diff 显示选项' }),
         diffRegion,
       );
       await showInspector(page, width, 'changes');

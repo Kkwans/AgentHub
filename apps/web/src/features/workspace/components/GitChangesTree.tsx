@@ -247,6 +247,39 @@ export function GitChangesTree({
     if (nextView === 'branches') void branches.refetch();
   };
 
+  const diffControls = (
+    <>
+      <label className="git-diff-toggle">
+        <input
+          type="checkbox"
+          checked={stagedDiff}
+          onChange={(event) => onStagedDiffChange(event.target.checked)}
+        />
+        staged
+      </label>
+      <label className="git-whitespace-select">
+        <span>空白</span>
+        <Select
+          ariaLabel="Diff 空白处理"
+          value={whitespace}
+          onValueChange={(value) =>
+            onWhitespaceChange(
+              value as
+                'default' | 'ignore-all-space' | 'ignore-space-change' | 'ignore-blank-lines',
+            )
+          }
+          options={[
+            { value: 'default', label: '保留' },
+            { value: 'ignore-all-space', label: '忽略全部' },
+            { value: 'ignore-space-change', label: '忽略变化' },
+            { value: 'ignore-blank-lines', label: '忽略空行' },
+          ]}
+          className="git-diff-select"
+        />
+      </label>
+    </>
+  );
+
   return (
     <div className="git-inspector">
       <div className="git-summary">
@@ -543,48 +576,22 @@ export function GitChangesTree({
                     </code>
                   </div>
                 </div>
-                <div className="git-diff-toolbar">
-                  <label className="git-diff-toggle">
-                    <input
-                      type="checkbox"
-                      checked={stagedDiff}
-                      onChange={(event) => onStagedDiffChange(event.target.checked)}
-                    />
-                    staged
-                  </label>
-                  <label className="git-whitespace-select">
-                    <span>空白</span>
-                    <Select
-                      ariaLabel="Diff 空白处理"
-                      value={whitespace}
-                      onValueChange={(value) =>
-                        onWhitespaceChange(
-                          value as
-                            | 'default'
-                            | 'ignore-all-space'
-                            | 'ignore-space-change'
-                            | 'ignore-blank-lines',
-                        )
-                      }
-                      options={[
-                        { value: 'default', label: '保留' },
-                        { value: 'ignore-all-space', label: '忽略全部' },
-                        { value: 'ignore-space-change', label: '忽略变化' },
-                        { value: 'ignore-blank-lines', label: '忽略空行' },
-                      ]}
-                      className="git-diff-select"
-                    />
-                  </label>
-                </div>
                 {diff.isLoading ? (
-                  <LoadingState label="正在读取 Diff" />
+                  <div className="git-diff-editor git-diff-feedback">
+                    <div className="git-diff-editor-toolbar">{diffControls}</div>
+                    <LoadingState label="正在读取 Diff" />
+                  </div>
                 ) : diff.error ? (
-                  <ErrorState error={diff.error} retry={() => diff.refetch()} />
+                  <div className="git-diff-editor git-diff-feedback">
+                    <div className="git-diff-editor-toolbar">{diffControls}</div>
+                    <ErrorState error={diff.error} retry={() => diff.refetch()} />
+                  </div>
                 ) : (
                   <DiffViewer
                     patch={diff.data?.patch ?? ''}
                     truncated={Boolean(diff.data?.truncated)}
                     path={selectedPath}
+                    toolbarControls={diffControls}
                   />
                 )}
               </section>

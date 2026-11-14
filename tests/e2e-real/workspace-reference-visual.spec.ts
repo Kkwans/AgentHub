@@ -229,6 +229,57 @@ for (const width of [390, 768, 1024, 1440]) {
       await page.getByRole('button', { name: '查看 runner.ts Diff', exact: true }).click();
       const review = page.getByRole('region', { name: '已选择 runner.ts 的 Diff', exact: true });
       await expect(review).toBeVisible({ timeout: 30_000 });
+      const options = review.getByRole('group', { name: '文件 Diff 显示选项' });
+      await expect(options).toHaveCount(1);
+      await expect(review.locator(':scope > .git-diff-toolbar')).toHaveCount(0);
+      await expect(review.locator('.git-selected-diff-heading code')).toHaveText('runner.ts');
+      const controls = [
+        options.locator('label').filter({ has: options.getByRole('checkbox', { name: 'staged' }) }),
+        options.getByRole('combobox', { name: 'Diff 空白处理' }),
+        options.getByRole('button', { name: '切换为分栏 Diff' }),
+      ];
+      const controlsGeometry = [];
+      for (const control of controls) {
+        const box = (await control.boundingBox())!;
+        expect(box.height).toBeGreaterThanOrEqual(43.99);
+        expect(box.width).toBeGreaterThanOrEqual(43.99);
+        controlsGeometry.push(box);
+      }
+      for (let i = 0; i < controlsGeometry.length; i++)
+        for (let j = i + 1; j < controlsGeometry.length; j++) {
+          const a = controlsGeometry[i]!,
+            b = controlsGeometry[j]!;
+          expect(
+            a.x + a.width <= b.x + 1 ||
+              b.x + b.width <= a.x + 1 ||
+              a.y + a.height <= b.y + 1 ||
+              b.y + b.height <= a.y + 1,
+          ).toBe(true);
+        }
+      const surfaceGeometry = await review.evaluate((element) => {
+        const surface = element.getBoundingClientRect();
+        const inspector = element.closest('.git-inspector')!.getBoundingClientRect();
+        const css = getComputedStyle(element);
+        return {
+          surfaceWidth: surface.width,
+          inspectorWidth: inspector.width,
+          insetLeft: surface.left - inspector.left,
+          insetRight: inspector.right - surface.right,
+          paddingLeft: css.paddingLeft,
+          paddingRight: css.paddingRight,
+          controls: element.querySelectorAll('.git-diff-editor-toolbar').length,
+        };
+      });
+      expect(Math.abs(surfaceGeometry.insetLeft)).toBeLessThanOrEqual(1);
+      expect(Math.abs(surfaceGeometry.insetRight)).toBeLessThanOrEqual(1);
+      expect(surfaceGeometry.paddingLeft).toBe('0px');
+      expect(surfaceGeometry.paddingRight).toBe('0px');
+      expect(surfaceGeometry.controls).toBe(1);
+      await info.attach('reference-review-surface-geometry', {
+        body: JSON.stringify({ surfaceGeometry, controlsGeometry }),
+        contentType: 'application/json',
+      });
+
       // Monaco also gives its non-code gutter a .monaco-editor class. Assert
       // the real modified code layer, not whichever shared-class node comes first.
       const modified = review.locator('.git-diff-editor .editor.modified');

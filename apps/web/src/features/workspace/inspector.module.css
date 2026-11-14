@@ -1081,8 +1081,11 @@
 }
 
 :global(.workspace) :global(.git-diff-editor-toolbar) {
-  margin-bottom: 6px;
-  padding: 0 2px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  min-height: 44px;
+  margin-bottom: 0;
+  padding: 4px 12px;
   color: var(--ah-text-tertiary);
   font-size: 12px;
 }
@@ -1248,4 +1251,23 @@
     overflow-y: auto;
     align-content: start;
   }
+}
+
+/* Embedded review uses one options row and a full-width code surface. */
+:global(.workspace) :global(.git-selected-diff .git-diff-editor-toolbar button) {
+  min-width: 44px;
+  min-height: 44px;
+}
+:global(.workspace) :global(.git-selected-diff .git-diff-toggle),
+:global(.workspace) :global(.git-selected-diff .git-whitespace-select),
+:global(.workspace) :global(.git-selected-diff .git-diff-select) {
+  min-height: 44px;
+}
+
+:global(.workspace) :global(.git-selected-diff .git-diff-mode-toggle) {
+  margin-left: auto;
+}
+:global(.workspace) :global(.git-selected-diff .git-diff-feedback) {
+  grid-template-rows: auto 1fr;
+  align-content: start;
 }

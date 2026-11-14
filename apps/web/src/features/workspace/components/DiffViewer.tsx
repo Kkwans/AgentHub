@@ -1,5 +1,5 @@
 import { AgentHubThemeContext } from '@agenthub/ui';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import { SafeDiffEditor } from '../../../components/SafeDiffEditor';
@@ -9,10 +9,12 @@ export function DiffViewer({
   patch,
   truncated,
   path,
+  toolbarControls,
 }: {
   patch: string;
   truncated: boolean;
   path?: string | undefined;
+  toolbarControls?: ReactNode;
 }) {
   const theme = useContext(AgentHubThemeContext);
   const [readyLanguage, setReadyLanguage] = useState<string>();
@@ -42,7 +44,16 @@ export function DiffViewer({
     };
   }, [binary, language, patch]);
 
-  if (!patch) return <EmptyState title="没有 Diff" description="当前范围没有可显示的内容。" />;
+  const controlsOnly = toolbarControls ? (
+    <div className="git-diff-editor-toolbar">{toolbarControls}</div>
+  ) : null;
+  if (!patch)
+    return (
+      <div className="git-diff-editor git-diff-feedback">
+        {controlsOnly}
+        <EmptyState title="没有 Diff" description="当前范围没有可显示的内容。" />
+      </div>
+    );
   if (binary) {
     return (
       <div
@@ -50,7 +61,8 @@ export function DiffViewer({
         data-truncated={truncated ? 'true' : 'false'}
       >
         <div className="git-diff-editor-toolbar">
-          <span>文件 Diff</span>
+          {toolbarControls}
+          <span className={toolbarControls ? 'sr-only' : undefined}>文件 Diff</span>
           <span>二进制</span>
         </div>
         <div className="git-diff-warning" role="status">
@@ -61,15 +73,28 @@ export function DiffViewer({
     );
   }
   if (languageError?.language === language)
-    return <ErrorState title="Diff 语法加载失败，请刷新后重试" error={languageError.error} />;
-  if (readyLanguage !== language) return <LoadingState label="正在准备 Diff 预览" />;
+    return (
+      <div className="git-diff-editor git-diff-feedback">
+        {controlsOnly}
+        <ErrorState title="Diff 语法加载失败，请刷新后重试" error={languageError.error} />
+      </div>
+    );
+  if (readyLanguage !== language)
+    return (
+      <div className="git-diff-editor git-diff-feedback">
+        {controlsOnly}
+        <LoadingState label="正在准备 Diff 预览" />
+      </div>
+    );
   return (
     <div className="git-diff-editor" data-truncated={truncated ? 'true' : 'false'}>
-      <div className="git-diff-editor-toolbar">
-        <span>文件 Diff</span>
-        <small>{language === 'plaintext' ? '纯文本' : language}</small>
+      <div className="git-diff-editor-toolbar" role="group" aria-label="文件 Diff 显示选项">
+        {toolbarControls}
+        <span className={toolbarControls ? 'sr-only' : undefined}>文件 Diff</span>
+        {!toolbarControls ? <small>{language === 'plaintext' ? '纯文本' : language}</small> : null}
         <button
           type="button"
+          className="git-diff-mode-toggle"
           aria-pressed={sideBySide}
           aria-label={sideBySide ? '切换为统一 Diff' : '切换为分栏 Diff'}
           onClick={() => setSideBySide((current) => !current)}
