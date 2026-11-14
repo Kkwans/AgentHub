@@ -215,6 +215,10 @@ it('unknown跨路由remount仍锁定原任务并提供独立只读核对，不�
   vi.mocked(api.post).mockRejectedValue(new Error('network uncertain'));
   await rework();
   await screen.findByText('工作操作结果待核对');
+  expect(
+    screen.getByRole('complementary', { name: '工作 Inspector' }).parentElement,
+  ).toHaveAttribute('data-layout', 'task-review');
+  expect(screen.getByRole('textbox', { name: '继续修改说明' })).toHaveValue('修正边界');
   fireEvent.click(screen.getByRole('link', { name: '离开工作页' }));
   await screen.findByRole('heading', { name: '其他页面' });
   fireEvent.click(screen.getByRole('button', { name: '核对原操作' }));
@@ -225,7 +229,11 @@ it('unknown跨路由remount仍锁定原任务并提供独立只读核对，不�
   );
   expect(screen.getByRole('button', { name: '提交继续修改' })).toBeDisabled();
   expect(screen.getByRole('button', { name: '核对原操作' })).toBeEnabled();
+  expect(
+    screen.getByRole('complementary', { name: '工作 Inspector' }).parentElement,
+  ).toHaveAttribute('data-layout', 'task-review');
   expect(api.post).toHaveBeenCalledTimes(1);
+  expect(api.patch).not.toHaveBeenCalled();
 });
 it('身份切换清空旧结果，旧用户晚响应不得向新用户交付链接', async () => {
   const h = mount();
@@ -637,18 +645,23 @@ it('平板同页URL切到看板后隐藏编辑器焦点移到可见列表切换�
   }
 });
 
-it.each(['task', 'worktree'] as const)('只有 Worktree 审阅进入主阅读布局：%s', async (kind) => {
-  mount(kind);
-  const inspector = await screen.findByRole('complementary', { name: '工作 Inspector' });
-  await screen.findByRole('button', {
-    name: kind === 'worktree' ? '读取隔离工作区审阅' : '确认达到验收标准',
-  });
-  expect(inspector.parentElement).toHaveAttribute(
-    'data-layout',
-    kind === 'worktree' ? 'worktree-review' : 'work-list',
-  );
-  expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
-});
+it.each(['task', 'worktree'] as const)(
+  '宽屏普通任务和 Worktree 审阅均进入各自主阅读布局，不自动提交：%s',
+  async (kind) => {
+    mount(kind);
+    const inspector = await screen.findByRole('complementary', { name: '工作 Inspector' });
+    await screen.findByRole('button', {
+      name: kind === 'worktree' ? '读取隔离工作区审阅' : '确认达到验收标准',
+    });
+    expect(inspector.parentElement).toHaveAttribute(
+      'data-layout',
+      kind === 'worktree' ? 'worktree-review' : 'task-review',
+    );
+    expect(screen.getByRole('region', { name: '工作列表' })).toBeVisible();
+    expect(api.post).not.toHaveBeenCalled();
+    expect(api.patch).not.toHaveBeenCalled();
+  },
+);
 
 it('MERGING缓存与失败刷新交错不能丢失原合并的只读核对入口', async () => {
   const h = mount('worktree');
