@@ -9,6 +9,7 @@ interface WebSocketRoute {
 }
 
 export class WebSocketUpgradeRouter {
+  private closed = false;
   private readonly routes = new Map<string, WebSocketRoute>();
   private readonly handle = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     void this.handleUpgrade(request, socket, head);
@@ -26,6 +27,7 @@ export class WebSocketUpgradeRouter {
       onConnection(socket: WebSocket, request: IncomingMessage): void;
     },
   ): WebSocketServer {
+    if (this.closed) throw new Error('WebSocket 路由已关闭');
     if (this.routes.has(path)) throw new Error(`WebSocket path 已注册：${path}`);
     const server = new WebSocketServer({ noServer: true, maxPayload: options.maxPayload });
     server.on('connection', options.onConnection);
@@ -34,6 +36,7 @@ export class WebSocketUpgradeRouter {
   }
 
   close(): void {
+    this.closed = true;
     this.httpServer.off('upgrade', this.handle);
     this.routes.clear();
   }
@@ -65,6 +68,10 @@ export class WebSocketUpgradeRouter {
         rejectUpgrade(socket, 401, 'Unauthorized');
         return;
       }
+    }
+    if (this.closed) {
+      rejectUpgrade(socket, 503, 'Service Unavailable');
+      return;
     }
     route.server.handleUpgrade(request, socket, head, (websocket) => {
       route.server.emit('connection', websocket, request);

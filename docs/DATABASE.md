@@ -6,6 +6,15 @@
 - 外部：设置 `DATABASE_URL` 后使用 PostgreSQL。
 - 两种模式共享 Drizzle schema、migration 与 repository/service 边界。
 
+## 运行实例排他
+
+同一数据库只允许一个活跃 AgentHub runtime。第二实例在 migration 与启动恢复前被拒绝；这不限制浏览器、用户、Agent 或任务数量。
+
+- PostgreSQL 使用专用连接持有数据库级 advisory lock，不支持绕过协议的旧版本进程共同运行。
+- PGlite 持久目录当前支持 Linux 本地文件系统，需要 `/usr/bin/flock`（util-linux）及数据目录父目录写权限。锁文件位于数据目录相邻位置，必须保留，不能手工删除或替换。网络文件系统和其他操作系统未提供同等保证，拒绝不支持的模式而非假定安全。
+- 停服先撤销准入并等待在途操作；无法确认退出则保留健康归属，服务维持不可用，不能启动第二实例恢复或自动重试 UNKNOWN。
+- 数据库连接失效不等于外部 Agent 已停止，本功能不是网络分区下的外部进程 fencing 或自动接管方案。
+
 ## 关键不变量
 
 - Prompt Version 创建后不可更新；变更内容只能创建新版本。

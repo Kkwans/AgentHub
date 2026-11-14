@@ -31,6 +31,7 @@ interface TerminalRecord {
 }
 
 export class TerminalService {
+  private accepting = true;
   private module: PtyModule | undefined;
   private capability: TerminalCapability | undefined;
   private readonly terminals = new Map<string, TerminalRecord>();
@@ -73,6 +74,7 @@ export class TerminalService {
     cols?: number;
     rows?: number;
   }) {
+    this.assertAdmission();
     await this.requireAvailable();
     const project = await this.projects.get(input.projectId);
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
@@ -80,6 +82,8 @@ export class TerminalService {
     const shell = input.shell ?? defaultShell();
     await validateShell(shell);
     const id = randomUUID();
+    // Validation can outlive shutdown; no await may separate this gate from spawn.
+    this.assertAdmission();
     const terminal = this.module!.spawn(shell, [], {
       name: 'xterm-256color',
       cols: input.cols ?? 120,
@@ -149,6 +153,7 @@ export class TerminalService {
   }
 
   async shutdown(): Promise<void> {
+    this.accepting = false;
     for (const terminal of this.terminals.values()) {
       this.publisher.publish(`terminal:${terminal.id}`, {
         type: 'terminal.closed',
@@ -158,6 +163,11 @@ export class TerminalService {
       terminal.process.kill();
     }
     this.terminals.clear();
+  }
+
+  private assertAdmission(): void {
+    if (!this.accepting)
+      throw new AppError(503, 'TERMINAL_SERVICE_STOPPING', '服务正在停止，不能创建新的终端。');
   }
 
   private async requireAvailable(): Promise<void> {

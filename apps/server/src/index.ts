@@ -1,3 +1,6 @@
+import { createShutdownHandler } from './shutdown-handler.js';
+import { RuntimeOperations } from './runtime-operations.js';
+import { RuntimeLifecycle } from './runtime-lifecycle.js';
 import { initializeManagedGitRuntime } from './git/managed-git-runtime.js';
 import { recoverRuntimeAfterRestart } from './startup-recovery.js';
 import { logRedaction } from './log-redaction.js';
@@ -138,272 +141,322 @@ export async function startServer(
   const database = await createDatabase({
     databaseUrl: environment.DATABASE_URL,
     dataDir: environment.AGENTHUB_DATA_DIR,
+    runtimeOwnership: true,
   });
-  const apiTokenRepository = new ApiTokenRepository(database.db);
-  const localAuthRepository = new LocalAuthRepository(database.db);
-  const auth = new AuthService(
-    apiTokenRepository,
-    localAuthRepository,
-    authMode,
-    environment.AGENTHUB_BOOTSTRAP_TOKEN,
-    environment.AGENTHUB_SECURE_TRANSPORT === 'true',
-  );
+  let lifecycle: RuntimeLifecycle;
   try {
-    await auth.assertConfigured();
+    lifecycle = new RuntimeLifecycle(database, () =>
+      logger.error('运行实例归属失效，服务已停止接受操作；清理失败需人工核对'),
+    );
   } catch (error) {
     await database.close();
     throw error;
   }
-  const eventRepository = new EventRepository(database.db);
-  const executionTargetRepository = new ExecutionTargetRepository(database.db);
-  const brokerRef: { current?: TopicBroker } = {};
-  const server = createServer();
-  const upgradeRouter = new WebSocketUpgradeRouter(server);
-  const agentRepository = new AgentRepository(database.db);
-  const projectRepository = new ProjectRepository(database.db);
-  const sessionRepository = new SessionRepository(database.db);
-  const sessionContinuationRepository = new SessionContinuationRepository(database.db);
-  const runRepository = new RunRepository(database.db);
-  const messageRepository = new MessageRepository(database.db);
-  const approvalRepository = new ApprovalRepository(database.db);
-  const gitSnapshotRepository = new GitSnapshotRepository(database.db);
-  const promptRepository = new PromptRepository(database.db);
-  const skillRepository = new SkillRepository(database.db);
-  const goalRepository = new GoalRepository(database.db);
-  const taskRepository = new TaskRepository(database.db);
-  const taskStartAttempts = new TaskStartAttemptRepository(database.db);
-  const worktreeExecutionRepository = new WorktreeExecutionRepository(database.db);
-  const remoteNodeRepository = new RemoteNodeRepository(database.db);
-  const remoteNodes = new RemoteNodeService(remoteNodeRepository, {
-    publish: (topic, event) => brokerRef.current?.publish(topic, event),
-  });
-  const remoteNodeGateway = new RemoteNodeGateway(upgradeRouter, remoteNodes);
-  const remoteNodeOperations = new RemoteNodeOperations(remoteNodeRepository, remoteNodeGateway);
-  const remoteAgentAdapter = new RemoteAgentAdapter(remoteNodeGateway);
-  const docker = new DockerControlService(undefined, executionTargetRepository);
-  const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
-  const workspaceRoots = resolveWorkspaceRoots(environment);
-  const projects = new ProjectService(
-    projectRepository,
-    executionTargetRepository,
-    remoteNodeOperations,
-    workspaceRoots,
-  );
-  const runtimeDiscovery = new RuntimeDiscoveryService(
-    executionTargetRepository,
-    executionTargets,
-    {
-      workspaceRoots,
-    },
-  );
-  const filesystem = new FilesystemService(
-    executionTargetRepository,
-    workspaceRoots,
-    remoteNodeOperations,
-  );
-  const managedGitRuntime = await initializeManagedGitRuntime(
-    {
-      db: database.db,
-      projects: projectRepository,
-      targets: executionTargetRepository,
-    },
-    (code) => logger.warn({ code }, '托管 Git 写入已隔离，只读恢复仍可用'),
-  );
-  const git = new GitService(
-    projectRepository,
-    gitSnapshotRepository,
-    executionTargetRepository,
-    new GitCommitOperationRepository(database.db),
-    managedGitRuntime,
-  );
-  const terminal = new TerminalService(projectRepository, {
-    publish: (topic, event) => brokerRef.current?.publish(topic, event),
-  });
-  const promptos = new PromptService(promptRepository, skillRepository, projectRepository);
-  const resolveEnvironment = async () => ({ ...process.env, ...environment });
-  const resolveHostAgentEnvironment = async (profile: AgentProfile) => {
-    const resolved = await resolveEnvironment();
-    const proxy = environment.AGENTHUB_CODEX_PROXY_URL?.trim();
-    if (profile.agentKind !== 'CODEX' || !proxy) return resolved;
-    // Keep the NAS egress proxy scoped to the Codex ACP child. OpenClaw,
-    // server-side requests, and unrelated host Agents retain their own env.
-    return {
-      ...resolved,
-      CODEX_CONFIG: createCodexHttpProviderConfig(proxy),
-      HTTP_PROXY: proxy,
-      HTTPS_PROXY: proxy,
-      ALL_PROXY: proxy,
-      http_proxy: proxy,
-      https_proxy: proxy,
-      all_proxy: proxy,
-    };
-  };
-  const hostAgentIdentity = resolveHostAgentIdentity(environment);
-  const acpLauncher = new RoutedAcpProcessLauncher(
-    new HostAcpProcessLauncher({
-      resolveEnvironment: resolveHostAgentEnvironment,
-      ...(hostAgentIdentity ? { runAs: hostAgentIdentity } : {}),
-    }),
-    new DockerAcpProcessLauncher(docker),
-  );
-  const openClawExec = new DockerOpenClawExecLauncher(docker);
-  const preferOpenClawExec =
-    environment.AGENTHUB_OPENCLAW_TRANSPORT?.trim().toLowerCase() === 'exec';
-  const agents = new AgentService(
-    agentRepository,
-    executionTargetRepository,
-    acpLauncher,
-    (adapterKind, launcher) => {
-      const primary = new AcpAdapter({
-        launcher,
-        promptTimeoutMs: acpPromptTimeoutMs,
-        // OpenClaw's Gateway-backed ACP can publish an upstream error without
-        // resolving session/prompt. Keep that path bounded while retaining a
-        // longer window for local coding Agents.
-        ...(adapterKind === 'OPENCLAW_GATEWAY' ? { promptTimeoutMs: 30_000 } : {}),
+  try {
+    const apiTokenRepository = new ApiTokenRepository(database.db);
+    const localAuthRepository = new LocalAuthRepository(database.db);
+    const auth = new AuthService(
+      apiTokenRepository,
+      localAuthRepository,
+      authMode,
+      environment.AGENTHUB_BOOTSTRAP_TOKEN,
+      environment.AGENTHUB_SECURE_TRANSPORT === 'true',
+    );
+    await auth.assertConfigured();
+    lifecycle.assertHeld();
+    const eventRepository = new EventRepository(database.db);
+    const executionTargetRepository = new ExecutionTargetRepository(database.db);
+    const brokerRef: { current?: TopicBroker } = {};
+    const server = createServer();
+    const stopHttp = () =>
+      new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error && (error as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING')
+            reject(error);
+          else resolve();
+        });
+        server.closeAllConnections();
       });
-      return adapterKind === 'OPENCLAW_GATEWAY'
-        ? new OpenClawAdapter({
-            primary,
-            exec: openClawExec,
-            ...(preferOpenClawExec ? { preferExec: true } : {}),
-          })
-        : primary;
-    },
-    remoteAgentAdapter,
-    resolveEnvironment,
-  );
-  const agentDiscovery = new AgentDiscoveryService(
-    agents,
-    agentRepository,
-    runtimeDiscovery,
-    workspaceRoots,
-    remoteNodeRepository,
-  );
-  const sessions = new SessionService(
-    sessionRepository,
-    runRepository,
-    messageRepository,
-    eventRepository,
-    approvalRepository,
-    projectRepository,
-    agents,
-    { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
-    git,
-    promptos,
-    { cancelConvergenceTimeoutMs, approvalDeliveryTimeoutMs },
-    sessionContinuationRepository,
-    taskStartAttempts,
-  );
-  const tasks = new TaskService(
-    goalRepository,
-    taskRepository,
-    projectRepository,
-    sessions,
-    promptos,
-    taskStartAttempts,
-  );
-  const dataPath = environment.AGENTHUB_DATA_DIR
-    ? resolve(environment.AGENTHUB_DATA_DIR)
-    : resolve(process.cwd(), '.agenthub/data/pgdata');
-  const worktreeRoot = environment.AGENTHUB_WORKTREE_ROOT
-    ? resolve(environment.AGENTHUB_WORKTREE_ROOT)
-    : resolve(dirname(dataPath), 'worktrees');
-  const worktrees = new WorktreeTaskService(
-    worktreeExecutionRepository,
-    taskRepository,
-    projectRepository,
-    agentRepository,
-    executionTargetRepository,
-    sessions,
-    new WorktreeGitService(worktreeRoot),
-    { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
-    managedGitRuntime,
-  );
-  sessions.setTaskLifecycleObserver({
-    onRunCompleted: async (taskId, runId) => {
-      if (!(await worktrees.onRunCompleted(taskId, runId))) {
-        await tasks.onRunCompleted(taskId, runId);
-      }
-    },
-    onRunStopped: async (taskId, runId, reason) => {
-      if (!(await worktrees.onRunStopped(taskId, runId, reason))) {
-        await tasks.onRunStopped(taskId, runId);
-      }
-    },
-    onRunWaitingForInput: (taskId, runId) => worktrees.onRunWaitingForInput(taskId, runId),
-    onRunResumed: (taskId, runId) => worktrees.onRunResumed(taskId, runId),
-  });
-  const dashboard = new DashboardService(
-    sessionRepository,
-    taskRepository,
-    runRepository,
-    approvalRepository,
-    agentRepository,
-  );
-  const recovery = await recoverRuntimeAfterRestart({
-    sessions,
-    worktrees,
-    tasks,
-    runs: runRepository,
-  });
-  const app = createApp({
-    logger,
-    eventSource: eventRepository,
-    health: async () => ({ database: database.mode, web: webAvailable }),
-    executionTargets,
-    agents,
-    sessions,
-    projects,
-    git,
-    terminal,
-    promptos,
-    tasks,
-    dashboard,
-    auth,
-    worktrees,
-    remoteNodes,
-    runtimeDiscovery,
-    agentDiscovery,
-    filesystem,
-    secureTransport: environment.AGENTHUB_SECURE_TRANSPORT === 'true',
-    ...(webAvailable ? { webDist } : {}),
-  });
-  server.on('request', app);
-  const broker = new TopicBroker(upgradeRouter, eventRepository, auth);
-  brokerRef.current = broker;
-
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, host, () => {
-      server.off('error', reject);
-      resolve();
+    lifecycle.addStop(stopHttp);
+    const upgradeRouter = new WebSocketUpgradeRouter(server);
+    lifecycle.addStop(() => upgradeRouter.close());
+    const agentRepository = new AgentRepository(database.db);
+    const projectRepository = new ProjectRepository(database.db);
+    const sessionRepository = new SessionRepository(database.db);
+    const sessionContinuationRepository = new SessionContinuationRepository(database.db);
+    const runRepository = new RunRepository(database.db);
+    const messageRepository = new MessageRepository(database.db);
+    const approvalRepository = new ApprovalRepository(database.db);
+    const gitSnapshotRepository = new GitSnapshotRepository(database.db);
+    const promptRepository = new PromptRepository(database.db);
+    const skillRepository = new SkillRepository(database.db);
+    const goalRepository = new GoalRepository(database.db);
+    const taskRepository = new TaskRepository(database.db);
+    const taskStartAttempts = new TaskStartAttemptRepository(database.db);
+    const worktreeExecutionRepository = new WorktreeExecutionRepository(database.db);
+    const remoteNodeRepository = new RemoteNodeRepository(database.db);
+    const remoteNodes = new RemoteNodeService(remoteNodeRepository, {
+      publish: (topic, event) => brokerRef.current?.publish(topic, event),
     });
-  });
-  logger.info(
-    { host, port, database: database.mode, web: webAvailable, recovery },
-    'AgentHub server started',
-  );
-  worktrees.resumeQueued(recovery.worktrees.queuedProjects);
+    const remoteNodeGateway = new RemoteNodeGateway(upgradeRouter, remoteNodes);
+    lifecycle.addStop(() => remoteNodeGateway.close());
+    const remoteNodeOperations = new RemoteNodeOperations(remoteNodeRepository, remoteNodeGateway);
+    const remoteAgentAdapter = new RemoteAgentAdapter(remoteNodeGateway);
+    const docker = new DockerControlService(undefined, executionTargetRepository);
+    const executionTargets = new ExecutionTargetService(executionTargetRepository, docker);
+    const workspaceRoots = resolveWorkspaceRoots(environment);
+    const projects = new ProjectService(
+      projectRepository,
+      executionTargetRepository,
+      remoteNodeOperations,
+      workspaceRoots,
+    );
+    const runtimeDiscovery = new RuntimeDiscoveryService(
+      executionTargetRepository,
+      executionTargets,
+      {
+        workspaceRoots,
+      },
+    );
+    const filesystem = new FilesystemService(
+      executionTargetRepository,
+      workspaceRoots,
+      remoteNodeOperations,
+    );
+    const managedGitRuntime = await initializeManagedGitRuntime(
+      {
+        db: database.db,
+        projects: projectRepository,
+        targets: executionTargetRepository,
+      },
+      (code) => logger.warn({ code }, '托管 Git 写入已隔离，只读恢复仍可用'),
+    );
+    lifecycle.assertHeld();
+    const git = new GitService(
+      projectRepository,
+      gitSnapshotRepository,
+      executionTargetRepository,
+      new GitCommitOperationRepository(database.db),
+      managedGitRuntime,
+    );
+    const terminal = new TerminalService(projectRepository, {
+      publish: (topic, event) => brokerRef.current?.publish(topic, event),
+    });
+    lifecycle.addStop(() => terminal.shutdown());
+    const promptos = new PromptService(promptRepository, skillRepository, projectRepository);
+    const resolveEnvironment = async () => ({ ...process.env, ...environment });
+    const resolveHostAgentEnvironment = async (profile: AgentProfile) => {
+      const resolved = await resolveEnvironment();
+      const proxy = environment.AGENTHUB_CODEX_PROXY_URL?.trim();
+      if (profile.agentKind !== 'CODEX' || !proxy) return resolved;
+      // Keep the NAS egress proxy scoped to the Codex ACP child. OpenClaw,
+      // server-side requests, and unrelated host Agents retain their own env.
+      return {
+        ...resolved,
+        CODEX_CONFIG: createCodexHttpProviderConfig(proxy),
+        HTTP_PROXY: proxy,
+        HTTPS_PROXY: proxy,
+        ALL_PROXY: proxy,
+        http_proxy: proxy,
+        https_proxy: proxy,
+        all_proxy: proxy,
+      };
+    };
+    const hostAgentIdentity = resolveHostAgentIdentity(environment);
+    const acpLauncher = new RoutedAcpProcessLauncher(
+      new HostAcpProcessLauncher({
+        resolveEnvironment: resolveHostAgentEnvironment,
+        ...(hostAgentIdentity ? { runAs: hostAgentIdentity } : {}),
+      }),
+      new DockerAcpProcessLauncher(docker),
+    );
+    const openClawExec = new DockerOpenClawExecLauncher(docker);
+    const preferOpenClawExec =
+      environment.AGENTHUB_OPENCLAW_TRANSPORT?.trim().toLowerCase() === 'exec';
+    const agents = new AgentService(
+      agentRepository,
+      executionTargetRepository,
+      acpLauncher,
+      (adapterKind, launcher) => {
+        const primary = new AcpAdapter({
+          launcher,
+          promptTimeoutMs: acpPromptTimeoutMs,
+          // OpenClaw's Gateway-backed ACP can publish an upstream error without
+          // resolving session/prompt. Keep that path bounded while retaining a
+          // longer window for local coding Agents.
+          ...(adapterKind === 'OPENCLAW_GATEWAY' ? { promptTimeoutMs: 30_000 } : {}),
+        });
+        return adapterKind === 'OPENCLAW_GATEWAY'
+          ? new OpenClawAdapter({
+              primary,
+              exec: openClawExec,
+              ...(preferOpenClawExec ? { preferExec: true } : {}),
+            })
+          : primary;
+      },
+      remoteAgentAdapter,
+      resolveEnvironment,
+    );
+    const agentDiscovery = new AgentDiscoveryService(
+      agents,
+      agentRepository,
+      runtimeDiscovery,
+      workspaceRoots,
+      remoteNodeRepository,
+    );
+    const sessions = new SessionService(
+      sessionRepository,
+      runRepository,
+      messageRepository,
+      eventRepository,
+      approvalRepository,
+      projectRepository,
+      agents,
+      { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
+      git,
+      promptos,
+      { cancelConvergenceTimeoutMs, approvalDeliveryTimeoutMs },
+      sessionContinuationRepository,
+      taskStartAttempts,
+    );
+    lifecycle.addStop(() => sessions.shutdown());
+    const tasks = new TaskService(
+      goalRepository,
+      taskRepository,
+      projectRepository,
+      sessions,
+      promptos,
+      taskStartAttempts,
+    );
+    const dataPath = environment.AGENTHUB_DATA_DIR
+      ? resolve(environment.AGENTHUB_DATA_DIR)
+      : resolve(process.cwd(), '.agenthub/data/pgdata');
+    const worktreeRoot = environment.AGENTHUB_WORKTREE_ROOT
+      ? resolve(environment.AGENTHUB_WORKTREE_ROOT)
+      : resolve(dirname(dataPath), 'worktrees');
+    const worktrees = new WorktreeTaskService(
+      worktreeExecutionRepository,
+      taskRepository,
+      projectRepository,
+      agentRepository,
+      executionTargetRepository,
+      sessions,
+      new WorktreeGitService(worktreeRoot),
+      { publish: (topic, event) => brokerRef.current?.publish(topic, event) },
+      managedGitRuntime,
+    );
+    lifecycle.addStop(() => worktrees.shutdown());
+    lifecycle.assertHeld();
+    sessions.setTaskLifecycleObserver({
+      onRunCompleted: async (taskId, runId) => {
+        if (!(await worktrees.onRunCompleted(taskId, runId))) {
+          await tasks.onRunCompleted(taskId, runId);
+        }
+      },
+      onRunStopped: async (taskId, runId, reason) => {
+        if (!(await worktrees.onRunStopped(taskId, runId, reason))) {
+          await tasks.onRunStopped(taskId, runId);
+        }
+      },
+      onRunWaitingForInput: (taskId, runId) => worktrees.onRunWaitingForInput(taskId, runId),
+      onRunResumed: (taskId, runId) => worktrees.onRunResumed(taskId, runId),
+    });
+    const dashboard = new DashboardService(
+      sessionRepository,
+      taskRepository,
+      runRepository,
+      approvalRepository,
+      agentRepository,
+    );
+    const recovery = await recoverRuntimeAfterRestart({
+      sessions,
+      worktrees,
+      tasks,
+      runs: runRepository,
+    });
+    lifecycle.assertHeld();
+    const operations = new RuntimeOperations(() => lifecycle.assertHeld());
+    lifecycle.addStop(() => operations.close());
+    const app = createApp({
+      runtimeOperations: operations,
+      logger,
+      eventSource: operations.wrap(eventRepository),
+      health: operations.wrapFunction(async () => ({ database: database.mode, web: webAvailable })),
+      executionTargets: operations.wrap(executionTargets),
+      agents: operations.wrap(agents),
+      sessions: operations.wrap(sessions),
+      projects: operations.wrap(projects),
+      git: operations.wrap(git),
+      terminal: operations.wrap(terminal),
+      promptos: operations.wrap(promptos),
+      tasks: operations.wrap(tasks),
+      dashboard: operations.wrap(dashboard),
+      auth: operations.wrap(auth),
+      worktrees: operations.wrap(worktrees),
+      remoteNodes: operations.wrap(remoteNodes),
+      runtimeDiscovery: operations.wrap(runtimeDiscovery),
+      agentDiscovery: operations.wrap(agentDiscovery),
+      filesystem: operations.wrap(filesystem),
+      secureTransport: environment.AGENTHUB_SECURE_TRANSPORT === 'true',
+      ...(webAvailable ? { webDist } : {}),
+    });
+    server.on('request', (request, response) => {
+      try {
+        lifecycle.assertHeld();
+      } catch {
+        response.writeHead(503, { 'content-type': 'application/json', connection: 'close' });
+        response.end(
+          JSON.stringify({
+            error: {
+              code: 'RUNTIME_STOPPING',
+              message: '服务正在停止，请核对原操作，不要重复提交。',
+            },
+          }),
+        );
+        return;
+      }
+      app(request, response);
+    });
+    const broker = new TopicBroker(upgradeRouter, eventRepository, auth);
+    brokerRef.current = broker;
+    lifecycle.addStop(() => broker.close());
+    lifecycle.assertHeld();
 
-  return {
-    server,
-    broker,
-    database,
-    remoteNodes: remoteNodeGateway,
-    close: async () => {
-      await terminal.shutdown();
-      await worktrees.shutdown();
-      await sessions.shutdown();
-      await remoteNodeGateway.close();
-      await broker.close();
-      upgradeRouter.close();
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => (error ? reject(error) : resolve()));
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(port, host, () => {
+        server.off('error', reject);
+        resolve();
       });
-      await database.close();
-    },
-  };
+    });
+    try {
+      lifecycle.assertHeld();
+    } catch (error) {
+      // listen may finish after an ownership-loss shutdown began during DNS/bind.
+      await stopHttp();
+      throw error;
+    }
+    logger.info(
+      { host, port, database: database.mode, web: webAvailable, recovery },
+      'AgentHub server started',
+    );
+    worktrees.resumeQueued(recovery.worktrees.queuedProjects);
+
+    return {
+      server,
+      broker,
+      database,
+      remoteNodes: remoteNodeGateway,
+      close: () => lifecycle.close(),
+    };
+  } catch (error) {
+    try {
+      await lifecycle.close();
+    } catch {
+      logger.error('启动失败后的资源清理未完成，请人工核对原实例');
+    }
+    throw error;
+  }
 }
 
 function resolveHostAgentIdentity(
@@ -457,11 +510,19 @@ function resolveWorkspaceRoots(environment: NodeJS.ProcessEnv): string[] {
 
 async function main(): Promise<void> {
   const running = await startServer();
-  const shutdown = () => {
-    void running.close().finally(() => process.exit(0));
-  };
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
+  const shutdown = createShutdownHandler(
+    () => running.close(),
+    () => process.exit(0),
+    () => {
+      console.error('服务清理尚未确认，保留运行归属并停止接单；请人工核对原操作。');
+      process.exitCode = 1;
+      // A file descriptor alone does not keep Node alive. Stay unavailable until
+      // an operator has verified the external resources, rather than auto-release.
+      setInterval(() => {}, 60_000);
+    },
+  );
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 const entrypoint = process.argv[1];

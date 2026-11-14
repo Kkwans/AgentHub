@@ -9,3 +9,7 @@ export * from './git-commit-operation-repository.js';
 export * from './git-coordination-domain.js';
 
 export * from './worktree-merge-operation.js';
+
+export * from './runtime-ownership.js';
+
+export * from './pglite-runtime-ownership.js';

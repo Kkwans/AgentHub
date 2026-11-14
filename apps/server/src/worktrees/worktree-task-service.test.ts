@@ -48,7 +48,7 @@ describe('Worktree Task Runner 编排', () => {
     executions = new WorktreeExecutionRepository(database.db);
     // These services share one application boot, before any task starts. Building
     // another runtime after the UNKNOWN cases below would correctly deny startup.
-    for (let index = 0; index < 5; index++) {
+    for (let index = 0; index < 6; index++) {
       bootRuntimes.push(
         await createManagedGitRuntime(
           { db: database.db, projects, targets },
@@ -72,6 +72,125 @@ describe('Worktree Task Runner 编排', () => {
   });
 
   afterAll(async () => database.close());
+
+  it.each(['project', 'claim'] as const)(
+    '停服等待%s屏障中的合并并拒绝迟到Git调用',
+    async (stage) => {
+      const fixture = await seedFixture(`merge-stop-${stage}`);
+      const task = await tasks.create({
+        id: randomUUID(),
+        projectId: fixture.projectId,
+        title: '停止前合并',
+        status: 'READY',
+      });
+      const runtime = createRuntime(database);
+      const service = createService(runtime);
+      const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+      await service.processQueue(fixture.projectId);
+      const running = await waitForStatus(queued.execution.id, 'RUNNING');
+      await complete(service, task.id, running.runId!);
+      let proceed!: () => void;
+      let reached!: () => void;
+      const barrier = new Promise<void>((resolve) => {
+        proceed = resolve;
+      });
+      const entered = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
+      const git = vi.spyOn(runtime.git, 'commitAndMerge');
+      const originalProject = projects.get.bind(projects);
+      const originalClaim = executions.claimReviewForMerge.bind(executions);
+      const pause =
+        stage === 'project'
+          ? vi.spyOn(projects, 'get').mockImplementationOnce(async (...args) => {
+              const result = await originalProject(...args);
+              reached();
+              await barrier;
+              return result;
+            })
+          : vi.spyOn(executions, 'claimReviewForMerge').mockImplementationOnce(async (...args) => {
+              const result = await originalClaim(...args);
+              reached();
+              await barrier;
+              return result;
+            });
+      const merging = mergeReviewed(service, queued.execution.id);
+      const outcome = merging.catch((error: unknown) => error);
+      await entered;
+      let stopped = false;
+      const shutdown = service.shutdown().then(() => {
+        stopped = true;
+      });
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(stopped).toBe(false);
+        proceed();
+        expect(await outcome).toMatchObject({ code: 'WORKTREE_RUNNER_STOPPING' });
+        await shutdown;
+        expect(git).not.toHaveBeenCalled();
+        expect((await executions.get(queued.execution.id))?.status).toBe('REVIEW');
+        await expect(mergeReviewed(service, queued.execution.id)).rejects.toMatchObject({
+          code: 'WORKTREE_RUNNER_STOPPING',
+        });
+      } finally {
+        proceed();
+        await outcome;
+        await shutdown;
+        pause.mockRestore();
+        git.mockRestore();
+      }
+    },
+  );
+
+  it('已进入Git的合并未收敛时停服超时永久失败，不能提前释放归属', async () => {
+    const fixture = await seedFixture('merge-stop-inflight');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: 'Git待收敛',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const service = createService(runtime);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId });
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    await complete(service, task.id, running.runId!);
+    let proceed!: () => void;
+    let reached!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      proceed = resolve;
+    });
+    const entered = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const original = runtime.git.commitAndMerge;
+    const git = vi.spyOn(runtime.git, 'commitAndMerge').mockImplementationOnce(async (input) => {
+      reached();
+      await barrier;
+      return original(input);
+    });
+    const merging = mergeReviewed(service, queued.execution.id);
+    const outcome = merging.catch((error: unknown) => error);
+    await entered;
+    try {
+      await expect(service.shutdown()).rejects.toMatchObject({
+        code: 'WORKTREE_SHUTDOWN_UNCONFIRMED',
+      });
+      expect((await executions.get(queued.execution.id))?.status).toBe('MERGING');
+      proceed();
+      await outcome;
+      expect((await executions.get(queued.execution.id))?.status).toBe('DONE');
+      await expect(service.shutdown()).rejects.toMatchObject({
+        code: 'WORKTREE_SHUTDOWN_UNCONFIRMED',
+      });
+      expect(git).toHaveBeenCalledTimes(1);
+    } finally {
+      proceed();
+      await outcome;
+      git.mockRestore();
+    }
+  });
 
   it.each(['account:original', 'token:original', 'local-trusted', undefined])(
     '队列持久保存服务端 Git owner %s，历史调用不猜测归属',
@@ -1298,6 +1417,64 @@ describe('Worktree Task Runner 编排', () => {
     await service.recoverAfterRestart();
     expect((await executions.get(firstId))?.status).toBe('SETTING_UP');
     await service.shutdown();
+  });
+
+  it('停服发生于持久Git派发回调之前时禁止raw合并并保留UNKNOWN', async () => {
+    const fixture = await seedFixture('merge-stop-managed-callback');
+    const task = await tasks.create({
+      id: randomUUID(),
+      projectId: fixture.projectId,
+      title: '协调器回调屏障',
+      status: 'READY',
+    });
+    const runtime = createRuntime(database);
+    const managed = bootRuntimes.shift()!;
+    const service = createService(runtime, managed);
+    const queued = await service.queueTask(task.id, { agentId: fixture.agentId }, 'local-trusted');
+    await service.processQueue(fixture.projectId);
+    const running = await waitForStatus(queued.execution.id, 'RUNNING');
+    await complete(service, task.id, running.runId!);
+    let proceed!: () => void;
+    let reached!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      proceed = resolve;
+    });
+    const entered = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const originalRun = managed.writes.run.bind(managed.writes);
+    const run = vi.spyOn(managed.writes, 'run').mockImplementationOnce((context, write, head) =>
+      originalRun(
+        context,
+        async (resource, payload) => {
+          reached();
+          await barrier;
+          return write(resource, payload);
+        },
+        head,
+      ),
+    );
+    const git = vi.spyOn(runtime.git, 'commitAndMerge');
+    const merging = mergeReviewed(service, queued.execution.id);
+    const outcome = merging.catch((error: unknown) => error);
+    await entered;
+    const shutdown = service.shutdown();
+    try {
+      proceed();
+      expect(await outcome).toMatchObject({ code: 'WORKTREE_GIT_OUTCOME_UNKNOWN' });
+      await shutdown;
+      expect(git).not.toHaveBeenCalled();
+      expect((await executions.get(queued.execution.id))?.status).toBe('MERGING');
+      expect((await executions.get(queued.execution.id))?.errorCode).toBe(
+        'WORKTREE_GIT_OUTCOME_UNKNOWN',
+      );
+    } finally {
+      proceed();
+      await outcome;
+      await shutdown;
+      run.mockRestore();
+      git.mockRestore();
+    }
   });
 
   async function seedFixture(label: string) {

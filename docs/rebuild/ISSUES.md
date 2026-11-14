@@ -456,3 +456,9 @@ S66已接入持久启动预留，旧“缺claim”描述是历史设计依据，
 ### 2026-11-14 04:02 UTC 启动恢复误伤已在完整服务边界复现
 
 两个实际TaskService/SessionService加完整recoverRuntimeAfterRestart与FakeAgentAdapter barrier：对照A正常RUN_ADMITTED/create1/send1；B恢复介入后A UNKNOWN/Session DISCONNECTED、create1/send0/close1，B零创建。独立memory PGlite与临时空目录，无真实Agent。端口冲突发生在恢复后，不能提供互斥。修复方案见RUNTIME_OWNERSHIP_PLAN.md；后端仍未修，不使用TTL或强制释放UNKNOWN掩盖问题。
+
+### 2026-11-14 04:33 UTC 归属候选 CR 与真实视觉未决项
+
+- 单权威runtime候选已经覆盖启动前排他、失效撤销、健康关闭失败保锁，但仍未提交；CR继续发现并修复在途provider/Approval/Worktree merge生命周期空隙。不能以关闭HTTP socket代替业务Promise退出。真实PG隔离CI刚添加，尚未执行；网络分区/外部进程fencing不在本片承诺。
+- 精确82c5421 CI表明可见mobile TSX删除token实际仍灰色，原先门禁修正不是产品修复。Monaco原pane已词法着色而inline删除view-zone仍旧token；候选通过公开colorize预载语法器再挂载Diff，未放宽颜色门禁，真实CI待验。
+- 实际698fc01启动记录1440/390截图发现面板贴边及焦点轮廓裁切，候选补内距/焦点几何与字段层级。新截图未产出前不标记视觉完成。

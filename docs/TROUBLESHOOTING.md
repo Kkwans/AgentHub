@@ -5,6 +5,9 @@
 - `INVALID_SERVER_PORT`：检查 `AGENTHUB_PORT` 是否为 `0..65535` 的整数。
 - `AUTH_MODE_REQUIRED` / `INSECURE_NON_LOOPBACK_BIND`：非 loopback 必须设置 `AGENTHUB_AUTH_MODE=token`。
 - `AUTH_SETUP_REQUIRED`：当前还没有管理员账号，请直接在首次使用页面创建账号。
+- `RUNTIME_OWNERSHIP_HELD`：已有实例占用同一数据库，先核对并正常停止原实例；不要删锁文件、杀未知任务或强制解除 UNKNOWN。
+- `RUNTIME_OWNERSHIP_UNAVAILABLE/UNSUPPORTED`：PGlite需要Linux本地文件系统、`/usr/bin/flock`及父目录写权限；核对运行镜像和挂载，不要删除数据重建。
+- `SESSION_SHUTDOWN_UNCONFIRMED` / `WORKTREE_SHUTDOWN_UNCONFIRMED` / `RUNTIME_OPERATIONS_UNCONFIRMED`：在途外部操作未确认结束。服务停止接单并保留健康锁；先核对原Agent/Git/远程操作，不自动启动新实例或重放。
 - PGlite 失败：检查 `AGENTHUB_DATA_DIR` 的父目录权限和剩余空间；不要删除现有数据库目录。
 - PostgreSQL 失败：检查 `DATABASE_URL`、网络、证书与 migration 权限。
 - Compose 报端口占用：确认 `agenthub.service` 已停止，且只有一个 AgentHub 进程打开 PGlite；

@@ -55,6 +55,8 @@ export interface MergeWorktreeInput {
 export class WorktreeTaskService implements TaskRunLifecycleObserver {
   private readonly draining = new Map<string, Promise<void>>();
   private accepting = true;
+  private readonly pendingMerges = new Set<Promise<void>>();
+  private shutdownPromise: Promise<void> | undefined;
 
   constructor(
     private readonly executions: WorktreeExecutionRepository<AgentHubDatabase>,
@@ -240,7 +242,32 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
   }
 
   async merge(id: string, input: MergeWorktreeInput) {
+    this.assertAcceptingMerge();
+    let settled!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      settled = resolve;
+    });
+    this.pendingMerges.add(pending);
+    try {
+      return await this.mergeAdmitted(id, input);
+    } finally {
+      this.pendingMerges.delete(pending);
+      settled();
+    }
+  }
+
+  private assertAcceptingMerge(): void {
+    if (!this.accepting)
+      throw new AppError(
+        503,
+        'WORKTREE_RUNNER_STOPPING',
+        'Worktree Task Runner 正在停止，未开始新的 Git 合并',
+      );
+  }
+
+  private async mergeAdmitted(id: string, input: MergeWorktreeInput) {
     const execution = await this.get(id);
+    this.assertAcceptingMerge();
     if (execution.status !== 'REVIEW' || !execution.worktreePath) {
       throw new AppError(
         409,
@@ -249,6 +276,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       );
     }
     const project = await this.requireProject(execution.projectId);
+    this.assertAcceptingMerge();
     // Claim rejection is outside the Git failure recovery block: never reset
     // a newer review/run back to REVIEW on behalf of a stale merge request.
     const claimed = await this.executions
@@ -269,6 +297,7 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
       });
     let gitCompleted = false;
     try {
+      this.assertAcceptingMerge();
       const mergeInput = {
         projectRoot: project.realRootPath,
         worktreePath: claimed.execution.worktreePath,
@@ -277,6 +306,10 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
         taskBranch: claimed.execution.taskBranch,
         commitMessage: input.commitMessage || `feat(task): ${claimed.task.title}`,
       };
+      const expectedHead = this.managedGit
+        ? (await this.managedGit.resolve(execution.projectId)).head
+        : undefined;
+      this.assertAcceptingMerge();
       const result = this.managedGit
         ? await this.managedGit.writes.run(
             {
@@ -286,14 +319,18 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
               // authoritative prewrite rejection and explicit user retry CAS.
               operationId: claimed.operationId,
               projectId: execution.projectId,
-              expectedHead: (await this.managedGit.resolve(execution.projectId)).head,
+              expectedHead: expectedHead!,
               payload: mergeInput,
             },
-            (resource, payload) =>
-              this.git.commitAndMerge({
+            (resource, payload) => {
+              // Coordinator awaits durable claims before invoking this callback.
+              // Stopping during those awaits must not dispatch a late Git subprocess.
+              this.assertAcceptingMerge();
+              return this.git.commitAndMerge({
                 ...(payload as unknown as typeof mergeInput),
                 projectRoot: resource.worktreeIdentity,
-              }),
+              });
+            },
             (value) => value.mergeCommitSha,
           )
         : await this.git.commitAndMerge(mergeInput);
@@ -459,9 +496,36 @@ export class WorktreeTaskService implements TaskRunLifecycleObserver {
     for (const projectId of projectIds) this.schedule(projectId);
   }
 
-  async shutdown(): Promise<void> {
+  shutdown(): Promise<void> {
     this.accepting = false;
-    await Promise.allSettled(this.draining.values());
+    this.shutdownPromise ??= this.drainBeforeShutdown();
+    return this.shutdownPromise;
+  }
+
+  private async drainBeforeShutdown(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.allSettled([...this.draining.values(), ...this.pendingMerges]),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new AppError(
+                  503,
+                  'WORKTREE_SHUTDOWN_UNCONFIRMED',
+                  '隔离执行或 Git 合并尚未确认停止，必须保留数据库和运行时独占权。',
+                ),
+              ),
+            1_000,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    // The cached rejection is sticky: a later call cannot falsely release
+    // ownership merely because a detached operation eventually disappeared.
   }
 
   private schedule(projectId: string): void {

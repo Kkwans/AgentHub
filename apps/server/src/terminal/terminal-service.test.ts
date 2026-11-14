@@ -58,6 +58,40 @@ describe('Terminal capability 与 PTY 生命周期', () => {
     });
   });
 
+  it('shutdown 同步拒绝新 open，等待 native binding 的旧请求也不能晚到 spawn', async () => {
+    let finishLoad!: () => void;
+    let loadCount = 0;
+    let spawnCount = 0;
+    const loading = new Promise<void>((resolve) => {
+      finishLoad = resolve;
+    });
+    const service = new TerminalService(
+      new ProjectRepository(database.db),
+      { publish: () => undefined },
+      async () => {
+        loadCount++;
+        await loading;
+        return {
+          spawn: () => {
+            spawnCount++;
+            return new FakePty() as unknown as IPty;
+          },
+        } as never;
+      },
+    );
+    const opening = service.open({ projectId, shell: '/bin/sh' });
+    const rejected = expect(opening).rejects.toMatchObject({ code: 'TERMINAL_SERVICE_STOPPING' });
+    const stopping = service.shutdown();
+    await expect(service.open({ projectId })).rejects.toMatchObject({
+      code: 'TERMINAL_SERVICE_STOPPING',
+    });
+    expect(loadCount).toBe(1);
+    finishLoad();
+    await rejected;
+    await stopping;
+    expect(spawnCount).toBe(0);
+  });
+
   it('可用时分离 open/input/resize/output/close 生命周期', async () => {
     const pty = new FakePty();
     let spawnOptions: IPtyForkOptions | undefined;

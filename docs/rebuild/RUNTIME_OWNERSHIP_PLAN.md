@@ -1,6 +1,6 @@
 # 启动恢复的运行实例归属方案
 
-状态：问题已在完整服务边界复现；本文是修复设计，不代表后端已修复。当前开发分支没有安全的多活 runtime 承诺。
+状态（2026-11-14 04:29 UTC）：问题已复现，单权威runtime候选已实现并在本地专项验证中，尚未提交发布；CR发现的provider在途drain仍在修复，真实PostgreSQL隔离CI待执行。当前没有安全的多活runtime或网络分区自动接管承诺。
 
 ## 1. 已证实问题与边界
 
@@ -62,6 +62,26 @@ B始终没有创建Agent；失败场景没有Run。不是重复派发，而是�
 
 ## 5. 交付边界
 
-设计、诊断与问题记录可以独立提交。后端行为变更必须完成冻结全量、独立CR、实际数据库排他测试及精确CI后发布。不得宣称只读启动记录面板已修复本问题；不得修改main、部署或对用户现有Agent做故障试验。
+设计、诊断与问题记录可以独立提交。后端行为变更须完成冻结全量与独立CR后推送开发分支以触发真实数据库/浏览器CI；开发分支推送不是发布。实际数据库排他测试及精确CI未通过前不得发布或合并。不得宣称只读启动记录面板已修复本问题；不得修改main、部署或对用户现有Agent做故障试验。
 
 诊断自校验：`node scripts/diagnostics/active-startup-recovery.mjs --probe-early-failure` 只在对照组FakeAdapter注入barrier前失败，预期exit1，不应误判成未干扰或已复现。等待barrier有保活超时且监听提前结束；全部清理都会尝试。04:12 UTC最终正常exit2/提前失败exit1，lint通过，无临时目录残留。
+
+
+## 6. 候选实现记录（未完成发布验收）
+
+- PostgreSQL：专用非pool连接获取稳定双integer advisory key；断连永久撤销，不重连自动夺锁。失败消息不暴露DSN。真实PostgreSQL服务验收单独加入CI，不能将mock结果称实际PG通过。
+- PGlite：实测其本身允许同目录两个实例，故Linux本地文件系统使用canonical目录相邻持久flock inode；父进程持有FD，不unlink/TTL。目录/锁inode替换即撤销。非Linux或缺flock安全失败；不承诺网络文件系统语义。
+- RuntimeLifecycle：所有停止回调先同步撤销再await；健康归属下任一清理不确认则保留DB/锁并永久停止接单。DB自身close失败也不能在finally提前释放健康归属。
+- Session：停服后的create/resume/startRun拒绝，活动entries先全部同步detach，再关闭。未返回provider/关闭超时或失败必须有界drain并保持未确认，不得误称资源退出；该CR补强仍在进行。
+- Terminal：入口及实际spawn前双检查，覆盖await期间停服。WebSocket授权await返回后再次检查关闭状态，迟到upgrade拒绝。
+- 04:28:58七文件44专项通过；含实际PGlite服务A/B启动、失败清理、健康归属保留，另有Terminal独立3专项。最终冻结全量、真实PG与发布后CI仍待完成。所有故障试验仅临时目录/假adapter/隔离DB，不触碰用户Agent。
+
+### 04:35 UTC 停服覆盖补强与剩余边界
+
+- Session完整create/resume/startRun/continuation及Approval投递纳入排空；审批最后一个await之后、provider调用之前重验activation。Worktree merge登记完整流程，异步准备/claim/managed callback之后真正Git调用之前再次检查；已发生持久派发的未知状态不改为可重试。
+- HTTP层不能以socket close代表业务结束。createApp边界的RuntimeOperations只追踪被调用服务所返回的Promise；保持同步返回、原始this与私有成员、错误语义，并在调用时检查准入。Auth实际async middleware（含认证使用时间写入）、health与eventSource单独覆盖。5s未排空即sticky失败，健康ownership保留；后台fire-and-forget仍依赖各服务自身shutdown，不能宣称全局外部副作用fencing。
+- 04:32 Session143专项、04:34 Worktree59专项、04:34:57 HTTP操作5专项完成。04:35:11开始最终冻结全量；此前04:31中止的全量不计通过。最终结果和提交信息以EXECUTION.md后续记录为准。
+
+诊断解释：原 `active-startup-recovery.mjs` 故意直接构造两个service并调用恢复，绕过新 `startServer` 归属门禁；其预期exit2仍是底层“不带所有权恢复会干扰活跃实例”的负面对照，不应改成假绿色。新行为验收使用实际 `startServer` 排他集成及真实PostgreSQLCI，不能声称所有直接调用恢复函数都具备跨进程归属保护。
+
+优雅信号退出也属于验收路径：CLI只有清理确认成功才exit(0)，失败保留不可用进程与健康归属；引用计时器避免只有文件FD时Node自动退出。重复SIGINT/SIGTERM不将失败转成功。当前有helper单测与源码CR，不等于实际CLI子进程信号集成；SIGKILL/崩溃不在保锁保证内，不能据此推断外部Agent已停。

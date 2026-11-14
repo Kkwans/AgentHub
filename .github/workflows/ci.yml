@@ -153,3 +153,52 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
           compression-level: 6
+
+  postgres-runtime-ownership:
+    name: Real PostgreSQL runtime ownership
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: agenthub-ci-disposable
+          POSTGRES_DB: agenthub_runtime_ci
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres -d agenthub_runtime_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: mkdir -p artifacts
+      - name: Verify real independent connections and ownership loss in a disposable database
+        env:
+          # Dedicated job service only; tests never consult DATABASE_URL or contact a deployed host.
+          AGENTHUB_PG_OWNERSHIP_TEST: '1'
+          AGENTHUB_PG_OWNERSHIP_TEST_URL: postgresql://postgres:agenthub-ci-disposable@127.0.0.1:${{ job.services.postgres.ports[5432] }}/agenthub_runtime_ci
+        run: >-
+          pnpm exec vitest run packages/db/src/runtime-ownership-postgres.integration.test.ts
+          --reporter=default --reporter=json --outputFile=artifacts/postgres-runtime-ownership.json
+      - name: Preserve exact-commit PostgreSQL results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-runtime-ownership-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/postgres-runtime-ownership.json
+          if-no-files-found: warn
+          retention-days: 7

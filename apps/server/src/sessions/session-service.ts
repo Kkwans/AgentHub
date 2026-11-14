@@ -134,6 +134,9 @@ interface CancellationTimer {
 
 export class SessionService {
   private acceptingTaskStarts = true;
+  private readonly pendingAdmissions = new Set<Promise<void>>();
+  private readonly unconfirmedHandles = new Set<AgentSessionHandle>();
+  private shutdownPromise?: Promise<void>;
   private readonly approvalEpochs = new Map<string, ApprovalEffectEpoch>();
   private readonly active = new Map<string, ActiveSession>();
   private readonly preparationFences = new Set<string>();
@@ -325,6 +328,7 @@ export class SessionService {
   }
 
   async create(input: CreateSessionInput) {
+    this.assertRuntimeAdmission();
     if (input.taskId)
       throw new AppError(409, 'TASK_SESSION_START_REQUIRED', '任务会话须通过任务启动或返工创建');
     const project = await this.projects.get(input.projectId);
@@ -343,6 +347,13 @@ export class SessionService {
 
   /** Internal Task admission; REST create cannot supply this capability. */
   async createForTask(
+    input: CreateSessionInput,
+    admission: { kind: 'START' | 'REWORK'; expectedOldSessionId: string | null; inputHash: string },
+  ) {
+    return this.trackAdmission(() => this.createForTaskAdmitted(input, admission));
+  }
+
+  private async createForTaskAdmitted(
     input: CreateSessionInput,
     admission: { kind: 'START' | 'REWORK'; expectedOldSessionId: string | null; inputHash: string },
   ) {
@@ -481,10 +492,7 @@ export class SessionService {
         if (this.active.get(id)?.handle === ownedHandle) handleCleanup = 'ACTIVE_OWNED';
         else {
           try {
-            await withTimeout(
-              Promise.resolve().then(() => ownedHandle!.close()),
-              Math.min(this.cancelConvergenceTimeoutMs, 1_000),
-            );
+            await this.closeHandleStrictly(ownedHandle);
             handleCleanup = 'HANDLE_CLOSE_RETURNED';
           } catch {
             handleCleanup = 'UNKNOWN';
@@ -541,6 +549,7 @@ export class SessionService {
    * only use create(), which always enforces the Project root boundary.
    */
   async createManagedWorktree(input: CreateSessionInput, managedRoot: string) {
+    this.assertRuntimeAdmission();
     const project = await this.projects.get(input.projectId);
     if (!project) throw new AppError(404, 'PROJECT_NOT_FOUND', 'Project 不存在');
     if (project.status !== 'ACTIVE') {
@@ -569,86 +578,107 @@ export class SessionService {
     adapter: AgentRuntimeAdapter,
     cwd: string,
   ) {
+    this.assertRuntimeAdmission();
     const id = randomUUID();
-    const model = input.model ?? profile.defaultModel ?? undefined;
-    const mode = input.mode ?? profile.defaultMode ?? undefined;
-    const reasoningEffort = input.reasoningEffort ?? profile.defaultReasoningEffort ?? undefined;
-    await this.sessions.create({
-      id,
-      projectId,
-      agentId: input.agentId,
-      taskId: input.taskId,
-      title: input.title,
-      cwd,
-      branch: input.branch,
-      status: 'CREATED',
-      ...(model ? { model } : {}),
-      ...(mode ? { mode } : {}),
-      ...(reasoningEffort ? { reasoningEffort } : {}),
-    });
-    await this.sessions.transition(id, 'STARTING');
-
-    let ownedHandle: AgentSessionHandle | undefined;
-    try {
-      const handle = await adapter.createSession({
-        sessionId: id,
-        profile,
+    return this.withLifecycleAdmission(id, 'create', async (owned) => {
+      const assertOwned = () => {
+        this.assertRuntimeAdmission();
+        if (!owned())
+          throw new AppError(
+            409,
+            'SESSION_LIFECYCLE_SUPERSEDED',
+            '创建已被关闭操作撤销，请核对会话状态',
+          );
+      };
+      const model = input.model ?? profile.defaultModel ?? undefined;
+      const mode = input.mode ?? profile.defaultMode ?? undefined;
+      const reasoningEffort = input.reasoningEffort ?? profile.defaultReasoningEffort ?? undefined;
+      await this.sessions.create({
+        id,
         projectId,
+        agentId: input.agentId,
+        taskId: input.taskId,
+        title: input.title,
         cwd,
+        branch: input.branch,
+        status: 'CREATED',
         ...(model ? { model } : {}),
         ...(mode ? { mode } : {}),
         ...(reasoningEffort ? { reasoningEffort } : {}),
       });
-      ownedHandle = handle;
-      await this.persistEffectiveConfiguration(id, handle);
-      const ready = await this.sessions.transition(id, 'READY', {
-        externalSessionId: handle.externalSessionId,
-        startedAt: new Date(),
-      });
-      this.activate(id, projectId, adapter, handle);
-      ownedHandle = undefined; // Ownership has transferred to the active Session lifecycle.
-      return ready;
-    } catch (error) {
-      let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
-        'NOT_ACQUIRED';
-      if (ownedHandle) {
-        if (this.active.get(id)?.handle === ownedHandle) {
-          // Never tear down a handle already handed to an activation from this catch.
-          handleCleanup = 'ACTIVE_OWNED';
-        } else {
-          try {
-            await withTimeout(
-              Promise.resolve().then(() => ownedHandle!.close()),
-              Math.min(this.cancelConvergenceTimeoutMs, 1_000),
-            );
-            // The adapter close contract returned, not independent proof that an OS process exited.
-            handleCleanup = 'HANDLE_CLOSE_RETURNED';
-          } catch {
-            handleCleanup = 'UNKNOWN';
+      assertOwned();
+      await this.sessions.transition(id, 'STARTING');
+
+      let ownedHandle: AgentSessionHandle | undefined;
+      try {
+        assertOwned();
+        const handle = await adapter.createSession({
+          sessionId: id,
+          profile,
+          projectId,
+          cwd,
+          ...(model ? { model } : {}),
+          ...(mode ? { mode } : {}),
+          ...(reasoningEffort ? { reasoningEffort } : {}),
+        });
+        ownedHandle = handle;
+        assertOwned();
+        await this.persistEffectiveConfiguration(id, handle, { owned, expectedFrom: 'STARTING' });
+        return await this.withActivationCommit(id, async () => {
+          assertOwned();
+          const ready = await this.sessions.transition(
+            id,
+            'READY',
+            {
+              externalSessionId: handle.externalSessionId,
+              startedAt: new Date(),
+            },
+            { expectedFrom: 'STARTING' },
+          );
+          assertOwned();
+          this.activate(id, projectId, adapter, handle);
+          ownedHandle = undefined;
+          return ready;
+        });
+      } catch (error) {
+        let handleCleanup: 'NOT_ACQUIRED' | 'HANDLE_CLOSE_RETURNED' | 'UNKNOWN' | 'ACTIVE_OWNED' =
+          'NOT_ACQUIRED';
+        if (ownedHandle) {
+          if (this.active.get(id)?.handle === ownedHandle) {
+            // Never tear down a handle already handed to an activation from this catch.
+            handleCleanup = 'ACTIVE_OWNED';
+          } else {
+            try {
+              await this.closeHandleStrictly(ownedHandle);
+              // The adapter close contract returned, not independent proof that an OS process exited.
+              handleCleanup = 'HANDLE_CLOSE_RETURNED';
+            } catch {
+              handleCleanup = 'UNKNOWN';
+            }
           }
         }
-      }
-      let failureStateRecorded = false;
-      if (handleCleanup !== 'ACTIVE_OWNED') {
-        try {
-          await this.sessions.transition(id, 'FAILED');
-          failureStateRecorded = true;
-        } catch {
-          // Preserve the original creation error; DB failure must not skip owned cleanup.
+        let failureStateRecorded = false;
+        if (handleCleanup !== 'ACTIVE_OWNED') {
+          try {
+            await this.sessions.transition(id, 'FAILED');
+            failureStateRecorded = true;
+          } catch {
+            // Preserve the original creation error; DB failure must not skip owned cleanup.
+          }
         }
+        throw new AppError(
+          502,
+          'AGENT_SESSION_CREATE_FAILED',
+          handleCleanup === 'ACTIVE_OWNED'
+            ? 'Agent Session 创建响应异常；已有会话仍受管理，请核对会话状态。'
+            : handleCleanup === 'UNKNOWN'
+              ? 'Agent Session 创建失败；资源清理结果未知，请核对 Agent 进程。'
+              : 'Agent Session 创建失败',
+          { sessionId: id, handleCleanup, failureStateRecorded },
+          { cause: error },
+        );
       }
-      throw new AppError(
-        502,
-        'AGENT_SESSION_CREATE_FAILED',
-        handleCleanup === 'ACTIVE_OWNED'
-          ? 'Agent Session 创建响应异常；已有会话仍受管理，请核对会话状态。'
-          : handleCleanup === 'UNKNOWN'
-            ? 'Agent Session 创建失败；资源清理结果未知，请核对 Agent 进程。'
-            : 'Agent Session 创建失败',
-        { sessionId: id, handleCleanup, failureStateRecorded },
-        { cause: error },
-      );
-    }
+    });
   }
 
   // Only short repository writes and synchronous activation transfer belong here.
@@ -671,11 +701,12 @@ export class SessionService {
 
   private async withLifecycleAdmission<T>(
     id: string,
-    kind: 'resume' | 'close',
+    kind: 'create' | 'resume' | 'close',
     action: (owned: () => boolean) => Promise<T>,
   ): Promise<T> {
+    if (kind !== 'close') this.assertRuntimeAdmission();
     const current = this.lifecycleAdmissions.get(id);
-    if (current && (kind === 'resume' || current.kind === 'close'))
+    if (current && (kind !== 'close' || current.kind === 'close'))
       throw new AppError(
         409,
         'SESSION_LIFECYCLE_BUSY',
@@ -683,9 +714,10 @@ export class SessionService {
       );
     const entry = { kind, token: Symbol(id) };
     this.lifecycleAdmissions.set(id, entry); // Close revokes pending creation/resume without waiting for its adapter.
-    const owned = () => this.lifecycleAdmissions.get(id) === entry;
+    const owned = () =>
+      this.lifecycleAdmissions.get(id) === entry && (kind === 'close' || this.acceptingTaskStarts);
     try {
-      return await action(owned);
+      return await this.trackAdmission(() => action(owned));
     } finally {
       if (owned()) this.lifecycleAdmissions.delete(id);
     }
@@ -763,10 +795,7 @@ export class SessionService {
         : undefined;
       if (previous) {
         previousHandleCleanup = 'UNKNOWN';
-        await withTimeout(
-          Promise.resolve().then(() => previous.handle.close()),
-          Math.min(this.cancelConvergenceTimeoutMs, 1_000),
-        );
+        await this.closeHandleStrictly(previous.handle);
         previousHandleCleanup = 'HANDLE_CLOSE_RETURNED';
         assertOwned();
       }
@@ -791,10 +820,7 @@ export class SessionService {
         if (this.active.get(id)?.handle === ownedHandle) handleCleanup = 'ACTIVE_OWNED';
         else {
           try {
-            await withTimeout(
-              Promise.resolve().then(() => ownedHandle!.close()),
-              Math.min(this.cancelConvergenceTimeoutMs, 1_000),
-            );
+            await this.closeHandleStrictly(ownedHandle);
             handleCleanup = 'HANDLE_CLOSE_RETURNED';
           } catch {
             handleCleanup = 'UNKNOWN';
@@ -830,6 +856,10 @@ export class SessionService {
   }
 
   async startTaskRun(sessionId: string, input: StartRunInput, attemptId: string) {
+    return this.trackAdmission(() => this.startTaskRunAdmitted(sessionId, input, attemptId));
+  }
+
+  private async startTaskRunAdmitted(sessionId: string, input: StartRunInput, attemptId: string) {
     if (!this.acceptingTaskStarts || !this.taskStartAttempts)
       throw new AppError(503, 'TASK_START_UNAVAILABLE', '当前服务无法核对任务启动归属');
     if (this.runAdmissions.has(sessionId))
@@ -865,6 +895,7 @@ export class SessionService {
     input: StartRunInput,
     taskStartAttemptId?: string,
   ) {
+    this.assertRuntimeAdmission();
     // Reserve admission before the first await. Do not queue duplicate sends:
     // they could otherwise become an unintended new turn after completion.
     if (this.runAdmissions.has(sessionId)) {
@@ -872,7 +903,9 @@ export class SessionService {
     }
     this.runAdmissions.add(sessionId);
     try {
-      return await this.startAdmittedRun(sessionId, input, taskStartAttemptId);
+      return await this.trackAdmission(() =>
+        this.startAdmittedRun(sessionId, input, taskStartAttemptId),
+      );
     } finally {
       this.runAdmissions.delete(sessionId);
     }
@@ -1131,6 +1164,11 @@ export class SessionService {
    * one-shot handoff package. The source Session is never mutated.
    */
   async continue(id: string) {
+    this.assertRuntimeAdmission();
+    return this.trackAdmission(() => this.continueAdmitted(id));
+  }
+
+  private async continueAdmitted(id: string) {
     if (!this.continuations) {
       throw new AppError(
         503,
@@ -1278,6 +1316,13 @@ export class SessionService {
     source: StoredSession,
     snapshot: Record<string, unknown>,
   ): Promise<string | undefined> {
+    return this.trackAdmission(() => this.tryModelContinuationSummaryAdmitted(source, snapshot));
+  }
+
+  private async tryModelContinuationSummaryAdmitted(
+    source: StoredSession,
+    snapshot: Record<string, unknown>,
+  ): Promise<string | undefined> {
     const deadline = Date.now() + CONTINUATION_TIMEOUT_MS;
     const remaining = () => Math.max(1, deadline - Date.now());
     let runtime: Awaited<ReturnType<AgentService['resolveRuntime']>>;
@@ -1304,21 +1349,38 @@ export class SessionService {
 
     let tempDir: string | undefined;
     let handle: AgentSessionHandle | undefined;
+    let expired = false;
+    let acquiring = false;
     try {
+      this.assertRuntimeAdmission();
       tempDir = await mkdtemp(join(tmpdir(), 'agenthub-continuation-'));
-      handle = await withTimeout(
-        runtime.adapter.createSession({
-          sessionId: randomUUID(),
-          profile: runtime.profile,
-          projectId: source.projectId,
-          cwd: tempDir,
-          mode: readOnlyMode,
-          ...(source.model ? { model: source.model } : {}),
-          ...(source.reasoningEffort ? { reasoningEffort: source.reasoningEffort } : {}),
-          metadata: { purpose: 'SESSION_CONTINUATION_SUMMARY', readOnly: true },
-        }),
-        remaining(),
-      );
+      this.assertRuntimeAdmission();
+      acquiring = true;
+      const acquisition = this.trackAdmission(async () => {
+        try {
+          const created = await runtime.adapter.createSession({
+            sessionId: randomUUID(),
+            profile: runtime.profile,
+            projectId: source.projectId,
+            cwd: tempDir!,
+            mode: readOnlyMode,
+            ...(source.model ? { model: source.model } : {}),
+            ...(source.reasoningEffort ? { reasoningEffort: source.reasoningEffort } : {}),
+            metadata: { purpose: 'SESSION_CONTINUATION_SUMMARY', readOnly: true },
+          });
+          if (expired || !this.acceptingTaskStarts) {
+            await this.closeHandleStrictly(created);
+            throw new Error('summary admission revoked');
+          }
+          return created;
+        } finally {
+          acquiring = false;
+          if (expired && tempDir)
+            await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+        }
+      });
+      handle = await withTimeout(acquisition, remaining());
+      this.assertRuntimeAdmission();
       const summary = await requestContinuationSummary(
         handle,
         serializeContinuationSnapshot(snapshot),
@@ -1333,13 +1395,10 @@ export class SessionService {
     } catch {
       return undefined;
     } finally {
-      if (handle) {
-        await settleWithin(
-          Promise.resolve().then(() => handle!.close()),
-          Math.min(1_000, remaining()),
-        );
-      }
-      if (tempDir) await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+      expired = true;
+      if (handle) await this.closeHandleStrictly(handle).catch(() => undefined);
+      if (tempDir && !acquiring)
+        await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
     }
   }
 
@@ -1401,6 +1460,11 @@ export class SessionService {
   }
 
   async resolveApproval(id: string, optionId: string) {
+    this.assertRuntimeAdmission();
+    return this.trackAdmission(() => this.resolveApprovalAdmitted(id, optionId));
+  }
+
+  private async resolveApprovalAdmitted(id: string, optionId: string) {
     const approval = await this.approvals.get(id);
     if (!approval) throw new AppError(404, 'APPROVAL_NOT_FOUND', 'Approval 不存在');
     const option = approval.optionsJson.find((candidate) => candidate.id === optionId);
@@ -1441,6 +1505,10 @@ export class SessionService {
   }
 
   private async dispatchApprovalDecision(deliveryId: string): Promise<void> {
+    return this.trackAdmission(() => this.dispatchApprovalDecisionAdmitted(deliveryId));
+  }
+
+  private async dispatchApprovalDecisionAdmitted(deliveryId: string): Promise<void> {
     const delivery = await this.approvals.claimDelivery(deliveryId);
     if (!delivery) return;
 
@@ -1507,6 +1575,18 @@ export class SessionService {
     await this.safeSessionTransition(delivery.sessionId, 'RUNNING');
     if (resumed.changed && resumed.run.taskId) {
       await this.taskLifecycle?.onRunResumed?.(resumed.run.taskId, delivery.runId);
+    }
+
+    // Every preceding repository/Task await can overlap shutdown or resume.
+    // No await is allowed between this final fence and the provider call.
+    if (!this.acceptingTaskStarts || !this.isCurrentActivation(delivery.sessionId, activationId)) {
+      const dead = await this.approvals.markDeliveryDead(
+        delivery.id,
+        'SESSION_ACTIVATION_CHANGED_BEFORE_DELIVERY',
+        '决定已保存，但 Session 连接已变化或服务正在停止，未发送给 Agent',
+      );
+      if (dead) await this.convergeApprovalDeliveryFailure(dead, 'DEAD', epoch);
+      return;
     }
 
     const outcome = await settleResultWithin(
@@ -1657,29 +1737,88 @@ export class SessionService {
     };
   }
 
-  async shutdown(): Promise<void> {
+  shutdown(): Promise<void> {
+    this.shutdownPromise ??= this.shutdownRuntime();
+    return this.shutdownPromise;
+  }
+
+  private async shutdownRuntime(): Promise<void> {
     this.acceptingTaskStarts = false;
-    // Revoke pending create/resume before closing active handles. Late provider
-    // responses may clean up only their own handle, never reactivate this service.
     this.lifecycleAdmissions.clear();
     this.clearCancellationTimers();
     this.configurationQueues.clear();
-    const entries = [...this.active.entries()];
-    for (const [sessionId, active] of entries) {
-      try {
-        if (this.detachActive(sessionId, active.activationId)) {
-          await this.closeHandleSafely(active.handle);
-        }
-      } finally {
-        const session = await this.sessions.get(sessionId);
-        if (session && session.status !== 'CLOSED') {
-          await this.safeSessionTransition(sessionId, 'CLOSED', { closedAt: new Date() });
-        }
-      }
-    }
-    await Promise.allSettled(
-      entries.map(([, active]) => this.waitForConsumerSafely(active.consumer)),
+    // Detach all activations before any asynchronous close can block.
+    const entries = [...this.active.entries()].filter(([id, active]) =>
+      Boolean(this.detachActive(id, active.activationId)),
     );
+    const cleanup = Promise.allSettled(
+      entries.map(async ([sessionId, active]) => {
+        await this.closeHandleStrictly(active.handle);
+        const session = await this.sessions.get(sessionId);
+        if (session && session.status !== 'CLOSED')
+          await this.safeSessionTransition(sessionId, 'CLOSED', { closedAt: new Date() });
+        await withTimeout(active.consumer, Math.min(this.cancelConvergenceTimeoutMs, 1_000));
+      }),
+    );
+    try {
+      // Drain entire admitted lifecycles, not merely provider promises: their
+      // late cleanup and persistence must still have a live database/lock.
+      const [results] = await withTimeout(
+        Promise.all([cleanup, this.drainAdmissions()]),
+        Math.min(this.cancelConvergenceTimeoutMs, 1_000),
+        true,
+      );
+      if (results.some((result) => result.status === 'rejected') || this.unconfirmedHandles.size)
+        throw new Error('cleanup unconfirmed');
+    } catch {
+      // Sticky failed shutdown: a second call must never release ownership on
+      // the strength of an already-detached empty active map.
+      throw new AppError(
+        503,
+        'SESSION_SHUTDOWN_UNCONFIRMED',
+        '会话资源尚未确认停止，必须保留数据库和运行时独占权。',
+      );
+    }
+  }
+
+  private async drainAdmissions(): Promise<void> {
+    // An admitted parent may register a fire-and-forget child before settling.
+    // Re-snapshot until empty, under shutdown's single (not per-pass) deadline.
+    while (this.pendingAdmissions.size) {
+      await Promise.all([...this.pendingAdmissions]);
+    }
+  }
+
+  private async trackAdmission<T>(action: () => Promise<T>): Promise<T> {
+    let done!: () => void;
+    const settled = new Promise<void>((resolve) => {
+      done = resolve;
+    });
+    this.pendingAdmissions.add(settled);
+    try {
+      return await action();
+    } finally {
+      this.pendingAdmissions.delete(settled);
+      done();
+    }
+  }
+
+  private async closeHandleStrictly(handle: AgentSessionHandle): Promise<void> {
+    this.unconfirmedHandles.add(handle);
+    await withTimeout(
+      Promise.resolve().then(() => handle.close()),
+      Math.min(this.cancelConvergenceTimeoutMs, 1_000),
+    );
+    this.unconfirmedHandles.delete(handle);
+  }
+
+  private assertRuntimeAdmission(): void {
+    if (!this.acceptingTaskStarts)
+      throw new AppError(
+        503,
+        'SESSION_SERVICE_STOPPING',
+        '服务正在停止，不能创建、恢复或派发新的会话。',
+      );
   }
 
   private activate(
@@ -1688,6 +1827,7 @@ export class SessionService {
     adapter: AgentRuntimeAdapter,
     handle: AgentSessionHandle,
   ): void {
+    this.assertRuntimeAdmission();
     const activationId = randomUUID();
     const active: ActiveSession = {
       activationId,
@@ -2244,12 +2384,7 @@ export class SessionService {
   }
 
   private async closeHandleSafely(handle: AgentSessionHandle): Promise<void> {
-    await settleWithin(
-      Promise.resolve()
-        .then(() => handle.close())
-        .catch(() => undefined),
-      Math.min(this.cancelConvergenceTimeoutMs, 1_000),
-    );
+    await this.closeHandleStrictly(handle).catch(() => undefined);
   }
 
   private async waitForConsumerSafely(consumer: Promise<void>): Promise<void> {
@@ -2701,14 +2836,18 @@ async function requestContinuationSummary(
   }
 }
 
-async function withTimeout<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+async function withTimeout<T>(
+  operation: Promise<T>,
+  timeoutMs: number,
+  keepAlive = false,
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       operation,
       new Promise<T>((_, reject) => {
         timer = setTimeout(() => reject(new Error('operation timed out')), timeoutMs);
-        timer.unref?.();
+        if (!keepAlive) timer.unref?.();
       }),
     ]);
   } finally {

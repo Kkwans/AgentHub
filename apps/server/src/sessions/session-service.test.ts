@@ -485,6 +485,249 @@ describe('Session/Run/Approval 持久化闭环', () => {
     }
   });
 
+  it('shutdown在第一个慢close之前撤销全部activation，已准入第二Session不得迟到发送', async () => {
+    const f = await taskAdmissionFixture();
+    const input = { projectId: f.projectId, agentId: f.agentId, title: '关闭竞态', cwd: '/tmp' };
+    await f.service.create(input);
+    const second = await f.service.create(input);
+    let entered!: () => void, release!: () => void, releaseClose!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const closingBarrier = new Promise<void>((resolve) => {
+      releaseClose = resolve;
+    });
+    const mark = f.repositories.runs.markDispatchAttempted.bind(f.repositories.runs);
+    vi.spyOn(f.repositories.runs, 'markDispatchAttempted').mockImplementationOnce(
+      async (...args) => {
+        const result = await mark(...args);
+        entered();
+        await barrier;
+        return result;
+      },
+    );
+    const close = f.adapter.handles[0]!.close.bind(f.adapter.handles[0]!);
+    vi.spyOn(f.adapter.handles[0]!, 'close').mockImplementationOnce(async () => {
+      await closingBarrier;
+      await close();
+    });
+    const send = vi.spyOn(f.adapter.handles[1]!, 'sendTurn');
+    const run = f.service.startRun(second.id, { text: '不应派发' });
+    const rejected = expect(run).rejects.toThrow();
+    let stopping: Promise<void> | undefined;
+    try {
+      await reached;
+      stopping = f.service.shutdown();
+      release();
+      await rejected;
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      release();
+      releaseClose();
+      await rejected;
+      await stopping;
+      await f.service.shutdown();
+    }
+  });
+
+  it.each(['create', 'resume'] as const)(
+    'shutdown等待未返回%s，超时拒绝且不会重复调用后伪成功',
+    async (kind) => {
+      const adapter = Object.assign(new ControlledAdapter('never'), {
+        resumeSession(this: ControlledAdapter, input: CreateAgentSessionInput) {
+          return this.createSession(input);
+        },
+      });
+      const f = await createFixture(
+        'idle',
+        undefined,
+        {},
+        { adapter, cancelConvergenceTimeoutMs: 1_000 },
+      );
+      const input = { projectId: f.projectId, agentId: f.agentId, title: '关闭排空', cwd: '/tmp' };
+      const source = kind === 'resume' ? await f.service.create(input) : undefined;
+      if (source) {
+        await adapter.handles[0]!.close();
+        await waitFor(
+          async () => (await f.repositories.sessions.get(source.id))?.status === 'DISCONNECTED',
+        );
+      }
+      let entered!: () => void, release!: () => void;
+      const reached = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const barrier = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let lateSessionId = '';
+      const original = adapter.createSession.bind(adapter);
+      vi.spyOn(adapter, 'createSession').mockImplementationOnce(async (value) => {
+        lateSessionId = value.sessionId;
+        const handle = await original(value);
+        entered();
+        await barrier;
+        return handle;
+      });
+      const operation = source ? f.service.resume(source.id) : f.service.create(input);
+      const rejected = expect(operation).rejects.toBeDefined();
+      await reached;
+      const late = adapter.handles.at(-1)!;
+      const close = vi.spyOn(late, 'close');
+      const releaseDatabase = vi.fn();
+      const shutdown = f.service.shutdown();
+      const releaseIfSafe = shutdown.then(releaseDatabase, () => undefined);
+      await expect(shutdown).rejects.toMatchObject({ code: 'SESSION_SHUTDOWN_UNCONFIRMED' });
+      expect(close).not.toHaveBeenCalled();
+      expect(releaseDatabase).not.toHaveBeenCalled();
+      release();
+      await rejected;
+      expect(close).toHaveBeenCalledTimes(1);
+      expect((await f.service.getConfiguration(lateSessionId)).supported).toBe(false);
+      await expect(f.service.shutdown()).rejects.toMatchObject({
+        code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+      });
+      await releaseIfSafe;
+      expect(releaseDatabase).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['reject', 'timeout'] as const)(
+    'shutdown活动handle关闭%s不能报告健康释放',
+    async (kind) => {
+      const adapter = new ControlledAdapter('never');
+      const f = await createFixture(
+        'idle',
+        undefined,
+        {},
+        { adapter, cancelConvergenceTimeoutMs: 1_000 },
+      );
+      const session = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: '关闭未知',
+        cwd: '/tmp',
+      });
+      const original = adapter.handles[0]!.close.bind(adapter.handles[0]);
+      const close = vi
+        .spyOn(adapter.handles[0]!, 'close')
+        .mockImplementation(() =>
+          kind === 'reject'
+            ? Promise.reject(new Error('close failed'))
+            : new Promise(() => undefined),
+        );
+      await expect(f.service.shutdown()).rejects.toMatchObject({
+        code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+      });
+      expect((await f.service.get(session.id)).status).not.toBe('CLOSED');
+      await expect(f.service.shutdown()).rejects.toMatchObject({
+        code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+      });
+      close.mockRestore();
+      await original();
+    },
+  );
+
+  it('shutdown撤销普通创建，迟到handle只清理且不能激活或派发', async () => {
+    const f = await taskAdmissionFixture();
+    const input = { projectId: f.projectId, agentId: f.agentId, title: '普通创建', cwd: '/tmp' };
+    const original = f.adapter.createSession.bind(f.adapter);
+    let entered!: (id: string) => void, release!: () => void;
+    const reached = new Promise<string>((resolve) => {
+      entered = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(f.adapter, 'createSession').mockImplementationOnce(async (value) => {
+      const handle = await original(value);
+      entered(value.sessionId);
+      await barrier;
+      return handle;
+    });
+    const creating = f.service.create(input);
+    const rejected = expect(creating).rejects.toMatchObject({
+      code: 'AGENT_SESSION_CREATE_FAILED',
+      details: { handleCleanup: 'HANDLE_CLOSE_RETURNED' },
+    });
+    try {
+      const id = await reached;
+      const close = vi.spyOn(f.adapter.handles[0]!, 'close');
+      const send = vi.spyOn(f.adapter.handles[0]!, 'sendTurn');
+      const stopping = f.service.shutdown();
+      release();
+      await rejected;
+      await stopping;
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(send).not.toHaveBeenCalled();
+      expect((await f.service.get(id)).status).toBe('FAILED');
+      expect((await f.service.getConfiguration(id)).supported).toBe(false);
+      await expect(f.service.startRun(id, { text: '迟到请求' })).rejects.toMatchObject({
+        code: 'SESSION_SERVICE_STOPPING',
+      });
+      await f.service.close(id); // Explicit cleanup remains permitted.
+    } finally {
+      release();
+      await rejected;
+      await f.service.shutdown();
+    }
+  });
+
+  it('shutdown后普通create、managed create、resume与startRun全部拒绝新准入', async () => {
+    const f = await taskAdmissionFixture();
+    const input = { projectId: f.projectId, agentId: f.agentId, title: '停止后创建', cwd: '/tmp' };
+    await f.service.shutdown();
+    for (const action of [
+      () => f.service.create(input),
+      () => f.service.createManagedWorktree(input, '/tmp'),
+      () => f.service.resume(randomUUID()),
+      () => f.service.startRun(randomUUID(), { text: '停止后派发' }),
+    ])
+      await expect(action()).rejects.toMatchObject({ code: 'SESSION_SERVICE_STOPPING' });
+    expect(f.adapter.handles).toHaveLength(0);
+    expect(await f.repositories.sessions.list(f.projectId)).toHaveLength(0);
+  });
+
+  it('普通create校验await期间shutdown，不能晚注册生命周期或调用adapter', async () => {
+    const f = await taskAdmissionFixture();
+    const original = f.agentService.resolveRuntime.bind(f.agentService);
+    let entered!: () => void, release!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(f.agentService, 'resolveRuntime').mockImplementationOnce(async (...args) => {
+      const result = await original(...args);
+      entered();
+      await barrier;
+      return result;
+    });
+    const creating = f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: '迟到校验',
+      cwd: '/tmp',
+    });
+    const rejected = expect(creating).rejects.toMatchObject({ code: 'SESSION_SERVICE_STOPPING' });
+    try {
+      await reached;
+      const stopping = f.service.shutdown();
+      release();
+      await rejected;
+      await stopping;
+      expect(f.adapter.handles).toHaveLength(0);
+      expect(await f.repositories.sessions.list(f.projectId)).toHaveLength(0);
+    } finally {
+      release();
+      await rejected;
+      await f.service.shutdown();
+    }
+  });
+
   it('shutdown撤销未返回的任务创建token，迟到handle只能清理不能激活', async () => {
     const f = await taskAdmissionFixture();
     const create = f.adapter.createSession.bind(f.adapter);
@@ -508,9 +751,10 @@ describe('Session/Run/Approval 持久化闭环', () => {
     try {
       const sessionId = await entered;
       const closeHandle = vi.spyOn(f.adapter.handles[0]!, 'close');
-      await f.service.shutdown();
+      const stopping = f.service.shutdown();
       release();
       await rejected;
+      await stopping;
       expect(closeHandle).toHaveBeenCalledTimes(1);
       expect((await f.service.getConfiguration(sessionId)).supported).toBe(false);
       expect((await f.repositories.taskStartAttempts.getForTask(f.task.id))[0]?.phase).toBe(
@@ -543,9 +787,10 @@ describe('Session/Run/Approval 持久化闭环', () => {
     const rejected = expect(creation).rejects.toMatchObject({ code: 'TASK_START_UNAVAILABLE' });
     try {
       await entered;
-      await f.service.shutdown();
+      const stopping = f.service.shutdown();
       release();
       await rejected;
+      await stopping;
       expect(f.adapter.handles).toHaveLength(0);
       expect(await f.repositories.sessions.list(f.projectId)).toHaveLength(0);
       expect(await f.repositories.taskStartAttempts.getForTask(f.task.id)).toHaveLength(0);
@@ -893,7 +1138,9 @@ describe('Session/Run/Approval 持久化闭环', () => {
         transition.mockRestore();
         close.mockRestore();
         await adapter.handles[1]?.close();
-        await f.service.shutdown();
+        await expect(f.service.shutdown()).rejects.toMatchObject({
+          code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+        });
       }
     },
   );
@@ -931,7 +1178,9 @@ describe('Session/Run/Approval 持久化闭环', () => {
     } finally {
       oldClose.mockRestore();
       await adapter.handles[0]!.close();
-      await f.service.shutdown();
+      await expect(f.service.shutdown()).rejects.toMatchObject({
+        code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+      });
     }
   });
 
@@ -1150,7 +1399,9 @@ describe('Session/Run/Approval 持久化闭环', () => {
         transition.mockRestore();
         close.mockRestore();
         await adapter.handles[0]?.close();
-        await fixture.service.shutdown();
+        await expect(fixture.service.shutdown()).rejects.toMatchObject({
+          code: 'SESSION_SHUTDOWN_UNCONFIRMED',
+        });
       }
     },
   );
@@ -2076,6 +2327,104 @@ describe('Session/Run/Approval 持久化闭环', () => {
     } finally {
       await f.service.shutdown();
     }
+  });
+
+  it('shutdown排空循环包含快照之后由原审批请求创建的异步投递子任务', async () => {
+    const f = await preparationFixture('approval-error');
+    const run = await f.service.startRun(f.session.id, { text: '嵌套排空' });
+    await waitFor(
+      async () => (await f.repositories.runs.get(run.id))?.status === 'WAITING_APPROVAL',
+    );
+    const approval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+    let enteredParent!: () => void, releaseParent!: () => void;
+    let enteredChild!: () => void, releaseChild!: () => void;
+    const parentReached = new Promise<void>((resolve) => {
+      enteredParent = resolve;
+    });
+    const parentBarrier = new Promise<void>((resolve) => {
+      releaseParent = resolve;
+    });
+    const childReached = new Promise<void>((resolve) => {
+      enteredChild = resolve;
+    });
+    const childBarrier = new Promise<void>((resolve) => {
+      releaseChild = resolve;
+    });
+    const record = f.repositories.approvals.recordDecisionExactlyOnce.bind(
+      f.repositories.approvals,
+    );
+    vi.spyOn(f.repositories.approvals, 'recordDecisionExactlyOnce').mockImplementationOnce(
+      async (...args) => {
+        const result = await record(...args);
+        enteredParent();
+        await parentBarrier;
+        return result;
+      },
+    );
+    const claim = f.repositories.approvals.claimDelivery.bind(f.repositories.approvals);
+    vi.spyOn(f.repositories.approvals, 'claimDelivery').mockImplementationOnce(async (...args) => {
+      enteredChild();
+      await childBarrier;
+      return claim(...args);
+    });
+    const send = vi.spyOn(f.adapter.handles[0]!, 'resolveApproval');
+    const resolving = f.service.resolveApproval(approval.id, 'allow');
+    await parentReached;
+    let stopped = false;
+    const stopping = f.service.shutdown().then(() => {
+      stopped = true;
+    });
+    releaseParent();
+    await childReached;
+    await resolving; // The original snapshot's parent is now complete.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(stopped).toBe(false);
+    releaseChild();
+    await stopping;
+    expect(send).not.toHaveBeenCalled();
+    expect((await f.service.getApproval(approval.id)).deliveryState).toBe('DEAD');
+  });
+
+  it('审批投递等待Task回调期间shutdown，最终准入核对阻止旧handle发送且排空后才完成', async () => {
+    const f = await preparationFixture('approval-error');
+    const run = await f.service.startRun(f.session.id, { text: '停止边界权限' });
+    await waitFor(
+      async () => (await f.repositories.runs.get(run.id))?.status === 'WAITING_APPROVAL',
+    );
+    const approval = (await f.repositories.approvals.listPending(f.session.id))[0]!;
+    let entered!: () => void, release!: () => void;
+    const reached = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    f.service.setTaskLifecycleObserver({
+      onRunCompleted: async () => undefined,
+      onRunResumed: async () => {
+        entered();
+        await barrier;
+      },
+    });
+    const send = vi.spyOn(f.adapter.handles[0]!, 'resolveApproval');
+    await f.service.resolveApproval(approval.id, 'allow');
+    await reached;
+    let stopped = false;
+    const stopping = f.service.shutdown().then(() => {
+      stopped = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(stopped).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+    release();
+    await stopping;
+    expect(send).not.toHaveBeenCalled();
+    const saved = await f.service.getApproval(approval.id);
+    expect(saved.deliveryState).toBe('DEAD');
+    expect(saved.deliveryErrorCode).toBe('SESSION_ACTIVATION_CHANGED_BEFORE_DELIVERY');
+    await expect(f.service.resolveApproval(approval.id, 'allow')).rejects.toMatchObject({
+      code: 'SESSION_SERVICE_STOPPING',
+    });
   });
 
   async function approvalConvergenceFixture() {
@@ -3809,7 +4158,6 @@ describe('Session/Run/Approval 持久化闭环', () => {
       cwd: child,
     });
     expect(session.cwd).toBe(await realpath(child));
-    await fixture.service.shutdown();
 
     await expect(
       fixture.service.create({
@@ -3828,6 +4176,7 @@ describe('Session/Run/Approval 持久化闭环', () => {
       }),
     ).rejects.toMatchObject({ code: 'SESSION_CWD_OUTSIDE_PROJECT' });
 
+    await fixture.service.shutdown();
     await rm(root, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
   });

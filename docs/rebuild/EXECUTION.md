@@ -1335,3 +1335,26 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 方案明确优先单权威runtime全生命周期排他、第二实例恢复前零状态变更拒绝、失联撤销，PG/PGlite分别验收。不在本片修改后端、清UNKNOWN或承诺网络分区自动接管。
 - 04:01尝试本机已安装Chromium，普通和标准升级执行均在process_singleton socket EPERM退出，故没有新的本地浏览器证据；继续精确远端CI，而非声称静态检查等于截图验收。
 - 04:12:19.183最终正常诊断结束，严格匹配预期exit2；04:12:19.827–04:12:21提前失败探针正确exit1，lint0。04:12:22无残留临时目录，diff-check通过。诊断结果只证明问题可重复，后端问题保持开放。
+
+### 2026-11-14 04:14–04:27 UTC 运行实例归属实现与阻断 CR（尚未提交）
+
+- 候选接入 PostgreSQL 专用连接 advisory lock、PGlite canonical目录相邻持久 flock；服务在 migration/recovery/listen 前取得归属，失效同步撤销请求、WebSocket、Session、Terminal admission。不是网络分区外部进程 fencing，不自动重试 UNKNOWN。
+- 04:19 PG mock/DB测试19通过；PGlite实际flock测试7通过。04:21 server+lifecycle初版7通过；04:23:42 Session专项138通过。上述是当时子集，不替代后续修改后的最终全量。
+- 04:24 独立CR发现阻断：在途provider创建未drain、关闭异常/超时被吞、DB关闭失败仍释放健康锁、Terminal晚到spawn；全部保持未发布，继续修复。另补lifecycle同步重入保护及WebSocket授权晚到拒绝测试。
+- 04:25:59 lifecycle/WebSocket专项7通过；04:26 DB关闭失败保锁专项11通过、类型/lint通过；Terminal停服竞态专项3通过；04:26:54实际server排他集成3通过，新增不确定Session关闭后服务停止但健康锁仍保留，第二实例拒绝启动。Session完整在途drain仍进行中，未声称最后CR完成。
+- 04:25精确CI核查：82c5421的verify在04:22:33失败，browser85通过/10跳过/1失败，可见mobile TSX删除字符串实际仍为D4D4D4，不是F4C7AF。词法门禁没有被放宽；继续调查真实inline删除渲染。该commit axe成功，real尚在运行。698fc01 real于04:24:19成功，axe成功，verify失败。没有把旧结果归到新候选。
+- 04:27取回698fc01精确真实服务artifact14097813543，SHA256 2aae5655477b4c9540488ecc5ad7e378f0a4faa703b83e67529d96351d9bb50b匹配；实际查看启动记录1440/390截图。内容/标识可读，但面板贴边且全宽summary焦点轮廓两侧裁切成重横线，不算视觉合格。候选修正20px内距、内容宽summary及内收focus轮廓、技术字段细灰框；新真实截图仍待后续CI，不以源码或单测冒充视觉验收。
+
+### 2026-11-14 04:29 UTC 起 下一轮停服竞态收敛（进行中）
+
+- Monaco公开colorize预加载语法器再挂载Diff，补语言切换/旧完成忽略/失败与恢复；04:30:40开始17专项通过。没有改可见token断言；真实CI待验。
+- 04:30:09开始Session142专项通过，但最终CR随后发现Approval在await后仍可晚到dispatch、Worktree merge不在shutdown drain；两处继续修复，04:31:04启动的全量已主动停止，不计完成或通过。04:31:29 lint/types/build通过仅代表此前版本。
+- 新增官方postgres:17隔离CI及两个opt-in真实PG用例；只使用专用loopback测试URL并创建随机测试库，不读取DATABASE_URL、不触碰用户数据。本机无PG/Docker，默认skip不是实际PG通过。
+- 04:32:52 Session最终143专项完成，新增审批最后await后撤销回归；04:34 Worktree59专项通过，merge全流程排空和真实Git调用前门禁；04:34:57 RuntimeOperations5专项通过，覆盖私有this/同步值/异常/拒绝Promise/断开HTTP不等于服务完成/认证晚到与sticky超时。
+- HTTP服务Proxy及auth实际middleware追踪经独立CR无新阻断，明确不覆盖任意fire-and-forget。04:35:11新冻结全量启动；待完成，不复用被中止结果。
+- 04:40最终CR发现一次pending快照会漏掉在途审批父操作随后创建的投递子任务，故04:35全量主动停止，不计通过。改为同一个总超时预算内循环排空；双barrier回归覆盖父完成但子仍阻塞时shutdown不得完成。04:41:14 Session144专项/types/lint通过，独立CR复核该漏洞关闭。
+- 04:41:21最终冻结全量重新启动，尚未完成。运行文档补充Linux本地文件系统/flock/父目录权限与保留锁故障处理，不把停服失败指导为删锁或重放UNKNOWN。
+- 04:44:56发现既有CLI信号处理无条件finally exit(0)，会在清理不确认时强退释放健康归属。停止04:41全量（不计通过），改为成功才退出、失败维持不可用进程并等待人工核对，重复优雅停止信号不误释放。helper成功/失败/去重及lifecycle/HTTP合计13专项通过；不是实际子进程信号集成或SIGKILL保证。
+- 04:46:36最终全量重开；04:46:58 lint/types/build通过。04:48:01将独立UI切片推为b12b8fc（树db98dc1d65871e2ee1b7eab9fe5839a9d9cfad44与本地一致），精确CI43558415448进行中。该提交不含运行归属候选，后者仍待最终全量；未合main/未部署。
+- 04:50:46隔离子进程补查编译后的shutdown helper：移除模拟服务原存活timer后注入close失败，仅失败keeper维持进程；重复SIGTERM/SIGINT仍只close一次，最后清理测试子进程。未运行真实Agent，也不把此替代真实CLI/main集成或SIGKILL安全保证。
+- 最终冻结全量04:46:36启动，403.73秒完成：180文件通过/5跳过，1842测试通过/12跳过，exit0。新增PG隔离2例默认跳过，明确不算真实PG通过；此前三轮中止不计通过。最终lint/types/build、专项、独立CR均完成，准备仅推开发分支触发真实PG/浏览器CI，不合main/不部署。

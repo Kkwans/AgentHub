@@ -1,3 +1,4 @@
+import type { RuntimeOperations } from './runtime-operations.js';
 import { logRedaction } from './log-redaction.js';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
@@ -44,6 +45,7 @@ import { createFilesystemRouter } from './filesystem/filesystem-routes.js';
 import type { FilesystemService } from './filesystem/filesystem-service.js';
 
 export interface AppOptions {
+  runtimeOperations?: RuntimeOperations;
   logger?: Logger;
   eventSource?: ReplayEventSource;
   health?: () => Promise<Record<string, unknown>>;
@@ -122,7 +124,13 @@ export function createApp(options: AppOptions = {}): Express {
 
   if (options.auth) {
     app.use('/api/v1/auth', createPublicAuthRouter(options.auth));
-    app.use('/api/v1', options.auth.middleware());
+    const authenticate = options.auth.middleware();
+    app.use(
+      '/api/v1',
+      options.runtimeOperations
+        ? options.runtimeOperations.wrapFunction(authenticate)
+        : authenticate,
+    );
     app.use('/api/v1/auth', createAuthRouter(options.auth));
   }
 
