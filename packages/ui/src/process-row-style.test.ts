@@ -28,3 +28,16 @@ it('keeps 44px controls, keyboard focus and bounded public-thought scrolling', (
   expect(rule('.process-thought-body')).toContain('max-height: 22rem');
   expect(rule('.process-thought-body')).toContain('overflow: auto');
 });
+it('reserves readable action labels and gives long paths only the remaining width', () => {
+  expect(rule('.tool-entry-badge')).toContain('flex: 0 0 auto');
+  expect(rule('.tool-entry-badge')).toContain('max-width: 100%');
+  expect(rule('.tool-entry-title-row:has(.tool-entry-summary) > .tool-entry-badge')).toContain(
+    'max-width: 50%',
+  );
+  expect(rule('.tool-entry-summary')).toContain('flex: 1 1 0%');
+  expect(rule('.tool-entry-summary')).toContain('min-width: 0');
+  expect(rule('.tool-entry-summary')).toContain('text-overflow: ellipsis');
+  const fileAction = rule('.tool-entry-trigger > button + button');
+  expect(fileAction).toContain('min-width: 44px');
+  expect(fileAction).toContain('min-height: 44px');
+});

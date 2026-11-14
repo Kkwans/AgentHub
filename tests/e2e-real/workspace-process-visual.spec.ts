@@ -122,6 +122,17 @@ for (const width of [390, 768, 1024, 1440])
         for (const card of await tools.all()) {
           const title = card.locator('.tool-entry-badge');
           await expect(title).toHaveCSS('font-size', '14px');
+          if (width === 390) {
+            expect(
+              await title.evaluate((node) => node.scrollWidth - node.clientWidth),
+            ).toBeLessThanOrEqual(1);
+            const toggleBox = (await card
+              .locator('.tool-entry-trigger > button')
+              .first()
+              .boundingBox())!;
+            expect(toggleBox.width).toBeGreaterThanOrEqual(43.99);
+            expect(toggleBox.height).toBeGreaterThanOrEqual(43.99);
+          }
           await expect(title).toHaveCSS('font-weight', '600');
           expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).not.toMatch(
             /mono/i,

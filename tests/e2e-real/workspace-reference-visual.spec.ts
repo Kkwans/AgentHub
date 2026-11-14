@@ -174,6 +174,35 @@ for (const width of [390, 768, 1024, 1440]) {
           .filter({ hasText: new RegExp(`^${label}$`) });
         await expect(heading).toHaveCount(1);
         await expect(heading).toHaveText(label);
+        if (width === 390) {
+          await expect(heading).toHaveCSS('font-size', '14px');
+          expect(
+            await heading.evaluate((node) => node.scrollWidth - node.clientWidth),
+          ).toBeLessThanOrEqual(1);
+        }
+      }
+      if (width === 390) {
+        for (const card of await tools.all()) {
+          const toggle = card.locator('button[aria-expanded]').first();
+          const toggleBox = (await toggle.boundingBox())!;
+          expect(toggleBox.width).toBeGreaterThanOrEqual(43.99);
+          expect(toggleBox.height).toBeGreaterThanOrEqual(43.99);
+          const summary = card.locator('.tool-entry-summary');
+          if (await summary.count()) {
+            await expect(summary).toHaveCSS('text-overflow', 'ellipsis');
+            const summaryBox = (await summary.boundingBox())!;
+            const titleBox = (await card.locator('.tool-entry-badge').boundingBox())!;
+            expect(summaryBox.width).toBeGreaterThan(0);
+            expect(summaryBox.x).toBeGreaterThanOrEqual(titleBox.x + titleBox.width);
+          }
+          const file = card.getByRole('button', { name: /^在文件面板中打开：/ });
+          if (await file.count()) {
+            const fileBox = (await file.boundingBox())!;
+            expect(fileBox.width).toBeGreaterThanOrEqual(43.99);
+            expect(fileBox.height).toBeGreaterThanOrEqual(43.99);
+            expect(fileBox.x).toBeGreaterThanOrEqual(toggleBox.x + toggleBox.width);
+          }
+        }
       }
       await expect(page.locator('.thinking-event-row')).toHaveCount(0);
       await expect(

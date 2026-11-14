@@ -3366,6 +3366,8 @@ html {
 
 .tool-entry-badge {
   display: block;
+  flex: 0 0 auto;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3377,7 +3379,22 @@ html {
   color: hsl(var(--foreground));
 }
 
+/* Reserve the action before allocating the remaining width to a long path.
+ * Without a subtitle, long action labels may use the whole title row. */
+.tool-entry-title-row:has(.tool-entry-summary) > .tool-entry-badge {
+  max-width: 50%;
+}
+
+.tool-entry-trigger > button + button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
 .tool-entry-summary {
+  flex: 1 1 0%;
   max-height: 1.5em;
   min-width: 0;
   overflow: hidden;
