@@ -23,11 +23,11 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Repeat visible dark diff token gates without retries
+      - name: Repeat visible light and dark diff token gates without retries
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: token-test-results/results.json
         run: >-
-          pnpm exec playwright test --project=mobile-390 --grep '深色.*Diff'
+          pnpm exec playwright test --project=mobile-390 --grep '深色.*Diff|浅色 TSX'
           --repeat-each=3 --retries=0 --output=token-test-results --reporter=line,json
       # Stop at the first real fixture failure so partial evidence is available promptly.
       # Zero retries prevents a later pass from hiding an unstable interaction.

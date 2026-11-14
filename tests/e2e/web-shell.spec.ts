@@ -1364,6 +1364,156 @@ test('深色 TSX 选中 Diff 使用真实词法内容并保持可读', async ({ 
   expect(violations).toEqual([]);
 });
 
+test('浅色 TSX 中性词法在真实增删背景保持可读', async ({ page }, testInfo) => {
+  test.skip((page.viewportSize()?.width ?? 0) !== 390, 'Focused narrow light token audit');
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  let gitWrites = 0;
+  let tsxReads = 0;
+  let stagedReads = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.includes('/git/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      gitWrites += 1;
+  });
+  const path = 'apps/web/src/features/workspace/pages/WorkspacePage.tsx';
+  // The common fixture returns CSS for every path. Override only this file so
+  // TSX assertions inspect actual TypeScript/JSX tokens, never renamed CSS.
+  const patch = [
+    `diff --git a/${path} b/${path}`,
+    `--- a/${path}`,
+    `+++ b/${path}`,
+    '@@ -1,4 +1,4 @@',
+    '-const n=1;',
+    '+const n=2;',
+    "-const s='idle';",
+    "+const s='ready';",
+    '-type Old=number;',
+    '+type New=number;',
+    '-// old',
+    '+// new',
+    '',
+  ].join('\n');
+  await page.route(`**/api/v1/projects/${project.id}/git/diff?**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('path') !== path) return route.fallback();
+    tsxReads += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: { patch, truncated: false, staged: url.searchParams.get('staged') === 'true' },
+      }),
+    });
+    if (url.searchParams.get('staged') === 'true') stagedReads += 1;
+  });
+  await page.goto('/settings/appearance');
+  await page.getByRole('combobox', { name: '主题' }).click();
+  await page.getByRole('option', { name: '浅色', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'light');
+  await page.goto(`/workspace/${session.id}?view=changes`);
+  await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', 'light');
+  await expect(page.getByRole('heading', { name: '审阅更改', exact: true })).toBeVisible({
+    timeout: SHELL_READY_TIMEOUT,
+  });
+  await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
+  const staged = page.getByRole('checkbox', { name: 'staged', exact: true });
+  await staged.check();
+  await expect(staged).toBeChecked();
+  await expect.poll(() => stagedReads).toBeGreaterThan(0);
+  const lines = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
+  await expect(lines).toBeVisible();
+  await expect(lines).toContainText(/const\s+n\s*=\s*2/);
+  await expect(lines).toContainText(/s\s*=\s*'ready'/);
+  await expect(page.locator('.git-diff-editor-toolbar small')).toHaveText('typescript');
+  await expect.poll(() => tsxReads).toBeGreaterThan(0);
+  const editors = page.locator('.git-diff-editor [role="textbox"]');
+  await expect(editors).toHaveCount(2);
+  await expect
+    .poll(() =>
+      editors.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') ?? '')),
+    )
+    .toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`更改前：${path}`),
+        expect.stringContaining(`更改后：${path}`),
+      ]),
+    );
+  // Every family must have painted its real palette: fallback black and hidden
+  // Monaco mirrors cannot satisfy this gate. The inline deleted spans belong
+  // to the visible modified pane, not the hidden original editor.
+  const samples = [
+    ['const', 'rgb(61, 72, 89)', false],
+    ['idle', 'rgb(85, 66, 54)', true],
+    ['ready', 'rgb(85, 66, 54)', false],
+    ['1', 'rgb(55, 75, 66)', true],
+    ['2', 'rgb(55, 75, 66)', false],
+    ['Old', 'rgb(77, 64, 87)', true],
+    ['New', 'rgb(77, 64, 87)', false],
+    ['old', 'rgb(66, 75, 69)', true],
+    ['new', 'rgb(66, 75, 69)', false],
+  ] as const;
+  for (const [text, color, deleted] of samples) {
+    const tokens = page.locator(
+      deleted
+        ? '.git-diff-editor .editor.modified .view-line span.char-delete:visible'
+        : '.git-diff-editor .editor.modified .view-line span[class*="mtk"]:visible',
+    );
+    await expect
+      .poll(() =>
+        tokens.evaluateAll((nodes, expected) => {
+          return [
+            ...new Set(
+              nodes
+                .filter((node) => {
+                  const rect = node.getBoundingClientRect();
+                  const pane = node.closest('.editor.modified')?.getBoundingClientRect();
+                  return (
+                    node.children.length === 0 &&
+                    node.textContent
+                      ?.replace(/\u00a0/g, ' ')
+                      .replace(/^['"]|['"]$/g, '')
+                      .replace(/^\/\/\s*/, '')
+                      .trim() === expected &&
+                    pane !== undefined &&
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    rect.left >= Math.max(pane.left, 0) &&
+                    rect.right <= Math.min(pane.right, innerWidth) &&
+                    rect.top >= Math.max(pane.top, 0) &&
+                    rect.bottom <= Math.min(pane.bottom, innerHeight)
+                  );
+                })
+                .map((node) => getComputedStyle(node).color),
+            ),
+          ];
+        }, text),
+      )
+      .toEqual([color]);
+  }
+  await expectNoHorizontalOverflow(page);
+  await attachViewportScreenshot(page, testInfo, 'workspace-diff-light-tsx');
+  const audit = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const violations = audit.violations.filter((entry) =>
+    ['serious', 'critical'].includes(entry.impact ?? ''),
+  );
+  await testInfo.attach(`workspace-diff-light-tsx-axe-${testInfo.project.name}`, {
+    body: JSON.stringify(violations),
+    contentType: 'application/json',
+  });
+  expect(gitWrites).toBe(0);
+  expect(errors).toEqual([]);
+  expect(violations).toEqual([]);
+});
+
 test('专注审阅保留未提交草稿和编辑器并恢复原布局', async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
