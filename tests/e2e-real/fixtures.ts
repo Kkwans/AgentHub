@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { messages, SessionRepository, MessageRepository } from '../../packages/db/dist/index.js';
 import { mkdtemp, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -13,6 +15,10 @@ const tempRootPrefix = 'agenthub-pw-real-';
 export type RealAuthMode = 'token' | 'local_trusted';
 
 export type RealApp = {
+  seedSavedMessageHistory(
+    sessionId: string,
+    rows: Array<{ role: 'USER' | 'ASSISTANT'; text: string }>,
+  ): Promise<Array<{ id: string; sequence: number; text: string }>>;
   origin: string;
   projectRoot: string;
   secondaryProjectRoot: string;
@@ -87,7 +93,32 @@ export const test = base.extend<TestFixtures>({
         throw new Error('真实 E2E health 未确认 pglite 与 web dist');
       }
 
+      const fixtureDatabase = running.database.db;
       await use({
+        async seedSavedMessageHistory(sessionId, rows) {
+          // Test-only data construction on this server's existing isolated connection.
+          // Never reopen the live PGlite directory or expose a production seed endpoint.
+          if (!rows.length || rows.length > 1200 || rows.some((row) => row.text.length > 2000))
+            throw new Error('历史 fixture 超过测试边界');
+          if (
+            !(await new SessionRepository(fixtureDatabase).get(sessionId)) ||
+            (await new MessageRepository(fixtureDatabase).list(sessionId, { limit: 1 })).length
+          )
+            throw new Error('历史 fixture 只能写入当前隔离数据库的空会话');
+          const createdAt = Date.now() - rows.length * 1000;
+          const records = rows.map((row, index) => ({
+            id: randomUUID(),
+            sessionId,
+            role: row.role,
+            kind: 'TEXT',
+            text: row.text,
+            sequence: index + 1,
+            createdAt: new Date(createdAt + index * 1000),
+            contentJson: {},
+          }));
+          await fixtureDatabase.insert(messages).values(records);
+          return records.map(({ id, sequence, text }) => ({ id, sequence, text }));
+        },
         origin: `http://127.0.0.1:${String(address.port)}`,
         projectRoot,
         secondaryProjectRoot,

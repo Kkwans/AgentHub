@@ -244,6 +244,7 @@ jobs:
           tests/e2e-real/session-export.spec.ts
           tests/e2e-real/task-start-recovery.spec.ts
           tests/e2e-real/agent-availability.spec.ts
+          tests/e2e-real/session-message-search.spec.ts
           --retries=0 --output=focused-test-results --reporter=line,json
       - name: Verify saved-task Prompt repair regression without retries
         env:
