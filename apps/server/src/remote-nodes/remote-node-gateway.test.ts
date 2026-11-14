@@ -7,7 +7,7 @@ import {
   type RemoteNodeServerMessage,
 } from '@agenthub/shared';
 import { createPgliteDatabase, RemoteNodeRepository, type DatabaseClient } from '@agenthub/db';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
 
 import { RemoteNodeGateway } from './remote-node-gateway.js';
@@ -143,7 +143,28 @@ describe('Remote Node WebSocket Gateway', () => {
     await waitFor(() => events.length === 1);
     unsubscribe();
 
-    socket.close(1000, '测试完成');
+    const originalOffline = service.markOffline.bind(service);
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let started = false;
+    vi.spyOn(service, 'markOffline').mockImplementation(async (id) => {
+      started = true;
+      await barrier;
+      return originalOffline(id);
+    });
+    let closed = false;
+    const closing = gateway.close();
+    void closing.then(() => {
+      closed = true;
+    });
+    await waitFor(() => started);
+    expect(closed).toBe(false);
+    expect((await service.diagnostics(registered.nodeId!)).status).not.toBe('OFFLINE');
+    release();
+    await closing;
+    expect(closed).toBe(true);
     await waitFor(async () => (await service.diagnostics(registered.nodeId!)).status === 'OFFLINE');
     expect((await service.diagnostics(registered.nodeId!)).connected).toBe(false);
   });

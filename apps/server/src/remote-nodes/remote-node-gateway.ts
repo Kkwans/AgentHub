@@ -51,10 +51,16 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
   private readonly pending = new Map<string, PendingRequest>();
   private readonly sessionListeners = new Map<string, Set<SessionListener>>();
   private readonly staleTimer: NodeJS.Timeout;
+  private stopping = false;
+  private closePromise?: Promise<void>;
+  private readonly handlers = new Set<Promise<void>>();
+  private offlineFailed = false;
+  private stateWrites: Promise<void> = Promise.resolve();
 
   constructor(
     upgradeRouter: WebSocketUpgradeRouter,
     private readonly nodes: RemoteNodeService,
+    private readonly closeTimeoutMs = 5_000,
   ) {
     this.server = upgradeRouter.register('/node/ws', {
       maxPayload: 1024 * 1024,
@@ -80,7 +86,7 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
     timeoutMs = 30_000,
   ): Promise<Record<string, unknown>> {
     const connection = this.connections.get(nodeId);
-    if (!connection || connection.socket.readyState !== WebSocket.OPEN) {
+    if (this.stopping || !connection || connection.socket.readyState !== WebSocket.OPEN) {
       throw new RemoteNodeRpcError('REMOTE_NODE_OFFLINE', 'Remote Node 当前离线');
     }
     const requestId = randomUUID();
@@ -135,18 +141,63 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
     };
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
+    this.stopping = true;
     clearInterval(this.staleTimer);
-    for (const connection of this.connections.values()) {
-      connection.socket.close(1001, '服务器正在关闭');
-      this.rejectPending(connection, 'REMOTE_NODE_GATEWAY_CLOSED', 'Remote Node Gateway 已关闭');
-    }
-    await new Promise<void>((resolve, reject) => {
-      this.server.close((error) => (error ? reject(error) : resolve()));
+    this.closePromise = Promise.resolve().then(async () => {
+      let timer: NodeJS.Timeout | undefined;
+      const drain = async () => {
+        for (const connection of this.connections.values()) {
+          this.rejectPending(
+            connection,
+            'REMOTE_NODE_GATEWAY_CLOSED',
+            'Remote Node Gateway 已关闭',
+          );
+        }
+        for (const socket of this.server.clients) socket.close(1001, '服务器正在关闭');
+        await new Promise<void>((resolve, reject) => {
+          this.server.close((error) => (error ? reject(error) : resolve()));
+        });
+        // WebSocket close only confirms transport shutdown, not asynchronous DB writes.
+        while (this.handlers.size) await Promise.all([...this.handlers]);
+        if (this.offlineFailed) throw new Error('offline write unconfirmed');
+      };
+      try {
+        await Promise.race([
+          drain(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error('gateway drain timeout')),
+              this.closeTimeoutMs,
+            );
+          }),
+        ]);
+      } catch {
+        throw new RemoteNodeRpcError(
+          'REMOTE_NODE_GATEWAY_CLOSE_UNCONFIRMED',
+          'Remote Node Gateway 关闭尚未确认',
+        );
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     });
+    return this.closePromise;
+  }
+
+  private track(work: Promise<void>): void {
+    const observed = work.catch(() => {
+      this.offlineFailed = true;
+    });
+    this.handlers.add(observed);
+    void observed.then(() => this.handlers.delete(observed));
   }
 
   private onConnection(socket: WebSocket): void {
+    if (this.stopping) {
+      socket.close(1001, '服务器正在关闭');
+      return;
+    }
     const challenge = randomBytes(32).toString('base64url');
     const expiresAt = Date.now() + 30_000;
     let authenticated: AuthenticatedConnection | undefined;
@@ -158,11 +209,12 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
     });
 
     socket.on('message', (data, isBinary) => {
+      if (this.stopping || socket.readyState !== WebSocket.OPEN) return;
       if (isBinary) {
         this.fail(socket, 'REMOTE_NODE_BINARY_UNSUPPORTED', 'Node WebSocket 不接受二进制消息');
         return;
       }
-      void this.handleMessage(socket, data.toString(), {
+      const work = this.handleMessage(socket, data.toString(), {
         challenge,
         expiresAt,
         get authenticated() {
@@ -172,20 +224,47 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
           authenticated = value;
         },
       }).catch((error) => this.handleError(socket, error));
+      this.track(work);
     });
     socket.on('close', () => {
       if (!authenticated || this.connections.get(authenticated.nodeId)?.socket !== socket) return;
       this.connections.delete(authenticated.nodeId);
       this.rejectPending(authenticated, 'REMOTE_NODE_DISCONNECTED', 'Remote Node 连接已断开');
       this.disconnectSessionListeners(authenticated.nodeId);
-      void this.nodes.markOffline(authenticated.nodeId);
+      const nodeId = authenticated.nodeId;
+      this.track(
+        this.serializeState(async () => {
+          // A replacement accepted earlier in this queue owns the ONLINE state.
+          if (this.connections.has(nodeId)) return;
+          await this.nodes.markOffline(nodeId);
+        }),
+      );
     });
     socket.on('error', () => {
       // close handler owns authoritative state transition.
     });
   }
 
-  private async handleMessage(
+  private serializeState(work: () => Promise<void>): Promise<void> {
+    const result = this.stateWrites.then(work);
+    this.stateWrites = result.catch(() => undefined);
+    return result;
+  }
+
+  private handleMessage(...args: Parameters<RemoteNodeGateway['applyMessage']>): Promise<void> {
+    let type: unknown;
+    try {
+      type = (JSON.parse(args[1]) as { type?: unknown }).type;
+    } catch {
+      /* validated below */
+    }
+    // Keep RPC result/event delivery independent of potentially slow DB writes.
+    return ['node.register', 'node.authenticate', 'node.heartbeat'].includes(String(type))
+      ? this.serializeState(() => this.applyMessage(...args))
+      : this.applyMessage(...args);
+  }
+
+  private async applyMessage(
     socket: WebSocket,
     raw: string,
     state: {
@@ -212,6 +291,15 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
       }
       if (message.type === 'node.register') {
         const registered = await this.nodes.register(message, state.challenge);
+        if (this.stopping || socket.readyState !== WebSocket.OPEN) {
+          try {
+            if (!this.connections.has(registered.node.id))
+              await this.nodes.markOffline(registered.node.id);
+          } catch {
+            this.offlineFailed = true;
+          }
+          return;
+        }
         const connection = this.acceptConnection(socket, registered.node.id, registered.target.id);
         state.setAuthenticated(connection);
         this.send(socket, {
@@ -223,6 +311,14 @@ export class RemoteNodeGateway implements RemoteNodeConnectionController {
       }
       if (message.type === 'node.authenticate') {
         const node = await this.nodes.authenticate(message, state.challenge);
+        if (this.stopping || socket.readyState !== WebSocket.OPEN) {
+          try {
+            if (!this.connections.has(node.id)) await this.nodes.markOffline(node.id);
+          } catch {
+            this.offlineFailed = true;
+          }
+          return;
+        }
         const connection = this.acceptConnection(socket, node.id, node.targetId);
         state.setAuthenticated(connection);
         this.send(socket, { type: 'node.authenticated', nodeId: node.id, targetId: node.targetId });
