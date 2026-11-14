@@ -1,6 +1,7 @@
 import {
   NO_AGENT_CAPABILITIES,
   isResourceCleanupUnconfirmed,
+  ResourceCleanupUnconfirmedError,
   type AgentCapabilities,
   type AgentProfile,
   type AgentRunRef,
@@ -137,7 +138,25 @@ export class OpenClawAdapter implements AgentRuntimeAdapter {
     const mode = this.transportFor(profile.id);
     if (mode === 'ACP') return this.options.primary.getCapabilities(profile);
     if (mode === 'EXEC') return structuredClone(OPENCLAW_EXEC_CAPABILITIES);
-    const report = await this.preflight(profile);
+    let report: PreflightReport;
+    try {
+      // Capability discovery may acquire a process. Unlike ordinary preflight,
+      // this resource boundary must not downgrade unconfirmed cleanup.
+      report = await this.preflight({
+        ...profile,
+        config: { ...profile.config, preflightStrictCleanup: true },
+      });
+    } catch (error) {
+      if (isResourceCleanupUnconfirmed(error)) throw error;
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ACP_PROCESS_CLEANUP_UNCONFIRMED'
+      )
+        throw new ResourceCleanupUnconfirmedError({ cause: error });
+      throw error;
+    }
     if (report.status !== 'READY') return structuredClone(NO_AGENT_CAPABILITIES);
     return this.transportFor(profile.id) === 'ACP'
       ? this.options.primary.getCapabilities(profile)

@@ -3,7 +3,14 @@ import {
   type OpenClawExecProbe,
   type OpenClawExecProcess,
 } from '@agenthub/adapter-openclaw';
-import { spawnSupervisedProcess, type AgentProfile } from '@agenthub/agent-core';
+import {
+  spawnSupervisedProcess,
+  isResourceCleanupUnconfirmed,
+  ResourceCleanupUnconfirmedError,
+  ProcessSupervisorError,
+  type AgentProfile,
+  type ProcessResult,
+} from '@agenthub/agent-core';
 
 import { AppError } from '../errors.js';
 import type { DockerControlService, DockerTarget } from '../docker/docker-control.js';
@@ -24,6 +31,7 @@ export class DockerOpenClawExecLauncher implements OpenClawExecLauncher {
         { command, args: ['agent', '--help'] },
         cwd,
       );
+      assertProbeTermination(result);
       const output = `${result.stdout}\n${result.stderr}`;
       const hasAgentCommand =
         /Usage:\s+openclaw agent \[options\]/i.test(output) && /--json/.test(output);
@@ -40,6 +48,7 @@ export class DockerOpenClawExecLauncher implements OpenClawExecLauncher {
         { command, args: ['agent', 'exec', '--help'] },
         cwd,
       );
+      assertProbeTermination(legacy);
       const legacyOutput = `${legacy.stdout}\n${legacy.stderr}`;
       const hasLegacyExec = /Usage:\s+openclaw agent exec(?:\s|\[)/i.test(legacyOutput);
       if (legacy.exitCode === 0 && hasLegacyExec) {
@@ -54,6 +63,9 @@ export class DockerOpenClawExecLauncher implements OpenClawExecLauncher {
         message: '当前 OpenClaw 版本未提供可解析的 agent 单回合命令',
       };
     } catch (error) {
+      if (isResourceCleanupUnconfirmed(error)) throw error;
+      if (error instanceof ProcessSupervisorError && error.code === 'PROCESS_TERMINATION_TIMEOUT')
+        throw new ResourceCleanupUnconfirmedError({ cause: error });
       if (error instanceof AppError) throw error;
       return { available: false, message: '无法验证 openclaw agent exec' };
     }
@@ -114,4 +126,13 @@ function requireOpenClawDockerProfile(profile: AgentProfile): {
     },
     command: launch.command,
   };
+}
+
+/** These flags only describe the Docker CLI. Abrupt CLI termination cannot
+ * establish that the command inside the container stopped, so fail closed.
+ * Normal CLI exit is not an independent audit of all container descendants.
+ */
+function assertProbeTermination(result: ProcessResult): void {
+  if (result.timedOut || result.canceled || result.signal)
+    throw new ResourceCleanupUnconfirmedError();
 }
