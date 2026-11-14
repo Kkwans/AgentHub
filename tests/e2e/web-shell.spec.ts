@@ -2885,14 +2885,47 @@ test('Settings 使用窄本地导航和单一内容列', async ({ page }, testIn
   await expect(page.getByRole('heading', { name: '账户' })).toBeHidden();
 
   const viewportWidth = page.viewportSize()?.width ?? 0;
-  if (viewportWidth > 1_060) {
-    const width = await navigation.evaluate((element) => element.getBoundingClientRect().width);
-    expect(width).toBeGreaterThanOrEqual(180);
-    expect(width).toBeLessThanOrEqual(192);
-  } else if (viewportWidth >= 761) {
-    const width = await navigation.evaluate((element) => element.getBoundingClientRect().width);
-    expect(width).toBeGreaterThanOrEqual(164);
-    expect(width).toBeLessThanOrEqual(172);
+  if (viewportWidth >= 761) {
+    await expect(navigation).toBeVisible();
+    const geometry = await navigation.evaluate((element) => {
+      const nav = element.getBoundingClientRect();
+      return {
+        width: nav.width,
+        labels: Array.from(element.querySelectorAll('a')).map((link) => {
+          const bounds = link.getBoundingClientRect();
+          const label = link.querySelector('strong')!;
+          const range = document.createRange();
+          range.selectNodeContents(label);
+          const text = range.getBoundingClientRect();
+          return {
+            label: label.textContent,
+            linkWidth: bounds.width,
+            textWidth: text.width,
+            textLeft: text.left,
+            textRight: text.right,
+            linkLeft: bounds.left,
+            linkRight: bounds.right,
+            navLeft: nav.left,
+            navRight: nav.right,
+          };
+        }),
+      };
+    });
+    await testInfo.attach('settings-navigation-geometry', {
+      body: JSON.stringify(geometry, null, 2),
+      contentType: 'application/json',
+    });
+    expect(geometry.width).toBeCloseTo(148, 1);
+    expect(geometry.labels).toHaveLength(6);
+    for (const label of geometry.labels) {
+      await expect(navigation.getByRole('link').filter({ hasText: label.label! })).toBeVisible();
+      expect(label.textWidth).toBeGreaterThan(0);
+      expect(label.textLeft).toBeGreaterThanOrEqual(label.linkLeft - 0.01);
+      expect(label.textRight).toBeLessThanOrEqual(label.linkRight + 0.01);
+      expect(label.linkLeft).toBeGreaterThanOrEqual(label.navLeft - 0.01);
+      expect(label.linkRight).toBeLessThanOrEqual(label.navRight + 0.01);
+      expect(label.linkWidth).toBeGreaterThan(0);
+    }
   }
 
   await navigation.getByRole('link').filter({ hasText: '安全' }).click();

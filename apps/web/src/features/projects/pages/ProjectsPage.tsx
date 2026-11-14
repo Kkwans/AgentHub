@@ -85,7 +85,7 @@ import {
 } from '../../../presentation/domain-labels';
 import layout from '../../shared/layout.module.css';
 import {
-  Screen,
+  NavigationPageHeader,
   QueryMessage,
   displayDate,
   useCompactViewport,
@@ -343,302 +343,316 @@ export function ProjectsPage() {
     );
   });
   return (
-    <Screen
-      eyebrow="Projects"
-      title="项目"
-      icon={FolderKanban}
-      description="管理你的代码项目，在隔离的工作区中与 Agent 一起开发。"
-      actions={
-        <Link to="/projects/new">
-          <AhButton leftSection={<Plus size={16} />}>新建项目</AhButton>
-        </Link>
-      }
-    >
-      <div className={`${projectsStyles.projectsPage} projects-dashboard-page workspace-page`}>
-        <QueryMessage
-          loading={projects.isLoading}
-          error={projects.error}
-          retry={() => void projects.refetch()}
-          label="正在加载项目"
+    <div className="min-h-full">
+      <AhReveal>
+        <NavigationPageHeader
+          className={projectsStyles.directoryHeader ?? ''}
+          title="项目"
+          icon={FolderKanban}
+          description="连接代码目录，在项目上下文中开展工作。"
+          actions={
+            <Link className={projectsStyles.createProjectLink} to="/projects/new">
+              <Plus size={16} aria-hidden="true" />
+              新建项目
+            </Link>
+          }
         />
-        {!projects.isLoading && !projects.error ? (
-          <>
-            {sourceNotices.length ? (
-              <div
-                className={projectsStyles.projectSourceGroup}
-                role="group"
-                aria-label="项目辅助数据读取状态"
-              >
-                {sourceNotices.map(({ key, label, source }) => (
-                  <div
-                    key={key}
-                    className={projectsStyles.projectSourceStatus}
-                    role={source.isError ? 'alert' : 'status'}
-                    aria-label={`${label}读取状态`}
-                    aria-describedby={source.isError ? sourceDescriptionId : undefined}
-                  >
-                    <span>
-                      <strong>{label}：</strong>
-                      {source.isError
-                        ? source.error instanceof ApiError && source.error.code === 'AUTH_REQUIRED'
-                          ? '登录已失效，无法确认当前数据。'
-                          : '读取失败，数据未知。'
-                        : source.isPending
-                          ? '正在加载。'
-                          : '正在更新，暂显示上次读取结果。'}
-                    </span>
-                    {source.isError ? (
-                      <AhButton
-                        className={projectsStyles.projectSourceRetry}
-                        aria-label={`重新读取${label}`}
-                        size="sm"
-                        variant="subtle"
-                        disabled={source.isFetching}
-                        onClick={() => void source.refetch()}
-                      >
-                        重新读取
-                      </AhButton>
-                    ) : null}
-                  </div>
-                ))}
-                {hasSourceError ? (
-                  <p id={sourceDescriptionId}>读取失败不代表没有记录；重试只重新读取对应数据。</p>
-                ) : null}
-              </div>
-            ) : null}
-            <div
-              className={`${projectsStyles.projectsToolbar} page-toolbar projects-dashboard-toolbar`}
-              aria-label="项目筛选"
-            >
-              <div ref={searchRef} className={`${projectsStyles.toolbarSearch} toolbar-search`}>
-                <AhInput
-                  label=""
-                  aria-label="搜索项目"
-                  placeholder="搜索项目名称、说明或路径"
-                  value={query}
-                  onChange={(event) => setQuery(event.currentTarget.value)}
-                  leftSection={<Search size={16} />}
-                />
-              </div>
-              {compact ? (
-                <button
-                  type="button"
-                  className={`${projectsStyles.toolbarMore} ${moreFiltersOpen ? projectsStyles.toolbarMoreActive : ''}`}
-                  ref={filterToggleRef}
-                  aria-expanded={moreFiltersOpen}
-                  aria-controls="project-filter-options"
-                  onClick={() => setMoreFiltersOpen((open) => !open)}
+      </AhReveal>
+      <div className={`${projectsStyles.directoryContent} page-content page-shell`}>
+        <div className={`${projectsStyles.projectsPage} projects-dashboard-page workspace-page`}>
+          <QueryMessage
+            loading={projects.isLoading}
+            error={projects.error}
+            retry={() => void projects.refetch()}
+            label="正在加载项目"
+          />
+          {!projects.isLoading && !projects.error ? (
+            <>
+              {sourceNotices.length ? (
+                <div
+                  className={projectsStyles.projectSourceGroup}
+                  role="group"
+                  aria-label="项目辅助数据读取状态"
                 >
-                  <ScanSearch size={14} aria-hidden="true" />
-                  筛选和排序
-                  {activeFilterCount ? (
-                    <span className={projectsStyles.filterCount}>{activeFilterCount}</span>
+                  {sourceNotices.map(({ key, label, source }) => (
+                    <div
+                      key={key}
+                      className={projectsStyles.projectSourceStatus}
+                      role={source.isError ? 'alert' : 'status'}
+                      aria-label={`${label}读取状态`}
+                      aria-describedby={source.isError ? sourceDescriptionId : undefined}
+                    >
+                      <span>
+                        <strong>{label}：</strong>
+                        {source.isError
+                          ? source.error instanceof ApiError &&
+                            source.error.code === 'AUTH_REQUIRED'
+                            ? '登录已失效，无法确认当前数据。'
+                            : '读取失败，数据未知。'
+                          : source.isPending
+                            ? '正在加载。'
+                            : '正在更新，暂显示上次读取结果。'}
+                      </span>
+                      {source.isError ? (
+                        <AhButton
+                          className={projectsStyles.projectSourceRetry}
+                          aria-label={`重新读取${label}`}
+                          size="sm"
+                          variant="subtle"
+                          disabled={source.isFetching}
+                          onClick={() => void source.refetch()}
+                        >
+                          重新读取
+                        </AhButton>
+                      ) : null}
+                    </div>
+                  ))}
+                  {hasSourceError ? (
+                    <p id={sourceDescriptionId}>读取失败不代表没有记录；重试只重新读取对应数据。</p>
                   ) : null}
-                </button>
-              ) : null}
-              {activeFilterCount ? (
-                <button type="button" className={projectsStyles.toolbarMore} onClick={clearFilters}>
-                  清除条件{!compact ? `（${activeFilterCount}）` : ''}
-                </button>
+                </div>
               ) : null}
               <div
-                id="project-filter-options"
-                ref={filterOptionsRef}
-                className={projectsStyles.filterOptions}
-                hidden={compact && !moreFiltersOpen}
+                className={`${projectsStyles.projectsToolbar} page-toolbar projects-dashboard-toolbar`}
+                aria-label="项目筛选"
               >
-                <div className={projectsStyles.toolbarSelect}>
-                  <AhSelect
-                    aria-label="项目状态"
+                <div ref={searchRef} className={`${projectsStyles.toolbarSearch} toolbar-search`}>
+                  <AhInput
                     label=""
-                    value={status}
-                    onChange={(value) => setStatus(value ?? 'all')}
-                    data={[
-                      { value: 'all', label: '全部状态' },
-                      ...statusOptions.map((value) => ({ value, label: domainStatusLabel(value) })),
-                    ]}
+                    aria-label="搜索项目"
+                    placeholder="搜索项目名称、说明或路径"
+                    value={query}
+                    onChange={(event) => setQuery(event.currentTarget.value)}
+                    leftSection={<Search size={16} />}
                   />
                 </div>
-                <div className={projectsStyles.toolbarSelect}>
-                  <AhSelect
-                    aria-label="项目类型"
-                    label=""
-                    value={kind}
-                    onChange={(value) => setKind((value ?? 'all') as 'all' | 'STANDARD' | 'TEST')}
-                    data={kindOptions}
-                  />
-                </div>
-                <div className={projectsStyles.toolbarSelect}>
-                  <AhSelect
-                    aria-label="项目排序"
-                    label=""
-                    value={sort}
-                    onChange={(value) => setSort(value ?? 'updated')}
-                    data={[
-                      { value: 'updated', label: '最新更新' },
-                      { value: 'name', label: '名称 A-Z' },
-                      { value: 'status', label: '状态' },
-                    ]}
-                  />
-                </div>
-                {languageOptions.length ? (
+                {compact ? (
+                  <button
+                    type="button"
+                    className={`${projectsStyles.toolbarMore} ${moreFiltersOpen ? projectsStyles.toolbarMoreActive : ''}`}
+                    ref={filterToggleRef}
+                    aria-expanded={moreFiltersOpen}
+                    aria-controls="project-filter-options"
+                    onClick={() => setMoreFiltersOpen((open) => !open)}
+                  >
+                    <ScanSearch size={14} aria-hidden="true" />
+                    筛选和排序
+                    {activeFilterCount ? (
+                      <span className={projectsStyles.filterCount}>{activeFilterCount}</span>
+                    ) : null}
+                  </button>
+                ) : null}
+                {activeFilterCount ? (
+                  <button
+                    type="button"
+                    className={projectsStyles.toolbarMore}
+                    onClick={clearFilters}
+                  >
+                    清除条件{!compact ? `（${activeFilterCount}）` : ''}
+                  </button>
+                ) : null}
+                <div
+                  id="project-filter-options"
+                  ref={filterOptionsRef}
+                  className={projectsStyles.filterOptions}
+                  hidden={compact && !moreFiltersOpen}
+                >
                   <div className={projectsStyles.toolbarSelect}>
                     <AhSelect
-                      aria-label="项目语言"
+                      aria-label="项目状态"
                       label=""
-                      value={language}
-                      onChange={(value) => setLanguage(value ?? 'all')}
+                      value={status}
+                      onChange={(value) => setStatus(value ?? 'all')}
                       data={[
-                        { value: 'all', label: '全部语言' },
-                        ...languageOptions.map((value) => ({ value, label: value })),
+                        { value: 'all', label: '全部状态' },
+                        ...statusOptions.map((value) => ({
+                          value,
+                          label: domainStatusLabel(value),
+                        })),
                       ]}
                     />
                   </div>
-                ) : null}
-              </div>
-              <span className={projectsStyles.toolbarSpacer} />
-              <div
-                className={`${projectsStyles.segmented} segmented-control`}
-                role="group"
-                aria-label="项目视图"
-              >
-                <button
-                  type="button"
-                  className={`${projectsStyles.segmentedButton} segmented-item ${view === 'grid' ? `${projectsStyles.segmentedButtonActive} bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] shadow-[var(--shadow-sm)]` : ''}`}
-                  aria-pressed={view === 'grid'}
-                  onClick={() => setView('grid')}
-                >
-                  卡片
-                </button>
-                <button
-                  type="button"
-                  className={`${projectsStyles.segmentedButton} segmented-item ${view === 'list' ? `${projectsStyles.segmentedButtonActive} bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] shadow-[var(--shadow-sm)]` : ''}`}
-                  aria-pressed={view === 'list'}
-                  onClick={() => setView('list')}
-                >
-                  列表
-                </button>
-              </div>
-              <span className={projectsStyles.toolbarCount}>{filtered.length} 个项目</span>
-            </div>
-            {filtered.length ? (
-              view === 'list' ? (
-                <section
-                  className={`${projectsStyles.projectList} premium-panel`}
-                  aria-label="项目列表"
-                >
-                  <div className={projectsStyles.projectListHeader} aria-hidden="true">
-                    <span>项目</span>
-                    <span>最近会话分支</span>
-                    <span>工作</span>
-                    <span>Agent</span>
-                    <span>最近活动</span>
-                    <span>操作</span>
+                  <div className={projectsStyles.toolbarSelect}>
+                    <AhSelect
+                      aria-label="项目类型"
+                      label=""
+                      value={kind}
+                      onChange={(value) => setKind((value ?? 'all') as 'all' | 'STANDARD' | 'TEST')}
+                      data={kindOptions}
+                    />
                   </div>
-                  {standardProjectRows}
-                  {kind === 'all' && testProjectRows.length ? (
-                    <div className={projectsStyles.testProjectGroup}>
-                      <details open={testGroupOpen}>
-                        <summary
-                          onClick={(event) => {
-                            // Native summary activation (pointer, Enter or Space) emits click.
-                            // Do not persist onToggle: changing open also emits toggle without
-                            // a user choice, which would freeze the automatic default.
-                            event.preventDefault();
-                            setTestGroupPreference(!testGroupOpen);
-                          }}
-                        >
-                          测试 Project（{testProjectRows.length}）
-                        </summary>
-                        <div className={projectsStyles.testProjectRows}>{testProjectRows}</div>
-                      </details>
+                  <div className={projectsStyles.toolbarSelect}>
+                    <AhSelect
+                      aria-label="项目排序"
+                      label=""
+                      value={sort}
+                      onChange={(value) => setSort(value ?? 'updated')}
+                      data={[
+                        { value: 'updated', label: '最新更新' },
+                        { value: 'name', label: '名称 A-Z' },
+                        { value: 'status', label: '状态' },
+                      ]}
+                    />
+                  </div>
+                  {languageOptions.length ? (
+                    <div className={projectsStyles.toolbarSelect}>
+                      <AhSelect
+                        aria-label="项目语言"
+                        label=""
+                        value={language}
+                        onChange={(value) => setLanguage(value ?? 'all')}
+                        data={[
+                          { value: 'all', label: '全部语言' },
+                          ...languageOptions.map((value) => ({ value, label: value })),
+                        ]}
+                      />
                     </div>
-                  ) : (
-                    testProjectRows
-                  )}
-                </section>
-              ) : (
-                <div className={`${projectsStyles.projectCardGrid} resource-card-grid`}>
-                  {projectCards}
+                  ) : null}
                 </div>
-              )
-            ) : (
-              <Card
-                className={`${projectsStyles.emptyPanel} premium-panel resource-card min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)]`}
-              >
-                <AhEmptyState
-                  title={
-                    query || status !== 'all' || language !== 'all' || kind !== 'all'
-                      ? '没有匹配的项目'
-                      : '还没有项目'
-                  }
-                  description={
-                    query || status !== 'all' || language !== 'all' || kind !== 'all'
-                      ? '尝试调整筛选条件。'
-                      : '从允许访问的目录创建第一个 Project。'
-                  }
-                  action={
-                    !query && status === 'all' && language === 'all' && kind === 'all' ? (
-                      <Link to="/projects/new">
-                        <AhButton>创建项目</AhButton>
-                      </Link>
-                    ) : undefined
-                  }
-                />
-              </Card>
-            )}
-            {filtered.length && pageCount > 1 ? (
-              <footer className={projectsStyles.listFooter}>
-                <span>
-                  第 {page} / {pageCount} 页 · 共 {filtered.length} 个项目
-                </span>
-                <span className={projectsStyles.pagination}>
+                <span className={projectsStyles.toolbarSpacer} />
+                <div
+                  className={`${projectsStyles.segmented} segmented-control`}
+                  role="group"
+                  aria-label="项目视图"
+                >
                   <button
                     type="button"
-                    className={projectsStyles.paginationButton}
-                    onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    disabled={page === 1}
-                    aria-label="上一页"
+                    className={`${projectsStyles.segmentedButton} segmented-item ${view === 'grid' ? `${projectsStyles.segmentedButtonActive} bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] shadow-[var(--shadow-sm)]` : ''}`}
+                    aria-pressed={view === 'grid'}
+                    onClick={() => setView('grid')}
                   >
-                    ‹
+                    卡片
                   </button>
-                  {Array.from({ length: pageCount }, (_, index) => index + 1).map((value) => (
+                  <button
+                    type="button"
+                    className={`${projectsStyles.segmentedButton} segmented-item ${view === 'list' ? `${projectsStyles.segmentedButtonActive} bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] shadow-[var(--shadow-sm)]` : ''}`}
+                    aria-pressed={view === 'list'}
+                    onClick={() => setView('list')}
+                  >
+                    列表
+                  </button>
+                </div>
+                <span className={projectsStyles.toolbarCount}>{filtered.length} 个项目</span>
+              </div>
+              {filtered.length ? (
+                view === 'list' ? (
+                  <section
+                    className={`${projectsStyles.projectList} premium-panel`}
+                    aria-label="项目列表"
+                  >
+                    <div className={projectsStyles.projectListHeader} aria-hidden="true">
+                      <span>项目</span>
+                      <span>最近会话分支</span>
+                      <span>工作</span>
+                      <span>Agent</span>
+                      <span>最近活动</span>
+                      <span>操作</span>
+                    </div>
+                    {standardProjectRows}
+                    {kind === 'all' && testProjectRows.length ? (
+                      <div className={projectsStyles.testProjectGroup}>
+                        <details open={testGroupOpen}>
+                          <summary
+                            onClick={(event) => {
+                              // Native summary activation (pointer, Enter or Space) emits click.
+                              // Do not persist onToggle: changing open also emits toggle without
+                              // a user choice, which would freeze the automatic default.
+                              event.preventDefault();
+                              setTestGroupPreference(!testGroupOpen);
+                            }}
+                          >
+                            测试 Project（{testProjectRows.length}）
+                          </summary>
+                          <div className={projectsStyles.testProjectRows}>{testProjectRows}</div>
+                        </details>
+                      </div>
+                    ) : (
+                      testProjectRows
+                    )}
+                  </section>
+                ) : (
+                  <div className={`${projectsStyles.projectCardGrid} resource-card-grid`}>
+                    {projectCards}
+                  </div>
+                )
+              ) : (
+                <Card
+                  className={`${projectsStyles.emptyPanel} premium-panel resource-card min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-[var(--shadow-sm)]`}
+                >
+                  <AhEmptyState
+                    title={
+                      query || status !== 'all' || language !== 'all' || kind !== 'all'
+                        ? '没有匹配的项目'
+                        : '还没有项目'
+                    }
+                    description={
+                      query || status !== 'all' || language !== 'all' || kind !== 'all'
+                        ? '尝试调整筛选条件。'
+                        : '从允许访问的目录创建第一个 Project。'
+                    }
+                    action={
+                      !query && status === 'all' && language === 'all' && kind === 'all' ? (
+                        <Link className={projectsStyles.createProjectLink} to="/projects/new">
+                          创建项目
+                        </Link>
+                      ) : undefined
+                    }
+                  />
+                </Card>
+              )}
+              {filtered.length && pageCount > 1 ? (
+                <footer className={projectsStyles.listFooter}>
+                  <span>
+                    第 {page} / {pageCount} 页 · 共 {filtered.length} 个项目
+                  </span>
+                  <span className={projectsStyles.pagination}>
                     <button
                       type="button"
-                      className={`${projectsStyles.paginationButton} ${value === page ? projectsStyles.paginationButtonActive : ''}`}
-                      key={value}
-                      onClick={() => setPage(value)}
-                      aria-label={`第 ${value} 页`}
-                      aria-current={value === page ? 'page' : undefined}
+                      className={projectsStyles.paginationButton}
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                      disabled={page === 1}
+                      aria-label="上一页"
                     >
-                      {value}
+                      ‹
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    className={projectsStyles.paginationButton}
-                    onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
-                    disabled={page === pageCount}
-                    aria-label="下一页"
-                  >
-                    ›
-                  </button>
-                  <AhSelect
-                    aria-label="每页数量"
-                    label=""
-                    value={String(pageSize)}
-                    onChange={(value) => setPageSize(Number(value ?? 10))}
-                    data={[
-                      { value: '10', label: '10 条/页' },
-                      { value: '20', label: '20 条/页' },
-                    ]}
-                  />
-                </span>
-              </footer>
-            ) : null}
-          </>
-        ) : null}
+                    {Array.from({ length: pageCount }, (_, index) => index + 1).map((value) => (
+                      <button
+                        type="button"
+                        className={`${projectsStyles.paginationButton} ${value === page ? projectsStyles.paginationButtonActive : ''}`}
+                        key={value}
+                        onClick={() => setPage(value)}
+                        aria-label={`第 ${value} 页`}
+                        aria-current={value === page ? 'page' : undefined}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={projectsStyles.paginationButton}
+                      onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                      disabled={page === pageCount}
+                      aria-label="下一页"
+                    >
+                      ›
+                    </button>
+                    <AhSelect
+                      aria-label="每页数量"
+                      label=""
+                      value={String(pageSize)}
+                      onChange={(value) => setPageSize(Number(value ?? 10))}
+                      data={[
+                        { value: '10', label: '10 条/页' },
+                        { value: '20', label: '20 条/页' },
+                      ]}
+                    />
+                  </span>
+                </footer>
+              ) : null}
+            </>
+          ) : null}
+        </div>
       </div>
-    </Screen>
+    </div>
   );
 }

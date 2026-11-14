@@ -67,6 +67,42 @@ for (const width of [390, 768, 1024, 1440]) {
         page.locator('details').filter({ hasText: '测试 Project（1）' }),
       ).not.toHaveAttribute('open');
       const toggle = page.getByRole('button', { name: /筛选和排序/ });
+      const create = page.getByRole('link', { name: '新建项目', exact: true });
+      await expect(create).toHaveAttribute('href', '/projects/new');
+      await expect(create.locator('button, a, [role="button"]')).toHaveCount(0);
+      await expect(page.getByText('Projects', { exact: true })).toHaveCount(0);
+      const createBox = (await create.boundingBox())!;
+      expect(createBox.height).toBeGreaterThanOrEqual(43.99);
+      const headingBox = (await page
+        .getByRole('heading', { name: '项目', exact: true, level: 1 })
+        .boundingBox())!;
+      const firstProject = page
+        .locator('a[href$="/overview"]')
+        .filter({ hasText: '正式筛选项目' })
+        .first();
+      await expect(firstProject).toBeVisible();
+      const projectBox = (await firstProject.boundingBox())!;
+      if (width === 390) {
+        expect(
+          Math.abs(headingBox.y + headingBox.height / 2 - createBox.y - createBox.height / 2),
+        ).toBeLessThanOrEqual(4);
+        expect(headingBox.x + headingBox.width).toBeLessThanOrEqual(createBox.x);
+        expect(projectBox.y).toBeLessThan(430);
+        const view = page.getByRole('group', { name: '项目视图' });
+        for (const button of await view.getByRole('button').all())
+          expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
+        const filterBox = (await toggle.boundingBox())!;
+        const viewBox = (await view.boundingBox())!;
+        expect(filterBox.x + filterBox.width).toBeLessThanOrEqual(viewBox.x);
+        expect(
+          Math.min(filterBox.y + filterBox.height, viewBox.y + viewBox.height),
+        ).toBeGreaterThan(Math.max(filterBox.y, viewBox.y));
+      }
+      await testInfo.attach('projects-directory-geometry', {
+        body: JSON.stringify({ createBox, headingBox, projectBox }),
+        contentType: 'application/json',
+      });
+
       if (width === 390) {
         await expect(toggle).toHaveAttribute('aria-expanded', 'false');
         await expect(toggle).toHaveAttribute('aria-controls', 'project-filter-options');
@@ -139,6 +175,9 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(page.getByRole('combobox', { name: '项目状态' })).toHaveText('全部状态');
       await expect(page.getByRole('combobox', { name: '项目排序' })).toHaveText('最新更新');
       await capture(page, testInfo, 'projects-cleared');
+      await create.focus();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/projects\/new$/);
       expect(errors).toEqual([]);
     });
   }

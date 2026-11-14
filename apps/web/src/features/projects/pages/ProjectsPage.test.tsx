@@ -196,3 +196,25 @@ describe('测试项目可见性', () => {
     expect(group()).not.toHaveAttribute('open');
   });
 });
+
+it('directory has one semantic create link and no duplicate Projects badge', async () => {
+  mount(true);
+  await screen.findByRole('heading', { name: '项目', level: 1 });
+  expect(screen.queryByText('Projects', { exact: true })).not.toBeInTheDocument();
+  const create = screen.getByRole('link', { name: '新建项目' });
+  expect(create).toHaveAttribute('href', '/projects/new');
+  expect(create.querySelector('button, a, [role="button"]')).toBeNull();
+  create.focus();
+  expect(create).toHaveFocus();
+  expect(screen.getByRole('button', { name: /筛选和排序/ })).toHaveAttribute(
+    'aria-controls',
+    'project-filter-options',
+  );
+});
+
+it('empty directory create action is also a single semantic link', async () => {
+  mount(true, []);
+  const create = await screen.findByRole('link', { name: '创建项目' });
+  expect(create).toHaveAttribute('href', '/projects/new');
+  expect(create.querySelector('button, a, [role="button"]')).toBeNull();
+});

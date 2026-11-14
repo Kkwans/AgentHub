@@ -2069,3 +2069,74 @@
   color: var(--ah-warning);
   overflow-wrap: anywhere;
 }
+
+/* Directory-only chrome: one semantic primary link and an uncluttered title. */
+.createProjectLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 16px;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary-hover) / 0.35);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.createProjectLink:hover {
+  background: hsl(var(--primary-hover));
+}
+.createProjectLink:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 3px;
+}
+.createProjectLink svg {
+  flex-shrink: 0;
+}
+.directoryContent {
+  padding-top: 24px;
+}
+@media (max-width: 767px) {
+  .directoryHeader:global(.page-header-row) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+  }
+  .directoryHeader :global(.page-title-group),
+  .directoryHeader :global(.page-title-group > div:last-child) {
+    display: contents;
+  }
+  .directoryHeader :global(.page-heading-icon) {
+    display: none;
+  }
+  .directoryHeader :global(.page-title-group > div:last-child > div) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .directoryHeader :global(.page-subtitle) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+  }
+  .directoryHeader:global(.page-header-row) > :global(.page-header-actions):last-child {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+  }
+  .directoryContent:global(.page-content) {
+    padding-top: 16px;
+  }
+  .directoryContent .projectsToolbar {
+    padding-inline: 0;
+  }
+  .directoryContent .projectsToolbar .segmentedButton {
+    min-height: 44px;
+  }
+}
