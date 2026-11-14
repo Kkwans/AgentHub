@@ -87,3 +87,5 @@ DB层已实现未发布候选，隔离PGlite 19文件193通过；0015旧schema�
 服务首片拟仅允许 **CLOSED且无待处理/未知操作或资源清理风险** 的会话归档。READY/DISCONNECTED可能随后启动，仅短锁检查不足以保证隐藏后不会出现工作；在活动/审批发现入口完整前，不支持这两类归档。CLOSED本身仍不是安全证明：还需核对blocking Run、approval pending/outbox UNKNOWN或DEAD、task-start UNKNOWN及准备阶段、preparation/run/lifecycle admission，以及未确认handle/资源清理。恢复始终只改变分类，不清理这些未知事实。
 
 拟复用runtime admission tracking和activation commit队列对短DB检查+CAS线性化，停服应等待已准入写入；不得把Provider调用放进队列或把状态假定为资源已退出。该服务合同仍需专门竞态测试及独立CR，不能凭DB候选推断安全归档已可用。
+
+12:23 UTC DB独立分片2a1f30f819准备发布；最终同树19文件193通过（51.69s）与drizzle check通过，指纹一致。只发布可单独验证的迁移/仓储能力，不提供隐藏会话的UI，因此不形成无恢复入口的半套用户流程。新增真实PG测试仍待专用CI执行；服务/UI没有完成。

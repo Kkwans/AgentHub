@@ -1665,3 +1665,10 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 12:15 UTC补充：精确focused artifact下载hash核对并查看390浅色失败图，确实缺焦点环。构建CSS的`.workspace .message-user { box-shadow:none }`优先级高于全局`:where(...):focus-visible`，临时标记消退后仍覆盖默认环；不是单纯颜色解析假阴性。正在最小修复workspace消息单内描边，保留真实可见焦点门禁；此前本地单测/CR未覆盖此CSS层叠，不能视为已经解决。
 - 12:16 UTC补充：history fixture精确trace的Prompt解析POST返回{data:[]}，随后Composer访问items.length抛异常，截图全白。只补typed ResolvedPromptContextRecord空绑定DTO，原消息200/分页/草稿/切会话断言不变；单文件types/lint、24例发现、Composer7专项通过。尚无新版浏览器通过证据。
 - 12:20 UTC热修冻结验收：四文件UI/fixture切片的完整web102文件1212测试通过/161.45s，root lint/types、integration types、串行全部build通过，冻结指纹无变化。中途integration types命令误写配置路径TS5058，纠正到tests/integration/tsconfig.json后通过，不是源码缺陷。临时定位1px内描边保留，持久focus规则显式排除临时marker，过期后2px主题内描边；computed门禁不放宽，另加样式JSON与过期截图。准备独立发布；归档DB及PG测试仍留工作区，不混入热修。
+
+### 2026-11-14 12:21–12:23 UTC：热修发布与归档DB分片
+
+- 12:21:39热修ac7e13c727与文档2045aefea5已push/fetch确认，精确CI43594420871启动，尚待新浏览器结果。归档候选未混入这次热修。
+- 12:23:04归档DB最终冻结聚合19文件193测试通过/51.69s；drizzle-kit check通过、指纹未变。此前同树root lint/types、integration types与串行全build通过。独立CR无阻断。
+- 独立2a1f30f819分片只含DB字段/迁移/CAS及测试和既有PG步骤说明，不接服务或UI：新增真实PG双PID、held事务锁观测、CAS单胜、第三连接持久读与历史不变断言。只完成4例发现，真实PG需发布后专用CI验证，绝不把PGlite当多连接证据。
+- 归档仍不是用户可用功能；未调用真实Provider、未连接用户数据库。后续先看精确PG和全量CI，再做仅CLOSED且无UNKNOWN/清理风险的服务合同。
