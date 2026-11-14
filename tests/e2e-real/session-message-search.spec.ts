@@ -70,12 +70,18 @@ for (const width of [390, 768, 1024, 1440])
       const errors: string[] = [];
       const writes: string[] = [];
       const historyReads: string[] = [];
+      let searchPosts = 0;
       page.on('pageerror', (error) => errors.push(error.message));
       page.on('console', (message) => {
         if (message.type() === 'error') errors.push(message.text());
       });
       page.on('request', (request) => {
         const url = new URL(request.url());
+        if (
+          request.method() === 'POST' &&
+          url.pathname === `/api/v1/sessions/${session.id}/messages/search`
+        )
+          searchPosts++;
         // Both are read-only despite POST: PromptService.resolve only reads bindings,
         // prompt/version/label records and renders context (no Run/snapshot persistence).
         // Workspace's promptContext useQuery invokes it when Session loads.
@@ -137,9 +143,43 @@ for (const width of [390, 768, 1024, 1440])
       const resultsPath = info.outputPath(`search-results-${width}-${theme}.png`);
       await page.screenshot({ path: resultsPath });
       await info.attach('真实搜索结果', { path: resultsPath, contentType: 'image/png' });
+      const expandedGeometry = {
+        panel: await panel.boundingBox(),
+        conversation: await page.locator('.conversation-scroll').boundingBox(),
+      };
       await result.focus();
       await page.keyboard.press('Enter');
       await assertLocated(page, target.id, target.sequence);
+      await expect(panel.getByRole('textbox', { name: '搜索已保存文字' })).toHaveCount(0);
+      await expect(panel.getByRole('button', { name: '返回搜索结果', exact: true })).toBeVisible();
+      const latest = page.getByRole('button', { name: '回到最新', exact: true });
+      await expect(latest).toBeVisible();
+      await expect(latest).not.toContainText(/\d+ 条新消息/);
+      const compactGeometry = {
+        panel: await panel.boundingBox(),
+        conversation: await page.locator('.conversation-scroll').boundingBox(),
+        latest: await latest.boundingBox(),
+      };
+      expect(expandedGeometry.panel).not.toBeNull();
+      expect(expandedGeometry.conversation).not.toBeNull();
+      expect(compactGeometry.panel).not.toBeNull();
+      expect(compactGeometry.conversation).not.toBeNull();
+      expect(compactGeometry.latest).not.toBeNull();
+      // Relative geometry proves reclaimed reading space without a guessed pixel budget.
+      expect(compactGeometry.panel!.height).toBeLessThan(expandedGeometry.panel!.height);
+      expect(compactGeometry.conversation!.height).toBeGreaterThan(
+        expandedGeometry.conversation!.height,
+      );
+      const c = compactGeometry.conversation!,
+        b = compactGeometry.latest!;
+      expect(b.y + 0.01).toBeGreaterThanOrEqual(c.y + c.height);
+      expect(await latest.evaluate((node) => node.closest('.conversation-scroll') === null)).toBe(
+        true,
+      );
+      await info.attach('定位前后阅读区与独立回最新控件', {
+        body: JSON.stringify({ expandedGeometry, compactGeometry }),
+        contentType: 'application/json',
+      });
       expect(historyReads.length).toBeGreaterThanOrEqual(2);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
@@ -147,6 +187,52 @@ for (const width of [390, 768, 1024, 1440])
       const locatedPath = info.outputPath(`search-located-${width}-${theme}.png`);
       await page.screenshot({ path: locatedPath });
       await info.attach('真实原消息定位', { path: locatedPath, contentType: 'image/png' });
+      const locatedMessage = page.locator(`article[data-message-id="${target.id}"]`);
+      // Keyboard navigation must retain a visible native focus indicator after
+      // the temporary location highlight expires; a class-name check is insufficient.
+      await expect(locatedMessage).not.toHaveAttribute('data-message-located', 'true');
+      await expect(locatedMessage).toBeFocused();
+      await expect
+        .poll(async () =>
+          locatedMessage.evaluate((node) => {
+            const style = getComputedStyle(node);
+            const opaque = (color: string) =>
+              color !== 'transparent' &&
+              !/rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/.test(color) &&
+              !/\/\s*0(?:\.0+)?%?\s*\)$/.test(color);
+            const outline =
+              parseFloat(style.outlineWidth) > 0 &&
+              style.outlineStyle !== 'none' &&
+              opaque(style.outlineColor);
+            const shadow =
+              style.boxShadow !== 'none' &&
+              style.boxShadow.split(/,(?![^()]*\))/).some((part) => {
+                const color = part.match(/rgba?\([^)]*\)/)?.[0];
+                return Boolean(
+                  color &&
+                  opaque(color) &&
+                  (part.match(/-?[\d.]+px/g) ?? []).some(
+                    (length) => Math.abs(parseFloat(length)) > 0,
+                  ),
+                );
+              });
+            return outline || shadow;
+          }),
+        )
+        .toBe(true);
+
+      const priorSearchPosts = searchPosts;
+      await panel.getByRole('button', { name: '返回搜索结果', exact: true }).click();
+      const searchInput = panel.getByRole('textbox', { name: '搜索已保存文字' });
+      await expect(searchInput).toHaveValue(needle);
+      await expect(searchInput).toBeFocused();
+      expect(searchPosts).toBe(priorSearchPosts);
+      await expect(result).toBeVisible();
+      await searchInput.fill('Fixture 助手');
+      await panel.getByRole('button', { name: '搜索', exact: true }).click();
+      await expect(panel.getByRole('button', { name: '搜索', exact: true })).toBeEnabled();
+      await expect(panel.getByRole('button', { name: /^定位消息 / }).first()).toBeVisible();
+      await expect(composer).toHaveValue(draft);
       await panel.getByRole('button', { name: '关闭搜索' }).click();
       await expect(page.getByRole('button', { name: '搜索已保存文字', exact: true })).toBeFocused();
       expect(writes).toEqual([]);
