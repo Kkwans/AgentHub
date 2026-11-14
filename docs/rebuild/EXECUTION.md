@@ -1777,3 +1777,17 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 17文件产品/门禁切片已CAS推送并fetch核实 b80de5ea386717d7c0fe93d93d9927569a7138d4，tree cb3d91ccea5d8214e8e541d2d1878935ddb89b5c 与独立临时index完全一致。仅开发分支，未main/部署。
 - 最终web111文件1285测试通过；串行web构建成功。6处显式展开入口只适配新交互路径，保留旧40文件/提交/键盘/几何断言；ESNext/Bundler E2E类型和scopedlint/格式通过。
 - 该发布发生在22:44之后，不计入22:29–22:44窗口；新SHA CI与实际截图尚待验证，不宣称已修复全部浏览器失败或视觉验收通过。
+
+### 2026-11-14 14:50 UTC / 北京时间22:50：空态输入区减重候选，未发布
+- 直接打开ea9的390浅色reference-opening原图，确认输入区约132px、正文输入约78px；源码两层min-height与手机padding叠加。不是将无溢出等同设计完成。
+- 隔离候选把textarea初始/重置/拖动下限设44px、rows1，24行高+上下10padding；解除surface重复min-height与左右padding，idle中性1px/无shadow，原2pxAA焦点保留。保320上限、长文内部滚动/手动拖高、IME/草稿/Terminal/原发送逻辑；没有实现自动增长。
+- 新门禁先红后绿，4文件13专项通过；独立CR无阻断。真实4宽浅深新增短文无滚、12行内部滚动/CtrlEnd、手动扩80再缩回，保原Terminal/AA/发送流程；CtrlEnd滚动用poll等待真实状态，不降低阈值。尚未实际浏览器执行。
+- 最终全web及串行build已启动，新产品未commit/push，预计节省高度不是实际截图结论。VISUAL_COVERAGE与ISSUES新增当前证据索引，防止把历史状态当现在。
+- 14:51 UTC b80真实axe job132482050038失败：干净工作区无文件树时，新增折叠按钮仍给出aria-controls，导致多个桌面浅深状态critical aria-valid-attr-value。已定位渲染条件不一致，正在补回归/修复，不调整axe门槛。artifact14118309793（350350386字节）sha256 8b31eccfc8b114e66b5267ae8a017410c775a178eaf5dffbfd4da990f9fc9143；未下载大包，精确job日志已读。
+- 14:53 UTC composer第一轮112文件1286测试、串行构建通过；但新Git controls修复在运行期间落入，不将该轮算最终8文件冻结。Git专项44/44、独立CR无阻断，最终冻结已重新启动完整web→串行build。当前未发布新候选。
+- 已实际打开a34浅TSX390原图：词法更中性，新行背景较柔和；删除粉红背景仍抢眼，短例不能代替真实长Diff。等待b80新原图再做判断。
+
+### 2026-11-14 14:56:49 UTC / 北京时间22:56:49：214d666 已发布，浏览器待验
+- 8文件提交214d6666c9cd4b0fb78cb65a1086efbf089db145已CAS推送/fetch核实；tree d13aeef5b6cc28e872a9c9d790ccbcf3b5a92975与临时index一致，最终文件hash不变。
+- 最终完整web112文件1292测试通过178.17s，串行web构建成功；Git回归44专项、Composer13专项与独立CR通过。新真实门禁要求compactCard<=110、单行44–48、长文可滚/手动扩缩，不能把这些未运行的断言写成实际高度。
+- b80 axe失败仍保留为失败；其余精确CI继续跟踪。214新CI/截图尚未验收，不称页面已美学达标、没有main/部署。
