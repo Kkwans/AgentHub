@@ -207,6 +207,92 @@ export function AgentConnectionCheck({
     <section className={styles.connectionCheck} aria-label="Agent 连接检查">
       <h2>连接检查</h2>
       <p>显式启动本机 ACP 进程并初始化连接，更新最近检查状态；不创建测试会话、不发送任务。</p>
+      {attempt ? (
+        <div className={styles.connectionResult} role="group" aria-label="本次连接检查结果">
+          <p role="status">
+            {attempt.phase === 'pending'
+              ? '正在检查。离开页面不会取消已发送的请求。'
+              : attempt.phase === 'unknown'
+                ? '检查结果待核对。请求可能仍在执行，本页不会重复启动。'
+                : labels[attempt.report!.status]}
+          </p>
+          {attempt.report ? (
+            <>
+              <p className={styles.secondary}>仅代表本次连接检查，不是项目任务可运行的保证。</p>
+              <ul>
+                {attempt.report.checks.map((c) => (
+                  <li key={c.id}>
+                    {checkLabels[c.id]}：{checkStates[c.status]}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          <div className={styles.connectionActions}>
+            <AhButton
+              variant="default"
+              disabled={disabled || checking || attempt.phase === 'pending'}
+              onClick={() => {
+                if (!alive.current) return;
+                const token = generation.current;
+                setChecking(true);
+                setError('');
+                void readSaved()
+                  .catch(() => {
+                    if (alive.current && token === generation.current)
+                      setError('已保存状态读取失败。');
+                  })
+                  .finally(() => {
+                    if (alive.current && token === generation.current) setChecking(false);
+                  });
+              }}
+            >
+              读取已保存状态
+            </AhButton>
+            {attempt.phase === 'complete' &&
+            eligible &&
+            attempt.scope.targetId === agent.targetId ? (
+              <AhButton
+                variant="default"
+                disabled={disabled || checking}
+                onClick={() => {
+                  if (!alive.current || attempts.get(key) !== attempt) return;
+                  attempts.delete(key);
+                  listeners.forEach((fn) => fn());
+                }}
+              >
+                准备新的检查
+              </AhButton>
+            ) : null}
+          </div>
+          <details className={styles.technical}>
+            <summary>检查范围与时间</summary>
+            <dl className={styles.connectionScope}>
+              <dt>本次目录</dt>
+              <dd>
+                <code className={styles.wrap}>{attempt.scope.cwd}</code>
+              </dd>
+              <dt>Agent 标识</dt>
+              <dd>{attempt.scope.agentId}</dd>
+              <dt>执行环境标识</dt>
+              <dd>{attempt.scope.targetId}</dd>
+              <dt>项目标识</dt>
+              <dd>{attempt.scope.projectId}</dd>
+              {attempt.report ? (
+                <>
+                  <dt>本次检查时间</dt>
+                  <dd>
+                    <time dateTime={attempt.report.checkedAt}>{attempt.report.checkedAt}</time>
+                  </dd>
+                </>
+              ) : null}
+            </dl>
+          </details>
+          <p className={styles.secondary}>
+            已保存状态不是原请求的成功凭据。当前页不自动重跑，也不提供烟测或修复命令。
+          </p>
+        </div>
+      ) : null}
       {!eligible ? (
         <p className={styles.secondary}>
           仅支持已确认执行环境的、已启用的本机 ACP Agent。容器和远程检查暂不在此开放。
@@ -222,9 +308,15 @@ export function AgentConnectionCheck({
             data={projects.map((p) => ({ value: p.id, label: p.name }))}
           />
           {project ? (
-            <p className={styles.secondary}>
-              检查目录：<code className={styles.wrap}>{project.realRootPath}</code>
-            </p>
+            !attempt ? (
+              <details className={styles.technical}>
+                <summary>查看检查目录</summary>
+                <div className={styles.technicalBody}>
+                  <code className={styles.wrap}>{project.realRootPath}</code>
+                  <p className={styles.secondary}>目录由服务器重新核验。</p>
+                </div>
+              </details>
+            ) : null
           ) : (
             <p className={styles.secondary}>
               仅列出与此 Agent 同一执行环境的活动项目；目录由服务器重新核验。
@@ -239,70 +331,6 @@ export function AgentConnectionCheck({
           </AhButton>
         </>
       )}
-      {attempt ? (
-        <div className={styles.recovery}>
-          <p role="status">
-            {attempt.phase === 'pending'
-              ? '正在检查。离开页面不会取消已发送的请求。'
-              : attempt.phase === 'unknown'
-                ? '检查结果待核对。请求可能仍在执行，本页不会重复启动。'
-                : labels[attempt.report!.status]}
-          </p>
-          <p className={styles.secondary}>
-            本次目录：<code className={styles.wrap}>{attempt.scope.cwd}</code>
-          </p>
-          {attempt.report ? (
-            <>
-              <p className={styles.secondary}>
-                本次检查时间：{attempt.report.checkedAt}。这不是项目任务可运行的保证。
-              </p>
-              <ul>
-                {attempt.report.checks.map((c) => (
-                  <li key={c.id}>
-                    {checkLabels[c.id]}：{checkStates[c.status]}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-          <AhButton
-            variant="subtle"
-            disabled={disabled || checking || attempt.phase === 'pending'}
-            onClick={() => {
-              if (!alive.current) return;
-              const token = generation.current;
-              setChecking(true);
-              setError('');
-              void readSaved()
-                .catch(() => {
-                  if (alive.current && token === generation.current)
-                    setError('已保存状态读取失败。');
-                })
-                .finally(() => {
-                  if (alive.current && token === generation.current) setChecking(false);
-                });
-            }}
-          >
-            读取已保存状态
-          </AhButton>
-          {attempt.phase === 'complete' && eligible && attempt.scope.targetId === agent.targetId ? (
-            <AhButton
-              variant="subtle"
-              disabled={disabled || checking}
-              onClick={() => {
-                if (!alive.current || attempts.get(key) !== attempt) return;
-                attempts.delete(key);
-                listeners.forEach((fn) => fn());
-              }}
-            >
-              准备新的检查
-            </AhButton>
-          ) : null}
-          <p className={styles.secondary}>
-            已保存状态不是原请求的成功凭据。当前页不自动重跑，也不提供烟测或修复命令。
-          </p>
-        </div>
-      ) : null}
       {error ? <p role="alert">{error}</p> : null}
     </section>
   );

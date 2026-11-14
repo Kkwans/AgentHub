@@ -196,3 +196,57 @@ it('65秒超时明确unknown，已保存状态不是解锁或重投凭据', asyn
   expect(screen.getByRole('button', { name: '检查连接' })).toBeDisabled();
   expect(api.post).toHaveBeenCalledTimes(1);
 });
+
+it('本次结果在表单前，技术范围默认收起且展开不触发新检查', async () => {
+  const f = fixture();
+  vi.mocked(api.post).mockResolvedValue(f.report);
+  render(<AgentConnectionCheck {...f.props} />);
+  await choose();
+  const preview = screen.getByText('查看检查目录').closest('details')!;
+  expect(preview).not.toHaveAttribute('open');
+  fireEvent.click(screen.getByText('查看检查目录'));
+  expect(screen.getByText(f.scope.cwd)).toBeVisible();
+  expect(api.post).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '检查连接' }));
+  const status = await screen.findByText('连接检查通过');
+  expect(screen.getByRole('group', { name: '本次连接检查结果' })).toBeVisible();
+  const select = screen.getByRole('combobox', { name: '检查项目' });
+  expect(status.compareDocumentPosition(select) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const summary = screen.getByText('检查范围与时间');
+  const details = summary.closest('details')!;
+  expect(details).not.toHaveAttribute('open');
+  expect(screen.getByText(f.scope.cwd)).not.toBeVisible();
+  expect(screen.getByText(f.report.checkedAt)).not.toBeVisible();
+  expect(screen.getByText(/不是项目任务可运行的保证/)).toBeVisible();
+  fireEvent.click(summary);
+  expect(screen.getByText(f.scope.cwd)).toBeVisible();
+  expect(screen.getByText(f.scope.agentId)).toBeVisible();
+  expect(screen.getByText(f.scope.targetId)).toBeVisible();
+  expect(screen.getByText(f.scope.projectId)).toBeVisible();
+  expect(screen.getByText(f.report.checkedAt)).toBeVisible();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+it('unknown 状态和不重投警告不随技术详情折叠，读回不改变原范围', async () => {
+  const f = fixture();
+  vi.mocked(api.post).mockRejectedValue(new Error('private'));
+  render(<AgentConnectionCheck {...f.props} />);
+  await choose();
+  fireEvent.click(screen.getByRole('button', { name: '检查连接' }));
+  const status = await screen.findByText(/检查结果待核对/);
+  expect(status).toBeVisible();
+  expect(
+    status.compareDocumentPosition(screen.getByRole('combobox', { name: '检查项目' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  fireEvent.click(screen.getByText('检查范围与时间'));
+  expect(screen.getByText(f.scope.targetId)).toBeVisible();
+  fireEvent.click(screen.getByText('检查范围与时间'));
+  expect(status).toBeVisible();
+  expect(screen.getByText(/已保存状态不是原请求的成功凭据/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '读取已保存状态' }));
+  await waitFor(() => expect(f.props.readSaved).toHaveBeenCalledOnce());
+  expect(screen.getByRole('button', { name: '检查连接' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: '准备新的检查' })).not.toBeInTheDocument();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});

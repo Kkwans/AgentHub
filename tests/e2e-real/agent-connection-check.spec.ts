@@ -69,6 +69,11 @@ for (const theme of ['light', 'dark']) {
       const section = page.getByRole('region', { name: 'Agent 连接检查' });
       await section.getByRole('combobox', { name: '检查项目' }).click();
       await page.getByRole('option', { name: '连接检查已登记项目', exact: true }).click();
+      const directorySummary = section.locator('summary', { hasText: '查看检查目录' });
+      await directorySummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(section.getByText(app.projectRoot, { exact: true })).toBeVisible();
+      expect(posts).toHaveLength(0);
       const responsePromise = page.waitForResponse(
         (r) =>
           r.url().includes(`/agents/${agent.id}/connection-check`) &&
@@ -100,6 +105,29 @@ for (const theme of ['light', 'dark']) {
         ].sort(),
       );
       await expect(section.getByText('连接检查通过', { exact: true })).toBeVisible();
+      const resultStatus = section.getByRole('status');
+      const statusBox = await resultStatus.boundingBox();
+      const selectorBox = await section.getByRole('combobox', { name: '检查项目' }).boundingBox();
+      expect(statusBox).not.toBeNull();
+      expect(selectorBox).not.toBeNull();
+      expect(statusBox!.y + statusBox!.height).toBeLessThan(selectorBox!.y);
+      for (const name of ['读取已保存状态', '准备新的检查']) {
+        const box = await section.getByRole('button', { name, exact: true }).boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.height).toBeGreaterThanOrEqual(44);
+        expect(box!.width).toBeLessThan(220);
+      }
+      const scopeSummary = section.locator('summary', { hasText: '检查范围与时间' });
+      const scopeDetails = scopeSummary.locator('..');
+      await expect(scopeDetails).not.toHaveAttribute('open');
+      await expect(scopeDetails.getByText(app.projectRoot, { exact: true })).not.toBeVisible();
+      await scopeSummary.focus();
+      await page.keyboard.press('Enter');
+      for (const identity of [app.projectRoot, agent.id, target.id, project.id, report.checkedAt])
+        await expect(scopeDetails.getByText(identity, { exact: true })).toBeVisible();
+      expect(posts).toHaveLength(1);
+      await page.keyboard.press('Enter');
+      await expect(scopeDetails).not.toHaveAttribute('open');
       await section.getByRole('button', { name: '读取已保存状态' }).click();
       await expect(model).toHaveValue('unsaved-draft');
       await expect(page.getByText('最近检查就绪', { exact: true })).toBeVisible();
@@ -131,6 +159,15 @@ for (const theme of ['light', 'dark']) {
       await section.getByRole('button', { name: '准备新的检查' }).click();
       await section.getByRole('button', { name: '检查连接', exact: true }).click();
       await expect(section.getByText(/检查结果待核对/)).toBeVisible();
+      const unknownBox = await section.getByRole('status').boundingBox();
+      const lockedSelectorBox = await section
+        .getByRole('combobox', { name: '检查项目' })
+        .boundingBox();
+      expect(unknownBox!.y + unknownBox!.height).toBeLessThan(lockedSelectorBox!.y);
+      await expect(
+        section.locator('summary', { hasText: '检查范围与时间' }).locator('..'),
+      ).not.toHaveAttribute('open');
+      await expect(section.getByText(/已保存状态不是原请求的成功凭据/)).toBeVisible();
       await section.getByRole('button', { name: '读取已保存状态' }).click();
       await expect(section.getByRole('button', { name: '检查连接', exact: true })).toBeDisabled();
       await expect(section.getByRole('button', { name: '准备新的检查' })).toHaveCount(0);
