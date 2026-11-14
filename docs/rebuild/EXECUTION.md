@@ -1413,3 +1413,22 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 真实审阅E2E扩浅/深×四宽+既有pending，共9例发现；保留原生命周期断言并增加身份/顺序/按钮/resize/溢出与截图。本地浏览器未执行，新视觉待CI。
 - 06:23:19开始完整apps/web回归和全repo lint/types/build。此为纯UI切片，后端不变，之前1907全仓是基线而非本窗口再次运行；发布后精确CI仍跑全仓。
 - 06:25:38完整前端回归完成：87文件/1060测试全部通过，137.32秒，exit0；06:23:39全repo lint/types/build通过。独立CR无阻断。此片后端未重跑全量；将由精确新提交CI执行全仓和实际浏览器，未声称已有新像素验收。
+
+### 2026-11-14 06:30–06:35 UTC 真实接入验收前置整改
+
+- 06:28:24上一UI片已推f84f5ccc25daae72defc1ecb5cea60724ce1f421，树3a8cf17459db669001e5c8ad8717442820bb60d7与本地0768ee2一致。精确CI43566481885运行中；459ad0e的PG/axe成功，verify/真实服务仍运行，不迁移旧SHA全绿结论。
+- 06:30起审计live harness，确认硬编码凭据引用/容器操作与弱取消断言；新候选逐provider/suite门禁、无默认凭据、不执行真实Provider。通用探针只在显式HOST协议层非smoke，并用inheritEnv:false测试launcher，不能把生产HostLauncher环境合并说成隔离。
+- 独立CR发现probe error cause可经Vitest输出泄漏、legacy DATABASE_URL可误连非测试库，候选正修固定公开错误和DB URL排除。进一步读到生产Session close吞退出失败，另开最小adapter修复，与live门禁合并验收前置。尚未冻结/提交，不宣称真实Agent通过。
+
+### 2026-11-14 06:38–06:46 UTC 关闭安全与验收真实性
+
+- 06:38:14 live harness 冻结，24/24 受控测试通过；默认 live 5 文件 7 例全部跳过，未运行真实 Provider、凭据或用户容器。固定公开错误、排除 legacy DATABASE_URL、显式 provider/suite 与凭据引用门禁；协议探针仅 HOST/non-smoke，不是五种 Provider 全生命周期验收。
+- 06:39:25 首次全量因最终 CR 新发现后台 timer close 拒绝与消费流结束丢失 handle 风险，主动中止，exit130，不计通过。ACP timer 现在观察关闭拒绝但保留 sticky close promise；仅确认进程终止后发 session.closed，不伪造 run.cancelled。
+- 06:41:59 ACP 片冻结，28/28 通过。06:44:40 Session 片冻结，146/146 通过；中间新 fixture timeout 错误和 stale activation 提前返回回归均修正后重跑，未隐去失败轮次。消费流断开在首个 await 前登记资源与待完成清理，detach 后 shutdown 仍等待；清理失败禁止健康释放。独立最终 CR 无阻断。
+- 06:45:39 重新启动最终冻结全量，06:45:41 启动全仓 lint/types/build，进行中，尚无本片 commit/push。
+- 06:46 精确核实已发布 459ad0e 的 CI43565811178 四项全绿：真实服务 job132359299613 实际166通过，geometry140通过；新截图仍待人工查看。f84f5cc 的 verify132361342465 为1909通过/12跳过、严格token6通过、完整浏览器86通过/10跳过，PG/axe成功，但真实服务仍运行，不称整轮全绿。
+- 尚未返回 handle 的 create/restore/capability 失败资源归属不在本片覆盖范围，另列后续严格清理，不把当前修复描述为所有创建路径均已安全。
+
+- 06:46:04 最终全仓 lint/typecheck/build 均 exit0；冻结全量仍运行。
+
+- 06:52:39 最终冻结全量 exit0：189文件通过/6跳过，1940测试通过/9跳过，418.37秒。跳过包含显式关闭的live套件，不是Provider通过；lint/types/build、格式与独立CR通过。准备按严格关闭安全与live验收门禁拆两个逻辑提交，仅开发分支。

@@ -1,10 +1,18 @@
 # Agent 接入
 
+## 当前证据范围（2026-11-14）
+
+现有五内置 Profile 是 Codex、Claude Code、OpenCode、Hermes、OpenClaw，另有 CUSTOM_ACP 通用入口。源码入口、协议握手、真实任务闭环、目标 NAS 验收是不同等级。下方机器名与状态属于历史部署记录，不代表当前开发分支或全部账户已通过。当前执行矩阵与待办见 [下一阶段计划](rebuild/NEXT_PRODUCT_PLAN.md)。
+
+旧 live 测试存在单开关顺带操作固定容器、OpenCode缺失仍通过、取消仅断言随机ID等问题，不能用这些断言证明供应商可用或取消成功。正在整改为逐 Provider/suite 显式门禁、无默认凭据与权威事件证据；仅运行受控 fixture 回归，不运行真实账户。通用 HOST 非烟测探针也不等同内置 Docker/Remote 或真实 Session/审批/任务验收。
+
+本机连接检查已在459ad0e发布到开发分支，本地全仓1907通过/12跳过；新八视口主题组合的真实浏览器CI尚待结果。这是控制面功能，不是五家真实 Provider 联调成功。
+
 ## 统一核心
 
 所有实现适配 `AgentRuntimeAdapter`、`AgentSessionHandle`、`AgentCapabilities` 与 `NormalizedAgentEvent`。ACP、OpenClaw 与 Docker 类型停留在 adapter/execution 边界。
 
-## 内置 Profile
+## 内置 Profile（历史部署快照，非当前验收）
 
 | Agent       | 运行位置           | 主路径                            | 已知状态                                                  |
 | ----------- | ------------------ | --------------------------------- | --------------------------------------------------------- |

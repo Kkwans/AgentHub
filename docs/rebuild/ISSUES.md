@@ -484,3 +484,14 @@ b12b8fc的verify结论success但含1flaky：真实可见删除字符串首次及
 ### 2026-11-14 06:03 UTC Agent预检存在未确认退出风险
 
 新增连接检查前置CR确认：Host launcher在异步access/env之后spawn，只有HTTP入口归属检查不足；ACP旧预检清理会吞cancel错误，可能把未知退出当READY，HTTP操作已settle后健康锁可能被释放。实施中：真正spawn前门禁、严格清理错误、服务层sticky未知台账与停服失败。不能用new UI pending锁替代后端保护；远程Node跨端清理合同尚未覆盖，新UI不开放远程。未关闭，见[连接检查实施合同](AGENT_CONNECTION_CHECK_PLAN.md)。
+
+### 2026-11-14 06:35 UTC live 证据与 ACP Session 退出缺口
+
+- 旧tests/live单一开关会碰硬编码既有容器，缺安装分支expect(true)不构成验收，Codex cancel只断言UUID而非同run权威终态。正在改为显式provider/suite配置、默认不执行、去掉机器特有容器启停和假绿。
+- legacy server live套件spread宿主环境会继承DATABASE_URL，临时AGENTHUB_DATA_DIR不覆盖该优先级，存在误用非测试数据库风险；候选已显式剔除并加纯测试，未实际连接用户数据库。
+- 生产ACP Session.performClose仍吞process.cancel失败，上层close成功不代表子进程退出。现有SessionService的失败台账不能捕获被底层吞掉的错误。正修严格传播、重入/并发幂等、仅确认退出后session.closed、queue总关闭；不以close成功伪造run.cancelled，不碰真实Agent。未关闭，发布前需联合专项/全量与独立CR。
+
+### 2026-11-14 06:46 UTC 后台关闭与后续资源归属
+
+- 已实现待发布：ACP prompt timer 观察后台 close 拒绝；Session 消费流结束不再直接遗失已 detach 的 handle，首个 await 前登记清理并让 shutdown 等待，失败保持 sticky 未确认资源。最终全量正在重跑，尚不关闭问题。
+- 后续开放：尚未返回 handle 的 create/restore/open/capability 失败必须跨 adapter/service 传播通用清理未知状态，禁止被 fallback 或 NOT_ACQUIRED 掩盖，并保留临时目录。当前 handle.close 修复不代表该路径已覆盖。
