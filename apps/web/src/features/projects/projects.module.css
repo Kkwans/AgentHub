@@ -206,6 +206,11 @@
 }
 
 .projectEdit {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
   justify-self: end;
   padding: 5px 7px;
   color: var(--ah-accent-primary);
@@ -1267,7 +1272,7 @@
 @media (max-width: 1279px) {
   .projectListHeader,
   .projectRow {
-    grid-template-columns: minmax(280px, 1fr) minmax(90px, 0.28fr) 68px 68px 112px 72px;
+    grid-template-columns: minmax(0, 1fr) 90px 68px 68px 112px 72px;
     gap: 12px;
   }
 
@@ -1303,7 +1308,7 @@
 
   .projectListHeader,
   .projectRow {
-    grid-template-columns: minmax(260px, 1fr) minmax(84px, 0.28fr) 68px 108px 72px;
+    grid-template-columns: minmax(0, 1fr) 84px 68px 108px 72px;
   }
 
   .projectListHeader > :nth-child(4),

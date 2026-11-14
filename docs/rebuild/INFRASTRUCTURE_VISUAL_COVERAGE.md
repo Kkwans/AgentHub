@@ -19,3 +19,7 @@ hostDiagnostics发现codex可执行时会运行版本与login status。当前fix
 ## 首片验收计划
 
 新增infrastructure-visual独立spec，390/768/1024/1440×浅深；Nodes空态、注册表单未提交、服务器诊断详情展开。保持真实服务读取、截图SHA/结果索引、页面无横溢、44px触点、键盘展开/回焦、console无错误。先补无授权写入流程，不生成注册码或撤销授权。纳入focused后独立人工审美，不仅看测试几何。节点详情另片建立明确合成离线证据。
+
+## 2026-11-14 17:06 UTC 隔离设计进一步核实
+
+现有fixtures在Playwright worker内startServer，服务器再合并process.env；只覆盖PATH/HOME不能称完全隔绝宿主凭据。新增独立、默认关闭的基础设施fixture应以process.execPath启动子进程，环境显式白名单、受控空bin PATH、临时HOME/XDG_CONFIG_HOME/XDG_CACHE_HOME/XDG_DATA_HOME/CODEX_HOME，不改全局process.env，不影响原Git/ACP fixture。不seedWorkspace、不注册Agent、不初始化Git。主诊断只从PATH找codex/opencode；空PATH可以阻断该路径启动CLI，但固定ACP adapter仍可能通过文件access显示INSTALLED，不能断言全部MISSING或将安装状态说成已认证/已连通。后续应验证子进程环境白名单与探测边界，再截图。

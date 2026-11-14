@@ -82,6 +82,40 @@ for (const width of [390, 768, 1024, 1440]) {
         .first();
       await expect(firstProject).toBeVisible();
       const projectBox = (await firstProject.boundingBox())!;
+      const edit = page.getByRole('link', { name: '编辑 正式筛选项目 类型', exact: true });
+      await expect(edit).toBeVisible();
+      await expect(edit).toHaveAttribute('href', /\/projects\/[^/]+\/overview\?edit=kind$/);
+      const editGeometry = await edit.evaluate((element) => {
+        const list = element.closest('section[aria-label="项目列表"]')!;
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const bounds = (rect: DOMRect) => ({
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+        });
+        return {
+          link: bounds(element.getBoundingClientRect()),
+          text: bounds(range.getBoundingClientRect()),
+          list: bounds(list.getBoundingClientRect()),
+        };
+      });
+      expect(editGeometry.link.height).toBeGreaterThanOrEqual(43.99);
+      expect(editGeometry.link.width).toBeGreaterThanOrEqual(43.99);
+      for (const bounds of [editGeometry.link, editGeometry.text]) {
+        expect(bounds.left).toBeGreaterThanOrEqual(editGeometry.list.left);
+        expect(bounds.right).toBeLessThanOrEqual(editGeometry.list.right);
+        expect(bounds.top).toBeGreaterThanOrEqual(editGeometry.list.top);
+        expect(bounds.bottom).toBeLessThanOrEqual(editGeometry.list.bottom);
+      }
+      await testInfo.attach('projects-edit-geometry', {
+        body: JSON.stringify(editGeometry),
+        contentType: 'application/json',
+      });
+
       if (width === 390) {
         expect(
           Math.abs(headingBox.y + headingBox.height / 2 - createBox.y - createBox.height / 2),
@@ -150,8 +184,54 @@ for (const width of [390, 768, 1024, 1440]) {
         '已归档',
       );
       await expect(page.getByRole('link', { name: /正式筛选项目/ })).toHaveCount(0);
+      const viewControls = page.getByRole('group', { name: '项目视图' });
+      await expect(viewControls.getByRole('button', { name: '卡片', exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await expect(viewControls.getByRole('button', { name: '列表', exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      await expect(page.getByRole('region', { name: '项目列表' })).toHaveCount(0);
+      const visualState = await viewControls.evaluate(async (group) => {
+        const buttons = Array.from(group.querySelectorAll('button'));
+        const snapshot = () =>
+          buttons.map((button) => ({
+            label: button.textContent,
+            pressed: button.getAttribute('aria-pressed'),
+            color: getComputedStyle(button).color,
+            background: getComputedStyle(button).backgroundColor,
+            shadow: getComputedStyle(button).boxShadow,
+          }));
+        // Wait for the actual control transitions, not a guessed sleep or a global animation.
+        const animations = document.getAnimations().filter((animation) => {
+          const target = (animation.effect as KeyframeEffect | null)?.target;
+          return target instanceof Element && group.contains(target);
+        });
+        const before = snapshot();
+        const states = animations.map((animation) => ({
+          playState: animation.playState,
+          currentTime: animation.currentTime,
+        }));
+        await Promise.all(animations.map((animation) => animation.finished.catch(() => undefined)));
+        return { before, animations: states, after: snapshot() };
+      });
+      await testInfo.attach('projects-filtered-view-state', {
+        body: JSON.stringify(visualState),
+        contentType: 'application/json',
+      });
       await capture(page, testInfo, 'projects-filtered');
       await page.getByRole('button', { name: '列表', exact: true }).click();
+      await expect(viewControls.getByRole('button', { name: '列表', exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await expect(viewControls.getByRole('button', { name: '卡片', exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      await expect(page.getByRole('region', { name: '项目列表' })).toBeVisible();
       await expect(testGroup).not.toHaveAttribute('open');
       await expect(testProjectLink).toBeHidden();
       await testGroup.locator('summary').focus();
