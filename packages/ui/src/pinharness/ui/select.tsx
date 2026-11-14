@@ -118,6 +118,21 @@ export function Select({
       </RadixSelect.Trigger>
       <RadixSelect.Portal>
         <RadixSelect.Content
+          onCloseAutoFocus={(event) => {
+            // Radix dispatches this after unmount. The event target belongs to
+            // this closing lifetime, not a newly opened Select or dialog.
+            const content = event.currentTarget;
+            if (!(content instanceof HTMLElement)) return;
+            const active = content.ownerDocument.activeElement;
+            if (
+              active instanceof HTMLElement &&
+              active !== content.ownerDocument.body &&
+              active.isConnected &&
+              !content.contains(active)
+            ) {
+              event.preventDefault();
+            }
+          }}
           position="popper"
           sideOffset={5}
           style={{ zIndex: 'var(--ah-z-modal-popover, 1100)' }}

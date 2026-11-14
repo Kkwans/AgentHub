@@ -2027,3 +2027,12 @@ ae8精确focused139过8失败：390仅诊断summary21px；768/1024/1440还含三
 纠正覆盖边界：旧v1-exception-states未在当前CI显式清单，不能说361完整矩阵自动覆盖AccessGate。新增独立token空库8例，仅真实同源无query GET auth/status；不填入/提交凭据、不seed账号、不接Provider，明确只初始化页而非已有账号登录。真实响应硬验setupRequired，完整AgentHub/noAH图形、空字段、44触点、页面无溢出，记录实际滚动宿主首尾并复位；明确主题等待/reduced motion，finally附观察与安全断言执行标记，硬保零业务write/noWS/error。局部44为soft只保失败图仍判用例失败，未为可能小眼睛按钮放宽。
 
 类型/lint/prettier/list8/diff与独立CR通过；19:50:23全仓build成功。主工首次类型命令误用了不存在的临时配置名，已改用实际access-gate-visual配置重跑通过，不隐藏该失败。8例仅发现未本地浏览器执行，无新PNG；未重跑产品1445，不计作本片验证。focused工作流只加一行，原其它覆盖不删。
+
+### 2026-11-14 20:00 UTC Select 迟到关闭回焦假设与有效红回归（未发布）
+
+a87完整矩阵177通过1失败（390深Agent连接检查）。精确full artifact hash0c946b31…892a4；人工看失败图，Select已重开。trace确认选项后combobox关闭、目录文本已在DOM，summary.focus结束39242.858ms，Enter后39257.106ms combobox重开/listbox出现且details仍闭合；URL不变。不是目录数据丢失或路由重挂。trace没有直接activeElement事件，具体迟到回焦机制结合Radix源码推断，未冒称直接记录。
+
+真实Radix受控timer红例检验更晚显式焦点意图：普通关闭基线通过；listbox已移除/trigger closed与summary即时focus硬验后，flush旧卸载timer被夺回trigger，1红1绿。最小产品候选仅PinSelect onCloseAutoFocus：事件currentTarget为该次旧Content，外部connected非body新焦点存在才preventDefault；无新意图时保Radix恢复。六新例覆盖summary、新dialog、重复重开、卸载新页与正常/body回焦。没有改变全局FocusScope/依赖/现E2E，没用sleep或换点击避开。
+
+新6+旧Select3及既有连接行为10共19通过，UI类型/lint/独立CR通过；19:58:56 UI dist重新构建成功后再起最终聚合（避免连接单元仍读旧dist）。两文件冻结，当前未推/未新真实浏览器验证，不能称a87故障已关闭。
+- 20:02:29 UTC在重新构建UI dist后最终133文件1451测试通过199.85秒，冻结两文件hash一致；20:02:46全仓build成功。独立CR核实Radix对旧container同步dispatch的currentTarget生命周期与guard范围无阻断。准备发布，现E2E未改，新真实故障复测仍待。

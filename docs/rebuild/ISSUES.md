@@ -644,3 +644,7 @@ finally附件观测8例均4允许GET、同源/ws且errors=[]，无写请求记�
 ### 2026-11-14 19:44 UTC 发现回焦：父级key仍导致重挂
 
 3bc147/8实际证明此前共享layout修复不充分。AppShell route-stage祖先key=pathname仍重挂；真实壳红回归6例证实旧入口断连。候选只共享目录/发现两路径key，原其它路由不变。39专项及CR过，最终聚合/新CI待，回焦问题仍未浏览器关闭。新首屏候选与计数主体可接受，来源summary焦点框间距为独立P2。
+
+### 2026-11-14 20:00 UTC Select 迟到回焦覆盖新意图
+
+a87 full177/1揭露连接检查目录键盘展开失败：trace内数据已存在，Enter却重开Select。真实Radix受控timer红回归确认显式外部summary已获焦后，旧关闭恢复会夺回trigger。局部guard与六边界回归候选已19专项/类型/lint/CR过，重新构建UI dist后最终聚合中；未发布/未新浏览器验证。保正常关闭回焦，不改现真实E2E绕过此竞态。
