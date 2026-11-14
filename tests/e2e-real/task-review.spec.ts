@@ -123,6 +123,24 @@ for (const width of [390, 768, 1024, 1440]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);
+    const panelInsets = await attemptsPanel.evaluate((panel) => {
+      const panelRect = panel.getBoundingClientRect();
+      const summary = panel.querySelector('summary')!;
+      const summaryRect = summary.getBoundingClientRect();
+      const fields = panel.querySelector('dl')!.getBoundingClientRect();
+      return {
+        left: summaryRect.left - panelRect.left,
+        right: panelRect.right - summaryRect.right,
+        fieldsLeft: fields.left - panelRect.left,
+        fieldsRight: panelRect.right - fields.right,
+        focusOffset: parseFloat(getComputedStyle(summary).outlineOffset),
+      };
+    });
+    expect(panelInsets.left).toBeGreaterThanOrEqual(16);
+    expect(panelInsets.right).toBeGreaterThanOrEqual(16);
+    expect(panelInsets.fieldsLeft).toBeGreaterThanOrEqual(16);
+    expect(panelInsets.fieldsRight).toBeGreaterThanOrEqual(16);
+    expect(panelInsets.focusOffset).toBeLessThanOrEqual(0);
     const attemptsShot = info.outputPath(`task-start-attempts-${width}.png`);
     await page.screenshot({ path: attemptsShot });
     await info.attach('原启动记录只读核对', { path: attemptsShot, contentType: 'image/png' });

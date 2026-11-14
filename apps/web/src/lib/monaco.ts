@@ -29,3 +29,11 @@ for (const [name, definition] of Object.entries(diffEditorThemes)) {
 }
 
 loader.config({ monaco });
+
+/** Load the lazy Monarch grammar before a diff model can cache plain-text deletion zones.
+ * Monaco 0.56 inline zones observe tokenization completion, not each token update.
+ * Use the public colorizer with empty content: no document HTML or full-patch work.
+ */
+export async function prepareDiffLanguage(language: string): Promise<void> {
+  await monaco.editor.colorize('', language, {});
+}

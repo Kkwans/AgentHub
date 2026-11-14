@@ -1,13 +1,17 @@
 .panel {
   min-width: 0;
-  padding-block: 16px;
+  padding: 20px;
+  box-sizing: border-box;
   border-top: 1px solid var(--ah-border-subtle);
 }
 .panel h4 {
   margin: 0 0 8px;
   font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 .panel p {
+  margin: 8px 0;
   color: var(--ah-text-secondary);
   font-size: 13px;
   line-height: 1.6;
@@ -17,6 +21,7 @@
   gap: 12px;
   list-style: none;
   padding: 0;
+  margin: 12px 0 0;
 }
 .records li {
   min-width: 0;
@@ -28,6 +33,10 @@
 }
 .records summary {
   cursor: pointer;
+  width: fit-content;
+  max-width: 100%;
+  list-style-position: inside;
+  border-radius: 4px;
   min-height: 44px;
   display: list-item;
   padding-block: 12px;
@@ -37,10 +46,14 @@
 }
 .records summary:focus-visible {
   outline: 2px solid var(--ah-accent-primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 .records dl {
-  margin: 0;
+  margin: 4px 0 0;
+  padding: 12px;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 6px;
+  background: var(--ah-surface);
   font-size: 12px;
   line-height: 1.6;
 }

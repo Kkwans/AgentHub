@@ -1,7 +1,7 @@
 import { AgentHubThemeContext } from '@agenthub/ui';
 import { useContext, useEffect, useMemo, useState } from 'react';
 
-import { EmptyState, LoadingState } from '../../../components/Feedback';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/Feedback';
 import { SafeDiffEditor } from '../../../components/SafeDiffEditor';
 import { AGENTHUB_DIFF_DARK, AGENTHUB_DIFF_LIGHT } from '../../../lib/diff-editor-theme';
 
@@ -15,7 +15,8 @@ export function DiffViewer({
   path?: string | undefined;
 }) {
   const theme = useContext(AgentHubThemeContext);
-  const [monacoReady, setMonacoReady] = useState(false);
+  const [readyLanguage, setReadyLanguage] = useState<string>();
+  const [languageError, setLanguageError] = useState<{ language: string; error: Error }>();
   // The narrow review pane starts with a readable unified diff; split remains available.
   const [sideBySide, setSideBySide] = useState(false);
   const parsed = useMemo(() => parseUnifiedPatch(patch), [patch]);
@@ -25,13 +26,21 @@ export function DiffViewer({
   useEffect(() => {
     if (!patch || binary) return;
     let active = true;
-    void import('../../../lib/monaco').then(() => {
-      if (active) setMonacoReady(true);
-    });
+    void import('../../../lib/monaco')
+      .then(({ prepareDiffLanguage }) => prepareDiffLanguage(language))
+      .then(() => {
+        if (active) {
+          setLanguageError(undefined);
+          setReadyLanguage(language);
+        }
+      })
+      .catch(() => {
+        if (active) setLanguageError({ language, error: new Error('Diff language load failed') });
+      });
     return () => {
       active = false;
     };
-  }, [binary, patch]);
+  }, [binary, language, patch]);
 
   if (!patch) return <EmptyState title="没有 Diff" description="当前范围没有可显示的内容。" />;
   if (binary) {
@@ -51,7 +60,9 @@ export function DiffViewer({
       </div>
     );
   }
-  if (!monacoReady) return <LoadingState label="正在准备 Diff 预览" />;
+  if (languageError?.language === language)
+    return <ErrorState title="Diff 语法加载失败，请刷新后重试" error={languageError.error} />;
+  if (readyLanguage !== language) return <LoadingState label="正在准备 Diff 预览" />;
   return (
     <div className="git-diff-editor" data-truncated={truncated ? 'true' : 'false'}>
       <div className="git-diff-editor-toolbar">
