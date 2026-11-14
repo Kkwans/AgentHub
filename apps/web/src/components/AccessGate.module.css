@@ -21,7 +21,7 @@
   background: hsl(var(--surface));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .heading {
@@ -44,10 +44,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-.product small {
-  color: hsl(var(--foreground-faint));
-  font-size: 10px;
 }
 .product > span {
   padding: 4px 7px;
@@ -87,6 +83,7 @@
   font-weight: 700;
 }
 .form > button {
+  min-height: 44px;
   width: 100%;
   margin-top: 10px;
 }
@@ -180,4 +177,25 @@
   .loadingLine::after {
     animation: none;
   }
+}
+
+/* AccessGate only: shared Input and PasswordField retain their other consumers. */
+.form input {
+  min-height: 44px;
+}
+
+.passwordControl input {
+  padding-right: 48px;
+}
+
+.passwordControl > span > button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  right: 0;
+}
+
+.card > button {
+  min-height: 44px;
 }

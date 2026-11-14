@@ -156,7 +156,6 @@ function AccessLoading() {
             <div className={styles.product}>
               <div>
                 <AgentHubWordmark />
-                <small>工程控制平面</small>
               </div>
               <span>正在连接</span>
             </div>
@@ -188,7 +187,6 @@ function AccessPrompt({
   const [formError, setFormError] = useState<string>();
   const unavailable = mode === 'unavailable';
   const setup = mode === 'setup';
-  const contextLabel = setup ? '首次设置' : unavailable ? '服务状态' : '安全登录';
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -212,9 +210,7 @@ function AccessPrompt({
             <div className={styles.product}>
               <div>
                 <AgentHubWordmark />
-                <small>工程控制平面</small>
               </div>
-              <span>{contextLabel}</span>
             </div>
             <div className={styles.copy}>
               <h1 id="access-title">
@@ -251,28 +247,32 @@ function AccessPrompt({
               required
             />
             <label htmlFor="password">密码</label>
-            <PasswordField
-              id="password"
-              name="password"
-              autoComplete={setup ? 'new-password' : 'current-password'}
-              placeholder="至少 6 个字符"
-              minLength={6}
-              maxLength={128}
-              required
-            />
+            <div className={styles.passwordControl}>
+              <PasswordField
+                id="password"
+                name="password"
+                autoComplete={setup ? 'new-password' : 'current-password'}
+                placeholder="至少 6 个字符"
+                minLength={6}
+                maxLength={128}
+                required
+              />
+            </div>
             {setup && <small className={styles.fieldHelp}>密码至少 6 个字符。</small>}
             {setup && (
               <>
                 <label htmlFor="password-confirmation">确认密码</label>
-                <PasswordField
-                  id="password-confirmation"
-                  name="passwordConfirmation"
-                  autoComplete="new-password"
-                  placeholder="再次输入密码"
-                  minLength={6}
-                  maxLength={128}
-                  required
-                />
+                <div className={styles.passwordControl}>
+                  <PasswordField
+                    id="password-confirmation"
+                    name="passwordConfirmation"
+                    autoComplete="new-password"
+                    placeholder="再次输入密码"
+                    minLength={6}
+                    maxLength={128}
+                    required
+                  />
+                </div>
               </>
             )}
             <AhButton size="lg" type="submit" disabled={busy}>

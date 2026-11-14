@@ -59,12 +59,39 @@ for (const theme of ['light', 'dark'] as const) {
         ).toBeVisible();
         const gate = page.locator('main.app-access-gate');
         await expect(gate.locator('[data-brand-wordmark="true"]')).toHaveText('AgentHub');
+        await expect(gate.getByText('工程控制平面', { exact: true })).toHaveCount(0);
+        await expect(gate.getByText('首次设置', { exact: true })).toHaveCount(0);
+        await expect(gate.locator('.app-access-card')).toHaveCSS('box-shadow', 'none');
+
         await expect(
           gate.locator('[data-brand-initials], [data-brand-glyph], [data-brand-monogram]'),
         ).toHaveCount(0);
         for (const label of ['用户名', '密码', '确认密码']) {
           await expect(gate.getByLabel(label, { exact: true })).toHaveValue('');
         }
+        const passwordGeometry = [];
+        for (const label of ['密码', '确认密码']) {
+          const geometry = await gate.getByLabel(label, { exact: true }).evaluate((input) => {
+            const button = input.parentElement!.querySelector('button')!;
+            const field = input.getBoundingClientRect();
+            const toggle = button.getBoundingClientRect();
+            return {
+              name: input.getAttribute('name'),
+              field: field.toJSON(),
+              toggle: toggle.toJSON(),
+              paddingRight: parseFloat(getComputedStyle(input).paddingRight),
+            };
+          });
+          passwordGeometry.push(geometry);
+          expect.soft(geometry.paddingRight).toBeGreaterThanOrEqual(geometry.toggle.width + 4);
+          expect.soft(geometry.toggle.right).toBeLessThanOrEqual(geometry.field.right + 0.01);
+          expect.soft(geometry.toggle.top).toBeGreaterThanOrEqual(geometry.field.top - 0.01);
+          expect.soft(geometry.toggle.bottom).toBeLessThanOrEqual(geometry.field.bottom + 0.01);
+        }
+        await info.attach('密码按钮与输入留白', {
+          body: JSON.stringify(passwordGeometry),
+          contentType: 'application/json',
+        });
         const controls = gate.locator('input, button, a[href], [role="combobox"]');
         const boxes = await controls.evaluateAll((elements) =>
           elements.map((element) => {
