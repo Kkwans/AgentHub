@@ -1791,3 +1791,16 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 8文件提交214d6666c9cd4b0fb78cb65a1086efbf089db145已CAS推送/fetch核实；tree d13aeef5b6cc28e872a9c9d790ccbcf3b5a92975与临时index一致，最终文件hash不变。
 - 最终完整web112文件1292测试通过178.17s，串行web构建成功；Git回归44专项、Composer13专项与独立CR通过。新真实门禁要求compactCard<=110、单行44–48、长文可滚/手动扩缩，不能把这些未运行的断言写成实际高度。
 - b80 axe失败仍保留为失败；其余精确CI继续跟踪。214新CI/截图尚未验收，不称页面已美学达标、没有main/部署。
+
+### 2026-11-14 15:00–15:02 UTC / 北京时间23:00–23:02：精确失败继续修复
+- b80 focused132482049994最终73通过4失败：跨断点rename已通过；手机export Escape两例仍失败；reference390浅深新basename跳文件后在隐藏的背景Git tab上超时。artifact14119600449 sha256 28fb84dd2e58261ce5de38fd629708e95828d9f60312fdf0af83e7109871ad06。
+- b80 verify132482050090：全仓2355通过11条件skip，词法9通过39.8s；全fixture93通过1失败19未运行（mobile390旧context summary入口藏在更多内）。artifact14119451184 sha256 76c465292ae8c2135f46481cb6c6e61220a4882710c047114f3619156e539ba5。
+- 5文件候选：手机reference先关闭实际drawer再走可见Git标签；旧fixture先键盘打开更多再验证完整cwd并Escape回焦；导出新增window capture记录同Event开始时modal所有权，避免下载后body目标/先卸载modal导致二次收菜单。15专项通过/独立CR无阻断，body路径先红后绿，但真实浏览器焦点来源仍待trace，未冒称假设已证实。新增真实事件诊断，不删焦点断言。最终web→串行build15:02启动，尚未发布。
+- 主工程与视觉审查均看b80实际1440浅色review：首行约从ea9的484px前移至341px，basename清楚，结构更简洁；代码横宽约300px仍需横滚，尚非完整美学通过。390读取图在随后导航处失败，不能当390读码整例验收。
+- 15:02:29 UTC确认214精确run43607491716 axe和PG均success，其余三项仍运行。新ARIA修复通过真实矩阵，不能外推其它功能已全绿。
+- 15:05:36 UTC / 北京时间23:05:36：902e530247b5d68cf3a44c9100c66a3e1d701eb7已推送/fetch核实（tree d756f266fa534f236fa3b5758c9d08006e6a273e匹配临时index）；最终冻结web112文件1293测试178.47s与串行build通过，5文件hash一致。实际新CI/导出事件证据待验，不能称浏览器故障已闭环。
+- 下一片只改善已有“专注审阅”唯一按钮与右侧拖动把手的可发现性，不修改用户保存栏宽/ratio、不强制换行、不增新toolbar；未发布。考虑把既有workspace-content 8例纳入focused，加快输入区截图反馈，仍保完整real矩阵独立验收。
+- 15:08 UTC 新UI可发现性6文件冻结：原唯一专注审阅44px按钮补扩展/还原图标、轻边与语义提示；右divider把手由hover才显示改为muted常显并加拖动/键盘提示。宽度比例、保存键、状态、焦点恢复、44触点和原handlers不变。5文件41专项与types/lint通过、独立CR无阻断；新增1440浅深静止grip对比>=3、单入口44按钮门禁，真实结果仍待CI。
+- focused工作流仅追加既有workspace-content-visual 8例，共85例/10文件、无重复、零重试与原fullreal不变；格式/list检查通过，不能宣称85例已执行。最终web+UI聚合及全仓build正在串行执行，新片尚未推送。
+- 15:12:25 UTC /北京时间23:12:25：b6c202e128cd5599a93e6189215d401fd2c7548f已推/fetch核实，tree 0cf34e3ebe3e7f0ebda6c0e5e83064d601b55848与独立index一致。最终冻结web+UI129文件1373测试通过196.50s，随后全仓build成功，7文件hash一致。新85例focused和实际美学均待新CI，未main/部署。
+- 已重取并hash核对b80仅export390light trace：下载完成→Escape后dialog关闭，同时更多菜单aria-expanded=false，随后导出按钮找不到；trace未记录activeElement/keydown target/path，因此body焦点假设仍未直接证实，902新增事件诊断才可区分。没有把jsdom模拟当真实浏览器成因。
