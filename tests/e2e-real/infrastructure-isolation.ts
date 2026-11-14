@@ -8,6 +8,7 @@ export function infrastructureEnvironment(root: string, webDist: string): NodeJS
     throw new Error('Isolation paths must be absolute');
   return {
     PATH: join(root, 'empty-bin'),
+    DOCKER_SOCKET_PATH: join(root, 'absent-docker.sock'),
     HOME: join(root, 'home'),
     XDG_CONFIG_HOME: join(root, 'config'),
     XDG_CACHE_HOME: join(root, 'cache'),

@@ -39,3 +39,13 @@ hostDiagnostics发现codex可执行时会运行版本与login status。当前fix
 新增独立8例（四宽双主题）只在受控child访问Nodes空态、注册空表单未提交/返回、主诊断折叠展开。HTTP API限定auth/status、remote-nodes、agents/diagnostics/host三个GET；任何业务write或未知读取abort并失败。另有同源/ws，仅记录path和同源布尔，不记录帧/凭据，故不称全部网络只有三个GET。空PATH下源码已核不启动codex/opencode CLI，pinned adapter安装状态不代表认证或Provider已连通。
 
 保持44px、overflow、console硬门禁，主/页面真实滚动到底≤1并恢复原位置；context关闭失败仍在finally关闭child。仅focused接线，普通Git/ACP fixture及full baseline未改。类型/lint/list8/独立CR过；本地首例因浏览器启动socket权限受阻，正文未执行，诊断GET与截图尚未发生。待精确CI实际图后才能验收，不是OS沙箱或生产服务隔离。
+
+### 2026-11-14 17:45 UTC Agent发现页的额外宿主边界
+
+只读审计确认/discovery/agents自动GET并非数据库快照：会调用hostDiagnostics、agents.list、runtimes.list与remoteNodes.list；runtimes.list默认经Unix socket直连/var/run/docker.sock并list/inspect，绕过空PATH与临时HOME。当前独立fixture尚未隔离该socket，因此不得访问发现页/Runtime或声称可覆盖它们。本轮没有执行该GET，现b452的Nodes/注册空表单/主CLI诊断不走此链。
+
+先增加测试专用DOCKER_SOCKET_PATH指向自有目录不存在socket，preimport检查严格路径/父目录非symlink/目标不存在，并以真实客户端参数拦截正负控制验证，再考虑只读发现页图证。禁止为截图点重新扫描（会多次扫描）或接入（会注册并smokeSession）。这不改生产设置或系统socket权限，仍不是OS沙箱。
+
+### 2026-11-14 17:52 UTC Docker socket 前置冻结
+
+专用child白名单新增DOCKER_SOCKET_PATH=自有root/absent-docker.sock，preimport拒外部路径、普通文件和悬空symlink；默认17通过1显式跳过，主工程opt-in18/18通过5.57秒。真实DockerSocketEngineClient在HTTP mock边界验证成功空响应/ENOENT都只传受控socket，未连接任何真实Docker。真实child仍仅GET health；发现页/Runtime尚未访问，不将这些回归称发现页截图验收。

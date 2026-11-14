@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 
 const expectedKeys = [
   'PATH',
+  'DOCKER_SOCKET_PATH',
   'HOME',
   'XDG_CONFIG_HOME',
   'XDG_CACHE_HOME',
@@ -64,6 +65,20 @@ try {
     expectedKeys.some((key) => typeof process.env[key] !== 'string')
   )
     throw new Error();
+  const socketPath = join(root, 'absent-docker.sock');
+  if (
+    !(await lstat(root)).isDirectory() ||
+    (await lstat(root)).isSymbolicLink() ||
+    process.env.DOCKER_SOCKET_PATH !== socketPath
+  )
+    throw new Error();
+  try {
+    await lstat(socketPath);
+    throw new Error('Socket isolation requires a nonexistent target');
+  } catch (error) {
+    if (error?.code !== 'ENOENT')
+      throw new Error('Socket isolation validation failed', { cause: error });
+  }
   const folders = {
     PATH: 'empty-bin',
     HOME: 'home',

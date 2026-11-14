@@ -41,12 +41,14 @@ describe('infrastructure diagnostic test isolation (not an OS sandbox)', () => {
     ];
     for (const key of forbidden) vi.stubEnv(key, 'synthetic-host-secret');
     vi.stubEnv('PATH', '/synthetic/host-cli');
+    vi.stubEnv('DOCKER_SOCKET_PATH', '/synthetic/host-docker.sock');
     vi.stubEnv('HOME', '/synthetic/host-home');
     vi.stubEnv('CODEX_HOME', '/synthetic/host-codex');
     const env = infrastructureEnvironment('/tmp/isolation', '/tmp/web');
     for (const key of forbidden) expect(env).not.toHaveProperty(key);
     expect(JSON.stringify(env)).not.toContain('synthetic');
     expect(env.PATH).toBe('/tmp/isolation/empty-bin');
+    expect(env.DOCKER_SOCKET_PATH).toBe('/tmp/isolation/absent-docker.sock');
     for (const key of [
       'HOME',
       'CODEX_HOME',

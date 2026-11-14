@@ -1,6 +1,15 @@
 import { EventEmitter } from 'node:events';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { access, mkdtemp, mkdir, realpath, rm, readdir } from 'node:fs/promises';
+import {
+  access,
+  mkdtemp,
+  mkdir,
+  realpath,
+  rm,
+  readdir,
+  writeFile,
+  symlink,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -135,79 +144,90 @@ it('parent authorizes validated startup once but never after close begins', asyn
   child.emit('exit', 0, null);
   await closing;
 });
-it('IPC disconnect during the validated pre-import startup barrier exits without creating DB data', async () => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'agenthub-infra-disconnect-')));
-  for (const name of [
-    'empty-bin',
-    'home',
-    'config',
-    'cache',
-    'local-data',
-    'codex',
-    'tmp',
-    'database',
-    'worktrees',
-    'workspace',
-  ])
-    await mkdir(join(root, name));
-  const launch = infrastructureChildLaunch(
-    root,
-    fileURLToPath(new URL('../apps/web/dist', import.meta.url)),
-    fileURLToPath(new URL('./e2e-real/infrastructure-child.mjs', import.meta.url)),
-  );
-  const child = spawn(launch.executable, launch.args, {
-    cwd: root,
-    env: launch.env,
-    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
-  });
-  let didExit = false;
-  let validated = false;
-  const messages: unknown[] = [];
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-      (resolve, reject) => {
-        timer = setTimeout(() => reject(new Error('STARTUP_DISCONNECT_TIMEOUT')), 5000);
-        child.on('message', (message: unknown) => {
-          messages.push(message);
-          if (
-            message &&
-            typeof message === 'object' &&
-            'type' in message &&
-            message.type === 'validated'
-          ) {
-            validated = true;
-            child.disconnect();
-          }
-        });
-        child.on('error', reject);
-        child.on('exit', (code, signal) => {
-          didExit = true;
-          resolve({ code, signal });
-        });
-      },
+it.each(['absent', 'file', 'symlink', 'outside'] as const)(
+  'socket pre-import guard %s never creates DB data',
+  async (socketState) => {
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'agenthub-infra-disconnect-')));
+    for (const name of [
+      'empty-bin',
+      'home',
+      'config',
+      'cache',
+      'local-data',
+      'codex',
+      'tmp',
+      'database',
+      'worktrees',
+      'workspace',
+    ])
+      await mkdir(join(root, name));
+    const launch = infrastructureChildLaunch(
+      root,
+      fileURLToPath(new URL('../apps/web/dist', import.meta.url)),
+      fileURLToPath(new URL('./e2e-real/infrastructure-child.mjs', import.meta.url)),
     );
-    expect(validated).toBe(true);
-    expect(outcome).toEqual({ code: 0, signal: null });
-    expect(messages).toEqual([{ type: 'validated' }]);
-    await expect(access(root)).resolves.toBeUndefined();
-    expect(await readdir(join(root, 'database'))).toEqual([]);
-  } finally {
-    clearTimeout(timer);
-    if (!didExit) {
-      let killTimer: ReturnType<typeof setTimeout> | undefined;
-      const terminated = new Promise<void>((resolve) => {
-        child.once('exit', () => {
-          didExit = true;
-          resolve();
+    if (socketState === 'file') await writeFile(launch.env.DOCKER_SOCKET_PATH!, 'synthetic');
+    if (socketState === 'symlink')
+      await symlink(join(root, 'nonexistent'), launch.env.DOCKER_SOCKET_PATH!);
+    if (socketState === 'outside') launch.env.DOCKER_SOCKET_PATH = '/synthetic/not-our-socket';
+    const child = spawn(launch.executable, launch.args, {
+      cwd: root,
+      env: launch.env,
+      stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+    });
+    let didExit = false;
+    let validated = false;
+    const messages: unknown[] = [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const outcome = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+        (resolve, reject) => {
+          timer = setTimeout(() => reject(new Error('STARTUP_DISCONNECT_TIMEOUT')), 5000);
+          child.on('message', (message: unknown) => {
+            messages.push(message);
+            if (
+              message &&
+              typeof message === 'object' &&
+              'type' in message &&
+              message.type === 'validated'
+            ) {
+              validated = true;
+              child.disconnect();
+            }
+          });
+          child.on('error', reject);
+          child.on('exit', (code, signal) => {
+            didExit = true;
+            resolve({ code, signal });
+          });
+        },
+      );
+      expect(validated).toBe(socketState === 'absent');
+      expect(outcome).toEqual({ code: socketState === 'absent' ? 0 : 1, signal: null });
+      expect(messages).toEqual(
+        socketState === 'absent'
+          ? [{ type: 'validated' }]
+          : [{ type: 'failed', code: 'CHILD_START_FAILED' }],
+      );
+      await expect(access(root)).resolves.toBeUndefined();
+      expect(await readdir(join(root, 'database'))).toEqual([]);
+    } finally {
+      clearTimeout(timer);
+      if (!didExit) {
+        let killTimer: ReturnType<typeof setTimeout> | undefined;
+        const terminated = new Promise<void>((resolve) => {
+          child.once('exit', () => {
+            didExit = true;
+            resolve();
+          });
+          killTimer = setTimeout(resolve, 5000);
         });
-        killTimer = setTimeout(resolve, 5000);
-      });
-      child.kill('SIGKILL');
-      await terminated;
-      clearTimeout(killTimer);
+        child.kill('SIGKILL');
+        await terminated;
+        clearTimeout(killTimer);
+      }
+      // Only confirmed process exit permits test-owned directory removal.
+      if (didExit) await rm(root, { recursive: true, force: false });
     }
-    // Only confirmed process exit permits test-owned directory removal.
-    if (didExit) await rm(root, { recursive: true, force: false });
-  }
-});
+  },
+);
