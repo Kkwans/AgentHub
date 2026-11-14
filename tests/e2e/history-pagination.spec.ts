@@ -97,9 +97,14 @@ async function fixture(page: Page, theme: string, older: (route: Route) => Promi
 const composer = (page: Page) =>
   page.getByRole('textbox', { name: '给 Agent 发送工程指令', exact: true });
 async function olderClick(page: Page) {
-  // Focus scrolls the real history button into view; its click starts the GET.
-  await page.getByRole('button', { name: '加载更早消息', exact: true }).click();
+  // Keyboard activation avoids Playwright scrolling to the top first: that scroll
+  // itself starts automatic pagination and can disable a barrier-held button.
+  const button = page.getByRole('button', { name: '加载更早消息', exact: true });
+  await button.evaluate((node) => node.focus({ preventScroll: true }));
+  await expect(button).toBeFocused();
+  await page.keyboard.press('Enter');
 }
+
 async function routeSession(page: Page, id: string) {
   // Exercise mounted router identity changes, not page reload or a fake component.
   await page.evaluate((value) => {
