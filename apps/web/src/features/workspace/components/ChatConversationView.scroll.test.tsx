@@ -247,3 +247,26 @@ it('does not count prepended history as unread, only later persisted messages', 
   );
   expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent('1 条新消息');
 });
+
+it('explicit older pagination cancels an already queued follow-to-bottom frame before preserving its anchor', async () => {
+  const f = setupLongScroll();
+  let release!: () => void;
+  const load = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+  );
+  f.rerender(<ChatConversationView {...props} hasPreviousMessages onLoadPreviousMessages={load} />);
+  f.element.scrollTop = 4000;
+  fireEvent.click(screen.getByRole('button', { name: '加载更早消息' }));
+  expect(load).toHaveBeenCalledTimes(1);
+  f.scrollTo.mockClear();
+  f.nextFrame();
+  expect(f.scrollTo).not.toHaveBeenCalled();
+  Object.defineProperty(f.element, 'scrollHeight', { configurable: true, value: 7000 });
+  await act(async () => release());
+  f.nextFrame();
+  expect(f.element.scrollTop).toBe(6000);
+  expect(screen.getByRole('button', { name: '回到最新' })).toBeInTheDocument();
+});

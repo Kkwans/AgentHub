@@ -179,3 +179,59 @@ it('unmounting the initiating observer cancels the shared read; the remaining ob
   });
   await waitFor(() => expect(second.result.current.data).toEqual([saved]));
 });
+
+it('refetches the complete loaded cursor chain and retains the latest page after history prepend', async () => {
+  const row = (sequence: number): MessageRecord => ({
+    id: `m${sequence}`,
+    sequence,
+    runId: null,
+    role: 'USER',
+    kind: 'TEXT',
+    text: `saved ${sequence}`,
+    createdAt: '2026-11-14T00:00:00Z',
+  });
+  const page = (from: number) => Array.from({ length: 100 }, (_, index) => row(from + index));
+  let latestFrom = 101;
+  vi.mocked(api.get).mockImplementation(async (url) =>
+    url.includes('beforeSequence=101') ? page(1) : page(latestFrom),
+  );
+  const f = setup();
+  await waitFor(() => expect(f.result.current.data).toHaveLength(100));
+  await act(async () => {
+    await f.result.current.fetchPrevious();
+  });
+  await waitFor(() => expect(f.result.current.data).toHaveLength(200));
+  vi.mocked(api.get).mockClear();
+  await act(async () => {
+    await f.result.current.refetch();
+  });
+  await waitFor(() => expect(f.result.current.data).toHaveLength(200));
+  expect(vi.mocked(api.get).mock.calls.map(([url]) => url)).toEqual([
+    '/sessions/A/messages?limit=100&beforeSequence=101',
+    '/sessions/A/messages?limit=100',
+  ]);
+  latestFrom = 102;
+  await act(async () => {
+    await f.result.current.refetch();
+  });
+  await waitFor(() => expect(f.result.current.data).toHaveLength(201));
+  expect(f.result.current.data?.map((message) => message.sequence)).toEqual(
+    Array.from({ length: 201 }, (_, i) => i + 1),
+  );
+  await act(async () => {
+    await f.result.current.refetch();
+  });
+  await waitFor(() => expect(f.result.current.data).toHaveLength(201));
+  expect(new Set(f.result.current.data?.map((message) => message.id)).size).toBe(201);
+  expect(vi.mocked(api.get).mock.calls.every(([url]) => !url.includes('beforeSequence=0'))).toBe(
+    true,
+  );
+  // A different Session establishes its own tail, never merging A's retained rows.
+  vi.mocked(api.get).mockResolvedValue(page(1001));
+  f.rerender({ id: 'B' });
+  await waitFor(() => expect(f.result.current.data?.[0]?.sequence).toBe(1001));
+  expect(f.result.current.data).toHaveLength(100);
+  expect(
+    (f.client.getQueryData(['messages', 'A']) as { pages: MessageRecord[][] }).pages.flat(),
+  ).toHaveLength(201);
+});

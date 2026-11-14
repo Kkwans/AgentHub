@@ -70,23 +70,43 @@ export function useSessionMessages(sessionId: string, enabled = true): MessageQu
     queryKey: ['messages', sessionId],
     queryFn: async ({ pageParam, signal }) => {
       const params = new URLSearchParams({ limit: String(MESSAGE_PAGE_SIZE) });
-      if (pageParam !== undefined) params.set('beforeSequence', String(pageParam));
+      if (pageParam > 0) params.set('beforeSequence', String(pageParam));
       const token = Symbol('session-message-read');
       requests.current.set(sessionId, token);
       inFlightOwners.get(client)!.set(sessionId, token);
       try {
-        return await api.get<MessageRecord[]>(
+        const incoming = await api.get<MessageRecord[]>(
           `/sessions/${sessionId}/messages?${params.toString()}`,
           { signal },
         );
+        if (pageParam > 0) return incoming;
+        // A newer tail window must not discard an already read boundary row.
+        // Saved messages are append-only; fresh records replace matching sequences.
+        const cached = client.getQueryData<InfiniteData<MessageRecord[], number>>([
+          'messages',
+          sessionId,
+        ]);
+        const latestIndex = cached?.pageParams.findIndex((cursor) => !cursor) ?? -1;
+        return mergeSessionMessages(latestIndex >= 0 ? cached!.pages[latestIndex]! : [], incoming);
       } finally {
         if (requests.current.get(sessionId) === token) requests.current.delete(sessionId);
         if (inFlightOwners.get(client)?.get(sessionId) === token)
           inFlightOwners.get(client)!.delete(sessionId);
       }
     },
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: () => undefined,
+    // Zero is a local latest-page sentinel, never a transmitted beforeSequence.
+    // Unlike undefined, it lets InfiniteQuery replay the full loaded cursor chain
+    // during refetch, rather than silently dropping every page after the oldest.
+    initialPageParam: 0,
+    getNextPageParam: (_lastPage, _pages, lastPageParam) => {
+      const cached = client.getQueryData<InfiniteData<MessageRecord[], number>>([
+        'messages',
+        sessionId,
+      ]);
+      const cursors = cached?.pageParams.map((cursor) => cursor ?? 0) ?? [];
+      const index = cursors.indexOf(lastPageParam ?? 0);
+      return index >= 0 ? cursors[index + 1] : undefined;
+    },
     getPreviousPageParam: (firstPage) => getPreviousMessageCursor(firstPage),
     enabled: Boolean(sessionId) && enabled && !revoked,
     refetchInterval: navigating ? false : 3_000,

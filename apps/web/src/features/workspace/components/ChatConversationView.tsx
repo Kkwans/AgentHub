@@ -465,6 +465,12 @@ export const ChatConversationView = memo(function ChatConversationView({
       effectiveTimelineWindowStart > 0 ||
       (userNavigatedTimelineRef.current && latestWindowStart > 0);
     if ((!canFetchPrevious && !canRevealOlderWindow) || loadingPreviousRef.current) return;
+    // Explicit history reading owns the scroll now, even if invoked while the
+    // initial follow animation or a ResizeObserver tail frame is still queued.
+    // Cancelling smooth scroll can synchronously emit scroll in embedded hosts.
+    markProgrammaticScroll();
+    userIntentExitFollow();
+    initialFollowPendingRef.current = false;
     const element = scrollRef.current;
     const previousHeight = element?.scrollHeight ?? 0;
     const previousTop = element?.scrollTop ?? 0;
