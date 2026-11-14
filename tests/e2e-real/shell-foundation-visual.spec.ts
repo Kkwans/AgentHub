@@ -135,7 +135,7 @@ for (const width of [390, 768, 1024, 1440])
         await page.keyboard.press('Escape');
       } else {
         const expand = page.getByRole('button', { name: '展开侧边栏', exact: true });
-        const forcedCollapsed = width === 768;
+        const forcedCollapsed = width < 1320;
         if (forcedCollapsed) await expect(expand).toBeDisabled();
         else if (await expand.isVisible()) await expand.click();
         await brandGeometry(
@@ -185,9 +185,10 @@ for (const width of [390, 768, 1024, 1440])
       const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令', exact: true });
       await expect(composer).toBeEnabled();
       await composer.fill('壳层验收草稿，不发送');
-      const railBrand = page.locator('.codex-rail-brand').filter({ visible: true });
-      if (!(await railBrand.isVisible())) {
-        const auxiliary = page.getByRole('button', { name: '辅助栏', exact: true });
+      // Below the persistent-rail breakpoint, open explicitly: a collapsed rail
+      // can retain a 1px transparent box that still passes visibility checks.
+      if (width < 1180) {
+        const auxiliary = page.getByRole('button', { name: '打开辅助栏', exact: true });
         if (width < 768) await touchTarget(auxiliary);
         await auxiliary.click();
       }
