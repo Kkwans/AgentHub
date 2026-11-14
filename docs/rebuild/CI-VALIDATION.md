@@ -67,3 +67,11 @@
 ### 2026-11-14 22:13 UTC：短链配置首跑失败与修复
 
 `9ff965c` / run `43646764329` 在创建 job 前即失败（jobs=0）。新 job 级 env 不应引用 `runner.temp`；已在 `530a21a` 将临时目录配置移至执行 step 的 env，与既有 job 用法一致。run `43646874561` 已实际启动全部六个 job（含 Workspace interaction evidence），当前仍运行，不能据此宣称 24 例、截图或完整 CI 通过。YAML 可解析和用例可枚举不能代替 GitHub Actions 表达式上下文校验，前一次预检漏掉此错误。
+
+### 2026-11-14 22:35 UTC：本地全仓 worker 异常诊断
+
+手机页头候选全仓pnpm test为243文件2480例通过、6文件12例跳过，另1个worker异常，整体exit1。根据Vitest缓存与单文件重现，定位到auth-stream.test.ts：完整8例运行6例后fork收到SIGKILL（exit code=null），最大RSS约2.06GiB。原前三3例/后五5例在各自新进程均通过，完整覆盖原8例断言；不修改源码、跳过开关或timeout。成功worker清理SIGTERM与故障SIGKILL已区分。资源累积是线索；cgroup未暴露、内核日志不可读，不能断言OOM killer或PGlite泄漏。530精确CI同文件8/8成功，保留远端完整门禁；0ff新CI待结果，不能用分组成功声称完整本地重跑通过。
+
+### 2026-11-14 22:41 UTC：530完整真实矩阵185/1
+
+530a21a full已结束185通过/1失败：workbench.spec.ts旧断言在嵌入Diff中找已移除“文件 Diff”，这属于8c工具行重排遗漏的第二个E2E锚点，不是超时偶发。现改为实际fixture-output.md文件标题、modified代码区可见且含真实fixture标题/Approval写入正文；保留之后真实Git提交/receipt/四宽门禁。全仓已检索其余同名引用，属于显示选项group或独立DiffViewer兼容，没有发现另一旧getByText锚点。严格类型、lint、prettier、list4通过；浏览器尚未重新执行，不称此失败已端到端关闭。

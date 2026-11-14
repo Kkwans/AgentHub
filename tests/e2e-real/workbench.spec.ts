@@ -210,13 +210,19 @@ test.describe('local_trusted 项目与 Work', () => {
     const diffPreview = page.getByRole('button', { name: '查看 fixture-output.md Diff' });
     await expect(diffPreview).toBeVisible({ timeout: 15_000 });
     await diffPreview.click();
-    await expect(
-      page
-        .getByRole('region', { name: '已选择 fixture-output.md 的 Diff' })
-        .getByText('文件 Diff', {
-          exact: true,
-        }),
-    ).toBeVisible({ timeout: 30_000 });
+    const diffRegion = page.getByRole('region', {
+      name: '已选择 fixture-output.md 的 Diff',
+      exact: true,
+    });
+    await expect(diffRegion.locator('.git-selected-diff-heading code')).toHaveText(
+      'fixture-output.md',
+    );
+    const modifiedContent = diffRegion.locator(
+      '.git-diff-editor .editor.modified .view-lines[role="presentation"]',
+    );
+    await expect(modifiedContent).toBeVisible({ timeout: 30_000 });
+    await expect(modifiedContent).toContainText('# AgentHub real E2E');
+    await expect(modifiedContent).toContainText('Approval 已确认，真实 ACP fixture 已写入此文件。');
     await inspectorTabs.getByRole('tab', { name: '变更', exact: true }).click();
     await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
     const changeTree = page.getByRole('tree', { name: 'Git 文件变更树' });
