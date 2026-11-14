@@ -75,3 +75,9 @@
 ### 2026-11-14 22:41 UTC：530完整真实矩阵185/1
 
 530a21a full已结束185通过/1失败：workbench.spec.ts旧断言在嵌入Diff中找已移除“文件 Diff”，这属于8c工具行重排遗漏的第二个E2E锚点，不是超时偶发。现改为实际fixture-output.md文件标题、modified代码区可见且含真实fixture标题/Approval写入正文；保留之后真实Git提交/receipt/四宽门禁。全仓已检索其余同名引用，属于显示选项group或独立DiffViewer兼容，没有发现另一旧getByText锚点。严格类型、lint、prettier、list4通过；浏览器尚未重新执行，不称此失败已端到端关闭。
+
+### 2026-11-14 22:48 UTC：0ff基础设施焦点样式瞬态调查
+
+0ff36ee focused为146/1：390浅色诊断summary焦点outline读到3px/offset0，原期待2px/offset2；精确artifact14135367570显示focusVisible/activeElementMatches/documentHasFocus均true、radius6/gap8正常。trace实际加载模块CSS与DOM class一致、声明正确，未发现workspace scope覆盖或对应3/0样式。Enter约18ms后读取，只等待焦点而未等待完整样式。全局reduced-motion通配0.01ms且summary默认transition-property:all是候选解释，但旧trace缺动态数据，不能宣称已证明flaky/过渡根因。
+
+本次仅测试改为同次采样有限poll完整焦点/样式元组，仍要求2px/2px/radius6/gap>=7.99与焦点三真，保留原最终断言/用例timeout/零重试；finally记录首读及全部采样、transition/reducedMotion/animations供失败诊断。未改产品CSS、不放宽目标值。严格类型/lint/prettier/list8通过，精确新浏览器验证待运行。

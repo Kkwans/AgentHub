@@ -349,22 +349,67 @@ for (const width of [390, 768, 1024, 1440]) {
         await expect
           .poll(() => summary.evaluate((element) => element.matches(':focus-visible')))
           .toBe(true);
-        const focusGeometry = await summary.evaluate((element) => {
-          const box = element.getBoundingClientRect();
-          const hint = element.nextElementSibling!.getBoundingClientRect();
-          const style = getComputedStyle(element);
-          return {
-            hintGap: hint.top - box.bottom,
-            outlineWidth: style.outlineWidth,
-            outlineOffset: style.outlineOffset,
-            outlineStyle: style.outlineStyle,
-            outlineColor: style.outlineColor,
-            focusVisible: element.matches(':focus-visible'),
-            activeElementMatches: document.activeElement === element,
-            documentHasFocus: document.hasFocus(),
-            borderRadius: style.borderRadius,
-          };
-        });
+        const readFocusGeometry = () =>
+          summary.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            const hint = element.nextElementSibling!.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            return {
+              hintGap: hint.top - box.bottom,
+              outlineWidth: style.outlineWidth,
+              outlineOffset: style.outlineOffset,
+              outlineStyle: style.outlineStyle,
+              outlineColor: style.outlineColor,
+              focusVisible: element.matches(':focus-visible'),
+              activeElementMatches: document.activeElement === element,
+              documentHasFocus: document.hasFocus(),
+              borderRadius: style.borderRadius,
+              sampledAt: performance.now(),
+              transitionProperty: style.transitionProperty,
+              transitionDuration: style.transitionDuration,
+              transitionDelay: style.transitionDelay,
+              reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+              animations: element.getAnimations().map((animation) => ({
+                playState: animation.playState,
+                currentTime: animation.currentTime,
+              })),
+            };
+          });
+        const focusSamples: Awaited<ReturnType<typeof readFocusGeometry>>[] = [];
+        try {
+          // Focus modality can settle before its computed outline. Wait for the
+          // same complete contract without accepting a different final style.
+          await expect.soft
+            .poll(async () => {
+              const sample = await readFocusGeometry();
+              focusSamples.push(sample);
+              return {
+                focusVisible: sample.focusVisible,
+                activeElementMatches: sample.activeElementMatches,
+                documentHasFocus: sample.documentHasFocus,
+                outlineWidth: sample.outlineWidth,
+                outlineOffset: sample.outlineOffset,
+                borderRadius: sample.borderRadius,
+                hintGapValid: sample.hintGap >= 7.99,
+              };
+            })
+            .toEqual({
+              focusVisible: true,
+              activeElementMatches: true,
+              documentHasFocus: true,
+              outlineWidth: '2px',
+              outlineOffset: '2px',
+              borderRadius: '6px',
+              hintGapValid: true,
+            });
+        } finally {
+          // Preserve the first read and every subsequent sample even on failure.
+          await info.attach('diagnostic-focus-samples.json', {
+            body: JSON.stringify(focusSamples),
+            contentType: 'application/json',
+          });
+        }
+        const focusGeometry = focusSamples[focusSamples.length - 1]!;
         await info.attach('diagnostic-focus-spacing.json', {
           body: JSON.stringify(focusGeometry),
           contentType: 'application/json',
