@@ -221,7 +221,6 @@ jobs:
     env:
       # Same real loopback/PGlite/controlled ACP fixtures; no paid providers.
       AGENTHUB_E2E_LIVE: '0'
-      AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-focused-interactions
       PLAYWRIGHT_JSON_OUTPUT_NAME: focused-test-results/results.json
     steps:
       - uses: actions/checkout@v4
@@ -236,6 +235,8 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - name: Verify focused workflows without retries
+        env:
+          AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-focused-interactions
         run: >-
           pnpm exec playwright test --config=playwright.real.config.ts
           tests/e2e-real/workspace-process-visual.spec.ts

@@ -1565,3 +1565,5 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 09:47:50核实84精确real失败：390浅深两例标题实际54px，小于60px门禁；其余导出9例通过。新增小屏标题组gap8→4，不缩44px操作区、不降低60px门禁，实际新宽度待新CI，不作推算验收。
 - 09:48:54重新冻结任务恢复+手机间距修正；09:51:18完整web94文件1140测试通过，143.64秒exit0；09:52:21全仓lint/types、独立integration类型、串行build通过。旧1130/1137轮次不当作这轮结果。focused四spec discovery为38例，仅发现不是浏览器执行。
 - 新增VISUAL_COVERAGE按版本列页面与模块：直接解析c53 audit的10路由×7视口×2主题140图，并区分自动门禁、实际人工样本、未签核的其它页面/状态及纯fixture与真实Provider。准备按手机UI、任务恢复、CI分片、台账四逻辑提交发布。
+- 09:54:39四提交已push/fetch核实：ddc4e71（手机标题间距）、533289c（任务恢复）、ace218e（focused分片）、6720f30（台账/视觉覆盖），最终树545c2f423c5bb1ffc2106fe2f4cd1032f30cd2bb与冻结本地一致，工作区当时干净。
+- 精确CI43582749073工作流校验即失败，0个job，不能当成测试执行。新focused job误在job级env引用runner.temp；YAML语法检查没有识别上下文语义限制。已依据[GitHub官方上下文表](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability)移至step.env，保持38测试/零重试/输出路径不变，五job结构与上下文范围静态核对通过。此热修仅workflow与本台账，不重新声称产品测试重跑；将核对下一精确run确实有五个job。
