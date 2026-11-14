@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "types": ["node", "../../apps/web/node_modules/vite/client"],
+    "paths": {
+      "react": ["../../apps/web/node_modules/@types/react"]
+    }
+  },
+  "include": ["./acp-tool-content-render.test.ts"]
+}

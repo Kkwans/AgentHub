@@ -19,6 +19,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm exec tsc --project tests/integration/tsconfig.json --pretty false
       - run: pnpm test
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
