@@ -1747,3 +1747,14 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 14:06:23可读性三片cbb8043a87a（项目去重复入口）、4dc4f30bc8（动作优先与44触点）、1ecdbc0a3f2（克制焦点色）push/fetch核实。最终冻结96文件1034测试通过146.52s、9文件指纹一致，独立CR/静态检查/精确串行全仓build通过。新像素与contrast实测仍待本提交CI，不把估算颜色比值当浏览器证据。
 - 同窗口精确f0 verify132466359419成功：历史分页24/24，四宽双主题成功2px/失败重试/迟到切会话均通过；fixture总110通过10条件跳过，0失败且无fail-fast未运行。artifact14117146744，SHA256917851f309f2809ce5468c7d7739669fdd130beb0d30c412a9d0cbcf1c5c229e。此为首次该修复实际历史门禁完整闭环；不代表f0整run成功（旧Tab focused失败，完整visual仍待）。
 - 手机顶栏下一片开始：同一套持续mounted更多操作容器收重命名/导出/Agent/沉浸，保搜索/状态/审阅常驻，目标移除第二工具行而非缩小字号/44触点。弹窗门户与焦点恢复、unknown/草稿/请求保护须完整测试，候选未完成不提前报已实现。
+
+### 2026-11-14 14:08–14:16 UTC：手机单行顶栏与语言元信息窄修
+
+- 07精确verify132469723226失败：CSS真实token三轮通过，TSX三轮在旧toolbar small语言标签断言超时，后续TSX对比门禁未执行；fixture整套步骤未运行。artifact14117430623，SHA2561b31cb4104cc5d172b2b1f422bd0eb483a3443215a190a2ebfb4e53c8fddfdc0。新候选保留已准备语言small为sr-only（嵌入时），不恢复视觉工具层，也不删除真实词法门禁。首次新增单测误用未注册matcher已纠正；随后真实undefined与typescript差异红测复现，再17专项转绿。
+- 手机单行头通过单一持续挂载SecondaryTools收纳低频重命名/导出/Agent/沉浸，搜索/状态/审阅常驻；只视觉label透传，原scope/epoch/unknown/请求不改。菜单遇Portal模态让位，父菜单保持打开供关闭后恢复焦点；桌面动作也记录open，缩至手机不隐藏原触发器。手机98px双行头目标56px，保44触点，不压输入区或字号。
+- 产品22专项/静态/独立CR通过；真实E2E增desktop→390草稿保持与unknown关闭重入只GET/PATCH仅1次，原手机unknown流程保留。5文件相关49例仅完成收集，未提前宣称浏览器resize通过。
+- 14:14:31观察最终17文件冻结聚合97文件1038测试通过149.75s，指纹一致；独立串行全仓build成功。14:15:26产品74f3c63ca0b（语言辅助信息）与a27c228111e（单行头）commit/push/fetch核实，工作区当时干净。这次push属于22:14之后新窗口，不计前窗口已发布项。精确新CI43603905185运行，真实图/对比/resize验收待完成。
+- 14:18 UTC源码复审确认新reference几何选择器错误：Playwright has从候选label内部查询，原内层携options祖先前缀不可能匹配；精确定位label并验证其staged子checkbox唯一/可见，44与不重叠门禁保留。独立types/lint/list8/diff通过。14:19:54 ea9d7aaa193 push/fetch确认，仅此测试窄修；07当时focused仍运行，不把源码发现冒充该CI最终日志根因。
+- 新浅色TS候选仅12个正常细分token，CSS/dark/增删背景/invalid语义保持。主题红5失败已复现后15专项绿，独立CR核对installed Monarch真实命名；新增light390实际有色叶子（非hidden original/黑色fallback）及axe AA门禁。CI定向门禁保留原深色6例，追加浅色3轮，list实际9例，均retries0；候选完整web/UI冻结聚合运行，未提前称像素通过。
+- 14:24 UTC 07focused132469723252最终cancelled：日志证实6个reference case在错误has范围的boundingBox处等180秒超时；第7个1440浅色运行时作业取消，第8个未到，不能报整组通过。artifact14117357730，SHA256d13b76721a0781707685ecb2260978c7dbf0fc85ab34efb9c9a7db30627a2969。ea9已修的源码缺陷与真实日志一致，新正确门禁仍待后续CI。
+- 14:23:37浅色TS最终冻结web/UI127文件1345测试通过189.86s，4文件指纹一致，独立串行全仓build成功；主题15专项、web/spec types、lint、定向list9与独立CR通过。ccd1d3c16d9产品配色与a34fdcb1d5d实际词法门禁已推；真实词法着色/对比度与新像素尚未通过，不能由数学估算认定所有语法都可读。仅覆盖列明正常TS族，invalid保原语义。
