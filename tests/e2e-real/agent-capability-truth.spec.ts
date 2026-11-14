@@ -122,6 +122,44 @@ test('Agent 能力来自真实 preflight，未知与 false 不虚构支持', asy
       expect(discoveryBox.height).toBeGreaterThanOrEqual(43.99);
       if (width === 390) {
         expect(rowBox.y).toBeLessThan(380);
+        const longNameGeometry = await unknown.evaluate((row) => {
+          const heading = row.querySelector('h3')!;
+          const copy = heading.parentElement!;
+          const identity = copy.parentElement!;
+          const badges = identity.lastElementChild!;
+          const titleBox = heading.getBoundingClientRect();
+          const identityBox = identity.getBoundingClientRect();
+          const badgesBox = badges.getBoundingClientRect();
+          const providerBox = copy.querySelector('p')!.getBoundingClientRect();
+          const style = getComputedStyle(heading);
+          return {
+            titleWidth: titleBox.width,
+            identityWidth: identityBox.width,
+            titleBottom: titleBox.bottom,
+            providerBottom: providerBox.bottom,
+            badgesTop: badgesBox.top,
+            titleFontSize: style.fontSize,
+            titleOverflow: style.textOverflow,
+            titleWhiteSpace: style.whiteSpace,
+            titleText: heading.textContent,
+          };
+        });
+        expect(longNameGeometry.titleWidth).toBeGreaterThanOrEqual(
+          longNameGeometry.identityWidth - 1,
+        );
+        expect(longNameGeometry.badgesTop).toBeGreaterThanOrEqual(longNameGeometry.titleBottom);
+        expect(longNameGeometry.badgesTop).toBeGreaterThanOrEqual(longNameGeometry.providerBottom);
+        expect(longNameGeometry.titleFontSize).toBe('15px');
+        expect(longNameGeometry.titleOverflow).not.toBe('ellipsis');
+        expect(longNameGeometry.titleWhiteSpace).not.toBe('nowrap');
+        expect(longNameGeometry.titleText).toBe(
+          '能力验收 unknown' + ' · 多项目协作与长名称可读性验收'.repeat(3),
+        );
+        await info.attach(`agent-long-name-${theme}`, {
+          body: JSON.stringify(longNameGeometry),
+          contentType: 'application/json',
+        });
+
         const statusBox = (await page.getByRole('combobox', { name: 'Agent 状态' }).boundingBox())!;
         const refreshBox = (await page
           .getByRole('button', { name: '刷新', exact: true })

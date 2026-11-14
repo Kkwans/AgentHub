@@ -287,6 +287,13 @@ it('真实默认Model保留且基础设施每个目标唯一，停用不变成�
   );
   mountSources();
   const row = await screen.findByRole('group', { name: /需要处理/ });
+  const title = within(row).getByRole('heading', { name: '长名称'.repeat(20) });
+  expect(title).toHaveTextContent('长名称'.repeat(20));
+  expect(title.parentElement).not.toContainElement(within(row).getByText('已停用'));
+  expect(within(row).getByRole('link', { name: '管理 Agent' })).toHaveAttribute(
+    'href',
+    '/agents/a1',
+  );
   expect(within(row).getByText('真实模型')).toBeVisible();
   expect(within(row).getByText('已停用')).toBeVisible();
   expect(within(row).queryByText('登记就绪')).not.toBeInTheDocument();

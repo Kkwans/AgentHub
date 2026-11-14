@@ -54,7 +54,7 @@ function AgentResourceCard({
     >
       <div className={styles.agentIdentity}>
         <Bot size={22} aria-hidden />
-        <div>
+        <div className={styles.identityCopy}>
           <h3>{agent.name}</h3>
           <p>
             {agentKindLabel(agent.agentKind)} · {agent.detectedVersion ?? '版本待检测'}

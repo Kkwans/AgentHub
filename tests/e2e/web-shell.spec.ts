@@ -2805,7 +2805,18 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
     await expect(tabs.getByRole('tab', { name: '绑定' })).toHaveAttribute('aria-selected', 'true');
   }
 
-  await page.getByRole('button', { name: '版本与标签' }).click();
+  const editor = page.getByRole('region', { name: 'Prompt 编辑器' });
+  const assetDetails = editor.locator('details').filter({
+    has: page.locator('summary', { hasText: '资产详情与操作' }),
+  });
+  const detailsToggle = assetDetails.locator('summary');
+  await expect(assetDetails).not.toHaveAttribute('open', '');
+  await detailsToggle.focus();
+  await detailsToggle.press('Enter');
+  await expect(assetDetails).toHaveAttribute('open', '');
+  const lifecycleTrigger = assetDetails.getByRole('button', { name: '版本与标签', exact: true });
+  await expect(lifecycleTrigger).toBeVisible();
+  await lifecycleTrigger.click();
   const lifecycle = page.getByRole('dialog', { name: '版本与标签' });
   await expect(lifecycle.getByRole('heading', { name: '版本历史' })).toBeVisible();
   await expect(lifecycle).toHaveCSS('background-color', 'rgb(255, 255, 255)');
@@ -2817,6 +2828,8 @@ test('Prompt Library 保持两栏主舞台并将生命周期移入临时面板',
   await attachViewportScreenshot(page, testInfo, 'prompts-lifecycle');
   await page.keyboard.press('Escape');
   await expect(lifecycle).toBeHidden({ timeout: SHELL_READY_TIMEOUT });
+  await expect(lifecycleTrigger).toBeVisible();
+  await expect(lifecycleTrigger).toBeFocused();
   await expectNoHorizontalOverflow(page);
   await attachViewportScreenshot(page, testInfo, 'prompts');
 });

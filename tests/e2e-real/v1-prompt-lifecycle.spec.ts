@@ -26,7 +26,18 @@ test.describe('v1 PromptOS lifecycle drawer', () => {
     const page = await context.newPage();
     await page.goto(`/prompts/${prompt.id}`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: '生命周期抽屉验证' })).toBeVisible();
-    await page.getByRole('button', { name: '版本与标签' }).click();
+    const editor = page.getByRole('region', { name: 'Prompt 编辑器' });
+    const assetDetails = editor.locator('details').filter({
+      has: page.locator('summary', { hasText: '资产详情与操作' }),
+    });
+    await expect(assetDetails).not.toHaveAttribute('open', '');
+    const detailsToggle = assetDetails.locator('summary');
+    await detailsToggle.focus();
+    await detailsToggle.press('Enter');
+    await expect(assetDetails).toHaveAttribute('open', '');
+    const lifecycleTrigger = assetDetails.getByRole('button', { name: '版本与标签', exact: true });
+    await expect(lifecycleTrigger).toBeVisible();
+    await lifecycleTrigger.click();
 
     const drawer = page.getByRole('dialog', { name: '版本与标签' });
     await expect(drawer).toBeVisible();
@@ -36,5 +47,9 @@ test.describe('v1 PromptOS lifecycle drawer', () => {
     const drawerBox = await drawer.boundingBox();
     expect(drawerBox?.width).toBeGreaterThanOrEqual(400);
     expect(drawerBox?.width).toBeLessThanOrEqual(440);
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    await expect(lifecycleTrigger).toBeVisible();
+    await expect(lifecycleTrigger).toBeFocused();
   });
 });

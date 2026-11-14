@@ -138,10 +138,35 @@
   .capabilities {
     flex-basis: 100%;
   }
+  .agentIdentity {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+  .identityCopy {
+    display: contents;
+  }
+  .identityCopy h3 {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .agentIdentity > svg {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .identityCopy p {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+    align-self: center;
+  }
   .badges {
-    max-width: 100px;
-    flex-shrink: 0;
-    justify-content: flex-end;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    max-width: none;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 }
 
