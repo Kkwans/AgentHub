@@ -86,6 +86,16 @@ it('renders literal snippets, sends query only in POST body and awaits actual lo
   expect(screen.queryByText('已定位到原消息。')).not.toBeInTheDocument();
   await act(async () => finish('located'));
   await screen.findByText('已定位到原消息。');
+  expect(screen.queryByRole('textbox', { name: '搜索已保存文字' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '定位消息 m1' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '返回搜索结果' }));
+  expect(screen.getByRole('textbox', { name: '搜索已保存文字' })).toHaveValue('needle');
+  expect(screen.getByRole('textbox', { name: '搜索已保存文字' })).toHaveFocus();
+  expect(screen.getByRole('button', { name: '定位消息 m1' })).toBeInTheDocument();
+  expect(api.post).toHaveBeenCalledTimes(1);
+  expect(f.locateMessage).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: '关闭搜索' }));
+  expect(screen.getByRole('button', { name: '搜索已保存文字' })).toHaveFocus();
 });
 it('zero hits with more history continues with fixed upper and strict cursor', async () => {
   vi.mocked(api.post)

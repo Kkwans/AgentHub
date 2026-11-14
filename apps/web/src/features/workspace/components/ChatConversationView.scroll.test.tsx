@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -198,4 +199,51 @@ describe('history anchor ownership', () => {
     f.flush();
     expect(f.element.scrollTop).toBe(70);
   });
+});
+
+it('does not count prepended history as unread, only later persisted messages', () => {
+  const message = (sequence: number) => ({
+    id: `m${sequence}`,
+    sessionId: props.session.id,
+    runId: null,
+    sequence,
+    role: 'USER' as const,
+    kind: 'TEXT' as const,
+    text: `text ${sequence}`,
+    createdAt: '2026-11-14T00:00:00Z',
+  });
+  const renderProps = (sequences: number[]) => ({
+    ...props,
+    messages: { ...props.messages, data: sequences.map(message) },
+  });
+  const view = render(<ChatConversationView {...renderProps([100, 101])} />);
+  const log = screen.getByRole('log');
+  fireEvent.wheel(log, { deltaY: -100 });
+  view.rerender(<ChatConversationView {...renderProps([98, 99, 100, 101])} />);
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent(/^回到最新$/);
+  view.rerender(<ChatConversationView {...renderProps([98, 99, 100, 101, 102])} />);
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent('1 条新消息');
+  view.rerender(<ChatConversationView {...renderProps([97, 98, 99, 100, 101, 102])} />);
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent('1 条新消息');
+  expect(log.contains(screen.getByRole('button', { name: '回到最新' }))).toBe(false);
+  // A mixed prepend + newly persisted reply increments exactly once.
+  view.rerender(<ChatConversationView {...renderProps([96, 97, 98, 99, 100, 101, 102, 103])} />);
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent('2 条新消息');
+  view.rerender(<ChatConversationView {...renderProps([96, 97, 98, 99, 100, 101, 102, 103])} />);
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent('2 条新消息');
+  fireEvent.click(screen.getByRole('button', { name: '回到最新' }));
+  fireEvent.wheel(log, { deltaY: -100 });
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent(/^回到最新$/);
+  view.rerender(
+    <ChatConversationView {...renderProps([1, 2])} session={{ ...props.session, id: 'other' }} />,
+  );
+  fireEvent.wheel(log, { deltaY: -100 });
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent(/^回到最新$/);
+  view.rerender(
+    <ChatConversationView
+      {...renderProps([1, 2, 3])}
+      session={{ ...props.session, id: 'other' }}
+    />,
+  );
+  expect(screen.getByRole('button', { name: '回到最新' })).toHaveTextContent('1 条新消息');
 });

@@ -125,8 +125,8 @@ function ChatEntryRendererView({
       <article
         className={
           isUser
-            ? 'message user message-user min-w-0 max-w-[88%] sm:max-w-[78%]'
-            : `message ${message.role.toLowerCase()} message-assistant min-w-0 text-[13px] leading-relaxed text-[hsl(var(--foreground))]`
+            ? 'message user message-user data-[message-located=true]:shadow-none min-w-0 max-w-[88%] sm:max-w-[78%]'
+            : `message ${message.role.toLowerCase()} message-assistant data-[message-located=true]:shadow-none min-w-0 text-[13px] leading-relaxed text-[hsl(var(--foreground))]`
         }
         data-message-id={item.persisted ? message.id : undefined}
         data-message-sequence={item.persisted ? message.sequence : undefined}

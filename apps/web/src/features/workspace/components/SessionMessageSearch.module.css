@@ -154,3 +154,26 @@
     font-size: 10px;
   }
 }
+
+.compact {
+  padding-block: 0;
+}
+.compactRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.compactRow > span {
+  flex: 1;
+  color: hsl(var(--foreground-muted));
+  font-size: 11px;
+}
+.compactRow > button {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--foreground));
+}

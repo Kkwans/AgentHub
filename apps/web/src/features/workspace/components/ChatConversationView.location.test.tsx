@@ -49,6 +49,7 @@ const base: ComponentProps<typeof ChatConversationView> = {
 };
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -183,4 +184,33 @@ it('a successfully consumed location does not replay after Session A→B→A', (
   expect(complete).toHaveBeenCalledTimes(1);
   expect(document.querySelector('[data-message-id="m1"]')).not.toHaveFocus();
   expect((document.querySelector('[data-message-id="m1"]') as HTMLElement).style.outline).toBe('');
+});
+
+it('removes only temporary shadow suppression when the highlight expires, preserving keyboard focus styling', () => {
+  vi.useFakeTimers();
+  const f = fixture(1);
+  const controller = new AbortController();
+  f.rerender(
+    <ChatConversationView
+      {...f.p}
+      locationRequest={{
+        target: { sessionId: 's', id: 'm1', sequence: 1 },
+        signal: controller.signal,
+        complete: vi.fn(),
+      }}
+    />,
+  );
+  for (let i = 0; i < 5; i++) f.flush();
+  const node = document.querySelector<HTMLElement>('[data-message-id="m1"]')!;
+  expect(node).toHaveFocus();
+  expect(node.dataset.messageLocated).toBe('true');
+  // Assert the real Tailwind selector contract, not jsdom's absent CSS engine.
+  expect(node.classList.contains('focus:shadow-none')).toBe(false);
+  expect(node.classList.contains('data-[message-located=true]:shadow-none')).toBe(true);
+  expect(node.style.outline).toContain('1px');
+  act(() => vi.advanceTimersByTime(2400));
+  expect(node).toHaveFocus();
+  expect(node.hasAttribute('data-message-located')).toBe(false);
+  expect(node.style.outline).toBe('');
+  expect(node.style.boxShadow).toBe('');
 });

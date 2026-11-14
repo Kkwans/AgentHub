@@ -204,7 +204,11 @@ export const ChatConversationView = memo(function ChatConversationView({
   const [timelineWindowStart, setTimelineWindowStart] = useState(0);
   const [isFollowingTimeline, setIsFollowingTimeline] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
-  const previousTimelineLengthRef = useRef(timeline.length);
+  const latestSavedSequence = (messages.data ?? []).reduce(
+    (max, message) => Math.max(max, message.sequence ?? 0),
+    0,
+  );
+  const savedWatermark = useRef({ sessionId: session.id, sequence: latestSavedSequence });
   const [viewportMeasured, setViewportMeasured] = useState(false);
   const latestTimelineId = timeline.at(-1)?.id;
   const latestWindowStart = getConversationWindowStart(turns.length);
@@ -324,13 +328,32 @@ export const ChatConversationView = memo(function ChatConversationView({
     [],
   );
   useEffect(() => {
-    const previousLength = previousTimelineLengthRef.current;
-    if (!isFollowingTimeline && timeline.length > previousLength) {
-      setUnreadCount((count) => count + timeline.length - previousLength);
+    const previous = savedWatermark.current;
+    if (previous.sessionId !== session.id) {
+      savedWatermark.current = { sessionId: session.id, sequence: latestSavedSequence };
+      setUnreadCount(0);
+      return;
+    }
+    // History prepends, tools and stream reconciliation are not new messages.
+    // An initial load establishes the watermark rather than an unread backlog.
+    if (!isFollowingTimeline && previous.sequence > 0) {
+      const added = new Set(
+        (messages.data ?? [])
+          .filter(
+            (message) =>
+              (message.sequence ?? 0) > previous.sequence &&
+              (message.role === 'USER' || message.role === 'ASSISTANT'),
+          )
+          .map((message) => message.id),
+      ).size;
+      if (added) setUnreadCount((count) => count + added);
     }
     if (isFollowingTimeline) setUnreadCount(0);
-    previousTimelineLengthRef.current = timeline.length;
-  }, [isFollowingTimeline, timeline.length]);
+    savedWatermark.current = {
+      sessionId: session.id,
+      sequence: Math.max(previous.sequence, latestSavedSequence),
+    };
+  }, [isFollowingTimeline, latestSavedSequence, messages.data, session.id]);
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
@@ -617,8 +640,8 @@ export const ChatConversationView = memo(function ChatConversationView({
         frame = requestAnimationFrame(locate);
         return;
       }
-      node.style.outline = '2px solid hsl(var(--primary) / 0.45)';
-      node.style.outlineOffset = '4px';
+      node.style.outline = '1px solid hsl(var(--primary) / 0.5)';
+      node.style.outlineOffset = '-1px';
       node.dataset.messageLocated = 'true';
       const clearHighlight = () => {
         clearTimeout(highlightTimer);
@@ -839,24 +862,22 @@ export const ChatConversationView = memo(function ChatConversationView({
               ))}
             </div>
           )}
-          {!isFollowingTimeline && (
-            <button
-              type="button"
-              className="conversation-jump-latest"
-              aria-label="回到最新"
-              onClick={jumpToLatest}
-            >
-              <ChevronDown size={14} aria-hidden="true" />
-              回到最新
-              {unreadCount > 0 && (
-                <span className="rounded-full bg-[hsl(var(--primary))] px-1.5 py-0.5 text-[9px] text-[hsl(var(--primary-foreground))]">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          )}
         </div>
       </div>
+      {!isFollowingTimeline && (
+        <div className="conversation-latest-dock flex shrink-0 justify-center border-t border-[hsl(var(--border))]">
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md px-4 text-xs text-[hsl(var(--foreground-muted))] hover:bg-[hsl(var(--surface-muted))]"
+            aria-label="回到最新"
+            onClick={jumpToLatest}
+          >
+            <ChevronDown size={14} aria-hidden="true" />
+            回到最新
+            {unreadCount > 0 && <span>{unreadCount} 条新消息</span>}
+          </button>
+        </div>
+      )}
       {composer && (session.status !== 'CLOSED' || Boolean(activeRun)) ? (
         <div className="chat-composer-dock relative shrink-0 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom),var(--mobile-keyboard-inset,0px))] pt-1 before:pointer-events-none before:absolute before:inset-x-0 before:-top-3 before:h-3 before:bg-gradient-to-t before:from-[hsl(var(--background))]/85 before:to-transparent sm:px-4 sm:pb-3 sm:pt-2 sm:before:-top-5 sm:before:h-5">
           {composer}

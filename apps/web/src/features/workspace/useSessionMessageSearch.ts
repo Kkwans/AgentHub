@@ -30,6 +30,7 @@ export function useSessionMessageSearch({
   authorized: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [compact, setCompact] = useState(false);
   const [input, setInput] = useState('');
   const [page, setPage] = useState<MessageSearchPage>();
   const [hits, setHits] = useState<MessageSearchHit[]>([]);
@@ -73,11 +74,12 @@ export function useSessionMessageSearch({
     };
   }, []);
   useEffect(() => {
-    if (open) textbox.current?.focus();
-  }, [open, host]);
+    if (open && !compact) textbox.current?.focus();
+  }, [open, compact, host]);
   const close = () => {
     abort();
     setOpen(false);
+    setCompact(false);
     setHits([]);
     setPage(undefined);
     setStatus('');
@@ -174,7 +176,10 @@ export function useSessionMessageSearch({
       if (result === 'budget') {
         setContinuation(hit);
         setStatus('本轮定位预算已用完，尚未定位。可以继续加载历史或取消。');
-      } else setStatus('已定位到原消息。');
+      } else {
+        setStatus('已定位到原消息。');
+        setCompact(true);
+      }
     } catch (error) {
       if (valid()) setStatus(error instanceof Error ? error.message : '未能定位原消息，请重试。');
     } finally {
@@ -187,6 +192,8 @@ export function useSessionMessageSearch({
 
   return {
     open,
+    compact,
+    expand: () => setCompact(false),
     input,
     page,
     hits,

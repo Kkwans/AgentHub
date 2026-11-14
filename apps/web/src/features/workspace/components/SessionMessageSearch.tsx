@@ -28,6 +28,8 @@ function ScopedSearch({
 }) {
   const {
     open,
+    compact,
+    expand,
     input,
     page,
     hits,
@@ -61,7 +63,7 @@ function ScopedSearch({
       {open && host
         ? createPortal(
             <section
-              className={styles.panel}
+              className={compact ? `${styles.panel} ${styles.compact}` : styles.panel}
               aria-label="当前会话文字搜索"
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
@@ -70,79 +72,93 @@ function ScopedSearch({
                 }
               }}
             >
-              <div className={styles.heading}>
-                <strong>已保存文字</strong>
-                <span>仅当前会话 · 用户与 Agent</span>
-                <button type="button" aria-label="关闭搜索" onClick={close}>
-                  <X size={16} />
-                </button>
-              </div>
-              <form
-                className={styles.form}
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void search();
-                }}
-              >
-                <Search size={15} aria-hidden="true" />
-                <input
-                  ref={textbox}
-                  aria-label="搜索已保存文字"
-                  value={input}
-                  maxLength={200}
-                  placeholder="查找会话中的文字…"
-                  onChange={(event) => changeInput(event.target.value)}
-                />
-                <button type="submit" disabled={busy || locating || !input.trim() || revoked}>
-                  搜索
-                </button>
-              </form>
-              <p className={styles.scope}>不包含实时流、思考、工具、审批或附件。</p>
-              {hits.length ? (
-                <ol className={styles.results}>
-                  {hits.map((hit) => (
-                    <li key={hit.id}>
+              {compact ? (
+                <div className={styles.compactRow}>
+                  <span role="status">{status}</span>
+                  <button type="button" onClick={expand}>
+                    返回搜索结果
+                  </button>
+                  <button type="button" aria-label="关闭搜索" onClick={close}>
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className={styles.heading}>
+                    <strong>已保存文字</strong>
+                    <span>仅当前会话 · 用户与 Agent</span>
+                    <button type="button" aria-label="关闭搜索" onClick={close}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <form
+                    className={styles.form}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void search();
+                    }}
+                  >
+                    <Search size={15} aria-hidden="true" />
+                    <input
+                      ref={textbox}
+                      aria-label="搜索已保存文字"
+                      value={input}
+                      maxLength={200}
+                      placeholder="查找会话中的文字…"
+                      onChange={(event) => changeInput(event.target.value)}
+                    />
+                    <button type="submit" disabled={busy || locating || !input.trim() || revoked}>
+                      搜索
+                    </button>
+                  </form>
+                  <p className={styles.scope}>不包含实时流、思考、工具、审批或附件。</p>
+                  {hits.length ? (
+                    <ol className={styles.results}>
+                      {hits.map((hit) => (
+                        <li key={hit.id}>
+                          <button
+                            type="button"
+                            aria-label={'定位消息 ' + hit.id}
+                            disabled={locating || busy || !messages.locateMessage}
+                            onClick={() => void locate(hit)}
+                          >
+                            <span className={styles.meta}>
+                              <strong>{hit.role === 'USER' ? '你' : 'Agent'}</strong>
+                              <time dateTime={hit.createdAt}>
+                                {new Date(hit.createdAt).toLocaleString('zh-CN')}
+                              </time>
+                              <ArrowUpRight size={14} />
+                            </span>
+                            <span className={styles.snippet}>{hit.snippet}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
+                  <div className={styles.footer}>
+                    <p role="status">{status}</p>
+                    {page && !page.exhausted ? (
                       <button
                         type="button"
-                        aria-label={'定位消息 ' + hit.id}
-                        disabled={locating || busy || !messages.locateMessage}
-                        onClick={() => void locate(hit)}
+                        disabled={busy || locating}
+                        onClick={() => void search(true)}
                       >
-                        <span className={styles.meta}>
-                          <strong>{hit.role === 'USER' ? '你' : 'Agent'}</strong>
-                          <time dateTime={hit.createdAt}>
-                            {new Date(hit.createdAt).toLocaleString('zh-CN')}
-                          </time>
-                          <ArrowUpRight size={14} />
-                        </span>
-                        <span className={styles.snippet}>{hit.snippet}</span>
+                        继续搜索
                       </button>
-                    </li>
-                  ))}
-                </ol>
-              ) : null}
-              <div className={styles.footer}>
-                <p role="status">{status}</p>
-                {page && !page.exhausted ? (
-                  <button
-                    type="button"
-                    disabled={busy || locating}
-                    onClick={() => void search(true)}
-                  >
-                    继续搜索
-                  </button>
-                ) : null}
-                {continuation ? (
-                  <button type="button" onClick={() => void locate(continuation)}>
-                    继续加载历史
-                  </button>
-                ) : null}
-                {locating || continuation ? (
-                  <button type="button" onClick={cancelLocation}>
-                    取消定位
-                  </button>
-                ) : null}
-              </div>
+                    ) : null}
+                    {continuation ? (
+                      <button type="button" onClick={() => void locate(continuation)}>
+                        继续加载历史
+                      </button>
+                    ) : null}
+                    {locating || continuation ? (
+                      <button type="button" onClick={cancelLocation}>
+                        取消定位
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </section>,
             host,
           )
