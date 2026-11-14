@@ -81,3 +81,11 @@ UI 仍为最高产品优先级，沿用用户选定的 Codex 风格：安静侧�
 - 资源安全顺序：先闭合ISSUES中Remote固定错误码传递、EXEC迟到启动/重复关闭，再处理OpenClaw capability/EXEC probe。重命名不越过这些具体安全缺口。
 
 - 07:24最新具体安全计划：[Node断线与重连](NODE_DISCONNECT_PLAN.md)、[Composite/Docker probe](COMPOSITE_PROBE_SAFETY.md)。均未实施；当前Remote/EXEC候选最终全仓2008/9skip通过，准备发布。
+
+## 2026-11-14 08:22 UTC 最新优先队列
+
+1. **会话过程UI像素验收**：8d5dac8已发布中性思考内容区/工具行/失败摘要及显式合成过程fixture；完整web1066通过，精确CI43575348238进行中。必须查看新原图，特别手机展开长输出、真实状态、焦点和浅深色，不拿旧图代替。
+2. **会话重命名闭环**：已开始按SESSION_RENAME_PLAN实施专用titleRevision原子CAS、严格API、顶栏对话框与unknown只读核对。元数据改名不改运行状态/最近活动排序，不调用Agent。当前未实现完成/验证发布。
+3. **会话管理后续**：在重命名完成后按明确用户价值选择搜索/导出/归档切片，不一次性改三个生命周期；归档不等于删除，运行任务处理和恢复入口需先定合同。
+4. **Agent管理与真实联调**：保持五家内置与实际验证分栏。没有真实Provider/NAS证据前不称全部可用；Gemini/Copilot/Cursor/Kimi/Qwen仍是评估候选，不是已接入。
+5. **已收敛安全片**：07ad01d包含Node断连排空、能力探测未知禁止降级及Gateway异步状态写drain；本地全仓2055/9skip成功，精确CI43574785466仍在运行。单Gateway状态队列的慢节点隔离仍有优化空间，不能称分布式fencing已解决。
