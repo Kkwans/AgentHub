@@ -147,6 +147,12 @@ it('settings hierarchy keeps six routes and preferences without duplicate badge 
   expect(screen.getByRole('navigation', { name: '设置分区' }).querySelectorAll('a')).toHaveLength(
     6,
   );
+  expect(
+    Array.from(
+      screen.getByRole('navigation', { name: '设置分区' }).querySelectorAll('small'),
+      (node) => node.textContent,
+    ),
+  ).toEqual(['主题与动效', '登录状态', '密码与会话', 'API 与工具', 'Terminal', '权限与风险']);
   expect(screen.getByRole('region', { name: '外观偏好' })).toBeVisible();
   expect(screen.getByRole('combobox', { name: '主题' })).toBeVisible();
   const motion = screen.getByRole('switch', { name: '减少动效' });

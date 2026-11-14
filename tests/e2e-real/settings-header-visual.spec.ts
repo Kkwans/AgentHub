@@ -21,6 +21,41 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(page.getByRole('heading', { name: '外观偏好', exact: true })).toBeVisible();
       await expect(page.getByRole('navigation', { name: '设置分区' })).toBeVisible();
       await expect(page.getByText('SETTINGS', { exact: true })).toHaveCount(0);
+      if (width >= 768) {
+        const descriptions = await page
+          .getByRole('navigation', { name: '设置分区' })
+          .locator('small')
+          .evaluateAll((nodes) =>
+            nodes.map((node) => {
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              const text = range.getBoundingClientRect();
+              const box = node.getBoundingClientRect();
+              return {
+                value: node.textContent,
+                clientWidth: node.clientWidth,
+                scrollWidth: node.scrollWidth,
+                left: box.left,
+                right: box.right,
+                textLeft: text.left,
+                textRight: text.right,
+                height: box.height,
+              };
+            }),
+          );
+        expect(descriptions).toHaveLength(6);
+        for (const item of descriptions) {
+          expect(item.height).toBeGreaterThan(0);
+          expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth + 1);
+          expect(item.textLeft).toBeGreaterThanOrEqual(item.left - 1);
+          expect(item.textRight).toBeLessThanOrEqual(item.right + 1);
+        }
+        await info.attach('settings-description-geometry', {
+          body: JSON.stringify(descriptions),
+          contentType: 'application/json',
+        });
+      }
+
       const preferences = page.getByRole('region', { name: '外观偏好' });
       const themeControl = preferences.getByRole('combobox', { name: '主题', exact: true });
       const sidebarControl = preferences.getByRole('combobox', { name: '侧边栏行为', exact: true });

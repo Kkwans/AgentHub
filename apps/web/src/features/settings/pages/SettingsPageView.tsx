@@ -39,12 +39,12 @@ const settingSections: Array<{
   description: string;
   icon: React.ComponentType<IconProps>;
 }> = [
-  { id: 'appearance', label: '外观', description: '主题、密度与动效', icon: Sun },
-  { id: 'account', label: '账号', description: '账户与登录状态', icon: KeyRound },
-  { id: 'security', label: '安全', description: '密码与会话保护', icon: ShieldAlert },
-  { id: 'integrations', label: '集成', description: 'API token 与外部工具', icon: Link2 },
-  { id: 'system', label: '系统', description: 'Terminal 与服务状态', icon: SquareTerminal },
-  { id: 'advanced', label: '高级', description: '高权限能力与风险', icon: Wrench },
+  { id: 'appearance', label: '外观', description: '主题与动效', icon: Sun },
+  { id: 'account', label: '账号', description: '登录状态', icon: KeyRound },
+  { id: 'security', label: '安全', description: '密码与会话', icon: ShieldAlert },
+  { id: 'integrations', label: '集成', description: 'API 与工具', icon: Link2 },
+  { id: 'system', label: '系统', description: 'Terminal', icon: SquareTerminal },
+  { id: 'advanced', label: '高级', description: '权限与风险', icon: Wrench },
 ];
 
 function SettingSection({

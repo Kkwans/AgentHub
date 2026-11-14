@@ -1885,3 +1885,13 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 16:34精确Settings1b7 focused成功115通过/11.4分钟+独立Prompt4通过，新Settings18均过；verify旧fixture导航断言>=180收到新设计148而失败，26通过/1失败/94未运行。正在适配精确新宽度并保六分区、跳转、标签可读与溢出断言；不把focused成功当整run成功。
 - 16:35:55 UTC Projects最终冻结130文件1418测试通过/191.30秒，原5个产品/测试/workflow hash未变。并行新增的Settings旧fixture适配是独立E2E-only文件，不在Vitest范围，单独类型/lint/审查，不能声称被此次单测执行覆盖。全仓build继续。
 - 16:36:19 UTC全仓build通过。Settings旧fixture单文件16:35:53冻结：桌面>=761精确148px，追加六链接/文字Range边界不裁切与geometry原始JSON，原安全跳转/visible/overflow不删；独立类型/lint/format/list100通过，未声称浏览器复跑。
+
+### 2026-11-14 16:38 UTC Settings 实图反馈与短摘要
+
+- 1b7精确focused115通过0失败0flaky；独立实际看390/768/1440浅深6图，主工程另看390浅色。主题控件约y315（旧约455），标签/控件两轴与六分区层级清楚，外观表单方向可接受；不能把外观页审阅说成全部Settings子页审阅。
+- 新图发现148px二级导航的旧长描述被省略成半句。仅六摘要改短且完整，Terminal原词、权限风险与所有正文说明保留，不改功能或字号。9专项、类型/lint、独立CR通过，16:37:54三文件冻结，最终聚合运行，新像素仍待。
+- 16:38:03 UTC已fetch核实58cf853推送（Projects目录+Settings旧fixture契约），精确run43616669257启动；不把旧1b截图算该目录新图。
+- 16:40核31精确focused115通过/11分钟+独立Prompt4通过，artifact14121958041；verify仍继承Settings旧180px断言（2406单测/11条件skip、token9后，fixture26通过/1失败/3条件skip/94未运行），已在58适配，等待其CI。
+- 31新图已独立hash/JSON及实际看Prompt390深/1440浅保存后图：全局创建outline、当前版本filled，双主按钮竞争确实消除且无布局回退，此小片可接受；仍28字fixture，不当长模板阅读验收。
+- 16:41:30 UTC短描述最终冻结130文件1418测试通过/198.09秒，三文件hash不变，全仓build继续；未以单测代替新导航文字实际测量。
+- 16:41:48 UTC全仓build成功，短描述候选准备发布；真实六摘要不裁切仍待精确CI。
