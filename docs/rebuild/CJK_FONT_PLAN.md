@@ -18,3 +18,7 @@
 3. 记录WOFF资源PerformanceResourceTiming的transfer/encoded/decoded字节、同源性；Noto独立字体响应体冷首屏预算<2MiB。小片内联在CSS，不把独立WOFF统计冒充全部页面流量。
 4. 390额外阻断Noto网络请求，验证字体确实失败、中文有实际系统fallback字形、首页主操作与几何保持可用，保存截图。
 5. 只有精确新CI及新截图/CDP/实际字节结果可证明本片视觉和网络通过；本地构建或旧WenQuanYi截图不替代。
+
+## 2026-11-14 02:39 UTC 精确真实浏览器验收
+
+c293658/run43545128170三个job成功。真实artifact14094273625 SHA256 5c0c54e1c4fb5a1265f38db7cc90f90e94bbbadbfcb4d76e46568d629618b2bf匹配；人工查看1440/390双主题及390字体失败共5图。8冷context中文实际custom Noto Sans SC、英文Agent为custom Geist；CDP内部familyName带Thin不等于CSS字重均细，计算标题650/正文400。CJK12子集实际encoded705368B，含Geist734768B、transfer738668B，全部同源。12个Noto请求失败后回退WenQuanYi Zen Hei，中文仍可读且主操作完整，粗细层次减弱但布局未坏。未把包总大小当页面请求量；结论不外推所有语言/系统。剩余390长事项密度应单独优化。

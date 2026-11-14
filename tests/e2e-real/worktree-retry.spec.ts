@@ -311,6 +311,19 @@ for (const width of [390, 768, 1024, 1440]) {
     await expect(load).toBeEnabled();
     await load.click();
     await expect(page.getByText(/旧操作已确认未写入；本次确认将创建新的合并尝试/)).toBeVisible();
+    const executionFeedback = await apiData<{ errorMessage: string | null }>(
+      context,
+      'get',
+      `/worktree-executions/${execution.id}`,
+    );
+    expect(executionFeedback.errorMessage).toBeTruthy();
+    await expect(
+      inspector.getByRole('heading', { name: '隔离执行反馈', exact: true }),
+    ).toBeVisible();
+    await expect(
+      inspector.getByText(executionFeedback.errorMessage!, { exact: true }),
+    ).toBeVisible();
+    await expect(inspector.getByRole('heading', { name: '需要处理', exact: true })).toHaveCount(0);
     expect(mergeRequests).toEqual([
       { expectedRunId: initial.expectedRunId, expectedOperationId: initial.expectedOperationId },
     ]);

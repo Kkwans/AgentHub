@@ -802,7 +802,9 @@ export function ProjectWorkPage() {
                     ) : null}
                     {selectedWorktree?.errorMessage ? (
                       <section className={projectsStyles.inspectorSection}>
-                        <h4>需要处理</h4>
+                        <h4>
+                          {selectedWorktree.status === 'REVIEW' ? '隔离执行反馈' : '需要处理'}
+                        </h4>
                         <p>{selectedWorktree.errorMessage}</p>
                       </section>
                     ) : null}

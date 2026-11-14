@@ -1664,3 +1664,73 @@ it.each([768, 1023])('%spx详情保留资格失败警告，不藏在phone专用�
     media.mockRestore();
   }
 });
+
+const feedbackExecution = {
+  id: 'feedback-execution',
+  projectId: project.id,
+  taskId: task.id,
+  status: 'REVIEW',
+  sessionId: 'feedback-session',
+  runId: 'feedback-run',
+  taskBranch: 'task/feedback',
+  baseBranch: 'main',
+  baseSha: 'base',
+  worktreePath: '/tmp/feedback',
+  errorCode: 'WORKTREE_GIT_PREWRITE_REJECTED',
+  errorMessage: '原始服务端反馈：请核对 Git 操作结果。',
+};
+it.each(['REVIEW', 'FAILED'])('%s隔离执行完整保留反馈，仅REVIEW使用中性标题', async (status) => {
+  mount([{ ...task, status: 'WAITING_REVIEW' }], '', [], undefined, [
+    { ...feedbackExecution, status },
+  ]);
+  expect(await screen.findByText(feedbackExecution.errorMessage)).toBeVisible();
+  expect(
+    screen.getByRole('heading', { name: status === 'REVIEW' ? '隔离执行反馈' : '需要处理' }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('heading', { name: status === 'REVIEW' ? '需要处理' : '隔离执行反馈' }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText(/旧操作已确认未写入/)).not.toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+});
+it('REVIEW中性反馈标签不掩盖新合并UNKNOWN或解除重复提交保护', async () => {
+  mount([{ ...task, status: 'WAITING_REVIEW' }], '', [], undefined, [feedbackExecution]);
+  await screen.findByText(feedbackExecution.errorMessage);
+  const previousGet = vi.mocked(api.get).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation(async <T,>(path: string) => {
+    if (path === '/worktree-executions/feedback-execution/review')
+      return {
+        worktreePath: feedbackExecution.worktreePath,
+        baseSha: feedbackExecution.baseSha,
+        taskBranch: feedbackExecution.taskBranch,
+        headSha: 'head',
+        clean: false,
+        aheadBy: 0,
+        entries: [],
+        patch: '+修改',
+        diffStat: '1 file changed',
+        truncated: false,
+        mergeAdmission: {
+          expectedRunId: feedbackExecution.runId,
+          expectedOperationId: 'feedback-op',
+          dispatchOperationId: 'feedback-op',
+          retryEligible: false,
+          mergeAllowed: true,
+        },
+      } as T;
+    return previousGet(path) as Promise<T>;
+  });
+  vi.mocked(api.post).mockRejectedValue(new Error('新请求结果无法确认'));
+  fireEvent.click(screen.getByRole('button', { name: '读取隔离工作区审阅' }));
+  await screen.findByText('1 file changed');
+  fireEvent.click(screen.getByRole('checkbox', { name: '我已审阅改动，确认提交并合并到基础分支' }));
+  fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
+  expect(await screen.findByText('新请求结果无法确认')).toBeVisible();
+  expect(screen.getByText(feedbackExecution.errorMessage)).toBeVisible();
+  expect(screen.getByRole('heading', { name: '隔离执行反馈' })).toBeVisible();
+  expect(screen.getByText('请先核对原隔离执行和实际 Git 结果，勿重复提交。')).toBeVisible();
+  expect(screen.getByRole('button', { name: '核对原隔离执行' })).toBeVisible();
+  expect(screen.getByRole('button', { name: '提交并合并隔离工作区' })).toBeDisabled();
+  expect(screen.queryByText(/旧操作已确认未写入/)).not.toBeInTheDocument();
+  expect(api.post).toHaveBeenCalledTimes(1);
+});
