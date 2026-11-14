@@ -1,0 +1,106 @@
+.panel {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 720px);
+  max-width: 720px;
+  min-width: 0;
+  padding-block: 24px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.heading h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.state {
+  display: inline-flex;
+  padding: 4px 8px;
+  border: 1px solid var(--ah-border-subtle);
+  border-radius: 6px;
+  background: var(--ah-surface-subtle);
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.panel p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.description {
+  color: var(--ah-text-secondary);
+}
+.controls,
+.warning {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.warning {
+  padding: 16px;
+  border: 1px solid var(--ah-border-default);
+  border-left: 3px solid var(--ah-warning);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ah-warning) 5%, var(--ah-surface));
+}
+.warning h3 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.actions,
+.newIntent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.actions > button,
+.newIntent > button {
+  width: auto;
+  min-height: 44px;
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+}
+.newIntent {
+  padding-top: 12px;
+  border-top: 1px solid var(--ah-border-subtle);
+}
+.panel .safety,
+.panel .feedback,
+.facts p {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ah-text-secondary);
+}
+.details {
+  min-width: 0;
+}
+.details summary {
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+.details summary:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.facts {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 12px;
+}

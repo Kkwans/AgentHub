@@ -119,6 +119,28 @@ for (const width of [390, 768, 1024, 1440])
         await marker(app.projectRoot, 'tools');
         const tools = page.locator('.tool-entry-card');
         await expect(tools).toHaveCount(3);
+        for (const card of await tools.all()) {
+          const title = card.locator('.tool-entry-badge');
+          await expect(title).toHaveCSS('font-size', '14px');
+          await expect(title).toHaveCSS('font-weight', '600');
+          expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).not.toMatch(
+            /mono/i,
+          );
+          await expect(card).toHaveCSS('border-top-width', '1px');
+          await expect(card).toHaveCSS('border-top-style', 'solid');
+          expect(await card.evaluate((node) => getComputedStyle(node).borderTopColor)).not.toBe(
+            'rgba(0, 0, 0, 0)',
+          );
+          // Fixture input repeats its title: do not render the same subtitle twice.
+          await expect(card.locator('.tool-entry-summary')).toHaveCount(0);
+          await expect(card.locator('.tool-entry-separator')).toHaveCount(0);
+        }
+        await expect(thought.locator('.process-thought-label')).toHaveCSS('font-size', '14px');
+        await expect(thought.locator('.process-thought-body')).toHaveCSS('font-size', '14px');
+        await expect(thought.locator('.process-thought-body .markdown-body').first()).toHaveCSS(
+          'font-size',
+          '14px',
+        );
         const running = tools.filter({ hasText: 'Fixture 进行中工具' });
         const success = tools.filter({ hasText: 'Fixture 成功工具' });
         const failed = tools.filter({ hasText: 'Fixture 失败工具' });

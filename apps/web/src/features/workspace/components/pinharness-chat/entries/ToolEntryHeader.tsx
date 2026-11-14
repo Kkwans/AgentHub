@@ -8,9 +8,9 @@ interface ToolEntryHeaderProps {
   isActive: boolean;
   isFailed: boolean;
   theme: ToolTheme;
-  badgeTheme: string;
   toolName: string;
   summary: string;
+  summaryMonospace?: boolean;
   resultSummary: string;
   failureSummary?: string;
   sleepRemainingMs: number | null;
@@ -45,14 +45,14 @@ function ToolStatusIcon({ isActive, isFailed }: { isActive: boolean; isFailed: b
   if (isFailed) {
     return (
       <CircleAlert
-        className="tool-status-settle h-3 w-3 text-[hsl(var(--destructive))]"
+        className="tool-status-settle h-4 w-4 text-[hsl(var(--destructive))]"
         aria-label="执行失败"
       />
     );
   }
   return (
     <Check
-      className="tool-status-settle h-3 w-3 text-[hsl(var(--success))]"
+      className="tool-status-settle h-4 w-4 text-[hsl(var(--success))]"
       aria-label="执行完成"
     />
   );
@@ -107,9 +107,9 @@ export function ToolEntryHeader({
   isActive,
   isFailed,
   theme,
-  badgeTheme,
   toolName,
   summary,
+  summaryMonospace = false,
   resultSummary,
   failureSummary,
   sleepRemainingMs,
@@ -119,6 +119,9 @@ export function ToolEntryHeader({
   onOpenFile,
 }: ToolEntryHeaderProps) {
   const { Icon } = theme;
+  // Presentation-only exact deduplication. Whitespace may be meaningful in a
+  // command or path; preserve distinct text and the original file action.
+  const visibleSummary = summary === toolName ? '' : summary;
   return (
     <div
       className={cn(
@@ -140,25 +143,18 @@ export function ToolEntryHeader({
         <span className="tool-entry-icon">
           <Icon
             className={cn(
-              'h-3.5 w-3.5',
+              'h-4 w-4',
               isFailed ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--foreground-muted))]',
             )}
           />
         </span>
         <span className="tool-entry-copy">
           <span className="tool-entry-title-row">
-            <span
-              className={cn(
-                'tool-entry-badge',
-                isFailed ? badgeTheme : 'text-[hsl(var(--foreground-muted))]',
-              )}
-            >
-              {toolName}
-            </span>
-            {summary && <span className="tool-entry-separator" aria-hidden="true" />}
-            {summary && (
-              <span className="min-w-0 truncate font-mono text-[13px] text-[hsl(var(--foreground-muted))]">
-                {summary}
+            <span className="tool-entry-badge">{toolName}</span>
+            {visibleSummary && <span className="tool-entry-separator" aria-hidden="true" />}
+            {visibleSummary && (
+              <span className={cn('tool-entry-summary', summaryMonospace && 'font-mono')}>
+                {visibleSummary}
               </span>
             )}
             {resultSummary && (

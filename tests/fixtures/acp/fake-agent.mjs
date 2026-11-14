@@ -140,6 +140,81 @@ async function processVisualPrompt(params, client) {
   return { stopReason: 'end_turn' };
 }
 
+// Opt-in visual reference scenario. All tool outcomes below are synthetic;
+// only files in the disposable Git project are actually changed. No thought events.
+async function referenceVisualPrompt(params, client) {
+  const notify = (update) =>
+    client.notify(CLIENT_METHODS.session_update, { sessionId: params.sessionId, update });
+  await notify({
+    sessionUpdate: 'agent_message_chunk',
+    content: {
+      type: 'text',
+      text: '合成演示数据，非真实 Agent 执行。\n\n我会为任务执行循环补上取消检查：先核对状态传递，再调整中断位置，并准备对应的测试用例。下面的工具记录仅用于界面验收，不代表真实命令已运行。\n\n具体计划：\n1. 阅读任务状态与执行循环。\n2. 在执行步骤前检查取消信号。\n3. 补充取消后的中断测试。\n4. 展示测试与静态检查的合成结果。',
+    },
+  });
+  const steps = ['核对状态传递', '补充中断检查', '准备回归用例'];
+  await notify({
+    sessionUpdate: 'plan',
+    entries: steps.map((content) => ({ content, priority: 'medium', status: 'completed' })),
+  });
+  await writeFile(
+    join(process.cwd(), 'runner.ts'),
+    'export function runStep(cancelled: boolean) {\n  if (cancelled) return "stopped";\n  return "continue";\n}\n',
+    'utf8',
+  );
+  await writeFile(
+    join(process.cwd(), 'task.ts'),
+    'export const cancellationPolicy = "stop-before-next-step";\n',
+    'utf8',
+  );
+  await writeFile(
+    join(process.cwd(), 'cancel.test.ts'),
+    '// Synthetic example only; no test runner was invoked.\nexport const expectedAfterCancel = "stopped";\n',
+    'utf8',
+  );
+  const tools = [
+    ['reference-read', '读取代码', 'read', '核对 runner.ts 与 task.ts 的任务状态传递。'],
+    ['reference-edit', '编辑文件', 'edit', '更新取消检查，并添加 cancel.test.ts 示例。'],
+    [
+      'reference-test',
+      '测试结果（合成）',
+      'execute',
+      '合成测试结果：取消后的下一步不会继续。未实际运行测试命令。',
+    ],
+    [
+      'reference-check',
+      '静态检查（合成）',
+      'execute',
+      '合成检查结果：本演示无待展示的问题。未实际运行静态检查。',
+    ],
+  ];
+  for (const [toolCallId, title, kind, text] of tools) {
+    const file = kind === 'read' ? 'runner.ts' : kind === 'edit' ? 'task.ts' : undefined;
+    await notify({
+      sessionUpdate: 'tool_call',
+      toolCallId,
+      title,
+      kind,
+      status: 'in_progress',
+      ...(file ? { locations: [{ path: join(process.cwd(), file), line: 1 }] } : {}),
+    });
+    await notify({
+      sessionUpdate: 'tool_call_update',
+      toolCallId,
+      status: 'completed',
+      content: [{ type: 'content', content: { type: 'text', text } }],
+    });
+  }
+  await notify({
+    sessionUpdate: 'agent_message_chunk',
+    content: {
+      type: 'text',
+      text: '\n\n演示改动已准备好。右侧展示临时 Git 项目的实际差异，请检查取消分支与示例用例。',
+    },
+  });
+  return { stopReason: 'end_turn' };
+}
+
 const fixture = agent({ name: 'AgentHub ACP Fixture' })
   .onRequest(AGENT_METHODS.initialize, () => ({
     protocolVersion: PROTOCOL_VERSION,
@@ -183,6 +258,7 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     return { configOptions: configOptions() };
   })
   .onRequest(AGENT_METHODS.session_prompt, async ({ params, client }) => {
+    if (process.argv.includes('--reference-visual')) return referenceVisualPrompt(params, client);
     if (process.argv.includes('--process-visual')) return processVisualPrompt(params, client);
     if (process.argv.includes('--hang-prompt')) await new Promise(() => {});
     if (process.argv.includes('--transport-warning')) {

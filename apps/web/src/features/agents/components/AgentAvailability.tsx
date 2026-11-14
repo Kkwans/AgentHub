@@ -17,7 +17,7 @@ import {
   type Availability,
   type Marker,
 } from '../lib/agent-availability-state';
-import styles from '../pages/AgentDetailPage.module.css';
+import styles from './AgentAvailability.module.css';
 
 export function AgentAvailability({
   agent,
@@ -243,59 +243,94 @@ function AvailabilityControl({
     marker?.phase === 'unknown' && observed && observed.enabledRevision > marker.revision;
   return (
     <section className={styles.panel} aria-label="Agent 启停设置">
-      <h2>接收新工作</h2>
-      <p>禁用会阻止之后的新工作准入，不取消已准入或正在运行的工作；启用不代表连接检查通过。</p>
-      <p>
-        当前设置：{base ? (base.enabled ? '已启用' : '已禁用') : '待核对'}
-        {base ? ' · 版本 ' + base.enabledRevision : ''}
+      <header className={styles.heading}>
+        <h2>接收新工作</h2>
+        <span
+          className={styles.state}
+          data-enabled={unknown ? 'unknown' : base ? String(base.enabled) : 'unknown'}
+        >
+          {unknown ? (
+            '待核对'
+          ) : (
+            <>当前设置：{base ? (base.enabled ? '已启用' : '已禁用') : '待核对'}</>
+          )}
+        </span>
+      </header>
+      <p className={styles.description}>
+        禁用会阻止之后的新工作准入，不取消已准入或正在运行的工作；启用不代表连接检查通过。
       </p>
-      {marker && marker.phase !== 'settled' ? (
-        <p>
-          原操作：版本 {marker.revision}，请求{marker.target ? '启用' : '禁用'}。结果
-          {marker.phase === 'pending' ? '等待中' : '未知'}。
-        </p>
-      ) : null}
       {revoked ? <p role="alert">授权已变化，请重新进入后核对。</p> : null}
       {storageError ? <p role="alert">保护记录无法读取，不能提交启停设置。</p> : null}
-      <div className={styles.actions}>
-        <AhButton
-          variant="default"
-          disabled={
-            !base ||
-            stale ||
-            busy ||
-            revoked ||
-            storageError ||
-            marker?.phase === 'pending' ||
-            unknown ||
-            !scope ||
-            base.enabledRevision >= 2_147_483_647
-          }
-          onClick={() => void change()}
-        >
-          {base?.enabled ? '禁用新工作' : '启用新工作'}
-        </AhButton>
-        <AhButton
-          variant="default"
-          disabled={busy || revoked || marker?.phase === 'pending' || !scope}
-          onClick={() => void check()}
-        >
-          核对启停状态
-        </AhButton>
-        {canNew ? (
+      <div className={unknown ? styles.warning : styles.controls}>
+        {unknown ? (
+          <>
+            <h3>原操作结果未知</h3>
+            <p>先核对当前启停状态。不会自动重试原操作。</p>
+          </>
+        ) : null}
+        <div className={styles.actions}>
           <AhButton
-            variant="default"
-            disabled={busy || revoked || !base || base.enabledRevision >= 2_147_483_647}
-            onClick={() => void change(true)}
+            variant={unknown ? 'filled' : 'default'}
+            disabled={busy || revoked || marker?.phase === 'pending' || !scope}
+            onClick={() => void check()}
           >
-            基于当前版本{base?.enabled ? '禁用' : '启用'}（新操作）
+            核对启停状态
           </AhButton>
+          <AhButton
+            variant={unknown ? 'default' : 'filled'}
+            disabled={
+              !base ||
+              stale ||
+              busy ||
+              revoked ||
+              storageError ||
+              marker?.phase === 'pending' ||
+              unknown ||
+              !scope ||
+              base.enabledRevision >= 2_147_483_647
+            }
+            onClick={() => void change()}
+          >
+            {base?.enabled ? '禁用新工作' : '启用新工作'}
+          </AhButton>
+        </div>
+        {unknown ? (
+          <p className={styles.safety}>
+            当前状态不是原请求的成功证明。只有核对到更高版本，才能明确发起新操作。
+          </p>
+        ) : null}
+        {canNew ? (
+          <div className={styles.newIntent}>
+            <AhButton
+              variant="default"
+              disabled={busy || revoked || !base || base.enabledRevision >= 2_147_483_647}
+              onClick={() => void change(true)}
+            >
+              基于当前版本{base?.enabled ? '禁用' : '启用'}（新操作）
+            </AhButton>
+          </div>
         ) : null}
       </div>
-      {unknown ? (
-        <p>当前状态不是原请求的成功证明。只有核对到更高版本，才能明确发起新操作。</p>
+      {message ? (
+        <p className={styles.feedback} role="status">
+          {message}
+        </p>
       ) : null}
-      {message ? <p role="status">{message}</p> : null}
+      <details className={styles.details}>
+        <summary>版本与原操作详情</summary>
+        <div className={styles.facts}>
+          <p>
+            当前设置：{base ? (base.enabled ? '已启用' : '已禁用') : '待核对'}
+            {base ? ' · 版本 ' + base.enabledRevision : ''}
+          </p>
+          {marker && marker.phase !== 'settled' ? (
+            <p>
+              原操作：版本 {marker.revision}，请求{marker.target ? '启用' : '禁用'}。结果
+              {marker.phase === 'pending' ? '等待中' : '未知'}。
+            </p>
+          ) : null}
+        </div>
+      </details>
     </section>
   );
 }

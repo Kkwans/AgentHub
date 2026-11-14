@@ -165,6 +165,7 @@ it('leaving aborts GET and late result cannot update the prior Agent', async () 
 });
 it('older reads cannot downgrade state; duplicate identities cannot be adopted', async () => {
   mount({ ...agent, enabledRevision: 3 });
+  fireEvent.click(screen.getByText('版本与原操作详情'));
   for (const rows of [[agent], [agent, agent]]) {
     vi.mocked(api.get).mockResolvedValue(rows);
     fireEvent.click(screen.getByRole('button', { name: '核对启停状态' }));
@@ -255,4 +256,27 @@ it('external settled revision is not a new pending floor; authoritative GET perm
   await screen.findByRole('button', { name: '基于当前版本启用（新操作）' });
   expect(api.patch).toHaveBeenCalledTimes(1);
   expect(screen.queryByText('本次启停设置已保存。')).not.toBeInTheDocument();
+});
+
+it('discloses technical facts without unlocking an unknown attempt or hiding its safety warning', async () => {
+  mount();
+  await lose();
+  expect(screen.getByRole('heading', { name: '原操作结果未知' })).toBeVisible();
+  expect(screen.getByText('待核对', { exact: true })).toBeVisible();
+  expect(screen.queryByText('当前设置：已启用', { exact: true })).not.toBeInTheDocument();
+  expect(
+    screen.getByText('当前状态不是原请求的成功证明。只有核对到更高版本，才能明确发起新操作。'),
+  ).toBeVisible();
+  const facts = screen.getByText('原操作：版本 0，请求禁用。结果未知。');
+  expect(facts).not.toBeVisible();
+  fireEvent.click(screen.getByText('版本与原操作详情'));
+  expect(facts).toBeVisible();
+  expect(screen.getByText('当前设置：已启用 · 版本 0')).toBeVisible();
+  expect(screen.getByRole('button', { name: '禁用新工作' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '核对启停状态' })).toBeEnabled();
+  fireEvent.click(screen.getByText('版本与原操作详情'));
+  expect(facts).not.toBeVisible();
+  expect(screen.getByRole('button', { name: '禁用新工作' })).toBeDisabled();
+  expect(api.patch).toHaveBeenCalledTimes(1);
+  expect(api.get).not.toHaveBeenCalled();
 });

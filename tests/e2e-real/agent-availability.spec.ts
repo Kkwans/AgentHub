@@ -134,7 +134,13 @@ for (const theme of ['light', 'dark']) {
       await enable.focus();
       await page.keyboard.press('Enter');
       expect((await enabledResponse).status()).toBe(200);
+      const details = section.locator('details');
+      const detailsSummary = section.getByText('版本与原操作详情', { exact: true });
+      await expect(details).not.toHaveAttribute('open', '');
+      await detailsSummary.click();
       await expect(section.getByText(/当前设置：已启用 · 版本 2/)).toBeVisible();
+      await detailsSummary.click();
+      await expect(details).not.toHaveAttribute('open', '');
       await expect(model).toHaveValue('unsaved-availability-draft');
       expect(await read()).toMatchObject({
         enabled: true,
@@ -168,10 +174,24 @@ for (const theme of ['light', 'dark']) {
       await expect(model).toHaveValue('unsaved-availability-draft');
       expect(mutations).toHaveLength(3);
       expect(await read()).toMatchObject({ enabled: false, enabledRevision: 3 });
+      await expect(section.getByText('待核对', { exact: true })).toBeVisible();
+      await expect(details).not.toHaveAttribute('open', '');
+      await expect(
+        section.getByText(
+          '当前状态不是原请求的成功证明。只有核对到更高版本，才能明确发起新操作。',
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(section.getByRole('button', { name: '禁用新工作', exact: true })).toBeDisabled();
       await capture(page, section, info, `agent-availability-unknown-${theme}-${width}`);
       await page.unroute(availabilityUrl);
       await page.reload();
+      await expect(details).not.toHaveAttribute('open', '');
+      await expect(section.getByText('待核对', { exact: true })).toBeVisible();
+      await detailsSummary.click();
       await expect(section.getByText(/原操作：版本 2/)).toBeVisible();
+      await detailsSummary.click();
+      await expect(section.getByText(/原操作：版本 2/)).toBeHidden();
       expect(mutations).toHaveLength(3);
       await section.getByRole('button', { name: '核对启停状态', exact: true }).click();
       await expect(
