@@ -1,3 +1,4 @@
+import { AgentAdmissionCoordinator } from './agent-admission-coordinator.js';
 import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { access, realpath, stat } from 'node:fs/promises';
@@ -112,6 +113,61 @@ const BUILTIN_CATALOG: AgentCatalogEntry[] = [
 
 export class AgentService {
   private checksAccepting = true;
+  private readonly admissionPending = new Set<Promise<unknown>>();
+  private readonly admission = new AgentAdmissionCoordinator(() =>
+    this.assertAvailabilityRuntime(),
+  );
+
+  private assertAvailabilityRuntime() {
+    this.assertRuntimeHeld();
+    if (!this.checksAccepting)
+      throw new AppError(503, 'AGENT_ADMISSION_STOPPING', '服务正在停止，不接受新的 Agent 操作');
+  }
+
+  private coordinate<T>(id: string, operation: () => Promise<T>): Promise<T> {
+    const pending = this.admission.run(id, async ({ assertRuntimeHeld }) => {
+      // The operation owns any checkpoint needed immediately before its DB write.
+      assertRuntimeHeld();
+      return operation();
+    });
+    this.admissionPending.add(pending);
+    void pending.then(
+      () => this.admissionPending.delete(pending),
+      () => this.admissionPending.delete(pending),
+    );
+    return pending;
+  }
+
+  /** A short enabled read is the new-work admission point, never a provider lifetime lock. */
+  admitNewWork(id: string) {
+    return this.coordinate(id, async () => {
+      const agent = await this.agents.get(id);
+      this.assertAvailabilityRuntime();
+      if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+      if (!agent.enabled)
+        throw new AppError(409, 'AGENT_DISABLED', 'Agent 已禁用，不能接受新的工作');
+      return agent;
+    });
+  }
+
+  setAvailability(id: string, input: { enabled: boolean; expectedRevision: number }) {
+    return this.coordinate(id, async () => {
+      this.assertAvailabilityRuntime();
+      const updated = await this.agents.compareAndSetAvailability(
+        id,
+        input.enabled,
+        input.expectedRevision,
+      );
+      if (updated) return updated;
+      if (!(await this.agents.get(id))) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
+      throw new AppError(
+        409,
+        'AGENT_AVAILABILITY_CONFLICT',
+        'Agent 启停状态已变化，请核对当前状态',
+      );
+    });
+  }
+
   private cleanupUnconfirmed = false;
   private checkShutdown?: Promise<void>;
   private readonly checksPending = new Map<string, Promise<void>>();
@@ -156,7 +212,10 @@ export class AgentService {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([
-        Promise.all([...this.checksPending.values()]),
+        Promise.all([
+          ...this.checksPending.values(),
+          Promise.allSettled([...this.admissionPending]),
+        ]),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new Error('pending check')), 5_000);
         }),
@@ -174,6 +233,7 @@ export class AgentService {
   }
 
   private assertCheckAdmission(): void {
+    this.assertRuntimeHeld();
     if (!this.checksAccepting || this.cleanupUnconfirmed)
       throw new AppError(503, 'AGENT_CHECK_UNAVAILABLE', '服务正在停止，未启动检查');
   }
@@ -188,6 +248,7 @@ export class AgentService {
     ) => AgentRuntimeAdapter = (_adapterKind, launcher) => new AcpAdapter({ launcher }),
     private readonly remoteAdapter?: AgentRuntimeAdapter,
     private readonly resolveEnvironment: () => Promise<NodeJS.ProcessEnv> = async () => process.env,
+    private readonly assertRuntimeHeld: () => void = () => undefined,
   ) {}
 
   list() {
@@ -246,7 +307,7 @@ export class AgentService {
     assertCanLaunch: () => void = () => undefined,
   ) {
     return this.withConnectionAdmission(id, async () => {
-      const agent = await this.agents.get(id);
+      const agent = await this.admitNewWork(id);
       if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
       const target = await this.targets.get(agent.targetId);
       if (!agent.enabled || agent.adapterKind !== 'ACP_STDIO' || target?.kind !== 'LOCAL_HOST')
@@ -308,7 +369,7 @@ export class AgentService {
 
   async preflight(id: string, input: AgentPreflightInput): Promise<PreflightReport> {
     return this.withConnectionAdmission(id, async () => {
-      const agent = await this.agents.get(id);
+      const agent = await this.admitNewWork(id);
       if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
       const target = await this.targets.get(agent.targetId);
       if (!target)
@@ -349,11 +410,16 @@ export class AgentService {
     profile: AgentProfile;
     adapter: AgentRuntimeAdapter;
   }> {
+    return this.coordinate(id, () => this.resolveRuntimeAdmitted(id, cwd, expectedTargetId));
+  }
+
+  private async resolveRuntimeAdmitted(id: string, cwd: string, expectedTargetId: string) {
     const agent = await this.agents.get(id);
     if (!agent) throw new AppError(404, 'AGENT_NOT_FOUND', 'Agent 不存在');
     const agentTarget = await this.targets.get(agent.targetId);
     const projectTarget =
       agent.targetId === expectedTargetId ? agentTarget : await this.targets.get(expectedTargetId);
+    this.assertAvailabilityRuntime();
     const reason = this.runtimeEligibilityReason(agent, agentTarget, projectTarget, cwd);
     if (reason === 'DISABLED' || reason === 'NOT_READY')
       throw new AppError(409, 'AGENT_NOT_READY', '只有就绪且已启用的 Agent 可以创建或恢复 Session');

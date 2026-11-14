@@ -105,6 +105,30 @@ export function createAgentRouter(
     },
   );
 
+  const availabilitySchema = z
+    .object({
+      enabled: z.boolean(),
+      expectedRevision: z.number().int().min(0).max(2_147_483_646),
+    })
+    .strict();
+  router.patch(
+    '/:id/availability',
+    validate({ params: idParams, body: availabilitySchema }),
+    async (request, response, next) => {
+      try {
+        response.json({
+          data: await service.setAvailability(
+            idParams.parse(request.params).id,
+            availabilitySchema.parse(request.body),
+          ),
+          requestId: String(request.id),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   router.patch(
     '/:id',
     validate({ params: idParams, body: defaultsSchema }),

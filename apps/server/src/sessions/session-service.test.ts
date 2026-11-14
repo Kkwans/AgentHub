@@ -204,6 +204,222 @@ describe('Session/Run/Approval 持久化闭环', () => {
     return { ...f, tasks, task, input, admission, adapter };
   }
 
+  it('availability: disabled rejects ordinary/worktree/task creates before adapter acquisition', async () => {
+    const f = await taskAdmissionFixture();
+    await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 0 });
+    try {
+      const ordinary = {
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: 'disabled',
+        cwd: '/tmp',
+      };
+      await expect(f.service.create(ordinary)).rejects.toMatchObject({ code: 'AGENT_NOT_READY' });
+      await expect(f.service.createManagedWorktree(ordinary, '/tmp')).rejects.toMatchObject({
+        code: 'AGENT_NOT_READY',
+      });
+      await expect(f.service.createForTask(f.input, f.admission)).rejects.toMatchObject({
+        code: 'AGENT_NOT_READY',
+      });
+      expect(f.adapter.handles).toHaveLength(0);
+      expect(await f.repositories.sessions.list(f.projectId)).toHaveLength(0);
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('availability: disable after Task Session creation preserves the exact unresolved attempt and never dispatches its first Run', async () => {
+    const f = await taskAdmissionFixture();
+    try {
+      const session = await f.service.createForTask(f.input, f.admission);
+      const send = vi.spyOn(f.adapter.handles[0]!, 'sendTurn');
+      await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 0 });
+      await expect(
+        f.service.startTaskRun(
+          session.id,
+          { text: 'must not dispatch' },
+          session.taskStartAttemptId,
+        ),
+      ).rejects.toMatchObject({ code: 'AGENT_DISABLED' });
+      expect(send).not.toHaveBeenCalled();
+      expect(await f.repositories.runs.list(session.id)).toHaveLength(0);
+      expect(await f.tasks.get(f.task.id)).toMatchObject({
+        status: 'IN_PROGRESS',
+        sessionId: session.id,
+        assignedAgentId: f.agentId,
+      });
+      expect(await f.repositories.taskStartAttempts.get(session.taskStartAttemptId)).toMatchObject({
+        phase: 'UNKNOWN',
+        sessionId: session.id,
+        errorCode: 'TASK_RUN_START_UNRESOLVED',
+        runId: null,
+      });
+      expect(await f.repositories.sessions.get(session.id)).toMatchObject({
+        status: 'DISCONNECTED',
+        taskId: f.task.id,
+      });
+      await f.agentService.setAvailability(f.agentId, { enabled: true, expectedRevision: 1 });
+      await expect(
+        f.service.startTaskRun(
+          session.id,
+          { text: 'no automatic replay after reenable' },
+          session.taskStartAttemptId,
+        ),
+      ).rejects.toMatchObject({ code: 'TASK_START_UNRESOLVED' });
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('availability: existing Session new turn is blocked, but disabling never closes an already running turn', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const input = { projectId: f.projectId, agentId: f.agentId, title: 'existing', cwd: '/tmp' };
+    const session = await f.service.create(input);
+    const close = vi.spyOn(adapter.handles[0]!, 'close');
+    try {
+      const run = await f.service.startRun(session.id, { text: 'admitted before disable' });
+      await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 0 });
+      expect(close).not.toHaveBeenCalled();
+      expect((await f.repositories.runs.get(run.id))?.status).toBe('RUNNING');
+      adapter.handles[0]!.terminal(run.id, 'COMPLETED');
+      await waitFor(
+        async () => (await f.repositories.sessions.get(session.id))?.status === 'READY',
+      );
+      const send = vi.spyOn(adapter.handles[0]!, 'sendTurn');
+      await expect(f.service.startRun(session.id, { text: 'must not send' })).rejects.toMatchObject(
+        { code: 'AGENT_DISABLED' },
+      );
+      expect(send).not.toHaveBeenCalled();
+      expect(await f.repositories.runs.list(session.id)).toHaveLength(1);
+      await f.service.close(session.id);
+      expect(close).toHaveBeenCalledTimes(1);
+      await expect(f.service.continue(session.id)).rejects.toMatchObject({
+        code: 'AGENT_NOT_READY',
+      });
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('availability: disable preserves approval delivery for an already running turn', async () => {
+    const f = await createFixture('approval');
+    try {
+      const session = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: 'approval',
+        cwd: '/tmp',
+      });
+      const run = await f.service.startRun(session.id, { text: 'approval fixture' });
+      await waitFor(
+        async () => (await f.repositories.runs.get(run.id))?.status === 'WAITING_APPROVAL',
+      );
+      await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 0 });
+      const [approval] = await f.service.listApprovals(session.id);
+      await f.service.resolveApproval(approval!.id, 'allow');
+      await waitFor(async () => (await f.repositories.runs.get(run.id))?.status === 'COMPLETED');
+      expect((await f.repositories.approvals.get(approval!.id))?.status).toBe('APPROVED');
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('availability: disabling does not block cancellation or invent a cancelled outcome', async () => {
+    const adapter = new ControlledAdapter('completed');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    try {
+      const session = await f.service.create({
+        projectId: f.projectId,
+        agentId: f.agentId,
+        title: 'cancel',
+        cwd: '/tmp',
+      });
+      const run = await f.service.startRun(session.id, { text: 'cancel existing turn' });
+      await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 0 });
+      const cancel = vi.spyOn(adapter.handles[0]!, 'cancel');
+      await f.service.cancelRun(session.id, run.id);
+      expect(cancel).toHaveBeenCalledWith(run.id);
+      await waitFor(async () => (await f.repositories.runs.get(run.id))?.status === 'COMPLETED');
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
+  it('availability: an already admitted turn may finish preparation after disable without holding the Agent queue', async () => {
+    const adapter = new ControlledAdapter('never');
+    let enter!: () => void, release!: () => void;
+    const entered = new Promise<void>((done) => {
+      enter = done;
+    });
+    const barrier = new Promise<void>((done) => {
+      release = done;
+    });
+    const git = new SequenceGitProbe(['before', 'after']);
+    const f = await createFixture('idle', undefined, {}, { adapter, git });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'barrier',
+      cwd: '/tmp',
+    });
+    vi.spyOn(git, 'readHead').mockImplementationOnce(async () => {
+      enter();
+      await barrier;
+      return 'before';
+    });
+    const running = f.service.startRun(session.id, { text: 'already admitted' });
+    try {
+      await entered;
+      await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 0 });
+      release();
+      const run = await running;
+      expect((await f.repositories.runs.get(run.id))?.status).toBe('RUNNING');
+      adapter.handles[0]!.terminal(run.id, 'COMPLETED');
+      await waitFor(
+        async () => (await f.repositories.sessions.get(session.id))?.status === 'READY',
+      );
+    } finally {
+      release();
+      await f.service.shutdown();
+    }
+  });
+
+  it('availability: disabled resume does not acquire a handle; summary helper falls back without new provider work', async () => {
+    const adapter = new ControlledAdapter('never');
+    const f = await createFixture('idle', undefined, {}, { adapter });
+    const session = await f.service.create({
+      projectId: f.projectId,
+      agentId: f.agentId,
+      title: 'source',
+      cwd: '/tmp',
+    });
+    try {
+      await f.repositories.sessions.transition(session.id, 'DISCONNECTED');
+      await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 0 });
+      await expect(f.service.resume(session.id)).rejects.toMatchObject({ code: 'AGENT_NOT_READY' });
+      expect(adapter.handles).toHaveLength(1);
+      await f.service.close(session.id);
+      await f.agentService.setAvailability(f.agentId, { enabled: true, expectedRevision: 1 });
+      const original = f.agentService.resolveRuntime.bind(f.agentService);
+      let calls = 0;
+      vi.spyOn(f.agentService, 'resolveRuntime').mockImplementation(async (...args) => {
+        if (++calls === 2)
+          await f.agentService.setAvailability(f.agentId, { enabled: false, expectedRevision: 2 });
+        return original(...args);
+      });
+      const capabilities = vi.spyOn(adapter, 'getCapabilities');
+      const continued = await f.service.continue(session.id);
+      expect(calls).toBe(2);
+      expect(continued.continuation.strategy).toBe('DETERMINISTIC');
+      expect(adapter.handles).toHaveLength(2); // continuation only, no auxiliary summary handle
+      expect(capabilities).not.toHaveBeenCalled();
+    } finally {
+      await f.service.shutdown();
+    }
+  });
+
   it('任务公共create拒绝零runtime副作用，任务会话continuation也不得绕过返工', async () => {
     const f = await taskAdmissionFixture();
     try {

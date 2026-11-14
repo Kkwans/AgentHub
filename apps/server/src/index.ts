@@ -297,6 +297,7 @@ export async function startServer(
       },
       remoteAgentAdapter,
       resolveEnvironment,
+      () => lifecycle.assertHeld(),
     );
     lifecycle.addStop(() => agents.shutdownConnectionChecks());
     const agentDiscovery = new AgentDiscoveryService(

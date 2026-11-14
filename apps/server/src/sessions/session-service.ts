@@ -969,6 +969,9 @@ export class SessionService {
     }
     const active = this.active.get(sessionId);
     if (!active) throw new AppError(409, 'SESSION_NOT_CONNECTED', 'Session 尚未连接或需要恢复');
+    // Existing handles do not grant permission for new work after Agent disable.
+    await this.agentService.admitNewWork(session.agentId);
+    this.assertRuntimeAdmission();
 
     const runId = randomUUID();
     const continuation = this.continuations
