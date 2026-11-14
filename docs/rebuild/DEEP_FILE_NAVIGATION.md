@@ -45,3 +45,13 @@ FileInspector现在明确100%高度，树占有限轨道并独立滚动，预览
 已补真实9层阅读视口交集至少160px、marker首行在编辑器裁切区内可见、basename在视口、路径查看、往返保展开/文件、空目录不推正文；原安全/请求/44px/无横溢出约束保留。专项42与类型/lint过；当前最终聚合及build进行，尚未声称真实首屏已达标。
 
 22:42 UTC最终冻结后：全量lint/typecheck、apps/web116文件1387例与串行完整build成功，四个实现/测试文件哈希一致。真实spec严格类型/list8也过；允许推候选进入精确CI，但首屏阅读几何与新图仍待验。本地全仓auth-stream worker SIGKILL边界见CI-VALIDATION.md，不称全仓重跑已绿。
+
+### 22:53 UTC ec2真实阅读图证
+
+`ec2e9fe` / run43649594476工作区24/24通过，包含新深树8例的真正视口交集>=160px、marker首行在编辑器裁切区内、basename完整可见、键盘往返保九层展开、空目录不推正文、44px/安全请求/无横溢出。artifact14135154125 SHA256=eaf51845a78a7741410444003a85ab0081bd614fd09f8b19224d6242735bb943。实看reading与empty共16图：390首行约367px（0ff同场景约820px），768/1024约483px，1440约393px。不是生产provider联调，也不是完整CI全部通过。
+
+仍有可见细节：h3键盘聚焦的局部outline叠加全局[tabindex]:focus-visible box-shadow形成双框；仅该h3清shadow、保2pxoutline/焦点语义的小修另行验证。树滚动区底部空目录提示局部裁切、平板多层头部偏厚仍开放，不以本片功能门禁替代审美验收。
+
+22:54 UTC标题聚焦小修：仅.file-preview-header h3:focus去掉box-shadow，保2px solid outline/-2px offset与全部焦点/键盘行为。新增源样式回归及真实首次阅读、键盘返回后computed shadow/outline门禁。43专项、web/真实类型、全仓lint/typecheck与串行build通过；这是局部CSS风险范围验证，不重复声称新一轮全仓单测完成，精确新图待CI。
+
+43专项可复现范围：`corepack pnpm exec vitest run apps/web/src/features/workspace/components/FileInspector.test.tsx apps/web/src/features/workspace/pages/WorkspacePage.test.tsx`，FileInspector9+WorkspacePage34。

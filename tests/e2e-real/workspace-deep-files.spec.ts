@@ -121,6 +121,10 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect.poll(() => contentReads.includes([...segments, leaf].join('/'))).toBe(true);
       const heading = page.getByRole('heading', { name: leaf, exact: true });
       await expect(heading).toBeFocused();
+      await expect(heading).toHaveCSS('box-shadow', 'none', { timeout: 5_000 });
+      await expect(heading).toHaveCSS('outline-style', 'solid');
+      await expect(heading).toHaveCSS('outline-width', '2px');
+      await expect(heading).toHaveCSS('outline-offset', '-2px');
       await expect(heading).toBeInViewport({ ratio: 1 });
       const assertReadingViewport = async () => {
         const geometry = await page
@@ -189,6 +193,10 @@ for (const width of [390, 768, 1024, 1440]) {
       await readAgain.focus();
       await page.keyboard.press('Enter');
       await expect(heading).toBeFocused();
+      await expect(heading).toHaveCSS('box-shadow', 'none', { timeout: 5_000 });
+      await expect(heading).toHaveCSS('outline-style', 'solid');
+      await expect(heading).toHaveCSS('outline-width', '2px');
+      await expect(heading).toHaveCSS('outline-offset', '-2px');
       await assertReadingViewport();
 
       const capture = async (name: string) => {

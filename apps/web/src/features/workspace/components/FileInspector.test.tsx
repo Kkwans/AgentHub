@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { URL as NodeURL } from 'node:url';
 
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -242,4 +244,17 @@ it('keeps basename and exact keyboard-disclosed identity through loading/error a
     'aria-expanded',
     'false',
   );
+});
+
+it('keeps one explicit heading focus outline without the shared tabindex shadow', () => {
+  const css = readFileSync(new NodeURL('../inspector.module.css', import.meta.url), 'utf8');
+  const headingOnly = css.match(
+    /:global\(\.workspace\) :global\(\.file-preview-header h3:focus\)\s*\{([^}]+)\}/,
+  )?.[1];
+  expect(headingOnly).toMatch(/box-shadow:\s*none/);
+  const headingOutline = css.match(
+    /:global\(\.file-preview-header h3:focus\),[^{}]+\{([^}]+)\}/,
+  )?.[1];
+  expect(headingOutline).toMatch(/outline:\s*2px solid var\(--ah-accent-primary\)/);
+  expect(headingOutline).toMatch(/outline-offset:\s*-2px/);
 });

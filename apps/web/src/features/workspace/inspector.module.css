@@ -1432,6 +1432,9 @@
   outline: 2px solid var(--ah-accent-primary);
   outline-offset: -2px;
 }
+:global(.workspace) :global(.file-preview-header h3:focus) {
+  box-shadow: none;
+}
 :global(.workspace) :global(.file-preview-path) {
   padding-inline: 12px;
   border-bottom: 1px solid var(--workspace-line);
