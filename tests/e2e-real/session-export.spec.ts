@@ -206,7 +206,46 @@ for (const width of [390, 768, 1024, 1440])
       expect(errors).toEqual([]);
       await info.attach('下载的持久化文字', { body: markdown, contentType: 'text/markdown' });
       await expect(dialog.getByRole('status')).toContainText('已生成文字记录并发起下载');
+      await page.evaluate(() => {
+        const describe = (node: EventTarget | null) =>
+          node instanceof HTMLElement
+            ? {
+                tag: node.tagName,
+                role: node.getAttribute('role'),
+                label: node.getAttribute('aria-label'),
+              }
+            : null;
+        window.addEventListener(
+          'keydown',
+          (event) => {
+            if (event.key !== 'Escape') return;
+            (window as unknown as { exportEscapeEvidence: unknown }).exportEscapeEvidence = {
+              target: describe(event.target),
+              active: describe(document.activeElement),
+              modalPresentAtCapture: Boolean(
+                document.querySelector('[role="dialog"][aria-modal="true"]'),
+              ),
+              modalInPath: event
+                .composedPath()
+                .some(
+                  (node) =>
+                    node instanceof HTMLElement &&
+                    node.matches('[role="dialog"][aria-modal="true"]'),
+                ),
+            };
+          },
+          { capture: true, once: true },
+        );
+      });
       await page.keyboard.press('Escape');
+      await info.attach('export-escape-event-ownership', {
+        body: JSON.stringify(
+          await page.evaluate(
+            () => (window as unknown as { exportEscapeEvidence: unknown }).exportEscapeEvidence,
+          ),
+        ),
+        contentType: 'application/json',
+      });
       await expect(dialog).toHaveCount(0);
       await expect(trigger).toBeFocused();
     });

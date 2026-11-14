@@ -149,33 +149,45 @@ it('parses the entire download with the production Markdown parser without escap
   expect(view.container.querySelectorAll('h2')).toHaveLength(2);
 });
 
-it('真实导出弹窗在Escape capture关闭后，同事件不能再收起更多菜单', async () => {
-  vi.stubGlobal('matchMedia', () => ({ matches: true }));
-  render(
-    <SessionSecondaryTools sessionId="s">
-      <SessionTranscriptExport session={session} />
-    </SessionSecondaryTools>,
-  );
-  const more = screen.getByRole('button', { name: '更多会话操作' });
-  fireEvent.click(more);
-  const trigger = screen.getByRole('button', { name: '导出文字记录' });
-  trigger.focus();
-  fireEvent.click(trigger);
-  const dialog = screen.getByRole('dialog', { name: '导出文字记录' });
-  // Model the browser's listener checkpoint: the modal can commit its close
-  // before the outer document bubble listener sees this same native event.
-  const closeAtCapture = (event: KeyboardEvent) => {
-    if (event.key === 'Escape')
-      flushSync(() => fireEvent.click(screen.getByText('关闭', { exact: true })));
-  };
-  document.addEventListener('keydown', closeAtCapture, true);
-  try {
-    fireEvent.keyDown(dialog, { key: 'Escape' });
-  } finally {
-    document.removeEventListener('keydown', closeAtCapture, true);
-  }
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(more).toHaveAttribute('aria-expanded', 'true');
-  await waitFor(() => expect(trigger).toHaveFocus());
-  expect(click).not.toHaveBeenCalled();
-});
+it.each(['dialog', 'body-after-download'] as const)(
+  '真实导出弹窗在Escape capture关闭后，同事件不能再收起更多菜单 %s',
+  async (target) => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    render(
+      <SessionSecondaryTools sessionId="s">
+        <SessionTranscriptExport session={session} />
+      </SessionSecondaryTools>,
+    );
+    const more = screen.getByRole('button', { name: '更多会话操作' });
+    fireEvent.click(more);
+    const trigger = screen.getByRole('button', { name: '导出文字记录' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: '导出文字记录' });
+    if (target === 'body-after-download') {
+      vi.spyOn(api, 'get').mockResolvedValueOnce([row]).mockResolvedValueOnce([]);
+      fireEvent.click(screen.getByRole('button', { name: '下载 Markdown' }));
+      await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+      await screen.findByText('已生成文字记录并发起下载。请在分享前检查敏感信息。');
+    }
+    // Model the browser's listener checkpoint: the modal can commit its close
+    // before the outer document bubble listener sees this same native event.
+    const closeAtCapture = (event: KeyboardEvent) => {
+      if (event.key === 'Escape')
+        flushSync(() => fireEvent.click(screen.getByText('关闭', { exact: true })));
+    };
+    document.addEventListener('keydown', closeAtCapture, true);
+    try {
+      fireEvent.keyDown(target === 'dialog' ? dialog : document.body, { key: 'Escape' });
+    } finally {
+      document.removeEventListener('keydown', closeAtCapture, true);
+    }
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(click).toHaveBeenCalledTimes(target === 'dialog' ? 0 : 1);
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(more).toHaveFocus();
+  },
+);

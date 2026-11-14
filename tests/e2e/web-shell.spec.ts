@@ -607,6 +607,13 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
   });
   expect(clippedTurns).toBe(0);
   const contextDisclosure = page.locator('.workspace-context-disclosure');
+  const mobileMore = page.getByRole('button', { name: '更多会话操作', exact: true });
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    await expect(contextDisclosure.locator('summary')).toBeHidden();
+    await mobileMore.focus();
+    await page.keyboard.press('Enter');
+    await expect(mobileMore).toHaveAttribute('aria-expanded', 'true');
+  }
   await contextDisclosure.locator('summary').click();
   await expect(contextDisclosure.locator('code')).toBeVisible();
   await expect(contextDisclosure.locator('code')).toHaveText(project.rootPath);
@@ -619,6 +626,11 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     expect(popup!.x + popup!.width).toBeLessThanOrEqual(pane!.x + pane!.width + 1);
   }
   await contextDisclosure.locator('summary').click();
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    await page.keyboard.press('Escape');
+    await expect(mobileMore).toHaveAttribute('aria-expanded', 'false');
+    await expect(mobileMore).toBeFocused();
+  }
   const thought = page.locator('.thinking-event-row');
   await expect(thought).toHaveCount(1);
   await expect(thought).not.toHaveAttribute('open', '');

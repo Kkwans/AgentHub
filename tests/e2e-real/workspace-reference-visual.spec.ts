@@ -39,6 +39,12 @@ async function capture(page: Page, info: TestInfo, name: string) {
 
 async function showChanges(page: Page, width: number) {
   if (width < 768) {
+    // A tool's real file action opens the mobile inspector. Its modal hides
+    // the background Workspace tabs; close through the actual drawer control
+    // before choosing Git, rather than clicking a hidden background tab.
+    const closeInspector = page.getByRole('button', { name: '关闭检查器', exact: true });
+    if (await closeInspector.isVisible()) await closeInspector.click();
+    await expect(page.getByRole('tablist', { name: 'Workspace 视图' })).toBeVisible();
     await page
       .getByRole('tablist', { name: 'Workspace 视图' })
       .getByRole('tab', { name: 'Git', exact: true })
