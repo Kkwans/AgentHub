@@ -1,6 +1,6 @@
 # 页面与模块视觉覆盖清单
 
-更新时间：2026-11-14 10:05 UTC。覆盖、自动门禁通过、人工看图和真实供应商可用是四件不同的事；下表不互相替代。重定向路由不算独立页面。
+更新时间：2026-11-14 10:34 UTC。覆盖、自动门禁通过、人工看图和真实供应商可用是四件不同的事；下表不互相替代。重定向路由不算独立页面。
 
 ## 版本与数据边界
 
@@ -74,3 +74,9 @@ c53真实artifact：`14108382083`，SHA256 `b8a9dcb5c350ab1e5bbe590af976eddca518
 ## 0a29 focused 精确证据
 
 artifact `14108933174`，SHA256 `050d8ca724537ed114fc26e255363f241eb921be8b97187369b53413d4af1592` 已核对。38例包含process8、rename9、export11、task10，0skip/0flaky/全retry0；10:02:05 UTC测试完成，3.9分钟。截图人工样本如表，不将focused成功当五job全绿。任务prepare两例仅390默认主题；身份/存储/跨tab主要是单测覆盖，未直接计数外部ACP session/new，不能宣称全部真实Provider安全验收。
+
+## 39362a4 / ca88877 最新增量
+
+- `39362a4f1b531d30e31545e858b084e8e6faeeae`，CI43584844213，focused artifact14110017386，SHA256 `52ad6eaf717a325a643c404db873459f90b2d9206bcc6e7097eaef6e2c6125a9`匹配；38通过/0skip/0flaky/逐例retry0，其中任务恢复10。人工看first-unknown390浅深、1440深：卡片已在标题后执行前，手机左右16px，首次未滚动截图核对按钮完整可见，无重叠且UNKNOWN不冒称成功。原0a29卡片靠下/贴边问题已有新图确认改善。verify/PG/axe/focused成功，完整real仍待。
+- `ca88877d1df62b5c1c4afa70bbdc5cf5e5856119`，CI43585415542，focused日志确认10:32:27原38项通过/3.1分钟；10:32:51独立Prompt修复四宽4项通过/23.2秒，配置零重试。它修复0a29完整real的四个失败，实际浏览器流程已复验，不仅单测；此处尚未逐例读新artifact或人工看Prompt新图。verify/full-real仍运行，PG/axe/focused成功。
+- 启停候选8个E2E（四宽浅深、每例4状态section及整页，预期64图）仅类型/lint/list通过，尚无新精确CI或截图，不标为视觉完成。

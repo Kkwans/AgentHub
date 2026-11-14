@@ -1,12 +1,12 @@
 # Agent 禁用 / 启用：最小闭环方案
 
-状态：**完整启停闭环尚未实施或验收**。10:04 UTC 仅新增未接线的进程内准入基础模块和12项单测；没有DB CAS、HTTP启停端点或UI，现有生产入口不受该模块保护。本方案不证明真实 Provider 已接入。
+状态：**完整启停闭环已形成未发布候选，尚未整体验收**。10:29:35冻结DB/服务端/前端候选，10:30:09开始全仓验证。先前10:04未接线基础模块已经在本候选接入；下方设计保留合同，结果以本节和末尾流水为准。本方案不证明真实 Provider 已接入。
 
 当前优先级：先修已有 Task start UNKNOWN 的前端保护缺口，再安排本方案。不能只发布一个开关，却遗漏后台新工作准入。
 
 ## 目标与非目标
 
-禁用是阻止新的工作准入，不是终止进程、取消 Run、注销 Agent 或删除历史。启用仅恢复准入资格，仍需原有 READY、target、项目路径、权限、runtime ownership 和资源未知门禁全部通过。
+禁用是阻止新的工作准入，不是终止进程、取消 Run、注销 Agent 或删除历史。启用仅恢复准入资格，保留各入口原有门禁：create/resume 仍要求 Agent READY、target/项目匹配；已有活动 handle 的新 Run 仅新增 enabled 检查，继续使用原 Session 状态、归属及资源门禁，不增加全局历史预检 READY 要求；preflight 可检查非 READY Agent，但拒绝 disabled。权限、runtime ownership 和资源未知门禁不变。
 
 不修改现有 model/mode 默认值、能力、预检状态或历史记录。不新增删除、容器停止、凭据管理或真实 Provider 调用。不将本地单写者准入协调描述为分布式 fencing。
 
@@ -57,7 +57,7 @@
 | Worktree Session 创建 / 队列派发 / 启动恢复队列 | 实际运行时核对；禁用不丢排队记录或假报运行完成 |
 | DISCONNECTED Session resume | 拒绝新恢复准入，不启动 restore |
 | continuation / capability 探测 | 新资源操作需准入，不复用旧 enabled 缓存 |
-| 已有活动 Session 新 startRun | 拒绝新回合；不得因 handle 已存在而绕过 |
+| 已有活动 Session 新 startRun | 新增 enabled 门禁，禁用拒绝新回合；保留原 Session / activation / Run / UNKNOWN 保护，不新加 Agent 历史预检 READY 条件 |
 | legacy preflight + connection-check | 同一门禁覆盖所有目标，禁用不触发隐式 capability 二次启动 |
 | GET/list/profile/eligibility/历史/导出 | 保持只读可用；eligibility 明确 DISABLED |
 | 当前运行的审批决策 / cancel / close / shutdown cleanup | 继续允许，不因禁用阻断收敛；不得据此启动新的用户回合 |
@@ -87,7 +87,7 @@ Agent 详情使用克制的次级操作，不新增仪表盘或巨大状态卡�
 ## 六、必要验收
 
 - 迁移保留旧 enabled 值，revision 默认 0；两次同版本 CAS 恰好一个成功，另一个 409；状态/能力/默认配置写入不覆盖启停 revision。
-- 每个新工作入口在禁用后均零 adapter 资源调用；启用但 NOT_READY / target 不匹配 / runtime 停止 / UNKNOWN 仍拒绝。
+- 每个新工作入口在禁用后均零 adapter 资源调用；启用不重置 status/能力：create/resume 的 NOT_READY / target 不匹配仍拒绝，活动 handle 保留原 Session 门禁，runtime 停止 / UNKNOWN 仍拒绝。
 - barrier 两种时序：禁用先线性化则零启动；准入先线性化则允许收尾且不被开关强杀。不能只测同步路径。
 - 禁用期间当前 Run 正常完成，审批/cancel/close 可执行；失败清理与未知资源继续保留 fence，不合成 run.cancelled。
 - 多 Agent 并行不相互串行阻塞；同 Agent 慢 Provider 不占用整段管理锁；队列异常不吞失败或自动重试。
@@ -105,3 +105,15 @@ Agent 详情使用克制的次级操作，不新增仪表盘或巨大状态卡�
 `AgentAdmissionCoordinator.run(agentId, shortCriticalSection)` 只序列化短资格核对/持久准入/CAS阶段。同Agent FIFO、不同Agent独立；失败不毒队列，旧tail不删新tail；入队和实际进入均核对runtime，await后由caller显式checkpoint。嵌套准入拒绝；临界区结束后继承ALS上下文的延迟任务可独立申请。12专项通过；10:09:23完整server56文件599测试通过，尚未提交。
 
 正式接线时必须共享同一实例、跟踪整个排队Promise纳入既有shutdown drain，Provider生命周期放在临界区外。不会自动提供DB原子CAS、资源fencing或跨进程协调。额外确认易漏入口 `tryModelContinuationSummaryAdmitted()` 的模型摘要辅助会话也会调用capability/create/send，必须纳入，不能只接resolveRuntime。
+
+## 10:30 UTC 完整候选与验证边界
+
+- DB：0015新增enabledRevision，单SQL compareAndSetAvailability，同值递增，普通update拒enabled/revision，preflight白名单不旁路；旧schema Agent fixture改明确旧列，保留原迁移断言。本地PGlite完整17文件184测试通过。
+- 服务：严格PATCH availability、共享逐Agent短临界区，排队Promise纳入关闭排空；所有新资源入口/现有handle新Run/两预检/摘要辅助会话有准入。已准入可收尾，审批/cancel/close不受禁用拦截；enable不清UNKNOWN。完整server57文件615测试通过。
+- 分段Task语义：Session创建先获准不授予无限新Run许可；禁用若先于后续Run准入，零Run/零send、原Task仍绑定Session，attempt UNKNOWN/TASK_RUN_START_UNRESOLVED、Session DISCONNECTED，重新启用仍不重放。
+- 前端：独立详情次级操作，revision/target/phase保护跨刷新，不持久存Prompt或配置；未知只GET，同版本仍未知，高版本只表示当前状态，明确新操作才再PATCH；旧PATCH和卸载不覆盖较新标签页marker，缓存错误不推翻已确认成功，原model/mode草稿不变。最终47专项通过。
+- 独立CR曾发现外部settled误抬未决版本门槛、旧请求结算失败后内存pending悬挂，均先复现再窄修；最后完整树不能沿用修前46专项。
+- 真实PG新增独立临时数据库双连接CAS竞争、确定性pg_stat_activity Lock等待后提交与持久读回；本地3例明确skip，真实CI尚未运行，不拿PGlite代替。
+- 全仓/最终build与四宽浅深实际截图仍待。未推送该候选，未main/部署、真实Provider或用户数据库操作。
+
+- 10:38:08最终冻结全仓完成：214文件通过/6文件跳过，2210测试通过/10跳过，477.95秒exit0；26个产品/单测文件指纹确认运行中未变。10:39:24全仓lint/typecheck、独立integration类型与串行build通过。准备按DB、服务、前端、E2E/CI/台账逻辑提交；新真实PG、启停浏览器与像素仍待精确新CI。

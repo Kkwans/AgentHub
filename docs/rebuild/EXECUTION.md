@@ -1582,3 +1582,12 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 实际看0a29手机unknown图，恢复卡约632px才出现且贴左边，虽然门禁通过仍属层级问题。移动唯一面板到标题后、执行控件前，以16/20/24px变量对齐手机/普通桌面/Review正文；不改hook/registry/请求语义。页面102专项通过，10:19:10冻结完整web94文件1140测试通过，161.36秒。新E2E仍10例，保留原请求/资源断言并新增首次未滚动可见/实际bbox/边距与新截图；list通过不是浏览器通过。
 - Agent DB启停候选0015 migration保留enabled并新增revision，专用单SQL CAS、同值递增、默认/预检不旁路。10:18:29冻结：本地DB17文件184测试、旧迁移6例及新综合迁移/CAS均通过，db类型/build/lint/Drizzle检查成功、独立CR无阻断。5个旧schema fixture改显式旧列，不删迁移覆盖。未发布，不是PG多连接验收。
 - Server全入口准入接线/禁用CAS与shutdown drain仍在验证，首轮新专项5失1过因DB dist未build新方法，已等待DB build后重验，不能拼算通过。create/restore与每次新Run分别准入，已创建Session不代表后续Run永久放行。启停UI尚未开放，无真实Provider/main/deploy。
+
+### 2026-11-14 10:28–10:30 UTC 热修发布与启停候选整体验证
+
+- 10:28:14已push/fetch ca88877，树ca6b37451d54d3d6b5e45789a87a615b0e673a29核实，Agent未验证候选未混入。126页面/hook专项通过，lint/格式通过，四宽Prompt修复list发现4例；格式首次检查失败后仅格式修正再通过，未重称完整web通过。新CI43585415542开始，真实修复结果仍待。
+- 精确0a29完整real最终4例失败，原因与修正见TASK_PROMPT_REPAIR_REGRESSION；不得把其focused38成功写成全绿。39362a4新focused/PG/axe成功，卡片前置新图人工审查仍待。
+- 启停DB候选184/184，server最终10:25:50完整57文件615测试过；前端47专项10:29:35通过，旧PATCH失败/卸载后卡死先红2例再修内存unknown而不改外部磁盘。全套未发布候选于10:30:09冻结，开始完整pnpm test；进行中不提前记完成。
+- 10:34核实39362a4精确artifact14110017386哈希及38逐例零重试，人工手机浅深/桌面深色新first-unknown图确认卡片前置和16px边距、首屏按钮。ca88877精确focused日志原38项10:32:27通过，新Prompt修复4项10:32:51通过，未再把修复停留在单测。两个完整real矩阵仍待，不报全CI成功。
+
+- 10:38:08最终冻结全仓完成：214文件通过/6文件跳过，2210测试通过/10跳过，477.95秒exit0；26个产品/单测文件指纹确认运行中未变。10:39:24全仓lint/typecheck、独立integration类型与串行build通过。准备按DB、服务、前端、E2E/CI/台账逻辑提交；新真实PG、启停浏览器与像素仍待精确新CI。
