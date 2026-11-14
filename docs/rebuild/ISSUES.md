@@ -398,3 +398,7 @@ AH-001 / S65基础：新增未接入runtime的attempt持久表及原子预留/CA
 ### 2026-11-13 23:52 UTC Worktree固定终态键重试代码闭环
 
 已实现持久attempt及严格CAS的新意图：明确持久PREWRITE后重新读取/确认可轮换，旧普通请求和旧retry不能派发新代际。缺失ledger、UNKNOWN、成功及已有错误标签均不能冒充新首次请求。DB/服务/UI回归与全量通过；真实浏览器/精确CI和PostgreSQL多进程故障验证仍分别待验收，不对历史无ledger执行自动修复。
+
+### 2026-11-14 00:12 UTC retry证据进展与待核验风险
+
+真实HTTP/Git竞争、显式retry一次merge、完整服务/磁盘DB重开及旧key保留草稿已通过。四视口browser同流程已纳CI，尚无实际浏览器通过结果。静态发现ProjectWorkPage仅在REVIEW或reviewPending时挂载审阅组件，MERGING缓存与pending完成交错可能丢失局部核对状态；未复现，禁止弱化新测试来掩盖。下一步应复现生命周期交错及跨路由恢复，必要时修正持久owner状态传递。

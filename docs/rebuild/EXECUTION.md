@@ -1191,3 +1191,11 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 ### 2026-11-14 00:01 UTC 精确视觉CI旧断言修复
 
 读取6d492df的CI43527593792完整日志：真实服务/视觉145通过、8失败，全部workspace-content-visual的旧“提交完成”匹配未随OBSERVED_ONLY准确文案更新；实际DOM已呈现新文字。geometry140页通过，不代表失败用例通过。同步该断言，并全仓搜索修正auth-and-project同类旧断言；只改测试预期，不放宽UI逻辑/几何/错误门禁。format/lint与8项Playwright测试发现通过，未把list称浏览器执行。当前本地Chromium仍受socket启动限制，修正交精确CI实际验证；04440ce仍在跑且继承旧断言风险。
+
+### 2026-11-14 00:02–00:12 UTC 实际Git竞争与显式retry证据
+
+新增真实index HTTP/filePGlite/双临时Git仓库回归：第二仓库实际pre-commit文件屏障持有DISPATCHED claim，第一仓库Worktree merge得到持久PREWRITE且HEAD不动；释放holder后显式generation1完成真实commit与merge，只出现一次merge commit，旧ledger不变，旧普通/重试请求不能把后续草稿提交。完整关闭服务和DB再重开后状态保持。Agent已完成审阅链条由测试seed，不冒充真实Agent执行；重开不是断电测试。定向通过6.92s，独立CR通过。
+
+新增四视口浏览器同流程，使用实际第二仓库Git hook而非伪造目标ledger，保留核对按钮、重新读取/勾选、POST计数、真实Git文件/HEAD、旧key与旧ledger断言。fixture第二根目录默认关闭；CI显式纳入该spec。types/lint/actionlint与4项Playwright发现通过，但实际390启动仍因AF_UNIX socket EPERM导致Chromium SIGABRT，没有页面或有效截图。另核实Dot云电脑仍同一受限主机，不是可用替代；未访问用户TX5Pro。
+
+00:12 UTC冻结tree2b8fe2b全量：169文件通过/4跳过，1699测试通过/10跳过，406.39s。HTTP实际Git证据已通过，浏览器证据仅实现、待本提交精确CI，不混淆二者。发现父组件在MERGING轮询与pending结束交错时可能卸载审阅组件的生命周期风险，尚未复现，测试保留严格断言不规避；列入后续核验。

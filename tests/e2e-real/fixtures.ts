@@ -15,6 +15,7 @@ export type RealAuthMode = 'token' | 'local_trusted';
 export type RealApp = {
   origin: string;
   projectRoot: string;
+  secondaryProjectRoot: string;
   worktreeRoot: string;
   dataRoot: string;
 };
@@ -24,13 +25,15 @@ type TestFixtures = {
   context: BrowserContext;
   authMode: RealAuthMode;
   acpPromptTimeoutMs: number | undefined;
+  secondGitProject: boolean;
 };
 
 export const test = base.extend<TestFixtures>({
   authMode: ['token', { option: true }],
   acpPromptTimeoutMs: [undefined, { option: true }],
+  secondGitProject: [false, { option: true }],
 
-  app: async ({ authMode, acpPromptTimeoutMs }, use) => {
+  app: async ({ authMode, acpPromptTimeoutMs, secondGitProject }, use) => {
     const configuredTempBase = process.env.AGENTHUB_E2E_REAL_TMPDIR;
     const tempBase = resolve(configuredTempBase || tmpdir());
     await mkdir(tempBase, { recursive: true });
@@ -38,17 +41,25 @@ export const test = base.extend<TestFixtures>({
     const dataRoot = join(tempRoot, 'data');
     const worktreeRoot = join(tempRoot, 'worktrees');
     const projectRoot = join(tempRoot, 'project');
+    const secondaryProjectRoot = join(tempRoot, 'secondary-project');
 
     let running: RunningServer | undefined;
     try {
-      await Promise.all([mkdir(dataRoot), mkdir(worktreeRoot), mkdir(projectRoot)]);
+      await Promise.all([
+        mkdir(dataRoot),
+        mkdir(worktreeRoot),
+        mkdir(projectRoot),
+        ...(secondGitProject ? [mkdir(secondaryProjectRoot)] : []),
+      ]);
       const environment: NodeJS.ProcessEnv = {
         AGENTHUB_HOST: '127.0.0.1',
         AGENTHUB_PORT: '0',
         AGENTHUB_WEB_DIST: resolve(dirname(fileURLToPath(import.meta.url)), '../../apps/web/dist'),
         AGENTHUB_DATA_DIR: dataRoot,
         AGENTHUB_WORKTREE_ROOT: worktreeRoot,
-        AGENTHUB_WORKSPACE_ROOTS_JSON: JSON.stringify([projectRoot]),
+        AGENTHUB_WORKSPACE_ROOTS_JSON: JSON.stringify(
+          secondGitProject ? [projectRoot, secondaryProjectRoot] : [projectRoot],
+        ),
         AGENTHUB_AUTH_MODE: authMode,
         AGENTHUB_SECURE_TRANSPORT: 'false',
         LOG_LEVEL: 'silent',
@@ -79,6 +90,7 @@ export const test = base.extend<TestFixtures>({
       await use({
         origin: `http://127.0.0.1:${String(address.port)}`,
         projectRoot,
+        secondaryProjectRoot,
         worktreeRoot,
         dataRoot,
       });
