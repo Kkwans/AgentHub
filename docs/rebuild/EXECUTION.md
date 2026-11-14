@@ -1644,3 +1644,13 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 仅修测试分类：method严格POST且pathname精确等于prompt-context/resolve或当前Session搜索才视为只读；DELETE/其他Session搜索/其它写入仍进入writes[]。原零Run、真实id/sequence/focus/容器相交、44px/标题宽度/草稿/console断言全保留。types/lint/list11/diff通过，待新精确CI，不追认原8例通过。
 - 精确artifact14112302860 digest039102b77eb2764721319e903b1da72a9edb8ae2676920b50d2101e5d87e0938已产16张搜索/定位原图和geometry；当前尚未收到人工像素验收结论。
 - 另完成SESSION_ARCHIVE_PLAN只读方案与NEXT_PRODUCT_PLAN引用，未实施归档或迁移。
+
+### 2026-11-14 11:52–12:01 UTC：真实截图问题的窄修验收
+
+- 红复现prepend2历史被显示为2条新消息；改为Session绑定持久sequence高水位，只计真正后来的USER/ASSISTANT，不把历史/工具当新消息。a2a的142来自242条fixture消息初载100后补入142条历史。
+- 成功定位后结果区收为44px状态条，返回原结果不发请求并恢复输入焦点；回最新移到正文scroll之外独立44px行；定位短暂单1px边线。
+- 独立CR拦下永久shadow-none使2.4s后焦点不可见。先红复现，再改为仅data-message-located=true期间抑制阴影，标记结束恢复默认可见焦点；最终只读CR无阻断。专项49通过，初轮可undefined类型错误已修。
+- 含最后焦点修复的最终web101文件1211通过154.33s（11:59:31确认），8产品/单测指纹一致；12:00串行root lint/types、integration types、全部build通过。先前1210中间结果不冒充最终树。
+- 产品065b9fdd、证据ee98eb16本批准备发布：新增浏览器断言compact前后真实几何、无假新消息、回最新不遮正文、恢复/再次搜索/草稿、临时高亮结束后的computed可见focus ring；11真实E2E尚未新跑。
+- verify fixture门禁改零重试+首错停止，原partial artifact保留。全通过仍跑全矩阵；失败时未跑项不得计通过。旧running日志API404，不能编造旧verify失败原因。
+- 2fdcec9精确CI43591858437 focused已57主流程+Prompt4通过，含原11搜索；这是测试分类修复复验，不是本批紧凑样式像素验收。
