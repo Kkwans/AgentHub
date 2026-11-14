@@ -144,6 +144,22 @@ for (const width of [390, 768, 1024, 1440]) {
       await page.goto(`/workspace/${session.id}`);
       const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令', exact: true });
       await expect(composer).toBeEnabled({ timeout: 30_000 });
+      if (width < 768) {
+        const header = (await page.locator('.workspace-contextbar').boundingBox())!;
+        expect(header.height).toBeGreaterThanOrEqual(55.99);
+        expect(header.height).toBeLessThanOrEqual(60);
+        const controls = [];
+        for (const name of ['搜索已保存文字', '更多会话操作']) {
+          const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!;
+          expect(box.width).toBeGreaterThanOrEqual(43.99);
+          expect(box.height).toBeGreaterThanOrEqual(43.99);
+          expect(box.y).toBeGreaterThanOrEqual(header.y - 0.01);
+          expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height + 0.01);
+          controls.push(box);
+        }
+        expect(controls[0]!.x + controls[0]!.width).toBeLessThanOrEqual(controls[1]!.x + 0.01);
+      }
+
       await composer.fill('合成演示数据，非真实 Agent 执行：展示取消任务后的中断检查。');
       await page.getByRole('button', { name: '发送', exact: true }).click();
       await expect

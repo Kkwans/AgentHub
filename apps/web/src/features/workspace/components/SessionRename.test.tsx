@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import { api, authSession, type SessionRecord } from '../../../lib/api';
 import { SessionRename } from './SessionRename';
+import { SessionSecondaryTools } from './SessionSecondaryTools';
 const auth = vi.hoisted(() => ({ mode: 'local_trusted', user: null as { id: string } | null }));
 vi.mock('../../../components/AccessGate', () => ({
   useAuthMode: () => auth.mode,
@@ -25,7 +26,9 @@ function setup(session: SessionRecord) {
   client.setQueryData(['sessions', 'project'], [session]);
   const element = (current: SessionRecord) => (
     <QueryClientProvider client={client}>
-      <SessionRename session={current} />
+      <SessionSecondaryTools sessionId={current.id}>
+        <SessionRename session={current} triggerLabel="重命名会话" />
+      </SessionSecondaryTools>
     </QueryClientProvider>
   );
   return { ...render(element(session)), client, element };

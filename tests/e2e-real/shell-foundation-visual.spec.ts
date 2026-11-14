@@ -282,6 +282,22 @@ for (const width of [390, 768, 1024, 1440])
       const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令', exact: true });
       await expect(composer).toBeEnabled();
       await composer.fill('壳层验收草稿，不发送');
+      if (width < 768) {
+        const header = (await page.locator('.workspace-contextbar').boundingBox())!;
+        expect(header.height).toBeGreaterThanOrEqual(55.99);
+        expect(header.height).toBeLessThanOrEqual(60);
+        const controls = [];
+        for (const name of ['搜索已保存文字', '更多会话操作']) {
+          const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!;
+          expect(box.width).toBeGreaterThanOrEqual(43.99);
+          expect(box.height).toBeGreaterThanOrEqual(43.99);
+          expect(box.y).toBeGreaterThanOrEqual(header.y - 0.01);
+          expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height + 0.01);
+          controls.push(box);
+        }
+        expect(controls[0]!.x + controls[0]!.width).toBeLessThanOrEqual(controls[1]!.x + 0.01);
+      }
+
       // Below the persistent-rail breakpoint, open explicitly: a collapsed rail
       // can retain a 1px transparent box that still passes visibility checks.
       if (width < 768) {

@@ -83,7 +83,14 @@ async function enter(page: Page, sessionId: string) {
   ).toBeEnabled();
   await expect(page.getByText(assistantText, { exact: true }).first()).toBeVisible();
 }
+async function revealSecondaryTools(page: Page) {
+  if ((page.viewportSize()?.width ?? 1440) >= 768) return;
+  const more = page.getByRole('button', { name: '更多会话操作', exact: true });
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+}
 async function openExport(page: Page) {
+  await revealSecondaryTools(page);
   const trigger = page.getByRole('button', { name: '导出文字记录', exact: true });
   await trigger.focus();
   await page.keyboard.press('Enter');
@@ -123,6 +130,17 @@ for (const width of [390, 768, 1024, 1440])
       await page.screenshot({ path: entry });
       await info.attach('文字导出入口', { path: entry, contentType: 'image/png' });
       const titleBox = await page.locator('.codex-session-title strong').boundingBox();
+      if (width < 768) {
+        const header = (await page.locator('.workspace-contextbar').boundingBox())!;
+        expect(header.height).toBeGreaterThanOrEqual(55.99);
+        expect(header.height).toBeLessThanOrEqual(60);
+        const more = (await page
+          .getByRole('button', { name: '更多会话操作', exact: true })
+          .boundingBox())!;
+        expect(more.width).toBeGreaterThanOrEqual(43.99);
+        expect(more.height).toBeGreaterThanOrEqual(43.99);
+      }
+      await revealSecondaryTools(page);
       const renameBox = await page
         .getByRole('button', { name: '重命名会话', exact: true })
         .boundingBox();
@@ -139,12 +157,20 @@ for (const width of [390, 768, 1024, 1440])
       }
       expect(
         renameBox!.x + renameBox!.width <= exportBox!.x + 0.01 ||
-          exportBox!.x + exportBox!.width <= renameBox!.x + 0.01,
+          exportBox!.x + exportBox!.width <= renameBox!.x + 0.01 ||
+          (width < 768 &&
+            (renameBox!.y + renameBox!.height <= exportBox!.y + 0.01 ||
+              exportBox!.y + exportBox!.height <= renameBox!.y + 0.01)),
       ).toBe(true);
       await info.attach('顶栏可读标题与点击区域', {
         body: JSON.stringify({ titleBox, renameBox, exportBox }),
         contentType: 'application/json',
       });
+      if (width < 768)
+        await info.attach('手机更多会话操作', {
+          body: await page.screenshot(),
+          contentType: 'image/png',
+        });
       const { trigger, dialog } = await openExport(page);
       await expect(dialog).toContainText('不是完整审计记录');
       await expect(dialog).toContainText('分享前请检查');

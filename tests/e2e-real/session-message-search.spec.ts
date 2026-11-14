@@ -106,10 +106,12 @@ for (const width of [390, 768, 1024, 1440])
       const titleBox = await page.locator('.codex-session-title > strong').boundingBox();
       expect(titleBox).not.toBeNull();
       const toolBoxes = [];
-      for (const name of ['重命名会话', '导出文字记录', '搜索已保存文字']) {
+      for (const name of width < 768
+        ? ['更多会话操作', '搜索已保存文字']
+        : ['重命名会话', '导出文字记录', '搜索已保存文字']) {
         const box = await page.getByRole('button', { name, exact: true }).boundingBox();
         expect(box).not.toBeNull();
-        // These three icon controls have an existing 44px contract at every width.
+        // Persistent phone search/more and direct desktop actions retain 44px targets.
         expect(box!.width).toBeGreaterThanOrEqual(43.99);
         expect(box!.height).toBeGreaterThanOrEqual(43.99);
         toolBoxes.push(box!);
@@ -127,8 +129,17 @@ for (const width of [390, 768, 1024, 1440])
         }
       if (width === 390) {
         expect(titleBox!.width).toBeGreaterThanOrEqual(63.99);
-        for (const box of toolBoxes)
-          expect(box.y).toBeGreaterThanOrEqual(titleBox!.y + titleBox!.height - 0.01);
+        const header = (await page.locator('.workspace-contextbar').boundingBox())!;
+        expect(header.height).toBeGreaterThanOrEqual(55.99);
+        expect(header.height).toBeLessThanOrEqual(60);
+        for (const box of toolBoxes) {
+          expect(
+            Math.abs(box.y + box.height / 2 - (titleBox!.y + titleBox!.height / 2)),
+          ).toBeLessThanOrEqual(1);
+          expect(box.x).toBeGreaterThanOrEqual(titleBox!.x + titleBox!.width - 0.01);
+        }
+        await expect(page.getByRole('button', { name: '重命名会话', exact: true })).toBeHidden();
+        await expect(page.getByRole('button', { name: '导出文字记录', exact: true })).toBeHidden();
       }
       expect(
         await page

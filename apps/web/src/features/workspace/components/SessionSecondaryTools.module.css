@@ -1,0 +1,64 @@
+.root,
+.content {
+  display: contents;
+}
+.trigger {
+  display: none;
+}
+@media (max-width: 767px) {
+  .root {
+    display: block;
+    flex: none;
+  }
+  .trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    color: hsl(var(--foreground-muted));
+  }
+  .trigger:hover,
+  .trigger[aria-expanded='true'] {
+    background: hsl(var(--surface-muted));
+  }
+  .trigger:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: -2px;
+  }
+  .content {
+    display: none;
+    position: absolute;
+    z-index: 30;
+    inset-inline: 10px;
+    top: calc(100% + 4px);
+    padding: 8px;
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    background: hsl(var(--surface));
+    box-shadow: 0 8px 24px #0002;
+  }
+  .root[data-open='true'] > .content {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .content > button,
+  .content > :global(.workspace-context-disclosure) {
+    width: 100%;
+    max-width: none !important;
+    min-height: 44px;
+    justify-content: flex-start;
+  }
+  .content > button {
+    padding-inline: 12px;
+    gap: 10px;
+  }
+  .content :global(.ah-workbench-disclosure-content) {
+    position: static;
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+}

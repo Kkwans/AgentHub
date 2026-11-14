@@ -48,3 +48,13 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.triggerLabel {
+  display: none;
+}
+@media (max-width: 767px) {
+  .triggerLabel {
+    display: inline;
+    font-size: 13px;
+  }
+}

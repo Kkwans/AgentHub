@@ -18,7 +18,13 @@ import {
 } from './sessionRenameState';
 import styles from './SessionRename.module.css';
 
-export function SessionRename({ session }: { session: SessionRecord }) {
+export function SessionRename({
+  session,
+  triggerLabel,
+}: {
+  session: SessionRecord;
+  triggerLabel?: string | undefined;
+}) {
   const mode = useAuthMode();
   const user = useAuthUser();
   const epoch = useSyncExternalStore(subscribeRename, renameEpoch);
@@ -31,18 +37,21 @@ export function SessionRename({ session }: { session: SessionRecord }) {
       key={`${scope}:${epoch}`}
       scope={scope}
       isCurrent={() => activeToken.current === token && renameEpoch() === epoch}
+      triggerLabel={triggerLabel}
       session={session}
       authorized={mode === 'local_trusted' || (mode === 'token' && Boolean(user?.id))}
     />
   );
 }
 function ScopedSessionRename({
+  triggerLabel,
   scope,
   session,
   authorized,
   isCurrent,
 }: {
   scope: string;
+  triggerLabel?: string | undefined;
   session: SessionRecord;
   authorized: boolean;
   isCurrent: () => boolean;
@@ -91,6 +100,7 @@ function ScopedSessionRename({
         }}
       >
         <Pencil size={15} aria-hidden="true" />
+        {triggerLabel && <span className={styles.triggerLabel}>{triggerLabel}</span>}
       </button>
       <FormDialog
         open={open}

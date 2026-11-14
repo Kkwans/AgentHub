@@ -21,6 +21,7 @@ import { StatusBadge } from '../../../components/Feedback';
 import { labelSessionBranch } from '../../../presentation/domain-labels';
 import { ChatCommandBar } from '../components/ChatCommandBar';
 import { ChatConversationView } from '../components/ChatConversationView';
+import { SessionSecondaryTools } from '../components/SessionSecondaryTools';
 import { SessionRename } from '../components/SessionRename';
 import { SessionTranscriptExport } from '../components/SessionTranscriptExport';
 import { SessionRail } from '../components/SessionRail';
@@ -194,9 +195,6 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           {currentSession.title}
         </strong>
         <div className={workspaceStyles.sessionTools}>
-          <span className={workspaceStyles.sessionToolsLabel}>会话工具</span>
-          <SessionRename session={currentSession} />
-          <SessionTranscriptExport session={currentSession} />
           <SessionMessageSearch
             sessionId={id}
             messages={messages}
@@ -232,36 +230,43 @@ export function WorkspaceView({ model }: { model: WorkspacePageModel }) {
           <StatusBadge status={currentSession.status} />
         </span>
       </div>
-      <WorkbenchDisclosure
-        className="workspace-context-disclosure"
-        summary={
-          <span className="workspace-context-disclosure-summary">
-            <Bot size={14} aria-hidden="true" />
-            <span>Agent</span>
-            <small>{agent?.name ?? 'Agent 未绑定'}</small>
+      <SessionSecondaryTools sessionId={id}>
+        <SessionRename session={currentSession} triggerLabel="重命名会话" />
+        <SessionTranscriptExport session={currentSession} triggerLabel="导出文字记录" />
+        <WorkbenchDisclosure
+          className="workspace-context-disclosure"
+          summary={
+            <span className="workspace-context-disclosure-summary">
+              <Bot size={14} aria-hidden="true" />
+              <span>Agent</span>
+              <small>{agent?.name ?? 'Agent 未绑定'}</small>
+            </span>
+          }
+        >
+          <div className="flex min-w-0 items-center gap-2 text-[12px] text-[hsl(var(--foreground-faint))]">
+            <span>
+              <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
+            </span>
+            <span>
+              <GitBranch size={14} /> {labelSessionBranch(currentSession.branch)}
+            </span>
+            <code title={currentSession.cwd}>{currentSession.cwd}</code>
+          </div>
+        </WorkbenchDisclosure>
+        <button
+          type="button"
+          className="workspace-immersive-toggle"
+          aria-label={immersive ? '退出沉浸对话' : '进入沉浸对话'}
+          aria-pressed={immersive}
+          title={immersive ? '退出沉浸对话' : '进入沉浸对话'}
+          onClick={() => setImmersive((value) => !value)}
+        >
+          <ScanSearch size={16} aria-hidden="true" />
+          <span className={workspaceStyles.secondaryActionLabel}>
+            {immersive ? '退出沉浸对话' : '进入沉浸对话'}
           </span>
-        }
-      >
-        <div className="flex min-w-0 items-center gap-2 text-[12px] text-[hsl(var(--foreground-faint))]">
-          <span>
-            <Bot size={14} /> {agent?.name ?? 'Agent 未知'}
-          </span>
-          <span>
-            <GitBranch size={14} /> {labelSessionBranch(currentSession.branch)}
-          </span>
-          <code title={currentSession.cwd}>{currentSession.cwd}</code>
-        </div>
-      </WorkbenchDisclosure>
-      <button
-        type="button"
-        className="workspace-immersive-toggle"
-        aria-label={immersive ? '退出沉浸对话' : '进入沉浸对话'}
-        aria-pressed={immersive}
-        title={immersive ? '退出沉浸对话' : '进入沉浸对话'}
-        onClick={() => setImmersive((value) => !value)}
-      >
-        <ScanSearch size={16} aria-hidden="true" />
-      </button>
+        </button>
+      </SessionSecondaryTools>
       <button
         type="button"
         className="codex-review-button"

@@ -74,3 +74,13 @@
   background: hsl(var(--primary));
   border-color: transparent;
 }
+
+.triggerLabel {
+  display: none;
+}
+@media (max-width: 767px) {
+  .triggerLabel {
+    display: inline;
+    font-size: 13px;
+  }
+}

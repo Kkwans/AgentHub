@@ -611,27 +611,21 @@
   gap: 4px;
   flex: none;
 }
-.sessionToolsLabel {
+/* Secondary actions remain mounted inside the responsive disclosure. */
+.secondaryActionLabel {
   display: none;
 }
 @media (max-width: 767px) {
   .searchableContextbar {
-    align-items: flex-start;
-    padding-top: 6px;
-    padding-bottom: 48px;
-    min-height: 98px;
+    align-items: center;
+    padding-block: 6px;
+    min-height: 56px;
   }
   .sessionTools {
-    position: absolute;
-    inset-inline: 10px;
-    bottom: 2px;
-    height: 44px;
-    justify-content: flex-end;
+    margin-left: auto;
   }
-  .sessionToolsLabel {
-    display: block;
-    margin-right: auto;
-    font-size: 11px;
-    color: hsl(var(--foreground-muted));
+  .secondaryActionLabel {
+    display: inline;
+    font-size: 13px;
   }
 }

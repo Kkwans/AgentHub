@@ -11,7 +11,13 @@ import {
 } from '../sessionTranscriptExport';
 import styles from './SessionTranscriptExport.module.css';
 
-export function SessionTranscriptExport({ session }: { session: SessionRecord }) {
+export function SessionTranscriptExport({
+  session,
+  triggerLabel,
+}: {
+  session: SessionRecord;
+  triggerLabel?: string | undefined;
+}) {
   const mode = useAuthMode();
   const user = useAuthUser();
   const scope = `${mode}:${user?.id ?? ''}:${session.id}`;
@@ -20,6 +26,7 @@ export function SessionTranscriptExport({ session }: { session: SessionRecord })
   return (
     <ScopedExport
       key={scope}
+      triggerLabel={triggerLabel}
       session={session}
       authorized={mode === 'local_trusted' || (mode === 'token' && Boolean(user?.id))}
       isCurrent={() => current.current === scope}
@@ -27,10 +34,12 @@ export function SessionTranscriptExport({ session }: { session: SessionRecord })
   );
 }
 function ScopedExport({
+  triggerLabel,
   session,
   authorized,
   isCurrent,
 }: {
+  triggerLabel?: string | undefined;
   session: SessionRecord;
   authorized: boolean;
   isCurrent: () => boolean;
@@ -126,6 +135,7 @@ function ScopedExport({
         }}
       >
         <Download size={15} aria-hidden="true" />
+        {triggerLabel && <span className={styles.triggerLabel}>{triggerLabel}</span>}
       </button>
       <FormDialog
         open={open}
