@@ -11,11 +11,10 @@ import { cn } from '@agenthub/ui';
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { MarkdownText } from '../MarkdownView';
-import { StreamingDots } from '../StreamingDots';
 
 /**
  * ThinkingBlock — 主对话与 subagent 共用的 thinking 折叠块。
- * 流式时自动展开 + StreamingDots + Markdown 渐入 + 实时耗时；完成后折叠为耗时摘要。
+ * 流式时自动展开 + StreamingDots + Markdown 渐入 + 来源标签；完成后折叠为来源标签。
  *
  * memo：SubagentEntry 每个 chunk 都会整体重渲染，已完成 thinking 段的
  * props（原始值）不变即可跳过，避免长转录下折叠头全部重渲染。
@@ -29,77 +28,42 @@ export const ThinkingBlock = memo(function ThinkingBlock({
   streaming: boolean;
   durationMs: number;
 }) {
-  // 执行中强制展开，完成后折叠为耗时摘要；用户仍可手动查看全文。
+  // 执行中强制展开，完成后折叠为来源标签；用户仍可手动查看全文。
   const [expanded, setExpanded] = useState(streaming);
 
   useEffect(() => {
     setExpanded(streaming);
   }, [streaming]);
 
-  const thinkingDuration = formatThinkingDuration(durationMs);
-  // 流式期间展示实时耗时（随 chunk 更新，不额外起定时器以免破坏 memo）；
-  // 不足 1 秒时 formatThinkingDuration 返回「不到 1 秒」，流式态下省略更自然。
-  const label = streaming
-    ? thinkingDuration === '不到 1 秒'
-      ? '思考中…'
-      : `思考中 ${thinkingDuration}`
-    : `思考了 ${thinkingDuration}`;
-
+  // Chunk reception timestamps are not evidence of the provider's reasoning duration.
+  void durationMs;
+  const label = streaming ? 'Agent 正在提供思考内容' : 'Agent 思考内容';
   return (
-    <details className={cn('thinking-event-row', streaming && 'running')} open={expanded}>
+    <details
+      className={cn('thinking-event-row process-thought', streaming && 'running')}
+      open={expanded}
+    >
       <summary
         role="button"
-        className="list-none rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 [&::-webkit-details-marker]:hidden"
+        className="process-thought-trigger"
         onClick={(event) => {
           event.preventDefault();
           setExpanded((value) => !value);
         }}
         aria-expanded={expanded}
-        aria-label={`${label}，${expanded ? '收起' : '展开'}思考过程`}
+        aria-label={`${label}，${expanded ? '收起' : '展开'}思考内容`}
       >
-        <span className="block my-1 overflow-hidden rounded-lg border border-violet-200/60 bg-gradient-to-r from-violet-500/[0.04] to-indigo-500/[0.02] animate-[hci-entry_220ms_ease-out_both] dark:border-violet-500/20 dark:from-violet-500/[0.08] dark:to-indigo-500/[0.04]">
-          <span className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-all duration-150 hover:bg-violet-500/[0.06] active:scale-[0.995] dark:hover:bg-violet-400/[0.08]">
-            {/* 图标区域 */}
-            <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-800/50 dark:to-indigo-800/40">
-              {streaming ? (
-                <StreamingDots variant="violet" />
-              ) : (
-                <Brain className="h-3 w-3 text-violet-500 dark:text-violet-400" />
-              )}
-            </span>
-
-            {/* 文字区域 */}
-            <span className="font-medium text-[11.5px] text-violet-600/90 dark:text-violet-300/90">
-              {label}
-              {streaming && <span className="sr-only">正在思考</span>}
-            </span>
-            <span className="ml-auto shrink-0">
-              {expanded ? (
-                <ChevronDown className="h-3 w-3 text-violet-400/70 dark:text-violet-400/60" />
-              ) : (
-                <ChevronRight className="h-3 w-3 text-violet-400/50 dark:text-violet-500/40" />
-              )}
-            </span>
-          </span>
-        </span>
-      </summary>
-
-      {/* 展开内容：grid 行高过渡实现平滑动画 */}
-      <div
-        className={cn(
-          'grid transition-[grid-template-rows,opacity] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none',
-          expanded
-            ? 'grid-rows-[1fr] opacity-100'
-            : 'pointer-events-none grid-rows-[0fr] opacity-0',
+        <Brain size={15} aria-hidden="true" className="process-thought-icon" />
+        <span className="process-thought-label">{label}</span>
+        {streaming && <span className="tool-running-dot process-thought-live" aria-hidden="true" />}
+        {expanded ? (
+          <ChevronDown size={14} aria-hidden="true" />
+        ) : (
+          <ChevronRight size={14} aria-hidden="true" />
         )}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="border-t border-violet-200/50 bg-[hsl(var(--surface))]/60 px-3 py-2 dark:border-violet-500/15">
-            <div className="text-[11.5px] leading-relaxed text-[hsl(var(--foreground-subtle))] [&_p]:mb-1.5">
-              <MarkdownText text={text} streaming={streaming} truncated={false} />
-            </div>
-          </div>
-        </div>
+      </summary>
+      <div className="process-thought-body">
+        <MarkdownText text={text} streaming={streaming} truncated={false} />
       </div>
     </details>
   );
@@ -124,13 +88,3 @@ export const ThinkingEntry = memo(
     return true;
   },
 );
-
-function formatThinkingDuration(durationMs: number): string {
-  if (durationMs < 1000) return '不到 1 秒';
-
-  const seconds = Math.round(durationMs / 1000);
-  if (seconds <= 60) return `${seconds} 秒`;
-
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes} 分 ${seconds % 60} 秒`;
-}

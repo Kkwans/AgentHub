@@ -135,6 +135,33 @@ function getResultSummary(rawOutput?: string | null): string {
   return rawOutput.length > 20_000 ? `${Math.ceil(rawOutput.length / 1024)} KB` : '';
 }
 
+/** Preview only text the provider actually supplied; never infer a failure cause. */
+export function toolFailurePreview(rawOutput?: string | null): string {
+  if (!rawOutput?.trim()) return '';
+  let text = rawOutput.trim();
+  if (/^[{[]/.test(text)) {
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return '';
+      const message = (parsed as Record<string, unknown>).message;
+      if (typeof message !== 'string') return '';
+      text = message;
+    } catch {
+      return '';
+    }
+  }
+  const line = text.split(/\r?\n/).find((part) => part.trim()) ?? '';
+  return truncate(
+    Array.from(line, (character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127 ? ' ' : character;
+    })
+      .join('')
+      .trim(),
+    140,
+  );
+}
+
 function extractSummary(toolName: string, rawInput?: Record<string, unknown> | null): string {
   if (!rawInput) return '';
   const theme = resolveToolTheme(toolName);
@@ -286,6 +313,7 @@ export const ToolUseEntry = memo(
           toolName={toolName}
           summary={summary}
           resultSummary={resultSummary}
+          failureSummary={isFailed ? toolFailurePreview(e.rawOutput) : ''}
           sleepRemainingMs={sleepRemainingMs}
           toolDurationMs={e.toolDurationMs}
           filePathForOpen={filePathForOpen}

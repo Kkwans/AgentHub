@@ -112,11 +112,11 @@ it('renders the four ordered live tool rows and exposes tool/thought disclosures
   expect(trigger).toHaveAttribute('aria-expanded', 'false');
   const thought = container.querySelector('.thinking-event-row');
   expect(thought).not.toHaveAttribute('open');
-  expect(screen.getByText('思考了 32 秒')).toBeVisible();
-  fireEvent.click(screen.getByLabelText(/展开思考过程/));
+  expect(screen.getByText('Agent 思考内容')).toBeVisible();
+  fireEvent.click(screen.getByLabelText(/展开思考内容/));
   expect(thought).toHaveAttribute('open');
   expect(screen.getByText('先检查主舞台，再检查工具流水。')).toBeVisible();
-  fireEvent.click(screen.getByLabelText(/收起思考过程/));
+  fireEvent.click(screen.getByLabelText(/收起思考内容/));
   expect(thought).not.toHaveAttribute('open');
 });
 

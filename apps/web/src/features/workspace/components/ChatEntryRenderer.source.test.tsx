@@ -131,3 +131,32 @@ describe('PinHarness chat source renderers', () => {
     expect(screen.getByText(/query=ChatConversationView/)).toBeInTheDocument();
   });
 });
+
+it('keeps the provider failure summary visible while details remain collapsed', async () => {
+  const view = renderTool(
+    event(
+      {
+        title: '执行测试',
+        toolCallId: 'failure-preview',
+        status: 'failed',
+        input: { command: 'pnpm test' },
+        output: 'Test command failed\nFull diagnostic details',
+      },
+      { type: 'tool.call.failed' },
+    ),
+  );
+  const button = screen.getByRole('button', { name: '执行测试，工具调用失败，展开详情' });
+  expect(button).toHaveAttribute('aria-expanded', 'false');
+  expect(view.container.querySelector('.tool-entry-failure-preview')).toHaveTextContent(
+    'Test command failed',
+  );
+  fireEvent.click(button);
+  expect(button).toHaveAttribute('aria-expanded', 'true');
+  expect(button).toHaveAccessibleName('执行测试，工具调用失败，收起详情');
+  await waitFor(() => expect(screen.getByText(/Full diagnostic details/)).toBeVisible());
+  fireEvent.click(button);
+  expect(button).toHaveAttribute('aria-expanded', 'false');
+  expect(view.container.querySelector('.tool-entry-failure-preview')).toHaveTextContent(
+    'Test command failed',
+  );
+});

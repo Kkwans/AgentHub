@@ -12,6 +12,7 @@ interface ToolEntryHeaderProps {
   toolName: string;
   summary: string;
   resultSummary: string;
+  failureSummary?: string;
   sleepRemainingMs: number | null;
   toolDurationMs?: number | null | undefined;
   filePathForOpen: string | null;
@@ -72,7 +73,7 @@ function ToolEntryStatus({
     <span className="shrink-0 inline-flex items-center gap-1.5 text-[hsl(var(--foreground-subtle))]">
       {isActive && sleepRemainingMs != null && (
         <span
-          className="font-mono tabular-nums text-xs text-[hsl(var(--warning-fg))]"
+          className="font-mono tabular-nums text-[13px] text-[hsl(var(--warning-fg))]"
           title={sleepRemainingMs > 0 ? 'sleep 等待剩余时间' : 'sleep 已结束，正在执行后续命令'}
         >
           {sleepRemainingMs > 0 ? `等待 ${formatCountdown(sleepRemainingMs)}` : '等待结束'}
@@ -80,7 +81,7 @@ function ToolEntryStatus({
       )}
       <ToolStatusIcon isActive={isActive} isFailed={isFailed} />
       {toolDurationMs != null && !isActive && (
-        <span className="font-mono tabular-nums text-xs text-[hsl(var(--foreground-subtle))]">
+        <span className="font-mono tabular-nums text-[13px] text-[hsl(var(--foreground-subtle))]">
           {formatDuration(toolDurationMs)}
         </span>
       )}
@@ -110,6 +111,7 @@ export function ToolEntryHeader({
   toolName,
   summary,
   resultSummary,
+  failureSummary,
   sleepRemainingMs,
   toolDurationMs,
   filePathForOpen,
@@ -132,30 +134,40 @@ export function ToolEntryHeader({
         onClick={onToggle}
         disabled={!hasOutput}
         aria-expanded={hasOutput ? showDetail : undefined}
-        aria-label={`${toolName}，${isActive ? '工具执行中' : isFailed ? '工具调用失败' : '工具调用完成'}${hasOutput ? '，展开详情' : ''}`}
-        className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/35"
+        aria-label={`${toolName}，${isActive ? '工具执行中' : isFailed ? '工具调用失败' : '工具调用完成'}${hasOutput ? (showDetail ? '，收起详情' : '，展开详情') : ''}`}
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/35"
       >
         <span className="tool-entry-icon">
           <Icon
             className={cn(
               'h-3.5 w-3.5',
-              isFailed ? 'text-[hsl(var(--destructive))]' : theme.iconColor,
+              isFailed ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--foreground-muted))]',
             )}
           />
         </span>
-        <span className="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
-          <span className={cn('tool-entry-badge', badgeTheme)}>{toolName}</span>
-          {summary && <span className="tool-entry-separator" aria-hidden="true" />}
-          {summary && (
-            <span className="min-w-0 truncate font-mono text-xs text-[hsl(var(--foreground-muted))]">
-              {summary}
+        <span className="tool-entry-copy">
+          <span className="tool-entry-title-row">
+            <span
+              className={cn(
+                'tool-entry-badge',
+                isFailed ? badgeTheme : 'text-[hsl(var(--foreground-muted))]',
+              )}
+            >
+              {toolName}
             </span>
-          )}
-          {resultSummary && (
-            <span className="shrink-0 text-xs text-[hsl(var(--foreground-faint))]">
-              {resultSummary}
-            </span>
-          )}
+            {summary && <span className="tool-entry-separator" aria-hidden="true" />}
+            {summary && (
+              <span className="min-w-0 truncate font-mono text-[13px] text-[hsl(var(--foreground-muted))]">
+                {summary}
+              </span>
+            )}
+            {resultSummary && (
+              <span className="shrink-0 text-[13px] text-[hsl(var(--foreground-faint))]">
+                {resultSummary}
+              </span>
+            )}
+          </span>
+          {failureSummary && <span className="tool-entry-failure-preview">{failureSummary}</span>}
         </span>
         <ToolEntryStatus
           isActive={isActive}

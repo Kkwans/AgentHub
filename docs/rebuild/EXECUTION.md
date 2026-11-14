@@ -1508,3 +1508,14 @@ DB55、server66、UI61定向与types/lint/build通过。第一轮全量1697通�
 - 08:04:21启动Node+Composite+Gateway最终冻结全仓；08:04:45全仓lint/typecheck/build通过，最终全仓仍运行。安全片未commit/push；无main合并、部署或真实Agent调用。
 
 - 08:11:51 Node+Composite+Gateway最终冻结全仓完成：199文件通过/6跳过、2055测试通过/9跳过，448.36秒exit0；08:04:45全仓lint/types/build通过。首轮exit130不计通过，修正后的原始workflow与延迟落库回归及全量均通过。准备三逻辑代码提交+台账提交，不包含隔离思考/工具UI。
+- 08:13:41安全三片+台账已push/fetch核实：5e43a747b1ee351e6a44bbee6ee8bdecd887743e（Node）、fb2ab44bd77dfdae3b07a2eda64339ac08a85419（Composite/probe）、c80ec5e6facad8961aebddc940182a4a859cd4de（Gateway）、07ad01d930af4e052890027e3cf788c8d02caaa8（台账）。树518e0433967fcf41db42e15f2c40d4871435d1d1与已测本地一致，当时工作区干净，精确CI43574785466启动。
+
+### 2026-11-14 08:06–08:18 UTC 会话过程UI
+
+- 为不扰动安全全量，在b8c9a8d隔离树实现：中性思考内容区、明确Agent来源而非伪推理耗时、13px工具行/44px主操作、仅既有明文生成失败摘要，保留原事件/展开key/请求合同。08:10:09产品8文件冻结，26专项、类型/lint/build通过，并确认生成CSS包含新样式。
+- 显式--process-visual合成fixture默认不变；真实ACP thought/tool状态经协议探针1/1，默认adapter回归6/6。双文件barrier固定截图状态、四宽浅深8例与CI显式清单，发现测试不是浏览器执行。隔离依赖链接/失败的环境依赖准备未改变原lock/modules，最终仅复制11个明确源码/测试/workflow文件，随后本地更新1个旧测试；不复制依赖或构建产物。
+- 08:14:20集成后开始完整web；08:14:48全仓lint/types/build通过。首轮web1065过/1失败，原因是WorkspacePage旧断言仍查“思考中/正在思考”，不是Stop Run行为被删除；更新为Agent来源标签、继续断言running与实际提供文本，并完整保留防重复/失败重试检查。08:16:56重新冻结完整web，结果待补。
+- fixture格式检查发现未格式化后已修复；08:15:35主树默认6/6、最终实际合成ACP探针1/1再次通过。第一次默认测试命令路径写错没有发现测试，未计为通过，改正确路径复验；08:15:37独立E2E类型/list8例/格式通过。浏览器未本地执行，新图待精确CI。
+- 08:17核实b8c9a8d verify132384347723成功：2008/9skip、严格token6、浏览器86/10skip，无flaky条目；PG/a11y成功，real仍运行。07ad01d PG成功，其余仍运行，未冒称全绿。
+
+- 08:19:18思考/工具过程UI最终完整web完成：88文件1066测试通过，141.30秒exit0；12个产品/测试/workflow文件树eb8bbe2e4a794747db0f4912d0fff415ec41ca42与本地一致，准备发布。首轮旧文案断言失败已如实保留，不把list8例称浏览器通过；实际截图仍待精确CI。

@@ -1,7 +1,8 @@
 /* global process */
 import { createRequire } from 'node:module';
 import { read as readFd, write as writeFd } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { access, writeFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { join } from 'node:path';
 import { pathToFileURL, URL } from 'node:url';
 
@@ -64,6 +65,81 @@ const sessionConfiguration = () => ({
   configOptions: configOptions(),
 });
 
+// Explicit, synthetic visual fixture only. Files live in the disposable test project.
+async function visualBarrier(stage) {
+  await writeFile(join(process.cwd(), `.agenthub-process-${stage}-ready`), 'fixture', 'utf8');
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    try {
+      await access(join(process.cwd(), `.agenthub-process-${stage}-release`));
+      return;
+    } catch {
+      await delay(20);
+    }
+  }
+  throw new Error('PROCESS_VISUAL_FIXTURE_BARRIER_TIMEOUT');
+}
+async function processVisualPrompt(params, client) {
+  const notify = (update) =>
+    client.notify(CLIENT_METHODS.session_update, { sessionId: params.sessionId, update });
+  for (const text of [
+    'Fixture 公开过程说明：这是合成测试数据，不是模型隐藏推理。',
+    '\n正在检查演示工具的展示、键盘操作和窄屏排版。',
+  ]) {
+    await notify({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text } });
+  }
+  await visualBarrier('thought');
+  const tools = [
+    [
+      'visual-running',
+      'Fixture 进行中工具',
+      'in_progress',
+      'Fixture 正在等待测试释放，不执行真实命令。',
+    ],
+    [
+      'visual-success',
+      'Fixture 成功工具',
+      'completed',
+      Array.from(
+        { length: 80 },
+        (_, i) => `Fixture 输出 ${i + 1}：${'可读输出内容 '.repeat(12)}`,
+      ).join('\n'),
+    ],
+    [
+      'visual-failed',
+      'Fixture 失败工具',
+      'failed',
+      'Fixture 预期失败：演示错误状态，不是实际服务故障。',
+    ],
+  ];
+  for (const [toolCallId, title, status, output] of tools) {
+    await notify({
+      sessionUpdate: 'tool_call',
+      toolCallId,
+      title,
+      kind: 'other',
+      status: 'in_progress',
+      rawInput: { fixture: true, description: title },
+      rawOutput: output,
+      content: [{ type: 'content', content: { type: 'text', text: output } }],
+    });
+    if (status !== 'in_progress')
+      await notify({ sessionUpdate: 'tool_call_update', toolCallId, status, rawOutput: output });
+  }
+  await visualBarrier('tools');
+  await notify({
+    sessionUpdate: 'tool_call_update',
+    toolCallId: 'visual-running',
+    status: 'completed',
+    rawOutput: 'Fixture 已确认释放。',
+  });
+  await notify({
+    sessionUpdate: 'agent_message_chunk',
+    content: { type: 'text', text: 'Fixture 过程展示验收完成。' },
+  });
+  return { stopReason: 'end_turn' };
+}
+
 const fixture = agent({ name: 'AgentHub ACP Fixture' })
   .onRequest(AGENT_METHODS.initialize, () => ({
     protocolVersion: PROTOCOL_VERSION,
@@ -107,6 +183,7 @@ const fixture = agent({ name: 'AgentHub ACP Fixture' })
     return { configOptions: configOptions() };
   })
   .onRequest(AGENT_METHODS.session_prompt, async ({ params, client }) => {
+    if (process.argv.includes('--process-visual')) return processVisualPrompt(params, client);
     if (process.argv.includes('--hang-prompt')) await new Promise(() => {});
     if (process.argv.includes('--transport-warning')) {
       await client.notify(CLIENT_METHODS.session_update, {
