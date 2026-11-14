@@ -192,6 +192,23 @@ for (const width of [390, 768, 1024, 1440])
       // the temporary location highlight expires; a class-name check is insufficient.
       await expect(locatedMessage).not.toHaveAttribute('data-message-located', 'true');
       await expect(locatedMessage).toBeFocused();
+      await info.attach('高亮结束后实际焦点样式', {
+        body: JSON.stringify(
+          await locatedMessage.evaluate((node) => {
+            const style = getComputedStyle(node);
+            return {
+              focused: document.activeElement === node,
+              focusVisible: node.matches(':focus-visible'),
+              outline: style.outline,
+              outlineColor: style.outlineColor,
+              outlineWidth: style.outlineWidth,
+              outlineStyle: style.outlineStyle,
+              boxShadow: style.boxShadow,
+            };
+          }),
+        ),
+        contentType: 'application/json',
+      });
       await expect
         .poll(async () =>
           locatedMessage.evaluate((node) => {
@@ -220,6 +237,11 @@ for (const width of [390, 768, 1024, 1440])
           }),
         )
         .toBe(true);
+
+      await info.attach('高亮结束后焦点仍可见', {
+        body: await page.screenshot(),
+        contentType: 'image/png',
+      });
 
       const priorSearchPosts = searchPosts;
       await panel.getByRole('button', { name: '返回搜索结果', exact: true }).click();

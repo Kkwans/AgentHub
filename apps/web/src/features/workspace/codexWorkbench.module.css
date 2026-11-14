@@ -377,3 +377,12 @@
     padding-right: 64px;
   }
 }
+
+/* Bubble surfaces deliberately have no shadow and outrank the global focus
+ * shadow rule. Keep one visible keyboard ring after the location highlight
+ * expires, rather than relying on that overridden global shadow. */
+.workspace :global(.message[data-message-id]:focus-visible:not([data-message-located='true'])) {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -2px;
+  box-shadow: none;
+}

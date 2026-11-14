@@ -1,4 +1,12 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+import type { ResolvedPromptContextRecord } from '../../apps/web/src/lib/api';
+
+const emptyPromptContext = {
+  ready: true,
+  finalContext: '',
+  missingVariables: [],
+  items: [],
+} satisfies ResolvedPromptContextRecord;
 
 // Browser/API contract fixtures only: no database, provider, or real execution evidence.
 // playwright.config.ts supplies 1440/1024/768/390; each case runs in both themes.
@@ -75,6 +83,9 @@ async function fixture(page: Page, theme: string, older: (route: Route) => Promi
     else if (path === '/agents') data = [agent];
     else if (path === `/agents/${agent.id}`) data = agent;
     else if (path === '/sessions') data = sessions;
+    // Composer reads the resolved DTO even when no prompts are bound. Returning
+    // the generic [] fallback crashes the whole workspace before history renders.
+    else if (path === '/prompt-context/resolve') data = emptyPromptContext;
     else if (matched) {
       if (!matched[2]) data = sessions.find((session) => session.id === matched[1]);
       else if (matched[2] === 'messages') {
