@@ -27,3 +27,10 @@ it('both expanded shells use the shared wordmark, while only AppShell retains a 
   expect(rail).toContain('<AgentHubWordmark />');
   expect(rail).not.toContain('AgentHubLogo');
 });
+
+it('access loading and login reuse the full wordmark once per header, with no graphic logo', () => {
+  const gate = readFileSync(new NodeURL('./AccessGate.tsx', import.meta.url), 'utf8');
+  expect(gate.match(/<AgentHubWordmark \/>/g)).toHaveLength(2);
+  expect(gate).not.toContain('AgentHubLogo');
+  expect(gate).not.toContain('<strong>AgentHub</strong>');
+});

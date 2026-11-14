@@ -39,34 +39,30 @@ async function brandGeometry(link: Locator, info: TestInfo, name: string, collap
     await info.attach(`${name}-brand`, { body: await link.screenshot(), contentType: 'image/png' });
     return;
   }
-  const slot = link.locator('.agenthub-logo');
-  const graphic = slot.locator(':scope > [data-brand-glyph="true"]');
-  const wordmark = link.locator(':scope > span').filter({ hasText: /^AgentHub$/ });
-  await expect(graphic).toHaveCount(1);
-  await expect(wordmark).toHaveCount(0);
-  const geometry = await slot.evaluate(async (node) => {
+  // Responsive initials from the same wordmark, not the rejected graphic H.
+  await touchTarget(link);
+  const slot = link.locator('[data-brand-initials="true"]');
+  await expect(slot).toHaveText('AH');
+  await expect(link.locator('img, svg, [data-brand-glyph="true"]')).toHaveCount(0);
+  await expect(slot).toHaveCSS('font-size', '16px');
+  await expect(slot).toHaveCSS('font-weight', '600');
+  await expect(slot).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(slot).toHaveCSS('border-top-width', '0px');
+  await expect(slot).toHaveCSS('mask-image', 'none');
+  const geometry = await slot.evaluate((node) => {
     const box = (element: Element) => {
       const r = element.getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height };
     };
-    const graphic = node.querySelector(':scope > [data-brand-glyph="true"]')!;
-    const wordmark = Array.from(node.parentElement!.children).find(
-      (child) => child !== node && child.textContent?.trim() === 'AgentHub',
-    );
-    const maskImage = getComputedStyle(graphic).maskImage;
-    const source = /^url\(["']?(.*?)["']?\)$/.exec(maskImage)?.[1];
-    if (!source) throw new Error('Brand mask is missing its image URL');
-    const image = new Image();
-    image.src = source;
-    await image.decode();
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const text = range.getBoundingClientRect();
     return {
-      maskImage,
-      imageWidth: image.naturalWidth,
-      imageHeight: image.naturalHeight,
+      treatment: 'responsive-wordmark-initials',
       slot: box(node),
-      graphic: box(graphic),
-      wordmark: wordmark ? box(wordmark) : null,
-      fontSize: wordmark ? getComputedStyle(wordmark).fontSize : null,
+      link: box(node.parentElement!),
+      text: { x: text.x, y: text.y, width: text.width, height: text.height },
+      color: getComputedStyle(node).color,
     };
   });
   const center = (box: { x: number; y: number; width: number; height: number }) => ({
@@ -74,13 +70,13 @@ async function brandGeometry(link: Locator, info: TestInfo, name: string, collap
     y: box.y + box.height / 2,
   });
   const a = center(geometry.slot),
-    b = center(geometry.graphic);
+    b = center(geometry.link);
   expect(Math.abs(geometry.slot.width - 32)).toBeLessThanOrEqual(1);
   expect(Math.abs(geometry.slot.height - 32)).toBeLessThanOrEqual(1);
   expect(Math.abs(a.x - b.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(a.y - b.y)).toBeLessThanOrEqual(1);
-  expect(geometry.imageWidth).toBeGreaterThan(0);
-  expect(geometry.imageHeight).toBeGreaterThan(0);
+  expect(geometry.text.width).toBeLessThanOrEqual(geometry.slot.width);
+  expect(geometry.text.height).toBeLessThanOrEqual(geometry.slot.height);
   await info.attach(`${name}-geometry`, {
     body: JSON.stringify(geometry),
     contentType: 'application/json',

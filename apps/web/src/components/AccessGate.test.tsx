@@ -50,3 +50,36 @@ it('does not invent a user or access mode without a resolved gate', () => {
   render(<IdentityProbe />);
   expect(JSON.parse(screen.getByTestId('identity').textContent!)).toEqual({ user: null });
 });
+
+it.each([false, true])(
+  '认证页保留明确主标题且只有一个完整品牌字标（setup=%s）',
+  (setupRequired) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['auth-status'], {
+      mode: 'token',
+      localTrusted: false,
+      authenticated: false,
+      setupRequired,
+      user: null,
+    });
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <AccessGate>
+          <IdentityProbe />
+        </AccessGate>
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.getByRole('heading', {
+        name: setupRequired ? '创建管理员账号' : '登录 AgentHub',
+        level: 1,
+      }),
+    ).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-brand-wordmark]')).toHaveLength(1);
+    expect(container.querySelector('[data-brand-wordmark]')?.textContent).toBe('AgentHub');
+    expect(
+      container.querySelector('.agenthub-logo, [data-brand-glyph], [data-brand-monogram]'),
+    ).toBeNull();
+    client.clear();
+  },
+);

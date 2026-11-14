@@ -2005,3 +2005,10 @@ ae8精确focused139过8失败：390仅诊断summary21px；768/1024/1440还含三
 - 19:23:24 UTC已fetch核3bc7ab9发现页整体提交，run43631827605；一次GitHub建树大请求422超时，改分批树对象构建后与本地预期tree精确一致再建commit/移ref，无重复发布。最终1441/build/CR过，新图与真实回焦仍待。
 - 19:24精确d04 focused146通过9失败，不仅旧发现8：另1440深诊断outlineWidth3px/offset0，预期2/2，gap8/radius6未失败。作者CSS两处都是focus-visible 2/2，因此只读审查更疑似脚本focus与浏览器modality，尚未证实产品或测试根因。新test-only从刷新按钮真实Tab进入summary，前后硬验焦点与focus-visible，再保持原2/2精确门禁并补outlineStyle/color/activeElement/documentHasFocus证据；不改CSS、不blur、不sleep、不放宽。
 - 19:25:52 UTC该test-only类型/lint/list8/diff与全仓build成功；8例仅发现未本地运行，需新CI证实。上次产品1441未重复当此次重跑。
+
+### 2026-11-14 19:34 UTC 折叠品牌遗留优先修片（未发布）
+
+最新要求明确不能继续搁置折叠H。重新实际查看用户选定的纯AgentHub字标参考及f40的768浅色Runtime整页，黑底通用H与既定方向不符。独立设计审计建议同一字标响应式缩写AH，而不是另造图形；折叠32透明槽/16px600文字、首页入口独立44，展开保持完整AgentHub。AccessGate加载/登录也使用完整原字标并去掉旧图形空列，认证逻辑、h1和可访问名称不变。旧PNG仅保历史来源并明确已否决停用，无产品引用。
+
+41专项/类型/lint/独立CR通过；真实shell四宽双主题spec从mask资源加载改为AH文本、透明无边框、32槽居中和44入口硬门禁，保页面轴线/触点/截图。8浏览器仅发现，未在本地执行；最终冻结聚合进行中，尚未发布，不能以居中或静态断言称新品牌美学通过。
+- 19:37:31 UTC最终132文件1445测试通过192.64秒，11文件冻结hash一致；19:37:51全仓build成功。41专项、类型、lint、独立CR已过。准备发布以产新图，当前未有AH实际浏览器像素，旧H截图不能代新结果。

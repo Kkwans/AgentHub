@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError, authApi, authSession } from '../lib/auth-api';
 import { realtime } from '../lib/realtime';
-import { AgentHubLogo } from './AgentHubLogo';
+import { AgentHubWordmark } from './AgentHubWordmark';
 import { PasswordField } from './PasswordField';
 import styles from './AccessGate.module.css';
 
@@ -152,11 +152,10 @@ function AccessLoading() {
         aria-live="polite"
       >
         <header className={styles.heading} aria-hidden>
-          <AgentHubLogo className={styles.headingLogo} />
           <div className={styles.headingContent}>
             <div className={styles.product}>
               <div>
-                <strong>AgentHub</strong>
+                <AgentHubWordmark />
                 <small>工程控制平面</small>
               </div>
               <span>正在连接</span>
@@ -209,11 +208,10 @@ function AccessPrompt({
     <main className={`${styles.gate} app-access-gate`}>
       <section className={`${styles.card} app-access-card`} aria-labelledby="access-title">
         <header className={styles.heading}>
-          <AgentHubLogo className={styles.headingLogo} />
           <div className={styles.headingContent}>
             <div className={styles.product}>
               <div>
-                <strong>AgentHub</strong>
+                <AgentHubWordmark />
                 <small>工程控制平面</small>
               </div>
               <span>{contextLabel}</span>

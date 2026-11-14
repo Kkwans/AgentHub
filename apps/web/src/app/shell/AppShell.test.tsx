@@ -275,3 +275,17 @@ describe('CommandPalette fuzzy matching', () => {
     expect(fuzzyScore('xyz', 'Runtime')).toBe(-1);
   });
 });
+
+it('折叠首页入口保留完整可访问名称和44触点，仅显示透明文字AH', () => {
+  renderShell(['/home'], 768);
+  const home = screen.getByRole('link', { name: 'AgentHub 首页' });
+  expect(home).toHaveAttribute('href', '/home');
+  expect(home.className).toContain('h-11 w-11');
+  const mark = home.querySelector('.agenthub-logo')!;
+  expect(mark).toHaveAttribute('aria-hidden', 'true');
+  expect(mark.textContent).toBe('AH');
+  expect(mark.querySelector('[data-brand-glyph], svg, img')).toBeNull();
+  expect(mark.className).not.toMatch(/border-black|rounded|bg-\[/);
+  home.focus();
+  expect(home).toHaveFocus();
+});

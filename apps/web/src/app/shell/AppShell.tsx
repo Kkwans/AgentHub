@@ -88,12 +88,12 @@ function Brand({
     >
       <Link
         to="/home"
-        className={`group flex items-center overflow-hidden ${collapsed ? 'h-[var(--sidebar-control-size)] w-[var(--sidebar-control-size)] justify-center' : 'min-h-11 min-w-11'}`}
+        className={`group flex items-center overflow-hidden ${collapsed ? 'h-11 w-11 justify-center' : 'min-h-11 min-w-11'}`}
         aria-label="AgentHub 首页"
       >
         {collapsed ? (
-          // Provisional compact marker; expanded navigation uses the reference wordmark.
-          <AgentHubLogo className="h-8 w-8 shrink-0 rounded-[9px] border border-black/[0.04] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-opacity duration-[var(--motion-fast)] group-hover:opacity-90" />
+          // Compact textual initials; expanded navigation uses the full reference wordmark.
+          <AgentHubLogo />
         ) : (
           <AgentHubWordmark />
         )}

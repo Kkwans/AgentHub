@@ -26,16 +26,11 @@
 
 .heading {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 16px;
 }
 
-.headingLogo {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
-}
 .headingContent {
   min-width: 0;
 }
@@ -49,11 +44,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-.product strong {
-  color: hsl(var(--foreground));
-  font-size: 16px;
-  letter-spacing: -0.02em;
 }
 .product small {
   color: hsl(var(--foreground-faint));
@@ -177,15 +167,6 @@
 @media (max-width: 620px) {
   .card {
     padding: 24px 20px;
-  }
-  .heading {
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 13px;
-  }
-  .headingLogo {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
   }
   .product {
     gap: 10px;

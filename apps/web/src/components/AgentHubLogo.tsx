@@ -6,9 +6,10 @@ export function AgentHubLogo({ className, ...props }: HTMLAttributes<HTMLSpanEle
     <span
       className={['agenthub-logo', styles.mark, className].filter(Boolean).join(' ')}
       aria-hidden="true"
+      data-brand-initials="true"
       {...props}
     >
-      <span className={styles.glyph} data-brand-glyph="true" />
+      <span data-brand-monogram="true">AH</span>
     </span>
   );
 }
