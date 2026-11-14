@@ -82,6 +82,7 @@ export function GitChangesTree({
   type GitView = 'changes' | 'history' | 'branches';
   const [view, setView] = useState<GitView>('changes');
   const [treeLayout, setTreeLayout] = useState(false);
+  const [sideBySide, setSideBySide] = useState(false);
   const [fileListOpen, setFileListOpen] = useState(true);
   const fileListId = useId();
   const readingHeading = useRef<HTMLElement>(null);
@@ -282,7 +283,7 @@ export function GitChangesTree({
           checked={stagedDiff}
           onChange={(event) => onStagedDiffChange(event.target.checked)}
         />
-        staged
+        已暂存
       </label>
       <label className="git-whitespace-select">
         <span>空白</span>
@@ -304,6 +305,15 @@ export function GitChangesTree({
           className="git-diff-select"
         />
       </label>
+      <button
+        type="button"
+        className="git-diff-mode-toggle"
+        aria-pressed={sideBySide}
+        aria-label={sideBySide ? '切换为统一 Diff' : '切换为分栏 Diff'}
+        onClick={() => setSideBySide((value) => !value)}
+      >
+        {sideBySide ? '分栏' : '统一'}
+      </button>
     </>
   );
 
@@ -419,6 +429,43 @@ export function GitChangesTree({
             </button>
           </div>
         ) : null}
+        {view === 'changes' && selectedPath && (
+          <details className="git-diff-options">
+            <summary
+              aria-label={[
+                '显示选项',
+                stagedDiff ? '已暂存' : '',
+                {
+                  default: '',
+                  'ignore-all-space': '忽略全部空白',
+                  'ignore-space-change': '忽略空白变化',
+                  'ignore-blank-lines': '忽略空行',
+                }[whitespace],
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            >
+              显示选项{stagedDiff && <span> · 已暂存</span>}
+              {whitespace !== 'default' && (
+                <span
+                  title={
+                    {
+                      'ignore-all-space': '忽略全部空白',
+                      'ignore-space-change': '忽略空白变化',
+                      'ignore-blank-lines': '忽略空行',
+                    }[whitespace]
+                  }
+                >
+                  {' '}
+                  · 忽略空白
+                </span>
+              )}
+            </summary>
+            <div className="git-diff-options-content" role="group" aria-label="文件 Diff 显示选项">
+              {diffControls}
+            </div>
+          </details>
+        )}
         <div className="git-view-actions">
           <details className="git-more-menu">
             <summary>更多 Git</summary>
@@ -678,13 +725,11 @@ export function GitChangesTree({
                   </div>
                 </div>
                 {diff.isLoading ? (
-                  <div className="git-diff-editor git-diff-feedback">
-                    <div className="git-diff-editor-toolbar">{diffControls}</div>
+                  <div className="git-diff-editor git-diff-feedback git-diff-embedded">
                     <LoadingState label="正在读取 Diff" />
                   </div>
                 ) : diff.error ? (
-                  <div className="git-diff-editor git-diff-feedback">
-                    <div className="git-diff-editor-toolbar">{diffControls}</div>
+                  <div className="git-diff-editor git-diff-feedback git-diff-embedded">
                     <ErrorState error={diff.error} retry={() => diff.refetch()} />
                   </div>
                 ) : (
@@ -692,7 +737,8 @@ export function GitChangesTree({
                     patch={diff.data?.patch ?? ''}
                     truncated={Boolean(diff.data?.truncated)}
                     path={selectedPath}
-                    toolbarControls={diffControls}
+                    embedded
+                    sideBySide={sideBySide}
                   />
                 )}
               </section>

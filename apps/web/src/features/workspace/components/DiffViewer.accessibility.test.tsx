@@ -131,12 +131,18 @@ it('keeps embedded staged/whitespace controls and explicit split choice across a
   };
   const view = render(<GitChangesTree {...treeProps} />);
   await screen.findByText('已渲染差异编辑器');
+  const disclosure = view.container.querySelector('details.git-diff-options')!;
+  expect(disclosure.hasAttribute('open')).toBe(false);
+  fireEvent.click(disclosure.querySelector('summary')!);
   const group = screen.getByRole('group', { name: '文件 Diff 显示选项' });
-  const stagedControl = screen.getByRole('checkbox', { name: 'staged' });
+  const stagedControl = screen.getByRole('checkbox', { name: '已暂存' });
   expect(group.contains(stagedControl)).toBe(true);
   // Language remains available to assistive technology without adding a visual row.
-  expect(group.querySelector('small')?.textContent).toBe('typescript');
-  expect(group.querySelector('small')?.classList.contains('sr-only')).toBe(true);
+  expect(view.container.querySelector('.git-diff-editor > small')?.textContent).toBe('typescript');
+  expect(
+    view.container.querySelector('.git-diff-editor > small')?.classList.contains('sr-only'),
+  ).toBe(true);
+  expect(view.container.querySelector('.git-diff-editor-toolbar')).toBeNull();
   expect(group.contains(screen.getByRole('combobox', { name: 'Diff 空白处理' }))).toBe(true);
   fireEvent.click(stagedControl);
   expect(staged).toHaveBeenCalledWith(true);
@@ -161,9 +167,14 @@ it('keeps embedded staged/whitespace controls and explicit split choice across a
       }),
     ),
   );
-  expect((screen.getByRole('checkbox', { name: 'staged' }) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole('checkbox', { name: '已暂存' }) as HTMLInputElement).checked).toBe(true);
   expect(screen.getByRole('combobox', { name: 'Diff 空白处理' }).textContent).toContain('忽略全部');
   expect(screen.getAllByLabelText('two.ts', { selector: 'code' })).toHaveLength(1);
+  fireEvent.click(disclosure.querySelector('summary')!);
+  expect(disclosure.hasAttribute('open')).toBe(false);
+  expect(disclosure.querySelector('summary')?.textContent).toContain('已暂存');
+  expect(disclosure.querySelector('summary')?.textContent).toContain('忽略空白');
+  expect(disclosure.querySelector('summary')?.getAttribute('aria-label')).toContain('忽略全部空白');
 });
 
 it.each(['empty', 'binary', 'loading', 'error'] as const)(
@@ -191,8 +202,8 @@ it.each(['empty', 'binary', 'loading', 'error'] as const)(
   },
 );
 
-it.each(['loading', 'error'] as const)(
-  'keeps parent %s feedback inside the second grid row',
+it.each(['loading', 'error', 'empty', 'binary'] as const)(
+  'keeps parent %s scope controls outside the code surface',
   async (state) => {
     const { GitChangesTree } = await import('./GitChangesTree');
     const query = <T,>(data: T) => ({ data, error: null, isLoading: false, refetch: vi.fn() });
@@ -204,7 +215,16 @@ it.each(['loading', 'error'] as const)(
           entries: [{ index: ' ', worktree: 'M', path: 'one.ts' }],
         })}
         diff={{
-          ...query({ patch, truncated: false, staged: false }),
+          ...query({
+            patch:
+              state === 'empty'
+                ? ''
+                : state === 'binary'
+                  ? 'Binary files a/a and b/a differ'
+                  : patch,
+            truncated: false,
+            staged: false,
+          }),
           isLoading: state === 'loading',
           error: state === 'error' ? new Error('读取失败') : null,
         }}
@@ -222,7 +242,13 @@ it.each(['loading', 'error'] as const)(
     const review = view.container.querySelector('.git-selected-diff')!;
     expect(review.children.length).toBe(2);
     expect(review.children[1]?.classList.contains('git-diff-editor')).toBe(true);
-    expect(review.children[1]?.children.length).toBe(2);
-    expect(review.contains(screen.getByRole('checkbox', { name: 'staged' }))).toBe(true);
+    expect(review.children[1]?.children.length).toBe(1);
+    expect(review.querySelector('.git-diff-editor-toolbar')).toBeNull();
+    fireEvent.click(view.container.querySelector('.git-diff-options summary')!);
+    expect(
+      screen
+        .getByRole('group', { name: '文件 Diff 显示选项' })
+        .contains(screen.getByRole('checkbox', { name: '已暂存' })),
+    ).toBe(true);
   },
 );

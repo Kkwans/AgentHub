@@ -10,17 +10,22 @@ export function DiffViewer({
   truncated,
   path,
   toolbarControls,
+  embedded = false,
+  sideBySide: controlledSideBySide,
 }: {
   patch: string;
   truncated: boolean;
   path?: string | undefined;
   toolbarControls?: ReactNode;
+  embedded?: boolean;
+  sideBySide?: boolean;
 }) {
   const theme = useContext(AgentHubThemeContext);
   const [readyLanguage, setReadyLanguage] = useState<string>();
   const [languageError, setLanguageError] = useState<{ language: string; error: Error }>();
   // The narrow review pane starts with a readable unified diff; split remains available.
-  const [sideBySide, setSideBySide] = useState(false);
+  const [localSideBySide, setSideBySide] = useState(false);
+  const sideBySide = controlledSideBySide ?? localSideBySide;
   const parsed = useMemo(() => parseUnifiedPatch(patch), [patch]);
   const language = languageForPath(path);
   const binary = isBinaryPatch(patch);
@@ -44,12 +49,13 @@ export function DiffViewer({
     };
   }, [binary, language, patch]);
 
-  const controlsOnly = toolbarControls ? (
-    <div className="git-diff-editor-toolbar">{toolbarControls}</div>
-  ) : null;
+  const controlsOnly =
+    !embedded && toolbarControls ? (
+      <div className="git-diff-editor-toolbar">{toolbarControls}</div>
+    ) : null;
   if (!patch)
     return (
-      <div className="git-diff-editor git-diff-feedback">
+      <div className={`git-diff-editor git-diff-feedback${embedded ? ' git-diff-embedded' : ''}`}>
         {controlsOnly}
         <EmptyState title="没有 Diff" description="当前范围没有可显示的内容。" />
       </div>
@@ -57,14 +63,16 @@ export function DiffViewer({
   if (binary) {
     return (
       <div
-        className="git-diff-editor git-diff-binary"
+        className={`git-diff-editor git-diff-binary${embedded ? ' git-diff-embedded' : ''}`}
         data-truncated={truncated ? 'true' : 'false'}
       >
-        <div className="git-diff-editor-toolbar">
-          {toolbarControls}
-          <span className={toolbarControls ? 'sr-only' : undefined}>文件 Diff</span>
-          <span>二进制</span>
-        </div>
+        {!embedded && (
+          <div className="git-diff-editor-toolbar">
+            {toolbarControls}
+            <span className={toolbarControls ? 'sr-only' : undefined}>文件 Diff</span>
+            <span>二进制</span>
+          </div>
+        )}
         <div className="git-diff-warning" role="status">
           <strong>这是二进制文件，无法在文本 Diff 中预览。</strong>
           <span>{formatDiffStats(stats)}。请切换到文件视图查看文件信息。</span>
@@ -74,36 +82,44 @@ export function DiffViewer({
   }
   if (languageError?.language === language)
     return (
-      <div className="git-diff-editor git-diff-feedback">
+      <div className={`git-diff-editor git-diff-feedback${embedded ? ' git-diff-embedded' : ''}`}>
         {controlsOnly}
         <ErrorState title="Diff 语法加载失败，请刷新后重试" error={languageError.error} />
       </div>
     );
   if (readyLanguage !== language)
     return (
-      <div className="git-diff-editor git-diff-feedback">
+      <div className={`git-diff-editor git-diff-feedback${embedded ? ' git-diff-embedded' : ''}`}>
         {controlsOnly}
         <LoadingState label="正在准备 Diff 预览" />
       </div>
     );
   return (
-    <div className="git-diff-editor" data-truncated={truncated ? 'true' : 'false'}>
-      <div className="git-diff-editor-toolbar" role="group" aria-label="文件 Diff 显示选项">
-        {toolbarControls}
-        <span className={toolbarControls ? 'sr-only' : undefined}>文件 Diff</span>
-        <small className={toolbarControls ? 'sr-only' : undefined}>
-          {language === 'plaintext' ? '纯文本' : language}
-        </small>
-        <button
-          type="button"
-          className="git-diff-mode-toggle"
-          aria-pressed={sideBySide}
-          aria-label={sideBySide ? '切换为统一 Diff' : '切换为分栏 Diff'}
-          onClick={() => setSideBySide((current) => !current)}
-        >
-          {sideBySide ? '分栏' : '统一'}
-        </button>
-      </div>
+    <div
+      className={`git-diff-editor${embedded ? ' git-diff-embedded' : ''}`}
+      data-truncated={truncated ? 'true' : 'false'}
+    >
+      {embedded && (
+        <small className="sr-only">{language === 'plaintext' ? '纯文本' : language}</small>
+      )}
+      {!embedded && (
+        <div className="git-diff-editor-toolbar" role="group" aria-label="文件 Diff 显示选项">
+          {toolbarControls}
+          <span className={toolbarControls ? 'sr-only' : undefined}>文件 Diff</span>
+          <small className={toolbarControls ? 'sr-only' : undefined}>
+            {language === 'plaintext' ? '纯文本' : language}
+          </small>
+          <button
+            type="button"
+            className="git-diff-mode-toggle"
+            aria-pressed={sideBySide}
+            aria-label={sideBySide ? '切换为统一 Diff' : '切换为分栏 Diff'}
+            onClick={() => setSideBySide((current) => !current)}
+          >
+            {sideBySide ? '分栏' : '统一'}
+          </button>
+        </div>
+      )}
       <SafeDiffEditor
         height="100%"
         language={language}

@@ -1062,7 +1062,8 @@
 }
 
 :global(.workspace) :global(.git-whitespace-select .git-diff-select),
-:global(.workspace) :global(.git-diff-editor-toolbar button) {
+:global(.workspace) :global(.git-diff-editor-toolbar button),
+:global(.workspace) :global(.git-diff-options-content button) {
   width: max-content;
   min-width: 92px;
   min-height: 28px;
@@ -1075,7 +1076,8 @@
 }
 
 :global(.workspace) :global(.git-whitespace-select .git-diff-select:focus-visible),
-:global(.workspace) :global(.git-diff-editor-toolbar button:focus-visible) {
+:global(.workspace) :global(.git-diff-editor-toolbar button:focus-visible),
+:global(.workspace) :global(.git-diff-options-content button:focus-visible) {
   outline: 2px solid var(--ah-accent-primary);
   outline-offset: 1px;
 }
@@ -1090,7 +1092,8 @@
   font-size: 12px;
 }
 
-:global(.workspace) :global(.git-diff-editor-toolbar button:hover) {
+:global(.workspace) :global(.git-diff-editor-toolbar button:hover),
+:global(.workspace) :global(.git-diff-options-content button:hover) {
   color: var(--ah-text-primary);
   border-color: var(--ah-border-default);
 }
@@ -1307,4 +1310,53 @@
 :global(.workspace) :global(.git-selected-file-missing) {
   margin: 8px 12px;
   font-size: 13px;
+}
+
+/* Display preferences share the review summary row; code owns the next row. */
+:global(.workspace) :global(.git-review-toolbar .git-diff-options) {
+  min-width: 0;
+}
+:global(.workspace) :global(.git-review-toolbar .git-diff-options[open]) {
+  order: 10;
+  flex-basis: 100%;
+}
+:global(.workspace) :global(.git-diff-options > summary) {
+  min-width: 44px;
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  color: var(--ah-text-secondary);
+  font-size: 12px;
+}
+:global(.workspace) :global(.git-diff-options > summary:focus-visible) {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 2px;
+}
+:global(.workspace) :global(.git-diff-options-content) {
+  order: 10;
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+  padding-block: 4px;
+}
+:global(.workspace) :global(.git-diff-options:not([open]) > .git-diff-options-content) {
+  display: none;
+}
+:global(.workspace) :global(.git-diff-options-content button),
+:global(.workspace) :global(.git-diff-options-content label),
+:global(.workspace) :global(.git-diff-options-content .git-diff-select) {
+  min-height: 44px;
+}
+:global(.workspace) :global(.git-diff-options-content button) {
+  min-width: 44px;
+}
+:global(.workspace) :global(.git-selected-diff .git-diff-editor.git-diff-embedded) {
+  grid-template-rows: minmax(0, 1fr);
+}
+:global(.workspace)
+  :global(.git-selected-diff .git-diff-embedded[data-truncated='true']:not(.git-diff-binary)) {
+  grid-template-rows: minmax(0, 1fr) auto;
 }

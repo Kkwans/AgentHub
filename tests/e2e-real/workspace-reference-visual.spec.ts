@@ -421,7 +421,19 @@ for (const width of [390, 768, 1024, 1440]) {
       });
       expect(gitWrites).toEqual([]);
 
-      const options = review.getByRole('group', { name: '文件 Diff 显示选项' });
+      const displaySummary = page.locator('.git-inspector summary').filter({ hasText: '显示选项' });
+      await expect(displaySummary).toHaveCount(1);
+      const displayDetails = displaySummary.locator('..');
+      await expect(displayDetails).not.toHaveAttribute('open', '');
+      const initialCode = review.locator(
+        '.git-diff-editor .editor.modified .view-lines[role="presentation"]',
+      );
+      await expect(initialCode).toBeVisible({ timeout: 30_000 });
+      const compactCodeTop = (await initialCode.boundingBox())!.y;
+      await displaySummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(displayDetails).toHaveAttribute('open', '');
+      const options = page.getByRole('group', { name: '文件 Diff 显示选项' });
       await expect(options).toHaveCount(1);
       await expect(review.locator(':scope > .git-diff-toolbar')).toHaveCount(0);
       await expect(review.locator('.git-selected-diff-heading code')).toHaveText('runner.ts');
@@ -429,7 +441,7 @@ for (const width of [390, 768, 1024, 1440]) {
       // Keep the label scoped once, then verify its actual named checkbox.
       const stagedToggle = options.locator('label.git-diff-toggle');
       await expect(stagedToggle).toHaveCount(1);
-      const stagedCheckbox = stagedToggle.getByRole('checkbox', { name: 'staged', exact: true });
+      const stagedCheckbox = stagedToggle.getByRole('checkbox', { name: '已暂存', exact: true });
       await expect(stagedCheckbox).toHaveCount(1);
       await expect(stagedCheckbox).toBeVisible();
       const controls = [
@@ -455,6 +467,20 @@ for (const width of [390, 768, 1024, 1440]) {
               b.y + b.height <= a.y + 1,
           ).toBe(true);
         }
+      await expect
+        .poll(async () => (await initialCode.boundingBox())!.y - compactCodeTop)
+        .toBeGreaterThanOrEqual(40);
+      const expandedCodeTop = (await initialCode.boundingBox())!.y;
+      await displaySummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(displayDetails).not.toHaveAttribute('open', '');
+      await expect
+        .poll(async () => Math.abs((await initialCode.boundingBox())!.y - compactCodeTop))
+        .toBeLessThanOrEqual(1);
+      await info.attach('display-options-reading-height', {
+        body: JSON.stringify({ compactCodeTop, expandedCodeTop }),
+        contentType: 'application/json',
+      });
       const surfaceGeometry = await review.evaluate((element) => {
         const surface = element.getBoundingClientRect();
         const inspector = element.closest('.git-inspector')!.getBoundingClientRect();
@@ -473,7 +499,7 @@ for (const width of [390, 768, 1024, 1440]) {
       expect(Math.abs(surfaceGeometry.insetRight)).toBeLessThanOrEqual(1);
       expect(surfaceGeometry.paddingLeft).toBe('0px');
       expect(surfaceGeometry.paddingRight).toBe('0px');
-      expect(surfaceGeometry.controls).toBe(1);
+      expect(surfaceGeometry.controls).toBe(0);
       await info.attach('reference-review-surface-geometry', {
         body: JSON.stringify({ surfaceGeometry, controlsGeometry }),
         contentType: 'application/json',
@@ -522,6 +548,23 @@ for (const width of [390, 768, 1024, 1440]) {
         contentType: 'application/json',
       });
       await capture(page, info, `reference-review-${theme}-${width}`);
+      // A collapsed menu must not hide a range which changes what is being reviewed.
+      await displaySummary.focus();
+      await page.keyboard.press('Enter');
+      await stagedCheckbox.check();
+      await options.getByRole('combobox', { name: 'Diff 空白处理' }).click();
+      await page.getByRole('option', { name: '忽略全部', exact: true }).click();
+      await displaySummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(displayDetails).not.toHaveAttribute('open', '');
+      await expect(displaySummary).toContainText('已暂存');
+      await expect(displaySummary).toContainText('忽略空白');
+      await expect(displaySummary).toHaveAccessibleName('显示选项 · 已暂存 · 忽略全部空白');
+      await expect(page.getByText('正在读取 Diff', { exact: true })).toHaveCount(0);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+      ).toBeLessThanOrEqual(1);
+      await capture(page, info, `reference-review-filtered-${theme}-${width}`);
       expect(errors).toEqual([]);
       expect((await apiData<Id[]>(context, 'get', `/sessions/${session.id}/runs`)).length).toBe(1);
       expect(gitWrites).toEqual([]);

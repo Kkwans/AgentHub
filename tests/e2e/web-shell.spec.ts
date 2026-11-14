@@ -2,6 +2,19 @@ import { assertFullscreenScroll } from '../e2e-support/fullscreen-dialog.js';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type Route, type TestInfo } from '@playwright/test';
 
+async function setDiffDisplayOptions(page: Page, open: boolean) {
+  const options = page.locator('details.git-diff-options');
+  await expect(options).toHaveCount(1);
+  const summary = options.locator('summary');
+  await expect(summary).toContainText('显示选项');
+  if ((await options.getAttribute('open')) !== (open ? '' : null)) {
+    await summary.focus();
+    await page.keyboard.press('Enter');
+  }
+  if (open) await expect(options).toHaveAttribute('open', '');
+  else await expect(options).not.toHaveAttribute('open', '');
+}
+
 const project = {
   id: '11111111-1111-4111-8111-111111111111',
   name: 'AgentHub',
@@ -876,6 +889,7 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
         exact: true,
       })
       .click();
+    await setDiffDisplayOptions(page, true);
     await expect(page.getByRole('button', { name: '切换为分栏 Diff' })).toBeVisible();
     // Unified Monaco keeps a hidden gutter with class monaco-editor before
     // the actual modified editor. Assert visible source, not DOM order.
@@ -885,13 +899,20 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     await expect(modifiedLines).toBeVisible();
     await expect(modifiedLines).toContainText(/display:\s*grid/);
     await assertSelectedDiffNames();
-    const diffHeader = await page.locator('.git-selected-diff-heading').boundingBox();
-    const diffOptions = page
-      .locator('.git-selected-diff')
-      .getByRole('group', { name: '文件 Diff 显示选项' });
+    const diffOptions = page.locator('.git-diff-options-content');
     await expect(diffOptions).toHaveCount(1);
     const diffControls = await diffOptions.boundingBox();
+    await setDiffDisplayOptions(page, false);
+    await expect(diffOptions).toBeHidden();
+    await expect(page.locator('.git-selected-diff .git-diff-editor-toolbar')).toHaveCount(0);
+    const summaryControl = await page.locator('details.git-diff-options > summary').boundingBox();
+    expect(summaryControl!.height).toBeGreaterThanOrEqual(44);
+    const diffHeader = await page.locator('.git-selected-diff-heading').boundingBox();
     const diffEditor = await page.locator('.git-selected-diff > .git-diff-editor').boundingBox();
+    // The removed toolbar must really release its row to source, not become a spacer.
+    const sourceGap = diffEditor!.y - (diffHeader!.y + diffHeader!.height);
+    expect(sourceGap).toBeGreaterThanOrEqual(-1);
+    expect(sourceGap).toBeLessThanOrEqual(4);
     if (viewportWidth >= 1180) {
       expect(diffHeader!.height).toBeLessThanOrEqual(64);
       expect(diffControls!.height).toBeLessThanOrEqual(56);
@@ -1010,10 +1031,12 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
     expect(drawerViolations).toEqual([]);
     if (viewportWidth === 1024) {
       const originalViewport = page.viewportSize()!;
-      const staged = page.getByRole('checkbox', { name: 'staged', exact: true });
+      await setDiffDisplayOptions(page, true);
+      const staged = page.getByRole('checkbox', { name: '已暂存', exact: true });
       await staged.check();
       await page.setViewportSize({ ...originalViewport, width: 1179 });
       await assertMediumOpenGeometry();
+      await setDiffDisplayOptions(page, true);
       await expect(staged).toBeChecked();
       await assertSelectedDiffNames();
       await attachViewportScreenshot(page, testInfo, 'workspace-review-medium-1179');
@@ -1022,13 +1045,17 @@ test('Workspace 保持 Conversation 主舞台并恢复面板状态', async ({ pa
       await expect
         .poll(() => conversationPanel.evaluate((node) => Boolean(node.closest('[inert]'))))
         .toBe(false);
+      await setDiffDisplayOptions(page, true);
       await expect(staged).toBeChecked();
       await assertSelectedDiffNames();
       await page.setViewportSize(originalViewport);
       await assertMediumOpenGeometry();
+      await setDiffDisplayOptions(page, true);
       await expect(staged).toBeChecked();
       await assertSelectedDiffNames();
+      await setDiffDisplayOptions(page, true);
       await staged.uncheck();
+      await setDiffDisplayOptions(page, false);
     }
     await page
       .getByRole('tablist', { name: '检查器视图' })
@@ -1160,6 +1187,7 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
   const modeViolations: Array<{ mode: string; violations: unknown[] }> = [];
   for (const mode of ['unified', 'split-requested'] as const) {
     if (mode === 'split-requested') {
+      await setDiffDisplayOptions(page, true);
       await page.getByRole('button', { name: '切换为分栏 Diff' }).click();
       await expect(page.getByRole('button', { name: '切换为统一 Diff' })).toHaveAttribute(
         'aria-pressed',
@@ -1196,6 +1224,7 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
       );
     await expect(modifiedLines).toContainText(/display:\s*grid/);
     await expectNoHorizontalOverflow(page);
+    await setDiffDisplayOptions(page, false);
     await attachViewportScreenshot(page, testInfo, `workspace-diff-dark-${mode}`);
     // Keep actual pane evidence: explicit split must not silently become inline.
     const paneGeometry = await page
@@ -1231,6 +1260,7 @@ test('深色选中 Diff 在统一与请求分栏时保持可读名称和对比�
     // The same strict failure gate applies to every collected serious/critical node.
     if (violations.length) modeViolations.push({ mode, violations });
   }
+  await setDiffDisplayOptions(page, true);
   await page.getByRole('button', { name: '切换为统一 Diff' }).click();
   await expect(page.getByRole('button', { name: '切换为分栏 Diff' })).toHaveAttribute(
     'aria-pressed',
@@ -1305,15 +1335,18 @@ test('深色 TSX 选中 Diff 使用真实词法内容并保持可读', async ({ 
     timeout: SHELL_READY_TIMEOUT,
   });
   await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
-  const staged = page.getByRole('checkbox', { name: 'staged', exact: true });
+  await setDiffDisplayOptions(page, true);
+  const staged = page.getByRole('checkbox', { name: '已暂存', exact: true });
   await staged.check();
   await expect(staged).toBeChecked();
   await expect.poll(() => stagedReads).toBeGreaterThan(0);
+  await setDiffDisplayOptions(page, false);
+  await expect(page.locator('details.git-diff-options > summary')).toContainText('已暂存');
   const lines = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
   await expect(lines).toBeVisible();
   await expect(lines).toContainText(/const\s+count\s*=\s*2/);
   await expect(lines).toContainText(/label\s*=\s*'ready'/);
-  await expect(page.locator('.git-diff-editor-toolbar small')).toHaveText('typescript');
+  await expect(page.locator('.git-diff-editor > small.sr-only')).toHaveText('typescript');
   await expect.poll(() => tsxReads).toBeGreaterThan(0);
   const editors = page.locator('.git-diff-editor [role="textbox"]');
   await expect(editors).toHaveCount(2);
@@ -1440,15 +1473,18 @@ test('浅色 TSX 中性词法在真实增删背景保持可读', async ({ page }
     timeout: SHELL_READY_TIMEOUT,
   });
   await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
-  const staged = page.getByRole('checkbox', { name: 'staged', exact: true });
+  await setDiffDisplayOptions(page, true);
+  const staged = page.getByRole('checkbox', { name: '已暂存', exact: true });
   await staged.check();
   await expect(staged).toBeChecked();
   await expect.poll(() => stagedReads).toBeGreaterThan(0);
+  await setDiffDisplayOptions(page, false);
+  await expect(page.locator('details.git-diff-options > summary')).toContainText('已暂存');
   const lines = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
   await expect(lines).toBeVisible();
   await expect(lines).toContainText(/const\s+n\s*=\s*2/);
   await expect(lines).toContainText(/s\s*=\s*'ready'/);
-  await expect(page.locator('.git-diff-editor-toolbar small')).toHaveText('typescript');
+  await expect(page.locator('.git-diff-editor > small.sr-only')).toHaveText('typescript');
   await expect.poll(() => tsxReads).toBeGreaterThan(0);
   const editors = page.locator('.git-diff-editor [role="textbox"]');
   await expect(editors).toHaveCount(2);
@@ -1579,7 +1615,9 @@ test('专注审阅保留未提交草稿和编辑器并恢复原布局', async ({
   await editor.evaluate((node) => {
     node.dataset.focusIdentity = 'same-editor-node';
   });
+  await setDiffDisplayOptions(page, true);
   await page.getByRole('button', { name: '切换为分栏 Diff' }).click();
+  await setDiffDisplayOptions(page, false);
   const inspector = page.locator('.inspector-panel');
   const layout = page.locator('.three-column-split');
   const initialWidth = (await inspector.boundingBox())!.width;
@@ -1707,7 +1745,9 @@ test('只读预览的专注审阅保留默认统一模式并提供真实分栏�
     await expect(page.getByRole('textbox', { name: '提交说明', exact: true })).toBeHidden();
   };
   await assertReadingOnly();
+  await setDiffDisplayOptions(page, true);
   await expect(page.getByRole('button', { name: '切换为分栏 Diff', exact: true })).toBeVisible();
+  await setDiffDisplayOptions(page, false);
   const preferences = () =>
     page.evaluate(() =>
       Object.fromEntries(
@@ -1730,10 +1770,12 @@ test('只读预览的专注审阅保留默认统一模式并提供真实分栏�
   const audits: Array<{ mode: string; violations: unknown[] }> = [];
   for (const mode of ['unified', 'split'] as const) {
     if (mode === 'split') {
+      await setDiffDisplayOptions(page, true);
       await page.getByRole('button', { name: '切换为分栏 Diff', exact: true }).click();
       await expect(
         page.getByRole('button', { name: '切换为统一 Diff', exact: true }),
       ).toBeVisible();
+      await setDiffDisplayOptions(page, false);
       for (const pane of [original, modified]) {
         await expect
           .poll(async () => (await pane.boundingBox())?.width ?? 0)
@@ -1859,6 +1901,7 @@ test('大量变更文件在专注态保留代码首屏与末项键盘可达', as
   await page.getByRole('button', { name: `查看 ${path} Diff`, exact: true }).click();
   const code = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
   await expect(code).toContainText(/display:\s*grid/);
+  await setDiffDisplayOptions(page, false);
   const preferences = () =>
     page.evaluate(() =>
       Object.fromEntries(
@@ -2029,7 +2072,9 @@ test('手机大量变更文件首屏可读且目录末项可达', async ({ page 
   const code = page.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]');
   await expect(code).toContainText(/display:\s*grid/);
   await expect(page.getByRole('button', { name: '专注审阅', exact: true })).toHaveCount(0);
+  await setDiffDisplayOptions(page, true);
   await expect(page.getByRole('button', { name: '切换为分栏 Diff', exact: true })).toBeVisible();
+  await setDiffDisplayOptions(page, false);
   await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
   const tree = page.getByRole('tree', { name: 'Git 文件变更树', exact: true });
   await expect(tree.getByRole('checkbox')).toHaveCount(40);
