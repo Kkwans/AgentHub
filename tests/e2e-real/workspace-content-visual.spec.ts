@@ -207,6 +207,64 @@ for (const width of [390, 768, 1024, 1440]) {
       await expect(focusedCard).toHaveCSS('outline-offset', '-1px');
       await expect(focusedCard).toHaveCSS('box-shadow', 'none');
       await expect(composer).toHaveCSS('outline-style', 'none');
+      const focusContrast = await focusedCard.evaluate((node) => {
+        // Canvas resolves computed modern color(srgb)/color-mix as well as rgb.
+        // This measures solid computed surfaces, not a claim of whole-page WCAG conformance.
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d', { willReadFrequently: true })!;
+        const rgba = (color: string) => {
+          if (!CSS.supports('color', color)) throw new Error('Unparseable computed focus color');
+          context.clearRect(0, 0, 1, 1);
+          context.fillStyle = color;
+          context.fillRect(0, 0, 1, 1);
+          return Array.from(context.getImageData(0, 0, 1, 1).data).map((value) => value / 255);
+        };
+        const over = (foreground: number[], background: number[]) => {
+          const alpha = foreground[3]!;
+          return [0, 1, 2]
+            .map((index) => foreground[index]! * alpha + background[index]! * (1 - alpha))
+            .concat(1);
+        };
+        const surface = (element: Element | null) => {
+          const layers: number[][] = [];
+          for (let current = element; current; current = current.parentElement) {
+            const css = getComputedStyle(current);
+            if (css.backgroundImage !== 'none')
+              throw new Error('Focus contrast requires a solid surface');
+            const layer = rgba(css.backgroundColor);
+            layers.unshift(layer);
+            if (layer[3] === 1) break;
+          }
+          return layers.reduce((background, layer) => over(layer, background), [1, 1, 1, 1]);
+        };
+        const luminance = (color: number[]) =>
+          color
+            .slice(0, 3)
+            .reduce(
+              (total, value, index) =>
+                total +
+                (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4) *
+                  [0.2126, 0.7152, 0.0722][index]!,
+              0,
+            );
+        const outlineColor = getComputedStyle(node).outlineColor;
+        const outline = rgba(outlineColor);
+        const inside = surface(node);
+        const outside = surface(node.parentElement);
+        const ratios = [inside, outside].map((background) => {
+          const a = luminance(over(outline, background)),
+            b = luminance(background);
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        });
+        return { outlineColor, outline, inside, outside, ratios };
+      });
+      expect(focusContrast.outline[3]).toBe(1);
+      for (const ratio of focusContrast.ratios) expect(ratio).toBeGreaterThanOrEqual(3);
+      await info.attach('composer-focus-contrast', {
+        body: JSON.stringify(focusContrast),
+        contentType: 'application/json',
+      });
       await capture(page, info, 'composer-focused', composer, focusedCard);
       await page.getByRole('button', { name: '发送', exact: true }).click();
       const approve = page.getByRole('button', { name: '允许一次', exact: true });

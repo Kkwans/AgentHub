@@ -273,7 +273,7 @@
 /* The text field uses the composer's rounded boundary as its focus indicator,
    not a second rectangular frame inside the surface. Buttons keep their rings. */
 .workspace :global(.chat-command-card:has(textarea:focus-visible)) {
-  outline: 2px solid hsl(var(--foreground-muted));
+  outline: 2px solid color-mix(in srgb, hsl(var(--foreground-muted)) 70%, hsl(var(--surface)));
   outline-offset: -1px;
   border-color: transparent;
   box-shadow: none;
