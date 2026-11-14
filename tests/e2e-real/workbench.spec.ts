@@ -94,7 +94,13 @@ test.describe('local_trusted 项目与 Work', () => {
     const dialog = page.getByRole('dialog', { name: '创建项目' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('combobox', { name: '运行环境' })).toBeVisible();
-    await expect(dialog.getByRole('combobox', { name: '授权根目录' })).toBeVisible();
+    // This fixture grants exactly one root: show its full path, not a redundant selector.
+    await expect(dialog.getByText('授权根目录', { exact: true })).toBeVisible();
+    await expect(
+      dialog.getByText(app.projectRoot, { exact: true }).and(dialog.locator('code')),
+    ).toBeVisible();
+    await expect(dialog.getByText('当前位置：授权根目录', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: '授权根目录' })).toHaveCount(0);
     await dialog.getByRole('button', { name: '选择当前目录' }).click();
     await dialog.getByRole('textbox', { name: '项目名称' }).fill('QA UI Project');
     await expect(dialog.getByText('目录可以使用')).toBeVisible({ timeout: 15_000 });

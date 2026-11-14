@@ -2109,3 +2109,7 @@ aaa精确focused已成功163+4；下载70.1MiB产物并逐张查看四宽明暗8
 两专项46测试通过；fixture适配原生键盘展开、staged中文与语言metadata，list100及严格类型过；真实矩阵补折叠/展开代码起点至少一行差、闭合回原位、44触点/无相交，保既有裁切/无写入等门禁，类型/list8通过只是发现非执行。六实现/测试文件冻结，全web/UI聚合中；无当前片真实截图，不说美学完成。
 
 21:34 UTC：133文件1468测试全过196.31秒；最终lint/typecheck/integration类型与测试结束后串行全仓build均exit0。六实现/测试文件hash复核一致。独立CR无阻断，真实测量改poll等待Monaco布局而不放宽40px阈值，并增加已暂存+忽略空白闭合摘要的非默认四宽明暗截图；仍未执行新浏览器。准备推送。
+
+### 2026-11-14 21:38 UTC 全量旧根目录断言修正
+
+aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spec.ts97仍假设单授权根有combobox，与897产品单根静态全路径展示不符。仅改测试：校验授权根标签、code完整app.projectRoot、当前位置授权根、单根无冗余combobox；选择目录/preflight/create/进入项目上下文后续完整保留。搜索其它同类假设，仅多根单测仍应使用combobox。该文件严格类型/scoped lint/list4/diff过，不冒称实际浏览器或full全绿。0067 focused成功但只覆盖4个变量修复新工作spec例；新建工作八图在其仍运行full，未据focused关问题。
