@@ -2127,3 +2127,9 @@ aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spe
 深树冻结完整web/UI134文件1475测试通过196.24秒。最终静态与串行构建进行；发布前无真实九层浏览器结果，不将已完成专项/源码检查当端到端。
 
 21:55 UTC：最终lint/typecheck/integration类型及聚合完成后串行全仓build均exit0；十三实现/测试/CI文件hash全部匹配冻结。授权生命周期修正后独立CR无当前单Workspace阻断。准备提交深树片；实际9层浏览器与新截图继续待精确CI。
+
+### 2026-11-14 22:04 UTC 真实截图锚点漏同步修复
+
+8c48 focused在25分钟被取消。日志证明workspace-content-visual仍在selected Diff内部寻找已移到摘要行的显示选项group，4例各180秒超时；下一例被中断，后续未执行。fixture通过不能代替该真实矩阵。此处是本次重排遗漏测试同步，不是把产品失败归咎环境。
+
+只改该真实spec：键盘展开/关闭外部显示选项并验证已暂存/空白/分栏控件；默认截图改实际文件标题锚点，仍保持原diff区域与capture几何、后续真实Git提交全流程。最终CR将可见性定位到modified view-lines，避免统一Diff首个monaco隐藏gutter歧义。timeout未加大，断言未删除以掩盖失败。list8/scoped lint/类型验证，实际执行仍待新commit。

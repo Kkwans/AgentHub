@@ -684,3 +684,7 @@ aaa full177/1的唯一失败为workbench旧combobox假设，不是preflight/crea
 ### 2026-11-14 21:43 UTC 文件树深层目录读取缺口
 
 当前已有递归目录UI；不是平铺完整路径回归。源码固定depth4且目录展开不再请求，服务端边界目录无children，深层路径不能继续下钻。aaa fixture将深路径文件直接挂浅层，不能证明真实深树。已核现有depth0按path读取与安全限制，不改后端权限；前端惰性读取和真8–10层测试开始，尚未提交/端到端验收，详DEEP_FILE_NAVIGATION.md。
+
+### 2026-11-14 22:04 UTC 真实Diff截图锚点遗漏
+
+8c48重排显示选项后workspace-content真实spec仍找selected Diff内group，导致4例180秒超时与focused25分钟取消，后续用例未跑。候选同步外部group键盘展开及默认文件标题截图锚点，保capture区域/几何/后续Git提交，不提高timeout。新真实结果未出，不能称8c48整矩阵通过。

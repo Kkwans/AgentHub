@@ -410,13 +410,32 @@ for (const width of [390, 768, 1024, 1440]) {
         exact: true,
       });
       await expect(diffRegion).toBeVisible({ timeout: 30_000 });
-      await capture(
-        page,
-        info,
-        'diff',
-        diffRegion.getByRole('group', { name: '文件 Diff 显示选项' }),
-        diffRegion,
-      );
+      const displaySummary = page.locator('.git-diff-options > summary');
+      const displayDetails = page.locator('.git-diff-options');
+      await expect(displaySummary).toHaveCount(1);
+      await expect(displayDetails).not.toHaveAttribute('open', '');
+      await displaySummary.focus();
+      await expect(displaySummary).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(displayDetails).toHaveAttribute('open', '');
+      const options = page.getByRole('group', { name: '文件 Diff 显示选项' });
+      await expect(options).toHaveCount(1);
+      await expect(options).toBeVisible();
+      await expect(diffRegion.getByRole('group', { name: '文件 Diff 显示选项' })).toHaveCount(0);
+      await expect(options.getByRole('checkbox', { name: '已暂存', exact: true })).toBeVisible();
+      await expect(options.getByRole('combobox', { name: 'Diff 空白处理' })).toBeVisible();
+      await expect(options.getByRole('button', { name: '切换为分栏 Diff' })).toBeVisible();
+      await displaySummary.focus();
+      await page.keyboard.press('Enter');
+      await expect(displayDetails).not.toHaveAttribute('open', '');
+      await expect(options).not.toBeVisible();
+      const diffHeading = diffRegion.locator('.git-selected-diff-heading code');
+      await expect(diffHeading).toHaveText('fixture-output.md');
+      await expect(diffRegion.locator('.git-diff-editor-toolbar')).toHaveCount(0);
+      await expect(
+        diffRegion.locator('.git-diff-editor .editor.modified .view-lines[role="presentation"]'),
+      ).toBeVisible();
+      await capture(page, info, 'diff', diffHeading, diffRegion);
       await showInspector(page, width, 'changes');
       await page.getByRole('button', { name: '展开文件清单', exact: true }).click();
       await page
