@@ -114,7 +114,10 @@ for (const width of [390, 768, 1024, 1440])
       await page.addInitScript((theme) => localStorage.setItem('agenthub-theme', theme), theme);
       await page.goto(`/projects/${project.id}/sessions`);
       await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', theme);
-      const sessionLink = page.locator(`a[href="/workspace/${session.id}"]`);
+      const sessionLink = page
+        .getByRole('region', { name: '项目会话', exact: true })
+        .locator(`a[href="/workspace/${session.id}"]`);
+      await expect(sessionLink).toHaveCount(1);
       await expect(sessionLink).toBeVisible();
       const toolbar = page.locator('[aria-label="会话筛选"]');
       const status = toolbar.getByRole('combobox', { name: '会话状态', exact: true });
