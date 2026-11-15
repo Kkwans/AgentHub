@@ -7,6 +7,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { api, type WorktreeExecutionRecord } from '../../../lib/api';
 import { WorktreeReviewActions } from './WorktreeReviewActions';
+import styles from './worktreeReviewActions.module.css';
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -95,7 +96,15 @@ it('先显式读取完整受管差异，明确确认后才合并', async () => {
   await load();
   expect(screen.getByText('src/example.ts')).toBeVisible();
   expect(screen.getByText(/自动提交全部改动/)).toHaveTextContent('main');
-  fireEvent.click(screen.getByRole('checkbox'));
+  const confirmation = screen.getByRole('checkbox', {
+    name: '我已审阅改动，确认提交并合并到基础分支',
+  });
+  expect(confirmation).not.toBeChecked();
+  expect(confirmation).toHaveAttribute('type', 'checkbox');
+  expect(confirmation.closest('label')).toHaveClass(styles.confirmationRow!);
+  fireEvent.click(confirmation.closest('label')!);
+  expect(confirmation).toBeChecked();
+  expect(post).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: '提交并合并隔离工作区' }));
   await screen.findByText(/merge-sha/);
   expect(post).toHaveBeenCalledWith('/worktree-executions/execution-a/merge', {

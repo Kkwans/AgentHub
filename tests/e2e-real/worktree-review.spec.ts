@@ -238,10 +238,38 @@ for (const width of [390, 768, 1024, 1440]) {
     await load.click();
     await expect(page.getByText('fixture-output.md', { exact: true })).toBeVisible();
     await expect(merge).toBeDisabled();
-    await page
-      .getByRole('checkbox', { name: '我已审阅改动，确认提交并合并到基础分支', exact: true })
-      .check();
+    const confirmation = page.getByRole('checkbox', {
+      name: '我已审阅改动，确认提交并合并到基础分支',
+      exact: true,
+    });
+    const confirmationRow = confirmation.locator('..');
+    await confirmation.focus();
+    await page.keyboard.press('Space');
+    await expect(confirmation).toBeChecked();
     await expect(merge).toBeEnabled();
+    await page.keyboard.press('Space');
+    await expect(confirmation).not.toBeChecked();
+    await expect(merge).toBeDisabled();
+    await confirmationRow.click();
+    await expect(confirmation).toBeChecked();
+    await expect(merge).toBeEnabled();
+    const rowBox = (await confirmationRow.boundingBox())!;
+    const checkboxBox = (await confirmation.boundingBox())!;
+    const confirmationShot = info.outputPath(`worktree-confirmation-touch-${width}.png`);
+    await page.screenshot({ path: confirmationShot });
+    await info.attach('worktree-confirmation-touch', {
+      path: confirmationShot,
+      contentType: 'image/png',
+    });
+    await info.attach('worktree-confirmation-geometry', {
+      body: JSON.stringify({ rowBox, checkboxBox }),
+      contentType: 'application/json',
+    });
+    expect(rowBox.height).toBeGreaterThanOrEqual(44);
+    expect(checkboxBox.width).toBeGreaterThanOrEqual(18);
+    expect(checkboxBox.height).toBeGreaterThanOrEqual(18);
+    expect(rowBox.x).toBeGreaterThanOrEqual(0);
+    expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(width + 1);
     await merge.scrollIntoViewIfNeeded();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),

@@ -488,7 +488,7 @@ export function WorktreeReviewActions({
           ；不推送远端，不自动删除分支或工作区。预览不是不可变快照，合并时仍由服务器执行 Git
           安全检查。
         </p>
-        <label>
+        <label className={styles.confirmationRow}>
           <input
             type="checkbox"
             checked={confirmation && Boolean(shown)}

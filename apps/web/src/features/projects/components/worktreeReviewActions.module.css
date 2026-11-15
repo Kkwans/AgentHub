@@ -122,3 +122,22 @@
   color: var(--ah-accent-primary);
   background: var(--ah-accent-soft);
 }
+
+.confirmationRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.confirmationRow input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+}
+
+.confirmationRow input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--ah-accent-primary);
+  outline-offset: 3px;
+}
