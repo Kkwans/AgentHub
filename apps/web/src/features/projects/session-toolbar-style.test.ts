@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 const css = readFileSync(new URL('./sessionToolbar.module.css', import.meta.url), 'utf8');
 const scoped = css.slice(css.indexOf('/* Keep the session filters together'));
 const desktop = scoped.slice(0, scoped.indexOf('/* At narrow tablet widths'));
-const tablet = scoped.slice(scoped.indexOf('/* At narrow tablet widths'));
+const tablet = scoped.slice(
+  scoped.indexOf('/* At narrow tablet widths'),
+  scoped.indexOf('/* A disclosed filter row'),
+);
 
 function rule(source: string, selector: string) {
   const start = source.indexOf(selector);
@@ -31,7 +34,9 @@ describe('session toolbar responsive filter grouping', () => {
     expect(group).toContain('order: 1');
     expect(group).toContain('flex: 1 0 100%');
     expect(rule(tablet, '.toolbar .select')).toContain('flex: 1 1 0');
-    expect(scoped).not.toMatch(/\.projectsToolbar|\.workToolbar|\[hidden\]|max-width: 767px/);
+    expect(desktop + tablet).not.toMatch(
+      /\.projectsToolbar|\.workToolbar|\[hidden\]|max-width: 767px/,
+    );
     // Existing phone disclosure remains responsible for visibility and layout.
     const existing = readFileSync(new URL('./projects.module.css', import.meta.url), 'utf8');
     expect(existing).toMatch(/\.sessionFilterOptions\[hidden\]\s*\{\s*display: none;/);
@@ -50,8 +55,16 @@ it('applies the scoped module alongside every existing toolbar class', () => {
     ['sessionFilterOptions', 'filters', 1],
     ['toolbarSelect', 'select', 2],
     ['toolbarSpacer', 'spacer', 1],
+    ['toolbarMore', 'more', 2],
   ] as const) {
     const classes = '${projectsStyles.' + existing + '} ${sessionToolbar.' + scoped + '}';
     expect(view.split(classes).length - 1).toBe(count);
   }
+});
+
+it('keeps both phone disclosure actions at least 44px without relying on a stretched flex row', () => {
+  const phone = scoped.slice(scoped.indexOf('/* A disclosed filter row'));
+  expect(phone).toContain('@media (max-width: 767px)');
+  expect(rule(phone, '.toolbar .more')).toContain('min-width: 44px');
+  expect(rule(phone, '.toolbar .more')).toContain('min-height: 44px');
 });

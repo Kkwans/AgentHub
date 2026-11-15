@@ -21,7 +21,11 @@ async function captureToolbar(page: Page, info: TestInfo, state: string, expande
     controls.agent = toolbar.getByRole('combobox', { name: '会话 Agent', exact: true });
     controls.status = toolbar.getByRole('combobox', { name: '会话状态', exact: true });
   }
-  if (width < 768) controls.toggle = toolbar.getByRole('button', { name: /^筛选/ });
+  if (width < 768) {
+    controls.toggle = toolbar.getByRole('button', { name: /^筛选/ });
+    const clear = toolbar.getByRole('button', { name: '清除条件', exact: true });
+    if (await clear.count()) controls.clear = clear;
+  }
   const boxes: Record<string, Box> = {};
   const text: Record<
     string,
@@ -90,7 +94,12 @@ async function captureToolbar(page: Page, info: TestInfo, state: string, expande
     );
   }
   if (width < 768) {
-    for (const name of ['create', 'toggle', ...(expanded ? ['agent', 'status'] : [])]) {
+    for (const name of [
+      'create',
+      'toggle',
+      ...(expanded ? ['agent', 'status'] : []),
+      ...(controls.clear ? ['clear'] : []),
+    ]) {
       expect(boxes[name]!.height, name).toBeGreaterThanOrEqual(44);
       expect(boxes[name]!.width, name).toBeGreaterThanOrEqual(44);
     }
@@ -118,17 +127,23 @@ for (const width of [390, 768, 1024, 1440])
         await expect(toggle).toHaveAttribute('aria-expanded', 'true');
         await captureToolbar(page, info, 'expanded', true);
       }
-      await status.click();
       // The real seeded session contributes its actual status; choose that option
       // rather than inventing another server state or intercepting the response.
-      const choice = page.getByRole('option').filter({ hasNotText: '全部状态' }).first();
-      const label = (await choice.innerText()).trim();
+      const label = (await sessionLink.getByRole('status').innerText()).trim();
       expect(label).not.toBe('');
+      expect(label).not.toBe('全部状态');
+      expect(label).not.toBe('清除选择');
+      await status.click();
+      const choice = page.getByRole('option', { name: label, exact: true });
+      await expect(choice).toHaveCount(1);
       await choice.click();
       await expect(status).toContainText(label);
       await expect(sessionLink).toBeVisible();
-      if (width < 768)
+      if (width < 768) {
         await expect(toolbar.getByRole('button', { name: '筛选（1）', exact: true })).toBeVisible();
+        await expect(toolbar.getByRole('button', { name: '清除条件', exact: true })).toBeVisible();
+        await captureToolbar(page, info, 'filtered', true);
+      }
       await status.click();
       await page.getByRole('option', { name: '全部状态', exact: true }).click();
       await expect(status).toContainText('全部状态');

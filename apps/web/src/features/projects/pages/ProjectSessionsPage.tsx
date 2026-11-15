@@ -255,7 +255,7 @@ export function ProjectSessionsPage() {
               <button
                 type="button"
                 ref={filterToggleRef}
-                className={projectsStyles.toolbarMore}
+                className={`${projectsStyles.toolbarMore} ${sessionToolbar.more}`}
                 aria-expanded={filtersOpen}
                 aria-controls={filterOptionsId}
                 onClick={() => setFiltersOpen((open) => !open)}
@@ -265,7 +265,11 @@ export function ProjectSessionsPage() {
               </button>
             ) : null}
             {compact && activeFilterCount ? (
-              <button type="button" className={projectsStyles.toolbarMore} onClick={clearFilters}>
+              <button
+                type="button"
+                className={`${projectsStyles.toolbarMore} ${sessionToolbar.more}`}
+                onClick={clearFilters}
+              >
                 清除条件
               </button>
             ) : null}

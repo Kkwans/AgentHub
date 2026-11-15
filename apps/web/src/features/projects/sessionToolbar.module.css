@@ -29,3 +29,12 @@
     flex: 1 1 0;
   }
 }
+
+/* A disclosed filter row no longer inherits height from the adjacent primary
+ * action, so its own touch target must remain at least 44px in either state. */
+@media (max-width: 767px) {
+  .toolbar .more {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
