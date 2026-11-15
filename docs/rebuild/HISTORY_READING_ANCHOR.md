@@ -42,3 +42,12 @@
 - 结束记录时重挂动画150/200ms仍运行，不是动画/owner完全释放证明，也未证明529持续8px失败的全部单因。已证的是历史重挂的可变几何入场风险。
 - 本片仅两层改专用conversation-entry-fade（opacity0→1），保时长/easing/both/reduced-motion；不改全局hci-entry或virtual-item定位transform，不减8常数/放宽门禁。
 - 最终冻结验证：web+UI137文件1501测试、lint/types/build、CSS预算通过，4代码/测试SHA一致，独立CR无阻断。精确新浏览器仍待验证。
+
+## 2026-11-15 00:27 UTC：完整矩阵与失败/成功连续证据
+
+- 643完整verify仍失败：1440深色3pass后总高合同7px。1701帧最终两动画finished/transform0，Y由before36.9772变29，真实阅读偏约7.98；虚拟行/list总高稳定，无下方late尺寸变化。首次双4px入场补偿后留下偏移；owner具体clear路径未记录，不能断言。
+- 61短24+1通过：18帧A-193的Y从click/before到commit/afterEach恒为82，H15307→31307且S14180→30180，两动画仍运行但transform均none。
+- 61完整verify通过：247文件2508测试（12跳过）、词法9、fixture111过13跳过，原四宽双主题history合同未改。focused/full大矩阵尚待最终结果，不把verify通过写作所有CI绿。
+- 已人工看61手机390浅色及桌面1440深色当前会话图；是隔离项目/合成会话，不是生产provider验收。
+
+00:28 UTC 独立复核61完整HTML报告：history24/24 passed、retry0；8个成功案例均有独立诊断。四宽浅/深click=before=commit=afterEach偏移分别1440的129/36、1024的92/105、768的74/74、390的14/14；全部mounted采样内两动画transform none、总高残差0、drop0。窗口138–243ms，不延伸为长期晚媒体压力测试。

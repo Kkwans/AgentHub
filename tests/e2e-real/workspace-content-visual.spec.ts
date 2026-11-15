@@ -24,6 +24,33 @@ async function capture(
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
   ).toBeLessThanOrEqual(1);
+  if (page.viewportSize()!.width >= 768 && page.viewportSize()!.width < 1180) {
+    const agent = page.locator('.workspace-context-disclosure > summary');
+    await expect(agent).toBeVisible();
+    const fullName = (await agent.locator('small').textContent())!.replace(/\s+/g, ' ').trim();
+    const escapedName = fullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await expect(agent).toHaveAccessibleName(new RegExp(escapedName));
+    const header = await agent.evaluate((summary) => {
+      const box = (element: Element) => {
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, width: rect.width };
+      };
+      return {
+        summary: box(summary),
+        owner: box(summary.parentElement!),
+        content: box(summary.querySelector('.ah-workbench-disclosure-summary-content')!),
+        label: box(summary.querySelector('.workspace-context-disclosure-summary')!),
+        name: box(summary.querySelector('small')!),
+        review: box(document.querySelector('.codex-review-button')!),
+      };
+    });
+    expect(header.name.width).toBeGreaterThan(0);
+    for (const box of [header.summary, header.content, header.label, header.name]) {
+      expect(box.right).toBeLessThanOrEqual(header.owner.right + 1);
+      expect(box.right).toBeLessThanOrEqual(header.review.left);
+      expect(box.left).toBeGreaterThanOrEqual(header.owner.left - 1);
+    }
+  }
   const geometry = await region.evaluate((node) => {
     const rect = node.getBoundingClientRect();
     return {

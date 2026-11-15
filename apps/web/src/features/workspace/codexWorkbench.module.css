@@ -470,3 +470,42 @@
     display: inline-grid;
   }
 }
+
+/* Tablet context must shrink through every summary wrapper, not paint its
+ * intrinsic Agent name over the adjacent review action. Keep the name in the
+ * accessible summary and the expanded context; only its visual tail ellipsizes. */
+@media (min-width: 768px) and (max-width: 1179px) {
+  .workspace :global(.workspace-context-disclosure) {
+    min-width: 80px;
+  }
+  .workspace :global(.workspace-context-disclosure > .ah-workbench-disclosure-summary) {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding-inline: 0;
+  }
+  .workspace :global(.workspace-context-disclosure .ah-workbench-disclosure-summary-content) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .workspace :global(.workspace-context-disclosure-summary) {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .workspace :global(.workspace-context-disclosure-summary > svg),
+  .workspace :global(.workspace-context-disclosure-summary > span) {
+    flex-shrink: 0;
+  }
+  .workspace :global(.workspace-context-disclosure-summary small) {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
