@@ -330,6 +330,17 @@ jobs:
           pnpm exec playwright test --config=playwright.real.config.ts
           tests/e2e-real/manual-task-start.spec.ts --grep '手工任务合法两步'
           --workers=1 --retries=0 --output=manual-note-results --reporter=line,json
+      # Early form evidence only; the full real-service matrix keeps both files.
+      - name: Capture project and Prompt form interactions
+        if: ${{ !cancelled() }}
+        env:
+          AGENTHUB_E2E_REAL_TMPDIR: ${{ runner.temp }}/agenthub-form-interactions
+          PLAYWRIGHT_JSON_OUTPUT_NAME: form-interaction-results/results.json
+        run: >-
+          pnpm exec playwright test --config=playwright.real.config.ts
+          tests/e2e-real/new-work-prompt.spec.ts
+          tests/e2e-real/project-directory-picker.spec.ts
+          --workers=1 --retries=0 --output=form-interaction-results --reporter=line,json
       # Standalone HTML design evidence, not real service or Agent acceptance.
       - name: Capture standalone session context prototype
         if: ${{ !cancelled() }}
@@ -348,5 +359,6 @@ jobs:
             workspace-history-results/
             prototype-test-results/
             manual-note-results/
+            form-interaction-results/
           if-no-files-found: warn
           retention-days: 7
