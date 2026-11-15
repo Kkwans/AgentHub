@@ -1,6 +1,6 @@
 .panel {
   min-width: 0;
-  padding: 20px;
+  padding: 20px var(--task-inspector-inset, 20px);
   box-sizing: border-box;
   border-top: 1px solid var(--ah-border-subtle);
 }

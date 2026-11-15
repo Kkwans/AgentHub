@@ -163,6 +163,34 @@ for (const width of [390, 768, 1024, 1440]) {
       const path = info.outputPath(`manual-task-start-${width}-${theme}.png`);
       await page.screenshot({ path, fullPage: true });
       await info.attach('手工任务已开始', { path, contentType: 'image/png' });
+      const attemptsPanel = page.getByRole('region', { name: '任务启动记录', exact: true });
+      const attemptsButton = attemptsPanel.getByRole('button', {
+        name: '查询启动记录',
+        exact: true,
+      });
+      await attemptsButton.scrollIntoViewIfNeeded();
+      const attemptsBoxes = await Promise.all([
+        attemptsPanel.getByRole('heading', { name: '启动记录', exact: true }).boundingBox(),
+        attemptsPanel
+          .getByText('只查询原尝试，不会启动 Agent 或解除未决操作。', { exact: true })
+          .boundingBox(),
+        attemptsButton.boundingBox(),
+      ]);
+      const attemptsPath = info.outputPath(`manual-start-history-alignment-${width}-${theme}.png`);
+      await page.screenshot({ path: attemptsPath });
+      await info.attach('manual-start-history-alignment', {
+        path: attemptsPath,
+        contentType: 'image/png',
+      });
+      await info.attach('manual-start-history-geometry', {
+        body: JSON.stringify({ referenceLeft, attemptsBoxes }),
+        contentType: 'application/json',
+      });
+      for (const box of attemptsBoxes) {
+        expect(box).not.toBeNull();
+        expect(Math.abs(box!.x - referenceLeft)).toBeLessThanOrEqual(1);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width + 1);
+      }
       expect(errors).toEqual([]);
     });
   }
