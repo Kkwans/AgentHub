@@ -577,6 +577,38 @@ describe('新建 Task 的明确 Prompt 选择', () => {
     fireEvent.click(screen.getByRole('button', { name: '预览并固定版本' }));
     await screen.findByText(/已固定版本 v7/);
   }
+  it.each([false, true])(
+    '预览说明跟随有效预览，编辑变量后恢复待预览（缺变量：%s）',
+    async (missing) => {
+      const f = promptWorkflow({ noAgent: true, missing });
+      show(f.fetchMock);
+      await selectPrompt();
+      expect(screen.getByText(/^待预览 测试资产/)).toBeInTheDocument();
+      expect(screen.queryByText(/^已预览 测试资产/)).not.toBeInTheDocument();
+      await previewPrompt();
+      expect(screen.getByText(/^已预览 测试资产.*固定版本见下方。$/)).toBeInTheDocument();
+      expect(screen.queryByText(/^待预览 测试资产/)).not.toBeInTheDocument();
+      if (missing) {
+        expect(screen.getByText('缺少变量：subject')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
+      } else {
+        expect(screen.getByRole('button', { name: '创建任务' })).not.toBeDisabled();
+      }
+      fireEvent.change(screen.getByLabelText('Prompt 变量（JSON 对象）'), {
+        target: { value: '{"subject":"修改后必须重新预览"}' },
+      });
+      expect(screen.getByText(/^待预览 测试资产/)).toBeInTheDocument();
+      expect(screen.queryByText(/^已预览 测试资产/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Prompt 预览' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
+      await previewPrompt();
+      expect(screen.getByText(/^已预览 测试资产/)).toBeInTheDocument();
+      expect(f.bodies.filter((request) => request.path.endsWith('/render'))[1]?.body).toEqual({
+        version: 7,
+        variables: { subject: '修改后必须重新预览' },
+      });
+    },
+  );
   it.each([
     null,
     { ...rendered, promptId: 'another-prompt' },

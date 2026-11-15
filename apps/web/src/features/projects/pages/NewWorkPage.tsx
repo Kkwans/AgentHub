@@ -505,7 +505,9 @@ function NewWorkForm({ project, scope }: { project: ProjectRecord; scope: string
                   {kind === 'goal'
                     ? 'Goal 创建不会绑定 Prompt；请在具体 Task 上选择。'
                     : selectedPrompt
-                      ? `待预览 ${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）；确认版本后才会绑定任务。`
+                      ? preview
+                        ? `已预览 ${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）；固定版本见下方。`
+                        : `待预览 ${selectedPrompt.name}（${labelPromptType(selectedPrompt.type)}）；确认版本后才会绑定任务。`
                       : '变量会保存到任务，供继承的 Global / Project / Agent 等 Binding 使用；未固定模板版本，按启动时的绑定解析。'}
                 </p>
                 {kind === 'task' ? (

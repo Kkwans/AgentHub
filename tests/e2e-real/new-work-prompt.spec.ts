@@ -182,6 +182,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('option', { name: /工作模板/ }).click();
       const create = dialog.getByRole('button', { name: '创建并开始', exact: true });
       await expect(create).toBeDisabled();
+      await expect(dialog.getByText(/^待预览 工作模板/)).toBeVisible();
       await dialog
         .getByRole('textbox', { name: 'Prompt 变量（JSON 对象）' })
         .fill('{"subject":"登录回归"}');
@@ -189,6 +190,10 @@ for (const theme of ['light', 'dark'] as const) {
       const preview = dialog.getByRole('region', { name: 'Prompt 预览' });
       await expect(preview).toContainText('已固定版本 v1');
       await expect(preview).toContainText('固定旧版本：处理 登录回归');
+      await expect(dialog.getByText(/^待预览 工作模板/)).toHaveCount(0);
+      await expect(
+        dialog.getByText('已预览 工作模板（文本）；固定版本见下方。', { exact: true }),
+      ).toBeVisible();
       // Publishing a newer version after preview must not change the selected version.
       await apiData(context, 'post', `/prompts/${prompt.id}/versions`, {
         content: { text: '错误的新版本内容' },
