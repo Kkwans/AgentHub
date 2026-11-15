@@ -76,6 +76,88 @@ async function capture(
   await region.screenshot({ path: regionPath });
   await info.attach(`${state}-region`, { path: regionPath, contentType: 'image/png' });
 }
+async function assertTabletAgentDetails(page: Page, info: TestInfo, cwd: string) {
+  const disclosure = page.locator('.workspace-context-disclosure');
+  const summary = disclosure.locator(':scope > summary');
+  const content = disclosure.locator(':scope > .ah-workbench-disclosure-content');
+  await expect(disclosure).not.toHaveAttribute('open', '');
+  await summary.focus();
+  await expect(summary).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(disclosure).toHaveAttribute('open', '');
+  await expect(content).toBeVisible();
+  await expect(content.getByText('本地 ACP 协议验收工具', { exact: true })).toBeVisible();
+  await expect(content.locator('code')).toHaveText(cwd);
+  await expect(content.locator('code')).toHaveAttribute('title', cwd);
+  // Capture before geometry assertions so a clipping failure still has evidence.
+  const path = info.outputPath('workspace-agent-context-expanded.png');
+  await page.screenshot({ path });
+  await info.attach('agent-context-expanded', { path, contentType: 'image/png' });
+  const geometry = await content.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    const bounds = { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    const ranges: Array<{
+      text: string;
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+    }> = [];
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+      if (!text.textContent?.trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      for (const box of range.getClientRects()) {
+        ranges.push({
+          text: text.textContent,
+          left: box.left,
+          right: box.right,
+          top: box.top,
+          bottom: box.bottom,
+        });
+      }
+    }
+    return {
+      bounds,
+      ranges,
+      viewport: { width: innerWidth, height: innerHeight },
+      containers: [node, ...Array.from(node.querySelectorAll<HTMLElement>('*'))]
+        .map((element) => ({
+          tag: element.tagName,
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        }))
+        .filter((element) => element.clientWidth > 0),
+    };
+  });
+  await info.attach('agent-context-expanded-geometry', {
+    body: JSON.stringify(geometry),
+    contentType: 'application/json',
+  });
+  expect(geometry.ranges.length).toBeGreaterThan(0);
+  for (const container of geometry.containers) {
+    expect(container.scrollWidth, `${container.tag} horizontal overflow`).toBeLessThanOrEqual(
+      container.clientWidth + 1,
+    );
+  }
+  for (const box of geometry.ranges) {
+    expect(box.left, box.text).toBeGreaterThanOrEqual(Math.max(0, geometry.bounds.left) - 1);
+    expect(box.right, box.text).toBeLessThanOrEqual(
+      Math.min(geometry.viewport.width, geometry.bounds.right) + 1,
+    );
+    expect(box.top, box.text).toBeGreaterThanOrEqual(Math.max(0, geometry.bounds.top) - 1);
+    expect(box.bottom, box.text).toBeLessThanOrEqual(
+      Math.min(geometry.viewport.height, geometry.bounds.bottom) + 1,
+    );
+  }
+  await expect(summary).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(disclosure).not.toHaveAttribute('open', '');
+  await expect(content).toBeHidden();
+  await expect(summary).toBeFocused();
+}
+
 async function assertComposerLabels(page: Page, width: number) {
   const prompt = page.getByRole('button', { name: /^PromptOS / });
   const terminal = page.getByRole('button', { name: /^打开 Terminal/ });
@@ -405,6 +487,9 @@ for (const width of [390, 768, 1024, 1440]) {
         completed,
         page.getByRole('region', { name: 'Agent 对话' }),
       );
+      if (width === 768 || width === 1024) {
+        await assertTabletAgentDetails(page, info, app.projectRoot);
+      }
       if (width === 390) {
         const toolRow = page
           .locator('.tool-entry-card')
