@@ -479,6 +479,51 @@ for (const width of [390, 768, 1024, 1440]) {
       await composer.fill('继续检查取消后的状态传播。');
       // Capture the real conversation separately before opening narrow-screen review.
       await capture(page, info, `reference-conversation-${theme}-${width}`);
+      // Diagnose the adjacent file action without opening it or changing the draft.
+      const readCard = tools.filter({
+        has: page.locator('.tool-entry-badge').filter({ hasText: /^读取代码$/ }),
+      });
+      const readToggle = readCard.locator('.tool-entry-toggle');
+      const fileAction = readCard.getByRole('button', {
+        name: `在文件面板中打开：${join(app.projectRoot, 'runner.ts')}`,
+        exact: true,
+      });
+      const beforeFocus = {
+        url: page.url(),
+        expanded: await readToggle.getAttribute('aria-expanded'),
+        draft: await composer.inputValue(),
+      };
+      await readToggle.scrollIntoViewIfNeeded();
+      await readToggle.focus();
+      await page.keyboard.press('Tab');
+      const fileFocus = await fileAction.evaluate((node) => {
+        const header = node.closest('.tool-entry-trigger')!;
+        const style = getComputedStyle(node);
+        const box = node.getBoundingClientRect();
+        const parent = header.getBoundingClientRect();
+        return {
+          focused: document.activeElement === node,
+          focusVisible: node.matches(':focus-visible'),
+          outline: {
+            width: style.outlineWidth,
+            offset: style.outlineOffset,
+            style: style.outlineStyle,
+          },
+          parentOverflow: getComputedStyle(header).overflow,
+          button: { x: box.x, y: box.y, width: box.width, height: box.height },
+          header: { x: parent.x, y: parent.y, width: parent.width, height: parent.height },
+        };
+      });
+      await info.attach(`reference-file-action-focus-${theme}-${width}-geometry`, {
+        body: JSON.stringify(fileFocus),
+        contentType: 'application/json',
+      });
+      await capture(page, info, `reference-file-action-focus-${theme}-${width}`);
+      expect(fileFocus.focused).toBe(true);
+      expect(fileFocus.focusVisible).toBe(true);
+      expect(page.url()).toBe(beforeFocus.url);
+      expect(await readToggle.getAttribute('aria-expanded')).toBe(beforeFocus.expanded);
+      await expect(composer).toHaveValue(beforeFocus.draft);
       if (width === 390) {
         // The presentation basename must not replace the original action path.
         const fileRead = page.waitForResponse(
