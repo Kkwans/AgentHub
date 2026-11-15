@@ -97,6 +97,7 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 import projectsStyles from '../projects.module.css';
+import sessionToolbar from '../sessionToolbar.module.css';
 import { useProjectContext } from './ProjectContextLayout';
 import { filterProjectSessions } from './project-session-utils';
 import { useSessionCreation } from '../hooks/useSessionCreation';
@@ -236,8 +237,11 @@ export function ProjectSessionsPage() {
       />
       {!sessions.isLoading && !sessions.error ? (
         <>
-          <div className={projectsStyles.sessionsToolbar} aria-label="会话筛选">
-            <div className={projectsStyles.toolbarSearch}>
+          <div
+            className={`${projectsStyles.sessionsToolbar} ${sessionToolbar.toolbar}`}
+            aria-label="会话筛选"
+          >
+            <div className={`${projectsStyles.toolbarSearch} ${sessionToolbar.search}`}>
               <AhInput
                 label=""
                 aria-label="搜索会话"
@@ -268,10 +272,10 @@ export function ProjectSessionsPage() {
             <div
               id={filterOptionsId}
               ref={filterOptionsRef}
-              className={projectsStyles.sessionFilterOptions}
+              className={`${projectsStyles.sessionFilterOptions} ${sessionToolbar.filters}`}
               hidden={compact && !filtersOpen}
             >
-              <div className={projectsStyles.toolbarSelect}>
+              <div className={`${projectsStyles.toolbarSelect} ${sessionToolbar.select}`}>
                 <AhSelect
                   aria-label="会话 Agent"
                   label=""
@@ -283,7 +287,7 @@ export function ProjectSessionsPage() {
                   ]}
                 />
               </div>
-              <div className={projectsStyles.toolbarSelect}>
+              <div className={`${projectsStyles.toolbarSelect} ${sessionToolbar.select}`}>
                 <AhSelect
                   aria-label="会话状态"
                   label=""
@@ -296,7 +300,7 @@ export function ProjectSessionsPage() {
                 />
               </div>
             </div>
-            <span className={projectsStyles.toolbarSpacer} />
+            <span className={`${projectsStyles.toolbarSpacer} ${sessionToolbar.spacer}`} />
             <span className={projectsStyles.toolbarCount}>{filteredSessions.length} 个会话</span>
             <AhButton size="sm" leftSection={<Plus size={15} />} onClick={() => setNewOpen(true)}>
               新建会话

@@ -311,6 +311,7 @@ jobs:
           tests/e2e-real/workspace-content-visual.spec.ts
           tests/e2e-real/workspace-reference-visual.spec.ts
           tests/e2e-real/workspace-deep-files.spec.ts
+          tests/e2e-real/session-toolbar-visual.spec.ts
           --retries=0 --output=workspace-test-results --reporter=line,json
       # Early triage only. The verify job still runs the complete 4-width,
       # 2-theme pagination and browser suites with their original contracts.

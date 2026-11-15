@@ -1,0 +1,31 @@
+/* Keep the session filters together instead of shrinking their flex wrapper
+ * to one select while the search/spacer consume the remaining desktop width. */
+@media (min-width: 768px) {
+  .toolbar .filters {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  .toolbar .select {
+    flex: 0 0 150px;
+    width: 150px;
+    min-width: 0;
+  }
+  .toolbar .search {
+    flex: 1 1 220px;
+    min-width: 220px;
+  }
+  .toolbar .spacer {
+    display: none;
+  }
+}
+/* At narrow tablet widths reserve a complete, aligned row for both filters;
+ * otherwise the new-session action would become an isolated wrapped item. */
+@media (min-width: 768px) and (max-width: 959px) {
+  .toolbar .filters {
+    order: 1;
+    flex: 1 0 100%;
+  }
+  .toolbar .select {
+    flex: 1 1 0;
+  }
+}
