@@ -2274,3 +2274,10 @@ aaa精确full177通过1失败、geometry140页通过。唯一失败workbench.spe
 - 56Prompt说明新CI运行中，不能把旧Prompt截图当新文案验证；当前未合main/部署。
 03:17 UTC 首轮操作区完整验证在typecheck失败：新增CSS类断言styles.guidance受noUncheckedIndexedAccess为string|undefined，局部7运行通过未发现类型错。按已知导出显式非空断言修正，保运行时class检查；重跑全量，不把未执行的web/build记为通过。
 03:21 UTC 修正后的操作区最终完整验证通过：lint/types、Web120文件1431测试、build/CSS预算；独立CR无阻断。初次CSS键类型错误保留记录，不把局部7例等同聚合。新真实几何仅无Session手工分支，带Session说明有组件测试但未新增图证。准备推送，新像素待CI。
+
+## 2026-11-15 03:26 UTC：创建项目双列字段候选
+- 5f操作区已推精确分支，新CI仍待；未把旧598手工图作为5f验收。
+- 目录选择6实图发现名称与说明标签齐但控件顶边差约30px，根因局部grid拉伸。只追加创建项目局部align-start，保共享响应式与授权路径合同；主线程另实看768底部确认。
+- 原8真实场景补双列顶边/手机单列与独立截图几何，保真实创建；E2E严格types/lint通过，产品局部及全量待最终核验。详CREATE_PROJECT_FIELD_ALIGNMENT.md。
+03:26 UTC 创建表单局部24测试/ESLint/web类型及独立CR通过；首次新增单测精确label漏required星匹配失败，改可访问role名称匹配；另CSS索引类型补非空，保运行时校验。完整聚合开始，新图未验，未提交。
+03:31 UTC 创建项目字段候选最终全lint/types、Web120文件1432测试、build/CSS预算通过，独立CR无阻断；保留首次局部label/索引类型修正记录。准备推送，四宽新真实几何与图仍待CI，不因类名测试通过提前关闭。

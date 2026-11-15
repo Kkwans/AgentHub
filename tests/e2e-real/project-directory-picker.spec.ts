@@ -116,6 +116,26 @@ for (const theme of ['light', 'dark'] as const) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       ).toBe(true);
+      const nameField = dialog.getByRole('textbox', { name: '项目名称', exact: true });
+      const descriptionField = dialog.getByRole('textbox', {
+        name: '项目说明（可选）',
+        exact: true,
+      });
+      await nameField.scrollIntoViewIfNeeded();
+      const nameBox = (await nameField.boundingBox())!;
+      const descriptionBox = (await descriptionField.boundingBox())!;
+      const alignedPath = testInfo.outputPath(`project-fields-aligned-${width}-${theme}.png`);
+      await page.screenshot({ path: alignedPath });
+      await testInfo.attach('project-fields-aligned', {
+        path: alignedPath,
+        contentType: 'image/png',
+      });
+      await testInfo.attach('project-fields-aligned-geometry', {
+        body: JSON.stringify({ nameBox, descriptionBox }),
+        contentType: 'application/json',
+      });
+      if (width >= 768) expect(Math.abs(nameBox.y - descriptionBox.y)).toBeLessThanOrEqual(1);
+      else expect(descriptionBox.y).toBeGreaterThan(nameBox.y + nameBox.height);
       await captureForm(page, dialog, testInfo, `nested-picker-${width}-${theme}`);
       await create.click();
       await expect(page).toHaveURL(/\/projects\/[^/]+\/overview$/);

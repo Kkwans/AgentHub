@@ -6,6 +6,8 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CreateProjectPage } from './CreateProjectPage';
+import styles from './CreateProjectPage.module.css';
+import layout from '../../shared/layout.module.css';
 import { ApiError } from '../../../lib/api-error';
 import { authSession } from '../../../lib/auth-api';
 import type * as ApiModule from '../../../lib/api';
@@ -131,6 +133,21 @@ afterEach(() => {
 });
 
 describe('创建项目的授权目录选择', () => {
+  it('仅创建项目的两组字段使用顶部对齐，保留共享响应式网格', async () => {
+    mount();
+    await screen.findByText('已发现的项目');
+    const grids = screen
+      .getByTestId('create-project-dialog')
+      .querySelectorAll(`.${styles.fieldGrid}`);
+    expect(grids).toHaveLength(2);
+    grids.forEach((grid) => expect(grid).toHaveClass(layout.fieldGrid!));
+    expect(grids[0]).toContainElement(screen.getByRole('combobox', { name: '运行环境' }));
+    expect(grids[1]).toContainElement(screen.getByRole('textbox', { name: /项目名称/ }));
+    expect(grids[1]).toContainElement(screen.getByLabelText('项目说明（可选）'));
+    expect(grids[1]).toContainElement(screen.getByRole('combobox', { name: '项目类型' }));
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('单授权根目录显示一次完整路径，发现候选默认收起且不提交', async () => {
     mount();
     const summary = await screen.findByText('已发现的项目');

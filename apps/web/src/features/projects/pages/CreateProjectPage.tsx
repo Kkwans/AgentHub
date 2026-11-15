@@ -6,6 +6,7 @@ import { AhButton, AhDialog, AhErrorState, AhInput, AhSelect, AhTextarea } from 
 
 import { api, authSession, type ExecutionTargetRecord } from '../../../lib/api';
 import layout from '../../shared/layout.module.css';
+import styles from './CreateProjectPage.module.css';
 import { useCompactViewport } from '../../shared/page-primitives';
 import { ProjectDirectoryPicker } from '../components/ProjectDirectoryPicker';
 import { ProjectsPage } from './ProjectsPage';
@@ -159,7 +160,7 @@ export function CreateProjectPage() {
         }
       >
         <div className={layout.dialogBody} data-testid="create-project-dialog">
-          <div className={layout.fieldGrid}>
+          <div className={`${layout.fieldGrid} ${styles.fieldGrid}`}>
             <AhSelect
               label="运行环境"
               value={targetId}
@@ -204,7 +205,7 @@ export function CreateProjectPage() {
           </p>
           <div className={layout.dialogSection}>
             <p>名称默认取目录名，可按团队习惯调整。</p>
-            <div className={layout.fieldGrid}>
+            <div className={`${layout.fieldGrid} ${styles.fieldGrid}`}>
               <AhInput
                 disabled={locked}
                 maxLength={160}
