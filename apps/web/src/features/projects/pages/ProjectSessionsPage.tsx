@@ -97,6 +97,7 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 import projectsStyles from '../projects.module.css';
+import { SessionContextRow } from '../components/SessionContextRow';
 import sessionToolbar from '../sessionToolbar.module.css';
 import { useProjectContext } from './ProjectContextLayout';
 import { filterProjectSessions } from './project-session-utils';
@@ -187,39 +188,7 @@ export function ProjectSessionsPage() {
         </div>
         {rows.map((session) => {
           const agent = agents.data?.find((item) => item.id === session.agentId);
-          const context = [agent?.name, session.model, session.branch, session.cwd]
-            .filter(Boolean)
-            .join(' · ');
-          return (
-            <Link
-              className={projectsStyles.sessionRow}
-              key={session.id}
-              to={`/workspace/${session.id}`}
-            >
-              <span className={projectsStyles.sessionAgent} aria-hidden="true">
-                {agent?.name?.slice(0, 1).toUpperCase() ?? 'A'}
-              </span>
-              <span className={projectsStyles.rowMain}>
-                <strong className={projectsStyles.sessionTitle}>{session.title}</strong>
-                <span className={projectsStyles.sessionDescription}>
-                  {context || '暂无上下文说明'}
-                </span>
-              </span>
-              <span className={projectsStyles.sessionMetadata}>
-                <AhStatusPill status={session.status} />
-                <span className={projectsStyles.sessionUpdated}>
-                  {session.lastActiveAt && !Number.isNaN(Date.parse(session.lastActiveAt)) ? (
-                    <time dateTime={session.lastActiveAt}>
-                      最近活动 {displayDate(session.lastActiveAt)}
-                    </time>
-                  ) : (
-                    '暂无活动时间'
-                  )}
-                </span>
-              </span>
-              <ArrowRight className={projectsStyles.sessionArrow} size={14} />
-            </Link>
-          );
+          return <SessionContextRow key={session.id} session={session} agentName={agent?.name} />;
         })}
       </div>
     );

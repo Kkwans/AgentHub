@@ -1,5 +1,5 @@
 import type { Locator, Page, TestInfo } from '@playwright/test';
-import { seedWorkspace } from './baseline-support.js';
+import { apiData, seedWorkspace } from './baseline-support.js';
 import { test, expect } from './fixtures.js';
 
 test.use({ authMode: 'local_trusted' });
@@ -106,6 +106,121 @@ async function captureToolbar(page: Page, info: TestInfo, state: string, expande
   }
 }
 
+async function verifySessionContext(
+  page: Page,
+  info: TestInfo,
+  link: Locator,
+  expected: { title: string; model: string | null; branch: string | null; cwd: string },
+) {
+  const row = link.locator('..');
+  const details = row.locator(':scope > details');
+  const summary = details.locator(':scope > summary');
+  const fields = details.locator(':scope > dl');
+  const originalUrl = page.url();
+  await expect(row).toHaveJSProperty('tagName', 'ARTICLE');
+  await expect(details).toHaveCount(1);
+  await expect(summary).toHaveAccessibleName(`查看会话上下文：${expected.title}`);
+  await expect(
+    link.locator('a,button,summary,details,input,select,textarea,[role="button"],[tabindex]'),
+  ).toHaveCount(0);
+  await expect(details).not.toHaveAttribute('open', '');
+  await summary.scrollIntoViewIfNeeded();
+  const defaultGeometry = { link: await link.boundingBox(), summary: await summary.boundingBox() };
+  const defaultPath = info.outputPath('session-context-default.png');
+  await page.screenshot({ path: defaultPath });
+  await info.attach('session-context-default', { path: defaultPath, contentType: 'image/png' });
+  await info.attach('session-context-default-geometry', {
+    body: JSON.stringify(defaultGeometry),
+    contentType: 'application/json',
+  });
+  const a = defaultGeometry.link!,
+    b = defaultGeometry.summary!;
+  expect(b.width).toBeGreaterThanOrEqual(44);
+  expect(b.height).toBeGreaterThanOrEqual(44);
+  expect(
+    a.x + a.width <= b.x + 1 ||
+      b.x + b.width <= a.x + 1 ||
+      a.y + a.height <= b.y + 1 ||
+      b.y + b.height <= a.y + 1,
+  ).toBe(true);
+  await link.focus();
+  await page.keyboard.press('Tab');
+  await expect(summary).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(details).toHaveAttribute('open', '');
+  await expect(summary).toBeFocused();
+  await expect(page).toHaveURL(originalUrl);
+  await expect(fields.locator('dd')).toHaveText([
+    expected.title,
+    'v1 baseline agent',
+    expected.model || '模型未记录',
+    expected.branch || '分支未记录',
+    expected.cwd || '目录未记录',
+  ]);
+  const geometry = [];
+  for (const field of await fields.locator('dd').all()) {
+    // The disclosure remains in document flow. Reading each field may scroll;
+    // do not demand that the full expanded context fit a single viewport.
+    await field.scrollIntoViewIfNeeded();
+    geometry.push(
+      await field.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        const panel = node.closest('dl')!.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        return {
+          text: node.textContent,
+          clientWidth: node.clientWidth,
+          scrollWidth: node.scrollWidth,
+          viewportWidth: innerWidth,
+          documentOverflow: document.documentElement.scrollWidth - innerWidth,
+          bounds: { left: box.left, right: box.right, top: box.top, bottom: box.bottom },
+          panel: { left: panel.left, right: panel.right, top: panel.top, bottom: panel.bottom },
+          rects: Array.from(range.getClientRects()).map((rect) => ({
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+          })),
+        };
+      }),
+    );
+  }
+  const expandedPath = info.outputPath('session-context-expanded-full-page.png');
+  await page.screenshot({ path: expandedPath, fullPage: true });
+  await info.attach('session-context-expanded-full-page', {
+    path: expandedPath,
+    contentType: 'image/png',
+  });
+  await info.attach('session-context-expanded-geometry', {
+    body: JSON.stringify(geometry),
+    contentType: 'application/json',
+  });
+  for (const field of geometry) {
+    expect(field.documentOverflow).toBeLessThanOrEqual(1);
+    expect(field.scrollWidth).toBeLessThanOrEqual(field.clientWidth + 1);
+    for (const rect of field.rects) {
+      expect(rect.left).toBeGreaterThanOrEqual(
+        Math.max(0, field.bounds.left, field.panel.left) - 1,
+      );
+      expect(rect.right).toBeLessThanOrEqual(
+        Math.min(field.viewportWidth, field.bounds.right, field.panel.right) + 1,
+      );
+      expect(rect.top).toBeGreaterThanOrEqual(Math.max(field.bounds.top, field.panel.top) - 1);
+      expect(rect.bottom).toBeLessThanOrEqual(
+        Math.min(field.bounds.bottom, field.panel.bottom) + 1,
+      );
+    }
+  }
+  await summary.scrollIntoViewIfNeeded();
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  await expect(details).not.toHaveAttribute('open', '');
+  await expect(fields).toBeHidden();
+  await expect(summary).toBeFocused();
+  await expect(page).toHaveURL(originalUrl);
+}
+
 for (const width of [390, 768, 1024, 1440])
   for (const theme of ['light', 'dark']) {
     test(`真实项目会话工具栏 ${width} ${theme}`, async ({ page, context, app }, info) => {
@@ -160,5 +275,16 @@ for (const width of [390, 768, 1024, 1440])
       }
       await expect(sessionLink).toBeVisible();
       await captureToolbar(page, info, 'restored', false);
+      const saved = await apiData<{
+        title: string;
+        model: string | null;
+        branch: string | null;
+        cwd: string;
+      }>(context, 'get', `/sessions/${session.id}`);
+      await verifySessionContext(page, info, sessionLink, saved);
+      await sessionLink.scrollIntoViewIfNeeded();
+      await sessionLink.focus();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(new RegExp(`/workspace/${session.id}$`));
     });
   }
