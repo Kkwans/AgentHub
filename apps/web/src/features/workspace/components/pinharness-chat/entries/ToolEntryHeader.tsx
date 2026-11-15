@@ -152,7 +152,7 @@ export function ToolEntryHeader({
         aria-describedby={visibleSummary && fullSummary ? descriptionId : undefined}
         aria-expanded={hasOutput ? showDetail : undefined}
         aria-label={`${toolName}，${isActive ? '工具执行中' : isFailed ? '工具调用失败' : '工具调用完成'}${hasOutput ? (showDetail ? '，收起详情' : '，展开详情') : ''}`}
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/35"
+        className="tool-entry-toggle flex min-h-11 min-w-0 flex-1 items-center gap-2 overflow-hidden text-left"
       >
         <span className="tool-entry-icon">
           <Icon

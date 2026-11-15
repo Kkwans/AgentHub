@@ -180,6 +180,19 @@ for (const width of [390, 768, 1024, 1440])
           ),
         ).toBe(true);
         await capture(page, info, `process-tool-output-expanded-${theme}-${width}`, success);
+        // The header clips overflow: a complete focus outline must be painted inward.
+        await expect(outputToggle).toBeFocused();
+        await expect(outputToggle).toHaveCSS('outline-style', 'solid');
+        await expect(outputToggle).toHaveCSS('outline-width', '2px');
+        await expect(outputToggle).toHaveCSS('outline-offset', '-2px');
+        await expect(outputToggle).toHaveCSS('box-shadow', 'none');
+        const focusGeometry = await outputToggle.evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          const header = node.closest('.tool-entry-trigger')!.getBoundingClientRect();
+          return { top: box.top - header.top, bottom: header.bottom - box.bottom };
+        });
+        expect(focusGeometry.top).toBeGreaterThanOrEqual(-0.01);
+        expect(focusGeometry.bottom).toBeGreaterThanOrEqual(-0.01);
         await page.keyboard.press('Enter');
         await expect(outputToggle).toHaveAttribute('aria-expanded', 'false');
         await capture(page, info, `process-tool-failed-${theme}-${width}`, failed);

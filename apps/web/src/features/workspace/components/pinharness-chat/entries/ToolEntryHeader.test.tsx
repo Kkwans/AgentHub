@@ -194,3 +194,19 @@ it('only stacks summary-bearing title rows within the phone breakpoint', () => {
   );
   expect(rule).toMatch(/> \.tool-entry-badge\s*\{[^}]*max-width: 100%/);
 });
+
+it('keeps the disclosure focus outline inside its clipped header without changing file actions', () => {
+  render(<ToolEntryHeader {...base} summary="src/main.ts" filePathForOpen="src/main.ts" />);
+  expect(screen.getByRole('button', { name: /工具调用完成/ })).toHaveClass('tool-entry-toggle');
+  expect(screen.getByRole('button', { name: '在文件面板中打开：src/main.ts' })).not.toHaveClass(
+    'tool-entry-toggle',
+  );
+  const css = readFileSync(
+    new NodeURL('../../../../../../../../packages/ui/src/pinharness.css', import.meta.url),
+    'utf8',
+  );
+  expect(css).toMatch(/\.tool-entry-trigger--interactive:focus-visible\s*\{[^}]*box-shadow: inset/);
+  expect(css).toMatch(
+    /\.tool-entry-toggle:focus-visible\s*\{[^}]*outline: 2px solid hsl\(var\(--primary\)\);[^}]*outline-offset: -2px;[^}]*box-shadow: none;/,
+  );
+});
