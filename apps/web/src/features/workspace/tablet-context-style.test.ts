@@ -38,3 +38,24 @@ describe('tablet Agent context shrink boundary', () => {
     expect(view).toContain("<Bot size={14} /> {agent?.name ?? 'Agent 未知'}");
   });
 });
+
+it('gives tablet identity a shared first row and the complete directory a separate full-width row', () => {
+  const content = '.workspace-context-disclosure .ah-workbench-disclosure-content > div';
+  expect(rule(`${content})`)).toContain('display: grid');
+  expect(rule(`${content})`)).toContain('grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)');
+  expect(rule(`${content})`)).toContain('align-items: start');
+  const text = rule(`${content} > span)`);
+  expect(text).toContain('min-width: 0');
+  expect(text).toContain('white-space: normal');
+  expect(text).toContain('overflow-wrap: anywhere');
+  const icon = rule(`${content} > span > svg)`);
+  expect(icon).toContain('display: inline-block');
+  expect(icon).toContain('vertical-align: -2px');
+  // The shared span/code rule supplies wrapping; the dedicated code rule spans
+  // both columns. Neither truncates content or changes the popup's anchor.
+  expect(tablet).toMatch(/> div > code\)\s*\{\s*grid-column: 1 \/ -1;/);
+  const expandedRules = tablet.slice(tablet.indexOf('/* Identity comes first;'));
+  expect(expandedRules).not.toMatch(
+    /overflow:\s*hidden|text-overflow|line-clamp|position:|width: 420/,
+  );
+});

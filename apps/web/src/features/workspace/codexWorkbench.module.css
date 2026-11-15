@@ -508,4 +508,27 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Identity comes first; a long working directory must not squeeze the Agent
+   * into a narrow column. Keep all context readable rather than truncating it. */
+  .workspace :global(.workspace-context-disclosure .ah-workbench-disclosure-content > div) {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 8px 12px;
+  }
+  .workspace :global(.workspace-context-disclosure .ah-workbench-disclosure-content > div > span),
+  .workspace :global(.workspace-context-disclosure .ah-workbench-disclosure-content > div > code) {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .workspace
+    :global(.workspace-context-disclosure .ah-workbench-disclosure-content > div > span > svg) {
+    display: inline-block;
+    margin-right: 4px;
+    vertical-align: -2px;
+  }
+  .workspace :global(.workspace-context-disclosure .ah-workbench-disclosure-content > div > code) {
+    grid-column: 1 / -1;
+  }
 }

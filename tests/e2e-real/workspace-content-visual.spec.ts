@@ -118,9 +118,28 @@ async function assertTabletAgentDetails(page: Page, info: TestInfo, cwd: string)
         });
       }
     }
+    const boxOf = (element: Element) => {
+      const box = element.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+    };
+    const identities = Array.from(node.querySelectorAll(':scope > div > span')).map((identity) => {
+      const textRects = [];
+      const textWalker = document.createTreeWalker(identity, NodeFilter.SHOW_TEXT);
+      for (let text = textWalker.nextNode(); text; text = textWalker.nextNode()) {
+        if (!text.textContent?.trim() || text.parentElement?.closest('svg')) continue;
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        for (const box of range.getClientRects()) {
+          textRects.push({ left: box.left, right: box.right, top: box.top, bottom: box.bottom });
+        }
+      }
+      return { bounds: boxOf(identity), icon: boxOf(identity.querySelector('svg')!), textRects };
+    });
     return {
       bounds,
       ranges,
+      identities,
+      cwdBounds: boxOf(node.querySelector('code')!),
       viewport: { width: innerWidth, height: innerHeight },
       containers: [node, ...Array.from(node.querySelectorAll<HTMLElement>('*'))]
         .map((element) => ({
@@ -136,6 +155,23 @@ async function assertTabletAgentDetails(page: Page, info: TestInfo, cwd: string)
     contentType: 'application/json',
   });
   expect(geometry.ranges.length).toBeGreaterThan(0);
+  expect(geometry.identities).toHaveLength(2);
+  const [agentIdentity, branchIdentity] = geometry.identities;
+  // Identity stays in the top row; cwd starts below BOTH identity cells.
+  expect(Math.min(agentIdentity!.bounds.bottom, branchIdentity!.bounds.bottom)).toBeGreaterThan(
+    Math.max(agentIdentity!.bounds.top, branchIdentity!.bounds.top),
+  );
+  for (const identity of geometry.identities) {
+    expect(geometry.cwdBounds.top).toBeGreaterThanOrEqual(identity.bounds.bottom);
+    expect(identity.textRects.length).toBeGreaterThan(0);
+    for (const text of identity.textRects) {
+      // Compare real ink line boxes rather than assuming a font or line height.
+      expect(Math.min(identity.icon.bottom, text.bottom)).toBeGreaterThan(
+        Math.max(identity.icon.top, text.top),
+      );
+      expect(text.left).toBeGreaterThanOrEqual(identity.icon.right - 1);
+    }
+  }
   for (const container of geometry.containers) {
     expect(container.scrollWidth, `${container.tag} horizontal overflow`).toBeLessThanOrEqual(
       container.clientWidth + 1,
