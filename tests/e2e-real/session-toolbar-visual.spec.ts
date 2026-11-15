@@ -297,6 +297,56 @@ for (const width of [390, 768, 1024, 1440])
     });
   }
 
+async function verifyProjectHeaderFacts(page: Page, info: TestInfo, branch: string) {
+  const facts = page.getByRole('group', { name: '项目元信息', exact: true });
+  await expect(facts).toBeVisible();
+  await expect(facts).toContainText(`最近会话分支：${branch}`);
+  await expect(facts).toContainText('Git 仓库');
+  await expect(facts).toContainText('1 个登记可用 Agent');
+  await expect(facts).toContainText('0 项未结束工作');
+  const spans = facts.locator(':scope > div > span');
+  await expect(spans).toHaveCount(4);
+  const geometry = await spans.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const box = node.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return {
+        text: node.textContent,
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        bottom: box.bottom,
+        viewportWidth: innerWidth,
+        scrollWidth: node.scrollWidth,
+        clientWidth: node.clientWidth,
+        rects: Array.from(range.getClientRects()).map((r) => ({
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+        })),
+      };
+    }),
+  );
+  const path = info.outputPath('project-header-long-facts.png');
+  await page.screenshot({ path });
+  await info.attach('project-header-long-facts', { path, contentType: 'image/png' });
+  await info.attach('project-header-facts-geometry', {
+    body: JSON.stringify(geometry),
+    contentType: 'application/json',
+  });
+  for (const item of geometry) {
+    expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth + 1);
+    for (const rect of item.rects) {
+      expect(rect.left).toBeGreaterThanOrEqual(Math.max(0, item.left) - 1);
+      expect(rect.right).toBeLessThanOrEqual(Math.min(item.viewportWidth, item.right) + 1);
+      expect(rect.top).toBeGreaterThanOrEqual(item.top - 1);
+      expect(rect.bottom).toBeLessThanOrEqual(item.bottom + 1);
+    }
+  }
+}
+
 // Real application + opt-in ACP test provider, not a claim about hosted model support.
 // Existing short-fixture toolbar/navigation cases above remain unchanged.
 for (const width of [390, 768, 1024, 1440])
@@ -307,6 +357,7 @@ for (const width of [390, 768, 1024, 1440])
       await page.addInitScript((theme) => localStorage.setItem('agenthub-theme', theme), theme);
       await page.goto(`/projects/${seeded.project.id}/sessions`);
       await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', theme);
+      if (width >= 768) await verifyProjectHeaderFacts(page, info, seeded.expected.branch);
       const region = page.getByRole('region', { name: '项目会话', exact: true });
       const link = region.locator(`a[href="/workspace/${seeded.session.id}"]`);
       const peer = region.locator(`a[href="/workspace/${seeded.peerSession.id}"]`);

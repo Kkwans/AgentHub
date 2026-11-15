@@ -224,3 +224,20 @@ it('mobile groups details with navigation while keeping attention outside the co
     media.mockRestore();
   }
 });
+
+it('desktop long historical branch lives in full-width readable metadata, outside title/actions', async () => {
+  const branch = 'feature/会话上下文/' + 'engineering-review-working-directory-'.repeat(4);
+  mount({ sessions: [{ id: 'long', branch, lastActiveAt: '2026-11-15T01:00:00Z' }] });
+  const label = `最近会话分支：${branch}`;
+  expect(await screen.findByText(label)).toBeVisible();
+  const facts = screen.getByRole('group', { name: '项目元信息' });
+  expect(facts).toContainElement(screen.getByText(label));
+  expect(facts).toHaveTextContent('Git 仓库');
+  expect(facts).toHaveTextContent('0 个登记可用 Agent');
+  expect(facts).toHaveTextContent('0 项未结束工作');
+  expect(facts).not.toContainElement(screen.getByRole('heading', { name: '页头审计' }));
+  expect(facts).not.toContainElement(screen.getByRole('link', { name: '新建工作' }));
+  expect(screen.getByText(label).closest('details')).toBeNull();
+  expect(screen.getAllByText(label)).toHaveLength(1);
+  expect(screen.getByRole('link', { name: '继续会话' })).toHaveAttribute('href', '/workspace/long');
+});

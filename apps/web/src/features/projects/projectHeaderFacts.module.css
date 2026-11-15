@@ -1,0 +1,27 @@
+/* Desktop/tablet facts get the complete header width rather than competing
+ * with the title and its actions. Phone details and warning rows are unchanged. */
+.factsRow {
+  min-width: 0;
+  margin-top: 8px;
+}
+.factsRow > div {
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+.factsRow > div > span {
+  display: block;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.factsRow > div > span > svg {
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: -2px;
+}

@@ -99,6 +99,7 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 import projectsStyles from '../projects.module.css';
+import headerStyles from '../projectHeaderFacts.module.css';
 
 export function ProjectContextLayout() {
   const { projectId } = useParams();
@@ -252,7 +253,6 @@ export function ProjectContextLayout() {
             {!compact && project.data.description ? (
               <p className={projectsStyles.identityDescription}>{project.data.description}</p>
             ) : null}
-            {!compact && !compactWorkDetail ? renderFacts('all') : null}
           </div>
           <div className={projectsStyles.identityActions}>
             {!compact ? (
@@ -270,6 +270,11 @@ export function ProjectContextLayout() {
             </Link>
           </div>
         </div>
+        {!compact && !compactWorkDetail ? (
+          <div className={headerStyles.factsRow} role="group" aria-label="项目元信息">
+            {renderFacts('all')}
+          </div>
+        ) : null}
         {(compact || compactWorkDetail) && hasHeaderWarning ? (
           <div
             className={projectsStyles.headerWarnings}
