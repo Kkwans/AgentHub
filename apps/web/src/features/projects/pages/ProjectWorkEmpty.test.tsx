@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import detailStyles from './ProjectWorkPage.module.css';
 import '@testing-library/jest-dom/vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -166,7 +167,12 @@ it('无Agent手工开始从BACKLOG先READY再IN_PROGRESS，不启动Session', as
       ['/tasks/task-1/transition', { status: 'IN_PROGRESS' }],
     ]),
   );
-  await screen.findByText('任务已标记为进行中；没有启动 Agent。');
+  const notice = await screen.findByText('任务已标记为进行中；没有启动 Agent。');
+  expect(notice).toHaveAttribute('role', 'status');
+  expect(notice).toHaveClass(detailStyles.detailNotice!);
+  expect(screen.getByText('手工开始仅更新任务进度，不会启动 Agent。')).toHaveClass(
+    detailStyles.detailNotice!,
+  );
 });
 
 it.each(['BACKLOG', 'BLOCKED', 'READY'])('Agent启动%s遵守READY前置合同', async (status) => {

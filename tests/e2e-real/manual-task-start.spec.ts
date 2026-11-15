@@ -95,6 +95,51 @@ for (const width of [390, 768, 1024, 1440]) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
       ).toBeLessThanOrEqual(1);
+      const reference = page.getByText('执行', { exact: true });
+      await expect(reference).toHaveCount(1);
+      const referenceLeft = (await reference.boundingBox())!.x;
+      for (const [key, text] of [
+        ['status', '任务已标记为进行中；没有启动 Agent。'],
+        ['hint', '手工开始仅更新任务进度，不会启动 Agent。'],
+      ]) {
+        const notice = page.getByText(text!, { exact: true });
+        await notice.scrollIntoViewIfNeeded();
+        const geometry = await notice.evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return {
+            left: box.left,
+            right: box.right,
+            top: box.top,
+            bottom: box.bottom,
+            viewportWidth: innerWidth,
+            rects: Array.from(range.getClientRects()).map((r) => ({
+              left: r.left,
+              right: r.right,
+              top: r.top,
+              bottom: r.bottom,
+            })),
+          };
+        });
+        const noticePath = info.outputPath(`manual-notice-${key}-${width}-${theme}.png`);
+        await page.screenshot({ path: noticePath });
+        await info.attach(`manual-notice-${key}`, { path: noticePath, contentType: 'image/png' });
+        await info.attach(`manual-notice-${key}-geometry`, {
+          body: JSON.stringify({ referenceLeft, ...geometry }),
+          contentType: 'application/json',
+        });
+        expect(Math.abs(geometry.left - referenceLeft)).toBeLessThanOrEqual(1);
+        expect(geometry.rects.length).toBeGreaterThan(0);
+        for (const rect of geometry.rects) {
+          expect(rect.left).toBeGreaterThanOrEqual(Math.max(0, geometry.left) - 1);
+          expect(rect.right).toBeLessThanOrEqual(
+            Math.min(geometry.viewportWidth, geometry.right) + 1,
+          );
+          expect(rect.top).toBeGreaterThanOrEqual(geometry.top - 1);
+          expect(rect.bottom).toBeLessThanOrEqual(geometry.bottom + 1);
+        }
+      }
       const path = info.outputPath(`manual-task-start-${width}-${theme}.png`);
       await page.screenshot({ path, fullPage: true });
       await info.attach('手工任务已开始', { path, contentType: 'image/png' });

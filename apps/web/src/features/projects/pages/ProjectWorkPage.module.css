@@ -1,0 +1,4 @@
+.detailNotice {
+  margin-block: 12px;
+  margin-inline: var(--task-inspector-inset, 24px);
+}

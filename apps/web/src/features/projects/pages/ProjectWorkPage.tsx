@@ -115,6 +115,7 @@ import {
   sessionGroupKey,
 } from '../../shared/page-primitives';
 import projectsStyles from '../projects.module.css';
+import detailStyles from './ProjectWorkPage.module.css';
 import { useProjectContext } from './ProjectContextLayout';
 
 export function ProjectWorkPage() {
@@ -785,7 +786,11 @@ export function ProjectWorkPage() {
                         <p>{selected.description}</p>
                       </section>
                     ) : null}
-                    {manual.message ? <p role="status">{manual.message}</p> : null}
+                    {manual.message ? (
+                      <p className={detailStyles.detailNotice} role="status">
+                        {manual.message}
+                      </p>
+                    ) : null}
                     {actionError ? (
                       <AhErrorState title="任务操作失败" description={actionError.message} />
                     ) : null}
@@ -1099,7 +1104,11 @@ export function ProjectWorkPage() {
                         <p>此任务由隔离 Worktree 管理，不使用普通任务启动或取消入口。</p>
                       </section>
                     ) : null}
-                    {!runAgentId ? <p>手工开始仅更新任务进度，不会启动 Agent。</p> : null}
+                    {!runAgentId ? (
+                      <p className={detailStyles.detailNotice}>
+                        手工开始仅更新任务进度，不会启动 Agent。
+                      </p>
+                    ) : null}
                     <div className={projectsStyles.inspectorActions}>
                       <AhButton
                         size="xs"

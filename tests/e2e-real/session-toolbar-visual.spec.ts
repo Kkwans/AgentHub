@@ -357,7 +357,6 @@ for (const width of [390, 768, 1024, 1440])
       await page.addInitScript((theme) => localStorage.setItem('agenthub-theme', theme), theme);
       await page.goto(`/projects/${seeded.project.id}/sessions`);
       await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', theme);
-      if (width >= 768) await verifyProjectHeaderFacts(page, info, seeded.expected.branch);
       const region = page.getByRole('region', { name: '项目会话', exact: true });
       const link = region.locator(`a[href="/workspace/${seeded.session.id}"]`);
       const peer = region.locator(`a[href="/workspace/${seeded.peerSession.id}"]`);
@@ -365,6 +364,7 @@ for (const width of [390, 768, 1024, 1440])
       await expect(peer).toHaveCount(1);
       await expect(link).toBeVisible();
       await expect(peer).toBeVisible();
+      if (width >= 768) await verifyProjectHeaderFacts(page, info, seeded.expected.branch);
       await expect(link).toContainText('client-web');
       await expect(peer).toContainText('client-web');
       for (const rowLink of [link, peer]) {

@@ -322,6 +322,14 @@ jobs:
           pnpm exec playwright test tests/e2e/history-pagination.spec.ts
           --project=desktop-1440 --grep '成功旧页.*light'
           --workers=1 --retries=0 --output=workspace-history-results --reporter=line,json
+      - name: Capture manual task notice alignment
+        if: ${{ !cancelled() }}
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: manual-note-results/results.json
+        run: >-
+          pnpm exec playwright test --config=playwright.real.config.ts
+          tests/e2e-real/manual-task-start.spec.ts --grep '手工任务合法两步'
+          --workers=1 --retries=0 --output=manual-note-results --reporter=line,json
       # Standalone HTML design evidence, not real service or Agent acceptance.
       - name: Capture standalone session context prototype
         if: ${{ !cancelled() }}
@@ -339,5 +347,6 @@ jobs:
             workspace-test-results/
             workspace-history-results/
             prototype-test-results/
+            manual-note-results/
           if-no-files-found: warn
           retention-days: 7
