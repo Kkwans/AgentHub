@@ -113,7 +113,7 @@ function ChatEntryRendererView({
     <div
       className={
         isUser
-          ? 'group/msg flex justify-end px-3 py-1.5 animate-[hci-entry_200ms_ease-out_both] motion-reduce:animate-none sm:px-4'
+          ? 'group/msg flex justify-end px-3 py-1.5 animate-[conversation-entry-fade_200ms_ease-out_both] motion-reduce:animate-none sm:px-4'
           : 'min-w-0 px-0.5 py-1'
       }
       data-chat-entry

@@ -1193,7 +1193,7 @@ function RoundBlock({ turn, ...itemProps }: ConversationTurnViewProps) {
   );
   return (
     <article
-      className="conversation-turn min-w-0 px-0.5 py-1 animate-[hci-entry_var(--anim-entry-fast)_var(--ease-out-expo)_both] motion-reduce:animate-none"
+      className="conversation-turn min-w-0 px-0.5 py-1 animate-[conversation-entry-fade_var(--anim-entry-fast)_var(--ease-out-expo)_both] motion-reduce:animate-none"
       data-turn-id={turn.id}
     >
       {userEntries.map((item) => (

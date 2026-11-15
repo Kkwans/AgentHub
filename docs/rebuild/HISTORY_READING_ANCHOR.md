@@ -34,3 +34,11 @@
 - 源码确有两层hci-entry几何入场（各translateY4px）；rect包含而scrollHeight不含，虚拟重挂会重播，是待证风险而非已证单因。不得减常数、放宽2px、移除virtual-item定位transform。
 - 仅追加诊断：连续同帧H/S/原点击与before双消息identity/offset/contentY、virtual rows、祖先transform和动画状态，失败附件保留；原两条<=2px及超时/重试不变。
 - 短工作区CI追加1440浅色单个历史诊断用例以提前取证，verify完整四宽双主题及全部测试不删减。短job仍20分钟、串行1worker/0retry，两个输出目录一并always上传。
+
+## 2026-11-15 00:10 UTC：643 同帧证据与有限 UI 修复
+
+- 643短门禁24+1通过，未复现失败；诊断16帧/6标记/drop0。点击A-193 Y125.649，两层transformY0.624215+0.024935；before Y125.1805，点击到测试baseline已漂约0.469，不能混为同帧。
+- prepend后同消息两层动画currentTime重新归0，各translateY4=8px。总H30696恒定，virtual行定位固定，S29533→29531→29530→29529→29528→29527→29526来抵消动画。提交快照height差3但消息差约0.004，后来poll等到两合同合格。
+- 结束记录时重挂动画150/200ms仍运行，不是动画/owner完全释放证明，也未证明529持续8px失败的全部单因。已证的是历史重挂的可变几何入场风险。
+- 本片仅两层改专用conversation-entry-fade（opacity0→1），保时长/easing/both/reduced-motion；不改全局hci-entry或virtual-item定位transform，不减8常数/放宽门禁。
+- 最终冻结验证：web+UI137文件1501测试、lint/types/build、CSS预算通过，4代码/测试SHA一致，独立CR无阻断。精确新浏览器仍待验证。

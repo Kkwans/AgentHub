@@ -786,6 +786,18 @@ html {
   }
 }
 
+/* Virtualized conversation content can remount while reading saved history.
+ * Its entrance must not change message geometry used by reading anchors.
+ * Keep hci-entry unchanged for other surfaces and preserve virtual row offsets. */
+@keyframes conversation-entry-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Assistant 区域左侧标识条从上到下生长 */
 @keyframes hci-stripe-grow {
   from {
