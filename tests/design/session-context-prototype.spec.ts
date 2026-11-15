@@ -31,6 +31,17 @@ async function textGeometry(locator: Locator) {
     };
   });
 }
+async function documentAnchors(page: Page) {
+  return page.evaluate(() => {
+    const position = (selector: string) => {
+      const node = document.querySelector(selector);
+      if (!node) throw new Error(`Missing prototype anchor: ${selector}`);
+      return node.getBoundingClientRect().top + window.scrollY;
+    };
+    return { main: position('main'), crumb: position('main .crumb'), heading: position('main h1') };
+  });
+}
+
 async function screenshot(page: Page, info: TestInfo, state: string) {
   const path = info.outputPath(`prototype-session-context-${state}.png`);
   // Full-page prototype artifact, not a claim that all content fits the viewport.
@@ -74,9 +85,15 @@ for (const width of [390, 768, 1024, 1440])
           return { width: box.width, height: box.height };
         }),
       );
+      const defaultAnchors = await documentAnchors(page);
       await screenshot(page, info, 'default');
       await info.attach('prototype-default-geometry', {
-        body: JSON.stringify({ defaultGeometry, summaryGeometry, paths }),
+        body: JSON.stringify({
+          defaultGeometry,
+          summaryGeometry,
+          paths,
+          documentAnchors: defaultAnchors,
+        }),
         contentType: 'application/json',
       });
       expect(
@@ -115,7 +132,20 @@ for (const width of [390, 768, 1024, 1440])
       await expect(row.locator('details')).toHaveAttribute('open', '');
       const fields = row.locator('dl[data-context-fields]');
       await expect(fields).toBeVisible();
+      const expandedAnchors = await documentAnchors(page);
       await screenshot(page, info, 'expanded');
+      await info.attach('prototype-document-anchor-stability', {
+        body: JSON.stringify({ before: defaultAnchors, expanded: expandedAnchors }),
+        contentType: 'application/json',
+      });
+      // Focus and Playwright may scroll the document. Document coordinates,
+      // unlike viewport y, isolate actual page-top movement on disclosure.
+      for (const key of ['main', 'crumb', 'heading'] as const) {
+        expect(
+          Math.abs(expandedAnchors[key] - defaultAnchors[key]),
+          `${key} document y drift`,
+        ).toBeLessThanOrEqual(1);
+      }
       const fieldGeometry = [];
       for (const field of await fields.locator('dd').all()) {
         // A long expanded panel may scroll normally; each complete field must be
