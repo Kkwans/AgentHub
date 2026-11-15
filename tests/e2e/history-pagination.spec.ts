@@ -1,6 +1,142 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import type { ResolvedPromptContextRecord } from '../../apps/web/src/lib/api';
 
+type HistoryDiagnostics = {
+  mark: (stage: string, messageId?: string) => void;
+  stop: () => { samples: unknown[]; marks: unknown[]; droppedFrames: number };
+};
+declare global {
+  interface Window {
+    __historyDiagnostics?: HistoryDiagnostics;
+  }
+}
+
+// afterEach has its own teardown budget even when the test body times out.
+// Do not rely on finally issuing protocol calls against an expired test budget.
+test.afterEach(async ({ page }, info) => {
+  if (page.isClosed()) return;
+  const diagnostics = await page.evaluate(() => {
+    const recorder = window.__historyDiagnostics;
+    if (!recorder) return null;
+    recorder.mark('afterEach');
+    const result = recorder.stop();
+    delete window.__historyDiagnostics;
+    return result;
+  });
+  if (diagnostics) {
+    await info.attach('history-anchor-frame-diagnostics', {
+      body: JSON.stringify(diagnostics),
+      contentType: 'application/json',
+    });
+  }
+});
+
+async function startHistoryDiagnostics(page: Page) {
+  await page.evaluate(() => {
+    const root = document.querySelector<HTMLElement>('.conversation-scroll')!;
+    const samples: unknown[] = [];
+    const marks: unknown[] = [];
+    let clickId: string | undefined;
+    let beforeId: string | undefined;
+    let droppedFrames = 0;
+    let frame = 0;
+    const nodes = () => Array.from(root.querySelectorAll<HTMLElement>('[data-message-id]'));
+    const firstVisible = () => {
+      const viewport = root.getBoundingClientRect();
+      return nodes().find((node) => {
+        const box = node.getBoundingClientRect();
+        return box.height > 0 && box.top >= viewport.top && box.bottom <= viewport.bottom;
+      });
+    };
+    const read = (stage: string) => {
+      const viewport = root.getBoundingClientRect();
+      const all = nodes();
+      const target = (id: string | undefined) => {
+        const node = all.find((candidate) => candidate.dataset.messageId === id);
+        if (!node) return { id, mounted: false };
+        const box = node.getBoundingClientRect();
+        const ancestors = [];
+        for (
+          let current: HTMLElement | null = node;
+          current && current !== root;
+          current = current.parentElement
+        ) {
+          const style = getComputedStyle(current);
+          ancestors.push({
+            tag: current.tagName,
+            className: current.className,
+            transform: style.transform,
+            animations: current.getAnimations().map((animation) => ({
+              currentTime: String(animation.currentTime),
+              playState: animation.playState,
+              duration: String(animation.effect?.getComputedTiming().duration),
+            })),
+          });
+        }
+        return {
+          id,
+          sequence: node.dataset.messageSequence,
+          mounted: true,
+          offset: box.top - viewport.top,
+          contentY: box.top - viewport.top + root.scrollTop,
+          height: box.height,
+          ancestors,
+        };
+      };
+      return {
+        stage,
+        time: performance.now(),
+        height: root.scrollHeight,
+        top: root.scrollTop,
+        clientHeight: root.clientHeight,
+        viewport: { top: viewport.top, height: viewport.height },
+        clickTarget: target(clickId),
+        beforeTarget: target(beforeId),
+        virtualRows: Array.from(
+          root.querySelectorAll<HTMLElement>('.conversation-virtual-item'),
+        ).map((node) => {
+          const box = node.getBoundingClientRect();
+          return {
+            index: node.dataset.index,
+            transform: node.style.transform,
+            top: box.top - viewport.top,
+            height: box.height,
+            messages: Array.from(node.querySelectorAll<HTMLElement>('[data-message-id]')).map(
+              (message) => message.dataset.messageId,
+            ),
+          };
+        }),
+        listHeight: root.querySelector<HTMLElement>('.conversation-virtual-list')?.style.height,
+      };
+    };
+    const click = (event: Event) => {
+      const button = event.target instanceof Element ? event.target.closest('button') : null;
+      if (button?.textContent?.trim() !== '加载更早消息') return;
+      clickId = firstVisible()?.dataset.messageId;
+      marks.push(read('click-capture'));
+      queueMicrotask(() => marks.push(read('click-handler-returned')));
+    };
+    root.addEventListener('click', click, true);
+    const tick = () => {
+      if (samples.length < 1800) samples.push(read('raf'));
+      else droppedFrames++;
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    window.__historyDiagnostics = {
+      mark(stage, messageId) {
+        if (messageId) beforeId = messageId;
+        marks.push(read(stage));
+      },
+      stop() {
+        cancelAnimationFrame(frame);
+        root.removeEventListener('click', click, true);
+        return { samples, marks, droppedFrames };
+      },
+    };
+  });
+}
+
 const emptyPromptContext = {
   ready: true,
   finalContext: '',
@@ -139,6 +275,7 @@ for (const theme of ['light', 'dark']) {
       await route.fulfill({ json: { data: rows('A', 1, 100) } });
     });
     await composer(page).fill('A 未发送草稿');
+    await startHistoryDiagnostics(page);
     await olderClick(page);
     await expect.poll(() => requested).toBe(1);
     const scroll = page.locator('.conversation-scroll');
@@ -151,7 +288,9 @@ for (const theme of ['light', 'dark']) {
         },
       );
       if (!message) throw new Error('No fully visible persisted message before history release');
+      window.__historyDiagnostics?.mark('before-release', message.dataset.messageId);
       return {
+        time: performance.now(),
         height: node.scrollHeight,
         top: node.scrollTop,
         clientHeight: node.clientHeight,
@@ -162,7 +301,12 @@ for (const theme of ['light', 'dark']) {
     release();
     await expect(page.getByRole('button', { name: '加载更早消息', exact: true })).toBeEnabled();
     await expect
-      .poll(() => scroll.evaluate((node) => node.scrollHeight))
+      .poll(() =>
+        scroll.evaluate((node) => {
+          window.__historyDiagnostics?.mark('button-enabled-height-poll');
+          return node.scrollHeight;
+        }),
+      )
       .toBeGreaterThan(before.height);
     await info.attach('history-anchor-before-and-committed', {
       body: JSON.stringify({
@@ -171,7 +315,9 @@ for (const theme of ['light', 'dark']) {
           const message = Array.from(node.querySelectorAll<HTMLElement>('[data-message-id]')).find(
             (candidate) => candidate.dataset.messageId === messageId,
           );
+          window.__historyDiagnostics?.mark('committed');
           return {
+            time: performance.now(),
             height: node.scrollHeight,
             top: node.scrollTop,
             clientHeight: node.clientHeight,
@@ -288,6 +434,7 @@ for (const theme of ['light', 'dark']) {
     await expect(composer(page)).toHaveValue('B 独立草稿');
     await expect(scroll).not.toContainText('A 已保存消息');
     await routeSession(page, 'A');
+    await page.evaluate(() => window.__historyDiagnostics?.mark('both-contracts-passed'));
     await expect(composer(page)).toHaveValue('A 未发送草稿');
   });
 }

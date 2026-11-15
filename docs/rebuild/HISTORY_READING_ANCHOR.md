@@ -26,3 +26,11 @@
 23:42 UTC 最后一处CR修正：虚拟估值暂缺时不预先记remountIndex，只有有效offset且owner仍有效才记录和单次写入，允许剩余帧重试；12帧限制不变。最终27/27、web类型、局部lint通过，已重新冻结。先前启动的全web未覆盖这处最后调整，不能冒充最终候选全量；需重跑。
 
 23:46 UTC 最终冻结验证结束：全仓lint/types、web117文件1408测试、串行build通过；两个代码/测试SHA与最终冻结清单一致。新真实分页与虚拟器重挂仍待精确CI，不能把单测当闭环。
+
+## 2026-11-15 00:02 UTC：52999a6 精确浏览器仍失败，追加取证
+
+- 最终候选已推52999a6。精确verify先通过246文件2506单测（12跳过）及词法9项，但fixture首个1440浅色case在总高合同差8px失败，后续未跑，不能宣布闭环。Workspace24/24、PG、axe通过不替代此失败。
+- 失败artifact：before H14789/S13675/A-193 Y69.1798；committed H30789/S29683/Y64.1810。总高公式+8，同一消息约−5；不是只看8就证明两4px动画。
+- 源码确有两层hci-entry几何入场（各translateY4px）；rect包含而scrollHeight不含，虚拟重挂会重播，是待证风险而非已证单因。不得减常数、放宽2px、移除virtual-item定位transform。
+- 仅追加诊断：连续同帧H/S/原点击与before双消息identity/offset/contentY、virtual rows、祖先transform和动画状态，失败附件保留；原两条<=2px及超时/重试不变。
+- 短工作区CI追加1440浅色单个历史诊断用例以提前取证，verify完整四宽双主题及全部测试不删减。短job仍20分钟、串行1worker/0retry，两个输出目录一并always上传。

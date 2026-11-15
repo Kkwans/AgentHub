@@ -312,11 +312,22 @@ jobs:
           tests/e2e-real/workspace-reference-visual.spec.ts
           tests/e2e-real/workspace-deep-files.spec.ts
           --retries=0 --output=workspace-test-results --reporter=line,json
+      # Early triage only. The verify job still runs the complete 4-width,
+      # 2-theme pagination and browser suites with their original contracts.
+      - name: Capture history reading diagnostics without retries
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: workspace-history-results/results.json
+        run: >-
+          pnpm exec playwright test tests/e2e/history-pagination.spec.ts
+          --project=desktop-1440 --grep '成功旧页.*light'
+          --workers=1 --retries=0 --output=workspace-history-results --reporter=line,json
       - name: Preserve exact-commit workspace evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: workspace-interaction-evidence-${{ github.sha }}-${{ github.run_attempt }}
-          path: workspace-test-results/
+          path: |
+            workspace-test-results/
+            workspace-history-results/
           if-no-files-found: warn
           retention-days: 7
