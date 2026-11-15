@@ -207,6 +207,6 @@ it('keeps the disclosure focus outline inside its clipped header without changin
   );
   expect(css).toMatch(/\.tool-entry-trigger--interactive:focus-visible\s*\{[^}]*box-shadow: inset/);
   expect(css).toMatch(
-    /\.tool-entry-toggle:focus-visible\s*\{[^}]*outline: 2px solid hsl\(var\(--primary\)\);[^}]*outline-offset: -2px;[^}]*box-shadow: none;/,
+    /\.tool-entry-trigger > \.tool-entry-toggle:focus-visible\s*\{[^}]*outline: 2px solid hsl\(var\(--primary\)\);[^}]*outline-offset: -2px;[^}]*box-shadow: none;/,
   );
 });
