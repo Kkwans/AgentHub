@@ -187,6 +187,45 @@ describe('ACP v1 adapter wire fixture', () => {
     });
   });
 
+  it.each([false, true])('长上下文模型仅在 opt-in 时声明并可切换（%s）', async (optIn) => {
+    const model =
+      'fixture-engineering-review-model-extended-context-multilingual-workspace-isolation-preview-2026-11';
+    const adapter = new AcpAdapter();
+    const session = await adapter.createSession({
+      sessionId: `context-model-${optIn}`,
+      projectId: 'project-1',
+      cwd: process.cwd(),
+      profile: {
+        ...profile,
+        launchSpec: {
+          kind: 'HOST_PROCESS',
+          executable: process.execPath,
+          args: [fixturePath, ...(optIn ? [`--session-context-model=${model}`] : [])],
+        },
+      },
+    });
+    openSessions.push(session);
+    const configuration = await session.getConfiguration?.();
+    expect(configuration?.current.model).toBe('fixture-model');
+    expect(configuration?.options.models.map((option) => option.id)).toEqual([
+      'fixture-model',
+      'fixture-model-2',
+      ...(optIn ? [model] : []),
+    ]);
+    if (optIn) {
+      await expect(session.setConfiguration?.({ model })).resolves.toMatchObject({
+        current: { model },
+      });
+      await expect(session.setConfiguration?.({ model: 'fixture-model-2' })).resolves.toMatchObject(
+        { current: { model: 'fixture-model-2' } },
+      );
+    } else {
+      await expect(session.setConfiguration?.({ model })).rejects.toMatchObject({
+        code: 'SESSION_MODEL_UNSUPPORTED',
+      });
+    }
+  });
+
   it('session/close 挂起时仍在短 grace 后关闭 connection、process 与 event queue', async () => {
     const adapter = new AcpAdapter({ sessionCloseGraceMs: 10 });
     const session = await adapter.createSession({

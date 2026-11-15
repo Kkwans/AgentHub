@@ -1,6 +1,7 @@
 import type { Locator, Page, TestInfo } from '@playwright/test';
 import { apiData, seedWorkspace } from './baseline-support.js';
 import { test, expect } from './fixtures.js';
+import { seedLongSessionContext } from './session-context-support.js';
 
 test.use({ authMode: 'local_trusted' });
 test.setTimeout(180_000);
@@ -110,7 +111,14 @@ async function verifySessionContext(
   page: Page,
   info: TestInfo,
   link: Locator,
-  expected: { title: string; model: string | null; branch: string | null; cwd: string },
+  expected: {
+    title: string;
+    model: string | null;
+    branch: string | null;
+    cwd: string;
+    agentName?: string;
+  },
+  capturePrefix = 'session-context',
 ) {
   const row = link.locator('..');
   const details = row.locator(':scope > details');
@@ -126,10 +134,10 @@ async function verifySessionContext(
   await expect(details).not.toHaveAttribute('open', '');
   await summary.scrollIntoViewIfNeeded();
   const defaultGeometry = { link: await link.boundingBox(), summary: await summary.boundingBox() };
-  const defaultPath = info.outputPath('session-context-default.png');
+  const defaultPath = info.outputPath(`${capturePrefix}-default.png`);
   await page.screenshot({ path: defaultPath });
-  await info.attach('session-context-default', { path: defaultPath, contentType: 'image/png' });
-  await info.attach('session-context-default-geometry', {
+  await info.attach(`${capturePrefix}-default`, { path: defaultPath, contentType: 'image/png' });
+  await info.attach(`${capturePrefix}-default-geometry`, {
     body: JSON.stringify(defaultGeometry),
     contentType: 'application/json',
   });
@@ -152,7 +160,7 @@ async function verifySessionContext(
   await expect(page).toHaveURL(originalUrl);
   await expect(fields.locator('dd')).toHaveText([
     expected.title,
-    'v1 baseline agent',
+    expected.agentName ?? 'v1 baseline agent',
     expected.model || '模型未记录',
     expected.branch || '分支未记录',
     expected.cwd || '目录未记录',
@@ -186,13 +194,13 @@ async function verifySessionContext(
       }),
     );
   }
-  const expandedPath = info.outputPath('session-context-expanded-full-page.png');
+  const expandedPath = info.outputPath(`${capturePrefix}-expanded-full-page.png`);
   await page.screenshot({ path: expandedPath, fullPage: true });
-  await info.attach('session-context-expanded-full-page', {
+  await info.attach(`${capturePrefix}-expanded-full-page`, {
     path: expandedPath,
     contentType: 'image/png',
   });
-  await info.attach('session-context-expanded-geometry', {
+  await info.attach(`${capturePrefix}-expanded-geometry`, {
     body: JSON.stringify(geometry),
     contentType: 'application/json',
   });
@@ -286,5 +294,92 @@ for (const width of [390, 768, 1024, 1440])
       await sessionLink.focus();
       await page.keyboard.press('Enter');
       await expect(page).toHaveURL(new RegExp(`/workspace/${session.id}$`));
+    });
+  }
+
+// Real application + opt-in ACP test provider, not a claim about hosted model support.
+// Existing short-fixture toolbar/navigation cases above remain unchanged.
+for (const width of [390, 768, 1024, 1440])
+  for (const theme of ['light', 'dark']) {
+    test(`真实项目会话长字段 ${width} ${theme}`, async ({ page, context, app }, info) => {
+      const seeded = await seedLongSessionContext(context, app);
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      await page.addInitScript((theme) => localStorage.setItem('agenthub-theme', theme), theme);
+      await page.goto(`/projects/${seeded.project.id}/sessions`);
+      await expect(page.locator('html')).toHaveAttribute('data-agenthub-theme', theme);
+      const region = page.getByRole('region', { name: '项目会话', exact: true });
+      const link = region.locator(`a[href="/workspace/${seeded.session.id}"]`);
+      const peer = region.locator(`a[href="/workspace/${seeded.peerSession.id}"]`);
+      await expect(link).toHaveCount(1);
+      await expect(peer).toHaveCount(1);
+      await expect(link).toBeVisible();
+      await expect(peer).toBeVisible();
+      await expect(link).toContainText('client-web');
+      await expect(peer).toContainText('client-web');
+      for (const rowLink of [link, peer]) {
+        const directory = rowLink.getByText('client-web', { exact: true });
+        await expect(directory).toHaveCount(1);
+        await directory.scrollIntoViewIfNeeded();
+        const visible = await directory.evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return {
+            left: box.left,
+            right: box.right,
+            width: innerWidth,
+            rects: Array.from(range.getClientRects()).map((r) => ({
+              left: r.left,
+              right: r.right,
+            })),
+          };
+        });
+        await info.attach(`directory-label-${rowLink === link ? 'primary' : 'peer'}`, {
+          body: JSON.stringify(visible),
+          contentType: 'application/json',
+        });
+        for (const rect of visible.rects) {
+          expect(rect.left).toBeGreaterThanOrEqual(Math.max(0, visible.left) - 1);
+          expect(rect.right).toBeLessThanOrEqual(Math.min(visible.width, visible.right) + 1);
+        }
+      }
+      const saved = await apiData<{
+        title: string;
+        model: string | null;
+        branch: string | null;
+        cwd: string;
+      }>(context, 'get', `/sessions/${seeded.session.id}`);
+      const peerSaved = await apiData<{
+        title: string;
+        model: string | null;
+        branch: string | null;
+        cwd: string;
+      }>(context, 'get', `/sessions/${seeded.peerSession.id}`);
+      expect(saved.cwd).not.toBe(peerSaved.cwd);
+      expect(saved.cwd.endsWith('/client-web')).toBe(true);
+      expect(peerSaved.cwd.endsWith('/client-web')).toBe(true);
+      expect(saved.model).toBe(seeded.expected.model);
+      expect(saved.branch).toBe(seeded.expected.branch);
+      expect(saved.title).toBe(seeded.expected.title);
+      await expect(link.locator('..').locator('dl dd').last()).toHaveText(saved.cwd);
+      await expect(peer.locator('..').locator('dl dd').last()).toHaveText(peerSaved.cwd);
+      await verifySessionContext(page, info, link, {
+        ...saved,
+        agentName: seeded.expected.agentName,
+      });
+      await verifySessionContext(
+        page,
+        info,
+        peer,
+        {
+          ...peerSaved,
+          agentName: seeded.peerExpected.agentName,
+        },
+        'session-context-peer',
+      );
+      await link.scrollIntoViewIfNeeded();
+      await link.focus();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(new RegExp(`/workspace/${seeded.session.id}$`));
     });
   }

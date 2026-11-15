@@ -16,6 +16,13 @@ const { AGENT_METHODS, CLIENT_METHODS, PROTOCOL_VERSION, agent, ndJsonStream } =
 let sessionCounter = 0;
 let currentMode = 'agent';
 let currentModel = 'fixture-model';
+// Opt-in UI fixture capability; ordinary adapter tests retain their exact models.
+const contextModel = process.argv
+  .find((arg) => arg.startsWith('--session-context-model='))
+  ?.slice('--session-context-model='.length);
+if (contextModel !== undefined && (!contextModel.trim() || contextModel.length > 160)) {
+  throw new Error('Session context fixture model must contain 1–160 characters');
+}
 let currentReasoningEffort = 'low';
 let currentCollaborationMode = 'default';
 
@@ -34,6 +41,7 @@ const configOptions = () => [
     options: [
       { value: 'fixture-model', name: 'Fixture Model' },
       { value: 'fixture-model-2', name: 'Fixture Model 2' },
+      ...(contextModel ? [{ value: contextModel, name: contextModel }] : []),
     ],
   },
   {
