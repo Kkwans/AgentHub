@@ -1,6 +1,7 @@
 import { AhButton, CircleStop } from '@agenthub/ui';
 import { useNavigate } from 'react-router-dom';
 import type { TaskRecord } from '../../../lib/api';
+import styles from './taskCancelAction.module.css';
 
 export function TaskCancelAction({
   task,
@@ -28,11 +29,15 @@ export function TaskCancelAction({
             <AhButton size="xs" variant="default" loading={pending} onClick={onCancel}>
               核对并取消任务
             </AhButton>
-            <p>尚未关联工作区；仅当服务器确认没有未决 Run 时才能取消任务。</p>
+            <p className={styles.guidance}>
+              尚未关联工作区；仅当服务器确认没有未决 Run 时才能取消任务。
+            </p>
           </div>
         )}
         {task.sessionId ? (
-          <p>停止请求不代表已停止；请先核对 Run 权威终态，再取消任务。完成的结果仍需审阅。</p>
+          <p className={styles.guidance}>
+            停止请求不代表已停止；请先核对 Run 权威终态，再取消任务。完成的结果仍需审阅。
+          </p>
         ) : null}
       </div>
     );

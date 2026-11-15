@@ -140,6 +140,26 @@ for (const width of [390, 768, 1024, 1440]) {
           expect(rect.bottom).toBeLessThanOrEqual(geometry.bottom + 1);
         }
       }
+      const cancelButton = page.getByRole('button', { name: '核对并取消任务', exact: true });
+      const cancelNote = page.getByText(
+        '尚未关联工作区；仅当服务器确认没有未决 Run 时才能取消任务。',
+        { exact: true },
+      );
+      await cancelNote.scrollIntoViewIfNeeded();
+      const cancelBox = (await cancelButton.boundingBox())!;
+      const noteBox = (await cancelNote.boundingBox())!;
+      const cancelPath = info.outputPath(`manual-cancel-guidance-${width}-${theme}.png`);
+      await page.screenshot({ path: cancelPath });
+      await info.attach('manual-cancel-guidance', { path: cancelPath, contentType: 'image/png' });
+      await info.attach('manual-cancel-guidance-geometry', {
+        body: JSON.stringify({ referenceLeft, cancelBox, noteBox }),
+        contentType: 'application/json',
+      });
+      expect(Math.abs(cancelBox.x - referenceLeft)).toBeLessThanOrEqual(1);
+      expect(Math.abs(noteBox.x - referenceLeft)).toBeLessThanOrEqual(1);
+      expect(noteBox.y - (cancelBox.y + cancelBox.height)).toBeGreaterThanOrEqual(7);
+      expect(noteBox.x + noteBox.width).toBeLessThanOrEqual(width + 1);
+      if (width === 390) expect(cancelBox.height).toBeGreaterThanOrEqual(44);
       const path = info.outputPath(`manual-task-start-${width}-${theme}.png`);
       await page.screenshot({ path, fullPage: true });
       await info.attach('手工任务已开始', { path, contentType: 'image/png' });

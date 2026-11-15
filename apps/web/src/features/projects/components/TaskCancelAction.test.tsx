@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { TaskCancelAction } from './TaskCancelAction';
+import styles from './taskCancelAction.module.css';
 import type { TaskRecord } from '../../../lib/api';
 
 afterEach(cleanup);
@@ -26,10 +27,12 @@ it('进行中仅提供精确工作区入口，不发送状态取消', () => {
   fireEvent.click(screen.getByRole('button', { name: '前往工作区停止执行' }));
   expect(screen.getByRole('status')).toHaveTextContent('/workspace/session-1');
   expect(cancel).not.toHaveBeenCalled();
+  expect(screen.getByText(/停止请求不代表已停止/)).toHaveClass(styles.guidance!);
 });
 it('无Session的手工任务请求服务端核对后取消，不猜测工作区', () => {
   const cancel = mount('IN_PROGRESS');
   expect(screen.getByText(/仅当服务器确认没有未决 Run/)).toBeVisible();
+  expect(screen.getByText(/仅当服务器确认没有未决 Run/)).toHaveClass(styles.guidance!);
   expect(screen.queryByRole('button', { name: '前往工作区停止执行' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '核对并取消任务' }));
   expect(cancel).toHaveBeenCalledTimes(1);
