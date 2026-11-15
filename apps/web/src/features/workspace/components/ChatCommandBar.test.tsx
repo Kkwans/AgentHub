@@ -209,10 +209,7 @@ describe('ChatCommandBar PinHarness composer interactions', () => {
     });
     const textarea = await screen.findByRole('textbox', { name: '给 Agent 发送工程指令' });
     expect(textarea).not.toBeDisabled();
-    expect(textarea).toHaveAttribute(
-      'placeholder',
-      'Agent 正在运行，可先写下一条指令，停止当前 Run 后发送…',
-    );
+    expect(textarea).toHaveAttribute('placeholder', '可先起草，停止运行后发送…');
     expect(textarea).toHaveAttribute('data-active-run', 'true');
     fireEvent.change(textarea, { target: { value: '不要打断当前 Run' } });
     fireEvent.keyDown(textarea, { key: 'Enter' });

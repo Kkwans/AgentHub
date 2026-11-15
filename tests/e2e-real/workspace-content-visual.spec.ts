@@ -269,6 +269,46 @@ async function showInspector(page: Page, width: number, tab: 'files' | 'changes'
     .getByRole('tab', { name: tab === 'files' ? '文件' : '变更', exact: true })
     .click();
 }
+async function assertActiveComposerHint(page: Page, info: TestInfo, width: number) {
+  const composer = page.getByRole('textbox', { name: '给 Agent 发送工程指令', exact: true });
+  await expect(composer).toHaveAttribute('placeholder', '可先起草，停止运行后发送…');
+  await expect(composer).toHaveValue('');
+  await expect(composer).toBeEditable();
+  await expect(page.getByRole('button', { name: '停止 Run', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '停止 Run', exact: true })).toBeInViewport({
+    ratio: 1,
+  });
+  await expect(composer).toBeInViewport({ ratio: 1 });
+  const geometry = await composer.evaluate((node: HTMLTextAreaElement) => {
+    const css = getComputedStyle(node);
+    const placeholder = getComputedStyle(node, '::placeholder');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    context.font = `${placeholder.fontWeight} ${placeholder.fontSize} ${placeholder.fontFamily}`;
+    const spacing = parseFloat(placeholder.letterSpacing) || 0;
+    return {
+      text: node.placeholder,
+      textWidth:
+        context.measureText(node.placeholder).width +
+        Math.max(0, node.placeholder.length - 1) * spacing,
+      contentWidth: node.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight),
+      contentHeight: node.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom),
+      lineHeight: parseFloat(css.lineHeight),
+    };
+  });
+  const path = info.outputPath(`workspace-active-composer-${width}.png`);
+  await page.screenshot({ path });
+  await info.attach(`active-composer-${width}`, { path, contentType: 'image/png' });
+  await info.attach(`active-composer-geometry-${width}`, {
+    body: JSON.stringify(geometry),
+    contentType: 'application/json',
+  });
+  // Placeholder text has no DOM Range; measured font width + manual screenshot
+  // review establish this concise hint fits one line, without resizing the input.
+  expect(geometry.textWidth).toBeLessThanOrEqual(geometry.contentWidth);
+  expect(geometry.lineHeight).toBeLessThanOrEqual(geometry.contentHeight + 1);
+}
+
 for (const width of [390, 768, 1024, 1440]) {
   for (const theme of ['light', 'dark']) {
     test(`真实 Workspace 内容 文件 Git ${width} ${theme}`, async ({ page, context, app }, info) => {
@@ -453,6 +493,12 @@ for (const width of [390, 768, 1024, 1440]) {
       const approve = page.getByRole('button', { name: '允许一次', exact: true });
       await expect(approve).toBeVisible({ timeout: 30_000 });
       await capture(page, info, 'approval', approve, page.locator('.approval-card'));
+      await assertActiveComposerHint(page, info, width);
+      if (width === 390) {
+        await page.setViewportSize({ width: 320, height: 844 });
+        await assertActiveComposerHint(page, info, 320);
+        await page.setViewportSize({ width, height: 844 });
+      }
       const requestedApprovals = await apiData<Array<{ id: string; status: string }>>(
         context,
         'get',

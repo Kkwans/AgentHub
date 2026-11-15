@@ -214,7 +214,7 @@ export function ChatCommandBar({
           : '会话正在准备中，请稍候。'
       : undefined;
   const composerPlaceholder = activeRun
-    ? 'Agent 正在运行，可先写下一条指令，停止当前 Run 后发送…'
+    ? '可先起草，停止运行后发送…'
     : (sessionLockMessage ?? '给 Agent 发送工程指令…');
   const modelOptions = configuration?.options?.models ?? [];
   const modeOptions = configuration?.options?.modes ?? [];
