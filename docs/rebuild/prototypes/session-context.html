@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AgentHub · 会话上下文设计原型</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #fff;
+        --rail: #f6f6f5;
+        --ink: #242424;
+        --muted: #686868;
+        --line: #e6e6e4;
+        --hover: #f5f5f4;
+        --focus: #555;
+        --green: #177245;
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #202020;
+        --rail: #181818;
+        --ink: #ededeb;
+        --muted: #aaa;
+        --line: #363636;
+        --hover: #292929;
+        --focus: #d0d0cd;
+        --green: #77c79a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      button,
+      a,
+      summary {
+        -webkit-tap-highlight-color: transparent;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 44px;
+        padding: 0 14px;
+        cursor: pointer;
+      }
+      a:focus-visible,
+      summary:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: -2px;
+        border-radius: 5px;
+      }
+      button:hover,
+      summary:hover,
+      .session-link:hover {
+        background: var(--hover);
+      }
+      .shell {
+        display: grid;
+        grid-template-columns: 208px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+      .rail {
+        padding: 24px 18px;
+        background: var(--rail);
+        border-right: 1px solid var(--line);
+      }
+      .brand {
+        font-weight: 650;
+        font-size: 20px;
+        letter-spacing: -0.5px;
+      }
+      .rail-label {
+        margin-top: 44px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .rail-item {
+        margin-top: 10px;
+        padding: 10px;
+        background: var(--line);
+        border-radius: 7px;
+        font-weight: 550;
+      }
+      .rail small {
+        display: block;
+        margin: 16px 10px;
+        color: var(--muted);
+      }
+      main {
+        padding: 28px 32px;
+        max-width: 1280px;
+        width: 100%;
+        margin: auto;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .crumb {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0 0 20px;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.6px;
+        margin: 0;
+      }
+      .subtitle {
+        color: var(--muted);
+        margin: 8px 0 0;
+      }
+      .notice {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 20px 0 28px;
+        max-width: 78ch;
+      }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .session {
+        position: relative;
+        display: block;
+        border-bottom: 1px solid var(--line);
+        padding: 12px 0;
+      }
+      .session-link {
+        min-width: 0;
+        min-height: 44px;
+        padding: 8px 92px 8px 8px;
+        border-radius: 6px;
+        display: block;
+      }
+      .title {
+        font-size: 15px;
+        font-weight: 600;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .context {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+        gap: 12px;
+        margin-top: 8px;
+        max-width: 760px;
+      }
+      .piece {
+        min-width: 0;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .label {
+        flex: none;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .value {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .directory .value {
+        color: var(--ink);
+      }
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .status {
+        color: var(--green);
+      }
+      .status:before {
+        content: '';
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        margin-right: 5px;
+      }
+      .context-details {
+        display: block;
+      }
+      .context-details > summary {
+        position: absolute;
+        right: 0;
+        top: 12px;
+        grid-column: 2;
+        grid-row: 1;
+        align-self: start;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-width: 80px;
+        min-height: 44px;
+        padding: 0 10px;
+        list-style: none;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 12px;
+        border-radius: 6px;
+        margin-top: 4px;
+      }
+      .context-details > summary::-webkit-details-marker {
+        display: none;
+      }
+      .chevron {
+        font-size: 14px;
+        display: inline-block;
+        transition: transform 0.12s;
+      }
+      .context-details[open] .chevron {
+        transform: rotate(90deg);
+      }
+      .full-context {
+        grid-column: 1/-1;
+        margin: 10px 8px 4px;
+        padding: 16px 0 4px;
+        border-top: 1px solid var(--line);
+      }
+      .full-context dl {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 10px 16px;
+        margin: 0;
+        max-width: 920px;
+      }
+      .full-context dt {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .full-context dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        font-size: 13px;
+      }
+      .full-context code {
+        font:
+          12px/1.65 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        overflow-wrap: anywhere;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 20px 8px;
+      }
+      .demo-destination {
+        display: none;
+      }
+      .demo-destination:target {
+        display: block;
+        margin-top: 36px;
+        border-top: 1px solid var(--line);
+        padding: 24px 8px;
+        scroll-margin-top: 20px;
+      }
+      .demo-destination h2 {
+        font-size: 18px;
+        overflow-wrap: anywhere;
+      }
+      .back {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      @media (max-width: 900px) {
+        .shell {
+          grid-template-columns: 64px minmax(0, 1fr);
+        }
+        .rail {
+          padding: 24px 12px;
+        }
+        .brand {
+          font-size: 15px;
+        }
+        .brand span,
+        .rail-label,
+        .rail-item,
+        .rail small {
+          display: none;
+        }
+        main {
+          padding: 24px;
+        }
+        .context {
+          gap: 10px;
+        }
+      }
+      @media (max-width: 600px) {
+        .shell {
+          display: block;
+        }
+        .rail {
+          display: none;
+        }
+        main {
+          padding: 20px 16px;
+        }
+        .top {
+          align-items: flex-start;
+        }
+        .top button {
+          flex: none;
+          padding-inline: 10px;
+        }
+        .crumb {
+          margin-bottom: 14px;
+        }
+        h1 {
+          font-size: 22px;
+        }
+        .notice {
+          margin: 16px 0 20px;
+        }
+        .session {
+          padding: 10px 0;
+        }
+        .session-link {
+          padding: 8px 76px 8px 0;
+        }
+        .context {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 5px 10px;
+        }
+        .directory {
+          grid-column: 1/-1;
+        }
+        .context-details > summary {
+          position: absolute;
+          right: 0;
+          top: 12px;
+          min-width: 70px;
+          padding-inline: 8px;
+        }
+        .full-context {
+          margin-inline: 0;
+        }
+        .full-context dl {
+          grid-template-columns: 48px minmax(0, 1fr);
+          gap: 12px 10px;
+        }
+        .hint {
+          margin-inline: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .chevron {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="rail" aria-label="原型项目标识">
+        <div class="brand">A<span>gentHub</span></div>
+        <div class="rail-label">项目</div>
+        <div class="rail-item">AgentHub</div>
+        <small>会话上下文 · 设计验证</small>
+      </aside>
+      <main id="sessions">
+        <p class="crumb">项目 / AgentHub / 会话</p>
+        <header class="top">
+          <div>
+            <h1>会话</h1>
+            <p class="subtitle">找到工作，确认上下文，再继续。</p>
+          </div>
+          <button
+            id="theme"
+            data-theme-toggle
+            aria-label="切换主题"
+            type="button"
+            aria-pressed="false"
+          >
+            深色模式
+          </button>
+        </header>
+        <p class="notice">
+          离线设计原型 · 以下 3 条均为模拟数据，无真实 API 或 Agent
+          操作。点击会话标题只跳转至本页模拟说明；“上下文”可用鼠标、触摸或键盘展开完整字段。
+        </p>
+        <div class="section-head"><span>最近会话</span><span>3 条模拟记录</span></div>
+        <section aria-label="模拟会话列表">
+          <article class="session" data-session-row aria-labelledby="title-short">
+            <a
+              class="session-link"
+              data-primary-link
+              href="#preview-short"
+              aria-describedby="note-short"
+              ><span class="title" id="title-short">修复会话恢复后的滚动位置</span
+              ><span class="context"
+                ><span class="piece"
+                  ><span class="label">Agent</span><span class="value">Codex</span></span
+                ><span class="piece"
+                  ><span class="label">分支</span><span class="value">main</span></span
+                ><span class="piece directory"
+                  ><span class="label">目录</span
+                  ><span class="value" data-directory-label>client-web</span></span
+                ></span
+              ><span class="meta"><span class="status">就绪 · 模拟</span><span>09:32</span></span
+              ><span class="sr-only" id="note-short"
+                >打开本页模拟说明。完整字段可通过旁边的上下文展开。</span
+              ></a
+            >
+            <details class="context-details">
+              <summary data-context-summary aria-label="查看会话上下文：修复会话恢复后的滚动位置">
+                <span class="chevron" aria-hidden="true">›</span>上下文
+              </summary>
+              <div class="full-context">
+                <dl data-context-fields>
+                  <dt>标题</dt>
+                  <dd>修复会话恢复后的滚动位置</dd>
+                  <dt>Agent</dt>
+                  <dd>Codex</dd>
+                  <dt>模型</dt>
+                  <dd><code>gpt-5.3-codex</code></dd>
+                  <dt>分支</dt>
+                  <dd><code>main</code></dd>
+                  <dt>目录</dt>
+                  <dd><code>/workspace/client-web</code></dd>
+                </dl>
+              </div>
+            </details>
+          </article>
+          <article class="session" data-session-row aria-labelledby="title-long">
+            <a
+              class="session-link"
+              data-primary-link
+              href="#preview-long"
+              aria-describedby="note-long"
+              ><span class="title" id="title-long"
+                >检查多 Agent 并行执行时的权限边界与工作目录隔离，补齐回归验证</span
+              ><span class="context"
+                ><span class="piece"
+                  ><span class="label">Agent</span
+                  ><span class="value"
+                    >Claude Code · 研发协作与安全审查 Engineering Review Agent</span
+                  ></span
+                ><span class="piece"
+                  ><span class="label">分支</span
+                  ><span class="value"
+                    >feature/会话上下文与工作目录隔离-session-context-and-worktree-boundary</span
+                  ></span
+                ><span class="piece directory"
+                  ><span class="label">目录</span
+                  ><span class="value" data-directory-label>client-web</span></span
+                ></span
+              ><span class="meta"><span class="status">就绪 · 模拟</span><span>09:18</span></span
+              ><span class="sr-only" id="note-long"
+                >打开本页模拟说明。完整字段可通过旁边的上下文展开。</span
+              ></a
+            >
+            <details class="context-details">
+              <summary
+                data-context-summary
+                aria-label="查看会话上下文：检查多 Agent 并行执行时的权限边界与工作目录隔离，补齐回归验证"
+              >
+                <span class="chevron" aria-hidden="true">›</span>上下文
+              </summary>
+              <div class="full-context">
+                <dl data-context-fields>
+                  <dt>标题</dt>
+                  <dd>检查多 Agent 并行执行时的权限边界与工作目录隔离，补齐回归验证</dd>
+                  <dt>Agent</dt>
+                  <dd>Claude Code · 研发协作与安全审查 Engineering Review Agent</dd>
+                  <dt>模型</dt>
+                  <dd><code>claude-opus-4-6-extended-context-preview</code></dd>
+                  <dt>分支</dt>
+                  <dd>
+                    <code
+                      >feature/会话上下文与工作目录隔离-session-context-and-worktree-boundary</code
+                    >
+                  </dd>
+                  <dt>目录</dt>
+                  <dd>
+                    <code
+                      >/Users/developer/Projects/研发协作平台/agent-orchestration/worktrees/feature-session-context/client-web</code
+                    >
+                  </dd>
+                </dl>
+              </div>
+            </details>
+          </article>
+          <article class="session" data-session-row aria-labelledby="title-same">
+            <a
+              class="session-link"
+              data-primary-link
+              href="#preview-same"
+              aria-describedby="note-same"
+              ><span class="title" id="title-same">核对独立工作副本中的文件变更</span
+              ><span class="context"
+                ><span class="piece"
+                  ><span class="label">Agent</span><span class="value">Hermes</span></span
+                ><span class="piece"
+                  ><span class="label">分支</span
+                  ><span class="value">review/session-context</span></span
+                ><span class="piece directory"
+                  ><span class="label">目录</span
+                  ><span class="value" data-directory-label>client-web</span></span
+                ></span
+              ><span class="meta"><span class="status">就绪 · 模拟</span><span>昨天</span></span
+              ><span class="sr-only" id="note-same"
+                >打开本页模拟说明。完整字段可通过旁边的上下文展开。</span
+              ></a
+            >
+            <details class="context-details">
+              <summary
+                data-context-summary
+                aria-label="查看会话上下文：核对独立工作副本中的文件变更"
+              >
+                <span class="chevron" aria-hidden="true">›</span>上下文
+              </summary>
+              <div class="full-context">
+                <dl data-context-fields>
+                  <dt>标题</dt>
+                  <dd>核对独立工作副本中的文件变更</dd>
+                  <dt>Agent</dt>
+                  <dd>Hermes</dd>
+                  <dt>模型</dt>
+                  <dd><code>provider/model-version-long-context</code></dd>
+                  <dt>分支</dt>
+                  <dd><code>review/session-context</code></dd>
+                  <dt>目录</dt>
+                  <dd><code>/srv/remote-workspaces/team-b/customer-sandbox/client-web</code></dd>
+                </dl>
+              </div>
+            </details>
+          </article>
+        </section>
+        <p class="hint">目录末级相同也不代表同一工作区，请展开上下文核对完整路径。</p>
+        <section class="demo-destination" id="preview-short" tabindex="-1">
+          <h2>修复会话恢复后的滚动位置</h2>
+          <p>这是离线原型的导航落点，不是真实会话，也不会启动 Agent。</p>
+          <a class="back" href="#sessions">返回模拟会话列表</a>
+        </section>
+        <section class="demo-destination" id="preview-long" tabindex="-1">
+          <h2>检查多 Agent 并行执行时的权限边界与工作目录隔离，补齐回归验证</h2>
+          <p>这是离线原型的导航落点，不是真实会话，也不会启动 Agent。</p>
+          <a class="back" href="#sessions">返回模拟会话列表</a>
+        </section>
+        <section class="demo-destination" id="preview-same" tabindex="-1">
+          <h2>核对独立工作副本中的文件变更</h2>
+          <p>这是离线原型的导航落点，不是真实会话，也不会启动 Agent。</p>
+          <a class="back" href="#sessions">返回模拟会话列表</a>
+        </section>
+      </main>
+    </div>
+    <script>
+      const themeButton = document.getElementById('theme');
+      themeButton.addEventListener('click', () => {
+        const dark = document.documentElement.dataset.theme !== 'dark';
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        themeButton.setAttribute('aria-pressed', String(dark));
+      });
+    </script>
+  </body>
+</html>

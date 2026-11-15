@@ -322,6 +322,14 @@ jobs:
           pnpm exec playwright test tests/e2e/history-pagination.spec.ts
           --project=desktop-1440 --grep '成功旧页.*light'
           --workers=1 --retries=0 --output=workspace-history-results --reporter=line,json
+      # Standalone HTML design evidence, not real service or Agent acceptance.
+      - name: Capture standalone session context prototype
+        if: ${{ !cancelled() }}
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: prototype-test-results/results.json
+        run: >-
+          pnpm exec playwright test --config=playwright.prototype.config.ts
+          --workers=1 --retries=0 --reporter=line,json
       - name: Preserve exact-commit workspace evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -330,5 +338,6 @@ jobs:
           path: |
             workspace-test-results/
             workspace-history-results/
+            prototype-test-results/
           if-no-files-found: warn
           retention-days: 7
